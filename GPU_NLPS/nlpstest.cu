@@ -1,3 +1,4 @@
+/***** LINES CHANGED FOR X <-> Y MARKED BY '//' *******/
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,8 +22,8 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     float *y, *x;
     f = (cufftReal*) malloc(sizeof(cufftReal)*Ny*Nx*Nz);
     g = (cufftReal*) malloc(sizeof(cufftReal)*Ny*Nx*Nz);
-    x = (float*) malloc(sizeof(float)*Nx);
-    y = (float*) malloc(sizeof(float)*Ny);
+    y = (float*) malloc(sizeof(float)*Nx);                                 //
+    x = (float*) malloc(sizeof(float)*Ny);				   //
     nlps = (cufftReal*) malloc(sizeof(cufftReal)*Ny*Nx*Nz);
     
     
@@ -55,13 +56,13 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
       for(int i=0; i<Nx; i++) {
       
       
-      x[i] = 2*M_PI*(float)(i-Nx/2)/Nx;
-      y[j] = 2*M_PI*(float)(j-Ny/2)/Ny;
+      y[i] = 2*M_PI*(float)(i-Nx/2)/Nx;                             //  Nx, Ny not changed!!
+      x[j] = 2*M_PI*(float)(j-Ny/2)/Ny;				    //
       int index = i + Nx*j + Nx*Ny*k;
       
-           
-      f[index]= fcos*cos( fkx*x[i] + fky*y[j]) + fsin*sin(fkx*x[i] + fky*y[j]);
-      g[index]= gcos*cos( gkx*x[i] + gky*y[j]) + gsin*sin(gkx*x[i] + gky*y[j]);
+      //fkx,fky,gkx,gky not changed!!     
+      f[index]= fcos*cos( fkx*y[i] + fky*x[j]) + fsin*sin(fkx*y[i] + fky*x[j]);	        //
+      g[index]= gcos*cos( gkx*y[i] + gky*x[j]) + gsin*sin(gkx*y[i] + gky*x[j]);		//
       
       
       //printf("f(%.2fPI,%.2fPI)=%.3f: %d ", y[i]/M_PI, x[j]/M_PI, f[index], index);

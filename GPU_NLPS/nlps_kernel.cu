@@ -1,4 +1,5 @@
 //SWITCHED X AND Y -> a(ky,kx,z)
+/***** LINES CHANGED FOR X <-> Y MARKED BY '//' *******/
 
 #include <stdio.h>
 
@@ -16,30 +17,23 @@ __global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy,
     
     
     //df/dx
-    fdx[index].x = -kx[idx]*f[index].y;
-    fdx[index].y =  kx[idx]*f[index].x;
+    fdx[index].x = -ky[idx]*f[index].y;			// only 'ky' changed!!
+    fdx[index].y =  ky[idx]*f[index].x;			//
     
     //df/dy
-    fdy[index].x = -ky[idy]*f[index].y;
-    fdy[index].y =  ky[idy]*f[index].x;
+    fdy[index].x = -kx[idy]*f[index].y;			//
+    fdy[index].y =  kx[idy]*f[index].x;			//
     
     //dg/dx
-    gdx[index].x = -kx[idx]*g[index].y;
-    gdx[index].y =  kx[idx]*g[index].x;
+    gdx[index].x = -ky[idx]*g[index].y;			//
+    gdx[index].y =  ky[idx]*g[index].x;			//
     
-    //dg/dx
-    gdy[index].x = -ky[idy]*g[index].y;
-    gdy[index].y =  ky[idy]*g[index].x;
+    //dg/dy
+    gdy[index].x = -kx[idy]*g[index].y;			//
+    gdy[index].y =  kx[idy]*g[index].x;			//
     
     
-    /* //da/dx
     
-    fdx[index].x = -(index%(Nx/2+1))*f[index].y;  
-    fdx[index].y = (index%(Nx/2+1))*f[index].x;
-    
-    //da/dy
-    fdy[index].x = -(index / (Nx/2+1))*f[index].y;
-    fdy[index].y = (index / (Nx/2+1))*f[index].x; */
   }
  }
 }  
@@ -70,11 +64,11 @@ __global__ void kInit(float* kx, float* ky, int Nx, int Ny, int Nz)
     if(idx<Nx/2+1 && idy<Ny) {
       
       if(idy<Ny/2+1) {
-        kx[idx] = idx;
-	ky[idy] = idy;
+        ky[idx] = idx;					// idx, idy, Nx, Ny not changed!!
+	kx[idy] = idy;					//
       } else {
-        kx[idx] = idx;
-	ky[idy] = idy - Ny;
+        ky[idx] = idx;					//	
+	kx[idy] = idy - Ny;				//
       }
     }
       
