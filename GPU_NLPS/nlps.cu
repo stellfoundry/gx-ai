@@ -3,6 +3,8 @@
 //  This subroutine takes as inputs two fields in (ky,kx,z) space and calculates
 //  the nlps bracket, and returns it in (ky,kx,z) space
 
+/***** LINES CHANGED FOR X <-> Y MARKED BY // *******/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,8 +48,8 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Nx,
     float scaler;
     cufftReal *multR_d;
     cufftComplex *mult_d;
-    cudaMalloc((void**) &kx_d, sizeof(float)*(Nx/2+1));
-    cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));    
+    cudaMalloc((void**) &ky_d, sizeof(float)*(Nx/2+1));                                 // Nx, Ny not changed!!
+    cudaMalloc((void**) &kx_d, sizeof(float)*(Ny));           				//
     cudaMalloc((void**) &f_d, sizeof(cufftReal)*Ny*Nx*Nz);            
     cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz);    
     cudaMalloc((void**) &fdxR_d, sizeof(cufftReal)*(Nx)*Ny*Nz);
