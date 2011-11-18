@@ -1,3 +1,5 @@
+/***** LINES CHANGED FOR X <-> Y MARKED BY '//' *******/
+
 // includes, system
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,8 +52,8 @@ int main(int argc, char* argv[])
         } 
 	nlpscheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);        
         nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
-	x = (float*) malloc(sizeof(float)*Nx);
-        y = (float*) malloc(sizeof(float)*Ny);
+	y = (float*) malloc(sizeof(float)*Nx);					//
+        x = (float*) malloc(sizeof(float)*Ny);					//
 	fdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	fdycheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	gdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
@@ -62,15 +64,15 @@ int main(int argc, char* argv[])
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Ny; j++) {
 	  for(int i=0; i<Nx; i++) {
-	    x[i] = 2*M_PI*(float)(i-Nx/2)/Nx;
-            y[j] = 2*M_PI*(float)(j-Ny/2)/Ny;
+	    y[i] = 2*M_PI*(float)(i-Nx/2)/Nx;					//
+            x[j] = 2*M_PI*(float)(j-Ny/2)/Ny;					//
             int index = i + Nx*j + Nx*Ny*k;
 	    
 	    //(df/dx)(dg/dy)-(df/dy)(dg/dx) 
-	    fdxcheck[index] = -fkx*fcos*sin(fkx*x[i] + fky*y[j]) + fkx*fsin*cos(fkx*x[i] + fky*y[j]);
-	    fdycheck[index] = -fky*fcos*sin(fkx*x[i] + fky*y[j]) + fky*fsin*cos(fkx*x[i] + fky*y[j]);
-	    gdxcheck[index] = -gkx*gcos*sin(gkx*x[i] + gky*y[j]) + gkx*gsin*cos(gkx*x[i] + gky*y[j]);
-	    gdycheck[index] = -gky*gcos*sin(gkx*x[i] + gky*y[j]) + gky*gsin*cos(gkx*x[i] + gky*y[j]);
+	    fdxcheck[index] = -fkx*fcos*sin(fkx*y[i] + fky*x[j]) + fkx*fsin*cos(fkx*y[i] + fky*x[j]);	// only x and y changed,
+	    fdycheck[index] = -fky*fcos*sin(fkx*y[i] + fky*x[j]) + fky*fsin*cos(fkx*y[i] + fky*x[j]);	// fkx,fky,gkx,gky,i,j same
+	    gdxcheck[index] = -gkx*gcos*sin(gkx*y[i] + gky*x[j]) + gkx*gsin*cos(gkx*y[i] + gky*x[j]);	//
+	    gdycheck[index] = -gky*gcos*sin(gkx*y[i] + gky*x[j]) + gky*gsin*cos(gkx*y[i] + gky*x[j]);	//
 	    nlpscheck[index] = fdxcheck[index]*gdycheck[index] - fdycheck[index]*gdxcheck[index];
 	    
 	  }
@@ -78,15 +80,15 @@ int main(int argc, char* argv[])
 	}
 	FILE *ofile = fopen( argv[2], "w+");
 	
-	fprintf(ofile,"f(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\ng(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
+	fprintf(ofile,"f(y,x)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\ng(y,x)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
 	                      fcos,fkx,fky,fsin,fkx,fky,gcos,gkx,gky,gsin,gkx,gky,Nx,Ny,Nz);
 	
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Ny; j++) {
           for(int i=0; i<Nx; i++) {
             int index = i + Nx*j + Nx*Ny*k;
-            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", (float)2*(i-Nx/2)/Nx, 
-	              (float)2*(j-Ny/2)/Ny, nlps[index], index);     
+            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI,                      //
+	              x[j]/M_PI, nlps[index], index);     			        	 //
           }
           fprintf(ofile,"\n");
          }
@@ -100,9 +102,9 @@ int main(int argc, char* argv[])
 	 for(int j=0; j<Ny; j++) {
           for(int i=0; i<Nx; i++) {
             int index = i + Nx*j + Nx*Ny*k;
-            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", (float)2*(i-Nx/2)/Nx, 
-	              (float)2*(j-Ny/2)/Ny, nlpscheck[index], index);     
-          }
+            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI, 			//
+	              x[j]/M_PI, nlpscheck[index], index);     			 	//
+          }	
           fprintf(ofile,"\n");
 	 } 
 	 fprintf(ofile,"\n");
