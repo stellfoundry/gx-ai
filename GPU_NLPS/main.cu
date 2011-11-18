@@ -70,7 +70,7 @@ int main(int argc, char* argv[])
 	    fdxcheck[index] = -fkx*fcos*sin(fkx*x[i] + fky*y[j]) + fkx*fsin*cos(fkx*x[i] + fky*y[j]);
 	    fdycheck[index] = -fky*fcos*sin(fkx*x[i] + fky*y[j]) + fky*fsin*cos(fkx*x[i] + fky*y[j]);
 	    gdxcheck[index] = -gkx*gcos*sin(gkx*x[i] + gky*y[j]) + gkx*gsin*cos(gkx*x[i] + gky*y[j]);
-	    gdycheck[index] = -gky*gcos*sin(fkx*x[i] + gky*y[j]) + gky*gsin*cos(gkx*x[i] + gky*y[j]);
+	    gdycheck[index] = -gky*gcos*sin(gkx*x[i] + gky*y[j]) + gky*gsin*cos(gkx*x[i] + gky*y[j]);
 	    nlpscheck[index] = fdxcheck[index]*gdycheck[index] - fdycheck[index]*gdxcheck[index];
 	    
 	  }
@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
 	}
 	FILE *ofile = fopen( argv[2], "w+");
 	
-	fprintf(ofile,"f(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\ng(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\n\nOutputs:\nNLPS BRACKET\n",
-	                      fcos,fkx,fky,fsin,fkx,fky,gcos,gkx,gky,gsin,gkx,gky);
+	fprintf(ofile,"f(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\ng(x,y)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
+	                      fcos,fkx,fky,fsin,fkx,fky,gcos,gkx,gky,gsin,gkx,gky,Nx,Ny,Nz);
 	
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Ny; j++) {
@@ -90,6 +90,7 @@ int main(int argc, char* argv[])
           }
           fprintf(ofile,"\n");
          }
+	 fprintf(ofile,"\n");
 	} 
 	
 	fprintf(ofile,"\nExpected values:\n(df/dx)(dg/dy)-(df/dy)(dg/dx)\n");
@@ -104,20 +105,20 @@ int main(int argc, char* argv[])
           }
           fprintf(ofile,"\n");
 	 } 
+	 fprintf(ofile,"\n");
         }
 	
 	
-	bool equal = false;
+	bool equal = true;
 	for(int k=0; k<Nz; k++) { 
 	 for(int j=0; j<Ny; j++) {
 	  for(int i=0; i<Nx; i++) {
 	    int index = i + Nx*j + Nx*Ny*k;
-	    if(abs(nlpscheck[index] - nlps[index]) < .0001) { equal = true;}
-	    else {equal = false; fprintf(ofile, "\n%d\n",index); break;}
+	    if(abs(nlpscheck[index] - nlps[index]) > .1) {equal = false; fprintf(ofile, "%d\n",index);}
 	  }
-	  if(equal == false) { break;}
+	  
 	 }
-	 if(equal == false) {break;}
+	 
 	}     
 	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("NLPS CHECKS\n");}
 	else {fprintf(ofile, "\nNLPS DOES NOT CHECK\n"); printf("NLPS DOES NOT CHECK\n");}
