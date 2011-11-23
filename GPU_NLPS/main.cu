@@ -23,7 +23,7 @@ int main(int argc, char* argv[])
     int fkx, fky, gkx, gky, Nx, Ny, Nz, fsin, fcos, gsin, gcos;
     cufftReal *nlps;
     cufftReal *nlpscheck, *fdxcheck, *fdycheck, *gdxcheck, *gdycheck;
-    float *x, *y;
+    float *x, *y, *z;
     
     
     
@@ -53,7 +53,8 @@ int main(int argc, char* argv[])
 	nlpscheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);        
         nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	y = (float*) malloc(sizeof(float)*Ny);					//
-        x = (float*) malloc(sizeof(float)*Nx);					//
+        x = (float*) malloc(sizeof(float)*Nx);
+	z = (float*) malloc(sizeof(float)*Nz);					//
 	fdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	fdycheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	gdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
@@ -66,7 +67,8 @@ int main(int argc, char* argv[])
 	  for(int i=0; i<Ny; i++) {
 	    y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;					//
             x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;					//
-            int index = i + Ny*j + Nx*Ny*k;
+            z[k] = 2*M_PI*(float)(k-Nz/2)/Nz;
+	    int index = i + Ny*j + Nx*Ny*k;
 	    
 	    //(df/dx)(dg/dy)-(df/dy)(dg/dx) 
 	    fdxcheck[index] = -fkx*fcos*sin(fky*y[i] + fkx*x[j]) + fkx*fsin*cos(fky*y[i] + fkx*x[j]);	// only x and y changed,
@@ -81,18 +83,18 @@ int main(int argc, char* argv[])
 	FILE *ofile = fopen( argv[2], "w+");
 	
 	fprintf(ofile,"f(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\ng(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
-	                      fcos,fkx,fky,fsin,fkx,fky,gcos,gkx,gky,gsin,gkx,gky,Nx,Ny,Nz);
+	                      fcos,fky,fkx,fsin,fky,fkx,gcos,gky,gkx,gsin,gky,gkx,Nx,Ny,Nz);
 	
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
           for(int i=0; i<Ny; i++) {
             int index = i + Ny*j + Nx*Ny*k;
-            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI,                      //
-	              x[j]/M_PI, nlps[index], index);     			        	 //
+            fprintf(ofile,"N(%.2fPI,%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI,                      //
+	              x[j]/M_PI, z[k]/M_PI, nlps[index], index);     			        	 //
           }
           fprintf(ofile,"\n");
          }
-	 fprintf(ofile,"\n");
+	 
 	} 
 	
 	fprintf(ofile,"\nExpected values:\n(df/dx)(dg/dy)-(df/dy)(dg/dx)\n");
@@ -102,8 +104,8 @@ int main(int argc, char* argv[])
 	 for(int j=0; j<Nx; j++) {
           for(int i=0; i<Ny; i++) {
             int index = i + Ny*j + Nx*Ny*k;
-            fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI, 			//
-	              x[j]/M_PI, nlpscheck[index], index);     			 	//
+            fprintf(ofile,"N(%.2fPI,%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI, 			//
+	              x[j]/M_PI, z[k]/M_PI, nlpscheck[index], index);     			 	//
           }	
           fprintf(ofile,"\n");
 	 } 
