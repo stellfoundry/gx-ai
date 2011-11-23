@@ -52,27 +52,27 @@ int main(int argc, char* argv[])
         } 
 	nlpscheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);        
         nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
-	y = (float*) malloc(sizeof(float)*Nx);					//
-        x = (float*) malloc(sizeof(float)*Ny);					//
+	y = (float*) malloc(sizeof(float)*Ny);					//
+        x = (float*) malloc(sizeof(float)*Nx);					//
 	fdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	fdycheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	gdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	gdycheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	
-	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos, Nx, Ny, Nz);
+	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos, Ny, Nx, Nz);
         
 	for(int k=0; k<Nz; k++) {
-	 for(int j=0; j<Ny; j++) {
-	  for(int i=0; i<Nx; i++) {
-	    y[i] = 2*M_PI*(float)(i-Nx/2)/Nx;					//
-            x[j] = 2*M_PI*(float)(j-Ny/2)/Ny;					//
-            int index = i + Nx*j + Nx*Ny*k;
+	 for(int j=0; j<Nx; j++) {
+	  for(int i=0; i<Ny; i++) {
+	    y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;					//
+            x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;					//
+            int index = i + Ny*j + Nx*Ny*k;
 	    
 	    //(df/dx)(dg/dy)-(df/dy)(dg/dx) 
-	    fdxcheck[index] = -fkx*fcos*sin(fkx*y[i] + fky*x[j]) + fkx*fsin*cos(fkx*y[i] + fky*x[j]);	// only x and y changed,
-	    fdycheck[index] = -fky*fcos*sin(fkx*y[i] + fky*x[j]) + fky*fsin*cos(fkx*y[i] + fky*x[j]);	// fkx,fky,gkx,gky,i,j same
-	    gdxcheck[index] = -gkx*gcos*sin(gkx*y[i] + gky*x[j]) + gkx*gsin*cos(gkx*y[i] + gky*x[j]);	//
-	    gdycheck[index] = -gky*gcos*sin(gkx*y[i] + gky*x[j]) + gky*gsin*cos(gkx*y[i] + gky*x[j]);	//
+	    fdxcheck[index] = -fkx*fcos*sin(fky*y[i] + fkx*x[j]) + fkx*fsin*cos(fky*y[i] + fkx*x[j]);	// only x and y changed,
+	    fdycheck[index] = -fky*fcos*sin(fky*y[i] + fkx*x[j]) + fky*fsin*cos(fky*y[i] + fkx*x[j]);	// fkx,fky,gkx,gky,i,j same
+	    gdxcheck[index] = -gkx*gcos*sin(gky*y[i] + gkx*x[j]) + gkx*gsin*cos(gky*y[i] + gkx*x[j]);	//
+	    gdycheck[index] = -gky*gcos*sin(gky*y[i] + gkx*x[j]) + gky*gsin*cos(gky*y[i] + gkx*x[j]);	//
 	    nlpscheck[index] = fdxcheck[index]*gdycheck[index] - fdycheck[index]*gdxcheck[index];
 	    
 	  }
@@ -80,13 +80,13 @@ int main(int argc, char* argv[])
 	}
 	FILE *ofile = fopen( argv[2], "w+");
 	
-	fprintf(ofile,"f(y,x)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\ng(y,x)= %d*cos(%dx + %dy) + %d*sin(%dx + %dy)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
+	fprintf(ofile,"f(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\ng(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
 	                      fcos,fkx,fky,fsin,fkx,fky,gcos,gkx,gky,gsin,gkx,gky,Nx,Ny,Nz);
 	
 	for(int k=0; k<Nz; k++) {
-	 for(int j=0; j<Ny; j++) {
-          for(int i=0; i<Nx; i++) {
-            int index = i + Nx*j + Nx*Ny*k;
+	 for(int j=0; j<Nx; j++) {
+          for(int i=0; i<Ny; i++) {
+            int index = i + Ny*j + Nx*Ny*k;
             fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI,                      //
 	              x[j]/M_PI, nlps[index], index);     			        	 //
           }
@@ -99,9 +99,9 @@ int main(int argc, char* argv[])
 	                       
 	
 	for(int k=0; k<Nz; k++) {
-	 for(int j=0; j<Ny; j++) {
-          for(int i=0; i<Nx; i++) {
-            int index = i + Nx*j + Nx*Ny*k;
+	 for(int j=0; j<Nx; j++) {
+          for(int i=0; i<Ny; i++) {
+            int index = i + Ny*j + Nx*Ny*k;
             fprintf(ofile,"N(%.2fPI,%.2fPI)=%.3f: %d  ", y[i]/M_PI, 			//
 	              x[j]/M_PI, nlpscheck[index], index);     			 	//
           }	
@@ -113,9 +113,9 @@ int main(int argc, char* argv[])
 	
 	bool equal = true;
 	for(int k=0; k<Nz; k++) { 
-	 for(int j=0; j<Ny; j++) {
-	  for(int i=0; i<Nx; i++) {
-	    int index = i + Nx*j + Nx*Ny*k;
+	 for(int j=0; j<Nx; j++) {
+	  for(int i=0; i<Ny; i++) {
+	    int index = i + Ny*j + Nx*Ny*k;
 	    if(abs(nlpscheck[index] - nlps[index]) > .1) {equal = false; fprintf(ofile, "%d\n",index);}
 	  }
 	  

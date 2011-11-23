@@ -33,7 +33,7 @@ __global__ void scalemult(cufftReal *f, cufftReal *f, cufftReal *f, cufftReal *f
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
-cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Nx, int Ny, int Nz) 
+cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Ny, int Nx, int Nz) 
 {
     //host variables
     //everything done on device
@@ -48,37 +48,37 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Nx,
     float scaler;
     cufftReal *multR_d;
     cufftComplex *mult_d;
-    cudaMalloc((void**) &ky_d, sizeof(float)*(Nx/2+1));                                 // Nx, Ny not changed!!
-    cudaMalloc((void**) &kx_d, sizeof(float)*(Ny));           				//
-    cudaMalloc((void**) &f_d, sizeof(cufftReal)*Ny*Nx*Nz);            
-    cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz);    
-    cudaMalloc((void**) &fdxR_d, sizeof(cufftReal)*(Nx)*Ny*Nz);
-    cudaMalloc((void**) &fdy_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz); 
-    cudaMalloc((void**) &fdyR_d, sizeof(cufftReal)*Nx*Ny*Nz);
-    cudaMalloc((void**) &g_d, sizeof(cufftReal)*Ny*Nx*Nz);            
-    cudaMalloc((void**) &gdx_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz);    
-    cudaMalloc((void**) &gdxR_d, sizeof(cufftReal)*Nx*Ny*Nz);
-    cudaMalloc((void**) &gdy_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz); 
-    cudaMalloc((void**) &gdyR_d, sizeof(cufftReal)*Nx*Ny*Nz);
+    cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 // Ny, Nx not changed!!
+    cudaMalloc((void**) &kx_d, sizeof(float)*(Nx));           				//
+    cudaMalloc((void**) &f_d, sizeof(cufftReal)*Nx*Ny*Nz);            
+    cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);    
+    cudaMalloc((void**) &fdxR_d, sizeof(cufftReal)*(Ny)*Nx*Nz);
+    cudaMalloc((void**) &fdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz); 
+    cudaMalloc((void**) &fdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &g_d, sizeof(cufftReal)*Nx*Ny*Nz);            
+    cudaMalloc((void**) &gdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);    
+    cudaMalloc((void**) &gdxR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &gdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz); 
+    cudaMalloc((void**) &gdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &scaler, sizeof(float));
-    cudaMalloc((void**) &multR_d, sizeof(cufftReal)*Nx*Ny*Nz);
-    cudaMalloc((void**) &mult_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz);
+    cudaMalloc((void**) &multR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &mult_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     
     
     
-    int block_size_y=2; int block_size_x=2; 
-    int dimGridy, dimGridx;
+    int block_size_x=2; int block_size_y=2; 
+    int dimGridx, dimGridy;
 
     dim3 dimBlock(block_size_x, block_size_y);
-    if(Nx/dimBlock.x == 0) {dimGridx = 1;}
+    if(Ny/dimBlock.x == 0) {dimGridx = 1;}
     else dimGridx = Nx/dimBlock.x;
-    if(Ny/dimBlock.y == 0) {dimGridy = 1;}
+    if(Nx/dimBlock.y == 0) {dimGridy = 1;}
     else dimGridy = Ny/dimBlock.y;
-    dim3 dimGrid(dimGridx, dimGridy);  
+    dim3 dimGrid(dimGridx, dimGridy); 
     
     cufftHandle plan;
     cufftHandle plan2;
-    int n[2] = {Ny, Nx};
+    int n[2] = {Nx, Ny};
     
     
     cufftPlanMany(&plan, 2,n,NULL,1,0,NULL,1,0,CUFFT_R2C,Nz);
@@ -86,11 +86,11 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Nx,
 
     
     
-    kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, Nx, Ny, Nz);
+    kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, Ny, Nx, Nz);
     
     
     deriv<<<dimGrid, dimBlock>>> (f_complex_d, fdx_d, fdy_d, g_complex_d, gdx_d, gdy_d,
-                                                      kx_d, ky_d, Nx, Ny, Nz);
+                                                      kx_d, ky_d, Ny, Nx, Nz);
     
           
     cufftExecC2R(plan2, fdy_d, fdyR_d);
@@ -100,9 +100,11 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftComplex *g_complex_d, int Nx,
      
     
     
-    scaler = (float)1/(Ny*Ny*Nx*Nx);
+    scaler = (float)1/(Nx*Nx*Ny*Ny);
     
-    bracket<<<dimGrid,dimBlock>>> (multR_d, fdxR_d, fdyR_d, gdxR_d, gdyR_d, scaler, Nx, Ny, Nz);
+    bracket<<<dimGrid,dimBlock>>> (multR_d, fdxR_d, fdyR_d, gdxR_d, gdyR_d, scaler, Ny, Nx, Nz);
+    
+    
     
     cufftExecR2C(plan, multR_d, mult_d);  
     
