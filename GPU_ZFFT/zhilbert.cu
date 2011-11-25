@@ -1,22 +1,25 @@
 //#include <zfft_kernel.cu>
 
-cufftComplex* ZHILBERT(cufftComplex *a_complex_d, cufftComplex *c_complex_d, int Ny, int Nx, int Nz)
+cufftComplex* ZHILBERT(cufftComplex *a_complex_d, cufftComplex *c_complex_d, float *kz_d, int Ny, int Nx, int Nz)
 {
   
-  float *kz_d;
+  
   float scaler;
-  cudaMalloc((void**) &kz_d, sizeof(float)*(Nz));
   cudaMalloc((void**) &scaler, sizeof(float));
   
-  int block_size_y=2; int block_size_x=2; 
-  int dimGridy, dimGridx;
+  // int threadsPerBlock = 512;
+    int block_size_x=2; int block_size_y=2; 
+    int dimGridx, dimGridy;
 
-  dim3 dimBlock(block_size_x, block_size_y);
-  if(Nx/dimBlock.x == 0) {dimGridx = 1;}
-  else dimGridx = Nx/dimBlock.x;
-  if(Ny/dimBlock.y == 0) {dimGridy = 1;}
-  else dimGridy = Ny/dimBlock.y;
-  dim3 dimGrid(dimGridx, dimGridy); 
+    dim3 dimBlock(block_size_x, block_size_y);
+    if(Nx/dimBlock.x == 0) {dimGridx = 1;}
+    else dimGridx = Nx/dimBlock.x;
+    if(Ny/dimBlock.y == 0) {dimGridy = 1;}
+    else dimGridy = Ny/dimBlock.y;
+    dim3 dimGrid(dimGridx, dimGridy);  
+    
+  //dim3 dimGrid(100,50);
+  //dim3 dimBlock(8,8,8);
   
   cufftHandle plan;
   int n[1] = {Nz};
@@ -30,7 +33,7 @@ cufftComplex* ZHILBERT(cufftComplex *a_complex_d, cufftComplex *c_complex_d, int
   
   //a_complex_z_d is a field of the form a(ky,kx,kz)
   
-  kInit<<<dimGrid, dimBlock>>> (kz_d, Nz);
+  
   
   zhilbert<<<dimGrid, dimBlock>>> (a_complex_d, c_complex_d,
                                 kz_d, Ny, Nx, Nz);
@@ -47,7 +50,7 @@ cufftComplex* ZHILBERT(cufftComplex *a_complex_d, cufftComplex *c_complex_d, int
   
   cufftDestroy(plan);
    
-  cudaFree(kz_d);
+  
   
   return c_complex_d;
 }  
