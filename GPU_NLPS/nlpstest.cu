@@ -11,15 +11,20 @@
 
 #include <nlps.cu>
 
+//void getfcn(cufftReal* fcn, cufftReal* fcn_d, int Nx, int Ny, int Nz);
+//void getfcnC(cufftComplex* fcn, cufftComplex* fcn_d, int Nx, int Ny, int Nz);
 
 __global__ void scale(cufftReal *f, float a, int N, int N, int N);
+__global__ void zeroC(cufftComplex *f, int N, int N, int N);
+__global__ void zero(cufftReal *f, int N, int N, int N);
+
 
 cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int gsin, int gcos, int Ny, int Nx, int Nz) 
 {
     //host variables
-    cufftReal *f, *g, *nlps;
-    
+    cufftReal *f, *g, *nlps;    
     float *y, *x;
+    
     f = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     g = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     y = (float*) malloc(sizeof(float)*Ny);                                 //
@@ -27,16 +32,22 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     
     
-    
-    
     //device variables
-    cufftReal *f_d, *g_d, *nlps_d;
+    cufftReal *f_d, *g_d, *nlps_d, *fdxR_d, *fdyR_d, *gdxR_d, *gdyR_d;
     cufftComplex *f_complex_d, *g_complex_d, *nlps_complex_d;
+    
     float scaler;
+    float *kx_d, *ky_d;
+    cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 
+    cudaMalloc((void**) &kx_d, sizeof(float)*(Nx));     
     cudaMalloc((void**) &f_d, sizeof(cufftReal)*Nx*Ny*Nz); 
     cudaMalloc((void**) &g_d, sizeof(cufftReal)*Nx*Ny*Nz);
     cudaMalloc((void**) &f_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
     cudaMalloc((void**) &g_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
+    cudaMalloc((void**) &fdxR_d, sizeof(cufftReal)*(Ny)*Nx*Nz);
+    cudaMalloc((void**) &fdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &gdxR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &gdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &nlps_complex_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     cudaMalloc((void**) &nlps_d, sizeof(cufftReal)*Nx*Ny*Nz);
     cudaMalloc((void**) &scaler, sizeof(float));
@@ -92,9 +103,27 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
                                                     cudaMemcpyDeviceToHost);
     cudaMemcpy(g_complex, g_complex_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz,
                                                     cudaMemcpyDeviceToHost); */
-        
-    nlps_complex_d = NLPS(f_complex_d, g_complex_d, Ny, Nx, Nz);
+
+    					    
+	
+    kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, Ny, Nx, Nz);						    
     
+    zero<<<dimGrid, dimBlock>>> (fdxR_d, Ny, Nx, Nz);
+    zero<<<dimGrid, dimBlock>>> (fdyR_d, Ny, Nx, Nz);
+    zero<<<dimGrid, dimBlock>>> (gdxR_d, Ny, Nx, Nz);
+    zero<<<dimGrid, dimBlock>>> (gdyR_d, Ny, Nx, Nz);
+    zero<<<dimGrid, dimBlock>>> (nlps_d, Ny, Nx, Nz);
+    zeroC<<<dimGrid, dimBlock>>> (nlps_complex_d, Ny, Nx, Nz);
+    for(int index=0; index<Nx*Ny*Nz; index++) {
+      nlps[index] = 0;
+    } 
+    
+        
+    nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, f_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 0);
+    
+    nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 1);
+    
+    //nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 2);    
     
     
     cufftExecC2R(plan2, nlps_complex_d, nlps_d);
@@ -103,9 +132,13 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     
     scale<<<dimGrid,dimBlock>>>(nlps_d, scaler, Ny, Nx, Nz);
     
-    
-    
+    cudaFree(fdxR_d); cudaFree(fdyR_d); cudaFree(gdxR_d); cudaFree(gdyR_d); 
+    cudaFree(nlps_complex_d); cudaFree(f_complex_d); cudaFree(g_complex_d);
+    cudaFree(f_d); cudaFree(g_d); cudaFree(kx_d); cudaFree(ky_d);
+
     cudaMemcpy(nlps, nlps_d, sizeof(cufftReal)*Nx*Ny*Nz, cudaMemcpyDeviceToHost);
+    
+    cudaFree(nlps_d);
     
     return nlps;
 }
@@ -126,7 +159,37 @@ __global__ void scale(cufftReal* nlps, float scaler, int Ny, int Nx, int Nz)
    }
   } 
 }      
+
+__global__ void zeroC(cufftComplex* f, int Ny, int Nx, int Nz) 
+{
+  int idy = blockIdx.y*blockDim.y+threadIdx.y;
+  int idx = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  for(int k=0; k<Nz; k++) {
+   if(idy<(Ny/2+1) && idx<Nx) {
+    int index = idy + (Ny/2+1)*idx + (Ny/2+1)*Nx*k;
     
+    f[index].x = 0;
+    f[index].y = 0;
+    }
+  }
+}    
+
+__global__ void zero(cufftReal* f, int Ny, int Nx, int Nz) 
+{
+  int idy = blockIdx.y*blockDim.y+threadIdx.y;
+  int idx = blockIdx.x*blockDim.x+threadIdx.x;
+  
+  for(int k=0; k<Nz; k++) {
+   if(idy<(Ny) && idx<Nx) {
+    int index = idy + (Ny)*idx + (Ny)*Nx*k;
+    
+    f[index] = 0;
+    
+    }
+  }
+}    
+
     
     
     
