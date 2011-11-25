@@ -104,7 +104,9 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     
     ///////////////////////////////////////////////
     //  mask kernel
-    //mask<<<dimGrid,dimBlock>>>(mult_d, Ny, Nx, Nz);
+    
+    mask<<<dimGrid,dimBlock>>>(mult_d, Ny, Nx, Nz);
+    
     ///////////////////////////////////////////////
     
     
