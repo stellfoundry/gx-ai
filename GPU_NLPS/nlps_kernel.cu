@@ -6,12 +6,13 @@
 __global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy,   
                       float* kx, float* ky, int Ny, int Nx, int Nz) 
 {
-  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
-  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
   
-  for(int k = 0; k<Nz; k++) {
-   if(idy<(Ny/2+1) && idx<Nx) {
-    int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*k;
+  
+   if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+    unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
     
     
     
@@ -27,25 +28,27 @@ __global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy,
     
     
     
-  }
+  
  }
 }  
 
 __global__ void mask(cufftComplex* mult, int Ny, int Nx, int Nz) 
 {
-  int idy = blockIdx.y*blockDim.y+threadIdx.y;
-  int idx = blockIdx.x*blockDim.x+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
   
-  for(int k = 0; k<Nz; k++) {
-   if(idy<(Ny/2+1) && idx<Nx) {
-    int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*k;
+  
+   if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+    unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+    
     
     if( (idy<(Ny/3+1) || (idx<(Nx/3+1) || idx>(2*Nx/3+1))) == false) {
       mult[index].x = 0;
       mult[index].y = 0;
     }  
    }
-  }  
+    
 }      
   
   
@@ -53,23 +56,24 @@ __global__ void mask(cufftComplex* mult, int Ny, int Nx, int Nz)
 __global__ void bracket(cufftReal* mult, cufftReal* fdx, cufftReal* fdy, 
                       cufftReal* gdx, cufftReal* gdy, float scaler, int Ny, int Nx, int Nz)
 {
-  int idy = blockIdx.y*blockDim.y+threadIdx.y;
-  int idx = blockIdx.x*blockDim.x+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
   
-  for(int k=0; k<Nz; k++) {
-   if(idy<Ny && idx<Nx) {
-    int index = idy + (Ny)*idx + Ny*(Nx)*k;
+  
+  if(idy<(Ny) && idx<Nx && idz<Nz ) {
+    unsigned int index = idy + (Ny)*idx + Nx*(Ny)*idz;
     
     
     mult[index] = scaler*( (fdx[index])*(gdy[index]) - (fdy[index])*(gdx[index]) );  
   }
- }
+ 
 }  
      					      
 __global__ void kInit(float* kx, float* ky, int Ny, int Nx, int Nz) 
 {
-  int idy = blockIdx.y*blockDim.y+threadIdx.y;
-  int idx = blockIdx.x*blockDim.x+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   
   
     if(idy<Ny/2+1 && idx<Nx) {
