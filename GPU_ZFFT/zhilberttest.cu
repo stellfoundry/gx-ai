@@ -38,20 +38,13 @@ cufftReal* ZHILBERTtest(int akx, int aky, int akz, int asin, int acos, int Ny, i
     cudaMalloc((void**) &c_complex_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     cudaMalloc((void**) &c_d, sizeof(cufftReal)*Nx*Ny*Nz);
     cudaMalloc((void**) &scaler, sizeof(float));
-    
-    // int threadsPerBlock = 512;
-    int block_size_x=2; int block_size_y=2; 
-    int dimGridx, dimGridy;
 
-    dim3 dimBlock(block_size_x, block_size_y);
-    if(Nx/dimBlock.x == 0) {dimGridx = 1;}
-    else dimGridx = Nx/dimBlock.x;
-    if(Ny/dimBlock.y == 0) {dimGridy = 1;}
-    else dimGridy = Ny/dimBlock.y;
-    dim3 dimGrid(dimGridx, dimGridy);  
     
-    //dim3 dimGrid(100,50);
-    //dim3 dimBlock(8,8,8);   
+    int xy = 512/Nz;
+    int blockxy = sqrt(xy);
+    //dimBlock = threadsPerBlock, dimGrid = numBlocks
+    dim3 dimBlock(blockxy,blockxy,Nz);
+    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);  
     
     for(int k=0; k<Nz; k++) {
      for(int j=0; j<Nx; j++) {

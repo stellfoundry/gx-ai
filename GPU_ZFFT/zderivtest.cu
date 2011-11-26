@@ -11,13 +11,57 @@
 #include <zfft_kernel.cu>
 #include <zderiv.cu>
 
-//void getfcnC(cufftComplex* fcn, cufftComplex* fcn_d, int Ny, int Nx, int Nz);
+void getfcn(cufftComplex* fcn_d, int Nx, int Ny, int Nz)
+{
+  cufftComplex *fcnC;
+  fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
+  cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz, cudaMemcpyDeviceToHost);
+  for(int k=0; k<(Nz); k++) { 
+    for(int j=0; j<Nx/2+1; j++) { 
+      for(int i=0; i<Ny/2+1; i++) {  
+	int index = i + (Ny/2+1)*(j)+Nx*(Ny/2+1)*k;
+	
+	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcnC[index].x, fcnC[index].y, index);
+      }
+      printf("\n");
+    }  
+    for(int j=-Nx/2+1; j<0; j++) {
+      for(int i=0; i<Ny/2+1; i++) {
+        int index = (i) + (Ny/2+1)*(j+Nx)+Nx*(Ny/2+1)*k;
+	
+	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcnC[index].x, fcnC[index].y, index);
+      }
+        
+      printf("\n");
+    }
+   }  
+   free(fcnC);
+} 
+
+void getfcn(cufftReal* fcn_d, int Nx, int Ny, int Nz) 
+{
+  cufftReal *fcn;
+  fcn = (cufftReal*) malloc(sizeof(cufftReal)*Ny*Nx*Nz);
+  cudaMemcpy(fcn, fcn_d, sizeof(cufftReal)*Nx*Ny*Nz, cudaMemcpyDeviceToHost);
+  
+  for(int k=0; k<Nz; k++) {  
+   for(int j=0; j<Nx; j++) {
+    for(int i=0; i<Ny; i++) {
+      int index = i + Ny*j + Nx*Ny*k;
+      printf("f(%.2fPI,%.2fPI)=%.3f ", 2*(float)(i-Ny/2)/Ny, 2*(float)(j-Nx/2)/Nx, fcn[index]);     
+      }
+      printf("\n");
+    } printf("\n");
+   } 
+  free(fcn); 
+}  
+
 
 cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int Nx, int Nz) 
 {
     //host variables
     cufftReal *a, *b;
-    //cufftComplex *test_complex;
+    
     
     float *y, *x, *z;
     a = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
@@ -25,10 +69,7 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     y = (float*) malloc(sizeof(float)*Ny);                                 //
     x = (float*) malloc(sizeof(float)*Nx);				   //
     z = (float*) malloc(sizeof(float)*Nz);
-    //test_complex = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
-    
-    
-    
+
     
     //device variables
     cufftReal *a_d, *b_d;
@@ -41,20 +82,12 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     cudaMalloc((void**) &a_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
     cudaMalloc((void**) &b_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
     cudaMalloc((void**) &scaler, sizeof(float));
-    
-     //int threadsPerBlock = 512;
-    int block_size_x=2; int block_size_y=2; 
-    int dimGridx, dimGridy;
 
-    dim3 dimBlock(block_size_x, block_size_y);
-    if(Nx/dimBlock.x == 0) {dimGridx = 1;}
-    else dimGridx = Nx/dimBlock.x;
-    if(Ny/dimBlock.y == 0) {dimGridy = 1;}
-    else dimGridy = Ny/dimBlock.y;
-    dim3 dimGrid(dimGridx, dimGridy);  
-    
-    //dim3 dimGrid(1,1);
-    //dim3 dimBlock(8,8,8);  
+    int xy = 512/Nz;
+    int blockxy = sqrt(xy);
+    //dimBlock = threadsPerBlock, dimGrid = numBlocks
+    dim3 dimBlock(blockxy,blockxy,Nz);
+    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
     
     for(int k=0; k<Nz; k++) {
      for(int j=0; j<Nx; j++) {
@@ -90,9 +123,8 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     cufftPlanMany(&plan2,2,n,NULL,1,0,NULL,1,0,CUFFT_C2R,Nz);
     
     cufftExecR2C(plan, a_d, a_complex_d);
-     /* printf("a(ky,kx,z)\n");
-    getfcnC(test_complex, a_complex_d, Ny, Nx, Nz);
-    printf("\n"); */
+    
+    
     //now we have a field of the form a(ky,kx,z)
     
     kInit<<<dimGrid, dimBlock>>> (kz_d, Nz);
@@ -103,9 +135,7 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     /**************************************************************/ 
     b_complex_d = ZDERIV(a_complex_d, b_complex_d, kz_d, Ny, Nx, Nz);
     
-    /*  printf("b(ky,kx,z)\n");
-    getfcnC(test_complex, b_complex_d, Ny, Nx, Nz);
-    printf("\n"); */ 
+    
     
     cufftExecC2R(plan2, b_complex_d, b_d);
     
@@ -124,28 +154,3 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     
 }    
 
-/*   //prints a complex function    
-void getfcnC(cufftComplex* fcn, cufftComplex* fcn_d, int Ny, int Nx, int Nz) {
-  cudaMemcpy(fcn, fcn_d, sizeof(cufftComplex)*(Ny/2+1)*(Nx)*Nz, cudaMemcpyDeviceToHost);
-    
-   for(int k=0; k<(Nz); k++) { 
-    for(int j=0; j<Nx/2+1; j++) { 
-      for(int i=0; i<Ny/2+1; i++) {  
-	int index = i + (Ny/2+1)*(j)+Nx*(Ny/2+1)*k;
-	
-	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcn[index].x, fcn[index].y, index);
-      }
-      printf("\n");
-    }  
-    for(int j=-Nx/2+1; j<0; j++) {
-      for(int i=0; i<Ny/2+1; i++) {
-        int index = (i) + (Ny/2+1)*(j+Nx)+Nx*(Ny/2+1)*k;
-	
-	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcn[index].x, fcn[index].y, index);
-      }
-        
-      printf("\n");
-    }
-   } 
-}       
- */
