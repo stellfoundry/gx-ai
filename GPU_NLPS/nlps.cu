@@ -39,18 +39,10 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     
     
     //device variables
-    cufftComplex *fdy_d, *fdx_d;
-    cufftComplex *gdy_d, *gdx_d;
-    float scaler;
-    cufftReal *multR_d;
-    cufftComplex *mult_d;
-    cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
-    cudaMalloc((void**) &fdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz); 
-    cudaMalloc((void**) &gdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
-    cudaMalloc((void**) &gdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);      				
+    float scaler;   				
     cudaMalloc((void**) &scaler, sizeof(float));
-    cudaMalloc((void**) &multR_d, sizeof(cufftReal)*Ny*Nx*Nz);
-    cudaMalloc((void**) &mult_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
+    //other variables declared, allocated, and de-allocated throughout program to preserve memory
+    
     
     
     /*int block_size_x=2; int block_size_y=2; 
@@ -67,6 +59,12 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     int blockxy = sqrt(xy);
     //dimBlock = threadsPerBlock, dimGrid = numBlocks
     dim3 dimBlock(blockxy,blockxy,Nz);
+    if(Nz>64) {
+      dimBlock.x = 4;
+      dimBlock.y = 2;
+      dimBlock.z = 64;
+    }  
+    
     dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
     //if(dimGrid.x == 0) {dimGrid.x = 1;}
     //if(dimGrid.y == 0) {dimGrid.y = 1;}
@@ -84,19 +82,36 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     
     
     
-    if(isave != 1) {      
+    if(isave != 1) {     
+      cufftComplex *fdy_d, *fdx_d;
+      cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
+      cudaMalloc((void**) &fdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);  
       deriv<<<dimGrid, dimBlock>>> (f_complex_d, fdx_d, fdy_d, kx_d, ky_d, Ny, Nx, Nz);
       cufftExecC2R(plan2, fdy_d, fdyR_d);
       cufftExecC2R(plan2, fdx_d, fdxR_d);
+      cudaFree(fdy_d), cudaFree(fdx_d);
+      //getfcn(fdxR_d,Ny,Nx,Nz);
     }  
     
     
     
     if(isave != 2) {
+      cufftComplex *gdy_d, *gdx_d;
+      cudaMalloc((void**) &gdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
+      cudaMalloc((void**) &gdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz); 
       deriv<<<dimGrid, dimBlock>>> (g_complex_d, gdx_d, gdy_d, kx_d, ky_d, Ny, Nx, Nz);    
       cufftExecC2R(plan2, gdy_d, gdyR_d);
       cufftExecC2R(plan2, gdx_d, gdxR_d);
+      cudaFree(gdy_d), cudaFree(gdx_d);
     }  
+    
+    
+    
+    
+    cufftReal *multR_d;
+    cufftComplex *mult_d;
+    cudaMalloc((void**) &multR_d, sizeof(cufftReal)*Ny*Nx*Nz);
+    cudaMalloc((void**) &mult_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
      
     //getfcn(gdx_d,Nx,Ny,Nz);
     
@@ -109,7 +124,7 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     bracket<<<dimGrid, dimBlock>>> (multR_d, fdxR_d, fdyR_d, gdxR_d, gdyR_d, scaler, Ny, Nx, Nz);
     
     
-    getfcn(multR_d, Nx, Ny, Nz);
+    //getfcn(multR_d, Nx, Ny, Nz);
     printf("%s\n", cudaGetErrorString(cudaGetLastError()));
     
     
@@ -128,8 +143,7 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     
     
     cudaFree(multR_d);
-    cudaFree(fdy_d), cudaFree(fdx_d);
-    cudaFree(gdy_d), cudaFree(gdx_d);
+    
     
     
     //cudaFree(scaler);
