@@ -25,6 +25,22 @@ int main(int argc, char* argv[])
     cufftReal *nlpscheck, *fdxcheck, *fdycheck, *gdxcheck, *gdycheck;
     float *x, *y, *z;
     
+    int ct, dev;
+    struct cudaDeviceProp prop;
+    cudaGetDeviceCount(&ct);
+    printf("Device Count: %d\n",ct);
+    cudaGetDevice(&dev);
+    printf("Device ID: %d\n",dev);
+    cudaGetDeviceProperties(&prop,dev);
+    printf("Device Name: %s\n", prop.name);
+    printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
+    printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
+    printf("Registers per Block: %d\n", prop.regsPerBlock);
+    printf("Warp Size (threads): %d\n", prop.warpSize); 
+    printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
+    printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
+                        prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+    printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
     
     
     

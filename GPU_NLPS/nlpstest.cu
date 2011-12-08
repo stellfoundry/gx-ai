@@ -101,15 +101,23 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     else dimGridy = Ny/dimBlock.y;
     dim3 dimGrid(dimGridx, dimGridy); */ 
     
-    int xy = 512/Nz;
+    int dev, zThreads, totalThreads;
+    struct cudaDeviceProp prop;
+    cudaGetDevice(&dev);
+    cudaGetDeviceProperties(&prop,dev);
+    zThreads = prop.maxThreadsDim[2];
+    totalThreads = prop.maxThreadsPerBlock;    
+    
+    int xy = totalThreads/Nz;
     int blockxy = sqrt(xy);
     //dimBlock = threadsPerBlock, dimGrid = numBlocks
     dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>64) {
-      dimBlock.x = 4;
-      dimBlock.y = 2;
-      dimBlock.z = 64;
+    if(Nz>zThreads) {
+      dimBlock.x = sqrt(totalThreads/zThreads);
+      dimBlock.y = sqrt(totalThreads/zThreads);
+      dimBlock.z = zThreads;
     }  
+    
     dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
     //if(dimGrid.x == 0) {dimGrid.x = 1;}
     //if(dimGrid.y == 0) {dimGrid.y = 1;}
