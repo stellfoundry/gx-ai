@@ -10,6 +10,7 @@ CU_DEPS := \
       nlps_kernel.cu \
       zderiv.cu \
       zderiv_kernel.cu \
+      energy.cu \
       constants.h \
       
 

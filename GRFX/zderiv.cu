@@ -3,11 +3,24 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
   float scaler;
   cudaMalloc((void**) &scaler, sizeof(float));
   
-  int xy = 512/Nz;
-  int blockxy = sqrt(xy);
-  //dimBlock = threadsPerBlock, dimGrid = numBlocks
-  dim3 dimBlock(blockxy,blockxy,Nz);
-  dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
+  int dev;
+    struct cudaDeviceProp prop;
+    cudaGetDevice(&dev);
+    cudaGetDeviceProperties(&prop,dev);
+    int zThreads = prop.maxThreadsDim[2];
+    int totalThreads = prop.maxThreadsPerBlock;     
+    
+    int xy = totalThreads/Nz;
+    int blockxy = sqrt(xy);
+    //dimBlock = threadsPerBlock, dimGrid = numBlocks
+    dim3 dimBlock(blockxy,blockxy,Nz);
+    if(Nz>zThreads) {
+      dimBlock.x = sqrt(totalThreads/zThreads);
+      dimBlock.y = sqrt(totalThreads/zThreads);
+      dimBlock.z = zThreads;
+    }  
+    
+    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
   
   cufftHandle plan;
   int n[1] = {Nz};

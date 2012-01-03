@@ -9,8 +9,10 @@
 #include "timestep_kernel.cu"
 #include "zderiv.cu"
 #include "nlps.cu"
+#include "energy.cu"
 #include "timestep.cu"
 #include "timestep_test.cu"
+
 
 
 
@@ -51,6 +53,7 @@ int main(int argc, char* argv[])
     {
         // We assume argv[1] is a filename to open
         FILE *ifile = fopen( argv[1], "r" );
+	FILE *ofile = fopen( argv[2], "w+");
 
         // fopen returns 0, the NULL pointer, on failure 
         if ( ifile == 0 )
@@ -75,7 +78,7 @@ int main(int argc, char* argv[])
 	cudaMemcpyToSymbol("Nz", &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol("zThreads", &prop.maxThreadsDim[2], sizeof(int),0,cudaMemcpyHostToDevice);
 	
-	timestep_test(f, g, fkx, fky, fkz, fsin, fcos, gkx, gky, gkz, gsin, gcos);
+	timestep_test(f, g, fkx, fky, fkz, fsin, fcos, gkx, gky, gkz, gsin, gcos, ofile);
         
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
@@ -92,8 +95,8 @@ int main(int argc, char* argv[])
 	 }     
 	}
 	
-	FILE *ofile = fopen( argv[2], "w+");
 	
+	/*
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
 	  for(int i=0; i<Ny; i++) {
@@ -116,7 +119,7 @@ int main(int argc, char* argv[])
 	  }
 	  fprintf(ofile, "\n");	       
 	 }
-	}
+	} */
 	
 	printf("\nfkx=%d  fky=%d  fkz=%d  fcos=%d  fsin=%d\n", fkx, fky,fkz,fcos,fsin);
 	printf("gkx=%d  gky=%d  gkz=%d  gcos=%d  gsin=%d\nf=zp, g=zm\n", gkx,

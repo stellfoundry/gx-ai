@@ -163,9 +163,12 @@ void getfcn(cufftComplex* fcn_d)
       for(int i=0; i<Ny/2+1; i++) {  
 	int index = i + (Ny/2+1)*(j); // Nx*(Ny/2+1)*k;
 	
+	//if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+	
 	//printf("F(%d,%d,%.2f)...
-	printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
-	                     fcnC[index].x/(Nx*(Ny/2)), fcnC[index].y/(Nx*(Ny/2)), index);
+	  printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
+	                     fcnC[index].x, fcnC[index].y, index);
+        //}
       }
       printf("\n");
     }  
@@ -173,8 +176,11 @@ void getfcn(cufftComplex* fcn_d)
       for(int i=0; i<Ny/2+1; i++) {
         int index = (i) + (Ny/2+1)*(j+Nx);// + Nx*(Ny/2+1)*k;
 	
-	printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
-	                   fcnC[index].x/(Nx*(Ny/2)), fcnC[index].y/(Nx*(Ny/2)), index);
+	//if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+
+	  printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
+	                   fcnC[index].x, fcnC[index].y, index);
+        //}
       }
         
       printf("\n");
@@ -199,7 +205,42 @@ void getfcn(cufftReal* fcn_d) {
    } 
   free(fcn); 
 }      
-    
+
+void getfcnComplexPadded(cufftComplex* fcn_d)
+{
+  cufftComplex *fcnC;
+  fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny)*Nx*Nz);
+  cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny)*Nx*Nz, cudaMemcpyDeviceToHost);
+  //for(int k=0; k<(Nz); k++) { 
+    for(int j=0; j<Nx/2+1; j++) { 
+      for(int i=0; i<Ny; i++) {  
+	int index = i + (Ny)*(j); // Nx*(Ny/2+1)*k;
+	
+	if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+	
+	//printf("F(%d,%d,%.2f)...
+	  printf("F(%d,%d)=%.5f+i*%.5f\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
+	                     fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+      //printf("\n");
+    }  
+    for(int j=-Nx/2+1; j<0; j++) {
+      for(int i=0; i<Ny; i++) {
+        int index = (i) + (Ny)*(j+Nx);// + Nx*(Ny/2+1)*k;
+	
+	if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+
+	  printf("F(%d,%d)=%.5f+i*%.5f\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
+	                   fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+        
+      //printf("\n");
+    }
+  //}  
+  free(fcnC);
+}     
      
                            
     

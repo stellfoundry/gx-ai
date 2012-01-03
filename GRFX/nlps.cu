@@ -114,11 +114,12 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     
     
-    bracket<<<dimGrid, dimBlock>>> (resultR, fdxR, fdyR, gdxR, gdyR, scaler);
+    bracket<<<dimGrid, dimBlock>>> (resultR, fdxR, fdyR, gdxR, gdyR, .25);
     
     
     cufftExecR2C(plan, resultR, result);  
-    
+    scaler = (float) 1/(Nx*Ny/2);
+    scale<<<dimGrid,dimBlock>>>(result,scaler);
     
     ///////////////////////////////////////////////
     //  mask kernel
@@ -127,7 +128,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     ///////////////////////////////////////////////
     
-    clean<<<dimGrid,dimBlock>>>(result);
+    //clean<<<dimGrid,dimBlock>>>(result);
     //zeromode<<<dimGrid,dimBlock>>>(result);
     
     cufftDestroy(plan);

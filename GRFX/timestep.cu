@@ -22,9 +22,13 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     
     cudaMalloc((void**) &ZDeriv, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &zK, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
+    
     cudaMalloc((void**) &bracket1, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
+    
     cudaMalloc((void**) &bracket2, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
+    
     cudaMalloc((void**) &brackets, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
+    
     //cudaMalloc((void**) &kx, sizeof(float)*Nx);
     //cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
     //cudaMalloc((void**) &kz, sizeof(float)*Nz);
@@ -57,57 +61,57 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //ZDeriv will be recycled, ie don't distinguish between zp/zm/old/star/new, etc
     //same for zK = kPerp2*z
     
-    clean<<<dimGrid,dimBlock>>>(zpOld);
-    clean<<<dimGrid,dimBlock>>>(zmOld);
+    //clean<<<dimGrid,dimBlock>>>(zpOld);
+    //clean<<<dimGrid,dimBlock>>>(zmOld);
     zeroC<<<dimGrid,dimBlock>>>(ZDeriv);
     
     /////////////////////////
     //A+    
     
     ZDERIV(ZDeriv,zpOld,kz);
-    //ZDeriv= d/dz(zpOld)
-    //getfcn(ZDeriv);
+    //0) ZDeriv= d/dz(zpOld)
+    
     
     //bracket1, bracket2, and brackets will be recycled
-    multdiv<<<dimGrid,dimBlock>>> (zK,zmOld,kPerp2, 1);
-    //zK = kPerp2*zmOld
-    
+    multKPerp<<<dimGrid,dimBlock>>> (zK,zmOld,kPerp2, 1);
+    //1) zK = kPerp2*zmOld
+    printf("%s",cudaGetErrorString(cudaGetLastError()));
     NLPS(bracket1,zpOld,zK,kx,ky);
-    //bracket1 = {zp,kperp2*zm}
+    //2) bracket1 = {zp,kperp2*zm}
     
-    multdiv<<<dimGrid,dimBlock>>> (zK,zpOld,kPerp2,1);
-    //zK = kPerp2*zpOld
+    multKPerp<<<dimGrid,dimBlock>>> (zK,zpOld,kPerp2,1);
+    //3) zK = kPerp2*zpOld
     
     
     NLPS(bracket2,zmOld,zK,kx,ky);
-    //bracket2 = {zm,kPerp2*zp}
+    //4) bracket2 = {zm,kPerp2*zp}
     
     addsubt<<<dimGrid,dimBlock>>> (bracket1, bracket1, bracket2, 1);  //result put in bracket1
-    //bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp}
+    //5) bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp}
     
     damping<<<dimGrid,dimBlock>>> (bracket1, zpOld,zmOld,kPerp2,nu,1);
-    //bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp} - nu*kPerp2*(zpOld+zmOld)
+    //6) bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp} - nu*kPerp2*(zpOld+zmOld)
     
     NLPS(bracket2,zpOld,zmOld,kx,ky);
-    //bracket2 = {zp,zm}
+    //7) bracket2 = {zp,zm}
     
     damping<<<dimGrid,dimBlock>>> (bracket2, zpOld,zmOld,kPerp2,eta,-1);
-    //bracket2 = {zp,zm} + eta*kPerp2*(zpOld-zmOld)
+    //8) bracket2 = {zp,zm} + eta*kPerp2*(zpOld-zmOld)
     
-    multdiv<<<dimGrid,dimBlock>>> (bracket2, bracket2,kPerp2,1);
-    //bracket2 = kPerp2*[{zp,zm} + eta*kPerp2*(zpOld-zmOld)]
+    multKPerp<<<dimGrid,dimBlock>>> (bracket2, bracket2,kPerp2,1);
+    //9) bracket2 = kPerp2*[{zp,zm} + eta*kPerp2*(zpOld-zmOld)]
     
     //bracket1 and bracket2 are same for A+ and A-, only difference is whether they are added
     //or subtracted
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, -1); //result put in brackets
-    //brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] - kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
+    //10) brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] - kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
     
-    multdiv<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
-    //brackets = (1/(2*kPerp2))*brackets    
+    multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
+    //11) brackets = (1/(2*kPerp2))*brackets    
    
     //here, "zpNew" is actually zpStar
     step<<<dimGrid,dimBlock>>> (zpNew,zpOld,ZDeriv,brackets,dt/2,1);
-    //zpStar = zpOld + (dt/2)*(ZDeriv - brackets)
+    //12) zpStar = zpOld + (dt/2)*(ZDeriv - brackets)
     
     
     //////////////////
@@ -121,7 +125,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, 1);
     //brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] + kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
     
-    multdiv<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
+    multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     //brackets = (1/(2*kPerp2))*brackets
     
     //again, "zmNew" is actually zmStar
@@ -131,19 +135,19 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //////////////////
     //B+
     
-    clean<<<dimGrid,dimBlock>>>(zpNew);
-    clean<<<dimGrid,dimBlock>>>(zmNew);
+    //clean<<<dimGrid,dimBlock>>>(zpNew);
+    //clean<<<dimGrid,dimBlock>>>(zmNew);
     
     ZDERIV(ZDeriv,zpNew,kz);
     //ZDeriv = d/dz(zpStar)
     
-    multdiv<<<dimGrid,dimBlock>>> (zK,zmNew,kPerp2,1); 
+    multKPerp<<<dimGrid,dimBlock>>> (zK,zmNew,kPerp2,1); 
     //zK = kPerp2*zmStar
        
     NLPS(bracket1,zpNew,zK,kx,ky);
     //bracket1 = {zpStar,kPerp2*zmStar}
     
-    multdiv<<<dimGrid,dimBlock>>> (zK,zpNew,kPerp2,1);
+    multKPerp<<<dimGrid,dimBlock>>> (zK,zpNew,kPerp2,1);
     //zK = kPerp2*zpStar
     
     NLPS(bracket2,zmNew,zK,kx,ky);
@@ -161,13 +165,13 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     damping<<<dimGrid,dimBlock>>> (bracket2, zpNew,zmNew,kPerp2,eta,-1);
     //bracket2 = {zp,zm} + eta*kPerp2*(zpStar-zmStar)
     
-    multdiv<<<dimGrid,dimBlock>>> (bracket2,bracket2,kPerp2,1);
+    multKPerp<<<dimGrid,dimBlock>>> (bracket2,bracket2,kPerp2,1);
     //bracket2 = kPerp2*[{zp,zm} + eta*kPerp2*(zpStar-zmStar)]   
     
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, -1);
     //brackets = {zpStar,kPerp2*zmStar}+{zmStar,kPerp2*zpStar}-kPerp2*{zpStar,zmStar}
     
-    multdiv<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
+    multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     //brackets = (1/(2*kPerp2))*({zpStar,kPerp2*zmStar}+{zmStar,kPerp2*zpStar}-kPerp2*{zpStar,zmStar})
     
     //since the "zNew" (which are actually zStar) terms are all encompassed in the brackets term,
@@ -184,7 +188,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     
     ZDERIV(ZDeriv,zmNew,kz);
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, 1);
-    multdiv<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
+    multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     
     
     //"zmNew" is really zmNew
@@ -194,8 +198,8 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //zeromode<<<dimGrid,dimBlock>>>(zpNew);
     //zeromode<<<dimGrid,dimBlock>>>(zmNew);
     
-    clean<<<dimGrid,dimBlock>>>(zpNew);
-    clean<<<dimGrid,dimBlock>>>(zmNew);
+    //clean<<<dimGrid,dimBlock>>>(zpNew);
+    //clean<<<dimGrid,dimBlock>>>(zmNew);
     
     //now we copy the results, the zNew's, to the zOld's 
     //so that the routine can be called recursively
