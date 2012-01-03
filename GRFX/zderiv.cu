@@ -39,7 +39,7 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
   //f is a field of the form f(ky,kx,kz)
  
   
-  zderiv<<<dimGrid, dimBlock>>> (result, result, kz);
+  zderiv<<<dimGrid, dimBlock>>> (result, kz);
   
   
   

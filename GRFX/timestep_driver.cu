@@ -3,7 +3,10 @@
 #include <string.h>
 #include <math.h>
 #include "cufft.h"
-#include "constants.h"
+
+
+__constant__ int Nx, Ny, Nz, zThreads;
+
 #include "nlps_kernel.cu"
 #include "zderiv_kernel.cu"
 #include "timestep_kernel.cu"
@@ -20,7 +23,7 @@ int main(int argc, char* argv[])
 {
     int fkx, fky, fkz, gkx, gky, gkz, fsin, fcos, gsin, gcos;
     cufftReal *f, *g;
-    float *x, *y, *z;
+    //float *x, *y, *z;
     
     
     int ct, dev;
@@ -66,9 +69,9 @@ int main(int argc, char* argv[])
             fclose( ifile );
         } 
 	
-	y = (float*) malloc(sizeof(float)*Ny);					//
-        x = (float*) malloc(sizeof(float)*Nx);
-	z = (float*) malloc(sizeof(float)*Nz);	
+	//y = (float*) malloc(sizeof(float)*Ny);					//
+        //x = (float*) malloc(sizeof(float)*Nx);
+	//z = (float*) malloc(sizeof(float)*Nz);	
 	f = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
         g = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);				//
 	
@@ -80,7 +83,7 @@ int main(int argc, char* argv[])
 	
 	timestep_test(f, g, fkx, fky, fkz, fsin, fcos, gkx, gky, gkz, gsin, gcos, ofile);
         
-	for(int k=0; k<Nz; k++) {
+	/* for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
 	  for(int i=0; i<Ny; i++) {
 	    y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;					//
@@ -93,7 +96,7 @@ int main(int argc, char* argv[])
 	    
 	  }
 	 }     
-	}
+	} */
 	
 	
 	/*
@@ -121,9 +124,10 @@ int main(int argc, char* argv[])
 	 }
 	} */
 	
-	printf("\nfkx=%d  fky=%d  fkz=%d  fcos=%d  fsin=%d\n", fkx, fky,fkz,fcos,fsin);
-	printf("gkx=%d  gky=%d  gkz=%d  gcos=%d  gsin=%d\nf=zp, g=zm\n", gkx,
-	                                gky,gkz,gcos,gsin);
+	//printf("\nfkx=%d  fky=%d  fkz=%d  fcos=%d  fsin=%d\n", fkx, fky,fkz,fcos,fsin);
+	//printf("gkx=%d  gky=%d  gkz=%d  gcos=%d  gsin=%d\nf=zp, g=zm\n", gkx,
+	  //                              gky,gkz,gcos,gsin);
+	printf("\nNx=%d   Ny=%d  Nz=%d\n", Nx, Ny, Nz);
 	
 	fclose(ofile);
 	 

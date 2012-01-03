@@ -11,7 +11,7 @@ CU_DEPS := \
       zderiv.cu \
       zderiv_kernel.cu \
       energy.cu \
-      constants.h \
+      
       
 
 USECUFFT := 1

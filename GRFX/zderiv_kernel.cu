@@ -1,4 +1,4 @@
-__global__ void zderiv(cufftComplex* result, cufftComplex* f, float* kz)
+__global__ void zderiv(cufftComplex* f, float* kz)
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -12,8 +12,8 @@ __global__ void zderiv(cufftComplex* result, cufftComplex* f, float* kz)
     
     
       //result(ky,kx,kz)= i*kz*f(ky,kx,kz)
-      result[index].x = -kz[idz]*f[index].y;
-      result[index].y = kz[idz]*f[index].x;    
+      f[index].x = -kz[idz]*f[index].y;
+      f[index].y = kz[idz]*f[index].x;    
     }
   }
   else {
@@ -21,8 +21,8 @@ __global__ void zderiv(cufftComplex* result, cufftComplex* f, float* kz)
       if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
         unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
 	
-	result[index].x = -kz[idz]*f[index].y;
-        result[index].y = kz[idz]*f[index].x;  
+	f[index].x = -kz[idz]*f[index].y;
+        f[index].y = kz[idz]*f[index].x;  
       }
     }
   }    	

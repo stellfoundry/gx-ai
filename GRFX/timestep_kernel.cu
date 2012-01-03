@@ -324,16 +324,6 @@ __global__ void zeroPadded(cufftComplex* a)
 }  
 
 
-
-__global__ void zeromode(cufftComplex* f)
-{
-  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z; 
-  f[Nx*(Ny/2+1)*idz].x = 0;
-  f[Nx*(Ny/2+1)*idz].y = 0;
-}  
-
-
-
 __global__ void clean(cufftComplex* f)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
