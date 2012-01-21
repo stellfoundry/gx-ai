@@ -29,9 +29,11 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     
     cudaMalloc((void**) &brackets, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     
+    
     //cudaMalloc((void**) &kx, sizeof(float)*Nx);
     //cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
     //cudaMalloc((void**) &kz, sizeof(float)*Nz);
+    
     
     
     int dev;
@@ -61,27 +63,24 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //ZDeriv will be recycled, ie don't distinguish between zp/zm/old/star/new, etc
     //same for zK = kPerp2*z
     
-    //clean<<<dimGrid,dimBlock>>>(zpOld);
-    //clean<<<dimGrid,dimBlock>>>(zmOld);
     zeroC<<<dimGrid,dimBlock>>>(ZDeriv);
     
     /////////////////////////
     //A+    
     
-    ZDERIV(ZDeriv,zpOld,kz);
+    //ZDERIV(ZDeriv,zpOld,kz);
     //0) ZDeriv= d/dz(zpOld)
-    
-    
+
     //bracket1, bracket2, and brackets will be recycled
     multKPerp<<<dimGrid,dimBlock>>> (zK,zmOld,kPerp2, 1);
     //1) zK = kPerp2*zmOld
-    printf("%s",cudaGetErrorString(cudaGetLastError()));
+    
     NLPS(bracket1,zpOld,zK,kx,ky);
     //2) bracket1 = {zp,kperp2*zm}
     
+    
     multKPerp<<<dimGrid,dimBlock>>> (zK,zpOld,kPerp2,1);
     //3) zK = kPerp2*zpOld
-    
     
     NLPS(bracket2,zmOld,zK,kx,ky);
     //4) bracket2 = {zm,kPerp2*zp}
@@ -97,6 +96,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     
     damping<<<dimGrid,dimBlock>>> (bracket2, zpOld,zmOld,kPerp2,eta,-1);
     //8) bracket2 = {zp,zm} + eta*kPerp2*(zpOld-zmOld)
+    
     
     multKPerp<<<dimGrid,dimBlock>>> (bracket2, bracket2,kPerp2,1);
     //9) bracket2 = kPerp2*[{zp,zm} + eta*kPerp2*(zpOld-zmOld)]
@@ -117,28 +117,26 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //////////////////
     //A-
     
-    ZDERIV(ZDeriv,zmOld,kz);
-    //ZDeriv = d/dz(zmOld)
+    //ZDERIV(ZDeriv,zmOld,kz);
+    //13) ZDeriv = d/dz(zmOld)
     
     
     
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, 1);
-    //brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] + kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
+    //14) brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] + kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
     
     multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
-    //brackets = (1/(2*kPerp2))*brackets
+    //15) brackets = (1/(2*kPerp2))*brackets
     
     //again, "zmNew" is actually zmStar
     step<<<dimGrid,dimBlock>>> (zmNew,zmOld,ZDeriv,brackets,dt/2,-1);
-    //zmStar = zmOld - (dt/2)*(ZDeriv + brackets)
+    //16) zmStar = zmOld - (dt/2)*(ZDeriv + brackets)
     
     //////////////////
     //B+
+  
     
-    //clean<<<dimGrid,dimBlock>>>(zpNew);
-    //clean<<<dimGrid,dimBlock>>>(zmNew);
-    
-    ZDERIV(ZDeriv,zpNew,kz);
+    //ZDERIV(ZDeriv,zpNew,kz);
     //ZDeriv = d/dz(zpStar)
     
     multKPerp<<<dimGrid,dimBlock>>> (zK,zmNew,kPerp2,1); 
@@ -180,26 +178,18 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     
     //now, "zpNew" is really zpNew
     step<<<dimGrid,dimBlock>>> (zpNew,zpOld,ZDeriv,brackets,dt,1);
-    printf("\nzpNew\n");
-    //getfcn(zpNew);
+  
     
     //////////////////////
     //B-
     
-    ZDERIV(ZDeriv,zmNew,kz);
+    //ZDERIV(ZDeriv,zmNew,kz);
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, 1);
     multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     
     
     //"zmNew" is really zmNew
     step<<<dimGrid,dimBlock>>> (zmNew,zmOld,ZDeriv,brackets,dt,-1);
-   
-    
-    //zeromode<<<dimGrid,dimBlock>>>(zpNew);
-    //zeromode<<<dimGrid,dimBlock>>>(zmNew);
-    
-    //clean<<<dimGrid,dimBlock>>>(zpNew);
-    //clean<<<dimGrid,dimBlock>>>(zmNew);
     
     //now we copy the results, the zNew's, to the zOld's 
     //so that the routine can be called recursively
@@ -208,9 +198,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
                            cudaMemcpyDeviceToDevice);
     cudaMemcpy(zmOld, zmNew, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz,
                            cudaMemcpyDeviceToDevice);			   
-    //getfcn(zpOld);
-    //printf("\n\n\n");
-    
+			       
     
     cudaFree(bracket1), cudaFree(bracket2), cudaFree(brackets);
     cudaFree(ZDeriv); cudaFree(zK);

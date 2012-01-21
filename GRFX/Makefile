@@ -11,7 +11,10 @@ CU_DEPS := \
       zderiv.cu \
       zderiv_kernel.cu \
       energy.cu \
-      
+      courant.cu \
+      maxReduc.cu \
+      sumReduc.cu \
+      reduc_kernel.cu \
       
 
 USECUFFT := 1

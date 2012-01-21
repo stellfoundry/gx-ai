@@ -7,12 +7,12 @@ __global__ void kInit(float* kx, float* ky, float* kz)
   
   if(idy<Ny/2+1 && idx<Nx) {
       
-    ky[idy] = (float) idy;
+    ky[idy] = (float) idy/X0;
       
     if(idx<Nx/2+1) {					
-      kx[idx] = (float) idx;					
+      kx[idx] = (float) idx/X0;					
     } else {						
-      kx[idx] = (float) (idx - Nx);				
+      kx[idx] = (float) (idx - Nx)/X0;				
     }
   }
   
@@ -21,9 +21,9 @@ __global__ void kInit(float* kx, float* ky, float* kz)
   if(Nz<=zThreads) { 
     if(idz<Nz) {
       if(idz<(Nz/2+1))
-        kz[idz] = idz;
+        kz[idz] = (float) idz/X0;
       else
-        kz[idz] = idz - Nz;
+        kz[idz] = (float) (idz - Nz)/X0;
     }	
   }
   else {
@@ -31,9 +31,9 @@ __global__ void kInit(float* kx, float* ky, float* kz)
       if(idz<zThreads) {
 	int IDZ = idz + zThreads*i;
 	if(IDZ<(Nz/2+1))
-	  kz[IDZ] = IDZ;
+	  kz[IDZ] = (float) IDZ/X0;
 	else
-	  kz[IDZ] = IDZ - Nz;
+	  kz[IDZ] = (float) (IDZ - Nz)/X0;
       }
     }
   }  	    
@@ -108,8 +108,63 @@ __global__ void multKPerp(cufftComplex* fK, cufftComplex* f, float* kPerp2, int 
       }
     }
   }
-
 }       
+
+__global__ void multKx(cufftComplex* fK, cufftComplex* f, float* kx) 
+{
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(Nz<=zThreads) {
+    if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+      unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+      
+      fK[index].x = f[index].x * kx[idx];
+      fK[index].y = f[index].y * kx[idx];
+      		 
+    }
+  }
+  else {
+    for(int i=0; i<Nz/zThreads; i++) {
+      if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
+        unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+	
+        fK[index].x = f[index].x * kx[idx];
+        fK[index].y = f[index].y * kx[idx];
+        
+      }
+    }
+  }
+}   
+
+__global__ void multKy(cufftComplex* fK, cufftComplex* f, float* ky) 
+{
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(Nz<=zThreads) {
+    if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+      unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+      
+      fK[index].x = f[index].x * ky[idy];
+      fK[index].y = f[index].y * ky[idy];
+      		 
+    }
+  }
+  else {
+    for(int i=0; i<Nz/zThreads; i++) {
+      if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
+        unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+	
+        fK[index].x = f[index].x * ky[idy];
+        fK[index].y = f[index].y * ky[idy];
+        
+      }
+    }
+  }
+}           
 
 __global__ void addsubt(cufftComplex* result, cufftComplex* f, cufftComplex* g, int a)
 {
@@ -232,8 +287,8 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
       
       
       if(a == 1) {
-        bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
-	bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
+        bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
+	bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
 	}
       
       if(a == -1) {
@@ -248,7 +303,7 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
         unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
 	
         if(a == 1) {
-          bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
+          bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
 	  bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
 	}
       
@@ -262,69 +317,8 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
 
 }       			  
 
-__global__ void sum(cufftComplex* result, cufftComplex* a)
-{
-  //shared mem size = 8*8*8*sizeof(cufftComplex)
-  extern __shared__ cufftComplex result_s[];
-  //tid up to blockDim.x*blockDim.y*blockDim.z = 8*8*8
-  int tid = threadIdx.x + blockDim.x*threadIdx.y + blockDim.x*blockDim.y*threadIdx.z;
-  
-  
-  if(tid<8*8*8) {
-    result_s[tid].x = 0;
-    
-     
-    result_s[tid] = a[blockIdx.x*blockDim.x*blockDim.y*blockDim.z+tid];
-    __syncthreads();
-    
-    for(int s=(blockDim.x*blockDim.y*blockDim.z)/2; s>0; s>>=1) {
-      if(tid<s) {
-      
-        result_s[tid].x += result_s[tid+s].x;
-        
-	
-      }
-      __syncthreads();
-    }
-    
-    if(tid==0) {
-      result[blockIdx.x].x = result_s[0].x;
-      
-    }
-    __syncthreads();
-    
-  }
-  
-}
 
-__global__ void zeroPadded(cufftComplex* a) 
-{
-  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
-  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
-  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
-  
-  if(Nz<=zThreads) {
-    int index= idy + Ny*idx + Nx*Ny*idz;
-    if(index > Nx*(Ny/2+1)*Nz-1 && idx<Nx && idy<Ny && idz<Nz) {
-    
-      a[index].x = 0;
-      a[index].y = 0;
-    }   
-  }
-  else {
-    for(int i=0; i<Nz/zThreads; i++) {
-      int index = idy + Ny*idx + Nx*Ny*idz + Nx*Ny*zThreads*i;
-      if(index > Nx*(Ny/2+1)*Nz-1 && idx<Nx && idy<Ny && idz<Nz) {
-    
-        a[index].x = 0;
-	a[index].y = 0;
-      }
-    }
-  }        
-}  
-
-
-__global__ void clean(cufftComplex* f)
+__global__ void roundoff(cufftComplex* f, float max)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
@@ -334,9 +328,9 @@ __global__ void clean(cufftComplex* f)
     if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
       unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
       
-      if( abs(f[index].x) < .00001*Nx*(Ny/2+1))
+      if( abs(f[index].x) < max)
         f[index].x = 0.0f;
-      if( abs(f[index].y) < .00001*Nx*(Ny/2+1))
+      if( abs(f[index].y) < max)
         f[index].y = 0.0f;
 	
     }
@@ -346,9 +340,9 @@ __global__ void clean(cufftComplex* f)
       if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
         unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
 	
-        if( abs(f[index].x) < .00001*Nx*(Ny/2+1))
+        if( abs(f[index].x) < max)
           f[index].x = 0.0f;
-        if( abs(f[index].y) < .00001*Nx*(Ny/2+1))
+        if( abs(f[index].y) < max)
           f[index].y = 0.0f;	
       }
     }

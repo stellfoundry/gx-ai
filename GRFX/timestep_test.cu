@@ -1,5 +1,4 @@
-void timestep_test(cufftReal* f, cufftReal* g, int fkx, int fky, int fkz, int fsin,int fcos, 
-                   int gkx, int gky, int gkz, int gsin, int gcos, FILE* ofile)
+void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 {
     //host variables
     float *x, *y, *z;
@@ -16,7 +15,6 @@ void timestep_test(cufftReal* f, cufftReal* g, int fkx, int fky, int fkz, int fs
     cufftReal *f_d, *g_d;
     cufftComplex *fC_d, *gC_d;
     cufftComplex *fC1_d, *gC1_d;
-    //cufftComplex *padded_d;
     float *kx, *ky, *kz, *kPerp2, *kPerp2Inv;
     float scaler;
     cudaMalloc((void**) &f_d, sizeof(cufftReal)*Nx*Ny*Nz);
@@ -25,7 +23,6 @@ void timestep_test(cufftReal* f, cufftReal* g, int fkx, int fky, int fkz, int fs
     cudaMalloc((void**) &gC_d, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &fC1_d, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &gC1_d, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    //cudaMalloc((void**) &padded_d, sizeof(cufftComplex)*Nx*Ny*Nz);
     cudaMalloc((void**) &kx, sizeof(float)*Nx);
     cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
     cudaMalloc((void**) &kz, sizeof(float)*Nz);
@@ -57,24 +54,19 @@ void timestep_test(cufftReal* f, cufftReal* g, int fkx, int fky, int fkz, int fs
       for(int i=0; i<Ny; i++) {
       
       
-      y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;                             //  
-      x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;				    //
-      z[k] = 2*M_PI*(float)(k-Nz/2)/Nz;				    //
+      y[i] = X0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
+      x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;				    //
+      z[k] = X0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
       int index = i + Ny*j + Ny*Nx*k;
       
-      //we start with two fields f and g of the form f(y,x,z)    
-      /*f[index]= fcos*cos(fky*y[i] + fkx*x[j] + fkz*z[k]) + 		//
-                fsin*sin(fky*y[i] + fkx*x[j] + fkz*z[k]);	        //
-      g[index]= gcos*cos(gky*y[i] + gkx*x[j] + gkz*z[k]) + 		//
-                gsin*sin(gky*y[i] + gkx*x[j] + gkz*z[k]);  
-		*/
+      
       //we use the Orszag-Tang initial conditions
-      //phi = -2cosx - 2sinx
-      //A = cosy + .5cos2x
+      //phi = -2(cosx + cosy)
+      //A = 2cosy + cos2x
       //f = z+ = phi + A
       //g = z- = phi - A
-      f[index] = -2*cos(x[j]) - cos(y[i]) + .5*cos(2*x[j]);		
-      g[index] = -2*cos(x[j]) - 3*cos(y[i]) - .5*cos(2*x[j]);
+      f[index] = (-cos(x[j]) - 0*cos(y[i]) + .5*cos(2*x[j]));		
+      g[index] = (-cos(x[j]) - 2*cos(y[i]) - .5*cos(2*x[j]));
       /* f:
          (0,1) -> -2
          (1,0) -> -1
@@ -104,55 +96,77 @@ void timestep_test(cufftReal* f, cufftReal* g, int fkx, int fky, int fkz, int fs
     cufftExecR2C(plan, f_d, fC_d);
     cufftExecR2C(plan, g_d, gC_d);    
     //now we have fields of the form f(ky,kx,z)
-   
+    
+    
     
     //IMPORTANT: scale fields immediately after transform to k-space, not after transform back to real space at end of routine
     scaler = (float) 1 / (Nx*Ny/2);
     scale<<<dimGrid,dimBlock>>>(fC_d, scaler);
     scale<<<dimGrid,dimBlock>>>(gC_d, scaler);
+
     
+    roundoff<<<dimGrid,dimBlock>>>(fC_d,.1);
+    roundoff<<<dimGrid,dimBlock>>>(gC_d,.1);
     
     printf("f:\n");
     getfcn(fC_d);
     printf("g:\n");
     getfcn(gC_d);
-    //printf("\n\n");
+    printf("\n\n");
     
     kInit<<<dimGrid, dimBlock>>> (kx,ky,kz);
     kPerpInit<<<dimGrid,dimBlock>>>(kPerp2, kx, ky);
     kPerpInvInit<<<dimGrid,dimBlock>>>(kPerp2Inv,kPerp2);
     
     
-    int steps = 200;
-    float dt = .01;
-    float nu = .5;
-    float eta = .5;
-   
-    fprintf(ofile, "#\ttime(s)\ttotal energy\tkinetic energy\tmagnetic energy\n");
+    fprintf(ofile, "#\ttime(s)\t\ttotal energy\tkinetic energy\tmagnetic energy\n");
     
-    //getfcn(fC_d);
     
-    for(int i=0; i<steps; i++) {
-      printf("\n%d\n\n",i);
+    float *dt;
+    dt = (float*) malloc(sizeof(float));
+    float time=0;
+    int counter=0;
+    
+    
+    while(time < endtime) {
+      printf("%f      %d\n",time,counter);
+      
+      courant(dt,fC1_d,gC1_d,fC_d,gC_d,kx,ky);
+      //fC_d and gC_d are not modified by courant(); fC1_d and gC1_d are modified
+            
       
       energy(totEnergy, kinEnergy, magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
       //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
-      fprintf(ofile, "\t%f\t%f\t%f\t%f\n", i*dt, totEnergy[0].x, kinEnergy[0].x, magEnergy[0].x);
+      fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy[0].x/Nz, kinEnergy[0].x/Nz, magEnergy[0].x/Nz);
       
-      timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kz,kPerp2,kPerp2Inv,nu,eta,dt);  
-       
+      
+      
+      timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  
       //at end of routine, fC1_d is copied to fC_d, and same for g
       //to allow the routine to be called recursively
+      
+      printf("%s\n",cudaGetErrorString(cudaGetLastError()));
+      
+      time+=dt[0];
+      counter++;
+       
+      
     } 
     
-    
-    //getfcn(fC1_d);
+    //go one timestep past endtime
+    printf("%f      %d\n",time,counter);      
+      
+    energy(totEnergy, kinEnergy, magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
+    //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
+      
+    fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy[0].x/Nz, kinEnergy[0].x/Nz, magEnergy[0].x/Nz);
+      
+
     
     cufftExecC2R(plan2, fC1_d, f_d);
     cufftExecC2R(plan2, gC1_d, g_d);
-    
-    //scaler = (float) 1/2;
+
     
     scaleReal<<<dimGrid,dimBlock>>>(f_d, .5);
     scaleReal<<<dimGrid,dimBlock>>>(g_d, .5);

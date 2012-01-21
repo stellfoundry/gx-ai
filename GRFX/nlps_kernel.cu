@@ -47,7 +47,7 @@ __global__ void mask(cufftComplex* mult)
     unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
     
     
-    if( (idy<(Ny/3+1) || (idx<(Nx/3+1) || idx>(2*Nx/3+1))) == false) {
+    if( (idy>(Ny/3+1) || (idx>(Nx/3+1) && idx<(2*Nx/3+1))) ) {
       mult[index].x = 0;
       mult[index].y = 0;
     }  
@@ -59,7 +59,7 @@ __global__ void mask(cufftComplex* mult)
      unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
     
     
-     if( (idy<(Ny/3+1) || (idx<(Nx/3+1) || idx>(2*Nx/3+1))) == false) {
+     if( (idy>(Ny/3+1) || (idx>(Nx/3+1) && idx<(2*Nx/3+1))) ) {
        mult[index].x = 0;
        mult[index].y = 0;
      }  
@@ -163,27 +163,27 @@ void getfcn(cufftComplex* fcn_d)
       for(int i=0; i<Ny/2+1; i++) {  
 	int index = i + (Ny/2+1)*(j); // Nx*(Ny/2+1)*k;
 	
-	//if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
+	  printf("F(%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/X0, //2*M_PI*(float)(k-Nz/2)/Nz,
 	                     fcnC[index].x, fcnC[index].y, index);
-        //}
+        }
       }
-      printf("\n");
+      //printf("\n");
     }  
     for(int j=-Nx/2+1; j<0; j++) {
       for(int i=0; i<Ny/2+1; i++) {
         int index = (i) + (Ny/2+1)*(j+Nx);// + Nx*(Ny/2+1)*k;
 	
-	//if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 
-	  printf("F(%d,%d)=%.5f+i*%.5f  ", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
+	  printf("F(%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/X0, //2*M_PI*(float)(k-Nz/2)/Nz, 
 	                   fcnC[index].x, fcnC[index].y, index);
-        //}
+        }
       }
         
-      printf("\n");
+      //printf("\n");
     }
   //}  
   free(fcnC);
@@ -209,17 +209,22 @@ void getfcn(cufftReal* fcn_d) {
 void getfcnComplexPadded(cufftComplex* fcn_d)
 {
   cufftComplex *fcnC;
+  
   fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny)*Nx*Nz);
+  for(int i=0; i<Nx*Ny*Nz; i++) {
+    fcnC[i].x = 0;
+    fcnC[i].y = 0;
+  }
   cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny)*Nx*Nz, cudaMemcpyDeviceToHost);
   //for(int k=0; k<(Nz); k++) { 
-    for(int j=0; j<Nx/2+1; j++) { 
+    /*for(int j=0; j<Nx/2+1; j++) { 
       for(int i=0; i<Ny; i++) {  
 	int index = i + (Ny)*(j); // Nx*(Ny/2+1)*k;
 	
 	if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%d,%d)=%.5f+i*%.5f\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
+	  printf("F(%d,%d)=%.5f+i*%.5f  %d\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz,
 	                     fcnC[index].x, fcnC[index].y, index);
         }
       }
@@ -231,14 +236,20 @@ void getfcnComplexPadded(cufftComplex* fcn_d)
 	
 	if(!(fcnC[index].x<.001 && fcnC[index].y<.001 && fcnC[index].x>-.001 && fcnC[index].y>-.001)) {
 
-	  printf("F(%d,%d)=%.5f+i*%.5f\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
+	  printf("F(%d,%d)=%.5f+i*%.5f  %d\n", i, j, //2*M_PI*(float)(k-Nz/2)/Nz, 
 	                   fcnC[index].x, fcnC[index].y, index);
         }
       }
         
       //printf("\n");
-    }
+    } */
   //}  
+  
+  for(int i=0; i<Nx*Ny*Nz; i++) {
+    if(!(fcnC[i].x<.001 && fcnC[i].y<.001 && fcnC[i].x>-.001 && fcnC[i].y>-.001)) 
+      printf("F(%d)=%.5f+i*%.5f\n", i, fcnC[i].x, fcnC[i].y);
+  }  
+  
   free(fcnC);
 }     
      

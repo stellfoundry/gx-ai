@@ -72,7 +72,11 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cudaMalloc((void**) &gdyR, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &dx, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     cudaMalloc((void**) &dy, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);  
+    
+    
+    
     cudaMalloc((void**) &fdxR, sizeof(cufftReal)*Ny*Nx*Nz);
+    
     cudaMalloc((void**) &fdyR, sizeof(cufftReal)*Ny*Nx*Nz);
     
     
@@ -92,7 +96,10 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     deriv<<<dimGrid, dimBlock>>> (g, dx, dy, kx, ky); 
     cufftExecC2R(plan2, dy, gdyR);
     cufftExecC2R(plan2, dx, gdxR);
+    
+    //scaling for these FFTs done in bracket kernel
 
+    
     //scaleReal<<<dimGrid,dimBlock>>>(gdxR,scaler);
     //scaleReal<<<dimGrid,dimBlock>>>(gdyR,scaler);
 
@@ -128,7 +135,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     ///////////////////////////////////////////////
     
-    //clean<<<dimGrid,dimBlock>>>(result);
+    //roundoff<<<dimGrid,dimBlock>>>(result,.00001);
     //zeromode<<<dimGrid,dimBlock>>>(result);
     
     cufftDestroy(plan);
