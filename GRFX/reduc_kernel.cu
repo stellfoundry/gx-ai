@@ -114,3 +114,22 @@ __global__ void cleanPadded(cufftComplex* a)
     }
   }        
 }  
+
+//copies f(ky[i]) into fky
+__global__ void kycopy(cufftComplex* fky, cufftComplex* f, int i) {
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+    
+  
+  if(idy<Nz && idx<Nx) {
+    unsigned int index = idy + (Nz)*idx;
+    fky[index].x = f[i + index*(Ny/2+1)].x;
+    fky[index].y = f[i + index*(Ny/2+1)].y;
+  }
+}      
+      
+      
+      
+      
+      
+      
