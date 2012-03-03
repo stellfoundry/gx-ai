@@ -10,11 +10,11 @@ __global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy, flo
      unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
     
     
-     //df/dx
+     //df/dy
      fdy[index].x = -ky[idy]*f[index].y;			
      fdy[index].y =  ky[idy]*f[index].x;			
     
-     //df/dy
+     //df/dx
      fdx[index].x = -kx[idx]*f[index].y;			
      fdx[index].y =  kx[idx]*f[index].x;   
    }
