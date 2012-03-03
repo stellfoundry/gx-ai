@@ -23,7 +23,9 @@ void sumReduc(cufftComplex* result, cufftComplex* f, cufftComplex* padded)
     
     cleanPadded<<<dimGrid2,dimBlock2>>>(padded);
     
+    //block size is 8*8*8=512, so that all of each block fits in shared memory
     dim3 dimBlock(8,8,8);
+    //gridx is the number of blocks configured
     int gridx = (Nx*Ny*Nz)/512;
     
     if (Nx*Ny*Nz <= 512) {

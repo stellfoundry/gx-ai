@@ -1,14 +1,3 @@
-//#include "nlps_kernel.cu"
-//#include "zderiv_kernel.cu"
-//#include "timestep_kernel.cu"
-//#include "nlps.cu"
-//#include "zderiv.cu"
-
-// total of 12 complex arrays, plus k's
-// bytes = Nx*(Ny/2+1)*Nz*8*12 + 4*(Nx+(Ny/2+1)+Nz)
-// for Nx=Ny=Nz=128, 
-// bytes = 102.24 MB
-
 void timestep(cufftComplex *zpNew, cufftComplex *zpOld, 
               cufftComplex *zmNew, cufftComplex *zmOld,
 	      float* kx, float* ky, float* kz, 
@@ -18,23 +7,14 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     cufftComplex *ZDeriv;
     cufftComplex *zK;
     cufftComplex *bracket1, *bracket2, *brackets;
-    //float *kx, *ky, *kz;
+    
     
     cudaMalloc((void**) &ZDeriv, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &zK, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    
     cudaMalloc((void**) &bracket1, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    
     cudaMalloc((void**) &bracket2, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    
     cudaMalloc((void**) &brackets, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    
-    
-    //cudaMalloc((void**) &kx, sizeof(float)*Nx);
-    //cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
-    //cudaMalloc((void**) &kz, sizeof(float)*Nz);
-    
-    
+       
     
     int dev;
     struct cudaDeviceProp prop;
@@ -68,7 +48,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     /////////////////////////
     //A+    
     
-    //ZDERIV(ZDeriv,zpOld,kz);
+    ZDERIV(ZDeriv,zpOld,kz);
     //0) ZDeriv= d/dz(zpOld)
 
     //bracket1, bracket2, and brackets will be recycled
@@ -89,7 +69,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //5) bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp}
     
     damping<<<dimGrid,dimBlock>>> (bracket1, zpOld,zmOld,kPerp2,nu,1);
-    //6) bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp} - nu*kPerp2*(zpOld+zmOld)
+    //6) bracket1 = {zp,kPerp2*zm}+{zm,kPerp2*zp} - nu*kPerp2*kPerp2*(zpOld+zmOld)
     
     NLPS(bracket2,zpOld,zmOld,kx,ky);
     //7) bracket2 = {zp,zm}
@@ -104,7 +84,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //bracket1 and bracket2 are same for A+ and A-, only difference is whether they are added
     //or subtracted
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, -1); //result put in brackets
-    //10) brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*(zpOld+zmOld)] - kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
+    //10) brackets = [{zp,kPerp2*zm}+{zm,kPerp2*zp}-nu*kPerp2*kPerp2*(zpOld+zmOld)] - kPerp2*[{zp,zm}+ eta*kPerp2*(zpOld-zmOld)]
     
     multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     //11) brackets = (1/(2*kPerp2))*brackets    
@@ -117,7 +97,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //////////////////
     //A-
     
-    //ZDERIV(ZDeriv,zmOld,kz);
+    ZDERIV(ZDeriv,zmOld,kz);
     //13) ZDeriv = d/dz(zmOld)
     
     
@@ -136,7 +116,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //B+
   
     
-    //ZDERIV(ZDeriv,zpNew,kz);
+    ZDERIV(ZDeriv,zpNew,kz);
     //ZDeriv = d/dz(zpStar)
     
     multKPerp<<<dimGrid,dimBlock>>> (zK,zmNew,kPerp2,1); 
@@ -183,7 +163,7 @@ void timestep(cufftComplex *zpNew, cufftComplex *zpOld,
     //////////////////////
     //B-
     
-    //ZDERIV(ZDeriv,zmNew,kz);
+    ZDERIV(ZDeriv,zmNew,kz);
     addsubt<<<dimGrid,dimBlock>>> (brackets,bracket1,bracket2, 1);
     multKPerp<<<dimGrid,dimBlock>>> (brackets,brackets,kPerp2Inv,1);
     

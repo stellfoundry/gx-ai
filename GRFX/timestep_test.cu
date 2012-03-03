@@ -67,6 +67,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       //g = z- = phi - A
       f[index] = (-cos(x[j]) - 0*cos(y[i]) + .5*cos(2*x[j]));		
       g[index] = (-cos(x[j]) - 2*cos(y[i]) - .5*cos(2*x[j]));
+      //g[index] = cos((Nx/2)*x[j]);
       /* f:
          (0,1) -> -2
          (1,0) -> -1
@@ -114,6 +115,8 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     getfcn(gC_d);
     printf("\n\n");
     
+    //return; 
+    
     kInit<<<dimGrid, dimBlock>>> (kx,ky,kz);
     kPerpInit<<<dimGrid,dimBlock>>>(kPerp2, kx, ky);
     kPerpInvInit<<<dimGrid,dimBlock>>>(kPerp2Inv,kPerp2);
@@ -127,6 +130,12 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     float time=0;
     int counter=0;
     
+    cudaEvent_t start, stop;
+    float runtime;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);					    
+
+    cudaEventRecord(start,0);
     
     while(time < endtime) {
       printf("%f      %d\n",time,counter);
@@ -143,6 +152,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       
       
       timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  
+      
       //at end of routine, fC1_d is copied to fC_d, and same for g
       //to allow the routine to be called recursively
       
@@ -161,8 +171,12 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
     fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy[0].x/Nz, kinEnergy[0].x/Nz, magEnergy[0].x/Nz);
-      
-
+    
+    cudaEventRecord(stop,0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&runtime,start,stop);
+    printf("Total time (ms): %f\n",runtime);
+    printf("Avg time/timestep (ms): %f\n",runtime/counter);
     
     cufftExecC2R(plan2, fC1_d, f_d);
     cufftExecC2R(plan2, gC1_d, g_d);

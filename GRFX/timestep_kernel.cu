@@ -51,9 +51,6 @@ __global__ void kPerpInit(float* kPerp2, float* kx, float* ky)
     kPerp2[index] = - kx[idx]*kx[idx] - ky[idy]*ky[idy]; 	 
     
   }
-  
-  //kPerp2[0] = 1;
-
 }   
 
 __global__ void kPerpInvInit(float* kPerp2Inv, float* kPerp2)
@@ -304,7 +301,7 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
 	
         if(a == 1) {
           bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
-	  bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
+	  bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
 	}
       
         if(a == -1) {
@@ -317,7 +314,7 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
 
 }       			  
 
-
+//fixes roundoff errors after fft
 __global__ void roundoff(cufftComplex* f, float max)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -350,6 +347,8 @@ __global__ void roundoff(cufftComplex* f, float max)
 
 }     
 
+
+//gets rid of duplications from fft
 __global__ void fixFFT(cufftComplex* f)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;

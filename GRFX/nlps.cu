@@ -21,18 +21,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     float scaler;   				
     cudaMalloc((void**) &scaler, sizeof(float));
     //other variables declared, allocated, and de-allocated throughout program to preserve memory
-    
-    
-    
-    /*int block_size_x=2; int block_size_y=2; 
-    int dimGridx, dimGridy;
 
-    dim3 dimBlock(block_size_x, block_size_y);
-    if(Ny/dimBlock.x == 0) {dimGridx = 1;}
-    else dimGridx = Nx/dimBlock.x;
-    if(Nx/dimBlock.y == 0) {dimGridy = 1;}
-    else dimGridy = Ny/dimBlock.y;
-    dim3 dimGrid(dimGridx, dimGridy); */ 
     
     int dev;
     struct cudaDeviceProp prop;
@@ -52,9 +41,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     }  
     
     dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
-    //if(dimGrid.x == 0) {dimGrid.x = 1;}
-    //if(dimGrid.y == 0) {dimGrid.y = 1;}
-    //if(dimGrid.z == 0) {dimGrid.z = 1;}  
+    
     
     cufftHandle plan;
     cufftHandle plan2;
@@ -82,32 +69,19 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     
     
-    deriv<<<dimGrid, dimBlock>>> (f, dx, dy, kx, ky);
-    
-    scaler = (float) 1/(Nx*Ny);
-    
+    deriv<<<dimGrid, dimBlock>>> (f, dx, dy, kx, ky);    
     cufftExecC2R(plan2, dy, fdyR);
     cufftExecC2R(plan2, dx, fdxR);
     
-    //scaleReal<<<dimGrid,dimBlock>>>(fdxR,scaler);
-    //scaleReal<<<dimGrid,dimBlock>>>(fdyR,scaler);
 
-    
     deriv<<<dimGrid, dimBlock>>> (g, dx, dy, kx, ky); 
     cufftExecC2R(plan2, dy, gdyR);
     cufftExecC2R(plan2, dx, gdxR);
     
     //scaling for these FFTs done in bracket kernel
 
-    
-    //scaleReal<<<dimGrid,dimBlock>>>(gdxR,scaler);
-    //scaleReal<<<dimGrid,dimBlock>>>(gdyR,scaler);
-
-    
     cudaFree(dy); cudaFree(dx);
-      
-    
-    
+
     
     cufftReal *resultR;
     
@@ -117,7 +91,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     scaler = (float)1 / (Nx*Nx*Ny*Ny);
     
-    //zero<<<dimGrid, dimBlock>>> (resultR);
+    
     
     
     
@@ -135,8 +109,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
     ///////////////////////////////////////////////
     
-    //roundoff<<<dimGrid,dimBlock>>>(result,.00001);
-    //zeromode<<<dimGrid,dimBlock>>>(result);
+    
     
     cufftDestroy(plan);
     cufftDestroy(plan2);
@@ -145,7 +118,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cudaFree(resultR), cudaFree(fdxR), cudaFree(fdyR);
     cudaFree(gdxR), cudaFree(gdyR);
     
-    //cudaFree(scaler);
+    
        
     
 }

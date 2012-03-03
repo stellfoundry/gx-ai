@@ -15,8 +15,15 @@ CU_DEPS := \
       maxReduc.cu \
       sumReduc.cu \
       reduc_kernel.cu \
+      z_covering.cu \
+      ztransform.cu \
+      
       
 
 USECUFFT := 1
+
+OMIT_CUTIL_LIB := 1
+
+verbose = 1
 
 include ../../../common/common.mk
