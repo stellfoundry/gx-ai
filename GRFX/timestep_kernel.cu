@@ -1,3 +1,23 @@
+__device__ cufftComplex complexMult(cufftComplex a, cufftComplex b) {
+  cufftComplex c;
+  c.x = a.x*b.x-a.y*b.y;
+  c.y = a.y*b.x + b.y*a.x;
+  return c;
+}  
+
+__device__ cufftComplex complexAdd(cufftComplex a, cufftComplex b) {
+  cufftComplex c;
+  c.x = a.x + b.x;
+  c.y = a.y + b.y;
+  return c;
+}
+
+__device__ float complexNorm(cufftComplex a) {
+  float c;
+  c = sqrt(a.x*a.x + a.y*a.y);
+  return c;
+}  
+  
 __global__ void kInit(float* kx, float* ky, float* kz) 
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;

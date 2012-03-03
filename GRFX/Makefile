@@ -26,4 +26,8 @@ OMIT_CUTIL_LIB := 1
 
 verbose = 1
 
+fastmath = 1
+
+ptxas = 1 
+
 include ../../../common/common.mk
