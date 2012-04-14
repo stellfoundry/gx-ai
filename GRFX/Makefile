@@ -3,6 +3,7 @@ EXECUTABLE := timestep
 CUFILES := timestep_driver.cu
 
 CU_DEPS := \
+      c_fortran_namelist.cu \
       timestep_kernel.cu \
       timestep.cu \
       timestep_test.cu \
@@ -16,9 +17,7 @@ CU_DEPS := \
       sumReduc.cu \
       reduc_kernel.cu \
       z_covering.cu \
-      ztransform.cu \
-      
-      
+      ztransform.cu 
 
 USECUFFT := 1
 

@@ -147,7 +147,7 @@ __global__ void kzInitCovering(float* kz, int nLinks)
     if(index < (2*Nz*nLinks)/2+1) 
       kz[index] = (float) index/(nLinks*X0);
     else
-      kz[index] = (float) (index-2*Nz*nLinks)/(nLinks*X0);
+      kz[index] = (float) (index-2*Nz*nLinks)/(nLinks*X0); // need X0 -> Z0
   }
 }
       
