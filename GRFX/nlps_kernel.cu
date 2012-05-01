@@ -47,7 +47,7 @@ __global__ void mask(cufftComplex* mult)
     unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
     
     
-    if( (idy>(Ny/3+1) || (idx>(Nx/3+1) && idx<(2*Nx/3+1))) ) {
+    if( idy>(Ny-1)/3 || ( idx>(Nx-1)/3 && idx<2*(Nx)/3+1 ) ) {
       mult[index].x = 0;
       mult[index].y = 0;
     }  
@@ -69,6 +69,38 @@ __global__ void mask(cufftComplex* mult)
     
 }      
   
+__global__ void mask_Z(cufftComplex* mult) 
+{
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(Nz<=zThreads) {
+   if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+    unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+    
+    
+    if( idy>(Ny-1)/3 || ( idx>(Nx-1)/3 && idx<2*(Nx)/3+1 ) || ( idz>(Nz-1)/3 && idz<2*(Nz)/3+1 ) ) {
+      mult[index].x = 0;
+      mult[index].y = 0;
+    }  
+   }
+  }
+  else {
+   for(int i=0; i<Nz/zThreads; i++) {
+    if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
+     unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+    
+    
+     if( idy>(Ny-1)/3 || ( idx>(Nx-1)/3 && idx<2*(Nx)/3+1 ) || ( idz>(Nz-1)/3 && idz<2*(Nz)/3+1 ) ) {
+       mult[index].x = 0;
+       mult[index].y = 0;
+     }  
+    }
+   }
+  }
+    
+}   
   
 
 __global__ void bracket(cufftReal* mult, cufftReal* fdx, cufftReal* fdy, 
@@ -124,7 +156,9 @@ __global__ void zeroC(cufftComplex* f)
     }
    }
   }    
-}    
+}
+
+    
 
 __global__ void zero(cufftReal* f) 
 {
@@ -158,15 +192,15 @@ void getfcn(cufftComplex* fcn_d)
   cufftComplex *fcnC;
   fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
   cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz, cudaMemcpyDeviceToHost);
-  //for(int k=0; k<(Nz); k++) { 
+  for(int k=0; k<(Nz); k++) { 
     for(int j=0; j<Nx/2+1; j++) { 
       for(int i=0; i<Ny/2+1; i++) {  
-	int index = i + (Ny/2+1)*(j); // Nx*(Ny/2+1)*k;
+	int index = i + (Ny/2+1)*(j) + Nx*(Ny/2+1)*k;
 	
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/X0, //2*M_PI*(float)(k-Nz/2)/Nz,
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, 2*M_PI*(float)(k-Nz/2)/Nz,
 	                     fcnC[index].x, fcnC[index].y, index);
         }
       }
@@ -174,18 +208,82 @@ void getfcn(cufftComplex* fcn_d)
     }  
     for(int j=-Nx/2+1; j<0; j++) {
       for(int i=0; i<Ny/2+1; i++) {
-        int index = (i) + (Ny/2+1)*(j+Nx);// + Nx*(Ny/2+1)*k;
+        int index = (i) + (Ny/2+1)*(j+Nx) + Nx*(Ny/2+1)*k;
 	
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 
-	  printf("F(%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/X0, //2*M_PI*(float)(k-Nz/2)/Nz, 
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, 2*M_PI*(float)(k-Nz/2)/Nz, 
 	                   fcnC[index].x, fcnC[index].y, index);
         }
       }
         
       //printf("\n");
     }
-  //}  
+  }  
+  free(fcnC);
+} 
+
+void getfcnZCOMPLEX(cufftComplex* fcn_d)
+{
+  cufftComplex *fcnC;
+  fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
+  cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz, cudaMemcpyDeviceToHost);
+  for(int k=0; k<Nz/2+1; k++) { 
+    for(int j=0; j<Nx/2+1; j++) { 
+      for(int i=0; i<Ny/2+1; i++) {  
+	int index = i + (Ny/2+1)*(j) + Nx*(Ny/2+1)*k;
+	
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
+	
+	//printf("F(%d,%d,%.2f)...
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, (float)k/Z0,
+	                     fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+      //printf("\n");
+    }  
+    for(int j=-Nx/2+1; j<0; j++) {
+      for(int i=0; i<Ny/2+1; i++) {
+        int index = (i) + (Ny/2+1)*(j+Nx) + Nx*(Ny/2+1)*k;
+	
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
+
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, (float)k/Z0, 
+	                   fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+        
+      //printf("\n");
+    }
+  } 
+  for(int k=-Nz/2+1; k<0; k++) { 
+    for(int j=0; j<Nx/2+1; j++) { 
+      for(int i=0; i<Ny/2+1; i++) {  
+	int index = i + (Ny/2+1)*(j) + Nx*(Ny/2+1)*(k+Nz);
+	
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
+	
+	//printf("F(%d,%d,%.2f)...
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, (float)k/Z0,
+	                     fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+      //printf("\n");
+    }  
+    for(int j=-Nx/2+1; j<0; j++) {
+      for(int i=0; i<Ny/2+1; i++) {
+        int index = (i) + (Ny/2+1)*(j+Nx) + Nx*(Ny/2+1)*(k+Nz);
+	
+	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
+
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/X0, (float) j/Y0, (float)k/Z0, 
+	                   fcnC[index].x, fcnC[index].y, index);
+        }
+      }
+        
+      //printf("\n");
+    }
+  }  
   free(fcnC);
 } 
 

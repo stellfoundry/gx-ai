@@ -31,63 +31,21 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
               //    n rank  nembed  stride   dist
 	
   
-/*   struct cover {
-    //the cover object will have nCases # of cases (=nky)
-    int nCases;
-    //each case will have nClasses # of classes
-    int nClasses; 
-    //each class will have nChains # of chains
-    int nChains;
-    //each chain will have nLinks # of links
-    int nLinks;
-    //we will create a 4D array of all members of the form 
-    //[link#][chain#][class#][case#]
-    int members[nLinks][nChains][nClasses][nCases];
-  };
   
-  //4D ragged array of form:
-  //[case#][class#][chain#][link#]
-  int[][][][] cover;
-  cover[0][0][0] = {1,3,5};
-  cover[0][0][1] = {2,4};
-  cover[0][1][0] = {1,3};
-  //...
-  
-  int nCases;
-  int nClasses[];
-  int nChains[][];
-  int nLinks[][][];
-  int nCoupled;
-  
-  //loop over all the cases
-  for(int i=0; i<nCases; i++) {
-    //loop over all classes within each case
-    for(int j=0; j<nClasses[i]; j++) {
-      //loop over all chains within each class within each case
-      for(int k=0; k<nChains[i][j]; k++) {
-        nCoupled = nLinks[i][j][k];
-	ztransform(nCoupled,cover[i][j][k]);
-      }
-    }
-  }
-  	
-        
-         */
-  
-  
-  
-  
-  	      
   cufftExecC2C(plan, f, result, CUFFT_FORWARD);
   
+  //printf("A\n");
   
+  //getfcnZCOMPLEX(result);
   
   //f is a field of the form f(ky,kx,kz)
- 
   
+    
   zderiv<<<dimGrid, dimBlock>>> (result, kz);
+  //printf("B\n");
+  //getfcnZCOMPLEX(result);
   
-  
+  mask_Z<<<dimGrid,dimBlock>>>(result);
   
   cufftExecC2C(plan, result, result, CUFFT_INVERSE);				
   
@@ -98,7 +56,7 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
   
   scale<<<dimGrid,dimBlock>>> (result, scaler);
   
-  
+  //mask<<<dimGrid,dimBlock>>>(result);
   
   
   cufftDestroy(plan);

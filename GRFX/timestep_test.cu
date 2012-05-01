@@ -10,7 +10,6 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     kinEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     magEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     
-    
     //device variables
     cufftReal *f_d, *g_d;
     cufftComplex *fC_d, *gC_d;
@@ -29,6 +28,57 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cudaMalloc((void**) &kPerp2, sizeof(float)*Nx*(Ny/2+1));
     cudaMalloc((void**) &kPerp2Inv, sizeof(float)*Nx*(Ny/2+1));
     cudaMalloc((void**) &scaler, sizeof(float));
+    
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //set up kxCover and kyCover for covering space z-transforms
+    int naky, ntheta0, jshift0, nshift;
+    naky = 1 + (Ny-1)/3;
+    ntheta0 = 1 + 2*(Nx-1)/3;     //MASK IN MIDDLE OF ARRAY
+    nshift = Nx - ntheta0;
+  
+    jshift0 = 10;
+  
+    int idxRight[naky*ntheta0];
+    int idxLeft[naky*ntheta0];
+  
+    int linksR[naky*ntheta0];
+    int linksL[naky*ntheta0];
+  
+    int n_k[naky*ntheta0];
+  
+    int nClasses;
+  
+    getNClasses(&nClasses, idxRight, idxLeft, linksR, linksL, n_k, naky, ntheta0, jshift0);
+    
+    int nLinks[nClasses];
+    int nChains[nClasses];
+  
+    getNLinksChains(nLinks, nChains, n_k, nClasses, naky, ntheta0);
+  
+    int **kxCover_h, **kyCover_h;
+    kxCover_h = (int**) malloc(sizeof(int)*nClasses);
+    kyCover_h = (int**) malloc(sizeof(int)*nClasses);
+    for(int c=0; c<nClasses; c++) {   
+      kyCover_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
+      kxCover_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
+    }  
+  
+    kFill(nClasses, nChains, nLinks, kyCover_h, kxCover_h, linksL, linksR, idxRight, naky, ntheta0); 
+    
+    int counter2=0;
+    //these are the device arrays
+    int *kxCover[nClasses];
+    int *kyCover[nClasses];
+    for(int c=0; c<nClasses; c++) {
+      kPrint(nClasses, nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c],c, &counter2);      
+      cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
+      cudaMalloc((void**) &kyCover[c], sizeof(int)*nLinks[c]*nChains[c]);
+      cudaMemcpy(kxCover[c], kxCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
+      cudaMemcpy(kyCover[c], kyCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
+    }
+    printf("counter=%d\n\nnaky=%d   ntheta0=%d\n\n", counter2, naky, ntheta0);
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    
     
     int dev;
     struct cudaDeviceProp prop;
@@ -54,9 +104,9 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       for(int i=0; i<Ny; i++) {
       
       
-      y[i] = X0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
+      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
       x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;				    //
-      z[k] = X0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
+      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
       int index = i + Ny*j + Ny*Nx*k;
       
       
@@ -65,16 +115,16 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       //A = 2cosy + cos2x
       //f = z+ = phi + A
       //g = z- = phi - A
-      f[index] = (-cos(x[j]) - 0*cos(y[i]) + .5*cos(2*x[j]));		
-      g[index] = (-cos(x[j]) - 2*cos(y[i]) - .5*cos(2*x[j]));
+      f[index] = -cos(x[j]) - 0*cos(y[i]) + .5*cos(2*x[j]) + 2*sin(z[k]);		
+      g[index] = -cos(x[j]) - 2*cos(y[i]) - .5*cos(2*x[j]+z[k]) + sin(z[k]);
       //g[index] = cos((Nx/2)*x[j]);
       /* f:
-         (0,1) -> -2
-         (1,0) -> -1
+         (0,1) -> -1
+         (1,0) -> 0
 	 (0,2) -> .5
 	 g:
-	 (0,1) -> -2
-	 (1,0) -> -3
+	 (0,1) -> -1
+	 (1,0) -> -2
 	 (0,2) -> -.5	*/	
       	        		   
       }
@@ -90,6 +140,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cufftHandle plan;
     cufftHandle plan2;
     int n[2] = {Nx, Ny};
+    
     
     cufftPlanMany(&plan, 2,n,NULL,1,0,NULL,1,0,CUFFT_R2C,Nz);
     cufftPlanMany(&plan2,2,n,NULL,1,0,NULL,1,0,CUFFT_C2R,Nz);
@@ -115,7 +166,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     getfcn(gC_d);
     printf("\n\n");
     
-    //return; 
+    //return;
     
     kInit<<<dimGrid, dimBlock>>> (kx,ky,kz);
     kPerpInit<<<dimGrid,dimBlock>>>(kPerp2, kx, ky);
@@ -137,12 +188,14 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 
     cudaEventRecord(start,0);
     
+    //endtime = 1;
     while(time < endtime) {
       printf("%f      %d\n",time,counter);
       
       courant(dt,fC1_d,gC1_d,fC_d,gC_d,kx,ky);
       //fC_d and gC_d are not modified by courant(); fC1_d and gC1_d are modified
-            
+      
+      //if(dt[0] < .01f) break;      
       
       energy(totEnergy, kinEnergy, magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
       //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
@@ -151,7 +204,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       
       
       
-      timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  
+      timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kxCover,kyCover,nClasses,nLinks,nChains,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  
       
       //at end of routine, fC1_d is copied to fC_d, and same for g
       //to allow the routine to be called recursively
@@ -191,7 +244,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     
     cudaFree(f_d), cudaFree(g_d), cudaFree(fC_d), cudaFree(gC_d);
     cudaFree(fC1_d), cudaFree(gC1_d), cudaFree(kx);
-    cudaFree(ky), cudaFree(kz);
+    cudaFree(ky), cudaFree(kz); cudaFree(kxCover); cudaFree(kyCover);
 
 }    
     

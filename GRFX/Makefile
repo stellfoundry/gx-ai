@@ -17,7 +17,10 @@ CU_DEPS := \
       sumReduc.cu \
       reduc_kernel.cu \
       z_covering.cu \
-      ztransform.cu 
+      ztransform.cu \
+      coveringRoutines.cu \
+      advance.cu \
+
 
 USECUFFT := 1
 

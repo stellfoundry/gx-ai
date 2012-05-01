@@ -37,17 +37,17 @@ void sumReduc(cufftComplex* result, cufftComplex* f, cufftComplex* padded)
     
     dim3 dimGrid(gridx,1,1);
     
-    sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*8*8*8>>>(padded, padded);
+    sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*512>>>(padded, padded);
     
     while(dimGrid.x > 512) {
       dimGrid.x = dimGrid.x / 512;
-      sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*8*8*8>>>(padded, padded);
+      sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*512>>>(padded, padded);
     }  
     
     dimBlock.x = dimGrid.x;
     dimGrid.x = 1;
     dimBlock.y = dimBlock.z = 1;
-    sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*8*8*8>>>(padded,padded);  
+    sum<<<dimGrid,dimBlock,sizeof(cufftComplex)*512>>>(padded,padded);  
     
     cudaMemcpy(result, padded, sizeof(cufftComplex), cudaMemcpyDeviceToHost);
 

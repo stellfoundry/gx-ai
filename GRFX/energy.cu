@@ -66,7 +66,6 @@ void energy(cufftComplex* totEnergy_h, cufftComplex* kinEnergy_h, cufftComplex* 
     //kA = (kperp**2) * (A**2)
     
     
-    
     // integrate kPhi to find kinetic energy
     sumReduc(kinEnergy_h, kPhi, padded);
     

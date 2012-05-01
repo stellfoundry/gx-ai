@@ -1,23 +1,3 @@
-__device__ cufftComplex complexMult(cufftComplex a, cufftComplex b) {
-  cufftComplex c;
-  c.x = a.x*b.x-a.y*b.y;
-  c.y = a.y*b.x + b.y*a.x;
-  return c;
-}  
-
-__device__ cufftComplex complexAdd(cufftComplex a, cufftComplex b) {
-  cufftComplex c;
-  c.x = a.x + b.x;
-  c.y = a.y + b.y;
-  return c;
-}
-
-__device__ float complexNorm(cufftComplex a) {
-  float c;
-  c = sqrt(a.x*a.x + a.y*a.y);
-  return c;
-}  
-  
 __global__ void kInit(float* kx, float* ky, float* kz) 
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
@@ -27,7 +7,7 @@ __global__ void kInit(float* kx, float* ky, float* kz)
   
   if(idy<Ny/2+1 && idx<Nx) {
       
-    ky[idy] = (float) idy/X0;
+    ky[idy] = (float) idy/Y0;
       
     if(idx<Nx/2+1) {					
       kx[idx] = (float) idx/X0;					
@@ -41,9 +21,9 @@ __global__ void kInit(float* kx, float* ky, float* kz)
   if(Nz<=zThreads) { 
     if(idz<Nz) {
       if(idz<(Nz/2+1))
-        kz[idz] = (float) idz/X0;
+        kz[idz] = (float) idz/Z0;
       else
-        kz[idz] = (float) (idz - Nz)/X0;
+        kz[idz] = (float) (idz - Nz)/Z0;
     }	
   }
   else {
@@ -51,9 +31,9 @@ __global__ void kInit(float* kx, float* ky, float* kz)
       if(idz<zThreads) {
 	int IDZ = idz + zThreads*i;
 	if(IDZ<(Nz/2+1))
-	  kz[IDZ] = (float) IDZ/X0;
+	  kz[IDZ] = (float) IDZ/Z0;
 	else
-	  kz[IDZ] = (float) (IDZ - Nz)/X0;
+	  kz[IDZ] = (float) (IDZ - Nz)/Z0;
       }
     }
   }  	    
@@ -97,14 +77,15 @@ __global__ void multKPerp(cufftComplex* fK, cufftComplex* f, float* kPerp2, int 
   if(Nz<=zThreads) {
     if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
       unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+      unsigned int kidx = idy + (Ny/2+1)*idx;
       
       if(a == 1) {
-        fK[index].x = f[index].x * kPerp2[idy + (Ny/2+1)*idx];
-	fK[index].y = f[index].y * kPerp2[idy + (Ny/2+1)*idx];
+        fK[index].x = f[index].x * kPerp2[kidx];
+	fK[index].y = f[index].y * kPerp2[kidx];
       }	
       if(a == -1) {
-        fK[index].x = f[index].x * -kPerp2[idy + (Ny/2+1)*idx];
-        fK[index].y = f[index].y * -kPerp2[idy + (Ny/2+1)*idx];
+        fK[index].x = f[index].x * -kPerp2[kidx];
+        fK[index].y = f[index].y * -kPerp2[kidx];
       }	 
     }
   }
@@ -112,14 +93,15 @@ __global__ void multKPerp(cufftComplex* fK, cufftComplex* f, float* kPerp2, int 
     for(int i=0; i<Nz/zThreads; i++) {
       if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
         unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+	unsigned int kidx = idy + (Ny/2+1)*idx;
 	
         if(a == 1) {
-          fK[index].x = f[index].x * kPerp2[idy + (Ny/2+1)*idx];
-	  fK[index].y = f[index].y * kPerp2[idy + (Ny/2+1)*idx];
+          fK[index].x = f[index].x * kPerp2[kidx];
+	  fK[index].y = f[index].y * kPerp2[kidx];
 	  }
         if(a == -1) {
-          fK[index].x = f[index].x * -kPerp2[idy + (Ny/2+1)*idx];
-	  fK[index].y = f[index].y * -kPerp2[idy + (Ny/2+1)*idx];
+          fK[index].x = f[index].x * -kPerp2[kidx];
+	  fK[index].y = f[index].y * -kPerp2[kidx];
 	  }
         
       }
@@ -301,16 +283,18 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
   if(Nz<=zThreads) {
     if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
       unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
+      unsigned int kidx = idy + (Ny/2+1)*idx;
       
       
       if(a == 1) {
-        bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
-	bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
+        //bracket[index] = cuCsubf( bracket[index], cuCscalef( NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx], cuCaddf(zp[index],zm[index]) ) );
+	bracket[index].x = bracket[index].x - NuEta*kPerp2[kidx]*kPerp2[kidx]*(zp[index].x+zm[index].x);
+	bracket[index].y = bracket[index].y - NuEta*kPerp2[kidx]*kPerp2[kidx]*(zp[index].y+zm[index].y);
 	}
       
       if(a == -1) {
-        bracket[index].x = bracket[index].x + NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x-zm[index].x);
-	bracket[index].y = bracket[index].y + NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y-zm[index].y);
+        bracket[index].x = bracket[index].x + NuEta*kPerp2[kidx]*(zp[index].x-zm[index].x);
+	bracket[index].y = bracket[index].y + NuEta*kPerp2[kidx]*(zp[index].y-zm[index].y);
 	}
     }
   }
@@ -318,15 +302,16 @@ __global__ void damping(cufftComplex* bracket, cufftComplex* zp, cufftComplex* z
     for(int i=0; i<Nz/zThreads; i++) {
       if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
         unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+	unsigned int kidx = idy * (Ny/2+1)*idx;
 	
         if(a == 1) {
-          bracket[index].x = bracket[index].x - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x+zm[index].x);
-	  bracket[index].y = bracket[index].y - NuEta*kPerp2[idy+(Ny/2+1)*idx]*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y+zm[index].y);
+          bracket[index].x = bracket[index].x - NuEta*kPerp2[kidx]*kPerp2[kidx]*(zp[index].x+zm[index].x);
+	  bracket[index].y = bracket[index].y - NuEta*kPerp2[kidx]*kPerp2[kidx]*(zp[index].y+zm[index].y);
 	}
       
         if(a == -1) {
-          bracket[index].x = bracket[index].x + NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].x-zm[index].x);
-	  bracket[index].y = bracket[index].y + NuEta*kPerp2[idy+(Ny/2+1)*idx]*(zp[index].y-zm[index].y);
+          bracket[index].x = bracket[index].x + NuEta*kPerp2[kidx]*(zp[index].x-zm[index].x);
+	  bracket[index].y = bracket[index].y + NuEta*kPerp2[kidx]*(zp[index].y-zm[index].y);
 	}
       }
     }

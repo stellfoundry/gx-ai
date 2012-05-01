@@ -54,9 +54,9 @@ void timestep_test_ky(cufftReal* f, cufftReal* g, FILE* ofile)
       for(int i=0; i<Ny; i++) {
       
       
-      y[i] = X0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
+      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
       x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;				    //
-      z[k] = X0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
+      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
       int index = i + Ny*j + Ny*Nx*k;
       
       
