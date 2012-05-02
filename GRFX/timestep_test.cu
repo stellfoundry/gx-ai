@@ -80,24 +80,6 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     
-    int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;   
-    
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock.x = sqrt(totalThreads/zThreads);
-      dimBlock.y = sqrt(totalThreads/zThreads);
-      dimBlock.z = zThreads;
-    }  
-    
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);    
 	
     for(int k=0; k<Nz; k++) {
      for(int j=0; j<Nx; j++) {
@@ -158,6 +140,9 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 
     
     roundoff<<<dimGrid,dimBlock>>>(fC_d,.1);
+    printf("%s\n",cudaGetErrorString(cudaGetLastError()));
+    printf("%d %d %d\n", dimBlock.x, dimBlock.y, dimBlock.z);
+    printf("%d %d %d\n", dimGrid.x, dimGrid.y, dimGrid.z);
     roundoff<<<dimGrid,dimBlock>>>(gC_d,.1);
     
     printf("f:\n");
@@ -167,6 +152,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     printf("\n\n");
     
     //return;
+    
     
     kInit<<<dimGrid, dimBlock>>> (kx,ky,kz);
     kPerpInit<<<dimGrid,dimBlock>>>(kPerp2, kx, ky);
@@ -245,6 +231,9 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cudaFree(f_d), cudaFree(g_d), cudaFree(fC_d), cudaFree(gC_d);
     cudaFree(fC1_d), cudaFree(gC1_d), cudaFree(kx);
     cudaFree(ky), cudaFree(kz); cudaFree(kxCover); cudaFree(kyCover);
+    
+    cufftDestroy(plan);
+    cufftDestroy(plan2);
 
 }    
     

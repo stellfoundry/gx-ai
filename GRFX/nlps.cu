@@ -22,27 +22,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cudaMalloc((void**) &scaler, sizeof(float));
     //other variables declared, allocated, and de-allocated throughout program to preserve memory
 
-    
-    int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;   
-    
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock.x = sqrt(totalThreads/zThreads);
-      dimBlock.y = sqrt(totalThreads/zThreads);
-      dimBlock.z = zThreads;
-    }  
-    
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
-    
-    
+       
     cufftHandle plan;
     cufftHandle plan2;
     int n[2] = {Nx, Ny};

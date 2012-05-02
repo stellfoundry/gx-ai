@@ -8,6 +8,11 @@ __constant__ int Nx, Ny, Nz, zThreads, X0, Y0, Z0;
 float endtime;
 float nu, eta;
 
+dim3 dimGrid;
+dim3 dimBlock;
+int totalThreads;
+
+
 #include "c_fortran_namelist.cu"
 #include "nlps_kernel.cu"
 #include "zderiv_kernel.cu"
@@ -50,8 +55,10 @@ int main(int argc, char* argv[])
   printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
 	 prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
   printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
-    
-    
+  
+  
+  
+  
   if ( argc != 4 ) // argc should be 2 for correct execution 
     {
       //We print argv[0] assuming it is the program name 
@@ -91,9 +98,32 @@ int main(int argc, char* argv[])
 	cudaMemcpyToSymbol("Y0", &Y0, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol("Z0", &Z0, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol("zThreads", &prop.maxThreadsDim[2], sizeof(int),0,cudaMemcpyHostToDevice);
-
 	
-      timestep_test(f, g, ofile);
+	
+	//////////////////////////////////////////////////////////
+  
+        //set up normal dimGrid/dimBlock config  
+        *&zThreads = prop.maxThreadsDim[2];
+        totalThreads = prop.maxThreadsPerBlock;
+        int xy = totalThreads/Nz;
+        int blockxy = sqrt(xy);
+        //dimBlock = threadsPerBlock, dimGrid = numBlocks
+        dimBlock.x = blockxy;
+        dimBlock.y = blockxy;
+        dimBlock.z = Nz;
+        if(Nz>zThreads) {
+          dimBlock.x = sqrt(totalThreads/zThreads);
+          dimBlock.y = sqrt(totalThreads/zThreads);
+          dimBlock.z = zThreads;
+        }  
+    
+        dimGrid.x = Nx/dimBlock.x+1;
+        dimGrid.y = Ny/dimBlock.y+1;
+        dimGrid.z = 1;    
+    
+        //////////////////////////////////////////////////////////
+		
+        timestep_test(f, g, ofile);
         
 	
 	//make a gnuplot script called plotTime for later plotting
@@ -111,7 +141,7 @@ int main(int argc, char* argv[])
 	fprintf(plotfile, "pause -1 \"press any key\"");
 
 	
-      fclose(plotfile);
+        fclose(plotfile);
 	
 
 	//pipe to gnuplot to instantly plot data

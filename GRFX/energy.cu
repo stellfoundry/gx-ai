@@ -5,27 +5,7 @@ void energy(cufftComplex* totEnergy_h, cufftComplex* kinEnergy_h, cufftComplex* 
     cufftComplex *padded;
     cudaMalloc((void**) &padded, sizeof(cufftComplex)*Nx*Ny*Nz);
     
-    
-    int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;   
-    
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock.x = sqrt(totalThreads/zThreads);
-      dimBlock.y = sqrt(totalThreads/zThreads);
-      dimBlock.z = zThreads;
-    }  
-    
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
-    
-    
+
     
     addsubt<<<dimGrid,dimBlock>>> (kPhi, zp, zm, 1);
     //kPhi = zp+zm

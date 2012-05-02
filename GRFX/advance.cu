@@ -15,26 +15,7 @@ void advance(cufftComplex *zp, cufftComplex *zm,
     cudaMalloc((void**) &bracket1, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &bracket2, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &brackets, sizeof(cufftComplex)*Nx*(Ny/2+1)*Nz);
-    
-    int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;     
-    
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock.x = sqrt(totalThreads/zThreads);
-      dimBlock.y = sqrt(totalThreads/zThreads);
-      dimBlock.z = zThreads;
-    }  
-    
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
-    
+     
     
     zeroC<<<dimGrid,dimBlock>>>(ZDeriv);
     

@@ -6,36 +6,17 @@ void courant(float* dt, cufftComplex* zpK, cufftComplex* zmK, cufftComplex* zp, 
     
     cufftComplex *max;
     max = (cufftComplex*) malloc(sizeof(cufftComplex));
-    //vymax = (cufftComplex*) malloc(sizeof(cufftComplex));
-    //vxmax2 = (cufftComplex*) malloc(sizeof(cufftComplex));
-    //vymax2 = (cufftComplex*) malloc(sizeof(cufftComplex));
+    
     
     float vxmax, vymax;
     
-    int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;   
     
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock2(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock2.x = sqrt(totalThreads/zThreads);
-      dimBlock2.y = sqrt(totalThreads/zThreads);
-      dimBlock2.z = zThreads;
-    }  
-    
-    dim3 dimGrid2(Nx/dimBlock2.x+1,Ny/dimBlock2.y+1,1);
     
     ///////////////////////////////////////////////////////
     
     //calculate max(ky*zp)
     
-    multKy<<<dimGrid2,dimBlock2>>>(zpK, zp,ky);
+    multKy<<<dimGrid,dimBlock>>>(zpK, zp,ky);
     //zpK = ky*zp
     
     maxReduc(max,zpK,padded); 
@@ -47,7 +28,7 @@ void courant(float* dt, cufftComplex* zpK, cufftComplex* zmK, cufftComplex* zp, 
     
     //calculate max(ky*zm)
     
-    multKy<<<dimGrid2,dimBlock2>>>(zmK,zm,ky);
+    multKy<<<dimGrid,dimBlock>>>(zmK,zm,ky);
     //zmK = ky*zm
     
     maxReduc(max,zmK,padded);
@@ -60,7 +41,7 @@ void courant(float* dt, cufftComplex* zpK, cufftComplex* zmK, cufftComplex* zp, 
     
     //calculate max(kx*zp)
     
-    multKx<<<dimGrid2,dimBlock2>>>(zpK, zp,kx);
+    multKx<<<dimGrid,dimBlock>>>(zpK, zp,kx);
     //zpK = kx*zp
     
     maxReduc(max,zpK,padded);
@@ -71,7 +52,7 @@ void courant(float* dt, cufftComplex* zpK, cufftComplex* zmK, cufftComplex* zp, 
     
     //calculate max(kx*zm)
     
-    multKx<<<dimGrid2,dimBlock2>>>(zmK,zm,kx);
+    multKx<<<dimGrid,dimBlock>>>(zmK,zm,kx);
     //zmK = kx*zm
     
     maxReduc(max,zmK,padded);
