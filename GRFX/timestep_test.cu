@@ -36,7 +36,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     ntheta0 = 1 + 2*(Nx-1)/3;     //MASK IN MIDDLE OF ARRAY
     nshift = Nx - ntheta0;
   
-    jshift0 = 10;
+    jshift0 = 3;
   
     int idxRight[naky*ntheta0];
     int idxLeft[naky*ntheta0];
@@ -65,18 +65,20 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
   
     kFill(nClasses, nChains, nLinks, kyCover_h, kxCover_h, linksL, linksR, idxRight, naky, ntheta0); 
     
-    int counter2=0;
+    
     //these are the device arrays
     int *kxCover[nClasses];
     int *kyCover[nClasses];
     for(int c=0; c<nClasses; c++) {
-      kPrint(nClasses, nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c],c, &counter2);      
+      kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]);      
       cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
       cudaMalloc((void**) &kyCover[c], sizeof(int)*nLinks[c]*nChains[c]);
       cudaMemcpy(kxCover[c], kxCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
       cudaMemcpy(kyCover[c], kyCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
     }
-    printf("counter=%d\n\nnaky=%d   ntheta0=%d\n\n", counter2, naky, ntheta0);
+    
+    
+    printf("naky=%d   ntheta0=%d\n\n", naky, ntheta0);
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     
@@ -86,9 +88,9 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       for(int i=0; i<Ny; i++) {
       
       
-      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                             //  
-      x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;				    //
-      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;				    //
+      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                            
+      x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;	  			    
+      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;	  			    
       int index = i + Ny*j + Ny*Nx*k;
       
       
@@ -97,8 +99,17 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       //A = 2cosy + cos2x
       //f = z+ = phi + A
       //g = z- = phi - A
-      f[index] = -cos(x[j]) - 0*cos(y[i]) + .5*cos(2*x[j]) + 2*sin(z[k]);		
-      g[index] = -cos(x[j]) - 2*cos(y[i]) - .5*cos(2*x[j]+z[k]) + sin(z[k]);
+      //f[index] = -cos(X0*x[j]/X0) - 0*cos(Y0*y[i]/Y0) + .5*cos(X0*2*x[j]/X0);// + 2*sin(z[k]);		
+      //g[index] = -cos(X0*x[j]/X0) - 2*cos(Y0*y[i]/Y0) - .5*cos(X0*2*x[j]/X0);//+z[k]) + sin(z[k]);
+      f[index] = cos(0*(y[i]/Y0) + 0*(x[j]/X0) + 1*(z[k]/Z0) ) + cos(0*(y[i]/Y0) - 0*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) );// + cos(2*y[i]+7*x[j]+z[k]) + cos(2*y[i]+x[j]+z[k]) +
+          //cos(3*y[i]+2*x[j]) + 
+	  //cos(3*y[i]-7*x[j]);
+      
+		   
+      g[index] = cos(11*(y[i]/Y0) + 11*(x[j]/X0) + 1*(z[k]/Z0) ) - cos(11*(y[i]/Y0) - 22*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) ); 
+                 
+      
+      
       //g[index] = cos((Nx/2)*x[j]);
       /* f:
          (0,1) -> -1
@@ -139,11 +150,11 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     scale<<<dimGrid,dimBlock>>>(gC_d, scaler);
 
     
-    roundoff<<<dimGrid,dimBlock>>>(fC_d,.1);
+    //roundoff<<<dimGrid,dimBlock>>>(fC_d,.001);
     printf("%s\n",cudaGetErrorString(cudaGetLastError()));
     printf("%d %d %d\n", dimBlock.x, dimBlock.y, dimBlock.z);
     printf("%d %d %d\n", dimGrid.x, dimGrid.y, dimGrid.z);
-    roundoff<<<dimGrid,dimBlock>>>(gC_d,.1);
+    //roundoff<<<dimGrid,dimBlock>>>(gC_d,.001);
     
     printf("f:\n");
     getfcn(fC_d);
@@ -174,7 +185,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 
     cudaEventRecord(start,0);
     
-    //endtime = 1;
+    //endtime = .01;
     while(time < endtime) {
       printf("%f      %d\n",time,counter);
       

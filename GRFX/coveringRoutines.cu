@@ -231,11 +231,16 @@ void kFill(int nClasses, int *nChains, int *nLinks, int *ky[], int *kx[], int *l
 
 }      	
 
-void kPrint(int nClasses, int nLinks, int nChains, int *ky, int *kx, int c, int *counter) {
+void kPrint(int nLinks, int nChains, int *ky, int *kx) {
   for(int n=0; n<nChains; n++) {
     for(int p=0; p<nLinks; p++) {
-      printf("(%d,%d) ",ky[p+nLinks*n], kx[p+nLinks*n]);
-      *counter= *counter+1;
+      if(kx[p+nLinks*n]<Nx/2+1) {
+        printf("(%d,%d) ",ky[p+nLinks*n], kx[p+nLinks*n]);
+      }
+      else {
+        printf("(%d,%d) ",ky[p+nLinks*n], kx[p+nLinks*n]-Nx);	
+      }	
+      //*counter= *counter+1;
     }
     printf("\n");
   }

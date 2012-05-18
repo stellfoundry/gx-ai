@@ -14,6 +14,7 @@ int totalThreads;
 
 
 #include "c_fortran_namelist.cu"
+#include "getfcn.cu"
 #include "nlps_kernel.cu"
 #include "zderiv_kernel.cu"
 #include "timestep_kernel.cu"

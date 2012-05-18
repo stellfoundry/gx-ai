@@ -20,6 +20,7 @@ CU_DEPS := \
       ztransform.cu \
       coveringRoutines.cu \
       advance.cu \
+      getfcn.cu \
 
 
 USECUFFT := 1

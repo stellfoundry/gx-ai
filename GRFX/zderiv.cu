@@ -1,7 +1,7 @@
 void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz) 
 {
   float scaler;
-  cudaMalloc((void**) &scaler, sizeof(float));
+  //cudaMalloc((void**) &scaler, sizeof(float));
   
   
   cufftHandle plan;
@@ -12,13 +12,13 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
                           onembed,(Ny/2+1)*Nx,1,CUFFT_C2C,(Ny/2+1)*Nx);
               //    n rank  nembed  stride   dist
 	
-  
+  zeroC<<<dimGrid,dimBlock>>>(result);
   
   cufftExecC2C(plan, f, result, CUFFT_FORWARD);
   
-  //printf("A\n");
+  printf("A\n");
   
-  //getfcnZCOMPLEX(result);
+  getfcnZCOMPLEX(result);
   
   //f is a field of the form f(ky,kx,kz)
   

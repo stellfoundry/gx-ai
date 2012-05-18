@@ -213,6 +213,36 @@ __global__ void zeroCovering(cufftComplex* f, int nLinks, int nChains)
   }    	  
 }    
 
+__global__ void mask_Z_covering(cufftComplex* f, int nLinks, int nChains) 
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(nLinks <= zThreads) {
+    if(i<Nz && p<nLinks && n<nChains) {
+      unsigned int index= i + p*Nz + n*Nz*nLinks;
+      unsigned int idz= i + p*Nz;
+      if( idz>(Nz-1)/3 && idz<2*(Nz)/3+1 ) {
+        f[index].x = 0;
+        f[index].y = 0;
+      }
+    }
+  }
+  else {
+    for(int a=0; a<nLinks/zThreads; a++) {
+      if(i<Nz && p<zThreads && n<nChains) { 
+        unsigned int index = i + p*Nz + a*zThreads*Nz + n*Nz*zThreads*nLinks;
+	unsigned int idz= i + p*Nz + a*zThreads*Nz;
+	if( idz>(Nz-1)/3 && idz<2*(Nz)/3+1 ) {
+	  f[index].x = 0;
+          f[index].y = 0;
+	} 
+      }
+    }
+  }    	  
+}    
+
 
 __global__ void kzInitCovering(float* kz, int nLinks)
 {
@@ -223,7 +253,7 @@ __global__ void kzInitCovering(float* kz, int nLinks)
   if(nLinks <= zThreads) {
     if(i<Nz && p<nLinks) {
       int index = i + p*Nz;
-      if(index < (Nz*nLinks)/2+1) 
+      if(index < (Nz*nLinks)/2) 
         kz[index] = (float) index/(nLinks*Z0);
       else
         kz[index] = (float) (index-Nz*nLinks)/(nLinks*Z0);
@@ -234,7 +264,7 @@ __global__ void kzInitCovering(float* kz, int nLinks)
     for(int a=0; a<nLinks/zThreads; a++) {
       if(i<Nz && p<zThreads) {  
         int index = i + p*Nz + a*zThreads*Nz;
-	if(index < (Nz*nLinks)/2+1) 
+	if(index < (Nz*nLinks)/2) 
           kz[index] = (float) index/(nLinks*Z0);
         else
           kz[index] = (float) (index-Nz*nLinks)/(nLinks*Z0);
