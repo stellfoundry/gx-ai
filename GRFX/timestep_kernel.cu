@@ -353,7 +353,7 @@ __global__ void roundoff(cufftComplex* f, float max)
 }     
 
 
-//gets rid of duplications from fft
+//gets rid of duplications from fft ***for diagnostics only
 __global__ void fixFFT(cufftComplex* f)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;

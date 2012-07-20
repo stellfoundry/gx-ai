@@ -19,11 +19,11 @@ void advance(cufftComplex *zp, cufftComplex *zm,
     
     zeroC<<<dimGrid,dimBlock>>>(ZDeriv);
     
-    
-    ZDERIVcovering(ZDeriv,zpOld, kxCover, kyCover, nClasses, nLinks, nChains);
-    //ZDERIV(ZDeriv,zpOld, kz);
+    if(Nz!=1) {
+      ZDERIVcovering(ZDeriv,zpOld, kxCover, kyCover, nClasses, nLinks, nChains);
+      //ZDERIV(ZDeriv,zpOld, kz);
+    }
     //0) ZDeriv= d/dz(zpOld)
-    //getfcn(ZDeriv);
 
     //bracket1, bracket2, and brackets will be recycled
     multKPerp<<<dimGrid,dimBlock>>> (zK,zmOld,kPerp2, 1);
@@ -67,9 +67,10 @@ void advance(cufftComplex *zp, cufftComplex *zm,
     step<<<dimGrid,dimBlock>>> (zpNew,zp,ZDeriv,brackets,dt,1);
     //12) zpStar = zpOld + (dt/2)*(ZDeriv - brackets)
     
-    
-    ZDERIVcovering(ZDeriv,zmOld, kxCover, kyCover, nClasses,nLinks, nChains);
-    //ZDERIV(ZDeriv, zmOld, kz);
+    if(Nz!=1) {
+      ZDERIVcovering(ZDeriv,zmOld, kxCover, kyCover, nClasses,nLinks, nChains);
+      //ZDERIV(ZDeriv, zmOld, kz);
+    }
     //13) ZDeriv = d/dz(zmOld) 
     
     

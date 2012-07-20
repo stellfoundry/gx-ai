@@ -38,26 +38,19 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cudaMalloc((void**) &gdxR, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &gdyR, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &dx, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
-    cudaMalloc((void**) &dy, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);  
-    
-    
-    
-    cudaMalloc((void**) &fdxR, sizeof(cufftReal)*Ny*Nx*Nz);
-    
+    cudaMalloc((void**) &dy, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);     
+    cudaMalloc((void**) &fdxR, sizeof(cufftReal)*Ny*Nx*Nz);    
     cudaMalloc((void**) &fdyR, sizeof(cufftReal)*Ny*Nx*Nz);
-    
-    
-    
-    
+
+        
     deriv<<<dimGrid, dimBlock>>> (f, dx, dy, kx, ky);    
     cufftExecC2R(plan2, dy, fdyR);
     cufftExecC2R(plan2, dx, fdxR);
     
-
+    
     deriv<<<dimGrid, dimBlock>>> (g, dx, dy, kx, ky); 
     cufftExecC2R(plan2, dy, gdyR);
     cufftExecC2R(plan2, dx, gdxR);
-    
     //scaling for these FFTs done in bracket kernel
 
     cudaFree(dy); cudaFree(dx);
@@ -69,7 +62,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     
 
     
-    scaler = (float)1 / (Nx*Nx*Ny*Ny);
+    //scaler = (float)1 / (Nx*Nx*Ny*Ny);
     
     
     
@@ -85,7 +78,12 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     ///////////////////////////////////////////////
     //  mask kernel
     
-    mask<<<dimGrid,dimBlock>>>(result);
+    if(MASK) {
+      mask<<<dimGrid,dimBlock>>>(result);
+    }
+    else {
+      printf("\nNO MASK\n");
+    }
     
     ///////////////////////////////////////////////
     

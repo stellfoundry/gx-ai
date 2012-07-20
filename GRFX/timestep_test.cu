@@ -1,11 +1,7 @@
 void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 {
     //host variables
-    float *x, *y, *z;
     cufftComplex *totEnergy, *kinEnergy, *magEnergy;
-    x = (float*) malloc(sizeof(float)*Nx);
-    y = (float*) malloc(sizeof(float)*Ny);
-    z = (float*) malloc(sizeof(float)*Nz);
     totEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     kinEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     magEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
@@ -70,7 +66,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     int *kxCover[nClasses];
     int *kyCover[nClasses];
     for(int c=0; c<nClasses; c++) {
-      kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]);      
+      //kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]);      
       cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
       cudaMalloc((void**) &kyCover[c], sizeof(int)*nLinks[c]*nChains[c]);
       cudaMemcpy(kxCover[c], kxCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
@@ -81,48 +77,6 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     printf("naky=%d   ntheta0=%d\n\n", naky, ntheta0);
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    
-	
-    for(int k=0; k<Nz; k++) {
-     for(int j=0; j<Nx; j++) {
-      for(int i=0; i<Ny; i++) {
-      
-      
-      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                            
-      x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;	  			    
-      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;	  			    
-      int index = i + Ny*j + Ny*Nx*k;
-      
-      
-      //we use the Orszag-Tang initial conditions
-      //phi = -2(cosx + cosy)
-      //A = 2cosy + cos2x
-      //f = z+ = phi + A
-      //g = z- = phi - A
-      //f[index] = -cos(X0*x[j]/X0) - 0*cos(Y0*y[i]/Y0) + .5*cos(X0*2*x[j]/X0);// + 2*sin(z[k]);		
-      //g[index] = -cos(X0*x[j]/X0) - 2*cos(Y0*y[i]/Y0) - .5*cos(X0*2*x[j]/X0);//+z[k]) + sin(z[k]);
-      f[index] = cos(0*(y[i]/Y0) + 0*(x[j]/X0) + 1*(z[k]/Z0) ) + cos(0*(y[i]/Y0) - 0*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) );// + cos(2*y[i]+7*x[j]+z[k]) + cos(2*y[i]+x[j]+z[k]) +
-          //cos(3*y[i]+2*x[j]) + 
-	  //cos(3*y[i]-7*x[j]);
-      
-		   
-      g[index] = cos(11*(y[i]/Y0) + 11*(x[j]/X0) + 1*(z[k]/Z0) ) - cos(11*(y[i]/Y0) - 22*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) ); 
-                 
-      
-      
-      //g[index] = cos((Nx/2)*x[j]);
-      /* f:
-         (0,1) -> -1
-         (1,0) -> 0
-	 (0,2) -> .5
-	 g:
-	 (0,1) -> -1
-	 (1,0) -> -2
-	 (0,2) -> -.5	*/	
-      	        		   
-      }
-     }
-    } 
     
     
     cudaMemcpy(f_d, f, sizeof(cufftReal)*Nx*Ny*Nz, cudaMemcpyHostToDevice);
@@ -198,7 +152,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
       fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy[0].x/Nz, kinEnergy[0].x/Nz, magEnergy[0].x/Nz);
-      
+      fflush(NULL);
       
       
       timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kxCover,kyCover,nClasses,nLinks,nChains,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  

@@ -477,7 +477,7 @@ int fnr_get_double(struct fnr_struct * namelist_struct, const char * namelist, c
 }
 
 
-/*
+
 int main (int argc, char ** argv) {
   if (argc < 2) fnr_error_message("Please pass the input file as the first parameter.", 1);
 
@@ -519,7 +519,7 @@ int main (int argc, char ** argv) {
 
   fnr_free(&namelist_struct);
 }
-*/
+
 
 
 

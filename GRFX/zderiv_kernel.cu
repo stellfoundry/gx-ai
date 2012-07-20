@@ -72,8 +72,8 @@ __global__ void scaleReal(cufftReal* b, float scaler)
   } 
   else {
     for(int i=0; i<Nz/zThreads; i++) {
-      if(idy<(Ny/2+1) && idx<Nx && idz<zThreads) {
-        unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*zThreads*i;
+      if(idy<(Ny) && idx<Nx && idz<zThreads) {
+        unsigned int index = idy + (Ny)*idx + Nx*(Ny)*idz + Nx*(Ny)*zThreads*i;
 	
 	b[index] = scaler*b[index]; 
       }

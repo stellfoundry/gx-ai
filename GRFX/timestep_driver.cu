@@ -12,6 +12,8 @@ dim3 dimGrid;
 dim3 dimBlock;
 int totalThreads;
 
+bool MASK;    //defaults to on unless set otherwise
+
 
 #include "c_fortran_namelist.cu"
 #include "getfcn.cu"
@@ -122,10 +124,60 @@ int main(int argc, char* argv[])
         dimGrid.y = Ny/dimBlock.y+1;
         dimGrid.z = 1;    
     
+    float *x, *y, *z;    
+    x = (float*) malloc(sizeof(float)*Nx);
+    y = (float*) malloc(sizeof(float)*Ny);
+    z = (float*) malloc(sizeof(float)*Nz);
+    		
+    for(int k=0; k<Nz; k++) {
+     for(int j=0; j<Nx; j++) {
+      for(int i=0; i<Ny; i++) {
+      
+      
+      y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                            
+      x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;	  			    
+      z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;	  			    
+      int index = i + Ny*j + Ny*Nx*k;
+      
+      
+      //we use the Orszag-Tang initial conditions
+      //phi = -2(cosx + cosy)
+      //A = 2cosy + cos2x
+      //f = z+ = phi + A
+      //g = z- = phi - A
+      //f[index] = -cos(X0*x[j]/X0) - 0*cos(Y0*y[i]/Y0) + .5*cos(X0*2*x[j]/X0);// + 2*sin(z[k]);		
+      //g[index] = -cos(X0*x[j]/X0) - 2*cos(Y0*y[i]/Y0) - .5*cos(X0*2*x[j]/X0);//+z[k]) + sin(z[k]);
+      f[index] = cos(0*(y[i]/Y0) + 0*(x[j]/X0) + 1*(z[k]/Z0) ) + cos(0*(y[i]/Y0) - 0*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) );// + cos(2*y[i]+7*x[j]+z[k]) + cos(2*y[i]+x[j]+z[k]) +
+          //cos(3*y[i]+2*x[j]) + 
+	  //cos(3*y[i]-7*x[j]);
+      
+		   
+      g[index] = cos(11*(y[i]/Y0) + 11*(x[j]/X0) + 1*(z[k]/Z0) ) - cos(11*(y[i]/Y0) - 22*(x[j]/X0) + 1*(z[k]/Z0) );// + (z[k]/Z0) ); 
+                 
+      
+      
+      //g[index] = cos((Nx/2)*x[j]);
+      /* f:
+         (0,1) -> -1
+         (1,0) -> 0
+	 (0,2) -> .5
+	 g:
+	 (0,1) -> -1
+	 (1,0) -> -2
+	 (0,2) -> -.5	*/	
+      	        		   
+      }
+     }
+    } 
+	
+	
         //////////////////////////////////////////////////////////
 		
         timestep_test(f, g, ofile);
         
+	//////////////////////////////////////////////////////////
+	
+	
 	
 	//make a gnuplot script called plotTime for later plotting
 	fprintf(plotfile, "set terminal x11 size 600,600\n");
