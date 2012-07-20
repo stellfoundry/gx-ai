@@ -1,0 +1,5 @@
+11     5     3      -1     -17     22     23      4      64   64   256   1    1    1
+fkx   fky   fsin   fcos   gkx   gky   gsin   gcos   Nx   Ny   Nz   X0   Y0   Z0
+
+-Nx/2 < kx < Nx/2+1
+0 < ky < Ny/2+1
