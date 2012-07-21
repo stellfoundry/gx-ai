@@ -82,7 +82,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
       mask<<<dimGrid,dimBlock>>>(result);
     }
     else {
-      printf("\nNO MASK\n");
+      if(!quiet) printf("\nNO MASK\n");
     }
     
     ///////////////////////////////////////////////

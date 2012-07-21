@@ -12,10 +12,11 @@ dim3 dimGrid;
 dim3 dimBlock;
 int totalThreads;
 
-bool MASK;    //defaults to on unless set otherwise
+bool MASK=true;    //defaults to on unless set otherwise
+bool debug=false;
+bool quiet=false;
 
-
-#include "c_fortran_namelist.cu"
+//#include "c_fortran_namelist.cu"
 #include "getfcn.cu"
 #include "nlps_kernel.cu"
 #include "zderiv_kernel.cu"
@@ -38,31 +39,32 @@ int main(int argc, char* argv[])
 {
    
   cufftReal *f, *g;
+  
+  if (argc == 5 && strcmp(argv[4],"-quiet")==0) {quiet = true; }
     
   int ct, dev;
   struct cudaDeviceProp prop;
 
   cudaGetDeviceCount(&ct);
-  printf("Device Count: %d\n",ct);
-
+  if(!quiet) printf("Device Count: %d\n",ct);
   cudaGetDevice(&dev);
-  printf("Device ID: %d\n",dev);
-
+  if(!quiet) printf("Device ID: %d\n",dev);
   cudaGetDeviceProperties(&prop,dev);
-  printf("Device Name: %s\n", prop.name);
-  printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
-  printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
-  printf("Registers per Block: %d\n", prop.regsPerBlock);
-  printf("Warp Size (threads): %d\n", prop.warpSize); 
-  printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
-  printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
-	 prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
-  printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+  if(!quiet) {
+    printf("Device Name: %s\n", prop.name);
+    printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
+    printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
+    printf("Registers per Block: %d\n", prop.regsPerBlock);
+    printf("Warp Size (threads): %d\n", prop.warpSize); 
+    printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
+    printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
+                        prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+    printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+  }
   
   
   
-  
-  if ( argc != 4 ) // argc should be 2 for correct execution 
+  if ( argc != 4 && argc != 5 ) // argc should be 2 for correct execution 
     {
       //We print argv[0] assuming it is the program name 
       printf( "usage: %s inputfile outputfile", argv[0] );
@@ -74,6 +76,10 @@ int main(int argc, char* argv[])
       FILE *ofile = fopen( argv[2], "w+");
       FILE *pipe = popen( "gnuplot -persist", "w");
       FILE *plotfile = fopen( argv[3], "w+");
+      
+      if (argc == 5 && strcmp(argv[4],"-quiet")==0) {quiet = true; }
+      else if (argc == 5 && strcmp(argv[4],"-debug")==0) {debug = true;}
+      else if (argc == 5) printf("invalid option\n");
 
       // fopen returns 0, the NULL pointer, on failure 
       if ( ifile == 0 )
@@ -171,6 +177,7 @@ int main(int argc, char* argv[])
     } 
 	
 	
+	
         //////////////////////////////////////////////////////////
 		
         timestep_test(f, g, ofile);
@@ -216,7 +223,7 @@ int main(int argc, char* argv[])
 	
 	
 	
-      printf("\nNx=%d   Ny=%d  Nz=%d  BoxSize=2pi*(%d,%d,%d)\n", Nx, Ny, Nz, X0, Y0, Z0);
+      printf("\nNx=%d   Ny=%d  Nz=%d  BoxSize=2pi*(%d,%d,%d) endtime=%f eta=%f nu=%f\n\n", Nx, Ny, Nz, X0, Y0, Z0, endtime, eta, nu);
 
 	
       fclose(ofile);

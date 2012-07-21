@@ -8,8 +8,9 @@ __constant__ int Nx,Ny,Nz,zThreads, X0, Y0, Z0;
 dim3 dimGrid;
 dim3 dimBlock;
 int totalThreads;
-bool MASK;
-bool debug=true;
+bool MASK=false;
+bool debug=false;
+bool quiet=false;
 
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
 #include "getfcn.cu"
@@ -27,29 +28,32 @@ int main(int argc, char* argv[])
     cufftReal *nlpscheck, *fdxcheck, *fdycheck, *gdxcheck, *gdycheck;
     float *x, *y, *z;
     
+    if (argc == 4 && strcmp(argv[3],"-quiet")==0) {quiet = true; }
+    
     
     int ct, dev;
     struct cudaDeviceProp prop;
     cudaGetDeviceCount(&ct);
-    printf("Device Count: %d\n",ct);
+    if(!quiet) printf("Device Count: %d\n",ct);
     cudaGetDevice(&dev);
-    printf("Device ID: %d\n",dev);
+    if(!quiet) printf("Device ID: %d\n",dev);
     cudaGetDeviceProperties(&prop,dev);
-    printf("Device Name: %s\n", prop.name);
-    printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
-    printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
-    printf("Registers per Block: %d\n", prop.regsPerBlock);
-    printf("Warp Size (threads): %d\n", prop.warpSize); 
-    printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
-    printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
-                        prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
-    printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+    if(!quiet) {
+      printf("Device Name: %s\n", prop.name);
+      printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
+      printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
+      printf("Registers per Block: %d\n", prop.regsPerBlock);
+      printf("Warp Size (threads): %d\n", prop.warpSize); 
+      printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
+      printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
+                          prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
+      printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+    }
     
     
-    MASK = false;
     
     
-    if ( argc != 3 ) // argc should be 2 for correct execution 
+    if ( argc != 3 && argc !=4 )  
     {
         //We print argv[0] assuming it is the program name 
         printf( "usage: %s inputfile outputfile", argv[0] );
@@ -58,6 +62,10 @@ int main(int argc, char* argv[])
     {
         // We assume argv[1] is a filename to open
         FILE *ifile = fopen( argv[1], "r" );
+	
+	if (argc == 4 && strcmp(argv[3],"-quiet")==0) {quiet = true; }
+	else if (argc == 4 && strcmp(argv[3],"-debug")==0) {debug = true;}
+	else if (argc == 4) printf("invalid option\n");
 
         // fopen returns 0, the NULL pointer, on failure 
         if ( ifile == 0 )
@@ -180,10 +188,10 @@ int main(int argc, char* argv[])
 	 }
 	 
 	}     
-	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("NLPS CHECKS\n");}
+	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("\nNLPS CHECKS\n");}
 	else {fprintf(ofile, "\nNLPS DOES NOT CHECK\n"); printf("NLPS DOES NOT CHECK\n");}
 	
-	printf("fkx=%d  fky=%d  fsin=%d  fcos=%d  gkx=%d  gky=%d  gsin=%d  gcos=%d  Nx=%d  Ny=%d  Nz=%d\n", fkx, fky, fsin,fcos,gkx, gky,gsin,gcos,Nx, Ny, Nz);
+	printf("fkx=%d  fky=%d  fsin=%d  fcos=%d  gkx=%d  gky=%d  gsin=%d  gcos=%d  Nx=%d  Ny=%d  Nz=%d\n\n", fkx, fky, fsin,fcos,gkx, gky,gsin,gcos,Nx, Ny, Nz);
 	
 	fclose(ofile);
 	        

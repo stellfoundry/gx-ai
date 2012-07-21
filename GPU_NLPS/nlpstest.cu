@@ -157,7 +157,7 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cufftExecC2R(plan2, nlps_complex_d, nlps_d);
     
     scaleReal<<<dimGrid,dimBlock>>>(nlps_d, .5);
-    getError();
+    if(!quiet) getError();
     
     cudaFree(nlps_complex_d); cudaFree(f_complex_d); cudaFree(g_complex_d);
     cudaFree(kx_d); cudaFree(ky_d);

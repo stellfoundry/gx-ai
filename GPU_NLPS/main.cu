@@ -13,17 +13,18 @@
 
 
 // includes, kernels
-#include <nlpstest.cu>
-
+#include "nlpstest.cu"
+//#include "constants.h"
 
 
 
 int main(int argc, char* argv[])
 {
-    int fkx, fky, gkx, gky, Nx, Ny, Nz, fsin, fcos, gsin, gcos;
+    int fkx, fky, gkx, gky, fsin, fcos, gsin, gcos;
     cufftReal *nlps;
     cufftReal *nlpscheck, *fdxcheck, *fdycheck, *gdxcheck, *gdycheck;
     float *x, *y, *z;
+    
     
     int ct, dev;
     struct cudaDeviceProp prop;
@@ -76,7 +77,13 @@ int main(int argc, char* argv[])
 	gdxcheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	gdycheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
 	
-	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos, Ny, Nx, Nz);
+	
+	
+	cudaMemcpyToSymbol("Nx", &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol("Ny", &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol("Nz", &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
+	
+	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos);
         
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
@@ -91,6 +98,46 @@ int main(int argc, char* argv[])
 	    fdycheck[index] = -fky*fcos*sin(fky*y[i] + fkx*x[j]) + fky*fsin*cos(fky*y[i] + fkx*x[j]);	// fkx,fky,gkx,gky,i,j same
 	    gdxcheck[index] = -gkx*gcos*sin(gky*y[i] + gkx*x[j]) + gkx*gsin*cos(gky*y[i] + gkx*x[j]);	//
 	    gdycheck[index] = -gky*gcos*sin(gky*y[i] + gkx*x[j]) + gky*gsin*cos(gky*y[i] + gkx*x[j]);	//
+	    
+	    /*f and g
+	    f[index]= -2*cos(y[i])-.864*cos(y[i]+2*x[j])+.26*cos(2*y[i]+2*x[j])
+                +.41846*cos(3*y[i]+2*x[j])+.28*cos(4*y[i]+2*x[j])
+		-.264*cos(2*y[i]+4*x[j])+.56*cos(3*y[i]+4*x[j])
+		+.3*cos(4*y[i]+4*x[j]);
+      
+            g[index]= cos(y[i])+4*cos(2*x[j])-2.08*cos(y[i]+2*x[j])-4.32*cos(2*y[i]+2*x[j])
+                -1.8*cos(3*y[i]+2*x[j])
+		-9.12*cos(2*y[i]+4*x[j])+11*cos(3*y[i]+4*x[j])
+		-13.44*cos(4*y[i]+4*x[j]);
+	    */
+	    
+	    /*fdxcheck[index]= 2*.864*sin(y[i]+2*x[j])-2*.26*sin(2*y[i]+2*x[j])
+                -2*.41846*sin(3*y[i]+2*x[j])-2*.28*sin(4*y[i]+2*x[j])
+		+4*.264*sin(2*y[i]+4*x[j])-4*.56*sin(3*y[i]+4*x[j])
+		-4*.3*sin(4*y[i]+4*x[j]);
+	    fdycheck[index]= 2*sin(y[i])+.864*sin(y[i]+2*x[j])-2*.26*sin(2*y[i]+2*x[j])
+                -3*.41846*sin(3*y[i]+2*x[j])-4*.28*sin(4*y[i]+2*x[j])
+		+2*.264*sin(2*y[i]+4*x[j])-3*.56*sin(3*y[i]+4*x[j])
+		-4*.3*sin(4*y[i]+4*x[j]);
+	    gdxcheck[index]= -2*4*sin(2*x[j])+2*2.08*sin(y[i]+2*x[j])+2*4.32*sin(2*y[i]+2*x[j])
+                +2*1.8*sin(3*y[i]+2*x[j])
+		+4*9.12*sin(2*y[i]+4*x[j])-4*11*sin(3*y[i]+4*x[j])
+		+4*13.44*sin(4*y[i]+4*x[j]);
+	    gdycheck[index]= -sin(y[i])+2.08*sin(y[i]+2*x[j])+2*4.32*sin(2*y[i]+2*x[j])
+                +3*1.8*sin(3*y[i]+2*x[j])
+		+2*9.12*sin(2*y[i]+4*x[j])-3*11*sin(3*y[i]+4*x[j])
+		+4*13.44*sin(4*y[i]+4*x[j]);	*/
+	    
+	    //gdxcheck[index]= -32*sin(2*y[i]+2*x[j])+5.6*sin(3*y[i]+4*x[j]);
+	    //gdycheck[index]= -32*sin(2*y[i]+2*x[j])-.2*sin(y[i])+4.2*sin(3*y[i]+4*x[j]);
+	    //fdxcheck[index]= -2*sin(y[i]+2*x[j])+.176*sin(3*y[i]+4*x[j]);
+	    //fdycheck[index]= -sin(y[i]+2*x[j])+.1*sin(y[i])+.132*sin(3*y[i]+4*x[j]);
+	    
+	    //fdxcheck[index]= -4*sin(2*y[i]+2*x[j]);
+	    //fdycheck[index]= -4*sin(2*y[i]+2*x[j]);
+	    //gdxcheck[index]= -10*sin(y[i]+2*x[j]);
+	    //gdycheck[index]= -5*sin(y[i]+2*x[j]);
+	    
 	    nlpscheck[index] = fdxcheck[index]*gdycheck[index] - fdycheck[index]*gdxcheck[index];
 	    
 	  }
@@ -129,6 +176,7 @@ int main(int argc, char* argv[])
         }
 	
 	
+	
 	bool equal = true;
 	for(int k=0; k<Nz; k++) { 
 	 for(int j=0; j<Nx; j++) {
@@ -143,7 +191,7 @@ int main(int argc, char* argv[])
 	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("NLPS CHECKS\n");}
 	else {fprintf(ofile, "\nNLPS DOES NOT CHECK\n"); printf("NLPS DOES NOT CHECK\n");}
 	
-	
+	printf("fkx=%d  fky=%d  fsin=%d  fcos=%d  gkx=%d  gky=%d  gsin=%d  gcos=%d  Nx=%d  Ny=%d  Nz=%d\n", fkx, fky, fsin,fcos,gkx, gky,gsin,gcos,Nx, Ny, Nz);
 	
 	fclose(ofile);
 	

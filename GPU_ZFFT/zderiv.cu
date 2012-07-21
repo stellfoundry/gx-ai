@@ -12,6 +12,7 @@ cufftComplex* ZDERIV(cufftComplex *a_complex_d, cufftComplex *b_complex_d, float
   dim3 dimBlock(blockxy,blockxy,Nz);
   dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
   
+  
   cufftHandle plan;
   int n[1] = {Nz};
   int inembed[1] = {(Ny/2+1)*Nx*Nz};
@@ -19,10 +20,28 @@ cufftComplex* ZDERIV(cufftComplex *a_complex_d, cufftComplex *b_complex_d, float
   cufftPlanMany(&plan,1,n,inembed,(Ny/2+1)*Nx,1,
                           onembed,(Ny/2+1)*Nx,1,CUFFT_C2C,(Ny/2+1)*Nx);
               //    n rank  nembed  stride   dist
-	      
-  cufftExecC2C(plan, a_complex_d, a_complex_d, CUFFT_FORWARD);
   
- 
+  
+    printf("%s",cudaGetErrorString(cudaGetLastError()));
+
+  cudaEvent_t start, stop;
+    float runtime;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);					    
+
+    cudaEventRecord(start,0);
+  
+  for(int i=0; i<10000; i++) {
+  	      
+   cufftExecC2C(plan, a_complex_d, a_complex_d, CUFFT_FORWARD);
+  }
+  
+  cudaEventRecord(stop,0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&runtime,start,stop);
+    printf("Total time (ms): %f\n",runtime);
+  
+  
   
   //a_complex_z_d is a field of the form a(ky,kx,kz)
  

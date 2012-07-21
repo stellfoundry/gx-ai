@@ -1,7 +1,7 @@
 set terminal x11 size 600,600
 set size .8,.8
 set origin .07,.15
-set title "ENERGY PLOTS"
+set title "ENERGY PLOTS (original)"
 set xlabel "Time/2 (s)"
 set ylabel "Energy"
 set xtics 0, .5, 4.000000

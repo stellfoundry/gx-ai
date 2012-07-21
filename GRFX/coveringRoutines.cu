@@ -158,11 +158,13 @@ void getNLinksChains(int *nLinks, int *nChains, int *n_k, int nClasses, int naky
   nLinks[c] = n_k[naky*ntheta0-1];
   nChains[c] = nChains[c]/nLinks[c];
   
-  printf("\n\nnClasses=%d  \n", nClasses);
-  for(int i=0; i<nClasses; i++) {
-    printf("nLinks[%d]=%d  ", i, nLinks[i]);
-    printf("nChains[%d]=%d  \n", i, nChains[i]);
-  }  
+  if(debug) {
+    printf("\n\nnClasses=%d  \n", nClasses);
+    for(int i=0; i<nClasses; i++) {
+      printf("nLinks[%d]=%d  ", i, nLinks[i]);
+      printf("nChains[%d]=%d  \n", i, nChains[i]);
+    }  
+  }
 }  
 
 

@@ -74,7 +74,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     }
     
     
-    printf("naky=%d   ntheta0=%d\n\n", naky, ntheta0);
+    if(!quiet) printf("naky=%d   ntheta0=%d\n\n", naky, ntheta0);
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     
     
@@ -105,16 +105,20 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
 
     
     //roundoff<<<dimGrid,dimBlock>>>(fC_d,.001);
-    printf("%s\n",cudaGetErrorString(cudaGetLastError()));
-    printf("%d %d %d\n", dimBlock.x, dimBlock.y, dimBlock.z);
-    printf("%d %d %d\n", dimGrid.x, dimGrid.y, dimGrid.z);
+    if(debug) {
+      printf("%s\n",cudaGetErrorString(cudaGetLastError()));
+      printf("%d %d %d\n", dimBlock.x, dimBlock.y, dimBlock.z);
+      printf("%d %d %d\n", dimGrid.x, dimGrid.y, dimGrid.z);
+    }
     //roundoff<<<dimGrid,dimBlock>>>(gC_d,.001);
     
+    if(!quiet) {
     printf("f:\n");
     getfcn(fC_d);
     printf("g:\n");
     getfcn(gC_d);
     printf("\n\n");
+    }
     
     //return;
     
@@ -141,7 +145,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     
     //endtime = .01;
     while(time < endtime) {
-      printf("%f      %d\n",time,counter);
+      if(!quiet) printf("%f      %d\n",time,counter);
       
       courant(dt,fC1_d,gC1_d,fC_d,gC_d,kx,ky);
       //fC_d and gC_d are not modified by courant(); fC1_d and gC1_d are modified
@@ -160,7 +164,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       //at end of routine, fC1_d is copied to fC_d, and same for g
       //to allow the routine to be called recursively
       
-      printf("%s\n",cudaGetErrorString(cudaGetLastError()));
+      if(!quiet) printf("%s\n",cudaGetErrorString(cudaGetLastError()));
       
       time+=dt[0];
       counter++;
@@ -169,7 +173,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     } 
     
     //go one timestep past endtime
-    printf("%f      %d\n",time,counter);      
+    if(!quiet) printf("%f      %d\n",time,counter);      
       
     energy(totEnergy, kinEnergy, magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
     //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
@@ -179,8 +183,10 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&runtime,start,stop);
+    if(!quiet) {
     printf("Total time (ms): %f\n",runtime);
     printf("Avg time/timestep (ms): %f\n",runtime/counter);
+    }
     
     cufftExecC2R(plan2, fC1_d, f_d);
     cufftExecC2R(plan2, gC1_d, g_d);

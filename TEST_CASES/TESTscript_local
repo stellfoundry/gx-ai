@@ -1,0 +1,25 @@
+#test NLPS
+cd NLPS
+nvcc -lcufft nlps_driver.cu -o NLPSTEST.out 
+echo
+echo NLPS CASE 1...
+./NLPSTEST.out inputs/NLPSinput1 outputs/NLPSoutput1 -quiet
+echo NLPS CASE 2...
+./NLPSTEST.out inputs/NLPSinput2 outputs/NLPSoutput2 -quiet
+echo NLPS CASE 3...
+./NLPSTEST.out inputs/NLPSinput3 outputs/NLPSoutput3 -quiet
+cd ..
+#test ORSZAG-TANG
+cd ORS-TANG
+nvcc -lcufft ors-tang_test.cu -o ORS-TANG_TEST.out
+echo
+echo ORSZAG-TANG CASE 1...
+./ORS-TANG_TEST.out inputs/ORS-TANGinput128 outputs/ORS-TANGoutput128 \
+plots/ORS-TANGplot128 -quiet
+echo
+echo ORSZAG-TANG CASE 2...
+./ORS-TANG_TEST.out inputs/ORS-TANGinput256 outputs/ORS-TANGoutput256 \
+plots/ORS-TANGplot256 -quiet
+gnuplot plots/ORS-TANGplotA.plt
+
+

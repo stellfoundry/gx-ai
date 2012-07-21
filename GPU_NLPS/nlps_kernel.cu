@@ -2,18 +2,19 @@
 /***** LINES CHANGED FOR X <-> Y MARKED BY '//' *******/
 
 #include <stdio.h>
+#include "constants.h"
 
-__global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy,   
-                      float* kx, float* ky, int Ny, int Nx, int Nz) 
+
+__global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy, float* kx, float* ky)                        
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
   
+  
   if(Nz<=64) {
    if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
      unsigned int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
-    
     
     
      //df/dx
@@ -42,7 +43,7 @@ __global__ void deriv(cufftComplex* f, cufftComplex* fdx, cufftComplex* fdy,
   } 
 }  
 
-__global__ void mask(cufftComplex* mult, int Ny, int Nx, int Nz) 
+__global__ void mask(cufftComplex* mult) 
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -78,7 +79,7 @@ __global__ void mask(cufftComplex* mult, int Ny, int Nx, int Nz)
   
 
 __global__ void bracket(cufftReal* mult, cufftReal* fdx, cufftReal* fdy, 
-                      cufftReal* gdx, cufftReal* gdy, float scaler, int Ny, int Nx, int Nz)
+                      cufftReal* gdx, cufftReal* gdy, float scaler)
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -105,10 +106,11 @@ __global__ void bracket(cufftReal* mult, cufftReal* fdx, cufftReal* fdy,
  
 }  
      					      
-__global__ void kInit(float* kx, float* ky, int Ny, int Nx, int Nz) 
+__global__ void kInit(float* kx, float* ky) 
 {
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  
   
   
     if(idy<Ny/2+1 && idx<Nx) {
@@ -124,8 +126,59 @@ __global__ void kInit(float* kx, float* ky, int Ny, int Nx, int Nz)
       
 }       
      
-                           
+__global__ void scale(cufftComplex* f, float scaler)
+{
+  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(Nz<=64) {
+   if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
+    int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
     
+    f[index].x = f[index].x*scaler;  
+    f[index].y = f[index].y*scaler;  
+    
+   }
+  }
+  else {
+   for(int i=0; i<Nz/64; i++) {
+    if(idy<(Ny) && idx<Nx && idz<64) {
+    int index = idy + (Ny)*idx + Nx*(Ny)*idz + Nx*Ny*64*i;
+    
+    f[index].x = f[index].x*scaler;  
+    f[index].y = f[index].y*scaler;  
+    
+    }
+   }
+  }    
+}                               
+
+__global__ void scale(cufftReal* nlps, float scaler)
+{
+  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(Nz<=64) {
+   if(idy<(Ny) && idx<Nx && idz<Nz) {
+    int index = idy + (Ny)*idx + Nx*(Ny)*idz;
+    
+    nlps[index] = nlps[index]*scaler;  
+    
+   }
+  }
+  else {
+   for(int i=0; i<Nz/64; i++) {
+    if(idy<(Ny) && idx<Nx && idz<64) {
+    int index = idy + (Ny)*idx + Nx*(Ny)*idz + Nx*Ny*64*i;
+    
+    nlps[index] = nlps[index]*scaler;  
+    
+    }
+   }
+  }    
+}      
     
     
     

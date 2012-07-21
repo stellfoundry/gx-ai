@@ -83,6 +83,7 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     cudaMalloc((void**) &b_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
     cudaMalloc((void**) &scaler, sizeof(float));
 
+     
     int xy = 512/Nz;
     int blockxy = sqrt(xy);
     //dimBlock = threadsPerBlock, dimGrid = numBlocks
@@ -122,12 +123,16 @@ cufftReal* ZDERIVtest(int akx, int aky, int akz, int asin, int acos, int Ny, int
     cufftPlanMany(&plan, 2,n,NULL,1,0,NULL,1,0,CUFFT_R2C,Nz);
     cufftPlanMany(&plan2,2,n,NULL,1,0,NULL,1,0,CUFFT_C2R,Nz);
     
+    
+    
     cufftExecR2C(plan, a_d, a_complex_d);
+    
     
     
     //now we have a field of the form a(ky,kx,z)
     
-    kInit<<<dimGrid, dimBlock>>> (kz_d, Nz);
+   // kInit<<<dimGrid, dimBlock>>> (kz_d, Nz);
+    
     
     /**************************************************************/
     // the ZDERIV sub-routine takes an input field a(ky,kx,z) and //

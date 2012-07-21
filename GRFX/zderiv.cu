@@ -16,9 +16,9 @@ void ZDERIV(cufftComplex *result, cufftComplex* f, float* kz)
   
   cufftExecC2C(plan, f, result, CUFFT_FORWARD);
   
-  printf("A\n");
+  //printf("A\n");
   
-  getfcnZCOMPLEX(result);
+  //getfcnZCOMPLEX(result);
   
   //f is a field of the form f(ky,kx,kz)
   

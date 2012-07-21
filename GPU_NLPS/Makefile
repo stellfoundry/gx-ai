@@ -6,6 +6,7 @@ CU_DEPS := \
       nlps_kernel.cu \
       nlps.cu \
       nlpstest.cu \
+      constants.h \
       
 
 USECUFFT := 1

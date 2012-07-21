@@ -1,7 +1,7 @@
 //for each class
 void zTransformCovering(int nLinks, int nChains, int* ky, int* kx, int* ky_h, int* kx_h, cufftComplex* f) {
     
-  printf("\n\n\nnLinks = %d\n\n\n",nLinks);
+  //printf("\n\n\nnLinks = %d\n\n\n",nLinks);
   
   cufftComplex* g;
   cudaMalloc((void**) &g, sizeof(cufftComplex)*(Nz*nLinks*nChains));
@@ -50,7 +50,7 @@ void zTransformCovering(int nLinks, int nChains, int* ky, int* kx, int* ky_h, in
   scale_covering<<<dimGridCovering,dimBlockCovering>>>(g, nLinks, nChains, scaler2);
   
   
-  getfcnZCOMPLEX_Covering(g,nLinks,nChains,ky_h,kx_h,kz_covering); 
+  //getfcnZCOMPLEX_Covering(g,nLinks,nChains,ky_h,kx_h,kz_covering); 
      
   
   zderiv_covering<<<dimGridCovering, dimBlockCovering>>> (g, nLinks, nChains, kz_covering);

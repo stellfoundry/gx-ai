@@ -15,24 +15,26 @@
 #include <cutil_inline.h>
 #include <shrQATest.h>
 
-#include <nlps_kernel.cu>
+//#include "nlps_kernel.cu"
+//#include <constants.h>
 
-void getfcn(cufftComplex* fcn_d, int Nx, int Ny, int Nz);
-void getfcn(cufftReal* f, int N, int N, int N);
+void getfcn(cufftComplex* fcn_d);
+void getfcn(cufftReal* f);
 
  
 //void getfcn(cufftReal* fcn, cufftReal* fcn_d, int Nx, int Ny, int Nz);
 
 //void kInit(float *k, float *k, float *k, float *k, int N, int N, int N);
 
-__global__ void zero(cufftReal *f, int N, int N, int N);
+__global__ void zero(cufftReal *f);
+__global__ void zeroC(cufftComplex *f);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
 cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR_d, 
                    cufftComplex *g_complex_d, cufftReal *gdxR_d, cufftReal *gdyR_d, 
-		   float *kx_d, float *ky_d, int Ny, int Nx, int Nz, int isave) 
+		   float *kx_d, float *ky_d, int isave) 
 {
     //host variables
     //everything done on device
@@ -55,12 +57,12 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     else dimGridy = Ny/dimBlock.y;
     dim3 dimGrid(dimGridx, dimGridy); */ 
     
-    int dev, zThreads, totalThreads;
+    int dev;
     struct cudaDeviceProp prop;
     cudaGetDevice(&dev);
     cudaGetDeviceProperties(&prop,dev);
-    zThreads = prop.maxThreadsDim[2];
-    totalThreads = prop.maxThreadsPerBlock;   
+    int zThreads = prop.maxThreadsDim[2];
+    int totalThreads = prop.maxThreadsPerBlock;   
     
     int xy = totalThreads/Nz;
     int blockxy = sqrt(xy);
@@ -90,11 +92,10 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
       cufftComplex *fdy_d, *fdx_d;
       cudaMalloc((void**) &fdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
       cudaMalloc((void**) &fdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);  
-      deriv<<<dimGrid, dimBlock>>> (f_complex_d, fdx_d, fdy_d, kx_d, ky_d, Ny, Nx, Nz);
+      deriv<<<dimGrid, dimBlock>>> (f_complex_d, fdx_d, fdy_d, kx_d, ky_d);
       cufftExecC2R(plan2, fdy_d, fdyR_d);
       cufftExecC2R(plan2, fdx_d, fdxR_d);
-      cudaFree(fdy_d), cudaFree(fdx_d);
-      //getfcn(fdxR_d,Ny,Nx,Nz);
+      cudaFree(fdy_d); cudaFree(fdx_d);      
     }  
        
     
@@ -102,11 +103,12 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
       cufftComplex *gdy_d, *gdx_d;
       cudaMalloc((void**) &gdx_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
       cudaMalloc((void**) &gdy_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz); 
-      deriv<<<dimGrid, dimBlock>>> (g_complex_d, gdx_d, gdy_d, kx_d, ky_d, Ny, Nx, Nz);    
+      deriv<<<dimGrid, dimBlock>>> (g_complex_d, gdx_d, gdy_d, kx_d, ky_d); 
       cufftExecC2R(plan2, gdy_d, gdyR_d);
       cufftExecC2R(plan2, gdx_d, gdxR_d);
-      cudaFree(gdy_d), cudaFree(gdx_d);
+      cudaFree(gdy_d); cudaFree(gdx_d);
     }  
+    
     
     
     cufftReal *multR_d;
@@ -114,22 +116,26 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     cudaMalloc((void**) &multR_d, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &mult_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
      
-    //getfcn(gdx_d,Nx,Ny,Nz);
+    
     
     scaler = (float)1/(Nx*Nx*Ny*Ny);
     
-    zero<<<dimGrid, dimBlock>>> (multR_d, Ny, Nx, Nz);
+    zero<<<dimGrid, dimBlock>>> (multR_d);
     
     //getfcn(multR_d,Nx,Ny,Nz);
     
-    bracket<<<dimGrid, dimBlock>>> (multR_d, fdxR_d, fdyR_d, gdxR_d, gdyR_d, scaler, Ny, Nx, Nz);
+    bracket<<<dimGrid, dimBlock>>> (multR_d, fdxR_d, fdyR_d, gdxR_d, gdyR_d, .25);
+    
     
     
     //getfcn(multR_d, Nx, Ny, Nz);
     printf("%s\n", cudaGetErrorString(cudaGetLastError()));
     
     
-    cufftExecR2C(plan, multR_d, mult_d);  
+    cufftExecR2C(plan, multR_d, mult_d); 
+    
+    scaler = (float) 1/ (Nx*Ny/2);
+    scale<<<dimGrid,dimBlock>>> (mult_d,scaler); 
     
     ///////////////////////////////////////////////
     //  mask kernel
@@ -144,6 +150,7 @@ cufftComplex* NLPS(cufftComplex *f_complex_d, cufftReal *fdxR_d, cufftReal *fdyR
     
     
     cudaFree(multR_d);
+    
     
     
     
