@@ -9,6 +9,7 @@ dim3 dimGrid;
 dim3 dimBlock;
 int totalThreads;
 bool MASK;
+bool debug=true;
 
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
 #include "getfcn.cu"
@@ -110,6 +111,7 @@ int main(int argc, char* argv[])
 	
 	
 	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos);
+	if(debug) {printf("Executed NLPStest\n");}
         
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
