@@ -12,11 +12,11 @@ bool MASK;
 
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
 #include "getfcn.cu"
-#include "../../GRFX/nlps_kernel.cu"
-#include "../../GRFX/timestep_kernel.cu"
-#include "../../GRFX/zderiv_kernel.cu"
-#include "../../GRFX/nlps.cu"
-#include "../../GPU_NLPS/nlpstest.cu"
+#include "nlps_kernel.cu"
+#include "timestep_kernel.cu"
+#include "zderiv_kernel.cu"
+#include "nlps.cu"
+#include "nlpstest.cu"
 
 
 int main(int argc, char* argv[])
