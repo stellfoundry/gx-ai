@@ -10,12 +10,12 @@ dim3 dimBlock;
 int totalThreads;
 bool MASK;
 
-#include "/Developer/GPU Computing/C/project/src/GRFX/getfcn.cu"
-#include "/Developer/GPU Computing/C/project/src/GRFX/nlps_kernel.cu"
-#include "/Developer/GPU Computing/C/project/src/GRFX/timestep_kernel.cu"
-#include "/Developer/GPU Computing/C/project/src/GRFX/zderiv_kernel.cu"
-#include "/Developer/GPU Computing/C/project/src/GRFX/nlps.cu"
-#include "/Developer/GPU Computing/C/project/src/GPU_NLPS/nlpstest.cu"
+#include "../../GRFX/getfcn.cu"
+#include "../../GRFX/nlps_kernel.cu"
+#include "../../GRFX/timestep_kernel.cu"
+#include "../../GRFX/zderiv_kernel.cu"
+#include "../../GRFX/nlps.cu"
+#include "../../GPU_NLPS/nlpstest.cu"
 
 int main(int argc, char* argv[])
 {
