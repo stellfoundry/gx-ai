@@ -8,6 +8,7 @@ __constant__ int Nx,Ny,Nz,zThreads, X0, Y0, Z0;
 dim3 dimGrid;
 dim3 dimBlock;
 int totalThreads;
+bool MASK;
 
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
 #include "../../GRFX/getfcn.cu"
