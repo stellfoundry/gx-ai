@@ -1,69 +1,4 @@
-/***** LINES CHANGED FOR X <-> Y MARKED BY '//' *******/
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include "cufft.h"
-
-// includes, project
-#include <cutil_inline.h>
-#include <shrQATest.h>
-
-#include <nlps.cu>
-
-//void getfcn(cufftReal* fcn, cufftReal* fcn_d, int Nx, int Ny, int Nz);
-//void getfcnC(cufftComplex* fcn, cufftComplex* fcn_d, int Nx, int Ny, int Nz);
-
-void getfcn(cufftComplex* fcn_d, int Nx, int Ny, int Nz)
-{
-  cufftComplex *fcnC;
-  fcnC = (cufftComplex*) malloc(sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
-  cudaMemcpy(fcnC, fcn_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz, cudaMemcpyDeviceToHost);
-  for(int k=0; k<(Nz); k++) { 
-    for(int j=0; j<Nx/2+1; j++) { 
-      for(int i=0; i<Ny/2+1; i++) {  
-	int index = i + (Ny/2+1)*(j)+Nx*(Ny/2+1)*k;
-	
-	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcnC[index].x, fcnC[index].y, index);
-      }
-      printf("\n");
-    }  
-    for(int j=-Nx/2+1; j<0; j++) {
-      for(int i=0; i<Ny/2+1; i++) {
-        int index = (i) + (Ny/2+1)*(j+Nx)+Nx*(Ny/2+1)*k;
-	
-	printf("F(%d,%d,%.2f)=%.3f+i*%.3f: %d ", i, j, 2*M_PI*(float)(k-Nz/2)/Nz, fcnC[index].x, fcnC[index].y, index);
-      }
-        
-      printf("\n");
-    }
-   }  
-   free(fcnC);
-} 
-
-void getfcn(cufftReal* fcn_d, int Nx, int Ny, int Nz) {
-  cufftReal *fcn;
-  fcn = (cufftReal*) malloc(sizeof(cufftReal)*Ny*Nx*Nz);
-  cudaMemcpy(fcn, fcn_d, sizeof(cufftReal)*Nx*Ny*Nz, cudaMemcpyDeviceToHost);
-  
-  for(int k=0; k<Nz; k++) {  
-   for(int j=0; j<Nx; j++) {
-    for(int i=0; i<Ny; i++) {
-      int index = i + Ny*j + Nx*Ny*k;
-      printf("f(%.2fPI,%.2fPI)=%.3f ", 2*(float)(i-Ny/2)/Ny, 2*(float)(j-Nx/2)/Nx, fcn[index]);     
-      }
-      printf("\n");
-    } printf("\n");
-   } 
-  free(fcn); 
-}  
-
-__global__ void scale(cufftReal *f, float a, int N, int N, int N);
-__global__ void zeroC(cufftComplex *f, int N, int N, int N);
-__global__ void zero(cufftReal *f, int N, int N, int N);
-
-
-cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int gsin, int gcos, int Ny, int Nx, int Nz) 
+cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int gsin, int gcos) 
 {
     //host variables
     cufftReal *f, *g, *nlps;    
@@ -72,7 +7,7 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     f = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     g = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     y = (float*) malloc(sizeof(float)*Ny);                                 //
-    x = (float*) malloc(sizeof(float)*Nx);				   //
+    x = (float*) malloc(sizeof(float)*Nx);			   //
     nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     
     
@@ -81,9 +16,7 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cufftComplex *f_complex_d, *g_complex_d;
     
     float scaler;
-    float *kx_d, *ky_d;
-    cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 
-    cudaMalloc((void**) &kx_d, sizeof(float)*(Nx));     
+         
     cudaMalloc((void**) &f_d, sizeof(cufftReal)*Nx*Ny*Nz); 
     cudaMalloc((void**) &g_d, sizeof(cufftReal)*Nx*Ny*Nz);
     cudaMalloc((void**) &f_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
@@ -91,22 +24,13 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     
     cudaMalloc((void**) &scaler, sizeof(float));
     
-    /*int block_size_x=2; int block_size_y=2; 
-    int dimGridx, dimGridy;
-
-    dim3 dimBlock(block_size_x, block_size_y);
-    if(Ny/dimBlock.x == 0) {dimGridx = 1;}
-    else dimGridx = Nx/dimBlock.x;
-    if(Nx/dimBlock.y == 0) {dimGridy = 1;}
-    else dimGridy = Ny/dimBlock.y;
-    dim3 dimGrid(dimGridx, dimGridy); */ 
     
-    int dev, zThreads, totalThreads;
+    /*int dev;
     struct cudaDeviceProp prop;
     cudaGetDevice(&dev);
     cudaGetDeviceProperties(&prop,dev);
-    zThreads = prop.maxThreadsDim[2];
-    totalThreads = prop.maxThreadsPerBlock;    
+    int zThreads = prop.maxThreadsDim[2];
+    int totalThreads = prop.maxThreadsPerBlock;     
     
     int xy = totalThreads/Nz;
     int blockxy = sqrt(xy);
@@ -118,29 +42,31 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
       dimBlock.z = zThreads;
     }  
     
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1);
+    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1); */
     //if(dimGrid.x == 0) {dimGrid.x = 1;}
     //if(dimGrid.y == 0) {dimGrid.y = 1;}
     //if(dimGrid.z == 0) {dimGrid.z = 1;}    
+    
+    if(!(fky < Ny && fky >= 0 && fkx > -Nx/2 && fkx < (Nx/2+1) && gky < Ny && gky >= 0 && gkx > -Nx/2 && gkx < (Nx/2+1))) {
+      printf("\nWARNING: Aliasing, make sure\n-Nx/2 < kx < Nx/2+1\n0 < ky < Ny/2+1\n\n");
+    }
+    
     
     for(int k=0; k<Nz; k++) {
      for(int j=0; j<Nx; j++) {
       for(int i=0; i<Ny; i++) {
       
       
-      y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;                             //  Ny, Nx not changed!!
-      x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;				    //
+      y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;                             
+      x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;				    
       int index = i + Ny*j + Ny*Nx*k;
       
-      //fkx,fky,gkx,gky not changed!!     
-      f[index]= fcos*cos( fky*y[i] + fkx*x[j]) + fsin*sin(fky*y[i] + fkx*x[j]);	        //
-      g[index]= gcos*cos( gky*y[i] + gkx*x[j]) + gsin*sin(gky*y[i] + gkx*x[j]);		//
+           
+      f[index]= fcos*cos( fky*y[i] + fkx*x[j]) + fsin*sin(fky*y[i] + fkx*x[j]);	        
+      g[index]= gcos*cos( gky*y[i] + gkx*x[j]) + gsin*sin(gky*y[i] + gkx*x[j]);		
       
-      
-      //printf("f(%.2fPI,%.2fPI)=%.3f: %d ", y[i]/M_PI, x[j]/M_PI, f[index], index);
-      
+            
       }
-      //printf("\n");
      }
     }
     
@@ -157,15 +83,20 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cufftExecR2C(plan, f_d, f_complex_d);
     cufftExecR2C(plan, g_d, g_complex_d);
     
+    //getfcn(f_complex_d);
+    //getfcn(g_complex_d);
+    scaler = (float) 1/(Nx*Ny/2);
+    scale<<<dimGrid,dimBlock>>>(f_complex_d,scaler);
+    scale<<<dimGrid,dimBlock>>>(g_complex_d,scaler);
+    //getfcn(f_complex_d);
+    
+    //getfcn(f_complex_d);
+    //getfcn(g_complex_d);
     
     cudaFree(f_d); cudaFree(g_d);
     
-    cufftReal *nlps_d, *fdxR_d, *fdyR_d, *gdxR_d, *gdyR_d;
+    cufftReal *nlps_d;
     cufftComplex *nlps_complex_d;
-    cudaMalloc((void**) &fdxR_d, sizeof(cufftReal)*(Ny)*Nx*Nz);
-    cudaMalloc((void**) &fdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
-    cudaMalloc((void**) &gdxR_d, sizeof(cufftReal)*Ny*Nx*Nz);
-    cudaMalloc((void**) &gdyR_d, sizeof(cufftReal)*Ny*Nx*Nz);
     cudaMalloc((void**) &nlps_complex_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     cudaMalloc((void**) &nlps_d, sizeof(cufftReal)*Nx*Ny*Nz);
     
@@ -176,53 +107,58 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cudaMemcpy(g_complex, g_complex_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz,
                                                     cudaMemcpyDeviceToHost); */
 
-    					    
-	
-    kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, Ny, Nx, Nz);
+    /*cudaEvent_t start, stop;
+    float time;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);					    
+
+    cudaEventRecord(start,0);*/
+    
+    float *kx_d, *ky_d, *kz_d;
+    cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 
+    cudaMalloc((void**) &kx_d, sizeof(float)*(Nx));
+    cudaMalloc((void**) &kz_d, sizeof(float)*Nz);	
+    
+     	
+    kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, kz_d);
     
     
-    
+    /*cudaEventRecord(stop,0);
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&time,start,stop);
+    printf("kInit Time (ms): %f\n",time);*/
     						    
     
-    zero<<<dimGrid, dimBlock>>> (fdxR_d, Ny, Nx, Nz);
-    zero<<<dimGrid, dimBlock>>> (fdyR_d, Ny, Nx, Nz);
-    zero<<<dimGrid, dimBlock>>> (gdxR_d, Ny, Nx, Nz);
-    zero<<<dimGrid, dimBlock>>> (gdyR_d, Ny, Nx, Nz);
-    zero<<<dimGrid, dimBlock>>> (nlps_d, Ny, Nx, Nz);
-    zeroC<<<dimGrid, dimBlock>>> (nlps_complex_d, Ny, Nx, Nz);
+    
+    zero<<<dimGrid, dimBlock>>> (nlps_d);
+    zeroC<<<dimGrid, dimBlock>>> (nlps_complex_d);
     for(int index=0; index<Nx*Ny*Nz; index++) {
       nlps[index] = 0;
     } 
     
-    cudaEvent_t start, stop;
-    float time;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-  
-    cudaEventRecord(start,0);
+    
+    //cudaEventRecord(start,0);
       
       
-    nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 0);
+    NLPS(nlps_complex_d, f_complex_d, g_complex_d, kx_d, ky_d);
     
-    for(int i=0; i<4; i++) {
-    nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 1);
-    }
-    //nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, Ny, Nx, Nz, 2);    
+    /* for(int i=0; i<4; i++) {
+    nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, 1);
+    } */
+    //nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, 0);    
     
-    cudaEventRecord(stop,0);
+    //getfcn(nlps_complex_d);
+    
+    /*cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&time,start,stop);
-    printf("NLPS Time (avg'd over 5) (ms): %f\n",time/5);
+    printf("NLPS Time (avg'd over 5) (ms): %f\n",time/5);*/
     
     cufftExecC2R(plan2, nlps_complex_d, nlps_d);
     
+    scaleReal<<<dimGrid,dimBlock>>>(nlps_d, .5);
+    getError();
     
-    
-    scaler = (float)1/(Nx*Ny);
-    
-    scale<<<dimGrid,dimBlock>>>(nlps_d, scaler, Ny, Nx, Nz);
-    
-    cudaFree(fdxR_d); cudaFree(fdyR_d); cudaFree(gdxR_d); cudaFree(gdyR_d); 
     cudaFree(nlps_complex_d); cudaFree(f_complex_d); cudaFree(g_complex_d);
     cudaFree(kx_d); cudaFree(ky_d);
 
@@ -236,88 +172,3 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
 }
 
    
-    
-__global__ void scale(cufftReal* nlps, float scaler, int Ny, int Nx, int Nz)
-{
-  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
-  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
-  int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
-  
-  if(Nz<=64) {
-   if(idy<(Ny) && idx<Nx && idz<Nz) {
-    int index = idy + (Ny)*idx + Nx*(Ny)*idz;
-    
-    nlps[index] = nlps[index]*scaler;  
-    
-   }
-  }
-  else {
-   for(int i=0; i<Nz/64; i++) {
-    if(idy<(Ny) && idx<Nx && idz<64) {
-    int index = idy + (Ny)*idx + Nx*(Ny)*idz + Nx*Ny*64*i;
-    
-    nlps[index] = nlps[index]*scaler;  
-    
-    }
-   }
-  }  
-   
-}      
-
-__global__ void zeroC(cufftComplex* f, int Ny, int Nx, int Nz) 
-{
-  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
-  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
-  int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
-  
-  if(Nz<=64) {
-   if(idy<(Ny/2+1) && idx<Nx && idz<Nz) {
-    int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz;
-    
-    f[index].x = 0;
-    f[index].y = 0;
-   }
-  }
-  else {
-   for(int i=0; i<Nz/64; i++) {
-    if(idy<(Ny/2+1) && idx<Nx && idz<64) {
-    int index = idy + (Ny/2+1)*idx + Nx*(Ny/2+1)*idz + Nx*(Ny/2+1)*64*i;
-    
-    f[index].x = 0;
-    f[index].y = 0;
-    }
-   }
-  }    
-}    
-
-__global__ void zero(cufftReal* f, int Ny, int Nx, int Nz) 
-{
-  int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
-  int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
-  int idz = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
-  
-  if(Nz<=64) {
-   if(idy<(Ny) && idx<Nx && idz<Nz) {
-    int index = idy + (Ny)*idx + Nx*(Ny)*idz;
-    
-    f[index] = 0;
-    
-   }
-  }
-  else {
-   for(int i=0; i<Nz/64; i++) {
-    if(idy<(Ny) && idx<Nx && idz<64) {
-    int index = idy + (Ny)*idx + Nx*(Ny)*idz + Nx*Ny*64*i;
-    
-    f[index] = 0;
-    
-    }
-   }
-  }   
-  
-}    
-
-    
-    
-    
-      
