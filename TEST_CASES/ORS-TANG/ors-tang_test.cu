@@ -13,7 +13,7 @@ dim3 dimBlock;
 int totalThreads;
 bool MASK;         //defaults to on unless set otherwise
 
-
+//make sure GRFX and TEST_CASES are in same directory
 #include "../../GRFX/getfcn.cu"
 #include "../../GRFX/nlps_kernel.cu"
 #include "../../GRFX/zderiv_kernel.cu"
