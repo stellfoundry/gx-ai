@@ -13,9 +13,9 @@ set label "Nx=256   Ny=256   Nz=1   Boxsize=(2pi*10)^3\n\n\
 nu=0.01   eta=0.01" at 0,-.9
 set label "initial conditions:\n\
 phi= -(cosx+cosy)\nA= .5(cos2x+2cosy)" at 1.5,-.9
-plot [ ] [0:] "../outputs/TIMEoutputA.dat" using 1:2 title "total energy" with lines, \
-"../outputs/TIMEoutputA.dat" using 1:3 title "kinetic energy" with lines, \
-"../outputs/TIMEoutputA.dat" using 1:4 title "magnetic energy" with lines
+plot [ ] [0:] "../outputs/ORS-TANGoutputA.dat" using 1:2 title "total energy" with lines, \
+"../outputs/ORS-TANGoutputA.dat" using 1:3 title "kinetic energy" with lines, \
+"../outputs/ORS-TANGoutputA.dat" using 1:4 title "magnetic energy" with lines
 set terminal postscript color solid
 set output "ORS-TANGplotA.ps"
 replot
