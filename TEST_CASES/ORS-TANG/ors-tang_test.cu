@@ -193,9 +193,9 @@ int main(int argc, char* argv[])
 	fprintf(pipe, "set xtics 0, .5, %f\nset mxtics 5\nset ytics 0, 1\nset mytics 5\nset tics scale 3\n",endtime);
 	fprintf(pipe, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%d,%d,%d)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Z0);
 	fprintf(pipe, "nu=%g   eta=%g\" at 0,-.9\n",nu,eta);
-	fprintf(pipe, "plot [ ] [0:] \"../%s\" using 1:2 title \"total energy\" with lines, \\\n", argv[2]);
-	fprintf(pipe, "\"../%s\" using 1:3 title \"kinetic energy\" with lines, \\\n", argv[2]);
-	fprintf(pipe, "\"../%s\" using 1:4 title \"magnetic energy\" with lines\n", argv[2]);
+	fprintf(pipe, "plot [ ] [0:] \"%s\" using 1:2 title \"total energy\" with lines, \\\n", argv[2]);
+	fprintf(pipe, "\"%s\" using 1:3 title \"kinetic energy\" with lines, \\\n", argv[2]);
+	fprintf(pipe, "\"%s\" using 1:4 title \"magnetic energy\" with lines\n", argv[2]);
 	fprintf(pipe, "pause -1 \"press any key\"");
 
 	
