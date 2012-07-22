@@ -22,6 +22,7 @@ echo
 echo ORSZAG-TANG CASE 2...
 ./ORS-TANG_TEST.out inputs/ORS-TANGinput256 outputs/ORS-TANGoutput256 \
 plots/ORS-TANGplot256 -quiet
-gnuplot plots/ORS-TANGplotA.plt
+cd plots
+gnuplot ORS-TANGplotA.plt
 
 
