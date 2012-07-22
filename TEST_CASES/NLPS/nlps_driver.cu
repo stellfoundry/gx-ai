@@ -117,9 +117,9 @@ int main(int argc, char* argv[])
         dimGrid.z = 1;    
 	
 	
-	
+	printf("\nStarting NLPS test...\n");
 	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos);
-	printf("\nExecuted NLPStest. Checking......\n");
+	printf("\nExecuted NLPS test. Checking......\n");
         
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {

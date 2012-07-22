@@ -159,8 +159,10 @@ int main(int argc, char* argv[])
 	MASK = true;
     
         //////////////////////////////////////////////////////////
-		
+	
+	printf("\nStarting Orszag-Tang test...\n");	
         timestep_test(f, g, ofile);
+	printf("\nPlotting......\n");
         	
 	//////////////////////////////////////////////////////////
 	
