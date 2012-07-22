@@ -1,6 +1,6 @@
 EXECUTABLE := ORS-TANG_TEST.out
 
-CUFILES := ors-tang_test.cu
+CUFILES := ors-tang_driver.cu
 
 CU_DEPS := \
       timestep_kernel.cu \
