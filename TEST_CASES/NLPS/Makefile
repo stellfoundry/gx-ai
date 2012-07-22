@@ -1,6 +1,6 @@
 EXECUTABLE := NLPSTEST.out
 
-CUFILES := nlps_test.cu
+CUFILES := nlps_driver.cu
 
 USECUFFT := 1
 
