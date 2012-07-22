@@ -72,6 +72,7 @@ void energy_ky(cufftComplex* totEnergy_h, cufftComplex* kinEnergy_h, cufftComple
     for(int i=0; i<Ny/2+1; i++) {
       //for each ky, copy a part of the kPhi array to fky, and sum
       kycopy<<<dimGrid,dimBlock>>> (fky, kPhi, i);
+      
       //since the fky array is Nx*Nz, and this is assumed to be power of 2, we don't need the padded array for the reduction
       sumReduc_nopad(&kinEnergy_h[i], fky);
 
