@@ -25,6 +25,7 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cudaMalloc((void**) &scaler, sizeof(float));
     
     
+    
     /*int dev;
     struct cudaDeviceProp prop;
     cudaGetDevice(&dev);
@@ -87,6 +88,7 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     //getfcn(g_complex_d);
     scaler = (float) 1/(Nx*Ny/2);
     scale<<<dimGrid,dimBlock>>>(f_complex_d,scaler);
+    if(debug) getError("After first kernel");
     scale<<<dimGrid,dimBlock>>>(g_complex_d,scaler);
     //getfcn(f_complex_d);
     
@@ -107,12 +109,12 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cudaMemcpy(g_complex, g_complex_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz,
                                                     cudaMemcpyDeviceToHost); */
 
-    /*cudaEvent_t start, stop;
+    cudaEvent_t start, stop;
     float time;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);					    
 
-    cudaEventRecord(start,0);*/
+    /*cudaEventRecord(start,0);*/
     
     float *kx_d, *ky_d, *kz_d;
     cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 
@@ -137,10 +139,11 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     } 
     
     
-    //cudaEventRecord(start,0);
+    cudaEventRecord(start,0);
       
-      
+    if(debug) getError("Before NLPS");  
     NLPS(nlps_complex_d, f_complex_d, g_complex_d, kx_d, ky_d);
+    if(debug) getError("After NLPS");
     
     /* for(int i=0; i<4; i++) {
     nlps_complex_d= NLPS(f_complex_d, fdxR_d, fdyR_d, g_complex_d, gdxR_d, gdyR_d, kx_d, ky_d, 1);
@@ -149,15 +152,15 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     
     //getfcn(nlps_complex_d);
     
-    /*cudaEventRecord(stop,0);
+    cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&time,start,stop);
-    printf("NLPS Time (avg'd over 5) (ms): %f\n",time/5);*/
+    printf("NLPS Time (ms): %f\n",time);
     
     cufftExecC2R(plan2, nlps_complex_d, nlps_d);
     
     scaleReal<<<dimGrid,dimBlock>>>(nlps_d, .5);
-    if(!quiet) getError();
+    if(debug) getError("After last kernel");
     
     cudaFree(nlps_complex_d); cudaFree(f_complex_d); cudaFree(g_complex_d);
     cudaFree(kx_d); cudaFree(ky_d);

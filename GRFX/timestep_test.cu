@@ -183,10 +183,10 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&runtime,start,stop);
-    if(!quiet) {
-    printf("Total time (ms): %f\n",runtime);
+    
+    printf("\nExecuted test.\nTotal time (ms): %f\n",runtime);
     printf("Avg time/timestep (ms): %f\n",runtime/counter);
-    }
+    
     
     cufftExecC2R(plan2, fC1_d, f_d);
     cufftExecC2R(plan2, gC1_d, g_d);

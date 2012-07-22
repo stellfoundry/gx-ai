@@ -250,5 +250,9 @@ void getfcnComplexPadded(cufftComplex* fcn_d)
      
 void getError() {
   printf("\n%s\n",cudaGetErrorString(cudaGetLastError()));
-}                           
+}    
+
+void getError(char* message) {
+  printf("\n%s: %s\n",message, cudaGetErrorString(cudaGetLastError()));
+}                                                  
    
