@@ -34,6 +34,8 @@ bool quiet=false;
 #include "timestep.cu"
 #include "timestep_test.cu"
 
+//blah
+
 int main(int argc, char* argv[])
 {   
   cufftReal *f, *g;
