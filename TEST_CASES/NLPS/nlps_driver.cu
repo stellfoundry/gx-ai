@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
 	
 	
 	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos);
-	if(debug) {printf("Executed NLPStest\n");}
+	printf("\nExecuted NLPStest. Checking......\n");
         
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
@@ -142,6 +142,7 @@ int main(int argc, char* argv[])
 	  }
 	 }     
 	}
+	
 	FILE *ofile = fopen( argv[2], "w+");
 	
 	fprintf(ofile,"f(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\ng(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
