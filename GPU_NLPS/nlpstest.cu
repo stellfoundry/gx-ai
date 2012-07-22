@@ -1,13 +1,14 @@
-cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int gsin, int gcos) 
+cufftReal* NLPStest(int fkx, int fky, int fkz, int fsin, int fcos, int gkx, int gky, int gkz, int gsin, int gcos) 
 {
     //host variables
     cufftReal *f, *g, *nlps;    
-    float *y, *x;
+    float *y, *x, *z;
     
     f = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     g = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     y = (float*) malloc(sizeof(float)*Ny);                                 //
-    x = (float*) malloc(sizeof(float)*Nx);			   //
+    x = (float*) malloc(sizeof(float)*Nx);
+    z = (float*) malloc(sizeof(float)*Nz);			   //
     nlps = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);
     
     
@@ -20,34 +21,10 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cudaMalloc((void**) &f_d, sizeof(cufftReal)*Nx*Ny*Nz); 
     cudaMalloc((void**) &g_d, sizeof(cufftReal)*Nx*Ny*Nz);
     cudaMalloc((void**) &f_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
-    cudaMalloc((void**) &g_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);
-    
+    cudaMalloc((void**) &g_complex_d, sizeof(cufftComplex)*((Ny/2+1))*(Nx)*Nz);    
     cudaMalloc((void**) &scaler, sizeof(float));
     
-    
-    
-    /*int dev;
-    struct cudaDeviceProp prop;
-    cudaGetDevice(&dev);
-    cudaGetDeviceProperties(&prop,dev);
-    int zThreads = prop.maxThreadsDim[2];
-    int totalThreads = prop.maxThreadsPerBlock;     
-    
-    int xy = totalThreads/Nz;
-    int blockxy = sqrt(xy);
-    //dimBlock = threadsPerBlock, dimGrid = numBlocks
-    dim3 dimBlock(blockxy,blockxy,Nz);
-    if(Nz>zThreads) {
-      dimBlock.x = sqrt(totalThreads/zThreads);
-      dimBlock.y = sqrt(totalThreads/zThreads);
-      dimBlock.z = zThreads;
-    }  
-    
-    dim3 dimGrid(Nx/dimBlock.x+1,Ny/dimBlock.y+1,1); */
-    //if(dimGrid.x == 0) {dimGrid.x = 1;}
-    //if(dimGrid.y == 0) {dimGrid.y = 1;}
-    //if(dimGrid.z == 0) {dimGrid.z = 1;}    
-    
+
     if(!(fky < Ny && fky >= 0 && fkx > -Nx/2 && fkx < (Nx/2+1) && gky < Ny && gky >= 0 && gkx > -Nx/2 && gkx < (Nx/2+1))) {
       printf("\nWARNING: Aliasing, make sure\n-Nx/2 < kx < Nx/2+1\n0 < ky < Ny/2+1\n\n");
     }
@@ -59,12 +36,13 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
       
       
       y[i] = 2*M_PI*(float)(i-Ny/2)/Ny;                             
-      x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;				    
+      x[j] = 2*M_PI*(float)(j-Nx/2)/Nx;	
+      z[k] = 2*M_PI*(float)(k-Nz/2)/Nz;			    
       int index = i + Ny*j + Ny*Nx*k;
       
            
-      f[index]= fcos*cos( fky*y[i] + fkx*x[j]) + fsin*sin(fky*y[i] + fkx*x[j]);	        
-      g[index]= gcos*cos( gky*y[i] + gkx*x[j]) + gsin*sin(gky*y[i] + gkx*x[j]);		
+      f[index]= fcos*cos( fky*y[i] + fkx*x[j] + fkz*z[k]) + fsin*sin(fky*y[i] + fkx*x[j] + fkz*z[k]);	        
+      g[index]= gcos*cos( gky*y[i] + gkx*x[j] + gkz*z[k]) + gsin*sin(gky*y[i] + gkx*x[j] + gkz*z[k]);		
       
             
       }
@@ -90,10 +68,13 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     scale<<<dimGrid,dimBlock>>>(f_complex_d,scaler);
     if(debug) getError("After first kernel");
     scale<<<dimGrid,dimBlock>>>(g_complex_d,scaler);
-    //getfcn(f_complex_d);
-    
-    //getfcn(f_complex_d);
-    //getfcn(g_complex_d);
+
+    if(debug) {
+      printf("\nF:\n"); 
+      getfcn(f_complex_d);
+      printf("\nG:\n");
+      getfcn(g_complex_d);
+    }
     
     cudaFree(f_d); cudaFree(g_d);
     
@@ -102,19 +83,12 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     cudaMalloc((void**) &nlps_complex_d, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);
     cudaMalloc((void**) &nlps_d, sizeof(cufftReal)*Nx*Ny*Nz);
     
-    
-    //if nlps should receive fields on host, use these copies
-    /* cudaMemcpy(f_complex, f_complex_d, sizeof(cufftComplex)*(Nz/2+1)*Ny*Nz,
-                                                    cudaMemcpyDeviceToHost);
-    cudaMemcpy(g_complex, g_complex_d, sizeof(cufftComplex)*(Nx/2+1)*Ny*Nz,
-                                                    cudaMemcpyDeviceToHost); */
 
     cudaEvent_t start, stop;
     float time;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);					    
 
-    /*cudaEventRecord(start,0);*/
     
     float *kx_d, *ky_d, *kz_d;
     cudaMalloc((void**) &ky_d, sizeof(float)*(Ny/2+1));                                 
@@ -123,15 +97,8 @@ cufftReal* NLPStest(int fkx, int fky, int fsin, int fcos, int gkx, int gky, int 
     
      	
     kInit<<<dimGrid, dimBlock>>> (kx_d, ky_d, kz_d);
-    
-    
-    /*cudaEventRecord(stop,0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&time,start,stop);
-    printf("kInit Time (ms): %f\n",time);*/
-    						    
-    
-    
+    			    
+        
     zero<<<dimGrid, dimBlock>>> (nlps_d);
     zeroC<<<dimGrid, dimBlock>>> (nlps_complex_d);
     for(int index=0; index<Nx*Ny*Nz; index++) {

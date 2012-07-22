@@ -1,2 +1,5 @@
-1     5     3      -1     3     0     0      4      32   32   32   1    1    1
-fkx   fky   fsin   fcos   gkx   gky   gsin   gcos   Nx   Ny   Nz   X0   Y0   Z0
+1     5     2     3      -1     3     0    3    0      4      32   32   32   1    1    1
+fkx   fky  fkz  fsin   fcos   gkx   gky   gkz  gsin   gcos   Nx   Ny   Nz   X0   Y0   Z0
+
+-Nx/2 < kx < Nx/2+1
+0 < ky < Ny/2+1

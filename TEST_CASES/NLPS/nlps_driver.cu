@@ -23,7 +23,7 @@ bool quiet=false;
 
 int main(int argc, char* argv[])
 {
-    int fkx, fky, gkx, gky, fsin, fcos, gsin, gcos;
+    int fkx, fky, fkz, gkx, gky, gkz, fsin, fcos, gsin, gcos;
     cufftReal *nlps;
     cufftReal *nlpscheck, *fdxcheck, *fdycheck, *gdxcheck, *gdycheck;
     float *x, *y, *z;
@@ -74,7 +74,7 @@ int main(int argc, char* argv[])
         }
         else 
         {
-            fscanf(ifile, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d", &fkx, &fky, &fsin, &fcos, &gkx, &gky, &gsin, &gcos, &Nx, &Ny, &Nz, &X0,&Y0,&Z0);
+            fscanf(ifile, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d", &fkx, &fky, &fkz, &fsin, &fcos, &gkx, &gky, &gkz, &gsin, &gcos, &Nx, &Ny, &Nz, &X0,&Y0,&Z0);
             fclose( ifile );
         } 
 	nlpscheck = (cufftReal*) malloc(sizeof(cufftReal)*Nx*Ny*Nz);        
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
 	
 	
 	printf("\nStarting NLPS test...\n");
-	nlps = NLPStest(fkx, fky, fsin, fcos, gkx, gky, gsin, gcos);
+	nlps = NLPStest(fkx, fky, fkz, fsin, fcos, gkx, gky, gkz, gsin, gcos);
 	printf("\nExecuted NLPS test. Checking......\n");
         
 	for(int k=0; k<Nz; k++) {
@@ -130,10 +130,10 @@ int main(int argc, char* argv[])
 	    int index = i + Ny*j + Nx*Ny*k;
 	    
 	    //(df/dx)(dg/dy)-(df/dy)(dg/dx) 
-	    fdxcheck[index] = -fkx*fcos*sin(fky*y[i] + fkx*x[j]) + fkx*fsin*cos(fky*y[i] + fkx*x[j]);	// only x and y changed,
-	    fdycheck[index] = -fky*fcos*sin(fky*y[i] + fkx*x[j]) + fky*fsin*cos(fky*y[i] + fkx*x[j]);	// fkx,fky,gkx,gky,i,j same
-	    gdxcheck[index] = -gkx*gcos*sin(gky*y[i] + gkx*x[j]) + gkx*gsin*cos(gky*y[i] + gkx*x[j]);	//
-	    gdycheck[index] = -gky*gcos*sin(gky*y[i] + gkx*x[j]) + gky*gsin*cos(gky*y[i] + gkx*x[j]);	//
+	    fdxcheck[index] = -fkx*fcos*sin(fky*y[i] + fkx*x[j]+ fkz*z[k]) + fkx*fsin*cos(fky*y[i] + fkx*x[j]+ fkz*z[k]);	// only x and y changed,
+	    fdycheck[index] = -fky*fcos*sin(fky*y[i] + fkx*x[j]+ fkz*z[k]) + fky*fsin*cos(fky*y[i] + fkx*x[j]+ fkz*z[k]);	// fkx,fky,gkx,gky,i,j same
+	    gdxcheck[index] = -gkx*gcos*sin(gky*y[i] + gkx*x[j]+ gkz*z[k]) + gkx*gsin*cos(gky*y[i] + gkx*x[j]+ gkz*z[k]);	//
+	    gdycheck[index] = -gky*gcos*sin(gky*y[i] + gkx*x[j]+ gkz*z[k]) + gky*gsin*cos(gky*y[i] + gkx*x[j]+ gkz*z[k]);	//
 	    
 	    
 	    
@@ -145,8 +145,9 @@ int main(int argc, char* argv[])
 	
 	FILE *ofile = fopen( argv[2], "w+");
 	
-	fprintf(ofile,"f(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\ng(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\nNx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",
-	                      fcos,fky,fkx,fsin,fky,fkx,gcos,gky,gkx,gsin,gky,gkx,Nx,Ny,Nz);
+	fprintf(ofile,"f(y,x)= %d*cos(%dy + %dx + %dz) + %d*sin(%dy + %dx + %dz)\n",fcos,fky,fkx,fkz,fsin,fky,fkx,fkz);
+	fprintf(ofile,"g(y,x)= %d*cos(%dy + %dx) + %d*sin(%dy + %dx)\n",gcos,gky,gkx,gkz,gsin,gky,gkx,gkz);
+	fprintf(ofile,"Nx=%d, Ny=%d, Nz=%d\n\nOutputs:\nNLPS BRACKET\n",Nx,Ny,Nz);		      
 	
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
@@ -192,7 +193,7 @@ int main(int argc, char* argv[])
 	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("\nNLPS CHECKS\n");}
 	else {fprintf(ofile, "\nNLPS DOES NOT CHECK\n"); printf("NLPS DOES NOT CHECK\n");}
 	
-	printf("fkx=%d  fky=%d  fsin=%d  fcos=%d  gkx=%d  gky=%d  gsin=%d  gcos=%d  Nx=%d  Ny=%d  Nz=%d\n\n", fkx, fky, fsin,fcos,gkx, gky,gsin,gcos,Nx, Ny, Nz);
+	printf("fkx=%d  fky=%d  fkz=%d  fsin=%d  fcos=%d  gkx=%d  gky=%d  gkz=%d  gsin=%d  gcos=%d  Nx=%d  Ny=%d  Nz=%d\n\n", fkx, fky,fkz,fsin,fcos,gkx,gky,gkz,gsin,gcos,Nx, Ny, Nz);
 	
 	fclose(ofile);
 	        
