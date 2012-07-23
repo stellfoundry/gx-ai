@@ -157,9 +157,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       
       fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy[0].x/Nz, kinEnergy[0].x/Nz, magEnergy[0].x/Nz);
       fflush(NULL);
-      
-      
-      //timestep(fC1_d,fC_d,gC1_d,gC_d,kx,ky,kxCover,kyCover,nClasses,nLinks,nChains,kz,kPerp2,kPerp2Inv,nu,eta,dt[0]);  
+        
       
       advance(fC_d,gC_d,fC_d,gC_d,fC1_d,gC1_d, kx,ky,kz,kxCover,kyCover,nClasses,nLinks,nChains,kPerp2,kPerp2Inv,nu,eta,dt[0]/2);
       advance(fC_d,gC_d,fC1_d,gC1_d,fC_d,gC_d, kx,ky,kz,kxCover,kyCover,nClasses,nLinks,nChains,kPerp2,kPerp2Inv,nu,eta,dt[0]);
