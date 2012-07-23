@@ -1,13 +1,3 @@
-//void getfcn(cufftComplex* fcn_d);
-//void getfcn(cufftReal* f);
-
- 
-//void getfcn(cufftReal* fcn, cufftReal* fcn_d, int Nx, int Ny, int Nz);
-
-//void kInit(float *k, float *k, float *k, float *k, int N, int N, int N);
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 // Program main
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,14 +52,7 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cufftReal *resultR;
     
     cudaMalloc((void**) &resultR, sizeof(cufftReal)*Ny*Nx*Nz);
-    
-
-    
-    //scaler = (float)1 / (Nx*Nx*Ny*Ny);
-    
-    
-    
-    
+        
     
     bracket<<<dimGrid, dimBlock>>> (resultR, fdxR, fdyR, gdxR, gdyR, .25);
     
