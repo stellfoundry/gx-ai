@@ -1,10 +1,8 @@
 1) Check out sources from svn://gk.umd.edu/noah
-For NLPS:
-2) Go to noah/trunk/TEST_CASES/NLPS
-3) Execute "nvcc -lcufft nlps_test.cu -o NLPSTEST.out"
-4) Execute "./NLPSTEST.out inputs/NLPSinput1 outputs/NLPSoutput1
-For ORS-TANG:
-5) Go to noah/trunk/TEST_CASES/ORS-TANG
-6) Execute "nvcc -lcufft ors-tang_test.cu -o ORS-TANG_TEST.out"
-7) Execute "./ORS-TANG_TEST.out inputs/ORS-TANGinput128 outputs/ORS-TANGoutput128 plots/ORS-TANGplot128
-8) To compare the plot to the older one, execute "gnuplot ORS-TANGplotA.plt"
+2) Go to noah/trunk/TEST_CASES
+To run both NLPS and ORS-TANG:
+3) Execute "./TESTscript"
+For NLPS only:
+4) Execute "./TESTscript -NLPS"
+For ORS-TANG only:
+5) Execute "./TESTscript -ORSTANG"
