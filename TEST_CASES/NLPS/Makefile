@@ -5,8 +5,8 @@ CUFILES := nlps_driver.cu
 CU_DEPS := \
       getfcn.cu \
       nlps_kernel.cu \
-      timestep_kernel.cu \
-      zderiv_kernel.cu \
+      operations_kernel.cu \
+      kInit_kernel.cu \
       nlps.cu \
       nlpstest.cu \
 

@@ -15,8 +15,8 @@ bool quiet=false;
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
 #include "getfcn.cu"
 #include "nlps_kernel.cu"
-#include "timestep_kernel.cu"
-#include "zderiv_kernel.cu"
+#include "operations_kernel.cu"
+#include "kInit_kernel.cu
 #include "nlps.cu"
 #include "nlpstest.cu"
 
