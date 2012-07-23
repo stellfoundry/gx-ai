@@ -5,10 +5,10 @@ CUFILES := timestep_driver.cu
 CU_DEPS := \
       c_fortran_namelist.cu \
       timestep_kernel.cu \
-      timestep.cu \
       timestep_test.cu \
       nlps.cu \
       nlps_kernel.cu \
+      operations_kernel.cu \
       zderiv.cu \
       zderiv_kernel.cu \
       energy.cu \
@@ -16,11 +16,13 @@ CU_DEPS := \
       maxReduc.cu \
       sumReduc.cu \
       reduc_kernel.cu \
-      z_covering.cu \
-      ztransform.cu \
-      coveringRoutines.cu \
+      zderiv_covering.cu \
+      ztransform_covering.cu \
+      coveringSetup.cu \
+      covering_kernel.cu \
       advance.cu \
       getfcn.cu \
+      kInit_kernel.cu \
 
 
 USECUFFT := 1
