@@ -41,10 +41,13 @@ void NLPS(cufftComplex *result, cufftComplex *f, cufftComplex *g, float *kx, flo
     cudaMalloc((void**) &dy, sizeof(cufftComplex)*(Ny/2+1)*Nx*Nz);     
     cudaMalloc((void**) &fdxR, sizeof(cufftReal)*Ny*Nx*Nz);    
     cudaMalloc((void**) &fdyR, sizeof(cufftReal)*Ny*Nx*Nz);
+    if(debug) getError("After allocations");
 
         
     deriv<<<dimGrid, dimBlock>>> (f, dx, dy, kx, ky);    
+    if(debug) getError("After first kernel");
     cufftExecC2R(plan2, dy, fdyR);
+    if(debug) getError("After first FFT");
     cufftExecC2R(plan2, dx, fdxR);
     
     

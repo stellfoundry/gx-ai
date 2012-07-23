@@ -70,10 +70,10 @@ cufftReal* NLPStest(int fkx, int fky, int fkz, int fsin, int fcos, int gkx, int 
     scale<<<dimGrid,dimBlock>>>(g_complex_d,scaler);
 
     if(debug) {
-      printf("\nF:\n"); 
-      getfcn(f_complex_d);
-      printf("\nG:\n");
-      getfcn(g_complex_d);
+      //printf("\nF:\n"); 
+      //getfcn(f_complex_d);
+      //printf("\nG:\n");
+      //getfcn(g_complex_d);
     }
     
     cudaFree(f_d); cudaFree(g_d);

@@ -1,35 +1,39 @@
-#test NLPS
-cd NLPS
-echo 
-echo Compiling NLPS.....
-make 
-echo
-echo ==================
-echo NLPS CASE 1...
-./NLPSTEST.out inputs/NLPSinput1 outputs/NLPSoutput1 -quiet
-echo ==================
-echo NLPS CASE 2...
-./NLPSTEST.out inputs/NLPSinput2 outputs/NLPSoutput2 -quiet
-echo ==================
-echo NLPS CASE 3...
-./NLPSTEST.out inputs/NLPSinput3 outputs/NLPSoutput3 -quiet
-echo ==================
-cd ..
-#test ORSZAG-TANG
-cd ORS-TANG
-echo Compiling ORSZAG-TANG.....
-make
-echo
-echo ==================
-echo ORSZAG-TANG CASE 1...
-./ORS-TANG_TEST.out inputs/ORS-TANGinput128 outputs/ORS-TANGoutput128 \
-plots/ORS-TANGplot128 -quiet
-echo ==================
-echo ORSZAG-TANG CASE 2...
-./ORS-TANG_TEST.out inputs/ORS-TANGinput256 outputs/ORS-TANGoutput256 \
-plots/ORS-TANGplot256 -quiet
-echo ==================
-cd plots
-gnuplot ORS-TANGplotA.plt
+if [ $1 != "-ORSTANG" ]; then
+  cd NLPS
+  echo 
+  echo Compiling NLPS.....
+  make
+  echo
+  echo ==================
+  echo NLPS CASE 1...
+  ./NLPSTEST.out inputs/NLPSinput1 outputs/NLPSoutput1 -quiet
+  echo ==================
+  echo NLPS CASE 2...
+  ./NLPSTEST.out inputs/NLPSinput2 outputs/NLPSoutput2 -quiet
+  echo ==================
+  echo NLPS CASE 3...
+  ./NLPSTEST.out inputs/NLPSinput3 outputs/NLPSoutput3 -quiet
+  echo ==================
+  cd ..
+fi
+if [ $1 != "-NLPS" ]; then
+  cd ORS-TANG
+  echo Compiling ORSZAG-TANG.....
+  make
+  echo
+  echo ==================
+  echo ORSZAG-TANG CASE 1...
+  ./ORS-TANG_TEST.out inputs/ORS-TANGinput128 outputs/ORS-TANGoutput128 \
+  plots/ORS-TANGplot128 -quiet
+  echo ==================
+  echo ORSZAG-TANG CASE 2...
+  ./ORS-TANG_TEST.out inputs/ORS-TANGinput256 outputs/ORS-TANGoutput256 \
+  plots/ORS-TANGplot256 -quiet
+  echo ==================
+  cd plots
+  gnuplot ORS-TANGplotA.plt
+  cd ../..
+fi
+
 
 

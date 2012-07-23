@@ -176,20 +176,32 @@ int main(int argc, char* argv[])
 	 fprintf(ofile,"\n");
         }
 	
-	
+	int errorCounter=0;
+	int errorSum=0;
+	float errorAvg;
 	
 	bool equal = true;
 	for(int k=0; k<Nz; k++) { 
 	 for(int j=0; j<Nx; j++) {
 	  for(int i=0; i<Ny; i++) {
 	    int index = i + Ny*j + Nx*Ny*k;
-	    if(abs(nlpscheck[index] - nlps[index]) > .5) {equal = false; fprintf(ofile, "%d\n",index);}
+	    if(abs(nlpscheck[index] - nlps[index]) > .4) { 
+	      fprintf(ofile, "Element %d, off by %f\n",index,abs(nlpscheck[index] - nlps[index]));
+	      if(debug) printf("Element %d, off by %f\n",index,abs(nlpscheck[index] - nlps[index]));
+	      errorCounter++;
+	      errorSum += abs(nlpscheck[index] - nlps[index]);	      
+	    }
 	    if(nlps[index] != nlps[index]) {equal = false;}      //check for nan
-	  }
-	  
-	 }
-	 
+	  }	  
+	 }	 
 	}     
+	
+	if(errorCounter!=0) {
+	  errorAvg = errorSum/errorCounter;
+	  if(debug) printf("Error Count: %d   Avg Error: %f", errorCounter, errorAvg);
+	  if(errorAvg > 1) {equal = false;}
+	}  
+	
 	if(equal == true) {fprintf(ofile, "\nNLPS CHECKS\n"); printf("\nNLPS CHECKS\n");}
 	else {fprintf(ofile, "\nNLPS DOES NOT CHECK\n"); printf("NLPS DOES NOT CHECK\n");}
 	
