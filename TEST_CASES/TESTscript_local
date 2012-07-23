@@ -19,7 +19,7 @@ fi
 if [ $1 != "-NLPS" ]; then
   cd ORS-TANG
   echo Compiling ORSZAG-TANG.....
-  nvcc -lcufft ors-tang_test.cu -o ORS-TANG_TEST.out
+  nvcc -lcufft ors-tang_driver.cu -o ORS-TANG_TEST.out
   echo
   echo ==================
   echo ORSZAG-TANG CASE 1...

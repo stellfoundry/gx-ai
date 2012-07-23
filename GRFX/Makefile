@@ -3,7 +3,6 @@ EXECUTABLE := timestep
 CUFILES := timestep_driver.cu
 
 CU_DEPS := \
-      c_fortran_namelist.cu \
       timestep_kernel.cu \
       timestep_test.cu \
       nlps.cu \

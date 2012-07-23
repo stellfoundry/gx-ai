@@ -1,1 +1,0 @@
-../../GRFX/z_covering.cu

@@ -16,7 +16,7 @@ bool quiet=false;
 #include "getfcn.cu"
 #include "nlps_kernel.cu"
 #include "operations_kernel.cu"
-#include "kInit_kernel.cu
+#include "kInit_kernel.cu"
 #include "nlps.cu"
 #include "nlpstest.cu"
 
