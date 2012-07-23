@@ -2,7 +2,11 @@ if [ $1 != "-ORSTANG" ]; then
   cd NLPS
   echo 
   echo Compiling NLPS.....
-  make
+  if [ $NERSC_HOST == "carver" ]; then
+    make
+  else
+  nvcc -lcufft nlps_driver.cu -o NLPSTEST.out 
+  fi
   echo
   echo ==================
   echo NLPS CASE 1...
@@ -19,7 +23,11 @@ fi
 if [ $1 != "-NLPS" ]; then
   cd ORS-TANG
   echo Compiling ORSZAG-TANG.....
-  make
+  if [ $NERSC_HOST == "carver" ]; then
+    make
+  else
+  nvcc -lcufft ors-tang_driver.cu -o ORS-TANG_TEST.out
+  fi
   echo
   echo ==================
   echo ORSZAG-TANG CASE 1...
@@ -34,6 +42,4 @@ if [ $1 != "-NLPS" ]; then
   gnuplot ORS-TANGplotA.plt
   cd ../..
 fi
-
-
 
