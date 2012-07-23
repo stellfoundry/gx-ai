@@ -5,8 +5,6 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     totEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     kinEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
     magEnergy = (cufftComplex*) malloc(sizeof(cufftComplex));
-
-//blah
     
     //device variables
     cufftReal *f_d, *g_d;
