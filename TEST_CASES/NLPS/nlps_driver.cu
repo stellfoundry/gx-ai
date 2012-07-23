@@ -29,7 +29,7 @@ int main(int argc, char* argv[])
     float *x, *y, *z;
     
     if (argc == 4 && strcmp(argv[3],"-quiet")==0) {quiet = true; }
-    
+
     
     int ct, dev;
     struct cudaDeviceProp prop;
