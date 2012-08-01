@@ -12,11 +12,16 @@ bool MASK=false;
 bool debug=false;
 bool quiet=false;
 
+float *kx, *ky, *kz; 
+  
+float scaler;
+
 //make sure GRFX, GPU_NLPS, and TEST_CASES are in same directory
+#include "device_funcs.cu"
 #include "getfcn.cu"
+#include "kInit_kernel.cu"
 #include "nlps_kernel.cu"
 #include "operations_kernel.cu"
-#include "kInit_kernel.cu"
 #include "nlps.cu"
 #include "nlpstest.cu"
 
@@ -29,7 +34,6 @@ int main(int argc, char* argv[])
     float *x, *y, *z;
     
     if (argc == 4 && strcmp(argv[3],"-quiet")==0) {quiet = true; }
-
     
     int ct, dev;
     struct cudaDeviceProp prop;
@@ -42,12 +46,17 @@ int main(int argc, char* argv[])
       printf("Device Name: %s\n", prop.name);
       printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
       printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
+      printf("Constant Memory (bytes): %lu\n", (unsigned long) prop.totalConstMem);
       printf("Registers per Block: %d\n", prop.regsPerBlock);
       printf("Warp Size (threads): %d\n", prop.warpSize); 
       printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
       printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
                           prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
       printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
+      printf("Number of async copies allowed: %d\n", prop.asyncEngineCount);
+      printf("Number of concurrent kernels allowed: %d\n", prop.concurrentKernels);
+      printf("Compute capability: %d.%d\n", prop.major,prop.minor);
+      
     }
     
     
@@ -117,10 +126,13 @@ int main(int argc, char* argv[])
         dimGrid.z = 1;    
 	
 	
+	
+	//////////////////////////////////////
 	printf("\nStarting NLPS test...\n");
 	nlps = NLPStest(fkx, fky, fkz, fsin, fcos, gkx, gky, gkz, gsin, gcos);
 	printf("\nExecuted NLPS test. Checking......\n");
-        
+        //////////////////////////////////////
+	
 	for(int k=0; k<Nz; k++) {
 	 for(int j=0; j<Nx; j++) {
 	  for(int i=0; i<Ny; i++) {
@@ -187,7 +199,7 @@ int main(int argc, char* argv[])
 	    int index = i + Ny*j + Nx*Ny*k;
 	    if(abs(nlpscheck[index] - nlps[index]) > .4) { 
 	      fprintf(ofile, "Element %d, off by %f\n",index,abs(nlpscheck[index] - nlps[index]));
-	      if(debug) printf("Element %d, off by %f\n",index,abs(nlpscheck[index] - nlps[index]));
+	      //if(debug) printf("Element %d, off by %f\n",index,abs(nlpscheck[index] - nlps[index]));
 	      errorCounter++;
 	      errorSum += abs(nlpscheck[index] - nlps[index]);	      
 	    }
@@ -197,7 +209,7 @@ int main(int argc, char* argv[])
 	}     
 	
 	if(errorCounter!=0) {
-	  errorAvg = errorSum/errorCounter;
+	  errorAvg = abs(errorSum/errorCounter);
 	  if(debug) printf("Error Count: %d   Avg Error: %f", errorCounter, errorAvg);
 	  if(errorAvg > 1) {equal = false;}
 	}  

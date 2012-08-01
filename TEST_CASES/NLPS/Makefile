@@ -9,6 +9,7 @@ CU_DEPS := \
       kInit_kernel.cu \
       nlps.cu \
       nlpstest.cu \
+      device_funcs.cu \
 
 USECUFFT := 1
 
