@@ -8,148 +8,9 @@
 #include "cufft.h"
 #include "cuda_profiler_api.h"
 #include "libgen.h"
+#include "global_vars.h"
 
-int Nx, Ny, Nz, zThreads, totalThreads;
-float X0, Y0, Z0;
-__constant__ int nx,ny,nz,zthreads,totalthreads;
-__constant__ float X0_d,Y0_d,Z0_d;
-
-dim3 dimBlock, dimGrid;
-
-#define ION 0
-#define ELECTRON 1
-#define PHI 0
-#define DENS 1
-
-//species variables defined in gs2 namelist
-int nSpecies=1;
-typedef struct {
-  float z;
-  float mass;
-  float dens;
-  float temp;
-  float tprim;
-  float fprim;
-  float uprim;
-  float zstm;
-  float tz;
-  float zt;
-  float nu_ss;
-  float rho;           
-  float vt;    
-  char type[100];        
-} specie;
-
-specie *species;
-
-
-
-//global variables
-int nClasses;
-int *nLinks;
-int *nChains;
-cuComplex nu[11];
-cuComplex mu[11];
-
-float endtime;
-float dt=.02;
-
-//globals defined in eik.out
-int ntgrid;
-float drhodpsi, rmaj, shat, kxfac, qsf, gradpar, eps, aminor, epsl;
-
-//other Miller parameters;
-float r_geo, akappa, akappri, tri, tripri, shift, asym, asympri;
-
-//Greene & Chance/Bishop parameters
-float beta_prime_input, s_hat_input;
-
-
-//globals defined in gs2 namelist
-int nwrite;
-int nsave;
-int navg;
-int nstop;
-int converge_stop = 10000;
-float converge_bounds = 20;
-float cfl;
-float maxdt= .02;  //.02;
-float g_exb;
-int jtwist;
-float tau;
-int nSteps=10000;
-float fluxDen;
-float cflx;
-float cfly;
-int Nx_unmasked;
-int Ny_unmasked;
-
-//input parameters for geometry
-int equilibrium_type;
-int bishop;
-int irho = 2;
-int nperiod;
-float rhoc;
-
-//global host arrays from eik.out
-float *gbdrift_h, *grho_h, *z_h, *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
-float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
-
-//global device arrays from eik.out
-float *gbdrift, *grho, *z, *cvdrift, *gds2, *bmag, *bgrad;
-float *gds21, *gds22, *cvdrift0, *gbdrift0;
-
-//calculated globals
-float D_par;
-float D_prp;
-float Beta_par;
-float diffusion;
-float nu_hyper=1.;
-int p_hyper=2;
-
-//other global device arrays
-float *kx, *ky, *kz;
-float *bmagInv;
-cuComplex *bmag_complex;
-cuComplex *deriv_nlps;
-float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
-float* jacobian;
-
-float *kx_h, *ky_h;
-
-//plans
-cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
-
-bool DEBUG = false;
-
-bool LINEAR = false;  //set in namelist
-bool RESTART = false;
-bool SCAN = true;
-bool NO_ZDERIV = false;
-bool NO_ZDERIV_COVERING = false;
-bool NO_ZDERIV_B = false;
-bool NO_OMEGAD = false;
-bool CONST_CURV = false;
-bool write_omega = true;
-bool write_phi = true;
-bool S_ALPHA = true;
-
-bool PM = false;
-bool varenna = false;
-bool SMAGORINSKY = false;
-bool HYPER = false;
-bool zero_restart_avg = false;
-
-int init = DENS;
-float init_amp;
-
-//char* fluxfileName;
-//char stopfileName[60];
-//char restartfileName[60];
-char* scan_type;
-char out_stem[40];
-int scan_number;
-
+#include "write_data.cu"
 #include "device_funcs.cu"
 #include "c_fortran_namelist3.c"
 #include "operations_kernel.cu"
@@ -240,51 +101,59 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts)
 {
 
-	  equilibrium_type = gryfxpars->equilibrium_type ;
-	 /*char eqfile[800];*/
-	  irho = gryfxpars->irho ;
-	  rhoc = gryfxpars->rhoc ;
-	  bishop = gryfxpars->bishop ;
-	  nperiod = gryfxpars->nperiod ;
-	  Nz = gryfxpars->ntheta ;
+   equilibrium_type = gryfxpars->equilibrium_type ;
+  /*char eqfile[800];*/
+   irho = gryfxpars->irho ;
+   rhoc = gryfxpars->rhoc ;
+   bishop = gryfxpars->bishop ;
+   nperiod = gryfxpars->nperiod ;
+   Nz = gryfxpars->ntheta ;
 
-	/* Miller parameters*/
-	  rmaj = gryfxpars->rmaj ;
-	  r_geo = gryfxpars->r_geo ;
-	  akappa  = gryfxpars->akappa ;
-	  akappri = gryfxpars->akappri ;
-	  tri = gryfxpars->tri ;
-	  tripri = gryfxpars->tripri ;
-	  shift = gryfxpars->shift ;
-	  qsf = gryfxpars->qinp ;
-	  shat = gryfxpars->shat ;
-	  asym = gryfxpars->asym ;
-	  asympri = gryfxpars->asympri ;
+ /* Miller parameters*/
+   rmaj = gryfxpars->rmaj ;
+   r_geo = gryfxpars->r_geo ;
+   akappa  = gryfxpars->akappa ;
+   akappri = gryfxpars->akappri ;
+   tri = gryfxpars->tri ;
+   tripri = gryfxpars->tripri ;
+   shift = gryfxpars->shift ;
+   qsf = gryfxpars->qinp ;
+   shat = gryfxpars->shat ;
+   asym = gryfxpars->asym ;
+   asympri = gryfxpars->asympri ;
 
-	 /* Other geometry parameters - Bishop/Greene & Chance*/
-	  beta_prime_input = gryfxpars->beta_prime_input ;
-	  s_hat_input = gryfxpars->s_hat_input ;
+  /* Other geometry parameters - Bishop/Greene & Chance*/
+   beta_prime_input = gryfxpars->beta_prime_input ;
+   s_hat_input = gryfxpars->s_hat_input ;
 
-	 /*Flow shear*/
-	  g_exb = gryfxpars->g_exb ;
+  /*Flow shear*/
+   g_exb = gryfxpars->g_exb ;
 
-	 /* Species parameters... I think allowing 20 species should be enough!*/
-	 int oldnSpecies = nSpecies;
-	  nSpecies = gryfxpars->ntspec ;
+  /* Species parameters... I think allowing 20 species should be enough!*/
+  int oldnSpecies = nSpecies;
+   nSpecies = gryfxpars->ntspec ;
 
-	 if (nSpecies!=oldnSpecies){
-		 printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nSpecies);
-		 printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
-		 exit(1);
-	 }
-		if (DEBUG) printf("nSpecies was set to %d\n", nSpecies);
-	 for (int i=0;i<nSpecies;i++){
-		  species[i].dens = gryfxpars->dens[i] ;
-		  species[i].temp = gryfxpars->temp[i] ;
-		  species[i].fprim = gryfxpars->fprim[i] ;
-		  species[i].tprim = gryfxpars->tprim[i] ;
-		  species[i].nu_ss = gryfxpars->nu[i] ;
-	 }
+  if (nSpecies!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nSpecies);
+	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
+	  exit(1);
+  }
+	 if (DEBUG) printf("nSpecies was set to %d\n", nSpecies);
+  for (int i=0;i<nSpecies;i++){
+	   species[i].dens = gryfxpars->dens[i] ;
+	   species[i].temp = gryfxpars->temp[i] ;
+	   species[i].fprim = gryfxpars->fprim[i] ;
+	   species[i].tprim = gryfxpars->tprim[i] ;
+	   species[i].nu_ss = gryfxpars->nu[i] ;
+  }
+  
+  
+  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
+  printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
+  printf("temp=%g  dens=%g nu_ss=%g\n", species[ION].temp, species[ION].dens,species[ION].nu_ss);
+  printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
+  printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
+  printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
   
   
   if ( S_ALPHA )
@@ -329,9 +198,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   }
   else 
   {
-    //use "./blank" to use default namelist values
-    //read_namelist("./inputs/linear.in");
-    //read_namelist("./inputs/cyclone_miller_ke.in");
     
     //read species parameters from namelist, will overwrite geometry parameters below
       
@@ -693,7 +559,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(varenna) printf("[varenna]\t");
   if(CONST_CURV) printf("[constant curvature]\t");
   if(RESTART) printf("[restart]\t");
-  if(PM) printf("[Nonlinear Phase Mixing]\t");
+  if(NLPM) printf("[Nonlinear Phase Mixing]\t");
   if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
   
   printf("\n\n");
@@ -710,7 +576,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(varenna) fprintf(outfile,"[varenna]\t");
   if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
   if(RESTART) fprintf(outfile,"[restart]\t");
-  if(PM) fprintf(outfile,"[Nonlinear Phase Mixing]\t");
+  if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing]\t");
   if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
   
   fprintf(outfile, "\n\n");

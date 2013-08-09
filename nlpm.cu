@@ -1,42 +1,25 @@
-//looped over species outside call to NPLM
-void NLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
-          float* shear_tmpX, float* shear_tmpZ, cuComplex* shear_tmp, cuComplex* filter_tmp, specie s, float dt_loc)
-{
-  float dnlpm = 1.;
-  
-  zeroC<<<dimGrid,dimBlock>>>(shear_tmp);
-  
-  //if(inlpm == 1)
-    //shear1<<<dimGrid,dimBlock>>>(shear_tmp, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv, Phi);
-  //if(inlpm == 2)
-  
-  shear2<<<dimGrid,dimBlock>>>(shear_tmp, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv, Phi);
-  
-  //we have shear(kx,ky=0,z). now we need to sum over kx. to do this we must break the shear(kx,z) array into
-  //shear(kx) and reduce over kx for each z.
-  
-  fixFFT<<<dimGrid,dimBlock>>>(shear_tmp);
-  
-  float shear;
-  
-  for(int i=0; i<Nz; i++) {
-    //copy into shear(kx) for each z
-    zcopyX_Y0<<<dimGrid,dimBlock>>>(shear_tmpX, shear_tmp, i);
-    //reduce shear(kx) 
-    shear = sumReduc(shear_tmpX, Nx, false);
-    //assign shear to ith element of shear(z) (without copying)
-    assign<<<1,1>>> (shear_tmpZ, shear, i);    
-  }
-  
-  
-  filter2<<<dimGrid,dimBlock>>>(filter_tmp, shear_tmpZ, ky, dt_loc, dnlpm);
-  
-  multdiv<<<dimGrid,dimBlock>>>(Tpar,Tpar,filter_tmp,1);
-  multdiv<<<dimGrid,dimBlock>>>(Tprp,Tprp,filter_tmp,1);
-  multdiv<<<dimGrid,dimBlock>>>(Qpar,Qpar,filter_tmp,1);
-  multdiv<<<dimGrid,dimBlock>>>(Qprp,Qprp,filter_tmp,1);
-  multdiv<<<dimGrid,dimBlock>>>(Upar,Upar,filter_tmp,1);
-  multdiv<<<dimGrid,dimBlock>>>(Dens,Dens,filter_tmp,1);
-  
-
+void shear1(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {  
+  nlpm_shear1<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv);
+  sumReduc_Partial(nu, nu_tmpXZ, Nx*Nz, Nz, false); 
 }
+
+void shear2(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {
+  nlpm_shear2<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv);
+  sumReduc_Partial(nu, nu_tmpXZ, Nx*Nz, Nz, false); 
+  sqrtZ<<<dimGrid,dimBlock>>>(nu, nu);  
+}  
+
+typedef void (*nlpm_switch)(float*, float*, float*, specie);
+nlpm_switch shear[] = {shear1, shear2};
+    
+
+void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_nlpm_tmpXZ, specie s)
+{
+  
+  // get zonal flow component of Phi
+  volflux_zonal<<<dimGrid,dimBlock>>>(Phi2ZF_tmpX, Phi, Phi, jacobian, 1./(fluxDen*fluxDen) );
+    
+  shear[inlpm-1](nu_nlpm, nu_nlpm_tmpXZ, Phi2ZF_tmpX, s);  
+     
+}
+

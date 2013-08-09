@@ -635,8 +635,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                Qprp[s], Qprp[s], Qprp1[s], 
                Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
 	       field,field,field,field,field,field,
-	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering);
-
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       nu_nlpm, tmpX, tmpXZ);
 	         
     }
       
@@ -653,13 +653,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
-    
-    if(!LINEAR && PM) {
-      for(int s=0; s<nSpecies; s++) {
-        NLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], tmpX, tmpZ, tmp, tmp, species[s], dt/2.);
-      }
-    }
-    
+        
     
     for(int s=0; s<nSpecies; s++) {
 
@@ -671,7 +665,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                Qprp[s], Qprp1[s], Qprp[s], 
                Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
 	       field,field,field,field,field,field,
-	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering); 
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       nu_nlpm, tmpX, tmpXZ);
     }
 
     
@@ -687,14 +682,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
-    
-    if(!LINEAR && PM) {
-      for(int s=0; s<nSpecies; s++) {
-        NLPM(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], tmpX, tmpZ, tmp, tmp, species[s], dt);
-      }
-    }
-    
-    
+        
     
     //cudaProfilerStop();
     
