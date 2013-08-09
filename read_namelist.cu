@@ -133,10 +133,10 @@ void read_namelist(char* filename)
   nlpm = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm", &nlpm)) nlpm="off";
   if( strcmp(nlpm,"on") == 0) {
-    PM = true;
+    NLPM = true;
   }
   else if( strcmp(nlpm,"off") == 0) {
-    PM = false;
+    NLPM = false;
   }
   
   char* smagorinsky;

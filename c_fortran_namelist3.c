@@ -39,7 +39,9 @@ int fnr_file_size(FILE * fp)
 {
 		/*Get file size*/
 		int sz;
+		if (FNR_DEBUG) printf("Seeking end\n");
 		fseek(fp, 0L, SEEK_END);
+		if (FNR_DEBUG) printf("Sought end\n");
 		sz = ftell(fp);
 
 		/*Seek back to the beginning:*/
@@ -51,12 +53,14 @@ void fnr_read_file(char * fname, char ** text_ptr)
 	/*FILE * fp=fopen("my_file.txt", "r");*/
 
   	FILE * fp=fopen(fname, "r");
+	
+	if (FNR_DEBUG) printf("Opened file\n");
 	  
-		int sz = fnr_file_size(fp); /* File size*/
+			int sz = fnr_file_size(fp); /* File size*/
 
 		if (FNR_DEBUG) printf("Size was %d\n", sz);
 
-		*text_ptr = (char *)malloc((sz)*sizeof(char));
+		*text_ptr = (char *)malloc((sz+1)*sizeof(char));
 
 		char *text = *text_ptr;
 		
@@ -69,6 +73,7 @@ void fnr_read_file(char * fname, char ** text_ptr)
 		}
     text[i-1]='\0';
 		fclose(fp);
+	if (FNR_DEBUG) printf("Read file into memory\n");
 }
 int fnr_count_matches(char * text, regex_t regex){
 
@@ -305,7 +310,7 @@ struct fnr_struct fnr_read_namelist_file(char * file_name)
 {
 	char * file_string;
 	/*printf("Marker A1\n");*/
-	printf("Reading file\n");
+	printf("Reading file %s\n", file_name);
 	if (FNR_DEBUG) printf("Reading file\n");
 	fnr_read_file(file_name, &file_string);
 	if (FNR_DEBUG) printf("The string read was: \n%s\n", file_string);

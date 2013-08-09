@@ -98,6 +98,9 @@ float diffusion;
 float nu_hyper=1.;
 int p_hyper=2;
 
+float dnlpm = 1.;
+int inlpm = 2;
+
 //other global device arrays
 float *kx, *ky, *kz;
 float *bmagInv;
@@ -140,6 +143,8 @@ float init_amp;
 char* scan_type;
 char out_stem[40];
 int scan_number;
+
+char* run_name;
 
 //diagnostics stuff
 float phi2;
