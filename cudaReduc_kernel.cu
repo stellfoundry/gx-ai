@@ -540,6 +540,16 @@ void getNumBlocksAndThreads (int n, int &blocks, int &threads)
   if (scheme == 6) blocks = min (maxBlocks, blocks);
 }
 
+void getThreads (int n, int blocks, int &threads)
+{
+  if (scheme < 3) {
+    threads = (n/blocks < maxThreads) ? nextPow2(n/blocks) : maxThreads;
+    
+  } else {
+    threads = (n/blocks < maxThreads*2) ? nextPow2((n/blocks + 1)/ 2) : maxThreads;
+  }
+}
+
 template <class X>
 void swapargs (X &a, X &b)
 { // This function is from "Teach Yourself C++, Ex11.1.1.
