@@ -40,20 +40,19 @@ CU_DEPS := \
       maxReduc.cu \
       nlpm.cu \
       nlpm_kernel.cu \
-			gryfx_lib.h \
-			read_geo.cu
+      gryfx_lib.h \
+      read_geo.cu \
 
-#courant.cu and maxReduc.cu
 
 FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=$(CUDAARCH) -use_fast_math  -I ${GS2}
-NVCCINCS  = -I$(SDKDIR)
-NVCCLIBS  = -lcufft -lcudart
+NVCCFLAGS =  -arch=$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
+NVCCINCS  = $(CUDA_INCLUDE) -I ${SIMPLEDATAIO}/include
+NVCCLIBS  = $(NVIDIA_DRIVER_LIB) $(CUDA_LIB64) -lcufft -L ${SIMPLEDATAIO}/lib -l simpledataio
 
-FORTRAN_LIBS=-L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib/ -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib/ -lmpi_f90 -lmpi -lmpi_f77
+FORTRAN_LIBS= -L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib -lmpi_f90 -lmpi -lmpi_f77
 
 GEO_LIBS=${GS2}/geo/geometry_c_interface.o ${GS2}/geo.a  ${GS2}/utils.a
 
@@ -87,8 +86,7 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 
 # main program
 $(TARGET): gryfx.o gryfx_lib.a
-	#$(NVCC) $< -o $@ $(NVCCFLAGS) $(NVCCLIBS) ${HOME}/Code_Carver/gs2/trunk/geo/geo_c.a /usr/common/usg/openmpi/1.4.5/pgi/lib/libmpi_f90.a  /usr/common/usg/pgi/12.9/linux86-64/12.9/lib/*.a
-	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCLIBS) $< gryfx_lib.a ${GEO_LIBS} ${FORTRAN_LIBS} 
+	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GEO_LIBS} ${FORTRAN_LIBS} 
 
 gryfx_dumb: gryfx.o gryfx_lib_dumb.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCLIBS) $< gryfx_lib_dumb.a ${GEO_LIBS} ${FORTRAN_LIBS} 

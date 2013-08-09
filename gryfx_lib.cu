@@ -187,87 +187,11 @@ int scan_number;
 #include "gryfx_lib.h"
 
 
-void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile){
+void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile){  
   
-  
-  
+  read_namelist(namelistFile);
    
-  // fopen returns 0, the NULL pointer, on failure 
-  if ( S_ALPHA )
-  {
-    // these parameters now set by namelist in read_namelist.cu
-    /*kxfac = 1.;
-    eps = .2;
-    rmaj = 1.;
-    qsf = 1.4;
-    gradpar = (float) 1./(qsf*rmaj);
-    shat = .776;
-    drhodpsi = 1.;
-    shift = 0;    
-    tau = 1.;
-    *&Nz = 32;
-    //float epsl = 2./qsf;
-    //float epsl = 2.;*/
-    
-    //read_namelist("./inputs/cyclone_miller_ke.in");
-    read_namelist(namelistFile);
-    
-    
-        
-    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-    grho_h = (float*) malloc(sizeof(float)*Nz);
-    z_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-    gds2_h = (float*) malloc(sizeof(float)*Nz);
-    bmag_h = (float*) malloc(sizeof(float)*Nz);
-    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
-    gds21_h = (float*) malloc(sizeof(float)*Nz);
-    gds22_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
-    
-    gradpar = (float) 1./(qsf*rmaj);
-    
-    
-    
-    for(int k=0; k<Nz; k++) {
-      z_h[k] = 2*M_PI*(k-Nz/2)/Nz;
-      bmag_h[k] = 1./(1+eps*cos(z_h[k]));
-      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //
-      gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
-      gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
-      gds22_h[k] = pow(shat,2);
-      gbdrift_h[k] = 1./(2.*rmaj)*( cos(z_h[k]) + (shat*z_h[k]-shift*sin(z_h[k]))*sin(z_h[k]) );
-      cvdrift_h[k] = gbdrift_h[k];
-      gbdrift0_h[k] = -1./(2.*rmaj)*shat*sin(z_h[k]);
-      cvdrift0_h[k] = gbdrift0_h[k];
-      grho_h[k] = 1;
-      if(CONST_CURV) {
-        cvdrift_h[k] = 1./(2.*rmaj);
-	gbdrift_h[k] = 1./(2.*rmaj);
-	cvdrift0_h[k] = 0;
-	gbdrift0_h[k] = 0;
-      }
-    }  
-  }
-  else 
-  {
-    //use "./blank" to use default namelist values
-    read_namelist("./inputs/cyclone_miller_ke.in");
-    //read_namelist("./inputs/linear.in");
-    //read_namelist("./inputs/cyclone_miller_ke.in");
-    
-    //read species parameters from namelist, will overwrite geometry parameters below
-      
-    coefficients_struct *coefficients;
-    constant_coefficients_struct constant_coefficients;
-    read_geo(&Nz,coefficients,&constant_coefficients);
-    
-  } 
- 
-
-  //update gryfxpars struct with geometry parameters (from read_geo of defaults)
+    //update gryfxpars struct with geometry parameters (from read_geo of defaults)
   gryfxpars->equilibrium_type = equilibrium_type;
   /*char eqfile[800];*/
   gryfxpars->irho = irho;
@@ -361,7 +285,62 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 		  species[i].tprim = gryfxpars->tprim[i] ;
 		  species[i].nu_ss = gryfxpars->nu[i] ;
 	 }
-
+  
+  
+  if ( S_ALPHA )
+  {
+         
+    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
+    grho_h = (float*) malloc(sizeof(float)*Nz);
+    z_h = (float*) malloc(sizeof(float)*Nz);
+    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
+    gds2_h = (float*) malloc(sizeof(float)*Nz);
+    bmag_h = (float*) malloc(sizeof(float)*Nz);
+    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
+    gds21_h = (float*) malloc(sizeof(float)*Nz);
+    gds22_h = (float*) malloc(sizeof(float)*Nz);
+    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
+    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
+    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
+    
+    gradpar = (float) 1./(qsf*rmaj);
+    
+    
+    
+    for(int k=0; k<Nz; k++) {
+      z_h[k] = 2*M_PI*(k-Nz/2)/Nz;
+      bmag_h[k] = 1./(1+eps*cos(z_h[k]));
+      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //
+      gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
+      gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
+      gds22_h[k] = pow(shat,2);
+      gbdrift_h[k] = 1./(2.*rmaj)*( cos(z_h[k]) + (shat*z_h[k]-shift*sin(z_h[k]))*sin(z_h[k]) );
+      cvdrift_h[k] = gbdrift_h[k];
+      gbdrift0_h[k] = -1./(2.*rmaj)*shat*sin(z_h[k]);
+      cvdrift0_h[k] = gbdrift0_h[k];
+      grho_h[k] = 1;
+      if(CONST_CURV) {
+        cvdrift_h[k] = 1./(2.*rmaj);
+	gbdrift_h[k] = 1./(2.*rmaj);
+	cvdrift0_h[k] = 0;
+	gbdrift0_h[k] = 0;
+      }
+    }  
+  }
+  else 
+  {
+    //use "./blank" to use default namelist values
+    //read_namelist("./inputs/linear.in");
+    //read_namelist("./inputs/cyclone_miller_ke.in");
+    
+    //read species parameters from namelist, will overwrite geometry parameters below
+      
+    coefficients_struct *coefficients;
+    constant_coefficients_struct constant_coefficients;
+    read_geo(&Nz,coefficients,&constant_coefficients);
+    
+  } 
+  
   *&X0 = Y0*jtwist/(2*M_PI*shat);
   gradpar = (float) 1./(qsf*rmaj);
 

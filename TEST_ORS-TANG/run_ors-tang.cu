@@ -113,7 +113,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     
     
     //IMPORTANT: scale fields immediately after transform to k-space, not after transform back to real space at end of routine
-    scaler = (float) 1 / (Nx*Ny/2);
+    scaler = (float) 2. / (Nx*Ny);
     scale<<<dimGrid,dimBlock>>>(fC_d, fC_d, scaler);
     scale<<<dimGrid,dimBlock>>>(gC_d, gC_d, scaler);
     
@@ -170,7 +170,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       energy(&totEnergy, &kinEnergy, &magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
       //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
-      fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
+      fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
       fflush(NULL);
         
       
@@ -195,7 +195,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     energy(&totEnergy, &kinEnergy, &magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
     //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
-    fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time/2, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
+    fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
     
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);

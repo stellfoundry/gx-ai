@@ -119,9 +119,8 @@ __global__ void zCorrelation(float* zcorr, cuComplex* Phi)
       for(int i=0; i<nx; i++) {
         index = idy + (ny/2+1)*i + nx*(ny/2+1)*idz;
 	idxy_z0 = idy + (ny/2+1)*i + nx*(ny/2+1)*(nz/2);
-        if(idy==0 && i>nx/2) fac = 0.;
-	else if (idy==0 && i==nx/2) fac = 0.5;
-	else fac = 1.;
+        if(idy==0) fac = 0.25;
+	else fac = 0.5;
 	phi2 = Phi[idxy_z0] * cuConjf( Phi[index] );
 	zcorr[idyz] = zcorr[idyz] + fac * phi2.x;
       }
@@ -213,9 +212,8 @@ __global__ void volflux(float* flux, cuComplex* f, cuComplex* g, float* jacobian
       flux[idxy] = 0;
       float fac;
       cuComplex fg;
-      if(idx>nx/2) fac = 0.;
-      else if (idx==nx/2) fac = 0.5;
-      else fac = 1.;
+      if(idy==0) fac = 0.25;
+      else fac = 0.5;
       for(int i = 0; i<nz; i++) {
         index = idxy + nx*(ny/2+1)*i;
 	fg = f[index] * cuConjf( g[index] )*jacobian[i];
@@ -247,10 +245,7 @@ __global__ void volflux_zonal(float* flux, cuComplex* f, cuComplex* g, float* ja
       fsum.y = 0.;
       gsum.x = 0.;
       gsum.y = 0.;
-      float fac;
-      if(idx>nx/2) fac = 0.;
-      else if (idx==nx/2) fac = 0.5;
-      else fac = 1.;
+      float fac = .25;  //only ky=0 modes      
       for(int i = 0; i<nz; i++) {
         index = idxy0 + nx*(ny/2+1)*i;
 	fz = f[index]*jacobian[i];

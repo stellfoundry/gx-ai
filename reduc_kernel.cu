@@ -198,11 +198,14 @@ __global__ void fixFFT(cufftComplex* f)
         f[index].x = .5*f[index].x;
 	f[index].y = .5*f[index].y;
       }
-      */
+      
       
       if(idy!=0) {
         f[index] = .5*f[index];
       }
+      */
+      
+      
     }
   }
   else {
@@ -222,16 +225,18 @@ __global__ void fixFFT(cufftComplex* f)
         }
 	*/
 	
-	if(idy!=0) {
+	
+	if(idy==0) {
           f[index] = .5*f[index];
         }
+	
 	
       }
     }
   }
 }        	
 
-__global__ void fixFFT(float* f)
+__global__ void fixFFT(float* f2)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
@@ -241,6 +246,7 @@ __global__ void fixFFT(float* f)
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
+      /*
       if((idy==0 || idy==ny/2) && idx>nx/2) {
         f[index] = 0;
       }
@@ -248,6 +254,12 @@ __global__ void fixFFT(float* f)
       if((idy==0 || idy==ny/2) && idx==nx/2) {
         f[index] = .5*f[index];
       }
+      
+      if(idy==0) f[index] = .5*f[index];
+      */
+      
+      if(idy==0) f2[index] = .25*f2[index];
+      else f2[index] = .5*f2[index];
     }
   }
   else {
@@ -255,6 +267,7 @@ __global__ void fixFFT(float* f)
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
 	
+	/*
 	if((idy==0 || idy==ny/2) && idx>nx/2) {
           f[index] = 0;
         }
@@ -262,6 +275,9 @@ __global__ void fixFFT(float* f)
         if((idy==0 || idy==ny/2) && idx==nx/2) {
           f[index] = .5*f[index];
         }
+	*/
+	if(idy==0) f2[index] = .25*f2[index];
+        else f2[index] = .5*f2[index];
       }
     }
   }

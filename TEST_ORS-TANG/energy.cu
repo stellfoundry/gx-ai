@@ -22,8 +22,8 @@ void energy(float *totEnergy_h, float *kinEnergy_h, float *magEnergy_h,
     
     //since the R2C FFT duplicates some elements when ky=0 or ky=Ny/2, we have to fix this by zeroing the duplicate elements
     //before integrating
-    fixFFT<<<dimGrid,dimBlock>>>(kPhi);
-    fixFFT<<<dimGrid,dimBlock>>>(kA);
+    //fixFFT<<<dimGrid,dimBlock>>>(kPhi);
+    //fixFFT<<<dimGrid,dimBlock>>>(kA);
     
     
     int size = Nx*(Ny/2+1)*Nz;
@@ -32,7 +32,7 @@ void energy(float *totEnergy_h, float *kinEnergy_h, float *magEnergy_h,
     squareComplex<<<dimGrid,dimBlock>>> (Phi2,kPhi);
     //kPhi = phi**2    
     
-    
+    fixFFT<<<dimGrid,dimBlock>>>(Phi2);
     
     multKPerp<<<dimGrid,dimBlock>>> (Phi2, Phi2, kPerp2,-1);
     //kPhi = (kperp**2) * (phi**2)
@@ -46,6 +46,8 @@ void energy(float *totEnergy_h, float *kinEnergy_h, float *magEnergy_h,
     
     squareComplex<<<dimGrid,dimBlock>>> (Phi2,kA);
     //kA = A**2
+    
+    fixFFT<<<dimGrid,dimBlock>>>(Phi2);
     
     multKPerp<<<dimGrid,dimBlock>>> (Phi2, Phi2, kPerp2,-1);
     //kA = (kperp**2) * (A**2)

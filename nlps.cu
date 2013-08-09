@@ -3,7 +3,8 @@ void NLPS(cuComplex *result, cuComplex *f, cuComplex *g, float *kx, float *ky)
   //bool NLPSDEBUG = false;
 
      
-  float scaler = (float) 1./(Nx*Ny*2);				
+  float scaler = (float) 1./(Nx*Ny*2.);	//THIS USED TO HAVE A FACTOR OF 2 			
+  //printf("factor of 2\n");
   
   //////////////////////////////////////////
   //////////////////////////////////////////
@@ -11,6 +12,8 @@ void NLPS(cuComplex *result, cuComplex *f, cuComplex *g, float *kx, float *ky)
   //////////////////////////////////////////
   //////////////////////////////////////////
   
+  reality<<<dimGrid,dimBlock>>>(f);
+  reality<<<dimGrid,dimBlock>>>(g);
   
   NLPSderivX<<<dimGrid,dimBlock>>>(deriv_nlps,f,kx);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);

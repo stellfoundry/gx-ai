@@ -3,7 +3,8 @@ void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int** ky,
 		    char* abs, cufftHandle* plan_covering)
 {
 
-      
+  reality<<<dimGrid,dimBlock>>>(f);
+  
   for(int c=0; c<nClasses; c++) {  
        
       ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, plan_covering[c]);

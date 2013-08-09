@@ -433,6 +433,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       for(int s=0; s<nSpecies; s++) {
 	zeroC<<<dimGrid,dimBlock>>>(Dens[s]);
       }
+      
+      
 
       cudaMemcpy(Dens[ION], init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
       if(DEBUG) getError("after copy");    
@@ -650,7 +652,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     }
     
     mask<<<dimGrid,dimBlock>>>(Phi1);
-    
+    reality<<<dimGrid,dimBlock>>>(Phi1);
     
     if(!LINEAR && PM) {
       for(int s=0; s<nSpecies; s++) {
@@ -684,7 +686,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     }
 
     mask<<<dimGrid,dimBlock>>>(Phi1);
-    
+    reality<<<dimGrid,dimBlock>>>(Phi1);
     
     if(!LINEAR && PM) {
       for(int s=0; s<nSpecies; s++) {

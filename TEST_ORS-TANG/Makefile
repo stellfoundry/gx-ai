@@ -45,7 +45,7 @@ VER       = `date +%y%m%d`
 
 NVCC      = nvcc
 NVCCFLAGS = -arch=$(CUDAARCH) -use_fast_math 
-NVCCINCS  = -I$(SDKDIR)
+NVCCINCS  = 
 NVCCLIBS  = -lcufft -lcudart
 
 ifeq ($(debug),on)
