@@ -1353,12 +1353,53 @@ __global__ void SmagorinskyDiffusion(cuComplex* result, cuComplex* field, float 
   }
 }
 
+__global__ void sqrtX(float* result, float* f)
+{
+  unsigned int idx = get_idx();
+  
+  if(idx < nx) {
+    result[idx] = sqrtf( f[idx] );
+  }
+}
+
 __global__ void sqrtY(float* result, float* f)
 {
   unsigned int idy = get_idy();
   
   if(idy < ny/2+1) {
     result[idy] = sqrtf( f[idy] );
+  }
+}
+
+__global__ void sqrtZ(float* result, float* f)
+{
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idz < nz) {
+      result[idz] = sqrtf( f[idz] );
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idz<zthreads) {
+        unsigned int IDZ = idz + zthreads*i;
+	
+	result[IDZ] = sqrtf( f[IDZ] );
+      }
+    }
+  }
+      
+}
+
+__global__ void sqrtXY(float* result, float* f)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  
+  if(idy < ny/2+1 && idx<nx) {
+    unsigned int idxy = idy + (ny/2+1)*idx;
+    result[idxy] = sqrtf( f[idxy] );
   }
 }
 
