@@ -796,7 +796,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     // print wpfx to screen if not printing growth rates
-    if(!write_omega) printf("wpfx = %f, dt = %f, converge_count = %d\n", wpfx[0],dt, converge_count);
+    if(!write_omega && counter%nwrite==0) printf("wpfx = %f, dt = %f, converge_count = %d\n", wpfx[0],dt, converge_count);
     
     // write flux to file
     fluxWrite(fluxfile,wpfx,wpfxAvg,wpfxmax,wpfxmin,converge_count,runtime,species);
