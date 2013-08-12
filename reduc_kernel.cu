@@ -317,6 +317,21 @@ __global__ void sumZ(float* sum_XY, float* f)
   }
 }
 
+__global__ void sumZ(float* sum_XY, float* f, int nx, int ny, int nz)
+{
+  unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int idy = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  
+  if(idx < nx && idy < ny/2+1 ) {
+    unsigned int index = idy + (ny/2+1)*idx;
+    sum_XY[index] = 0;
+    for(int i=0; i<nz; i++) {
+      sum_XY[index] = sum_XY[index] + f[index + nx*(ny/2+1)*i];
+    } 
+  }
+}
+
+
 __global__ void sumZ_Ky0(float* sum_X, float* f)
 {
   unsigned int idx = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;

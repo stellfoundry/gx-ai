@@ -1255,6 +1255,12 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
   scaleReal<<<dimGrid,dimBlock>>>(phi_corr_tmpYZ, zCorr_sum, (float) 1./dtSum, 1, Ny/2+1,Nz);
   zkyWrite(phi_corr_tmpYZ, tmpYZ_h, filename, "phi_correlation.zky");
   
+  //calculate parallel correlation length as function of ky
+  sumZ<<<dimGrid,dimBlock>>>(tmpY, phi_corr_tmpYZ, 1, Ny, Nz);
+  scaleReal<<<dimGrid,dimBlock>>>(tmpY, tmpY, (float) 1./(qsf*2.*M_PI), 1, Ny/2+1, 1);
+  kyWrite(tmpY, tmpY_h, filename, "phi_correlation.ky"); 
+  
+ 
   if(end) {  
     //write fields(kx,ky) vs z
     normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);

@@ -1,4 +1,4 @@
-#include "simpledataio_cuda.h"
+//#include "simpledataio_cuda.h"
 
 int Nx, Ny, Nz, zThreads, totalThreads;
 float X0, Y0, Z0;
@@ -164,4 +164,4 @@ cuComplex* tprp_h;
 cuComplex* qpar_h;
 cuComplex* qprp_h;
 
-struct sdatio_file sdatfile;
+//struct sdatio_file sdatfile;

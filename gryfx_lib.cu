@@ -10,7 +10,7 @@
 #include "libgen.h"
 #include "global_vars.h"
 
-#include "write_data.cu"
+//#include "write_data.cu"
 #include "device_funcs.cu"
 #include "c_fortran_namelist3.c"
 #include "operations_kernel.cu"
@@ -44,7 +44,7 @@
 #include "energy.cu"
 #include "timestep_gryfx.cu"
 #include "run_gryfx.cu"
-#include "read_geo.cu"
+//#include "read_geo.cu"
 #include "gryfx_lib.h"
 
 
@@ -201,9 +201,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
     //read species parameters from namelist, will overwrite geometry parameters below
       
-    coefficients_struct *coefficients;
-    constant_coefficients_struct constant_coefficients;
-    read_geo(&Nz,coefficients,&constant_coefficients);
+    //coefficients_struct *coefficients;
+    //constant_coefficients_struct constant_coefficients;
+    //read_geo(&Nz,coefficients,&constant_coefficients);
     
   } 
   
