@@ -106,7 +106,7 @@ __device__ float wgt(float b) {
 __device__ float omegaD(float rho, float vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
 {
   float shatInv;
-  if (abs(shat)>1.e-5) {
+  if (abs(shat)>1.e-8) {
     shatInv = 1./shat;
   } else {
     shatInv = 1.;
@@ -120,7 +120,7 @@ __device__ float omegaD(float rho, float vt, float kx, float ky, float shat, flo
 __device__ float b(float rho, float kx, float ky, float shat, float gds2, float gds21, float gds22, float bmagInv)
 {
   float shatInv;
-  if (abs(shat)>1.e-5) {
+  if (abs(shat)>1.e-8) {
     shatInv = 1./shat;
   } else {
     shatInv = 1.;

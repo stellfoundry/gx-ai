@@ -207,7 +207,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
   } 
   
-  *&X0 = Y0*jtwist/(2*M_PI*shat);
+  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*abs(shat));
+  else *&X0 = Y0;
   gradpar = (float) 1./(qsf*rmaj);
 
 

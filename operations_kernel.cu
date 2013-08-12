@@ -1241,7 +1241,7 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
   unsigned int idz = get_idz();
   
   float shatInv;
-  if (abs(shat)>1.e-5) {
+  if (abs(shat)>1.e-8) {
     shatInv = 1./shat;
   } else {
     shatInv = 1.;

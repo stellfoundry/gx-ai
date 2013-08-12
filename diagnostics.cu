@@ -1292,6 +1292,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
     
     get_kperp<<<dimGrid,dimBlock>>>(tmpXY,0,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
     kxkyWrite(tmpXY, tmpXY_h, filename, "kperp.kxky");
+    
   }
 
 }
