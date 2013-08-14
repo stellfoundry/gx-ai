@@ -147,6 +147,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	   species[i].nu_ss = gryfxpars->nu[i] ;
   }
   
+  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*abs(shat));  
+  else *&X0 = Y0;
   
   printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
@@ -207,8 +209,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
   } 
   
-  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*abs(shat));
-  else *&X0 = Y0;
+  
+  
   gradpar = (float) 1./(qsf*rmaj);
 
 
