@@ -333,6 +333,38 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     }       
   }
   
+  //set up restartfile
+  strcpy(restartfileName, out_stem);
+  strcat(restartfileName, "restart.bin");
+  
+  if(RESTART) {
+    // check if restart file exists
+    if( FILE* restartFile = fopen(restartfileName, "r") ) {
+      printf("restart file found. restarting...\n");
+    }
+    else{
+      printf("cannot restart because cannot find restart file. changing to no restart\n");
+      RESTART = false;
+    }
+  }			
+  
+  if(CHECK_FOR_RESTART) {
+    printf("restart mode set to exist...\n");
+    //check if restart file exists
+    if(FILE* restartFile = fopen(restartfileName, "r") ) {
+      fclose(restartFile);
+      printf("restart file exists. restarting...\n");
+      RESTART = true;
+    }
+    else {
+      printf("restart file does not exist. starting new run...\n");
+      RESTART = false;
+    }
+  }
+  
+  
+    
+  
   /* 
   FILE *ifile;
   FILE *omegafile;

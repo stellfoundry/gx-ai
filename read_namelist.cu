@@ -74,6 +74,10 @@ void read_namelist(char* filename)
   if( strcmp(restart,"on") == 0) {
     RESTART = true;
   }
+  else if( strcmp(restart,"exist") == 0) {
+    //check if restart file exists
+    CHECK_FOR_RESTART = true;
+  }
   else if( strcmp(restart,"off") == 0) {
     RESTART = false;
   }

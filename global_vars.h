@@ -116,8 +116,9 @@ cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan
 
 bool DEBUG = false;
 
-bool LINEAR = false;  //set in namelist
+bool LINEAR = false;  
 bool RESTART = false;
+bool CHECK_FOR_RESTART = false;
 bool SCAN = true;
 bool NO_ZDERIV = false;
 bool NO_ZDERIV_COVERING = false;
@@ -145,6 +146,7 @@ char out_stem[40];
 int scan_number;
 
 char* run_name;
+char restartfileName[60];
 
 //diagnostics stuff
 float phi2;

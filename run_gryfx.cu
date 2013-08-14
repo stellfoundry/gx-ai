@@ -313,11 +313,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   // set up some diagnostics/control flow files //
   ////////////////////////////////////////////////
   
-  //set up restartfile
-  char restartfileName[60];
-  strcpy(restartfileName, out_stem);
-  strcat(restartfileName, "restart.bin");
-
+  
   //set up stopfile
   char stopfileName[60];
   strcpy(stopfileName, out_stem);

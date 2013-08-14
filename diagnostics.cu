@@ -618,7 +618,7 @@ void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
   strcat(filename, ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_kykx_h, f_kykx, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
-  fprintf(out, "#\tky\t\tkx\t\t%s\n", ext);
+  fprintf(out, "#\tkx\t\tky\t\t%s\n", ext);
   for(int j=0; j<(Ny-1)/3+1; j++) {
     fprintf(out,"\n");
     for(int i=2*Nx/3+1; i<Nx; i++) {
@@ -1232,7 +1232,8 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
   sumX<<<dimGrid,dimBlock>>>(phi2_ky_tmpY2, phi2avg_tmpXY);
   kyWrite(phi2_ky_tmpY2, tmpY_h, filename, "phi2.ky");
   
-  
+  //write phi**2(kx,ky)
+  kxkyWrite(phi2avg_tmpXY, tmpXY_h, filename, "phi2.kxky");
   
   if(end) {
     //calculate and write wpfx/phi**2(ky)
