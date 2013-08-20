@@ -462,11 +462,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       
       getError("after phi init");
       
-      zeroC<<<dimGrid,dimBlock>>>(Phi);
+      cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
       
       cudaMemcpy(Phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
-      
-      zeroC<<<dimGrid,dimBlock>>>(Dens[ION]);
+    
+      cudaMemset(Dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
     }  
    
 

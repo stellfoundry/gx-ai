@@ -26,13 +26,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   //all variables _tmp are the same array
   //all variables _field are the same array       
   
-  zeroC<<<dimGrid,dimBlock>>>(phi_tmp);
-  
+  cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+
   ////////////////////////////////////////     
   //DENSITY
   
-  zeroC <<<dimGrid, dimBlock>>> (dens_field);  
-  
+  cudaMemset(dens_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
+ 
   if(!LINEAR) {
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
     NLPS(nlps_tmp, phi_tmp, DensOld, kx, ky);    
@@ -84,8 +84,8 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ////////////////////////////////////////
   //UPAR
 
-  zeroC<<<dimGrid,dimBlock>>>(upar_field);
-    
+  cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  
   if(!LINEAR) {
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
@@ -145,7 +145,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ////////////////////////////////////////
   //TPAR
 
-  zeroC<<<dimGrid,dimBlock>>>(tpar_field);
+  cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
   if(!LINEAR) {
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
@@ -215,7 +215,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ////////////////////////////////////////
   //TPERP
   
-  zeroC <<<dimGrid, dimBlock>>> (tprp_field);
+  cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       
   if(!LINEAR) {
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
@@ -299,7 +299,8 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ////////////////////////////////////////
   //QPAR
   
-  zeroC <<<dimGrid, dimBlock>>> (qpar_field);
+  cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
+
   
   if(!LINEAR) {  
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);    
@@ -362,7 +363,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ////////////////////////////////////////
   //QPERP
   
-  zeroC <<<dimGrid, dimBlock>>> (qprp_field);
+  cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
   
 
   if(!LINEAR) {
