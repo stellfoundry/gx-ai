@@ -277,9 +277,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if( strcmp(scan_type, "shat_scan") == 0 ) {
       if(!LINEAR) sprintf(out_stem, "scan/shat_scan/shat%g/shat%g_%d.", shat,shat, scan_number);
       else sprintf(out_stem, "scan/shat_scan/shat%g_lin/shat%g_%d.", shat,shat, scan_number);
-      
-      sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
-
+     
+      if(!LINEAR) 
+        sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
+      else
+        sprintf(out_dir_path, "scan/shat_scan/shat%g_lin", shat);
       // check to make sure that the directory 
       // scan/shat_scan/shatX.X/ exists
       struct stat st;

@@ -28,10 +28,11 @@ void read_namelist(char* filename)
   if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &Ny)) *&Ny=16;
   
   if(fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "y0", &Y0)) *&Y0=10;
-
-  
-  if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &jtwist)) jtwist=5;
-  
+ 
+  if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &jtwist)) {
+    //set default jtwist to 2pi*shat so that X0~Y0
+    jtwist = (int) round(2*M_PI*shat);
+  }   
   if(fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &X0)) *&X0=10;
   //X0 will get overwritten if shat!=0
   

@@ -686,9 +686,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     //DIAGNOSTICS
     if(LINEAR) {
       growthRate<<<dimGrid,dimBlock>>>(omega,Phi1,Phi,dt);    
-      cudaMemcpy(omega_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);     
+      //cudaMemcpy(omega_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);     
       //weighted average of omega over 'navg' timesteps
-      boxAvg(omegaAvg, omega, omegaBox, dt, dtBox, navg, counter);
+      //boxAvg(omegaAvg, omega, omegaBox, dt, dtBox, navg, counter);
       cudaMemcpy(omegaAvg_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
 
       
