@@ -59,9 +59,9 @@ cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan
 //#include "maxReduc.cu"
 #include "../sumReduc.cu"
 #include "../coveringSetup.cu"
-#include "../ztransform_covering.cu"
-#include "../zderiv.cu"
-#include "../zderiv_covering.cu"
+//#include "../ztransform_covering.cu"
+//#include "../zderiv.cu"
+//#include "../zderiv_covering.cu"
 #include "../nlps.cu"
 //#include "courant.cu"
 

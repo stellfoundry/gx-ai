@@ -114,6 +114,10 @@ float *kx_h, *ky_h;
 //plans
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
 
+//streams and events
+cudaStream_t* streams;
+cudaEvent_t end_of_zderiv;
+
 bool DEBUG = false;
 
 bool LINEAR = false;  

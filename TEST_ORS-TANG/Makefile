@@ -27,16 +27,16 @@ CU_DEPS := \
       ../diagnostics.cu \
       ../coveringSetup.cu \
       ../exb.cu \
-      ../ztransform_covering.cu \
-      ../zderiv.cu \
-      ../zderivB.cu \
-      ../zderiv_covering.cu \
       ../nlps.cu \
       ../sumReduc.cu \
       energy.cu \
       timestep_ors-tang.cu \
       run_ors-tang.cu \
       timestep_kernel.cu \
+      #../ztransform_covering.cu \
+      ../zderiv.cu \
+      ../zderivB.cu \
+      ../zderiv_covering.cu \
 
 #courant.cu and maxReduc.cu
 
@@ -44,7 +44,7 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=$(CUDAARCH) -use_fast_math 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -use_fast_math 
 NVCCINCS  = 
 NVCCLIBS  = -lcufft -lcudart
 

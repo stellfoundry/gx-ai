@@ -96,6 +96,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   init_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   //Phi_energy = (float*) malloc(sizeof(float));
   
+  cudaEventCreate(&end_of_zderiv); 
   
   for(int s=0; s<nSpecies; s++) {
     cudaMalloc((void**) &Dens[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -229,9 +230,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     ZDerivB(bgrad, bmag, bmag_complex, kz);
   }  
     
-  zero<<<dimGrid,dimBlock>>>(jump,1,Ny,1);
-  zero<<<dimGrid,dimBlock>>>(kx_shift,1,Ny,1);
-  
+  cudaMemset(jump, 0, sizeof(float)*Ny);
+  cudaMemset(kx_shift,0,sizeof(float)*Ny);
+ 
   //for flux calculations
   multdiv<<<dimGrid,dimBlock>>>(tmpZ, jacobian, grho,1,1,Nz,1);
   fluxDen = sumReduc(tmpZ,Nz,false);
@@ -289,8 +290,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cuComplex *g_covering[nClasses];
   float *kz_covering[nClasses];
   cufftHandle plan_covering[nClasses];
+  //also set up a stream for each class.
+  streams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
   for(int c=0; c<nClasses; c++) {    
     int n[1] = {nLinks[c]*Nz};
+    cudaStreamCreate(&(streams[c]));
     cufftPlanMany(&plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nChains[c]);
     //kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
     cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
@@ -301,7 +305,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     cudaMemcpy(kyCover[c], kyCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);    
   }    
   //printf("nLinks[0] = %d  nChains[0] = %d\n", nLinks[0],nChains[0]);
-    
+  
+
   if(DEBUG) getError("run_gryfx.cu, after kCover");
   ///////////////////////////////////////////////////////////////////////////////////////////////////
     
@@ -427,7 +432,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       
 
       for(int s=0; s<nSpecies; s++) {
-	zeroC<<<dimGrid,dimBlock>>>(Dens[s]);
+        cudaMemset(Dens[s], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       }
       
       
@@ -440,7 +445,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       
       mask<<<dimGrid,dimBlock>>>(Dens[ION]);  
 
-      zeroC<<<dimGrid,dimBlock>>>(Phi);
+      cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       
     }
     
@@ -718,6 +723,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       fluxes(&wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,tmp,tmp,tmp,field,field,tmpZ,tmpXY,species[s],runtime);        
     }
     
+     
     //calculate tmpXY = Phi**2(kx,ky)
     volflux(Phi1,Phi1,tmp,tmpXY);
     volflux_zonal(Phi1,Phi1,tmpX);
@@ -993,4 +999,3 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     
-       	   

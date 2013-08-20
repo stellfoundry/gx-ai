@@ -78,7 +78,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     for(int c=0; c<nClasses; c++) {    
       int n[1] = {nLinks[c]*Nz};
       cufftPlanMany(&plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nChains[c]);
-      kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
+      //kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
       cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
       cudaMalloc((void**) &kz_covering[c], sizeof(float)*Nz*nLinks[c]);
       cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
@@ -117,6 +117,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     scale<<<dimGrid,dimBlock>>>(fC_d, fC_d, scaler);
     scale<<<dimGrid,dimBlock>>>(gC_d, gC_d, scaler);
     
+ 
     if(!QUIET) {
     printf("f:\n");
     getfcn(fC_d);
