@@ -1,9 +1,11 @@
 //#include "simpledataio_cuda.h"
 
 int Nx, Ny, Nz, zThreads, totalThreads;
-float X0, Y0, Z0;
+float X0, Y0;
+int Zp;
 __constant__ int nx,ny,nz,zthreads,totalthreads;
-__constant__ float X0_d,Y0_d,Z0_d;
+__constant__ float X0_d,Y0_d;
+__constant__ int Zp_d;
 
 dim3 dimBlock, dimGrid;
 

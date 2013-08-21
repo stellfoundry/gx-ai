@@ -887,7 +887,7 @@ void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
   char filename[100];
   sprintf(filename,"./scan/outputs/stability%g_f%g_t%g", dt, species[0].fprim, species[0].tprim);
   FILE* ofile = fopen(filename,"w+");
-  fprintf(ofile, "Nx = %d  Ny = %d  Nz = %d  Boxsize = 2pi*(%g,%g,%g)\n\n", Nx, Ny, Nz, X0, Y0, Z0); 
+  fprintf(ofile, "Nx = %d  Ny = %d  Nz = %d  Boxsize = 2pi*(%g,%g,%g)\n\n", Nx, Ny, Nz, X0, Y0, Zp); 
   fprintf(ofile, "fprim= %g\ntprim= %g\n\n", species[0].fprim, species[0].tprim);
   for(int i=0; i<Nx; i++) {
     for(int j=0; j<Ny/2+1; j++) {

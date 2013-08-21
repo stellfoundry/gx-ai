@@ -23,16 +23,25 @@ void read_namelist(char* filename)
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &kxfac)) kxfac = 1.0;
   
+  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod)) nperiod=1;  
+  
+  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "z0", &Zp)) {
+   *&Zp = 2*nperiod - 1;
+  }
+
   if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &Nx)) *&Nx=16;
     
   if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &Ny)) *&Ny=16;
   
   if(fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "y0", &Y0)) *&Y0=10;
- 
+  
+  //before, jtwist_old assumed Zp=1
+  //now, redefining jtwist = jtwist_old*Zp
   if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &jtwist)) {
     //set default jtwist to 2pi*shat so that X0~Y0
-    jtwist = (int) round(2*M_PI*shat);
-  }   
+    jtwist = (int) round(2*M_PI*shat*Zp);
+  }  
+ 
   if(fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &X0)) *&X0=10;
   //X0 will get overwritten if shat!=0
   

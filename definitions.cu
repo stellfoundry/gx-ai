@@ -1,10 +1,10 @@
 void definitions()
 {
   /*if(gradpar > 1e-8) {
-    *&Z0 = 1./gradpar;
+    *&Zp = 1./gradpar;
   }*/
   
-  *&Z0 = 1;
+  *&Zp = 1;
   
   for(int s=0; s<nSpecies; s++) {
     species[s].vt = sqrt(species[s].temp/species[s].mass);

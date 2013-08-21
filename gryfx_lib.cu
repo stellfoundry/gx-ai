@@ -147,8 +147,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	   species[i].nu_ss = gryfxpars->nu[i] ;
   }
   
-  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*abs(shat));  
-  else *&X0 = Y0;
   
   printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
@@ -179,7 +177,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
     
     for(int k=0; k<Nz; k++) {
-      z_h[k] = 2*M_PI*(k-Nz/2)/Nz;
+      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
       bmag_h[k] = 1./(1+eps*cos(z_h[k]));
       bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //
       gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
@@ -209,8 +207,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
   } 
   
-  
-  
+  *&X0 = Y0*jtwist/(2*M_PI*Zp*shat);
   gradpar = (float) 1./(qsf*rmaj);
 
 
@@ -277,11 +274,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if( strcmp(scan_type, "shat_scan") == 0 ) {
       if(!LINEAR) sprintf(out_stem, "scan/shat_scan/shat%g/shat%g_%d.", shat,shat, scan_number);
       else sprintf(out_stem, "scan/shat_scan/shat%g_lin/shat%g_%d.", shat,shat, scan_number);
-     
-      if(!LINEAR) 
-        sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
-      else
-        sprintf(out_dir_path, "scan/shat_scan/shat%g_lin", shat);
+      
+      sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
+
       // check to make sure that the directory 
       // scan/shat_scan/shatX.X/ exists
       struct stat st;
@@ -334,38 +329,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       }
     }       
   }
-  
-  //set up restartfile
-  strcpy(restartfileName, out_stem);
-  strcat(restartfileName, "restart.bin");
-  
-  if(RESTART) {
-    // check if restart file exists
-    if( FILE* restartFile = fopen(restartfileName, "r") ) {
-      printf("restart file found. restarting...\n");
-    }
-    else{
-      printf("cannot restart because cannot find restart file. changing to no restart\n");
-      RESTART = false;
-    }
-  }			
-  
-  if(CHECK_FOR_RESTART) {
-    printf("restart mode set to exist...\n");
-    //check if restart file exists
-    if(FILE* restartFile = fopen(restartfileName, "r") ) {
-      fclose(restartFile);
-      printf("restart file exists. restarting...\n");
-      RESTART = true;
-    }
-    else {
-      printf("restart file does not exist. starting new run...\n");
-      RESTART = false;
-    }
-  }
-  
-  
-    
   
   /* 
   FILE *ifile;
@@ -569,7 +532,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(X0_d, &X0, sizeof(float),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(Y0_d, &Y0, sizeof(float),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(Z0_d, &Z0, sizeof(float),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(Zp_d, &Zp, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(zthreads, &zThreads, sizeof(int),0,cudaMemcpyHostToDevice);
 
   if(DEBUG) getError("gryfx.cu, before run");

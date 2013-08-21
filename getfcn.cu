@@ -49,7 +49,7 @@ void getfcnALL(cufftComplex* fcn_d)
 	//if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%g,%g)=%.5f + i*%.5f  %d  ", (float) i, (float) j, //Z0*2*M_PI*(float)(k-Nz/2)/Nz,
+	  printf("F(%g,%g)=%.5f + i*%.5f  %d  ", (float) i, (float) j, //Zp*2*M_PI*(float)(k-Nz/2)/Nz,
 	                     fcnC[index].x, fcnC[index].y, index);
         //}
       }
@@ -61,7 +61,7 @@ void getfcnALL(cufftComplex* fcn_d)
 	
 	//if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 
-	  printf("F(%g,%g)=%.5f + i*%.5f  %d  ", (float) i, (float) j, //Z0*2*M_PI*(float)(k-Nz/2)/Nz, 
+	  printf("F(%g,%g)=%.5f + i*%.5f  %d  ", (float) i, (float) j, //Zp*2*M_PI*(float)(k-Nz/2)/Nz, 
 	                   fcnC[index].x, fcnC[index].y, index);
         //}
       }
@@ -85,7 +85,7 @@ void getfcnZCOMPLEX(cufftComplex* fcn_d)
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Z0,
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Zp,
 	                     fcnC[index].x, fcnC[index].y, index);
         }
       }
@@ -97,7 +97,7 @@ void getfcnZCOMPLEX(cufftComplex* fcn_d)
 	
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 
-	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Z0, 
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Zp, 
 	                   fcnC[index].x, fcnC[index].y, index);
         }
       }
@@ -113,7 +113,7 @@ void getfcnZCOMPLEX(cufftComplex* fcn_d)
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 	
 	//printf("F(%d,%d,%.2f)...
-	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Z0,
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Zp,
 	                     fcnC[index].x, fcnC[index].y, index);
         }
       }
@@ -125,7 +125,7 @@ void getfcnZCOMPLEX(cufftComplex* fcn_d)
 	
 	if(!(fcnC[index].x<.00001 && fcnC[index].y<.00001 && fcnC[index].x>-.00001 && fcnC[index].y>-.00001)) {
 
-	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Z0, 
+	  printf("F(%g,%g,%g)=%.5f + i*%.5f  %d\n", (float) i/Y0, (float) j/X0, (float)k/Zp, 
 	                   fcnC[index].x, fcnC[index].y, index);
         }
       }

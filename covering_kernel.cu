@@ -248,9 +248,9 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING)
     if(i<nz && p<nLinks) {
       int index = i + p*nz;
       if(index < (nz*nLinks)/2) 
-        kz[index] = (float) index/nLinks;
+        kz[index] = (float) index/(Zp_d*nLinks);
       else
-        kz[index] = (float) (index-nz*nLinks)/nLinks;
+        kz[index] = (float) (index-nz*nLinks)/(Zp_d*nLinks);
 	
       if(NO_ZDERIV_COVERING) kz[index] = 0;	
     }	
@@ -264,9 +264,9 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING)
         unsigned int P = p+a*zthreads;
 	int index = i + P*nz;
 	if(index < (nz*nLinks)/2) 
-          kz[index] = (float) index/nLinks;
+          kz[index] = (float) index/(Zp_d*nLinks);
         else
-          kz[index] = (float) (index-nz*nLinks)/nLinks;
+          kz[index] = (float) (index-nz*nLinks)/(Zp_d*nLinks);
 	  
 	if(NO_ZDERIV_COVERING) kz[index] = 0;  
       }

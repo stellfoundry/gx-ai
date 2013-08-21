@@ -9,9 +9,9 @@
 #include "cuda_profiler_api.h"
 
 int Nx, Ny, Nz, zThreads, totalThreads;
-float X0, Y0, Z0;
+float X0, Y0, Zp;
 __constant__ int nx,ny,nz,zthreads,totalthreads;
-__constant__ float X0_d,Y0_d,Z0_d;
+__constant__ float X0_d,Y0_d,Zp_d;
 
 dim3 dimBlock, dimGrid;
 
