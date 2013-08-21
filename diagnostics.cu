@@ -948,7 +948,7 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
 		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float dtSum,
 		int counter, float runtime, float dt, float timer, char* restartfileName)
 {
-  printf("restart file is\n%s\n", restartfileName);
+  //printf("restart file is\n%s\n", restartfileName);
   FILE *restart;
   restart = fopen(restartfileName, "wb");
   cuComplex *Dens_h[nSpecies];

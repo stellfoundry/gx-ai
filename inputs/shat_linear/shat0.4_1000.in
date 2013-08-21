@@ -1,0 +1,183 @@
+
+
+!-------------------LINEAR CYCLONE ITG CASE-----------------------
+! Widely used benchmark case.  Original study published
+! in Phys. Plasmas Vol. 7, p. 969 (Dimits et al.)
+! Can compare linear.out file with linear.test, which
+! is included in this directory.
+!-----------------------------------------------------------------
+
+&collisions_knobs
+ collision_model='none'
+/
+!
+!&hyper_knobs
+! hyper_option = 'visc_only'
+! const_amp = .false.
+! isotropic_shear = .false.
+! D_hypervisc = 0.1
+!/
+
+&theta_grid_parameters
+
+ ntheta= 32
+ nperiod= 1
+
+ rhoc = 0.54
+ eps = 0.18
+ shat = 0.4
+ qinp = 1.4
+ Rmaj = 1.0
+ R_geo = 3.0
+ shift = 0.0
+ akappa = 1.0
+ akappri = 0.0
+ tri = 0.0
+ tripri = 0.0
+/
+&parameters
+ beta = 0.0
+ zeff = 1.0
+/
+&theta_grid_eik_knobs
+ itor = 1
+ iflux = 0
+ irho = 2
+
+ ppl_eq = F
+ gen_eq = F
+ efit_eq = F
+ local_eq = T
+
+ eqfile = 'dskeq.cdf'
+ equal_arc = T
+ bishop = 4
+ s_hat_input = 0.8
+ beta_prime_input = 0.0
+ delrho = 1.e-3
+ isym = 0
+ writelots = F
+/
+&fields_knobs
+ field_option='implicit'
+/
+&gs2_diagnostics_knobs
+ print_flux_line = T
+ write_nl_flux = T
+ print_line = F
+ write_line = F
+ write_omega = F
+ write_final_fields = T
+ write_g = F
+ write_verr = T
+ nwrite=     10
+ navg=       5000
+ omegatinst = 500.0
+ save_for_restart = .true.
+ omegatol = -1.0e-3
+/
+&le_grids_knobs
+ ngauss = 5
+ negrid = 12
+ vcut= 2.5
+/
+&dist_fn_knobs
+ adiabatic_option="iphi00=2"
+ gridfac=   1.0
+ boundary_option="linked"
+ g_exb = 0
+/
+
+&kt_grids_knobs
+ grid_option='box'
+/
+&kt_grids_box_parameters
+ ! naky = (ny-1)/3 + 1
+ ny = 64
+ ! nakx = 2*(nx-1)/3 + 1
+ nx = 128 
+ ! ky_min = 1/y0
+ y0 = 20
+/
+&init_g_knobs
+ chop_side = F
+ phiinit=   1.e-3
+ restart_file = "nc/cyclone_miller_ke.nc"
+ ginit_option= "noise"
+/
+
+&knobs
+! fphi =   1.0
+! fapar =  0.0
+  faperp = 0.0
+!  delt = 0.05
+  dt = 0.02 
+  maxdt = 0.02
+  nstep = 10000
+/
+&species_knobs
+ nspec=          1
+/
+&species_parameters_1
+ z=   1.0
+ mass=   1.0
+ dens=   1.0
+ temp=   1.0
+ tprim=  6.9
+ fprim=  2.2
+ uprim=  0.0
+ vnewk=  0.0
+ type='ion'
+/
+&dist_fn_species_knobs_1
+ fexpr= 0.45
+ bakdif= 0.05
+/
+&species_parameters_2
+ z=     -1.0
+ mass=   2.7e-4
+ dens=   1.0
+ temp=   1.0
+ tprim=  2.3
+ fprim=  0.733
+ uprim=  0.0
+ vnewk=  0.0
+ type='electron'
+/
+&dist_fn_species_knobs_2
+ fexpr= 0.45
+ bakdif= 0.05
+/
+&theta_grid_knobs
+ equilibrium_option='eik'
+/
+&nonlinear_terms_knobs
+ nonlinear_mode='off'
+ cfl = 0.1
+/
+&reinit_knobs
+ delt_adj = 2.0
+ delt_minimum = 1.e-4
+/
+&layouts_knobs
+ layout = 'lxyes'
+ local_field_solve = F
+/
+
+&gryfx_knobs
+  write_omega = "on"
+  write_phi = "off"
+  restart = "exist"
+  no_zderiv_covering = "off"
+  no_omegad = "off"
+  const_curv = "off"
+  varenna = "off"
+  nlpm = "off"
+  smagorinsky = "off"
+  init = "density"
+  debug = "off"
+  s_alpha = "on"  
+  scan_type = "shat_scan"
+  scan_number = 1000
+/
+
