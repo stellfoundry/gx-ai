@@ -147,14 +147,16 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	   species[i].nu_ss = gryfxpars->nu[i] ;
   }
   
+  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
+  else *&X0 = Y0;  
   
-  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
+  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0, Zp);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
   printf("temp=%g  dens=%g nu_ss=%g\n", species[ION].temp, species[ION].dens,species[ION].nu_ss);
   printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
   printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
   printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
-  
+
   
   if ( S_ALPHA )
   {
@@ -207,9 +209,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
   } 
   
-  *&X0 = Y0*jtwist/(2*M_PI*Zp*shat);
   gradpar = (float) 1./(qsf*rmaj);
-
 
   if(DEBUG) { 
     int ct, dev;
@@ -275,7 +275,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       if(!LINEAR) sprintf(out_stem, "scan/shat_scan/shat%g/shat%g_%d.", shat,shat, scan_number);
       else sprintf(out_stem, "scan/shat_scan/shat%g_lin/shat%g_%d.", shat,shat, scan_number);
       
-      sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
+      if(!LINEAR) 
+        sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
+      else
+        sprintf(out_dir_path, "scan/shat_scan/shat%g_lin", shat);
+      
 
       // check to make sure that the directory 
       // scan/shat_scan/shatX.X/ exists
@@ -329,7 +333,37 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       }
     }       
   }
+
+  //set up restart file
+  strcpy(restartfileName, out_stem);
+  strcat(restartfileName, "restart.bin");
   
+  if(RESTART) {
+    // check if restart file exists
+    if( FILE* restartFile = fopen(restartfileName, "r") ) {
+      printf("restart file found. restarting...\n");
+    }
+    else{
+      printf("cannot restart because cannot find restart file. changing to no restart\n");
+      RESTART = false;
+    }
+  }			
+  
+  if(CHECK_FOR_RESTART) {
+    printf("restart mode set to exist...\n");
+    //check if restart file exists
+    if(FILE* restartFile = fopen(restartfileName, "r") ) {
+      fclose(restartFile);
+      printf("restart file exists. restarting...\n");
+      RESTART = true;
+    }
+    else {
+      printf("restart file does not exist. starting new run...\n");
+      RESTART = false;
+    }
+  }
+  
+
   /* 
   FILE *ifile;
   FILE *omegafile;
@@ -548,7 +582,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 
   
-  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
+  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
   printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
   if(LINEAR) printf("[Linear]\t");
@@ -565,7 +599,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   printf("\n\n");
   
   
-  fprintf(outfile,"\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g\n", Nx, Ny, Nz, X0, Y0);
+  fprintf(outfile,"\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
   fprintf(outfile,"tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
   fprintf(outfile,"shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
   if(LINEAR) fprintf(outfile,"[Linear]\t");

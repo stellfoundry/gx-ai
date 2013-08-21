@@ -215,7 +215,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cufftPlanMany(&ZDerivplan,1,n,inembed,(Ny/2+1)*Nx,1,
                                 onembed,(Ny/2+1)*Nx,1,CUFFT_C2C,(Ny/2+1)*Nx);	
                      //    n rank  nembed  stride   dist
-  
+  if(DEBUG) getError("after plan");
     
   // INITIALIZE ARRAYS AS NECESSARY
 
@@ -229,10 +229,10 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     //calculate bgrad
     ZDerivB(bgrad, bmag, bmag_complex, kz);
   }  
-    
-  cudaMemset(jump, 0, sizeof(float)*Ny);
-  cudaMemset(kx_shift,0,sizeof(float)*Ny);
- 
+  if(DEBUG) getError("before cudaMemset");  
+  //cudaMemset(jump, 0, sizeof(float)*Ny);
+  //cudaMemset(kx_shift,0,sizeof(float)*Ny);
+  if(DEBUG) getError("after cudaMemset"); 
   //for flux calculations
   multdiv<<<dimGrid,dimBlock>>>(tmpZ, jacobian, grho,1,1,Nz,1);
   fluxDen = sumReduc(tmpZ,Nz,false);
@@ -880,6 +880,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       
   } 
   
+  if(DEBUG) getError("just finished timestep loop");
+  
   cudaProfilerStop();
   cudaEventRecord(stop,0);
   cudaEventSynchronize(stop);
@@ -894,12 +896,15 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   }
   
   ////////////////////////////////////////////////////////////
-  
+
+  if(DEBUG) getError("before restartWrite");  
   
   // save for restart run
   restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum, Phi2_kxky_sum, Phi2_zonal_sum, 
   			zCorr_sum, expectation_ky_sum, expectation_kx_sum,
   			dtSum,counter,runtime,dt,totaltimer,restartfileName);
+  
+  if(DEBUG) getError("after restartWrite");
   
   phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)      
   

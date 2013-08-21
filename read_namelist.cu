@@ -25,7 +25,7 @@ void read_namelist(char* filename)
   
   if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod)) nperiod=1;  
   
-  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "z0", &Zp)) {
+  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &Zp)) {
    *&Zp = 2*nperiod - 1;
   }
 

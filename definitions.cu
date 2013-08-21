@@ -4,7 +4,7 @@ void definitions()
     *&Zp = 1./gradpar;
   }*/
   
-  *&Zp = 1;
+  //*&Zp = 1;
   
   for(int s=0; s<nSpecies; s++) {
     species[s].vt = sqrt(species[s].temp/species[s].mass);
