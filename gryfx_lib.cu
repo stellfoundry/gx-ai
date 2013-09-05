@@ -349,6 +349,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     }       
   }
 
+  printf("outstem is %s\n", out_stem);
+
   //set up restart file
   strcpy(restartfileName, out_stem);
   strcat(restartfileName, "restart.bin");
