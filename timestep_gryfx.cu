@@ -16,10 +16,12 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
 	      float* nu_nlpm, float* Phi2ZF_tmpX, float* tmpXZ)
 {
   
+  /*
   //calculate nu_nlpm for this timestep... to be used in each field equation
   if(!LINEAR && NLPM) {
     get_nu_nlpm(nu_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s);
   }
+  */
   
   
   //NOTE ABOUT TEMPORARY ARRAYS:
@@ -68,11 +70,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * ((kperp/kperp_max)**(2*p_hyper)) * Dens
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, DensOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(dens_field, 1., dens_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Dens
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (DensNew, 1., Dens, -dt, dens_field);
@@ -127,11 +131,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * (kperp**(2*p_hyper)) * Upar
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, UparOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(upar_field, 1., upar_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Upar
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (UparNew, 1., Upar, -dt, upar_field);
@@ -197,11 +203,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * (kperp**(2*p_hyper)) * Tpar
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, TparOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Tpar
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (TparNew, 1., Tpar, -dt, tpar_field);
@@ -282,11 +290,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * (kperp**(2*p_hyper)) * Tprp
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, TprpOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Tprp
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (TprpNew, 1., Tprp, -dt, tprp_field);
@@ -346,11 +356,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * (kperp**(2*p_hyper)) * Qpar
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, QparOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Qpar
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QparNew, 1., Qpar, -dt, qpar_field);
@@ -429,11 +441,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     // + nu_hyper * (kperp**(2*p_hyper)) * Qprp
   }
   
+  /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, QprpOld, ky, nu_nlpm, dnlpm);
     add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1., nlpm_tmp);
     // + nu_nlpm*|ky|*Qprp
   }
+  */
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QprpNew, 1., Qprp, -dt, qprp_field);

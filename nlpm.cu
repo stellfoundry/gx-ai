@@ -23,3 +23,14 @@ void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_n
      
 }
 
+void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
+		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
+		float* tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, 
+		specie s, float dt_loc)
+{
+  
+  get_nu_nlpm(nu_nlpm, Phi, tmpX, tmpXZ, s);  
+  nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu_nlpm, ky, dt_loc, dnlpm);
+  	
+
+}

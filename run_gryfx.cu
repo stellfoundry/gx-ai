@@ -661,7 +661,16 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
-        
+    
+    if(!LINEAR && NLPM) {
+      for(int s=0; s<nSpecies; s++) {
+        filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+			tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2.);
+		    
+      }  
+    }  
+    
+    
     
     for(int s=0; s<nSpecies; s++) {
 
@@ -691,6 +700,13 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
         
+    if(!LINEAR && NLPM) {
+      for(int s=0; s<nSpecies; s++) {
+        filterNLPM(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+			tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt);
+		    
+      }  
+    } 
     
     //cudaProfilerStop();
     

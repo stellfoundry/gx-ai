@@ -76,7 +76,7 @@ __global__ void nlpm(cuComplex* res, cuComplex* field, float* ky, float* nu_nlpm
   unsigned int idz = get_idz();
   
   if(nz<=zthreads) {
-    if(idy<((ny-1)/3+1) && idx<nx && idz<nz) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -85,7 +85,7 @@ __global__ void nlpm(cuComplex* res, cuComplex* field, float* ky, float* nu_nlpm
   }
   else {
     for(int i=0; i<nz/zthreads; i++) {
-      if(idy<((ny-1)/3+1) && idx<nx && idz<zthreads) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
@@ -97,30 +97,28 @@ __global__ void nlpm(cuComplex* res, cuComplex* field, float* ky, float* nu_nlpm
 }
 
 
-__global__ void filter2(cuComplex* filter, float* shear, float* ky, float dt_loc, float dnlpm)
+__global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float dnlpm)
 {
-  unsigned int idy = get_idy();
   unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
   unsigned int idz = get_idz();
   
   if(nz<=zthreads) {
-    if(idy<((ny-1)/3+1) && idx<nx && idz<nz) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      filter[index].x = 1./( 1. + dt_loc*dnlpm*sqrt(shear[idz])*ky[idy] );
-      filter[index].y = 0;
+      field[index] = field[index]/( 1. + dt_loc*dnlpm*nu_nlpm[idz]*ky[idy] );
     }
   }
   else {
     for(int i=0; i<nz/zthreads; i++) {
-      if(idy<((ny-1)/3+1) && idx<nx && idz<zthreads) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
-	filter[index].x = 1./(1. + dt_loc*dnlpm*sqrt(shear[IDZ])*ky[idy]);
-	filter[index].y = 0;
+	field[index] = field[index]/( 1. + dt_loc*dnlpm*nu_nlpm[IDZ]*ky[idy] );
       }
     }
   }
