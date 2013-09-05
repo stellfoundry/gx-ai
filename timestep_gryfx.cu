@@ -63,9 +63,9 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // -iOmegaD*(phi_nd + 2*Dens + Tpar + Tprp)
   
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, DensOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, DensOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(dens_field, 1., dens_field, nu_hyper, hyper_tmp);
-    // + nu_hyper * (kperp**(2*p_hyper)) * Dens
+    // + nu_hyper * ((kperp/kperp_max)**(2*p_hyper)) * Dens
   }
   
   if(!LINEAR && NLPM) {
@@ -122,7 +122,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // - iOmegaD*(Qpar + Qprp + 4*Upar)
     
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, UparOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, UparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(upar_field, 1., upar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Upar
   }
@@ -192,7 +192,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // + (2*nu_ss/3)*(Tpar - Tprp)
   
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TparOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Tpar
   }
@@ -277,7 +277,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // + (nu_ss/3)*(Tprp-Tpar)
   
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TprpOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TprpOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Tprp
   }
@@ -341,7 +341,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // + |omegaD|*(nu5.x*Upar + nu6.x*Qpar + nu7.x*Qprp)
   
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QparOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Qpar
   }
@@ -424,7 +424,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   // + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp
   
   if(HYPER) {
-    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QprpOld, p_hyper, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QprpOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Qprp
   }

@@ -947,6 +947,34 @@ __global__ void multZ(cuComplex* res, cuComplex* f, float* z)
 } 
 
 
+__global__ void multZ(float* res, float* f, float* z, int nx, int ny, int nz) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      res[index] = f[index] * z[idz];
+      		 
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	unsigned int IDZ = idz + i*zthreads;
+	
+        res[index] = f[index] * z[IDZ];
+        
+      }
+    }
+  }
+} 
+
+
 __global__ void multdiv(cuComplex* result, cuComplex* f, cuComplex* g, int a)
 {
   unsigned int idy = get_idy();
@@ -1060,7 +1088,7 @@ __global__ void multdiv(float* result, float* f, float* g, int nx, int ny, int n
   
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
-      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       
       if(a == 1) {
@@ -1074,7 +1102,7 @@ __global__ void multdiv(float* result, float* f, float* g, int nx, int ny, int n
   else {
     for(int i=0; i<nz/zthreads; i++) {
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
-        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
 	
         if(a == 1) {
           result[index] = f[index] * g[index];
@@ -1286,22 +1314,22 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
 }
       
 
-__global__ void hyper_dissipation(cuComplex* hyper, cuComplex* field, int p, 
-	float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)     
+__global__ void hyper_dissipation(cuComplex* hyper, cuComplex* field, int p, float *kx, float *ky, float kperp2_max_Inv)     
 {
   unsigned int idy = get_idy(); 
   unsigned int idx = get_idx();
   unsigned int idz = get_idz(); 
-  
+    
   
   if(nz<=zthreads) {
     if( idy<(ny/2+1) && idx<nx && idz<nz ) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      //float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      float kperp2 = pow(kx[idx],2) + pow(ky[idy],2);      
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
-      hyper[index] = field[index] * pow(bidx,2*p);
+      hyper[index] = field[index] * pow(kperp2*kperp2_max_Inv,p);
     }
   }
   else {
@@ -1311,9 +1339,10 @@ __global__ void hyper_dissipation(cuComplex* hyper, cuComplex* field, int p,
 	
 	unsigned int IDZ = idz + zthreads*i;
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
-	
-	hyper[index] = field[index] * pow(bidx,2*p);
+	//float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        float kperp2 = pow(kx[idx],2) + pow(ky[idy],2);	
+
+	hyper[index] = field[index] * pow(kperp2*kperp2_max_Inv,2*p);
       }
     }
   }

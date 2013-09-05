@@ -198,6 +198,54 @@ __global__ void zCorrelation_part2(float* corr_YZ, float* corrNum_YZ, float* cor
   }
 }	
 
+__global__ void corr_length_1(float* corr_length1, float* phi_corr_J, float* phi_corr_norm, float* z)
+{
+  unsigned int idy = get_idy();
+
+  if(idy<(ny/2+1)) {
+    float z2_phi_corr = 0.;
+    float z_phi_corr = 0.;
+    for(int idz=0; idz<nz; idz++) {
+      unsigned int idyz = idy + (ny/2+1)*idz;
+      z2_phi_corr = z2_phi_corr + z[idz]*z[idz]*phi_corr_J[idyz]; 
+      z_phi_corr = z_phi_corr + z[idz]*phi_corr_J[idyz];
+    }
+    z2_phi_corr = z2_phi_corr / phi_corr_norm[idy];
+    z_phi_corr = pow( z_phi_corr / phi_corr_norm[idy] , 2);
+    
+    corr_length1[idy] = sqrt( abs(z2_phi_corr - z_phi_corr) );
+    
+  }
+
+}
+
+__global__ void corr_length_3(float* corr_length3, float* phi_corr_norm, float* phi_corr_z0, float fluxDenInv)
+{
+  unsigned int idy = get_idy();
+  
+  if(idy<(ny/2+1)) {
+    double tmp = (double) phi_corr_norm[idy] / phi_corr_z0[idy];
+    corr_length3[idy] = tmp;
+  }
+}
+
+__global__ void corr_length_4(float* corr_length4, float* phi_corr_J, float* phi_corr_norm, float* z)
+{
+  unsigned int idy = get_idy();
+
+  if(idy<(ny/2+1)) {
+    float z_phi_corr = 0.;
+    for(int idz=0; idz<nz; idz++) {
+      unsigned int idyz = idy + (ny/2+1)*idz;
+      z_phi_corr = z_phi_corr + abs(z[idz])*phi_corr_J[idyz];
+    }
+    
+    corr_length4[idy] = z_phi_corr / phi_corr_norm[idy];    
+  }
+
+}
+
+
 __global__ void volflux(float* flux, cuComplex* f, cuComplex* g, float* jacobian, float fluxDenInv)
 {
   unsigned int idy = get_idy();
@@ -331,4 +379,16 @@ __global__ void get_z0(cuComplex* f_z0, cuComplex* f)
   }
 }
     
+__global__ void get_z0(float* f_z0, float* f, int nx, int ny, int nz) 
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  
+  if(idx<nx && idy<(ny/2+1)) {
+    unsigned int idxy_z0 = idy + (ny/2+1)*idx + (nz/2)*nx*(ny/2+1);
+    unsigned int idxy = idy + (ny/2+1)*idx;
+    
+    f_z0[idxy] = f[idxy_z0];
+  }
+}  
     

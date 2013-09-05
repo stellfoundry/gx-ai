@@ -385,7 +385,7 @@ void zSum(float* sum_tmpXY, cuComplex* f_tmp, float* f_tmpZ)
 }
 
 
-//calculate field line average
+//calculate field line average of f(kx,ky,z)
 void volflux(cuComplex* f, cuComplex* g, cuComplex* tmp, float* flux_tmpXY)
 {
   
@@ -598,6 +598,25 @@ void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext)
   fclose(out);
 }  
 
+//write f vs ky  
+void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext, int counter, float runtime) 
+{
+  strcpy(filename,out_stem);
+  strcat(filename, ext);
+  FILE* out;
+  if(counter==0 || counter==1) out = fopen(filename,"w+");
+  else out = fopen(filename, "a");
+  cudaMemcpy(f_ky_h, f_ky, sizeof(float)*(Ny/2+1),cudaMemcpyDeviceToHost);
+  if(counter==0 || counter==1) fprintf(out, "#\tky\t\t\t%s\n", ext);
+  //for(int i=0; i<Ny/2+1; i++) {
+  fprintf(out,"t=%f\n", runtime);
+  for(int i=0; i<(Ny-1)/3+1; i++) {
+    fprintf(out, "\t%f\t\t%e\n", ky_h[i], f_ky_h[i]);
+  }
+  fprintf(out,"\n\n");
+  fclose(out);
+}  
+
 void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
 {
   strcpy(filename, out_stem);
@@ -635,6 +654,29 @@ void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
 }
 
 void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
+{
+  strcpy(filename, out_stem);
+  strcat(filename,ext);
+  FILE* out = fopen(filename,"w+");
+  cudaMemcpy(f_zky_h, f_zky, sizeof(float)*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\t%s", ext);  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int j=0; j<(Ny-1)/3+1; j++) {
+    fprintf(out,"\n");      
+    for(int k=0; k<=Nz; k++) {
+      int index = j+(Ny/2+1)*k;
+      int index_z0 = j+(Ny/2+1)*(Nz/2);
+      
+      if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%e\n", -z_h[0], ky_h[j], f_zky_h[j]); 
+      else fprintf(out, "\t%f\t\t%f\t\t%e\n", z_h[k], ky_h[j], f_zky_h[index]);    	  
+      
+    }     
+  }  
+  fclose(out);
+}  
+
+void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
   strcat(filename,ext);
@@ -1099,10 +1141,10 @@ void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex
     cudaMemcpy(Qprp[s], Qprp_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
   }
   fread(Phi_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
-  cudaMemcpy(Phi_h, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
+  cudaMemcpy(Phi, Phi_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
   
   fread(zCorr_sum_h,sizeof(float)*(Ny/2+1)*Nz,1,restart);
-  cudaMemcpy(zCorr_sum_h, zCorr_sum, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);  
+  cudaMemcpy(zCorr_sum, zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);  
   
   fread(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
   cudaMemcpy(Phi2_zonal_sum, Phi2_zonal_sum_h, sizeof(float)*Nx, cudaMemcpyHostToDevice);
@@ -1186,12 +1228,12 @@ void geoWrite(char* ext, char* filename)
 
 void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp, cuComplex** Qpar, cuComplex** Qprp, 
 	cuComplex* Phi,	cuComplex* tmp, cuComplex* corrNum_tmp, cuComplex* field, float* tmpZ, 
-	float* tmpXY, float* phi2avg_tmpXY, float* corrDen_tmpXY, float* kphi2_tmpXY2, float* tmpXY3, float* tmpXY4, float* phi_corr_tmpYZ,
-	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2,
+	float* tmpXY, float* phi2avg_tmpXY, float* corrDen_tmpXY, float* kphi2_tmpXY2, float* tmpXY3, float* tmpXY4, float* phi_corr_tmpYZ, float* phi_corr_J_tmpYZ,
+	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* phi_corr_z0_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2, float* phi_corr_norm_tmpY2,
 	int** kxCover, int** kyCover, float* tmpX_h, float* tmpY_h, float* tmpXY_h, float* tmpYZ_h, cuComplex* field_h, 
 	int** kxCover_h, int** kyCover_h, cuComplex* omegaAvg_h, double* qflux, float* expectation_ky, float* expectation_kx,
 	float* Phi2_kxky_sum, float* wpfxnorm_kxky_sum, float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, 
-	float dtSum, int counter, bool end)
+	float dtSum, int counter, float runtime, bool end)
 {
   char filename[80];  
   
@@ -1232,7 +1274,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
   //calculate and write phi**2(ky) == E(ky) -> electrostatic fluctuation spectra
   sumX<<<dimGrid,dimBlock>>>(phi2_ky_tmpY2, phi2avg_tmpXY);
   kyWrite(phi2_ky_tmpY2, tmpY_h, filename, "phi2.ky");
-  
+  kyHistoryWrite(phi2_ky_tmpY2, tmpY_h, filename, "phi2.ky.time", counter, runtime);  
   //write phi**2(kx,ky)
   kxkyWrite(phi2avg_tmpXY, tmpXY_h, filename, "phi2.kxky");
   
@@ -1253,16 +1295,30 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
   printf("expectation val of ky = %f\nexpectation val of kx = %f\n", *expectation_ky, *expectation_kx);
   if(end) printf("Q_i = %f\n\n", qflux[ION]);
   
-  //calculate and write time average of parallel correlation function
+  //calculate and write time average of parallel correlation function, C(ky,z)
   scaleReal<<<dimGrid,dimBlock>>>(phi_corr_tmpYZ, zCorr_sum, (float) 1./dtSum, 1, Ny/2+1,Nz);
-  zkyWrite(phi_corr_tmpYZ, tmpYZ_h, filename, "phi_correlation.zky");
+  zkyWriteNorm(phi_corr_tmpYZ, tmpYZ_h, filename, "phi_correlation.zky");
   
-  //calculate parallel correlation length as function of ky
-  sumZ<<<dimGrid,dimBlock>>>(tmpY, phi_corr_tmpYZ, 1, Ny, Nz);
-  scaleReal<<<dimGrid,dimBlock>>>(tmpY, tmpY, (float) 1./(qsf*2.*M_PI), 1, Ny/2+1, 1);
-  kyWrite(tmpY, tmpY_h, filename, "phi_correlation.ky"); 
-  
- 
+  //calculate several parallel correlation lengths as function of ky 
+  //(correspond to correlation lengths calculated in gs2plots.f90)
+  get_z0<<<dimGrid,dimBlock>>>(phi_corr_z0_tmpY, phi_corr_tmpYZ, 1, Ny, Nz);
+  multZ<<<dimGrid,dimBlock>>>(phi_corr_J_tmpYZ, phi_corr_tmpYZ, jacobian, 1, Ny, Nz);   // phi_corr_J = corr(ky,z) * J(z) 
+  //zkyWrite(phi_corr_J_tmpYZ, tmpYZ_h, filename, "phi_corr_J.zky");
+  sumZ<<<dimGrid,dimBlock>>>(phi_corr_norm_tmpY2, phi_corr_tmpYZ, 1, Ny, Nz);  // phi_corr_norm = sum_z [ phi_corr_J ] 
+  //kyWrite(tmpY2, tmpY_h, filename, "phi_corr_norm.ky");
+  //kyWrite(tmpY, tmpY_h, filename, "phi_corr_z0.ky");
+  //corr_length_3<<<dimGrid,dimBlock>>>(tmpY, phi_corr_norm_tmpY2, phi_corr_z0_tmpY, 1./fluxDen);
+  multdiv<<<dimGrid,dimBlock>>>(tmpY, phi_corr_norm_tmpY2, phi_corr_z0_tmpY, 1, Ny, 1, -1);
+  scaleReal<<<dimGrid,dimBlock>>>(tmpY, tmpY, (float) 1./fluxDen, 1, Ny/2+1, 1);
+  kyWrite(tmpY, tmpY_h, filename, "corr_length_3.ky"); 
+  if(end) 
+  {
+    corr_length_1<<<dimGrid,dimBlock>>>(tmpY, phi_corr_J_tmpYZ, phi_corr_norm_tmpY2, z);
+    kyWrite(tmpY, tmpY_h, filename, "corr_length_1.ky"); 
+    corr_length_4<<<dimGrid,dimBlock>>>(tmpY, phi_corr_J_tmpYZ, phi_corr_norm_tmpY2, z);
+    kyWrite(tmpY, tmpY_h, filename, "corr_length_4.ky");  
+  }
+
   if(end) {  
     //write fields(kx,ky) vs z
     normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);

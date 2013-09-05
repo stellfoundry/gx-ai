@@ -152,7 +152,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0, Zp);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-  printf("temp=%g  dens=%g nu_ss=%g\n", species[ION].temp, species[ION].dens,species[ION].nu_ss);
+  printf("temp=%g  dens=%g nu_ss=%g  inlpm=%d  dnlpm=%f\n", species[ION].temp, species[ION].dens,species[ION].nu_ss, inlpm, dnlpm);
   printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
   printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
   printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
@@ -283,6 +283,21 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
       // check to make sure that the directory 
       // scan/shat_scan/shatX.X/ exists
+      struct stat st;
+      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
+	mkdir(out_dir_path, 00777);
+      }
+    }  
+
+
+    //nlpm scan
+    if( strcmp(scan_type, "nlpm_scan") == 0 ) {
+      sprintf(out_stem, "scan/nlpm_scan/nlpm%g/nlpm%g_%d.", dnlpm, dnlpm, scan_number);
+
+      sprintf(out_dir_path, "scan/nlpm_scan/nlpm%g", dnlpm);
+      
+      // check to make sure that the directory 
+      // scan/nlpm_scan/nlpmX.X/ exists
       struct stat st;
       if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
 	mkdir(out_dir_path, 00777);

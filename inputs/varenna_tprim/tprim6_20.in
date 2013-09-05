@@ -70,7 +70,7 @@
  write_final_fields = T
  write_g = F
  write_verr = T
- nwrite=     10
+ nwrite=     100
  navg=       5000
  omegatinst = 500.0
  save_for_restart = .true.
@@ -113,7 +113,7 @@
 !  delt = 0.05
   dt = 0.02 
   maxdt = 0.02
-  nstep = 10000
+  nstep = 100000
 /
 &species_knobs
  nspec=          1
@@ -152,8 +152,8 @@
  equilibrium_option='eik'
 /
 &nonlinear_terms_knobs
- nonlinear_mode='off'
- cfl = 0.1
+ nonlinear_mode='on'
+ cfl = 0.2
 /
 &reinit_knobs
  delt_adj = 2.0
@@ -165,19 +165,19 @@
 /
 
 &gryfx_knobs
-  write_omega = "on"
+  write_omega = "off"
   write_phi = "off"
   restart = "exist"
   no_zderiv_covering = "off"
   no_omegad = "off"
   const_curv = "off"
-  varenna = "on"
+  varenna = "off"
   nlpm = "off"
   smagorinsky = "off"
   init = "density"
   debug = "off"
   s_alpha = "on"  
   scan_type = "tprim_scan"
-  scan_number = 20
+  scan_number = 21
 /
 

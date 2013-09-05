@@ -151,6 +151,9 @@ void read_namelist(char* filename)
   else if( strcmp(nlpm,"off") == 0) {
     NLPM = false;
   }
+
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm)) dnlpm = 1.;
   
   char* smagorinsky;
   smagorinsky = (char*) malloc(sizeof(char)*4);

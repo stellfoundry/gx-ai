@@ -99,6 +99,7 @@ float Beta_par;
 float diffusion;
 float nu_hyper=1.;
 int p_hyper=2;
+float kperp2_max_Inv;
 
 float dnlpm = 1.;
 int inlpm = 2;

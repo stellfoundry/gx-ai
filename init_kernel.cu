@@ -114,3 +114,4 @@ __global__ void kPerpInvInit(float* kPerp2Inv, float* kPerp2)
 
 }   
 
+

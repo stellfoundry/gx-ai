@@ -252,6 +252,9 @@ void kPrint(int nLinks, int nChains, int *ky, int *kx) {
       }
       else {
         printf("(%d,%d) ",ky[p+nLinks*n], kx[p+nLinks*n]-Nx);	
+      }
+      if(kx[p+nLinks*n]>(Nx-1)/3 && kx[p+nLinks*n]<2*(Nx/3)+1) {
+        printf("->DEALIASING ERROR");
       }	
       /* *counter= *counter+1; */
     }
