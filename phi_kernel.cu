@@ -49,7 +49,8 @@ __global__ void qneut(cuComplex* Phi, float tau, cuComplex* Dens_i, cuComplex* T
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
-      Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) / (tau - g0(bidx) + 1.);
+      Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) 
+      			/ (tau - g0(bidx) + 1.);
     }
   }
   else {
@@ -62,7 +63,8 @@ __global__ void qneut(cuComplex* Phi, float tau, cuComplex* Dens_i, cuComplex* T
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
-	Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) / (tau - g0(bidx) + 1.);
+	Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) 
+			/ (tau - g0(bidx) + 1.);
       }
     }
   }      
@@ -84,7 +86,8 @@ __global__ void qneutAdiab_part1(cuComplex* Num_tmp, cuComplex* Denom_field, flo
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       
-      Num_tmp[index] = ( ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) / (tau - g0(bidx) + 1.) ) * jacobian[idz];
+      Num_tmp[index] = ( ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) 
+      			/ (tau - g0(bidx) + 1.) ) * jacobian[idz];
       
        
       /*//like fixFFT
@@ -162,9 +165,10 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* Num_tmp, cuComplex* 
             
       cuComplex PhiAvg;
       if(idy == 0 && idx!=0) { PhiAvg = zSum_Num/zSum_Denom; }
-      else {PhiAvg.x = 0; PhiAvg.y = 0;}
+      else {PhiAvg.x = 0.; PhiAvg.y = 0.;}
       
-      Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) + tau*PhiAvg ) / (tau - g0(bidx) + 1.);
+      Phi[index] = ( Dens_i[index]/(1.+bidx/2.) - (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) + tau*PhiAvg ) 
+      			/ (tau - g0(bidx) + 1.);
       
       
     }
