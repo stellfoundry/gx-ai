@@ -253,7 +253,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   //set up kxCover and kyCover for covering space z-transforms
   int naky, ntheta0;// nshift;
   naky = 1 + (Ny-1)/3;
-  ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
+  ntheta0 = 1 + 2*(Nx-1)/3;     //MASK IN MIDDLE OF ARRAY
   //nshift = Nx - ntheta0;
 
   int idxRight[naky*ntheta0];
@@ -446,7 +446,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       if(DEBUG) getError("after copy");    
 
       //enforce reality condition -- this is CRUCIAL when initializing in k-space
-      reality<<<dimGrid,dimBlock>>>(Dens[ION]);
+      realityAll<<<dimGrid,dimBlock>>>(Dens[ION]);
       
       mask<<<dimGrid,dimBlock>>>(Dens[ION]);  
 
@@ -598,10 +598,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float dt_start = .0001;
   float alpha;
     
-  while(//counter < 1 && 
+  while(/*counter < 1 &&*/ 
         counter<nSteps &&
-	stopcount<nstop &&
-	converge_count<2*navg)
+	stopcount<nstop 
+	/*&& converge_count<2*navg*/
+	)
   {
     
     dt_old = dt;
@@ -712,6 +713,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     //DIAGNOSTICS
+    
     if(LINEAR) {
       growthRate<<<dimGrid,dimBlock>>>(omega,Phi1,Phi,dt);    
       //cudaMemcpy(omega_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);     
@@ -729,7 +731,6 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	STABLE_STOP = stabilityCheck(Stable,stableMax);
       }
     }
-    
     //copy Phi for next timestep
     cudaMemcpy(Phi, Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
     mask<<<dimGrid,dimBlock>>>(Phi1);
@@ -781,6 +782,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha, Phi2_kxky_sum, dt*alpha, tmpXY, Nx, Ny, 1);
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha, Phi2_zonal_sum, dt*alpha, tmpX, Nx, 1, 1);
       add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha, zCorr_sum, dt*alpha, tmpYZ, 1, Ny, Nz);
+      add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha, omegaAvg, dt*alpha, omega, Nx, Ny, 1);
       expectation_kx_sum = expectation_kx_sum*(1.-alpha) + expectation_kx*dt*alpha;
       expectation_ky_sum = expectation_ky_sum*(1.-alpha) + expectation_ky*dt*alpha;
       dtSum = dtSum*(1.-alpha) + dt*alpha;
@@ -880,7 +882,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     //check for problems with run
-    if(isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 1000 ) {
+    if(!LINEAR && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 1000) ) {
       printf("\n-------------\n--RUN ERROR--\n-------------\n\n");
       printf("RESTARTING FROM LAST RESTART FILE...\n");
       
@@ -914,7 +916,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                         kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                         kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
 			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-			expectation_kx_sum, dtSum,
+			expectation_kx_sum, omegaAvg, dtSum,
 			counter, runtime, false);
   
   } 

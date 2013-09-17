@@ -112,14 +112,14 @@ void read_namelist(char* filename)
     NO_ZDERIV_COVERING = false;
   }
   
-  char* no_omegad;
-  no_omegad = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "no_omegad", &no_omegad)) no_omegad="off";
-  if( strcmp(no_omegad,"on") == 0) {
-    NO_OMEGAD = true;
+  char* slab;
+  slab = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "slab", &slab)) slab="off";
+  if( strcmp(slab,"on") == 0) {
+    SLAB = true;
   }
-  else if( strcmp(no_omegad,"off") == 0) {
-    NO_OMEGAD = false;
+  else if( strcmp(slab,"off") == 0) {
+    SLAB = false;
   }
   
   char* const_curv;

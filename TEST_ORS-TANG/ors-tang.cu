@@ -9,9 +9,9 @@
 #include "cuda_profiler_api.h"
 
 int Nx, Ny, Nz, zThreads, totalThreads;
-float X0, Y0, Z0;
+float X0, Y0, Zp;
 __constant__ int nx,ny,nz,zthreads,totalthreads;
-__constant__ float X0_d,Y0_d,Z0_d;
+__constant__ float X0_d,Y0_d,Zp_d;
 
 dim3 dimBlock, dimGrid;
 
@@ -125,7 +125,7 @@ int main(int argc, char* argv[])
       else 
         {
 
-            fscanf(ifile, "%d %d %d %f %f %f", &Nx, &Ny, &Nz, &X0, &Y0, &Z0);
+            fscanf(ifile, "%d %d %d %f %f %f", &Nx, &Ny, &Nz, &X0, &Y0, &Zp);
             fscanf(ifile, "%f %f %f", &endtime, &nu, &eta);
 	    fclose( ifile );
 
@@ -175,14 +175,14 @@ int main(int argc, char* argv[])
 	
 	if(DEBUG) getError("After dimGrid/dimBlock setup");
 	
-	//X0 = Y0 = Z0 = 1;
+	//X0 = Y0 = Zp = 1;
 	
 	cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(X0_d, &X0, sizeof(float),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(Y0_d, &Y0, sizeof(float),0,cudaMemcpyHostToDevice);
-	cudaMemcpyToSymbol(Z0_d, &Z0, sizeof(float),0,cudaMemcpyHostToDevice);
+	cudaMemcpyToSymbol(Zp_d, &Zp, sizeof(float),0,cudaMemcpyHostToDevice);
 	cudaMemcpyToSymbol(zthreads, &zThreads, sizeof(int),0,cudaMemcpyHostToDevice);
         
 	
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
       
       	   y[i] = Y0*2*M_PI*(float)(i-Ny/2)/Ny;                            
       	   x[j] = X0*2*M_PI*(float)(j-Nx/2)/Nx;	  			    
-      	   z[k] = Z0*2*M_PI*(float)(k-Nz/2)/Nz;	  			    
+      	   z[k] = Zp*2*M_PI*(float)(k-Nz/2)/Nz;	  			    
       	   int index = i + Ny*j + Ny*Nx*k;
       
       
@@ -238,7 +238,7 @@ int main(int argc, char* argv[])
 	fprintf(plotfile, "set title \"ENERGY PLOTS\"\n");
 	fprintf(plotfile, "set xlabel \"Time (s)\"\nset ylabel \"Energy\"\n");
 	fprintf(plotfile, "set xtics 0, .5, %f\nset mxtics 5\nset ytics 0, 1\nset mytics 5\nset tics scale 3\n",endtime);
-	fprintf(plotfile, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%f,%f,%f)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Z0);
+	fprintf(plotfile, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%f,%f,%f)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Zp);
 	fprintf(plotfile, "nu=%g   eta=%g\" at 0,-.9\n",nu,eta);
 	fprintf(plotfile, "plot [ ] [0:] \"../%s\" using 1:2 title \"total energy\" with lines, \\\n", argv[2]);
 	fprintf(plotfile, "\"../%s\" using 1:3 title \"kinetic energy\" with lines, \\\n", argv[2]);
@@ -256,7 +256,7 @@ int main(int argc, char* argv[])
 	fprintf(pipe, "set title \"ENERGY PLOTS\"\n");
 	fprintf(pipe, "set xlabel \"Time (s)\"\nset ylabel \"Energy\"\n");
 	fprintf(pipe, "set xtics 0, .5, %f\nset mxtics 5\nset ytics 0, 1\nset mytics 5\nset tics scale 3\n",endtime);
-	fprintf(pipe, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%f,%f,%f)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Z0);
+	fprintf(pipe, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%f,%f,%f)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Zp);
 	fprintf(pipe, "nu=%g   eta=%g\" at 0,-.9\n",nu,eta);
 	fprintf(pipe, "plot [ ] [0:] \"%s\" using 1:2 title \"total energy\" with lines, \\\n", argv[2]);
 	fprintf(pipe, "\"%s\" using 1:3 title \"kinetic energy\" with lines, \\\n", argv[2]);
@@ -268,7 +268,7 @@ int main(int argc, char* argv[])
 	
 	
 	
-        printf("\nNx=%d   Ny=%d  Nz=%d  BoxSize=2pi*(%f,%f,%f) endtime=%f eta=%f nu=%f\n\n", Nx, Ny, Nz, X0, Y0, Z0, endtime, eta, nu);
+        printf("\nNx=%d   Ny=%d  Nz=%d  BoxSize=2pi*(%f,%f,%f) endtime=%f eta=%f nu=%f\n\n", Nx, Ny, Nz, X0, Y0, Zp, endtime, eta, nu);
 
 
 	

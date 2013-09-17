@@ -193,8 +193,19 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       if(CONST_CURV) {
         cvdrift_h[k] = 1./(2.*rmaj);
 	gbdrift_h[k] = 1./(2.*rmaj);
-	cvdrift0_h[k] = 0;
-	gbdrift0_h[k] = 0;
+	cvdrift0_h[k] = 0.;
+	gbdrift0_h[k] = 0.;
+      }
+      if(SLAB) {
+        //omegad=0:
+	//cvdrift_h[k] = 0.;
+        //gbdrift_h[k] = 0.;       
+        //cvdrift0_h[k] = 0.;
+        //gbdrift0_h[k] = 0.;
+        //bgrad=0:
+        bgrad_h[k] = 0.;
+        //bmag=const:
+        bmag_h[k] = 1.;
       }
     }  
   }
@@ -606,7 +617,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   else printf("[Nonlinear]\t");
   if(NO_ZDERIV) printf("[No zderiv]\t");
   if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
-  if(NO_OMEGAD) printf("[No omegaD]\t");
+  if(SLAB) printf("[Slab limit]\t");
   if(varenna) printf("[varenna]\t");
   if(CONST_CURV) printf("[constant curvature]\t");
   if(RESTART) printf("[restart]\t");
@@ -623,7 +634,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   else fprintf(outfile,"[Nonlinear]\t");
   if(NO_ZDERIV) fprintf(outfile,"[No zderiv]\t");
   if(NO_ZDERIV_COVERING) fprintf(outfile,"[No zderiv_covering]\t");
-  if(NO_OMEGAD) fprintf(outfile,"[No omegaD]\t");
+  if(SLAB) fprintf(outfile,"[Slab limit]\t");
   if(varenna) fprintf(outfile,"[varenna]\t");
   if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
   if(RESTART) fprintf(outfile,"[restart]\t");

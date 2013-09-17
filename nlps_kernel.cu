@@ -180,13 +180,12 @@ __global__ void bracket(float* result, float* fdxgdy,
 
 __global__ void reality(cuComplex* f) 
 {
-  unsigned int idy = get_idy();
+  unsigned int idy = 0;
   unsigned int idx = get_idx();
   unsigned int idz = get_idz();
   
   if(nz<=zthreads) {
-    if( idy<(ny/2+1) && idx<(nx/2+1) && idz<nz) {
-      if(idy == 0 && idx>0) {
+    if( idx>0 &&  idx<(nx/2+1) && idz<nz) {
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 	unsigned int index2 = idy + (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
 	
@@ -200,11 +199,34 @@ __global__ void reality(cuComplex* f)
 	
 	f[index2].x = f[index].x;
 	f[index2].y = -f[index].y;
-      }
     }
   }
 }
   
 
+__global__ void realityAll(cuComplex* f) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if( idy<(ny/2+1) && idx>0 &&  idx<(nx/2+1) && idz<nz) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+	unsigned int index2 = idy + (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
+	
+	/*
+	float reavg = .5*(f[index].x + f[index2].x);
+	float imavg = .5*(f[index].y - f[index2].y);
+	f[index].x = reavg;
+	f[index2].x = reavg;
+	f[index].y = imavg;
+	f[index2].y = -imavg;*/
+	
+	f[index2].x = f[index].x;
+	f[index2].y = -f[index].y;
+    }
+  }
+}
 
 
