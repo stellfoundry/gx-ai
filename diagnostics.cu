@@ -1232,13 +1232,13 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
 	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* phi_corr_z0_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2, float* phi_corr_norm_tmpY2,
 	int** kxCover, int** kyCover, float* tmpX_h, float* tmpY_h, float* tmpXY_h, float* tmpYZ_h, cuComplex* field_h, 
 	int** kxCover_h, int** kyCover_h, cuComplex* omegaAvg_h, double* qflux, float* expectation_ky, float* expectation_kx,
-	float* Phi2_kxky_sum, float* wpfxnorm_kxky_sum, float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, cuComplex* omegaAvg, cuComplex* omega_sum,
+	float* Phi2_kxky_sum, float* wpfxnorm_kxky_sum, float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, //cuComplex* omegaAvg,// cuComplex* omega_sum,
 	float dtSum, int counter, float runtime, bool end)
 {
   char filename[80];  
 
   
-  scale<<<dimGrid,dimBlock>>>(omegaAvg, omega_sum, (float) 1./dtSum, Nx, Ny, 1
+  //scale<<<dimGrid,dimBlock>>>(omegaAvg, omega_sum, (float) 1./dtSum, Nx, Ny, 1
   
   //write final growth rates, with ky or kx as the fast index
   omegakykxWrite(omegaAvg_h, filename, "omega.kykx", 1.);

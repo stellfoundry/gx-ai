@@ -1262,7 +1262,7 @@ __global__ void roundoff(cuComplex* f, float max)
 }     
 
 __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float* kx, float* gds22, float
-				qsf, float eps, float* bmagInv, cuComplex* T, float shat)
+				qsf, float eps, float* bmagInv, cuComplex* T_fluxsurfavg, float shat)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -1278,11 +1278,16 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
   if(nz<=zthreads) {
     if(idy<ny && idx<nx && idz<nz) {
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-      
+
+      //psfac is 3 or 1 depending on whether using Qpar or Qprp, respectively
+       
       if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+	
+	
 	cuComplex tmp;
-	tmp.x = Q[index].x + psfac*kx[idx]*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T[index].y;
-	tmp.y = Q[index].y - psfac*kx[idx]*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T[index].x;
+	tmp.x = Q[index].x + psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T_fluxsurfavg[idx].y;
+	tmp.y = Q[index].y - psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T_fluxsurfavg[idx].x;
 	Qps[index] = tmp;
       }
       else {
@@ -1300,9 +1305,10 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
 	unsigned int IDZ = idz + zthreads*i;
 	
 	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
 	  cuComplex tmp;
-	  tmp.x = Q[index].x + psfac*kx[idx]*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[index].y;
-	  tmp.y = Q[index].y - psfac*kx[idx]*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[index].x;
+	  tmp.x = Q[index].x + psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].y;
+	  tmp.y = Q[index].y - psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].x;
 	  Qps[index] = tmp;
         }
 	else {

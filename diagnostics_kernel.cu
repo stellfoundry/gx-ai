@@ -308,6 +308,22 @@ __global__ void volflux_zonal(float* flux, cuComplex* f, cuComplex* g, float* ja
   
 }
 
+__global__ void volflux_varenna(cuComplex* T_fsa_X, cuComplex* T, float* jacobian, float fluxDenInv)
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = 0;
+  if(idx<nx) 
+  {
+    T_fsa_X[idx].x = 0.;
+    T_fsa_X[idx].y = 0.;
+    for(int idz=0; idz<nz; idz++) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      T_fsa_X[idx] = T_fsa_X[idx] + T[index]*jacobian[idz];
+    }
+    T_fsa_X[idx] = T_fsa_X[idx]*fluxDenInv;
+  }
+}
+
 __global__ void volflux_part2(float* flux_XY, cuComplex* tmp, float fluxDenInv)
 {      
   unsigned int idy = get_idy();

@@ -50,7 +50,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float *tmpXY_R;
   float *tmpXZ;
   float *tmpYZ;
-  
+  cuComplex *CtmpX;
+ 
   cuComplex *omega;
   cuComplex *omegaBox[navg];
   
@@ -142,6 +143,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cudaMalloc((void**) &tmpXY_R, sizeof(float)*Nx*Ny);
   cudaMalloc((void**) &tmpXZ, sizeof(float)*Nx*Nz);
   cudaMalloc((void**) &tmpYZ, sizeof(float)*(Ny/2+1)*Nz);
+  cudaMalloc((void**) &CtmpX, sizeof(cuComplex)*Nx);
   
   cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   cudaMalloc((void**) &derivR1_nlps, sizeof(float)*Nx*Ny*Nz);
@@ -645,7 +647,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
-	       nu_nlpm, tmpX, tmpXZ);
+	       nu_nlpm, tmpX, tmpXZ, CtmpX);
 	         
     }
       
@@ -684,7 +686,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
-	       nu_nlpm, tmpX, tmpXZ);
+	       nu_nlpm, tmpX, tmpXZ, CtmpX);
     }
 
     
@@ -782,7 +784,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha, Phi2_kxky_sum, dt*alpha, tmpXY, Nx, Ny, 1);
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha, Phi2_zonal_sum, dt*alpha, tmpX, Nx, 1, 1);
       add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha, zCorr_sum, dt*alpha, tmpYZ, 1, Ny, Nz);
-      add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha, omegaAvg, dt*alpha, omega, Nx, Ny, 1);
+      //add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha, omegaAvg, dt*alpha, omega, Nx, Ny, 1);
       expectation_kx_sum = expectation_kx_sum*(1.-alpha) + expectation_kx*dt*alpha;
       expectation_ky_sum = expectation_ky_sum*(1.-alpha) + expectation_ky*dt*alpha;
       dtSum = dtSum*(1.-alpha) + dt*alpha;
@@ -916,7 +918,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                         kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                         kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
 			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-			expectation_kx_sum, omegaAvg, dtSum,
+			expectation_kx_sum, dtSum,
 			counter, runtime, false);
   
   } 

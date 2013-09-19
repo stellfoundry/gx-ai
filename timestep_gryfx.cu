@@ -13,7 +13,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
 	      cuComplex *fields_over_B2_tmp, cuComplex *B2_gradpar_tmp, cuComplex * bgrad_tmp, 
 	      cuComplex* hyper_tmp, cuComplex* nlpm_tmp,
 	      float *gradparB_tmpZ, cufftHandle* plan_covering,
-	      float* nu_nlpm, float* Phi2ZF_tmpX, float* tmpXZ)
+	      float* nu_nlpm, float* Phi2ZF_tmpX, float* tmpXZ, cuComplex* T_fluxsurfavg_CtmpX)
 {
   
   /*
@@ -323,7 +323,8 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ZDerivCovering(gradpar_tmp, TparOld, kxCover, kyCover, g_covering, kz_covering,"",plan_covering);  
   add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*(3+Beta_par), gradpar_tmp);  
   if(varenna) {
-    PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, 3., kx, gds22, qsf, eps, bmagInv, TparOld, shat);  //defined in operations_kernel.cu  
+    volflux_varenna<<<dimGrid,dimBlock>>>(T_fluxsurfavg_CtmpX, TparOld, jacobian, 1./fluxDen);
+    PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, 3., kx, gds22, qsf, eps, bmagInv, T_fluxsurfavg_CtmpX, shat);  //defined in operations_kernel.cu  
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs",plan_covering);
   }
   else {
@@ -401,10 +402,10 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   ZDerivCovering(gradpar_tmp, sum_tmp, kxCover, kyCover, g_covering, kz_covering,"",plan_covering);  
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
   // + vt*gradpar( zt*phi_flr + Tprp )
-  
-  
+    
   if(varenna) {
-    PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, 1., kx, gds22, qsf, eps, bmagInv, TprpOld, shat);  //defined in operations_kernel.cu  
+    volflux_varenna<<<dimGrid,dimBlock>>>(T_fluxsurfavg_CtmpX, TprpOld, jacobian, 1./fluxDen);
+    PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, 1., kx, gds22, qsf, eps, bmagInv, T_fluxsurfavg_CtmpX, shat);  //defined in operations_kernel.cu  
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
   }
   else {
