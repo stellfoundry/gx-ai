@@ -401,11 +401,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       srand(22);
       float samp;
 
-      for(int k=0; k<Nz; k++) {
+      //for(int k=0; k<Nz; k++) {
 	for(int j=0; j<Nx; j++) {
 	  for(int i=0; i<(Ny/2+1); i++) {
 
-	    int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
+	    //int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
 	    int idxy = i + (Ny/2+1)*j;
 	    //if(idxy!=0) {
 
@@ -426,8 +426,12 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	      float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	      //printf("%e\n", ra);
 
-	      init_h[index].x = ra;
-	      init_h[index].y = rb;
+	      //loop over z here to get rid of randomness in z in initial condition
+	      for(int k=0; k<Nz; k++) {
+	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
+		init_h[index].x = ra;
+	        init_h[index].y = rb;
+	      }
 	      
 	      
 	        
@@ -435,7 +439,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	    //}
 	  }
 	}
-      }
+      //}
       
 
       for(int s=0; s<nSpecies; s++) {

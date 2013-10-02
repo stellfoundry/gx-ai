@@ -3,7 +3,12 @@ void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int** ky,
 		    char* abs, cufftHandle* plan_covering)
 {
 
-  if(!NO_ZDERIV_COVERING) {
+  if(LINEAR && Zp!=1) {
+    reality<<<dimGrid,dimBlock>>>(f);
+    ZDeriv(result, f, kz); 
+    reality<<<dimGrid,dimBlock>>>(result);
+  }
+  else {
 	  reality<<<dimGrid,dimBlock>>>(f);
 	  for(int c=0; c<nClasses; c++) {  
 	      
@@ -18,7 +23,6 @@ void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int** ky,
 	  
 	  reality<<<dimGrid,dimBlock>>>(result); 	   
   }
-  else zeroC<<<dimGrid,dimBlock>>>(result);
 } 
 
 

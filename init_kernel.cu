@@ -21,9 +21,9 @@ __global__ void kInit(float* kx, float* ky, float* kz, bool NO_ZDERIV)
   if(nz<=zthreads) { 
     if(idz<nz) {
       if(idz<(nz/2+1))
-        kz[idz] = (float) idz;
+        kz[idz] = (float) idz/Zp_d;
       else
-        kz[idz] = (float) (idz - nz);
+        kz[idz] = (float) (idz - nz)/Zp_d;
     }	
     if(NO_ZDERIV) kz[idz] = 0;
   }
@@ -32,9 +32,9 @@ __global__ void kInit(float* kx, float* ky, float* kz, bool NO_ZDERIV)
       if(idz<zthreads) {
 	int IDZ = idz + zthreads*i;
 	if(IDZ<(nz/2+1))
-	  kz[IDZ] = (float) IDZ;
+	  kz[IDZ] = (float) IDZ/Zp_d;
 	else
-	  kz[IDZ] = (float) (IDZ - nz);
+	  kz[IDZ] = (float) (IDZ - nz)/Zp_d;
 	
 	if(NO_ZDERIV) kz[IDZ] = 0;  
       }

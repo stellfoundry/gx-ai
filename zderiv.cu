@@ -3,7 +3,7 @@ void ZDeriv(cufftComplex *result, cufftComplex* f, float* kz)
   float scaler;
   
 	
-  zeroC<<<dimGrid,dimBlock>>>(result);
+  //zeroC<<<dimGrid,dimBlock>>>(result);
   
   cufftExecC2C(ZDerivplan, f, result, CUFFT_FORWARD);
 

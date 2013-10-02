@@ -60,7 +60,7 @@ void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,
   cufftExecC2C(plan, g, g, CUFFT_INVERSE);
   
   
-  float scaler = (float) 1/(Nz*nLinks);
+  float scaler = (float) 1./(Nz*nLinks);
   
   
   scale_covering<<<dimGridCovering,dimBlockCovering,0,stream>>> (g, nLinks, nChains, scaler);

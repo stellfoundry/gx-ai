@@ -22,7 +22,7 @@ __global__ void growthRate(cuComplex *omega, cuComplex *phinew, cuComplex *phiol
   }
 }
 
-__global__ void normalize(cuComplex *f, cuComplex *Phi, float norm)
+__global__ void normalize(cuComplex *f, cuComplex *fnorm, float norm)
 {
   unsigned int idx = get_idx();
   unsigned int idy = get_idy();
@@ -36,8 +36,8 @@ __global__ void normalize(cuComplex *f, cuComplex *Phi, float norm)
       
 
       cuComplex c_k;
-      c_k.x = cos(atan2f(Phi[kidx_z].y,Phi[kidx_z].x))/cuCabsf(Phi[kidx_z]);
-      c_k.y = -sin(atan2f(Phi[kidx_z].y,Phi[kidx_z].x))/cuCabsf(Phi[kidx_z]);
+      c_k.x = cos(atan2f(fnorm[kidx_z].y,fnorm[kidx_z].x))/cuCabsf(fnorm[kidx_z]);
+      c_k.y = -sin(atan2f(fnorm[kidx_z].y,fnorm[kidx_z].x))/cuCabsf(fnorm[kidx_z]);
 
       f[index] = (c_k * f[index]) * norm;
     }
@@ -50,14 +50,36 @@ __global__ void normalize(cuComplex *f, cuComplex *Phi, float norm)
        unsigned int kidx_z = idy + (ny/2+1)*idx + nx*(ny/2+1)*(nz/2);
        
        cuComplex c_k;
-       c_k.x = cos(atan2f(Phi[kidx_z].y,Phi[kidx_z].x))/cuCabsf(Phi[kidx_z]);
-       c_k.y = -sin(atan2f(Phi[kidx_z].y,Phi[kidx_z].x))/cuCabsf(Phi[kidx_z]);
+       c_k.x = cos(atan2f(fnorm[kidx_z].y,fnorm[kidx_z].x))/cuCabsf(fnorm[kidx_z]);
+       c_k.y = -sin(atan2f(fnorm[kidx_z].y,fnorm[kidx_z].x))/cuCabsf(fnorm[kidx_z]);
 
        f[index] = (c_k * f[index]) * norm;
      }  
    }
  }    
 }
+
+__global__ void normalize_covering(cuComplex *f, cuComplex *fnorm, float norm, int nLinks, int nChains)
+{
+  unsigned int i = get_idx();
+  unsigned int n = get_idy();
+  unsigned int p = get_idz();
+  
+    if(i<nz && p<nLinks && n<nChains) 
+    {
+      unsigned int index = i + p*nz + n*nz*nLinks;
+      unsigned int index_0 = nz*nLinks/2 + n*nz*nLinks;
+      
+
+      cuComplex c_k;
+      c_k.x = cos(atan2f(fnorm[index_0].y,fnorm[index_0].x))/cuCabsf(fnorm[index_0]);
+      c_k.y = -sin(atan2f(fnorm[index_0].y,fnorm[index_0].x))/cuCabsf(fnorm[index_0]);
+
+      f[index] = (c_k * f[index]) * norm;
+    }
+  
+}
+
 
 __global__ void get_kperp(float* kperp, int z, float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {

@@ -90,7 +90,9 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
     zeroCovering<<<dimGridCovering,dimBlockCovering>>>(g_d, nLinks[c], nChains[c]);
     
     coveringCopy<<<dimGridCovering,dimBlockCovering>>> (g_d, nLinks[c], nChains[c], kyCover[c], kxCover[c], f_d);
-    
+
+    normalize_covering<<<dimGridCovering, dimBlockCovering>>> (g_d, g_d, 1., nLinks[c], nChains[c]);
+     
     cudaMemcpy(g_h,g_d,sizeof(cuComplex)*Nz*nLinks[c]*nChains[c], cudaMemcpyDeviceToHost);
     
     fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
