@@ -300,12 +300,12 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   //also set up a stream for each class.
   streams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
   for(int c=0; c<nClasses; c++) {    
-    int n[1] = {nLinks[c]*Nz};
+    int n[1] = {nLinks[c]*Nz*icovering};
     cudaStreamCreate(&(streams[c]));
     cufftPlanMany(&plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nChains[c]);
     if(DEBUG) kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
-    cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
-    cudaMalloc((void**) &kz_covering[c], sizeof(float)*Nz*nLinks[c]);
+    cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*icovering*Nz*nLinks[c]*nChains[c]);
+    cudaMalloc((void**) &kz_covering[c], sizeof(float)*icovering*Nz*nLinks[c]);
     cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
     cudaMalloc((void**) &kyCover[c], sizeof(int)*nLinks[c]*nChains[c]);    
     cudaMemcpy(kxCover[c], kxCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
@@ -429,8 +429,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	      //loop over z here to get rid of randomness in z in initial condition
 	      for(int k=0; k<Nz; k++) {
 	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-		init_h[index].x = ra;
-	        init_h[index].y = rb;
+		init_h[index].x = 1.;
+	        init_h[index].y = 1.;
 	      }
 	      
 	      
@@ -452,7 +452,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       if(DEBUG) getError("after copy");    
 
       //enforce reality condition -- this is CRUCIAL when initializing in k-space
-      realityAll<<<dimGrid,dimBlock>>>(Dens[ION]);
+      reality<<<dimGrid,dimBlock>>>(Dens[ION]);
       
       mask<<<dimGrid,dimBlock>>>(Dens[ION]);  
 

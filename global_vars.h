@@ -41,6 +41,7 @@ specie *species;
 int nClasses;
 int *nLinks;
 int *nChains;
+int icovering = 1;
 cuComplex nu[11];
 cuComplex mu[11];
 

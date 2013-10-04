@@ -34,26 +34,26 @@ void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,
   dimGridCovering.x = Nz/dimBlockCovering.x+1;
   dimGridCovering.y = nChains/dimBlockCovering.y+1;
   if(prop.maxGridSize[2] == 1) dimGridCovering.z = 1;
-  else dimGridCovering.z = nLinks/dimBlockCovering.z+1;
+  else dimGridCovering.z = nLinks*icovering/dimBlockCovering.z+1;
   
-  zeroCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains);
+  zeroCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains,icovering);
   
   //only a partial copy
-  coveringCopy<<<dimGridCovering,dimBlockCovering,0,stream>>> (g, nLinks, nChains, ky, kx, f);
+  coveringCopy<<<dimGridCovering,dimBlockCovering,0,stream>>> (g, nLinks, nChains, ky, kx, f, icovering);
   
   //coveringBounds<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains, ky);
   
     
-  kzInitCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(kz_covering, nLinks,NO_ZDERIV_COVERING);   //NO_ZDERIV is a bool that turns on or off ZDERIV terms
+  kzInitCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(kz_covering, nLinks,NO_ZDERIV_COVERING, icovering);   //NO_ZDERIV is a bool that turns on or off ZDERIV terms
   //kz' = kz/nCoupled
   
   cufftExecC2C(plan, g, g, CUFFT_FORWARD);
   
      
   if(abs=="abs") {
-    zderiv_abs_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering);
+    zderiv_abs_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   } else {
-    zderiv_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering);
+    zderiv_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   }
   
 

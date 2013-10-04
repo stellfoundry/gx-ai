@@ -155,6 +155,8 @@ void read_namelist(char* filename)
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm)) dnlpm = 1.;
   
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &icovering)) icovering = 1;
+
   char* smagorinsky;
   smagorinsky = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "smagorinsky", &smagorinsky)) smagorinsky="off";

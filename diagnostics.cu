@@ -75,9 +75,9 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
     sprintf(filename, "%sphi_covering_nperiod%d.field",out_stem,nLinks[c]);
     FILE* out = fopen(filename,"w+"); 
     cuComplex *g_h;
-    g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
+    g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*icovering*nLinks[c]*nChains[c]);
     cuComplex* g_d;
-    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*nLinks[c]*nChains[c]));
+    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*icovering*nLinks[c]*nChains[c]));
     int xy = totalThreads/nLinks[c];
     int blockxy = (int) sqrt(xy);  
     dim3 dimBlockCovering(blockxy,blockxy,nLinks[c]);
@@ -87,13 +87,13 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
       dimBlockCovering.z = zThreads;
     }    
     dim3 dimGridCovering(Nz/dimBlockCovering.x+1,nChains[c]/dimBlockCovering.y+1,1);
-    zeroCovering<<<dimGridCovering,dimBlockCovering>>>(g_d, nLinks[c], nChains[c]);
+    zeroCovering<<<dimGridCovering,dimBlockCovering>>>(g_d, nLinks[c], nChains[c], icovering);
     
-    coveringCopy<<<dimGridCovering,dimBlockCovering>>> (g_d, nLinks[c], nChains[c], kyCover[c], kxCover[c], f_d);
+    coveringCopy<<<dimGridCovering,dimBlockCovering>>> (g_d, nLinks[c], nChains[c], kyCover[c], kxCover[c], f_d, icovering);
 
-    normalize_covering<<<dimGridCovering, dimBlockCovering>>> (g_d, g_d, 1., nLinks[c], nChains[c]);
+    //normalize_covering<<<dimGridCovering, dimBlockCovering>>> (g_d, g_d, 1., nLinks[c], nChains[c]);
      
-    cudaMemcpy(g_h,g_d,sizeof(cuComplex)*Nz*nLinks[c]*nChains[c], cudaMemcpyDeviceToHost);
+    cudaMemcpy(g_h,g_d,sizeof(cuComplex)*icovering*Nz*nLinks[c]*nChains[c], cudaMemcpyDeviceToHost);
     
     fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
     fprintf(out, "\n");
@@ -101,20 +101,24 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
     for(int n=0; n<nChains[c]; n++) {
       fprintf(out, "\n#%d\n\n", blockid);
       blockid++;
+      for(int j=0; j<icovering; j++) {
       for(int p=0; p<nLinks[c]; p++) {
         for(int i=0; i<Nz; i++) {
-	  int zidx = i + p*Nz;
-	  int kidx = p + nLinks[c]*n;
-	  int index = i + p*Nz + n*Nz*nLinks[c];	  
-	  float z_cover = nLinks[c]*2*M_PI*(zidx-(Nz*nLinks[c])/2)/(nLinks[c]*Nz);	  
+	  int zidx = i + p*Nz + j*nLinks[c]*Nz;
+	  int kidx;
+	  if(j==0) kidx = p + nLinks[c]*n;
+	  if(j==1) kidx = (nLinks[c] - p - 1) + nLinks[c]*n;
+	  int index = i + p*Nz + j*Nz*nLinks[c] + n*Nz*nLinks[c]*icovering;	  
+	  float z_cover = 2*M_PI*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);	  
 	  fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_cover, ky_h[ kyCover_h[c][kidx] ], kx_h[ kxCover_h[c][kidx] ], g_h[index].x, g_h[index].y); 	  
 	}
+      }
       }
       //periodic point   
       int zidx = 0;   
       int kidx = nLinks[c]*n;
       int index = n*Nz*nLinks[c];
-      float z_cover = nLinks[c]*2*M_PI*(zidx-(Nz*nLinks[c])/2)/(nLinks[c]*Nz);
+      float z_cover = 2*M_PI*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);
       fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_cover, ky_h[ kyCover_h[c][kidx] ], kx_h[ kxCover_h[c][kidx] ], g_h[index].x, g_h[index].y);
       
     }
@@ -144,9 +148,9 @@ void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,
       dimBlockCovering.z = zThreads;
     }    
     dim3 dimGridCovering(Nz/dimBlockCovering.x+1,nChains[c]/dimBlockCovering.y+1,1);
-    zeroCovering<<<dimGridCovering,dimBlockCovering>>>(g_d, nLinks[c], nChains[c]);
+    zeroCovering<<<dimGridCovering,dimBlockCovering>>>(g_d, nLinks[c], nChains[c],icovering);
     
-    coveringCopy<<<dimGridCovering,dimBlockCovering>>> (g_d, nLinks[c], nChains[c], kyCover[c], kxCover[c], f_d);
+    coveringCopy<<<dimGridCovering,dimBlockCovering>>> (g_d, nLinks[c], nChains[c], kyCover[c], kxCover[c], f_d,icovering);
     
     cudaMemcpy(g_h,g_d,sizeof(cuComplex)*Nz*nLinks[c]*nChains[c], cudaMemcpyDeviceToHost);
     
