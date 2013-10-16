@@ -621,7 +621,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(varenna) printf("[varenna]\t");
   if(CONST_CURV) printf("[constant curvature]\t");
   if(RESTART) printf("[restart]\t");
-  if(NLPM) printf("[Nonlinear Phase Mixing]\t");
+  if(NLPM) printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
   if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
   
   printf("\n\n");
@@ -638,7 +638,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(varenna) fprintf(outfile,"[varenna]\t");
   if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
   if(RESTART) fprintf(outfile,"[restart]\t");
-  if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing]\t");
+  if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
   if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
   
   fprintf(outfile, "\n\n");

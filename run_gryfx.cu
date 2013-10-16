@@ -429,8 +429,14 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	      //loop over z here to get rid of randomness in z in initial condition
 	      for(int k=0; k<Nz; k++) {
 	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-		init_h[index].x = 1.;
-	        init_h[index].y = 1.;
+		if(i==0) { 
+		  init_h[index].x = 0.;
+	          init_h[index].y = 0.;
+		}
+		else {
+		  init_h[index].x = init_amp;
+	          init_h[index].y = init_amp;
+		}
 	      }
 	      
 	      
