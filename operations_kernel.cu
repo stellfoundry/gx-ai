@@ -1318,42 +1318,7 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
     }
   }
 }
-      
-
-__global__ void hyper_dissipation(cuComplex* hyper, cuComplex* field, int p, float *kx, float *ky, float kperp2_max_Inv)     
-{
-  unsigned int idy = get_idy(); 
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz(); 
-    
-  
-  if(nz<=zthreads) {
-    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-      //float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-      float kperp2 = pow(kx[idx],2) + pow(ky[idy],2);      
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-      
-      hyper[index] = field[index] * pow(kperp2*kperp2_max_Inv,p);
-    }
-  }
-  else {
-    for(int i=0; i<nz/zthreads; i++) {
-      if(idy<ny && idx<nx && idz<zthreads) {
-        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
-	
-	unsigned int IDZ = idz + zthreads*i;
-	
-	//float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
-        float kperp2 = pow(kx[idx],2) + pow(ky[idy],2);	
-
-	hyper[index] = field[index] * pow(kperp2*kperp2_max_Inv,2*p);
-      }
-    }
-  }
-}  	     
-      
+            
         
 __global__ void SmagorinskyDiffusion(cuComplex* result, cuComplex* field, float D, 
             float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)     

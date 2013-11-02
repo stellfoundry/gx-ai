@@ -27,6 +27,27 @@ __global__ void reduce2 (T *g_idata, T *g_odata, unsigned int n)
   if (tid == 0) g_odata[blockIdx.x] = sdata[0];
 }
 
+template <class T>
+__global__ void reduce2_partial (T *g_idata, T *g_odata, unsigned int n, unsigned int blocksize)
+{
+  extern __shared__ T sdata[];
+  // load shared mem
+  unsigned int tid = threadIdx.x;
+  unsigned int i = blockIdx.x * blocksize + threadIdx.x;
+ 
+  sdata[tid] = (i < n && tid<blocksize) ? g_idata[i] : 0;
+  __syncthreads();
+
+  // do reduction in shared mem
+  for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+    if (tid < s) sdata[tid] += sdata[tid + s];
+    __syncthreads();
+  }
+
+  // write result for this block to global mem
+  if (tid == 0) g_odata[blockIdx.x] = sdata[0];
+}
+
 /*
   This version uses n/2 threads --
   it performs the first level of reduction when reading from global memory.
@@ -309,6 +330,18 @@ bool isPow2 (unsigned int x) {
 }
 
 template <class T>
+void reduce_wrapper_partial (int size, int threads, int blocks, T *idata, T *odata)
+{
+  dim3 dimGrid (blocks,1,1);
+  dim3 dimBlock (threads,1,1);
+  int smem;
+
+  smem = (threads <= 32) ? 2 * threads * sizeof(int) : threads * sizeof(int);
+
+  reduce2_partial <<< dimGrid, dimBlock, smem >>> (idata, odata, size, size/blocks);
+
+}
+template <class T>
 void reduce_wrapper (int size, int threads, int blocks, T *idata, T *odata)
 {
   dim3 dimGrid (blocks,1,1);
@@ -540,6 +573,12 @@ void getNumBlocksAndThreads (int n, int &blocks, int &threads)
   if (scheme == 6) blocks = min (maxBlocks, blocks);
 }
 
+void getNumBlocksAndThreads_partial (int n, int &blocks, int &threads)
+{
+    threads = (n < maxThreads) ? nextPow2(n) : maxThreads;
+    blocks = nextPow2((n + threads - 1) / threads);
+}
+
 void getThreads (int n, int blocks, int &threads)
 {
   if (scheme < 3) {
@@ -548,6 +587,11 @@ void getThreads (int n, int blocks, int &threads)
   } else {
     threads = (n/blocks < maxThreads*2) ? nextPow2((n/blocks + 1)/ 2) : maxThreads;
   }
+}
+
+void getThreads_partial (int n, int blocks, int &threads)
+{
+    threads = (n/blocks < maxThreads) ? nextPow2(n/blocks) : maxThreads;
 }
 
 template <class X>

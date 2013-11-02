@@ -50,6 +50,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float *tmpXY_R;
   float *tmpXZ;
   float *tmpYZ;
+  float *tmpXYZ;
   cuComplex *CtmpX;
  
   cuComplex *omega;
@@ -85,7 +86,10 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   int *jump;
   
   float *nu_nlpm;
-  
+  float *shear_rate_z;
+  float *shear_rate_z_nz;
+  float *shear_rate_nz;  
+
   omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
   omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
   kx_h = (float*) malloc(sizeof(float)*Nx);
@@ -144,7 +148,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cudaMalloc((void**) &tmpXZ, sizeof(float)*Nx*Nz);
   cudaMalloc((void**) &tmpYZ, sizeof(float)*(Ny/2+1)*Nz);
   cudaMalloc((void**) &CtmpX, sizeof(cuComplex)*Nx);
-  
+  cudaMalloc((void**) &tmpXYZ, sizeof(float)*Nx*(Ny/2+1)*Nz); 
+ 
   cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   cudaMalloc((void**) &derivR1_nlps, sizeof(float)*Nx*Ny*Nz);
   cudaMalloc((void**) &derivR2_nlps, sizeof(float)*Nx*Ny*Nz);
@@ -182,7 +187,10 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cudaMalloc((void**) &jump, sizeof(int)*(Ny/2+1));
   
   cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
-  
+  cudaMalloc((void**) &shear_rate_z, sizeof(float)*Nz);  
+  cudaMalloc((void**) &shear_rate_nz, sizeof(float)*Nz);  
+  cudaMalloc((void**) &shear_rate_z_nz, sizeof(float)*Nz);  
+
   if(DEBUG) getError("run_gryfx.cu, after device alloc");
   
   cudaMemcpy(gbdrift, gbdrift_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
@@ -199,7 +207,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   float* val;
   cudaMalloc((void**) &val, sizeof(float));
-  
+  float* phiVal; 
+  phiVal = (float*) malloc(sizeof(float));
+  float phiVal0;
   if(DEBUG) getError("run_gryfx.cu, after memcpy");
   
   
@@ -222,11 +232,15 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   // INITIALIZE ARRAYS AS NECESSARY
 
   kInit  <<< dimGrid, dimBlock >>> (kx, ky, kz, NO_ZDERIV);
-  float kx_max = (float) ((int)((Nx-1)/3))/X0;
-  float ky_max = (float) ((int)((Ny-1)/3))/Y0;
-  float kperp2_max = pow(kx_max,2) + pow(ky_max,2);
-  kperp2_max_Inv = 1. / kperp2_max;
-  if(DEBUG) printf("kperp2_max_Inv = %f\n", kperp2_max_Inv);
+  kx_max = (float) ((int)((Nx-1)/3))/X0;
+  ky_max = (float) ((int)((Ny-1)/3))/Y0;
+  kperp2_max = pow(kx_max,2) + pow(ky_max,2);
+  kx4_max = pow(kx_max,4);
+  ky4_max = pow(ky_max,4);
+  ky_max_Inv = 1. / ky_max;
+  kx4_max_Inv = 1. / kx4_max;
+  kperp4_max_Inv = 1. / pow(kperp2_max,2);
+  if(DEBUG) printf("kperp4_max_Inv = %f\n", kperp4_max_Inv);
   bmagInit <<<dimGrid,dimBlock>>>(bmag,bmagInv);
   if(S_ALPHA) jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
   else {
@@ -365,7 +379,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       omegaWriteSetup(gammafile,"gamma");  
     }
     phifile = fopen(phifileName, "w+");
-    phiWriteSetup(phifile);
+    //phiWriteSetup(phifile);
   }
   else {
     omegafile = fopen(omegafileName, "a");
@@ -429,14 +443,14 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	      //loop over z here to get rid of randomness in z in initial condition
 	      for(int k=0; k<Nz; k++) {
 	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-		if(i==0) { 
+		/*if(i==0) { 
 		  init_h[index].x = 0.;
 	          init_h[index].y = 0.;
 		}
-		else {
+		else {*/
 		  init_h[index].x = init_amp;
 	          init_h[index].y = init_amp;
-		}
+		//}
 	      }
 	      
 	      
@@ -521,12 +535,12 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       // assumes the initial conditions have been moved to the device
       if(nSpecies!=1) { 
 	qneut<<<dimGrid,dimBlock>>>(Phi, Dens[ELECTRON], Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-      } else if(ELECTRON == 0) { 
-	qneut<<<dimGrid,dimBlock>>>(Phi, tau, Dens[ELECTRON], Tprp[ELECTRON], species[ELECTRON].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       } else if(ION == 0) {
-	//qneut<<<dimGrid,dimBlock>>>(Phi, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	if(iphi00==2) {
+          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        }
       }
     }
  
@@ -630,7 +644,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     //if(DEBUG) getError("after exb");
    
     
-    /*
+    
     getPhiVal<<<dimGrid,dimBlock>>>(val, Phi, 0, 2, Nz/2);
     phiVal[0] = 0;
     cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
@@ -638,7 +652,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       phiVal0 = phiVal[0];
     }
     fprintf(phifile, "\t%f\t%e\n", runtime, (float) phiVal[0]/phiVal0);
-    */
+    
     
     //calculate diffusion here... for now we just set it to 1
     diffusion = 1.;
@@ -661,16 +675,16 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	         
     }
       
+      if(nSpecies!=1) { 
+	qneut<<<dimGrid,dimBlock>>>(Phi1, Dens1[ELECTRON], Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
+      } else if(ION == 0) {
+	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi1, tau, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	if(iphi00==2) {
+          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens1[ION], Tprp1[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        }
+      }
 
-    if(nSpecies!=1) { 
-      qneut<<<dimGrid,dimBlock>>>(Phi1, Dens1[ELECTRON], Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-    } else if(ELECTRON == 0) {
-      qneut<<<dimGrid,dimBlock>>>(Phi1, 1., Dens1[ELECTRON], Tprp1[ELECTRON], species[ELECTRON].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    } else if(ION == 0) {
-      //qneut<<<dimGrid,dimBlock>>>(Phi1, 1, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens1[ION], Tprp1[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    }
     
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
@@ -682,7 +696,22 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 		    
       }  
     }  
-    
+    if(HYPER) {
+      if(isotropic_shear) {
+        for(int s=0; s<nSpecies; s++) {
+          filterHyper_iso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+			tmpXYZ, shear_rate_nz, dt/2.);
+		    
+        }  
+      }
+      else {
+        for(int s=0; s<nSpecies; s++) {
+          filterHyper_aniso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s],
+                        tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt/2.);
+        }
+      }
+    }
+       
     
     
     for(int s=0; s<nSpecies; s++) {
@@ -699,16 +728,16 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	       nu_nlpm, tmpX, tmpXZ, CtmpX);
     }
 
+      if(nSpecies!=1) { 
+	qneut<<<dimGrid,dimBlock>>>(Phi1, Dens[ELECTRON], Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
+      } else if(ION == 0) {
+	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi1, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	if(iphi00==2) {
+          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        }
+      }
     
-    if(nSpecies!=1) {
-      qneut<<<dimGrid,dimBlock>>>(Phi1, Dens[ELECTRON], Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-    } else if(ELECTRON == 0) {
-      qneut<<<dimGrid,dimBlock>>>(Phi1, 1, Dens[ELECTRON], Tprp[ELECTRON], species[ELECTRON].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    } else if(ION == 0) {
-      //qneut<<<dimGrid,dimBlock>>>(Phi1, 1, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);  
-      qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);      
-    }
 
     mask<<<dimGrid,dimBlock>>>(Phi1);
     reality<<<dimGrid,dimBlock>>>(Phi1);
@@ -721,6 +750,21 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       }  
     } 
     
+    if(HYPER) {
+      if(isotropic_shear) {
+        for(int s=0; s<nSpecies; s++) {
+          filterHyper_iso(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+			tmpXYZ, shear_rate_nz, dt);
+		    
+        }  
+      }
+      else {
+        for(int s=0; s<nSpecies; s++) {
+          filterHyper_aniso(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s],
+                        tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt);
+        }
+      }
+    }
     //cudaProfilerStop();
     
     
@@ -894,18 +938,24 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     //check for problems with run
-    if(!LINEAR && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 1000) ) {
+    if(!LINEAR && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 100000) ) {
       printf("\n-------------\n--RUN ERROR--\n-------------\n\n");
-      printf("RESTARTING FROM LAST RESTART FILE...\n");
       
-      restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum,Phi2_kxky_sum, Phi2_zonal_sum,
+      if(counter>nsave) {	
+        printf("RESTARTING FROM LAST RESTART FILE...\n");
+	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum,Phi2_kxky_sum, Phi2_zonal_sum,
     			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum,
     			&dtSum, &counter,&runtime,&dt,&totaltimer,restartfileName);
       
-      printf("cfl was %f. maxdt was %f.\n", cfl, maxdt);
-      cfl = .8*cfl;
-      maxdt = .8*maxdt;    
-      printf("cfl is now %f. maxdt is now %f.\n", cfl, maxdt);
+        printf("cfl was %f. maxdt was %f.\n", cfl, maxdt);
+        cfl = .8*cfl;
+        maxdt = .8*maxdt;    
+        printf("cfl is now %f. maxdt is now %f.\n", cfl, maxdt);
+      }
+      else{
+	printf("ERROR: FLUX IS NAN AT BEGINNING OF RUN\nENDING RUN...\n\n");
+        exit(1);
+      }
     }
 
     else if(counter%nsave==0) {
@@ -959,7 +1009,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   if(DEBUG) getError("after restartWrite");
   
-  phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)      
+  //phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)      
   
   gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
                         Phi, tmp, tmp, field, tmpZ, 

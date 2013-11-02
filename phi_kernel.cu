@@ -35,7 +35,7 @@ __global__ void qneut(cuComplex* Phi, cuComplex* Dens_e, cuComplex* Dens_i, cuCo
 }     
 
 //nSpecies=1, ions only
-__global__ void qneut(cuComplex* Phi, float tau, cuComplex* Dens_i, cuComplex* Tprp_i, float rho,
+__global__ void qneutETG(cuComplex* Phi, float tau, cuComplex* Dens_i, cuComplex* Tprp_i, float rho,
 		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
   unsigned int idy = get_idy();

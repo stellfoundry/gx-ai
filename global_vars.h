@@ -98,12 +98,23 @@ float D_par;
 float D_prp;
 float Beta_par;
 float diffusion;
-float nu_hyper=1.;
+float D_hyper=0.1;
 int p_hyper=2;
-float kperp2_max_Inv;
+float kx_max;
+float ky_max;
+float kx4_max;
+float ky4_max;
+float ky_max_Inv;
+float kx4_max_Inv;
+float kperp2_max;
+float kperp4_max_Inv;
 
 float dnlpm = 1.;
 int inlpm = 2;
+
+int ivarenna = 1;
+
+int iphi00 = 2;
 
 //other global device arrays
 float *kx, *ky, *kz;
@@ -141,6 +152,7 @@ bool NLPM = false;
 bool varenna = false;
 bool SMAGORINSKY = false;
 bool HYPER = false;
+bool isotropic_shear = false;
 bool zero_restart_avg = false;
 
 int init = DENS;

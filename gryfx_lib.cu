@@ -40,6 +40,7 @@
 #include "zderiv_covering.cu"
 #include "nlps.cu"
 #include "nlpm.cu"
+#include "hyper.cu"
 #include "courant.cu"
 #include "energy.cu"
 #include "timestep_gryfx.cu"
@@ -272,6 +273,20 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       sprintf(out_stem, "scan/tprim_scan/tprim%g/tprim%g_%d.", species[ION].tprim, species[ION].tprim, scan_number);
 
       sprintf(out_dir_path, "scan/tprim_scan/tprim%g", species[ION].tprim);
+      
+      // check to make sure that the directory 
+      // scan/tprim_scan/tprimX.X/ exists
+      struct stat st;
+      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
+	mkdir(out_dir_path, 00777);
+      }
+    }  
+
+    //eps scan
+    if( strcmp(scan_type, "eps_scan") == 0 ) {
+      sprintf(out_stem, "scan/eps_scan/eps%g/eps%g_%d.", eps, eps, scan_number);
+
+      sprintf(out_dir_path, "scan/eps_scan/eps%g", eps);
       
       // check to make sure that the directory 
       // scan/tprim_scan/tprimX.X/ exists
@@ -618,11 +633,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(NO_ZDERIV) printf("[No zderiv]\t");
   if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
   if(SLAB) printf("[Slab limit]\t");
-  if(varenna) printf("[varenna]\t");
+  if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
   if(CONST_CURV) printf("[constant curvature]\t");
   if(RESTART) printf("[restart]\t");
   if(NLPM) printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
   if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
+  if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
+  if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
   
   printf("\n\n");
   
@@ -635,11 +652,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(NO_ZDERIV) fprintf(outfile,"[No zderiv]\t");
   if(NO_ZDERIV_COVERING) fprintf(outfile,"[No zderiv_covering]\t");
   if(SLAB) fprintf(outfile,"[Slab limit]\t");
-  if(varenna) fprintf(outfile,"[varenna]\t");
+  if(varenna) fprintf(outfile,"[varenna: ivarenna=%d]\t", ivarenna);
   if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
   if(RESTART) fprintf(outfile,"[restart]\t");
   if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
   if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
+  if(HYPER && isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
+  if(HYPER && !isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
   
   fprintf(outfile, "\n\n");
   

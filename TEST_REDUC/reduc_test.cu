@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
   
   float* a;
-  float* a_sum_z_cpu;
+  double* a_sum_z_cpu;
   float* a_sum_z_gpu;
   
   float* a_d;
@@ -43,11 +43,11 @@ int main(int argc, char* argv[]) {
   float sum_cpu = 0.;
   float sum_gpu = 0.;
   
-  Nx=256;
-  Nz=64;
+  Nx=256*(128/2+1);
+  Nz=4;
   
   a = (float*) malloc(sizeof(float)*Nx*Nz);
-  a_sum_z_cpu = (float*) malloc(sizeof(float)*Nz);
+  a_sum_z_cpu = (double*) malloc(sizeof(double)*Nz);
   a_sum_z_gpu = (float*) malloc(sizeof(float)*Nz);
   
   cudaMalloc((void**) &a_d, sizeof(float)*Nx*Nz);

@@ -154,8 +154,12 @@ void read_namelist(char* filename)
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm)) dnlpm = 1.;
+
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna)) ivarenna = 1;
   
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &icovering)) icovering = 1;
+
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "iphi00", &iphi00)) iphi00 = 2;
 
   char* smagorinsky;
   smagorinsky = (char*) malloc(sizeof(char)*4);
@@ -177,9 +181,20 @@ void read_namelist(char* filename)
     HYPER = false;
   }
   
-  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "nu_hyper", &nu_hyper)) nu_hyper = 1.;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "D_hyper", &D_hyper)) D_hyper = .1;
   
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "p_hyper", &p_hyper)) p_hyper = 2;
+
+  char* iso_shear;
+  iso_shear = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "iso_shear", &iso_shear)) iso_shear="off";
+  if( strcmp(iso_shear,"on") == 0) {
+    isotropic_shear = true;
+  }
+  else if( strcmp(iso_shear,"off") == 0) {
+    isotropic_shear = false;
+  }
+  
   
   char* debug;
   debug = (char*) malloc(sizeof(char)*4);

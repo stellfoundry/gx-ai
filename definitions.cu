@@ -53,14 +53,15 @@ void definitions()
   }
   
   //varenna
+  if(ivarenna == 1) {
   mu[1].x = 0.;
-  mu[1].y = 0.; //-3.;
+  mu[1].y = 0.; 
   mu[2].x = 0.;
-  mu[2].y = 0.; //1.;
+  mu[2].y = 0.; 
   mu[3].x = 0.;
   mu[3].y = 0.;
   mu[4].x = 0.;
-  mu[4].y = 0.; //-1.5;
+  mu[4].y = 0.; 
   mu[5].x = 0.;
   mu[5].y = 0.;
   mu[6].x = 0.;
@@ -73,6 +74,29 @@ void definitions()
   mu[9].y = 0.;
   mu[10].x = 0.;
   mu[10].y = 0.;
+  }
+  if(ivarenna == 2 || ivarenna == 3) {
+  mu[1].x = 0.;
+  mu[1].y = -3.;
+  mu[2].x = 0.;
+  mu[2].y = 1.;
+  mu[3].x = 0.;
+  mu[3].y = 0.;
+  mu[4].x = 0.;
+  mu[4].y = -1.5;
+  mu[5].x = 0.;
+  mu[5].y = 0.;
+  mu[6].x = 0.;
+  mu[6].y = 0.;
+  mu[7].x = 0.;
+  mu[7].y = 0.;
+  mu[8].x = 0.;
+  mu[8].y = 0.;
+  mu[9].x = 0.;
+  mu[9].y = 0.;
+  mu[10].x = 0.;
+  mu[10].y = 0.;
+  }
   
 
 }  

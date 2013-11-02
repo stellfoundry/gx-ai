@@ -11,12 +11,13 @@ T sumReduc (T *data, unsigned int nn, bool overwrite)
   if (!overwrite) cudaMalloc( (void**)&idata, nn*sizeof(T) );
   cudaMalloc( (void**)&odata, nn*sizeof(T) );
   getNumBlocksAndThreads (nn, blocks, threads);
+  printf ("Total Sum, before first reduc: size= %d, blocks= %d, threads= %d\n", nn, blocks, threads);
   reduce_wrapper<T> (nn, threads, blocks, data, odata);
 
   size = blocks;
   while (size > 1) {
     getNumBlocksAndThreads (size, blocks, threads);
-    //printf ("size= %d, blocks= %d, threads= %d\n", size, blocks, threads);
+    printf ("Total Sum: size= %d, blocks= %d, threads= %d\n", size, blocks, threads);
     if (overwrite) {
       // swap device pointers
       //tmp=data; data=odata; odata=tmp;
@@ -54,30 +55,35 @@ void sumReduc_Partial (T *sum, T *data, unsigned int nn, unsigned int outsize, b
   cudaMalloc( (void**)&odata, nn*sizeof(T) );
   
   
-  getNumBlocksAndThreads (nn, blocks, threads);
+  getNumBlocksAndThreads_partial (nn, blocks, threads);
+  printf ("Partial Sum, before first reduc: size= %d, blocks= %d, threads= %d\n", nn, blocks, threads);
   if(blocks<outsize) {
+    printf("blocks<outsize. changing to blocks=outsize, recalculating threads\n");
     blocks=outsize;
-    getThreads(nn,blocks,threads);
+    getThreads_partial(nn,blocks,threads);
+    printf ("Partial Sum, before first reduc: size= %d, blocks= %d, threads= %d\n", nn, blocks, threads);
   }
-  //printf ("size= %d, blocks= %d, threads= %d\n", nn, blocks, threads);
-  reduce_wrapper<T> (nn, threads, blocks, data, odata);
+  reduce_wrapper_partial<T> (nn, threads, blocks, data, odata);
 
   size = blocks;
   while (size > outsize) {
-    getNumBlocksAndThreads (size, blocks, threads);
-    //printf ("size= %d, blocks= %d, threads= %d\n", size, blocks, threads);
+    getNumBlocksAndThreads_partial (size, blocks, threads);
+    if(blocks<outsize) {
+      blocks=outsize;
+      getThreads_partial(size,blocks,threads);
+    }
+    printf ("Partial Sum: size= %d, blocks= %d, threads= %d\n", size, blocks, threads);
     if (overwrite) {
       // swap device pointers
       //tmp=data; data=odata; odata=tmp;
       swapargs (data, odata);
-      reduce_wrapper<T> (size, threads, blocks, data, odata);
+      reduce_wrapper_partial<T> (size, threads, blocks, data, odata);
     } else {
       //tmp=idata; idata=odata; odata=tmp;
       swapargs (idata, odata);
-      reduce_wrapper<T> (size, threads, blocks, idata, odata);
+      reduce_wrapper_partial<T> (size, threads, blocks, idata, odata);
     }
-    if (scheme < 3) size = (size + threads - 1) / threads;
-    else            size = (size + (threads*2-1)) / (threads*2);
+    size = (size + threads - 1) / threads;
   }
 
   

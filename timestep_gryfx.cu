@@ -63,13 +63,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   iOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0);
   accum <<<dimGrid, dimBlock>>> (dens_field, omegaD_tmp, -1);
   // -iOmegaD*(phi_nd + 2*Dens + Tpar + Tprp)
-  
+ 
+/* 
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, DensOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(dens_field, 1., dens_field, nu_hyper, hyper_tmp);
     // + nu_hyper * ((kperp/kperp_max)**(2*p_hyper)) * Dens
   }
-  
+*/  
   /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, DensOld, ky, nu_nlpm, dnlpm);
@@ -125,11 +126,13 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   accum <<<dimGrid, dimBlock>>> (upar_field, omegaD_tmp, -1);
   // - iOmegaD*(Qpar + Qprp + 4*Upar)
     
+/*
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, UparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(upar_field, 1., upar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Upar
   }
+*/
   
   /*
   if(!LINEAR && NLPM) {
@@ -196,13 +199,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
 
   add_scaled <<<dimGrid, dimBlock>>> (tpar_field, 1., tpar_field, 2*s.nu_ss/3, TparOld, -2*s.nu_ss/3, TprpOld);
   // + (2*nu_ss/3)*(Tpar - Tprp)
-  
+ 
+/* 
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Tpar
   }
-  
+*/  
   /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, TparOld, ky, nu_nlpm, dnlpm);
@@ -283,13 +287,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   
   add_scaled <<<dimGrid, dimBlock>>> (tprp_field, 1., tprp_field, -s.nu_ss/3, TparOld, s.nu_ss/3, TprpOld);
   // + (nu_ss/3)*(Tprp-Tpar)
-  
+ 
+/* 
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, TprpOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Tprp
   }
-  
+*/  
   /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, TprpOld, ky, nu_nlpm, dnlpm);
@@ -322,7 +327,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   
   ZDerivCovering(gradpar_tmp, TparOld, kxCover, kyCover, g_covering, kz_covering,"",plan_covering);  
   add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*(3+Beta_par), gradpar_tmp);  
-  if(varenna) {
+  if(varenna && (ivarenna==1 || ivarenna==3)) {
     volflux_varenna<<<dimGrid,dimBlock>>>(T_fluxsurfavg_CtmpX, TparOld, jacobian, 1./fluxDen);
     PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, 3., kx, gds22, qsf, eps, bmagInv, T_fluxsurfavg_CtmpX, shat);  //defined in operations_kernel.cu  
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs",plan_covering);
@@ -350,13 +355,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna);
   accum <<<dimGrid, dimBlock>>> (qpar_field, omegaD_tmp, 1);
   // + |omegaD|*(nu5.x*Upar + nu6.x*Qpar + nu7.x*Qprp)
-  
+ 
+/* 
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QparOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Qpar
   }
-  
+*/  
   /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, QparOld, ky, nu_nlpm, dnlpm);
@@ -403,7 +409,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
   // + vt*gradpar( zt*phi_flr + Tprp )
     
-  if(varenna) {
+  if(varenna && (ivarenna==1 || ivarenna==3)) {
     volflux_varenna<<<dimGrid,dimBlock>>>(T_fluxsurfavg_CtmpX, TprpOld, jacobian, 1./fluxDen);
     PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, 1., kx, gds22, qsf, eps, bmagInv, T_fluxsurfavg_CtmpX, shat);  //defined in operations_kernel.cu  
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
@@ -435,13 +441,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna);
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, 1., omegaD_tmp, s.nu_ss, QprpOld);
   // + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp
-  
+ 
+/* 
   if(HYPER) {
     hyper_dissipation<<<dimGrid,dimBlock>>>(hyper_tmp, QprpOld, p_hyper, kx, ky, kperp2_max_Inv);
     add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, nu_hyper, hyper_tmp);
     // + nu_hyper * (kperp**(2*p_hyper)) * Qprp
   }
-  
+*/  
   /*
   if(!LINEAR && NLPM) {
     nlpm<<<dimGrid,dimBlock>>>(nlpm_tmp, QprpOld, ky, nu_nlpm, dnlpm);
