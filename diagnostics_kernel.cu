@@ -330,7 +330,7 @@ __global__ void volflux_zonal(float* flux, cuComplex* f, cuComplex* g, float* ja
   
 }
 
-__global__ void volflux_varenna(cuComplex* T_fsa_X, cuComplex* T, float* jacobian, float fluxDenInv)
+__global__ void volflux_zonal_complex(cuComplex* T_fsa_X, cuComplex* T, float* jacobian, float fluxDenInv)
 {
   unsigned int idx = get_idx();
   unsigned int idy = 0;
@@ -394,6 +394,12 @@ __global__ void getPhiVal(float* val, cuComplex* Phi, int iky, int ikx, int z)
   val[0] = Phi[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].x;
 }
   
+
+__global__ void getPhiVal(float* val, cuComplex* Phi, int ikx) 
+{
+  val[0] = Phi[ikx].x;
+}
+
 __global__ void getky0(float* f_kxky0, float* f_kxky)
 {
   unsigned int idx = get_idx();

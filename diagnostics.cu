@@ -424,9 +424,30 @@ void volflux_zonal(cuComplex* f, cuComplex* g, float* flux_tmpX)
   volflux_zonal<<<dimGrid,dimBlock>>>(flux_tmpX, f, g, jacobian, 1./(fluxDen*fluxDen));
 }
 
-void fluxes(float *flux, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
+void rms(float *A_rms, cuComplex* A, float* A_fsa_tmpXY)
+{
+  volflux<<<dimGrid,dimBlock>>>(A_fsa_tmpXY, A, A, jacobian, 1./fluxDen);
+  float A2_rms = sumReduc(A_fsa_tmpXY, Nx*(Ny/2+1), false);
+  *A_rms = sqrt(A2_rms);
+}
+
+void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
+{
+  float A_rms;
+  float B_rms;
+
+  rms(&A_rms, A, tmpXY);
+  rms(&B_rms, B, tmpXY);
+  
+  volflux<<<dimGrid, dimBlock>>>(tmpXY,A,B, jacobian, 1./fluxDen);
+  float AB_fsa = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  *phase = AB_fsa / (A_rms*B_rms);
+}   
+
+void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, 
-	    cuComplex* Pprp_field, float* tmpZ, float* flux_tmpXY, specie s, float runtime)
+	    cuComplex* Pprp_field, float* tmpZ, float* tmpXY, specie s, float runtime, 
+            float *flux1_phase, float *flux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
 {   
   
   add_scaled<<<dimGrid,dimBlock>>>(totPr_field, 1., Tprp, .5, Tpar, 1.5, Dens);
@@ -434,17 +455,52 @@ void fluxes(float *flux, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuCo
   iOmegaStar<<<dimGrid,dimBlock>>>(vPhi_tmp,phi_tmp,ky); 
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(totPr_field);
-  volflux(vPhi_tmp, totPr_field, tmp, flux_tmpXY);
-  float flux1 = sumReduc(flux_tmpXY, Nx*(Ny/2+1), false);
-  
+  volflux(vPhi_tmp, totPr_field, tmp, tmpXY);
+  flux1 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  //if(write_phase) {  
+    float vPhi_rms;
+    float totPr_rms;
+    float Dens_rms;
+    float Tpar_rms;
+    float Tprp_rms;
+    float Dens_flux;
+    float Tpar_flux;
+    float Tprp_flux;
+
+    rms(&vPhi_rms, vPhi_tmp, tmpXY);
+    rms(&totPr_rms, totPr_field, tmpXY);
+
+    *flux1_phase = flux1/(vPhi_rms*totPr_rms);
+
+    volflux<<<dimGrid,dimBlock>>>(tmpXY,vPhi_tmp,Dens,jacobian,1./fluxDen);
+    Dens_flux = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+    volflux<<<dimGrid,dimBlock>>>(tmpXY,vPhi_tmp,Tpar,jacobian,1./fluxDen);
+    Tpar_flux = sumReduc(tmpXY, Nx*(Ny/2+1), false); 
+    volflux<<<dimGrid,dimBlock>>>(tmpXY,vPhi_tmp,Tprp,jacobian, 1./fluxDen);
+    Tprp_flux = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+    rms(&Dens_rms, Dens, tmpXY);
+    rms(&Tpar_rms, Tpar, tmpXY);
+    rms(&Tprp_rms, Tprp, tmpXY);
+
+    *Dens_phase = Dens_flux /(vPhi_rms*Dens_rms);
+    *Tpar_phase = Tpar_flux / (vPhi_rms*Tpar_rms);
+    *Tprp_phase = Tprp_flux / (vPhi_rms*Tprp_rms);    
+  //}
   
   add_scaled<<<dimGrid,dimBlock>>>(Pprp_field, 1., Dens, 1., Tprp);
   phi_flr<<<dimGrid,dimBlock>>>(phi_tmp,Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
   iOmegaStar<<<dimGrid,dimBlock>>>(vPhi_tmp,phi_tmp,ky);
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(Pprp_field);
-  volflux(vPhi_tmp, Pprp_field, tmp, flux_tmpXY);
-  float flux2 = sumReduc(flux_tmpXY, Nx*(Ny/2+1), false);
+  volflux(vPhi_tmp, Pprp_field, tmp, tmpXY);
+  flux2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  //if(write_phase) {  
+    float Pprp_rms;
+
+    rms(&vPhi_rms, vPhi_tmp, tmpXY);
+    rms(&Pprp_rms, Pprp_field, tmpXY);
+    *flux2_phase = flux2/(vPhi_rms*Pprp_rms);
+  //}
   
   *flux = -(flux1+flux2)*s.dens*s.temp;
     
@@ -509,7 +565,6 @@ void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY2, cuCo
   //wpfx[s+nSpecies*time] = (flux1+flux2) * n[s] * tau[s];
 }
 
-   
 
 void omegaWriteSetup(FILE* ofile, char* w)
 {
@@ -1239,7 +1294,9 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
 	int** kxCover, int** kyCover, float* tmpX_h, float* tmpY_h, float* tmpXY_h, float* tmpYZ_h, cuComplex* field_h, 
 	int** kxCover_h, int** kyCover_h, cuComplex* omegaAvg_h, double* qflux, float* expectation_ky, float* expectation_kx,
 	float* Phi2_kxky_sum, float* wpfxnorm_kxky_sum, float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, //cuComplex* omegaAvg,// cuComplex* omega_sum,
-	float dtSum, int counter, float runtime, bool end)
+	float dtSum, int counter, float runtime, bool end,
+        float* Phi2, float* flux1_phase, float* flux2_phase, float* Dens_phase, float* Tpar_phase, float* Tprp_phase,
+        float Phi2_sum, float flux1_phase_sum, float flux2_phase_sum, float Dens_phase_sum, float Tpar_phase_sum, float Tprp_phase_sum)
 {
   char filename[80];  
 
@@ -1300,9 +1357,17 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
   //expectation value of ky and kx
   *expectation_ky = expectation_ky_sum/dtSum;
   *expectation_kx = expectation_kx_sum/dtSum;
+  *Phi2 = Phi2_sum/dtSum;
+  *flux1_phase = flux1_phase_sum/dtSum;
+  *flux2_phase = flux2_phase_sum/dtSum;
+  *Dens_phase = Dens_phase_sum/dtSum;
+  *Tpar_phase = Tpar_phase_sum/dtSum;
+  *Tprp_phase = Tprp_phase_sum/dtSum;
   
-  printf("expectation val of ky = %f\nexpectation val of kx = %f\n", *expectation_ky, *expectation_kx);
+  if(end) printf("Phi2 = %f\nexpectation val of ky = %f\nexpectation val of kx = %f\n", Phi2, *expectation_ky, *expectation_kx);  
+
   if(end) printf("Q_i = %f\n\n", qflux[ION]);
+  if(end) printf("flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
   
   //calculate and write time average of parallel correlation function, C(ky,z)
   scaleReal<<<dimGrid,dimBlock>>>(phi_corr_tmpYZ, zCorr_sum, (float) 1./dtSum, 1, Ny/2+1,Nz);

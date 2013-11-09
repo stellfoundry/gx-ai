@@ -13,6 +13,7 @@ dim3 dimBlock, dimGrid;
 #define ELECTRON 1
 #define PHI 0
 #define DENS 1
+#define FORCE 2
 
 //species variables defined in gs2 namelist
 int nSpecies=1;
@@ -146,6 +147,7 @@ bool SLAB = false;
 bool CONST_CURV = false;
 bool write_omega = true;
 bool write_phi = true;
+bool write_phase = true;
 bool S_ALPHA = true;
 
 bool NLPM = false;
@@ -157,6 +159,7 @@ bool zero_restart_avg = false;
 
 int init = DENS;
 float init_amp;
+float phiext=-1.;
 
 //char* fluxfileName;
 //char stopfileName[60];

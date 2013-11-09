@@ -225,8 +225,12 @@ void read_namelist(char* filename)
   else if( strcmp(initfield,"phi") == 0) {
     init = PHI;
   }
+  else if( strcmp(initfield,"force") == 0) {
+    init = FORCE;
+  }
   
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &init_amp)) init_amp = 1.e-5;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &phiext)) phiext = -1.;
   
   char* write_omega_flag;
   write_omega_flag = (char*) malloc(sizeof(char)*4);

@@ -53,7 +53,7 @@ void definitions()
   }
   
   //varenna
-  if(ivarenna == 1) {
+  if(abs(ivarenna) == 1 || abs(ivarenna)==4) {
   mu[1].x = 0.;
   mu[1].y = 0.; 
   mu[2].x = 0.;
@@ -75,7 +75,7 @@ void definitions()
   mu[10].x = 0.;
   mu[10].y = 0.;
   }
-  if(ivarenna == 2 || ivarenna == 3) {
+  if(abs(ivarenna) == 2 || abs(ivarenna) == 3) {
   mu[1].x = 0.;
   mu[1].y = -3.;
   mu[2].x = 0.;

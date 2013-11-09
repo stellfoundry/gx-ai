@@ -367,6 +367,22 @@ __global__ void add_scaled(float* result, float fscaler, float* f, float gscaler
 } 
 
 //two fields, complex scalars, ONLY KY=0
+__global__ void add_scaled_Ky0(cuComplex* result, float fscaler, cuComplex* f, float gadd)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy==0 && idx!=0 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      result[index].x = fscaler*f[index].x + gadd;      
+      result[index].y = fscaler*f[index].y + gadd;      
+    }
+  }
+} 
+//two fields, complex scalars, ONLY KY=0
 __global__ void add_scaled_Ky0(cuComplex* result, cuComplex fscaler, cuComplex* f, cuComplex gscaler, cuComplex* g)
 {
   unsigned int idy = get_idy();
@@ -1283,8 +1299,7 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
        
       if(idy==0) {
 	//double check signs... k_r = -kx for ky=0?
-	
-	
+		
 	cuComplex tmp;
 	tmp.x = Q[index].x + psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T_fluxsurfavg[idx].y;
 	tmp.y = Q[index].y - psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*T_fluxsurfavg[idx].x;

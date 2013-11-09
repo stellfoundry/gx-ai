@@ -68,7 +68,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   //diagnostics scalars
   float flux1,flux2;
+  float flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase;
+  float flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum;
+ 
   float Phi2, kPhi2;
+  float Phi2_sum, kPhi2_sum;
   float expectation_ky;
   float expectation_ky_sum;
   float expectation_kx;
@@ -404,7 +408,6 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   if(!RESTART) {
     
-    if(init == DENS) {
       for(int index=0; index<Nx*(Ny/2+1)*Nz; index++) 
       {
 	init_h[index].x = 0;
@@ -427,7 +430,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	      //else amp = 1.e-5;
 
 	      if(i==0) {
-	      	samp = init_amp*1.e-8;  //initialize zonal flows at much
+	      	samp = init_amp;//*1.e-8;  //initialize zonal flows at much
 					 //smaller amplitude
 	      }
 	      else {
@@ -446,10 +449,10 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 		/*if(i==0) { 
 		  init_h[index].x = 0.;
 	          init_h[index].y = 0.;
-		}
+		
 		else {*/
-		  init_h[index].x = init_amp;
-	          init_h[index].y = init_amp;
+		  init_h[index].x = init_amp;//*cos(1*z_h[k]);
+	          init_h[index].y = init_amp;//*cos(1*z_h[k]);
 		//}
 	      }
 	      
@@ -461,7 +464,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	}
       //}
       
-
+    if(init == DENS) {
       for(int s=0; s<nSpecies; s++) {
         cudaMemset(Dens[s], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       }
@@ -481,24 +484,24 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     }
     
     if(init == PHI) {
-      for(int index=0; index<Nx*(Ny/2+1)*Nz; index++) 
-      {
-	init_h[index].x = 0;
-	init_h[index].y = 0;
-      }
       
-      //initialize phi(ikx = 2, iky = 0, z = 0) with some amplitude amp
-      init_amp = 1.e-2;
-      init_h[0 + (Ny/2+1)*2 + Nx*(Ny/2+1)*(Nz/2)].x = (float) init_amp;
       
-      getError("after phi init");
       
       cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
       
       cudaMemcpy(Phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
       cudaMemset(Dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
-    }  
+
+      mask<<<dimGrid,dimBlock>>>(Phi);
+
+      reality<<<dimGrid,dimBlock>>>(Phi);
+    } 
+
+    if(init == FORCE) {
+      cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+      cudaMemset(Dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+    }   
    
 
     for(int s=0; s<nSpecies; s++) {
@@ -557,6 +560,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     expectation_ky_sum= 0.;
     expectation_kx_sum= 0.;
     dtSum= 0.;
+    flux1_phase_sum = 0.;
+    flux2_phase_sum = 0.;
+    Dens_phase_sum = 0.;
+    Tpar_phase_sum = 0.;
+    Tprp_phase_sum = 0.;
     zero<<<dimGrid,dimBlock>>>(Phi2_kxky_sum,Nx,Ny/2+1,1);
     zero<<<dimGrid,dimBlock>>>(wpfxnorm_kxky_sum, Nx, Ny/2+1, 1);
     zero<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, Nx, 1,1);
@@ -644,14 +652,15 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     //if(DEBUG) getError("after exb");
    
     
-    
-    getPhiVal<<<dimGrid,dimBlock>>>(val, Phi, 0, 2, Nz/2);
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen); 
+    getPhiVal<<<dimGrid,dimBlock>>>(val, Phi, 0, 4, Nz/2);
+    //getPhiVal<<<dimGrid,dimBlock>>>(val, CtmpX, 4);
     phiVal[0] = 0;
     cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
     if(runtime == 0) {
       phiVal0 = phiVal[0];
     }
-    fprintf(phifile, "\t%f\t%e\n", runtime, (float) phiVal[0]/phiVal0);
+    fprintf(phifile, "\t%f\t%e\n", runtime, (float) phiVal[0]);//phiVal0);
     
     
     //calculate diffusion here... for now we just set it to 1
@@ -674,7 +683,6 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 	       nu_nlpm, tmpX, tmpXZ, CtmpX);
 	         
     }
-      
       if(nSpecies!=1) { 
 	qneut<<<dimGrid,dimBlock>>>(Phi1, Dens1[ELECTRON], Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
       } else if(ION == 0) {
@@ -800,10 +808,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
         
     //calculate instantaneous heat flux
     for(int s=0; s<nSpecies; s++) {  
-      fluxes(&wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,tmp,tmp,tmp,field,field,tmpZ,tmpXY,species[s],runtime);        
+      fluxes(&wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
+             tmp,tmp,tmp,field,field,tmpZ,tmpXY,species[s],runtime,
+             &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
     }
     
-       
      
     //calculate tmpXY = Phi**2(kx,ky)
     volflux(Phi1,Phi1,tmp,tmpXY);
@@ -841,6 +850,13 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       //add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha, omegaAvg, dt*alpha, omega, Nx, Ny, 1);
       expectation_kx_sum = expectation_kx_sum*(1.-alpha) + expectation_kx*dt*alpha;
       expectation_ky_sum = expectation_ky_sum*(1.-alpha) + expectation_ky*dt*alpha;
+      Phi2_sum = Phi2_sum*(1.-alpha) + Phi2*dt*alpha;
+      flux1_phase_sum = flux1_phase_sum*(1.-alpha) + flux1_phase*dt*alpha;
+      flux2_phase_sum = flux2_phase_sum*(1.-alpha) + flux2_phase*dt*alpha;
+      Dens_phase_sum = Dens_phase_sum*(1.-alpha) + Dens_phase*dt*alpha;
+      Tpar_phase_sum = Tpar_phase_sum*(1.-alpha) + Tpar_phase*dt*alpha;
+      Tprp_phase_sum = Tprp_phase_sum*(1.-alpha) + Tprp_phase*dt*alpha;
+
       dtSum = dtSum*(1.-alpha) + dt*alpha;
       
       // **_sum/dtSum gives time average of **
@@ -979,7 +995,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                         kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
 			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
 			expectation_kx_sum, dtSum,
-			counter, runtime, false);
+			counter, runtime, false,
+			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
+			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
   
   } 
   
@@ -1019,7 +1037,10 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
                         kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
 			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
 			expectation_kx_sum, dtSum,
-			counter, runtime, true);
+			counter, runtime, true,
+			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
+			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
+
 
   
   
@@ -1032,8 +1053,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   fprintf(outfile,"expectation val of ky = %f\n", expectation_ky);
   fprintf(outfile,"expectation val of kx = %f\n", expectation_kx);
-  fprintf(outfile,"Q_i = %f\n\n", qflux[ION]);
-  fprintf(outfile,"Total time (min): %f\n",totaltimer/60000);
+  fprintf(outfile,"Q_i = %f\t\t Phi2 = %f\n", qflux[ION],Phi2);
+  fprintf(outfile, "flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
+  fprintf(outfile,"\nTotal time (min): %f\n",totaltimer/60000);
   fprintf(outfile,"Total steps: %d\n", counter);
   fprintf(outfile,"Avg time/timestep (s): %f\n",totaltimer/counter/1000);
     
