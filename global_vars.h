@@ -112,8 +112,12 @@ float kperp4_max_Inv;
 
 float dnlpm = 1.;
 int inlpm = 2;
+float low_cutoff = .01;
+float high_cutoff = .1;
+char* nlpm_option = "constant";
 
 int ivarenna = 1;
+bool varenna_fsa = false;
 
 int iphi00 = 2;
 
@@ -165,7 +169,7 @@ float phiext=-1.;
 //char stopfileName[60];
 //char restartfileName[60];
 char* scan_type;
-char out_stem[40];
+char out_stem[60];
 int scan_number;
 
 char* run_name;

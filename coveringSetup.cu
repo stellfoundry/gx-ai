@@ -226,8 +226,8 @@ void kFill(int nClasses, int *nChains, int *nLinks, int **ky, int **kx, int *lin
   for(int ic=0; ic<nClasses; ic++) {
     int n = 0;
     int  p, c;
-    for(int idx=0; idx<ntheta0; idx++) {
-      for(int idy=0; idy<naky; idy++) {
+    for(int idy=0; idy<naky; idy++) {
+      for(int idx=0; idx<ntheta0; idx++) {
         kt2ki(idy, idx, &c, &p, linksL, linksR, nClasses, nLinks, naky);
      	if(c==ic) {	  
 	  if(p==0) {	 

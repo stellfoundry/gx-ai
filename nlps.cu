@@ -12,22 +12,26 @@ void NLPS(cuComplex *result, cuComplex *f, cuComplex *g, float *kx, float *ky)
   //////////////////////////////////////////
   //////////////////////////////////////////
   
-  reality<<<dimGrid,dimBlock>>>(f);
-  reality<<<dimGrid,dimBlock>>>(g);
+  //reality<<<dimGrid,dimBlock>>>(f);
+  //reality<<<dimGrid,dimBlock>>>(g);
   
   NLPSderivX<<<dimGrid,dimBlock>>>(deriv_nlps,f,kx);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR1_nlps);   
   NLPSderivY<<<dimGrid,dimBlock>>>(deriv_nlps,g,ky);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR2_nlps);
   multdiv<<<dimGrid,dimBlock>>>(resultR_nlps,derivR1_nlps,derivR2_nlps,1);
   
   NLPSderivY<<<dimGrid,dimBlock>>>(deriv_nlps,f,ky);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR1_nlps);
   NLPSderivX<<<dimGrid,dimBlock>>>(deriv_nlps,g,kx);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR2_nlps);
   bracket<<<dimGrid,dimBlock>>>(resultR_nlps,resultR_nlps,derivR1_nlps,derivR2_nlps,scaler);  
   

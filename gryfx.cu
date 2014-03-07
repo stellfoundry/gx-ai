@@ -24,5 +24,5 @@ int main(int argc, char* argv[])
 	  namelistFile = "inputs/cyclone_miller_ke.in";
 	}
 	gryfx_get_default_parameters_(&gryfxpars, namelistFile);
-	gryfx_get_fluxes_(&gryfxpars, &gryfxouts);
+	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile);
 }

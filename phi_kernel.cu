@@ -273,6 +273,52 @@ __global__ void phi_u(cuComplex* res, cuComplex* Phi, float rho,
   }    	    
 }    
 
+__global__ void phi_u_force(cuComplex* res, float phiext, float rho,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      if(idy == 0 && idx!=0) {
+        res[index].x = phiext * sgam0( bidx )/g0(bidx);
+        res[index].y = 0.;      
+      }
+      else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+
+	unsigned int IDZ = idz + zthreads*i;
+
+	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+	
+        if(idy == 0 && idx!=0) {
+          res[index].x = phiext * sgam0( bidx );
+          res[index].y = 0.;      
+        }
+        else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }
+      }
+    }
+  }    	    
+}    
 __global__ void phi_tpar(cuComplex* res, cuComplex* phi, float tprim, float rho,
 			 float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
@@ -370,6 +416,52 @@ __global__ void phi_flr(cuComplex* res, cuComplex* phi, float rho,
   }    	    
 }    
 
+__global__ void phi_flr_force(cuComplex* res, float phiext, float rho,
+			float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      if(idy==0 && idx!=0) {
+        res[index].x = phiext * flr(bidx)/g0(bidx);
+        res[index].y = 0.;
+      }
+      else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+
+	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+	
+        if(idy==0 && idx!=0) {
+          res[index].x = phiext * flr(bidx);
+          res[index].y = 0.;
+        }
+        else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }
+      }
+    }
+  }    	    
+}    
+
 __global__ void phi_flr2(cuComplex* res, cuComplex* phi, float rho,
 			 float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
@@ -449,7 +541,7 @@ __global__ void phi_nd_force(cuComplex* res, float phiext, float zt, float rho,
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       if(idy==0 && idx!=0) {
-        res[index].x = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) );
+        res[index].x = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) )/g0(bidx);
         res[index].y = 0.;
       }
       else {
@@ -469,7 +561,7 @@ __global__ void phi_nd_force(cuComplex* res, float phiext, float zt, float rho,
 	
         if(idy==0 && idx!=0) {
 	  res[index].x = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) );
-	  res[index].y = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) );
+	  res[index].y = 0.; 
         }
         else {
           res[index].x = 0.;
@@ -527,7 +619,7 @@ __global__ void phi_tpard_force(cuComplex* res, float phiext, float zt, float rh
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       if(idy==0 && idx!=0) {
-        res[index].x = phiext * ( zt * 2. * sgam0(bidx) );
+        res[index].x = phiext * ( zt * 2. * sgam0(bidx) )/g0(bidx);
         res[index].y = 0.;
       }
       else {
@@ -573,8 +665,8 @@ __global__ void phi_tperpd_force(cuComplex* res, float phiext, float zt, float r
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       if(idy==0 && idx!=0) { 
-        res[index].x = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
-        res[index].y = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
+        res[index].x = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) )/g0(bidx);
+        res[index].y = 0.;
       }
       else {
         res[index].x = 0.;
@@ -593,7 +685,7 @@ __global__ void phi_tperpd_force(cuComplex* res, float phiext, float zt, float r
 	
         if(idy==0 && idx!=0) { 
           res[index].x = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
-          res[index].y = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
+          res[index].y = 0.; 
         }
         else {
           res[index].x = 0.;
@@ -667,6 +759,50 @@ __global__ void phi_qperpb(cuComplex* res, cuComplex* phi, float rho,
   }    	    
 }      
 
+__global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
+			   float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      if(idy==0 && idx!=0) {
+        res[index].x = phiext * (flr2(bidx) - flr(bidx))/g0(bidx);
+        res[index].y = 0.;
+      }
+      else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+
+	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+	
+        if(idy==0 && idx!=0) {
+          res[index].x = phiext * (flr2(bidx) - flr(bidx));
+          res[index].y = 0.;
+        }
+        else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }  
+      }
+    }
+  }    	    
+}      
   
    

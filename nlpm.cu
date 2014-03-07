@@ -18,22 +18,40 @@ void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_n
   
   // get zonal flow component of Phi
   volflux_zonal<<<dimGrid,dimBlock>>>(Phi2ZF_tmpX, Phi, Phi, jacobian, 1./(fluxDen*fluxDen) );
-    
+  
   shear[inlpm-1](nu_nlpm, nu_nlpm_tmpXZ, Phi2ZF_tmpX, s);  
-     
+
 }
 
 void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
 		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
-		float* tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, 
-		specie s, float dt_loc)
+		float* Phi2ZF_tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, 
+		specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1)
 {
-  
-  get_nu_nlpm(nu_nlpm, Phi, tmpX, tmpXZ, s);  
-  nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu_nlpm, ky, dt_loc, dnlpm);
-  nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu_nlpm, ky, dt_loc, dnlpm); 	
-  nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu_nlpm, ky, dt_loc, dnlpm); 	
-  nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu_nlpm, ky, dt_loc, dnlpm); 	
+  float Dnlpm_h;
+  get_nu_nlpm(nu_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s); 
+  if(strcmp(nlpm_option,"cutoff") == 0) {
+    get_Dnlpm<<<1,1>>>(Dnlpm_d, Phi_zf_kx1, low_cutoff, high_cutoff, s.nu_ss); 
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu_nlpm, ky, dt_loc, Dnlpm_d);
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu_nlpm, ky, dt_loc, Dnlpm_d); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu_nlpm, ky, dt_loc, Dnlpm_d); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu_nlpm, ky, dt_loc, Dnlpm_d); 
+  }
+  if(strcmp(nlpm_option,"constant") == 0) {
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu_nlpm, ky, dt_loc, dnlpm);
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu_nlpm, ky, dt_loc, dnlpm); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu_nlpm, ky, dt_loc, dnlpm); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu_nlpm, ky, dt_loc, dnlpm);  
+  }
+  if(strcmp(nlpm_option,"quadratic") == 0) {
+    get_Dnlpm_quadratic<<<1,1>>>(Dnlpm_d, Phi_zf_kx1); 
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu_nlpm, ky, dt_loc, Dnlpm_d);
+    nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu_nlpm, ky, dt_loc, Dnlpm_d); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu_nlpm, ky, dt_loc, Dnlpm_d); 	
+    nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu_nlpm, ky, dt_loc, Dnlpm_d); 
+  }
+  //cudaMemcpy(&Dnlpm_h, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
+  //printf("Dnlpm=%f\n", Dnlpm_h);	
   //nlpm_filter<<<dimGrid,dimBlock>>>(Dens, nu_nlpm, ky, dt_loc, dnlpm); 	
   //nlpm_filter<<<dimGrid,dimBlock>>>(Upar, nu_nlpm, ky, dt_loc, dnlpm); 	
 }

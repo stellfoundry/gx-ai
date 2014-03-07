@@ -99,7 +99,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   
 
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars, 
-			struct gryfx_outputs_struct * gryfxouts)
+			struct gryfx_outputs_struct * gryfxouts, char* namelistFile)
 {
 
    equilibrium_type = gryfxpars->equilibrium_type ;
@@ -249,19 +249,28 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   }  
   
   
-  char out_dir_path[80];
+  char out_dir_path[100];
   if(SCAN) {
+    //default: out_stem taken from name of namelist given in argument
+    if( strcmp(scan_type, "default") == 0) {
+  
+      strncpy(out_stem, namelistFile, strlen(namelistFile)-3);
+      strcat(out_stem,".\0"); 
+      printf("out_stem = %s\n", out_stem);
+    }
+
+
     //q scan
     if( strcmp(scan_type, "q_scan") == 0 ) {
-      sprintf(out_stem, "scan/q_scan/q%g_%d/q%g_%d.", qsf, scan_number, qsf, scan_number);
+      sprintf(out_stem, "scan/q_scan/q%g/q%g_%d.", qsf, qsf, scan_number);
       //out_stem = scan/q_scan/qX.X_X/qX.X_X.
       
       printf("out_stem = %s\n", out_stem);
 
-      sprintf(out_dir_path, "scan/q_scan/q%g_%d", qsf, scan_number);
+      sprintf(out_dir_path, "scan/q_scan/q%g", qsf);
 
       // check to make sure that the directory 
-      // scan/q_scan/qX.X_X exists
+      // scan/q_scan/qX.X exists
       struct stat st;
       if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
 	mkdir(out_dir_path, 00777);
@@ -372,7 +381,44 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       if( !(stat(out_stem, &st) == 0 && S_ISDIR(st.st_mode)) ) {
 	mkdir(out_dir_path, 00777);
       }
-    }       
+    }    
+
+    
+    //tprim_nlpm scan
+    if( strcmp(scan_type, "tprim_nlpm_scan") == 0 ) {
+      sprintf(out_stem, "scan/tprim_nlpm_scan/tprim%g/nlpm%g/tprim%g_nlpm%g_%d.",species[ION].tprim, dnlpm, species[ION].tprim, dnlpm, scan_number);
+
+      sprintf(out_dir_path, "scan/tprim_nlpm_scan/tprim%g/nlpm%g", species[ION].tprim, dnlpm);
+      char out_dir_subpath[100];
+      sprintf(out_dir_subpath, "scan/tprim_nlpm_scan/tprim%g", species[ION].tprim);
+ 
+      // check to make sure that the directory 
+      // scan/tprim_nlpm_scan/tprimX.X/ exists
+      struct stat st;
+      if( !(stat(out_dir_subpath, &st) == 0 && S_ISDIR(st.st_mode)) ) {
+        printf("making directory %s \n", out_dir_subpath);
+	mkdir(out_dir_subpath, 00777);
+      }
+      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
+	mkdir(out_dir_path, 00777);
+      }
+    }  
+
+    /*else {
+      sprintf(out_stem, "scan/%s_scan/%s/%s_%d.", scan_type, scan_id, scan_type, scan_val, scan_number);
+      //scan_id could be something like 'tprim6nlpm.2'
+      //scan_id should be specified as string in input file
+
+      sprintf(out_dir_path, "scan/%s_scan/%s", dnlpm);
+      
+      // check to make sure that the directory 
+      // scan/nlpm_scan/nlpmX.X/ exists
+      struct stat st;
+      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
+	mkdir(out_dir_path, 00777);
+      }
+
+    } */  
   }
 
   printf("outstem is %s\n", out_stem);
@@ -406,6 +452,22 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     }
   }
   
+  //make an input file of form outstem.in if doesn't already exist
+  FILE* input;
+  FILE* namelist;
+  char inputFile[100];
+  strcpy(inputFile, out_stem);
+  strcat(inputFile, "in");
+
+  if(!(input = fopen(inputFile, "r"))) {
+    char ch;
+    input = fopen(inputFile, "w");
+    namelist = fopen(namelistFile, "r");
+    while( (ch = fgetc(namelist))  != EOF)
+      fputc(ch, input);
+    fclose(input);
+    fclose(namelist);
+  }
 
   /* 
   FILE *ifile;

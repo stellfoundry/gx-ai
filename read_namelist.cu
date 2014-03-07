@@ -112,6 +112,16 @@ void read_namelist(char* filename)
     NO_ZDERIV_COVERING = false;
   }
   
+  char* no_zderiv;
+  no_zderiv = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "no_zderiv", &no_zderiv)) no_zderiv="off";
+  if( strcmp(no_zderiv,"on") == 0) {
+    NO_ZDERIV = true;
+  }
+  else if( strcmp(no_zderiv,"off") == 0) {
+    NO_ZDERIV = false;
+  }
+
   char* slab;
   slab = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "slab", &slab)) slab="off";
@@ -134,7 +144,7 @@ void read_namelist(char* filename)
   
   char* varenna_flag;
   varenna_flag = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna", &varenna_flag)) varenna_flag="off";
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna", &varenna_flag)) varenna_flag="on";
   if( strcmp(varenna_flag,"on") == 0) {
     varenna = true;
   }
@@ -144,7 +154,7 @@ void read_namelist(char* filename)
   
   char* nlpm;
   nlpm = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm", &nlpm)) nlpm="off";
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm", &nlpm)) nlpm="on";
   if( strcmp(nlpm,"on") == 0) {
     NLPM = true;
   }
@@ -152,10 +162,25 @@ void read_namelist(char* filename)
     NLPM = false;
   }
 
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option)) nlpm_option="cutoff";
+
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm)) dnlpm = 1.;
+  
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &low_cutoff)) low_cutoff = .01;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = .1;
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna)) ivarenna = 1;
+  
+  char* fsa;
+  fsa = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna_fsa", &fsa)) fsa="on";
+  if( strcmp(fsa,"on") == 0) {
+    varenna_fsa = true;
+  }
+  else if( strcmp(fsa,"off") == 0) {
+    varenna_fsa = false;
+  }
   
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &icovering)) icovering = 1;
 
@@ -234,7 +259,7 @@ void read_namelist(char* filename)
   
   char* write_omega_flag;
   write_omega_flag = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "write_omega", &write_omega_flag)) write_omega_flag="on";
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "write_omega", &write_omega_flag)) write_omega_flag="off";
   if( strcmp(write_omega_flag, "on") == 0) {
     write_omega = true;
   }
@@ -244,7 +269,7 @@ void read_namelist(char* filename)
   
   char* write_phi_flag;
   write_phi_flag = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "write_phi", &write_phi_flag)) write_phi_flag="on";
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "write_phi", &write_phi_flag)) write_phi_flag="off";
   if( strcmp(write_phi_flag, "on") == 0) {
     write_phi = true;
   }
@@ -288,10 +313,10 @@ void read_namelist(char* filename)
       if(fnr_get_float(&namelist_struct, namelist, "uprim", &species[ION].uprim)) species[ION].uprim=0;
 
 
-      if(strcmp(collisions,"none") == 0) species[ION].nu_ss = 0;
-      else {
+     // if(strcmp(collisions,"none") == 0) species[ION].nu_ss = 0;
+     // else {
         if(fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ION].nu_ss)) species[ION].nu_ss=0;
-      }     
+     // }     
 
       strcpy(species[ION].type,"ion"); 
 
@@ -306,12 +331,12 @@ void read_namelist(char* filename)
       if(fnr_get_float(&namelist_struct, namelist, "fprim", &species[ELECTRON].fprim));
       if(fnr_get_float(&namelist_struct, namelist, "uprim", &species[ELECTRON].uprim));
 
-      if(strcmp(collisions,"none") == 0) species[ELECTRON].nu_ss = 0;
-      else {
+      //if(strcmp(collisions,"none") == 0) species[ELECTRON].nu_ss = 0;
+      //else {
 
         if(fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ELECTRON].nu_ss));
 
-      }
+      //}
 
 			strcpy(species[ELECTRON].type,"electron");
     }   

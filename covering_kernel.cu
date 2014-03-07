@@ -286,5 +286,27 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, i
   }    	    
 }
 
-
+//only called for first class (nLinks=1). assumes first ntheta0 chains are ky=0, as currently set up. 
+__global__ void reality_covering(cufftComplex* g)
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = 0;  //only 1 link
+  
+  int ntheta0 = 1 + 2*(nx-1)/3; 
+  int nLinks = 1;
+  if(i<(nz/2) && n<ntheta0 && i!=0 && n!=0) {
+    unsigned int index1 = i + p*nz + n*nz*nLinks;
+    unsigned int index2 = (nz-i) + p*nz + (ntheta0 - n)*nz*nLinks;
+    g[index2].x = g[index1].x;
+    g[index2].y = -g[index1].y;
+  }
+  if(i==0 && n<(ntheta0/2+1) && n!=0) {
+    unsigned int index1 = i + p*nz + n*nz*nLinks;
+    unsigned int index2 = i + p*nz + (ntheta0 - n)*nz*nLinks;
+    g[index2].x = g[index1].x;
+    g[index2].y = -g[index1].y;
+  } 
+ 
+}  
       

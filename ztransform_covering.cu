@@ -49,13 +49,15 @@ void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,
   
   cufftExecC2C(plan, g, g, CUFFT_FORWARD);
   
-     
   if(abs=="abs") {
     zderiv_abs_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   } else {
     zderiv_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   }
   
+  if(nLinks == 1) {
+    reality_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g);
+  }   
 
   cufftExecC2C(plan, g, g, CUFFT_INVERSE);
   

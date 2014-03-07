@@ -626,20 +626,20 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
 }
 
 //time history of flux
-void fluxWrite(FILE* fluxfile, float* wpfx, float* wpfxAvg, float wpfxmax, float wpfxmin, 
+void fluxWrite(FILE* fluxfile, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
 		int converge_count, float time, specie* species)
 {
   if(time == 0) {
     fprintf(fluxfile, "#\ttime(s)\t");
     for(int s=0; s<nSpecies; s++) {
-      fprintf(fluxfile, "\tflux[%s]\t\tavgflux[%s]\t\tmax\t\tmin\t\tcounter/1000",species[s].type,species[s].type);
+      fprintf(fluxfile, "\tflux[%s]\t\tavgflux[%s]\t\tDnlpm\t\tDnlpm_avg\t\tphi_zf_kx1\t\tphi_zf_kx1_avg\t\tphi_zf_rms\t\tphi_zf_rms_avg",species[s].type,species[s].type);
     }
     fprintf(fluxfile,"\n");
   }
   
   fprintf(fluxfile, "\t%f",time);
   for(int s=0; s<nSpecies; s++) {
-    fprintf(fluxfile,"\t%e\t\t%e\t\t%e\t\t%e\t\t%d", wpfx[s], wpfxAvg[s], wpfxmax, wpfxmin, (float) converge_count/1000);
+    fprintf(fluxfile,"\t%e\t\t%e\t\t%f\t\t%f\t\t%e\t\t%e\t\t%e\t\t%e", wpfx[s], wpfxAvg[s], Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg);
   }
   fprintf(fluxfile,"\n");
 }
@@ -1048,7 +1048,7 @@ void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComp
 
 void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* wpfx_sum, float* Phi2_kxky_sum, 
-		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float dtSum,
+		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float Phi_zf_kx1_avg, float dtSum,
 		int counter, float runtime, float dt, float timer, char* restartfileName)
 {
   //printf("restart file is\n%s\n", restartfileName);
@@ -1119,6 +1119,8 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
   
   fwrite(zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz,1,restart);
   fwrite(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
+
+  fwrite(&Phi_zf_kx1_avg, sizeof(float), 1, restart);
   
   fclose(restart);
   
@@ -1138,7 +1140,7 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
 
 void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* wpfx_sum, float* Phi2_kxky_sum, 
-		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* dtSum,
+		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
 		int* counter, float* runtime, float* dt, float* timer, char* restartfileName)  
 {
   FILE *restart;
@@ -1210,6 +1212,8 @@ void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex
   fread(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
   cudaMemcpy(Phi2_zonal_sum, Phi2_zonal_sum_h, sizeof(float)*Nx, cudaMemcpyHostToDevice);
       
+  fread(Phi_zf_kx1_avg, sizeof(float), 1, restart);
+
   fclose(restart);
   
   for(int s=0; s<nSpecies; s++) {

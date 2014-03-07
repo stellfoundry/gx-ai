@@ -330,6 +330,25 @@ __global__ void volflux_zonal(float* flux, cuComplex* f, cuComplex* g, float* ja
   
 }
 
+__global__ void field_line_avg(cuComplex* favg, cuComplex* f, float* jacobian, float fluxDenInv)
+{  
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  if(idx<nx && idy<ny/2+1) 
+  {
+    unsigned int idxy = idy + (ny/2+1)*idx;
+    favg[idxy].x = 0.;
+    favg[idxy].y = 0.;
+    for(int idz=0; idz<nz; idz++) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      favg[idxy] = favg[idxy] + f[index]*jacobian[idz];
+    }
+    favg[idxy] = favg[idxy]*fluxDenInv;
+  }
+}
+
+
+
 __global__ void volflux_zonal_complex(cuComplex* T_fsa_X, cuComplex* T, float* jacobian, float fluxDenInv)
 {
   unsigned int idx = get_idx();
@@ -394,19 +413,37 @@ __global__ void getPhiVal(float* val, cuComplex* Phi, int iky, int ikx, int z)
   val[0] = Phi[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].x;
 }
   
+__global__ void getPhiVal(float* val, float* Phi, int iky, int ikx, int z) 
+{
+  val[0] = Phi[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z];
+}
 
 __global__ void getPhiVal(float* val, cuComplex* Phi, int ikx) 
 {
   val[0] = Phi[ikx].x;
 }
 
-__global__ void getky0(float* f_kxky0, float* f_kxky)
+__global__ void getPhiVal(float* val, float* Phi, int ikx) 
+{
+  val[0] = Phi[ikx];
+}
+__global__ void getky0z0(float* f_kxky0, cuComplex* f_kxky)
+{
+  unsigned int idx = get_idx();
+  
+  if(idx<nx) {
+    unsigned int idx_y0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*(nz/2);
+    f_kxky0[idx] = f_kxky[idx_y0].x;
+  }
+} 
+
+__global__ void getky0(float* f_kxky0, cuComplex* f_kxky)
 {
   unsigned int idx = get_idx();
   
   if(idx<nx) {
     unsigned int idx_y0 = 0 + (ny/2+1)*idx;
-    f_kxky0[idx] = f_kxky[idx_y0];
+    f_kxky0[idx] = f_kxky[idx_y0].x;
   }
 } 
 
@@ -435,4 +472,16 @@ __global__ void get_z0(float* f_z0, float* f, int nx, int ny, int nz)
     f_z0[idxy] = f[idxy_z0];
   }
 }  
+
+
+__global__ void get_real_X(float* R, cuComplex* C)
+
+{
+  unsigned int idx = get_idx();
+  
+  if(idx<nx) {
+    R[idx] = C[idx].x;
+  }
+} 
+
     
