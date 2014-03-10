@@ -478,7 +478,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 		
 		else {*/
 		  init_h[index].x = init_amp;//*cos(1*z_h[k]);
-	          init_h[index].y = 0.;//init_amp;//*cos(1*z_h[k]);
+	          init_h[index].y = init_amp;//init_amp;//*cos(1*z_h[k]);
 		//}
 	      }
 	      
@@ -1105,7 +1105,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     
     if(counter%nwrite == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
-                        Phi, tmp, tmp, field, tmpZ, 
+                        Phi, tmp, tmp, field, tmpZ, CtmpX,
                         tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
   			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                         kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
@@ -1147,7 +1147,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   //phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)      
   
   gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
-                        Phi, tmp, tmp, field, tmpZ, 
+                        Phi, tmp, tmp, field, tmpZ, CtmpX,
                         tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
   			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                         kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 

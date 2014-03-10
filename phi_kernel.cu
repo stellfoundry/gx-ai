@@ -289,7 +289,8 @@ __global__ void phi_u_force(cuComplex* res, float phiext, float rho,
       
       if(idy == 0 && idx!=0) {
         res[index].x = phiext * sgam0( bidx )/g0(bidx);
-        res[index].y = 0.;      
+        res[index].y = phiext * sgam0( bidx )/g0(bidx);
+        //res[index].y = 0.;      
       }
       else {
         res[index].x = 0.;
@@ -432,7 +433,8 @@ __global__ void phi_flr_force(cuComplex* res, float phiext, float rho,
       
       if(idy==0 && idx!=0) {
         res[index].x = phiext * flr(bidx)/g0(bidx);
-        res[index].y = 0.;
+        res[index].y = phiext * flr(bidx)/g0(bidx);
+        //res[index].y = 0.;
       }
       else {
         res[index].x = 0.;
@@ -542,7 +544,8 @@ __global__ void phi_nd_force(cuComplex* res, float phiext, float zt, float rho,
       
       if(idy==0 && idx!=0) {
         res[index].x = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) )/g0(bidx);
-        res[index].y = 0.;
+        res[index].y = phiext * ( zt * (2.*sgam0(bidx) + flr(bidx)) )/g0(bidx);
+        //res[index].y = 0.;
       }
       else {
         res[index].x = 0.;
@@ -620,7 +623,8 @@ __global__ void phi_tpard_force(cuComplex* res, float phiext, float zt, float rh
       
       if(idy==0 && idx!=0) {
         res[index].x = phiext * ( zt * 2. * sgam0(bidx) )/g0(bidx);
-        res[index].y = 0.;
+        res[index].y = phiext * ( zt * 2. * sgam0(bidx) )/g0(bidx);
+        //res[index].y = 0.;
       }
       else {
        res[index].x = 0.;
@@ -666,7 +670,8 @@ __global__ void phi_tperpd_force(cuComplex* res, float phiext, float zt, float r
       
       if(idy==0 && idx!=0) { 
         res[index].x = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) )/g0(bidx);
-        res[index].y = 0.;
+        res[index].y = phiext * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) )/g0(bidx);
+        //res[index].y = 0.;
       }
       else {
         res[index].x = 0.;
@@ -775,7 +780,8 @@ __global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
       
       if(idy==0 && idx!=0) {
         res[index].x = phiext * (flr2(bidx) - flr(bidx))/g0(bidx);
-        res[index].y = 0.;
+        res[index].y = phiext * (flr2(bidx) - flr(bidx))/g0(bidx);
+        //res[index].y = 0.;
       }
       else {
         res[index].x = 0.;

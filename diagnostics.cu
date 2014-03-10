@@ -1292,7 +1292,7 @@ void geoWrite(char* ext, char* filename)
 }
 
 void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp, cuComplex** Qpar, cuComplex** Qprp, 
-	cuComplex* Phi,	cuComplex* tmp, cuComplex* corrNum_tmp, cuComplex* field, float* tmpZ, 
+	cuComplex* Phi,	cuComplex* tmp, cuComplex* corrNum_tmp, cuComplex* field, float* tmpZ, cuComplex* CtmpX, 
 	float* tmpXY, float* phi2avg_tmpXY, float* corrDen_tmpXY, float* kphi2_tmpXY2, float* tmpXY3, float* tmpXY4, float* phi_corr_tmpYZ, float* phi_corr_J_tmpYZ,
 	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* phi_corr_z0_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2, float* phi_corr_norm_tmpY2,
 	int** kxCover, int** kyCover, float* tmpX_h, float* tmpY_h, float* tmpXY_h, float* tmpYZ_h, cuComplex* field_h, 
@@ -1405,17 +1405,87 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
     normalize<<<dimGrid,dimBlock>>>(Upar[ION],Phi,1);
     fieldWrite(Upar[ION], field_h, "upar.field", filename);
 
+    //normalize<<<dimGrid,dimBlock>>>(Qpar[ION],Phi,1);
+    fieldWrite(Qpar[ION], field_h, "qpar.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Qprp[ION],Phi,1);
+    fieldWrite(Qprp[ION], field_h, "qprp.field", filename);
+
+
+    //calculate and write qpar_ps and qprp_ps
+    //zero qpar and qprp and switch ps_fac signs because PfirschSchluter operator outputs Q - Qps
+    zeroC<<<dimGrid,dimBlock>>>(Qpar[ION]);
+    zeroC<<<dimGrid,dimBlock>>>(Qprp[ION]);
+    float ps_fac;
+    if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3) && eps!=0. & varenna_fsa==true) {
+      if(ivarenna>0) {
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Tpar[ION], jacobian, 1./fluxDen);
+        ps_fac = 3.;
+        PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(tmp, Qpar[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      if(ivarenna<0) {
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
+        ps_fac = -1.6*pow(eps,1.5)*3.;
+        PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(tmp, Qpar[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
+      fieldWrite(tmp, field_h, "qpar_ps.field", filename);
+
+      if(ivarenna>0) {
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Tprp[ION], jacobian, 1./fluxDen);
+        ps_fac = 1.;
+        PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(tmp, Qprp[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      if(ivarenna<0) {
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
+        ps_fac = -1.6*pow(eps,1.5)*2.;
+        PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(tmp, Qprp[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
+      fieldWrite(tmp, field_h, "qprp_ps.field", filename);
+/*
+      if(ivarenna<0) {        
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
+        ps_fac = -1.6*pow(eps,1.5);
+        PfirschSchluter_dens_fsa<<<dimGrid,dimBlock>>> */
+    }
+
+    if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3) && eps!=0. & varenna_fsa==false) {
+      if(ivarenna>0) {
+        ps_fac = 3.;
+        PfirschSchluter<<<dimGrid,dimBlock>>>(tmp, Qpar[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, Tpar[ION], shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      if(ivarenna<0) {
+        ps_fac = -1.6*pow(eps,1.5)*3.;
+        PfirschSchluter<<<dimGrid,dimBlock>>>(tmp, Qpar[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
+      fieldWrite(tmp, field_h, "qpar_ps.field", filename);
+
+      if(ivarenna>0) {
+        ps_fac = 1.;
+        PfirschSchluter<<<dimGrid,dimBlock>>>(tmp, Qprp[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, Tprp[ION], shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      if(ivarenna<0) {
+        ps_fac = -1.6*pow(eps,1.5)*2.;
+        PfirschSchluter<<<dimGrid,dimBlock>>>(tmp, Qprp[ION], -ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, species[ION].rho);  //defined in operations_kernel.cu  
+      }
+      //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
+      fieldWrite(tmp, field_h, "qprp_ps.field", filename);
+/*
+      if(ivarenna<0) {        
+        volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
+        ps_fac = -1.6*pow(eps,1.5);
+        PfirschSchluter_dens_fsa<<<dimGrid,dimBlock>>> */
+    }
+      
     normalize<<<dimGrid,dimBlock>>>(Tpar[ION],Phi,1);
     fieldWrite(Tpar[ION], field_h, "tpar.field", filename);
 
     normalize<<<dimGrid,dimBlock>>>(Tprp[ION],Phi,1);
     fieldWrite(Tprp[ION], field_h, "tprp.field", filename);
-
-    normalize<<<dimGrid,dimBlock>>>(Qpar[ION],Phi,1);
-    fieldWrite(Qpar[ION], field_h, "qpar.field", filename);
-
-    normalize<<<dimGrid,dimBlock>>>(Qprp[ION],Phi,1);
-    fieldWrite(Qprp[ION], field_h, "qprp.field", filename);
+            
+    
     
     mask<<<dimGrid,dimBlock>>>(Phi);
     fieldWrite(Phi, field_h, "phi.field", filename);
