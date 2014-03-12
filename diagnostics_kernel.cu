@@ -484,4 +484,234 @@ __global__ void get_real_X(float* R, cuComplex* C)
   }
 } 
 
-    
+ 
+__global__ void PSdiagnostic_odd(cuComplex* Qps, float psfac, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      //psfac is 3 or 1 depending on whether using Qpar or Qprp, respectively
+       
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+		
+	cuComplex tmp;
+	tmp.x = -psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho*T[index].y;
+	tmp.y = psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho*T[index].x;
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index].x = Qps[index].y = 0;
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = -psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho*T[idx].y;
+	  tmp.y = psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho*T[idx].x;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index].x = Qps[index].y = 0.;
+	}
+      }
+    }
+  }
+}
+
+
+__global__ void PSdiagnostic_odd_fsa(cuComplex* Qps, float psfac, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T_fluxsurfavg, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      //psfac is 3 or 1 depending on whether using Qpar or Qprp, respectively
+       
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+		
+	cuComplex tmp;
+	tmp.x = -psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho*T_fluxsurfavg[idx].y;
+	tmp.y = psfac*(-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho*T_fluxsurfavg[idx].x;
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index].x = Qps[index].y = 0.;
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = -psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho*T_fluxsurfavg[idx].y;
+	  tmp.y = psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho*T_fluxsurfavg[idx].x;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index].x = Qps[index].y = 0.;
+	}
+      }
+    }
+  }
+}
+
+
+__global__ void PSdiagnostic_even(cuComplex* Qps, float psfac, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      //psfac is 3 or 1 depending on whether using Qpar or Qprp, respectively
+       
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+		
+	cuComplex tmp;
+	tmp.x = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho,2)*T[index].x;
+	tmp.y = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho,2)*T[index].y;
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index].x = Qps[index].y = 0;
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho,2)*T[idx].x;
+	  tmp.y = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho,2)*T[idx].y;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index].x = Qps[index].y = 0.;
+	}
+      }
+    }
+  }
+}
+
+
+__global__ void PSdiagnostic_even_fsa(cuComplex* Qps, float psfac, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T_fluxsurfavg, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      //psfac is 3 or 1 depending on whether using Qpar or Qprp, respectively
+       
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+		
+	cuComplex tmp;
+	tmp.x = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho,2)*T_fluxsurfavg[idx].x;
+	tmp.y = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[idz])*qsf/eps*bmagInv[idz]*rho,2)*T_fluxsurfavg[idx].y;
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index].x = Qps[index].y = 0.;
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho,2)*T_fluxsurfavg[idx].x;
+	  tmp.y = psfac*pow((-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*rho,2)*T_fluxsurfavg[idx].y;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index].x = Qps[index].y = 0.;
+	}
+      }
+    }
+  }
+}

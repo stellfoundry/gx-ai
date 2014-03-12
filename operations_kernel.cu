@@ -1323,8 +1323,8 @@ __global__ void PfirschSchluter(cuComplex* Qps, cuComplex* Q, float psfac, float
 	if(idy==0) {
 	  //double check signs... k_r = -kx for ky=0?
 	  cuComplex tmp;
-	  tmp.x = Q[index].x + psfac*(kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].y;
-	  tmp.y = Q[index].y - psfac*(kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].x;
+	  tmp.x = Q[index].x + psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].y;
+	  tmp.y = Q[index].y - psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].x;
 	  Qps[index] = tmp;
         }
 	else {
@@ -1381,8 +1381,8 @@ __global__ void PfirschSchluter_fsa(cuComplex* Qps, cuComplex* Q, float psfac, f
 	if(idy==0) {
 	  //double check signs... k_r = -kx for ky=0?
 	  cuComplex tmp;
-	  tmp.x = Q[index].x + psfac*(kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].y;
-	  tmp.y = Q[index].y - psfac*(kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].x;
+	  tmp.x = Q[index].x + psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].y;
+	  tmp.y = Q[index].y - psfac*(-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].x;
 	  Qps[index] = tmp;
         }
 	else {
