@@ -159,7 +159,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
 
   
-  if ( S_ALPHA )
+  if ( igeo == 0 ) // this is s-alpha
   {
          
     gbdrift_h = (float*) malloc(sizeof(float)*Nz);
@@ -177,7 +177,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
     gradpar = (float) 1./(qsf*rmaj);
     
-    
+    drhodpsi = 1.; 
     
     for(int k=0; k<Nz; k++) {
       z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
@@ -210,7 +210,15 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       }
     }  
   }
-  else 
+  else if ( igeo == 1) // read geometry from file 
+  {
+    FILE* geoFile = fopen(geoFileName, "r");
+    read_geo_input(geoFile);
+
+    //bgrad calculated in run_gryfx.cu
+
+  }
+  else if ( igeo == 2 ) // calculate geometry from geo module
   {
     
     //read species parameters from namelist, will overwrite geometry parameters below
@@ -221,7 +229,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
   } 
   
-  gradpar = (float) 1./(qsf*rmaj);
 
   if(DEBUG) { 
     int ct, dev;

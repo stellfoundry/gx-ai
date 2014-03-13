@@ -120,6 +120,7 @@ int ivarenna = 1;
 bool varenna_fsa = false;
 
 int iphi00 = 2;
+int igeo = 0;
 
 //other global device arrays
 float *kx, *ky, *kz;

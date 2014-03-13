@@ -270,11 +270,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   kperp4_max_Inv = 1. / pow(kperp2_max,2);
   if(DEBUG) printf("kperp4_max_Inv = %f\n", kperp4_max_Inv);
   bmagInit <<<dimGrid,dimBlock>>>(bmag,bmagInv);
-  if(S_ALPHA) jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
-  else {
-    //copy from geo output
-    cudaMemcpy(jacobian, jacobian_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    
+  jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
+  if(igeo != 0) {
     //calculate bgrad
     ZDerivB(bgrad, bmag, bmag_complex, kz);
   }  
