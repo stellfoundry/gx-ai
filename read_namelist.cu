@@ -231,6 +231,8 @@ void read_namelist(char* filename)
     DEBUG = false;
   }
   
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo)) igeo = 0;
+/*
   char* s_alpha;
   s_alpha = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "s_alpha", &s_alpha)) s_alpha="on";
@@ -240,7 +242,7 @@ void read_namelist(char* filename)
   else if( strcmp(s_alpha,"off") == 0) {
     S_ALPHA = false;
   }
-  
+ */ 
   char* initfield;
   initfield = (char*) malloc(sizeof(char)*10);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "init", &initfield)) initfield="density";
