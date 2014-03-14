@@ -126,7 +126,7 @@ __global__ void nlpm(cuComplex* res, cuComplex* field, float* ky, float* nu_nlpm
   }
 }
 
-__global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float dnlpm)
+__global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float dnlpm, float kxfac)
 {
   unsigned int idx = get_idx();
   unsigned int idy = get_idy();
@@ -138,7 +138,7 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
 
-      field[index] = field[index]/( 1. + dt_loc*(dnlpm)*nu_nlpm[idz]*ky[idy] );
+      field[index] = field[index]/( 1. + dt_loc*kxfac*(dnlpm)*nu_nlpm[idz]*ky[idy] );
     }
   }
   else {
@@ -149,14 +149,14 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
 
-	field[index] = field[index]/( 1. + dt_loc*(dnlpm)*nu_nlpm[IDZ]*ky[idy] );
+	field[index] = field[index]/( 1. + dt_loc*kxfac*(dnlpm)*nu_nlpm[IDZ]*ky[idy] );
       }
     }
   }
 
 }
 
-__global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float* Dnlpm)
+__global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float* Dnlpm, float kxfac)
 {
   unsigned int idx = get_idx();
   unsigned int idy = get_idy();
@@ -168,7 +168,7 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
 
-      field[index] = field[index]/( 1. + dt_loc*(*Dnlpm)*nu_nlpm[idz]*ky[idy] );
+      field[index] = field[index]/( 1. + dt_loc*(*Dnlpm)*kxfac*nu_nlpm[idz]*ky[idy] );
     }
   }
   else {
@@ -179,7 +179,7 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
 
-	field[index] = field[index]/( 1. + dt_loc*(*Dnlpm)*nu_nlpm[IDZ]*ky[idy] );
+	field[index] = field[index]/( 1. + dt_loc*(*Dnlpm)*kxfac*nu_nlpm[IDZ]*ky[idy] );
       }
     }
   }

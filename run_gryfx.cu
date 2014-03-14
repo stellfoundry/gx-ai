@@ -18,7 +18,6 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float phi0_X[Nx];
   cuComplex CtmpX_h[Nx];
   cuComplex field_h[Nx*(Ny/2+1)*Nz];
-  cuComplex bmag_complex_h[Nz/2+1];
  
   float Phi2_zf;
   float Phi_zf_rms;
@@ -276,7 +275,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   if(igeo != 0) {
     //calculate bgrad
     if(DEBUG) printf("calculating bgrad\n");
-    ZDerivB(bgrad, bmag, bmag_complex, kz, bmag_complex_h);
+    ZDerivB(bgrad, bmag, bmag_complex, kz);
   }  
   if(DEBUG) getError("before cudaMemset");  
   //cudaMemset(jump, 0, sizeof(float)*Ny);
