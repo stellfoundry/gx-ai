@@ -151,12 +151,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
   else *&X0 = Y0;  
   
-  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0, Zp);
-  printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-  printf("temp=%g  dens=%g nu_ss=%g  inlpm=%d  dnlpm=%f\n", species[ION].temp, species[ION].dens,species[ION].nu_ss, inlpm, dnlpm);
-  printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-  printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
-  printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
 
   
   if ( igeo == 0 ) // this is s-alpha
@@ -226,6 +220,12 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     eps = rhoc/rmaj;
   } 
   
+  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d   igeo=%d\n", Nx, Ny, Nz, X0, Y0, Zp, igeo);
+  printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
+  printf("temp=%g  dens=%g nu_ss=%g  inlpm=%d  dnlpm=%f\n", species[ION].temp, species[ION].dens,species[ION].nu_ss, inlpm, dnlpm);
+  printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
+  printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
+  printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
 
   if(DEBUG) { 
     int ct, dev;

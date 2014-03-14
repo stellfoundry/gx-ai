@@ -27,7 +27,7 @@ void read_geo_input(FILE* ifile)
   //lineStartPos[i] is start of line i in file... first line is i=1 (not 0)
   fsetpos(ifile, &lineStartPos[2]);
   fscanf(ifile, "%d %d %d %f %f %f %f %f", &ntgrid, &nperiod, &Nz, &drhodpsi, &rmaj, &shat, &kxfac, &qsf);
-
+  if(DEBUG) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n", ntgrid, nperiod, Nz, rmaj);
   
   gbdrift_h = (float*) malloc(sizeof(float)*Nz);
   grho_h = (float*) malloc(sizeof(float)*Nz);
@@ -39,7 +39,8 @@ void read_geo_input(FILE* ifile)
   gds22_h = (float*) malloc(sizeof(float)*Nz);
   cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
   gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-  
+  bgrad_h = (float*) malloc(sizeof(float)*Nz);
+  jacobian_h = (float*) malloc(sizeof(float)*Nz);
 
   //first block
   for(int i=0; i<Nz; i++) {
@@ -68,7 +69,7 @@ void read_geo_input(FILE* ifile)
     fscanf(ifile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
     cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
     gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
-    //    printf("z: %f \n", cvdrift0_h[i]);  
+    if(DEBUG) printf("z: %f \n", cvdrift0_h[i]);  
   }
   
 }         

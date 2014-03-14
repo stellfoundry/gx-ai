@@ -34,6 +34,41 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
   fclose(out);
 }
 
+void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
+{
+  strcpy(filename,out_stem);
+  strcat(filename,ext);
+  FILE* out = fopen(filename,"w+");
+  cudaMemcpy(f_h,f_d,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int i=0; i<(Nx-1)/3+1; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;      
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	//if(index!=0){
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_h[j+(Ny/2+1)*i].x, f_h[j+(Ny/2+1)*i].y); 
+	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_h[index].x, f_h[index].y);    	  
+        //}
+      }     
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_h[j+(Ny/2+1)*i].x, f_h[j+(Ny/2+1)*i].y); 
+	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_h[index].x, f_h[index].y);    	  
+      }    
+    }
+  }
+  fclose(out);
+}
 void fieldWriteXY(float* f_d, char* fieldname, float dt)
 {
   char filename[100];  
@@ -1277,11 +1312,12 @@ void geoWrite(char* ext, char* filename)
   cudaMemcpy(cvdrift0_h, cvdrift0, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
   cudaMemcpy(gbdrift0_h, gbdrift0, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
   cudaMemcpy(jacobian_h, jacobian, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
+  cudaMemcpy(kz_h, kz, sizeof(float)*(Nz/2+1), cudaMemcpyDeviceToHost);
   
   fprintf(out, "#\tz:1\t\tbmag:2\t\tbgrad:3\t\tgbd:4\t\tgbd0:5\t\tcvd:6\t\tcvd0:7\t\tgds2:8\t\tgds21:9\t\tgds22:10\tgrho:11\t\tjacobian:12\n");
   for(int i=0; i<Nz; i++) {
-    fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", z_h[i], bmag_h[i], bgrad_h[i], gbdrift_h[i], gbdrift0_h[i], 
-    									cvdrift_h[i], cvdrift0_h[i], gds2_h[i], gds21_h[i], gds22_h[i], grho_h[i], jacobian_h[i]);
+    fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", z_h[i], bmag_h[i], bgrad_h[i], gbdrift_h[i], gbdrift0_h[i], 
+    									cvdrift_h[i], cvdrift0_h[i], gds2_h[i], gds21_h[i], gds22_h[i], grho_h[i], jacobian_h[i], kz_h[i]);
   }
   //periodic point
   int i=0;

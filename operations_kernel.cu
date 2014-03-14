@@ -677,13 +677,13 @@ __global__ void scale(cuComplex* result,cuComplex* b, float scaler, int nx, int 
 } 
 
 //scaler * B(z)
-__global__ void scaleRealZ(float* result, float* B, float scaler) 
+__global__ void scaleRealZ(float* result, float* B, double scaler) 
 {
   unsigned int idz = get_idz();
   
   if(nz<=zthreads) {
     if(idz<nz) {   
-      result[idz] = scaler*B[idz];
+      result[idz] = (double) scaler*B[idz];
     }
   }
     

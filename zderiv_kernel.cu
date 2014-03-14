@@ -32,6 +32,38 @@ __global__ void zderiv(cuComplex* res, cuComplex* f, float* kz)
   }    	
 }  
 
+__global__ void zderiv(cuComplex* res, cuComplex* f, float* kz, int nx, int ny, int nz)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+            
+      //result(ky,kx,kz)= i*kz*f(ky,kx,kz)
+      cuComplex tmp;
+      tmp.x = -kz[idz]*f[index].y;
+      tmp.y = kz[idz]*f[index].x;    
+      res[index] = tmp;
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	unsigned int IDZ = idz + i*zthreads;
+	
+	cuComplex tmp;
+	tmp.x = -kz[IDZ]*f[index].y;
+	tmp.y = kz[IDZ]*f[index].x;    
+	res[index] = tmp; 
+      }
+    }
+  }    	
+}  
 //i*kz*B(kz)
 __global__ void zderivB(cuComplex* res, cuComplex* B, float* kz)
 {

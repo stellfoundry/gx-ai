@@ -18,6 +18,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float phi0_X[Nx];
   cuComplex CtmpX_h[Nx];
   cuComplex field_h[Nx*(Ny/2+1)*Nz];
+  cuComplex bmag_complex_h[Nz/2+1];
  
   float Phi2_zf;
   float Phi_zf_rms;
@@ -105,6 +106,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
   kx_h = (float*) malloc(sizeof(float)*Nx);
   ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
+  kz_h = (float*) malloc(sizeof(float)*(Nz/2+1));
   
   //zero dtBox array
   for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
@@ -168,7 +170,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
 
   cudaMalloc((void**) &kx, sizeof(float)*Nx);
   cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
-  cudaMalloc((void**) &kz, sizeof(float)*Nz);
+  cudaMalloc((void**) &kz, sizeof(float)*(Nz/2+1));
 
   cudaMalloc((void**) &bmagInv, sizeof(float)*Nz); 
   cudaMalloc((void**) &bmag_complex, sizeof(cuComplex)*(Nz/2+1));
@@ -227,18 +229,18 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   cudaMemcpy(cvdrift, cvdrift_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(gds2, gds2_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(bmag, bmag_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-  cudaMemcpy(bgrad, bgrad_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);    //
+  if(igeo==0) cudaMemcpy(bgrad, bgrad_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);    //
   cudaMemcpy(gds21, gds21_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(gds22, gds22_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(cvdrift0, cvdrift0_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(gbdrift0, gbdrift0_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  if(DEBUG) getError("run_gryfx.cu, after memcpy");
   
   float* val;
   cudaMalloc((void**) &val, sizeof(float));
   float* phiVal; 
   phiVal = (float*) malloc(sizeof(float));
   float phiVal0;
-  if(DEBUG) getError("run_gryfx.cu, after memcpy");
   
   
   //set up plans for NLPS, ZDeriv, and ZDerivB
@@ -273,7 +275,8 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
   if(igeo != 0) {
     //calculate bgrad
-    ZDerivB(bgrad, bmag, bmag_complex, kz);
+    if(DEBUG) printf("calculating bgrad\n");
+    ZDerivB(bgrad, bmag, bmag_complex, kz, bmag_complex_h);
   }  
   if(DEBUG) getError("before cudaMemset");  
   //cudaMemset(jump, 0, sizeof(float)*Ny);

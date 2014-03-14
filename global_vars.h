@@ -131,7 +131,7 @@ cuComplex *deriv_nlps;
 float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
 float* jacobian;
 
-float *kx_h, *ky_h;
+float *kx_h, *ky_h, *kz_h;
 
 //plans
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
