@@ -214,9 +214,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   {
     FILE* geoFile = fopen(geoFileName, "r");
     read_geo_input(geoFile);
-
-    //bgrad calculated in run_gryfx.cu
-
   }
   else if ( igeo == 2 ) // calculate geometry from geo module
   {
@@ -226,7 +223,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     //coefficients_struct *coefficients;
     //constant_coefficients_struct constant_coefficients;
     //read_geo(&Nz,coefficients,&constant_coefficients);
-    
+    eps = rhoc/rmaj;
   } 
   
 

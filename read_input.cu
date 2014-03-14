@@ -1,4 +1,4 @@
-void read_geo_input(FILE* geofile) 
+void read_geo_input(FILE* ifile) 
 {    
   int nLines;
   fpos_t* lineStartPos;

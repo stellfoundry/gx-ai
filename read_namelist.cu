@@ -232,6 +232,7 @@ void read_namelist(char* filename)
   }
   
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo)) igeo = 0;
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geoFileName));
 /*
   char* s_alpha;
   s_alpha = (char*) malloc(sizeof(char)*4);

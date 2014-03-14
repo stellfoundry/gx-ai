@@ -121,6 +121,7 @@ bool varenna_fsa = false;
 
 int iphi00 = 2;
 int igeo = 0;
+char* geoFileName;
 
 //other global device arrays
 float *kx, *ky, *kz;
@@ -170,7 +171,7 @@ float phiext=-1.;
 //char stopfileName[60];
 //char restartfileName[60];
 char* scan_type;
-char out_stem[60];
+char out_stem[100];
 int scan_number;
 
 char* run_name;
