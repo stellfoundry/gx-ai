@@ -170,6 +170,10 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &low_cutoff)) low_cutoff = .01;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = .1;
 
+  // normalize cutoffs by Y0
+  low_cutoff = (float) low_cutoff / Y0;
+  high_cutoff = (float) high_cutoff / Y0;
+
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna)) ivarenna = 1;
   
   char* fsa;
