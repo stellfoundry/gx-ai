@@ -492,7 +492,7 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
   mask<<<dimGrid,dimBlock>>>(totPr_field);
   volflux(vPhi_tmp, totPr_field, tmp, tmpXY);
   flux1 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
-  //if(write_phase) {  
+ /* //if(write_phase) {  
     float vPhi_rms;
     float totPr_rms;
     float Dens_rms;
@@ -521,7 +521,7 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
     *Tpar_phase = Tpar_flux / (vPhi_rms*Tpar_rms);
     *Tprp_phase = Tprp_flux / (vPhi_rms*Tprp_rms);    
   //}
-  
+  */
   add_scaled<<<dimGrid,dimBlock>>>(Pprp_field, 1., Dens, 1., Tprp);
   phi_flr<<<dimGrid,dimBlock>>>(phi_tmp,Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
   iOmegaStar<<<dimGrid,dimBlock>>>(vPhi_tmp,phi_tmp,ky);
@@ -540,6 +540,17 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
   *flux = -(flux1+flux2)*s.dens*s.temp;
     
   //wpfx[s+nSpecies*time] = (flux1+flux2) * n[s] * temp[s];
+
+  //calculate particle flux
+  nbar<<<dimGrid,dimBlock>>>(nbar_field, Dens, Tprp, Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
+  iOmegaStar<<<dimGrid,dimBlock>>>(vPhi_tmp, Phi, ky);
+  mask<<<dimGrid,dimBlock>>>(nbar_field);
+  mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
+  volflux(vPhi_tmp, nbar_field, tmp, tmpXY);
+  float pflux_tmp = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  *pflux = pflux_tmp*s.dens;
+
+
 }
 
 //outputs as function of ky

@@ -207,6 +207,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   else if ( igeo == 1) // read geometry from file 
   {
     FILE* geoFile = fopen(geoFileName, "r");
+    printf("Reading eik geo file %s\n", geoFileName);
     read_geo_input(geoFile);
   }
   else if ( igeo == 2 ) // calculate geometry from geo module
