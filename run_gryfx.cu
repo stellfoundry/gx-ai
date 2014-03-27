@@ -1,4 +1,4 @@
-void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
+void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
   //host variables
   
@@ -87,6 +87,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   float dtSum;
   //diagnostics arrays
   float wpfxAvg[nSpecies];
+  float pfluxAvg[nSpecies];
   float *Phi2_kxky_sum;
   float *wpfxnorm_kxky_sum;
   float *Phi2_zonal_sum;
@@ -662,10 +663,9 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   bool startavg=false;
 
   float dt_start = .0001;
-  float alpha;
-  float alpha_short;
+  float alpha_avg = (float) 2./(navg+1.);
+  float mu_avg = exp(-alpha_avg);
   float navg_nlpm;
-  float dtSum_short = 0;
     
   while(/*counter < 1 &&*/ 
         counter<nSteps &&
@@ -895,10 +895,15 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       cudaMemcpy(phi_h, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
     }
     */
-        
+    
+    for(int s=0; s<nSpecies; s++) {    
+      wpfx_old[s] = wpfx[s];
+      pflx_old[s] = pflx[s];
+    }
+
     //calculate instantaneous heat flux
     for(int s=0; s<nSpecies; s++) {  
-      fluxes(&wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
+      fluxes(&pflx[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
              tmp,tmp,tmp,field,field,tmpZ,tmpXY,species[s],runtime,
              &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
     }
@@ -929,37 +934,32 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
     
     if(counter>0) { //nSteps/4) {
       //we use an exponential moving average
-      // wpfx_avg[t] = alpha*wpfx[t] + (1-alpha)*wpfx_avg[t-1]
+      // wpfx_avg[t] = alpha_avg*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
       // now with time weighting...
-      // wpfx_sum[t] = alpha*dt*wpfx[t] + (1-alpha)*wpfx_avg[t-1]
-      // dtSum[t] = alpha*dt[t] + (1-alpha)*dtSum[t-1]
+      // wpfx_sum[t] = alpha_avg*dt*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
+      // dtSum[t] = alpha_avg*dt[t] + (1-alpha_avg)*dtSum[t-1]
       // wpfx_avg[t] = wpfx_sum[t]/dtSum[t]
-      alpha = (float) 2./(navg+1.);
-      //navg_nlpm = (float) 10./dt;  // average over 10s = navg_nlpm*dt 
-      //alpha_short = (float) 2./(navg_nlpm+1.);     
  
       // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
       for(int s=0; s<nSpecies; s++) {
-        wpfx_sum[s] = wpfx[s]*dt*alpha + wpfx_sum[s]*(1.-alpha);
+        wpfx_sum[s] = wpfx[s]*dt*alpha_avg + wpfx_sum[s]*(1.-alpha_avg);
       }
-      add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha, Phi2_kxky_sum, dt*alpha, tmpXY, Nx, Ny, 1);
-      add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha, Phi2_zonal_sum, dt*alpha, tmpX, Nx, 1, 1);
-      add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha, zCorr_sum, dt*alpha, tmpYZ, 1, Ny, Nz);
-      //add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha, omegaAvg, dt*alpha, omega, Nx, Ny, 1);
-      expectation_kx_sum = expectation_kx_sum*(1.-alpha) + expectation_kx*dt*alpha;
-      expectation_ky_sum = expectation_ky_sum*(1.-alpha) + expectation_ky*dt*alpha;
-      Phi2_sum = Phi2_sum*(1.-alpha) + Phi2*dt*alpha;
-      Phi_zf_rms_sum = Phi_zf_rms_sum*(1.-alpha) + Phi_zf_rms*dt*alpha;
-      flux1_phase_sum = flux1_phase_sum*(1.-alpha) + flux1_phase*dt*alpha;
-      flux2_phase_sum = flux2_phase_sum*(1.-alpha) + flux2_phase*dt*alpha;
-      Dens_phase_sum = Dens_phase_sum*(1.-alpha) + Dens_phase*dt*alpha;
-      Tpar_phase_sum = Tpar_phase_sum*(1.-alpha) + Tpar_phase*dt*alpha;
-      Tprp_phase_sum = Tprp_phase_sum*(1.-alpha) + Tprp_phase*dt*alpha;
-      Dnlpm_sum = Dnlpm_sum*(1.-alpha) + Dnlpm*dt*alpha;
-   //   Phi_zf_kx1_sum = Phi_zf_kx1_sum*(1.-alpha_short) + Phi_zf_kx1*dt*alpha_short;
+      add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha_avg, Phi2_kxky_sum, dt*alpha_avg, tmpXY, Nx, Ny, 1);
+      add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha_avg, Phi2_zonal_sum, dt*alpha_avg, tmpX, Nx, 1, 1);
+      add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha_avg, zCorr_sum, dt*alpha_avg, tmpYZ, 1, Ny, Nz);
+      //add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha_avg, omegaAvg, dt*alpha_avg, omega, Nx, Ny, 1);
+      expectation_kx_sum = expectation_kx_sum*(1.-alpha_avg) + expectation_kx*dt*alpha_avg;
+      expectation_ky_sum = expectation_ky_sum*(1.-alpha_avg) + expectation_ky*dt*alpha_avg;
+      Phi2_sum = Phi2_sum*(1.-alpha_avg) + Phi2*dt*alpha_avg;
+      Phi_zf_rms_sum = Phi_zf_rms_sum*(1.-alpha_avg) + Phi_zf_rms*dt*alpha_avg;
+      flux1_phase_sum = flux1_phase_sum*(1.-alpha_avg) + flux1_phase*dt*alpha_avg;
+      flux2_phase_sum = flux2_phase_sum*(1.-alpha_avg) + flux2_phase*dt*alpha_avg;
+      Dens_phase_sum = Dens_phase_sum*(1.-alpha_avg) + Dens_phase*dt*alpha_avg;
+      Tpar_phase_sum = Tpar_phase_sum*(1.-alpha_avg) + Tpar_phase*dt*alpha_avg;
+      Tprp_phase_sum = Tprp_phase_sum*(1.-alpha_avg) + Tprp_phase*dt*alpha_avg;
+      Dnlpm_sum = Dnlpm_sum*(1.-alpha_avg) + Dnlpm*dt*alpha_avg;
 
-      dtSum = dtSum*(1.-alpha) + dt*alpha;
-      //dtSum_short = dtSum_short*(1.-alpha_short) + dt*alpha_short;
+      dtSum = dtSum*(1.-alpha_avg) + dt*alpha_avg;
       
       // **_sum/dtSum gives time average of **
       for(int s=0; s<nSpecies; s++) {
@@ -968,7 +968,11 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
       }        
       Phi_zf_rms_avg = Phi_zf_rms_sum/dtSum;
       Dnlpm_avg = Dnlpm_sum/dtSum;
-     // Phi_zf_kx1_avg = Phi_zf_kx1_sum/dtSum_short;
+
+     for(int s=0; s<nSpecies; s++) {
+       wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
+       pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
+     }
 
       alpha_nlpm = dt/tau_nlpm;
       mu_nlpm = exp(-alpha_nlpm);
@@ -1130,6 +1134,7 @@ void run_gryfx(double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile
   
   for(int s=0; s<nSpecies; s++) {
     qflux[s] = wpfxAvg[s];
+    pflux[s] = pfluxAvg[s];
   }
   
   ////////////////////////////////////////////////////////////

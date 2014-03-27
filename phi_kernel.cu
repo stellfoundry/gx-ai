@@ -811,4 +811,26 @@ __global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
   }    	    
 }      
   
+__global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, cuComplex* Phi,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+{
+  unsigned int idy = get_idy(); 
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz(); 
+  
+  
+  if(nz<=zthreads) {
+    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
+
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      nbar[index] = Dens[index]/(1.+bidx/2.) - bidx*Tprp[index]/(2*pow(1.+bidx/2.,2)) + (g0(bidx) - 1.)*Phi[index];
+      
+    }
+  }
+}    
+
+
    

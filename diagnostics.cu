@@ -479,10 +479,10 @@ void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
   *phase = AB_fsa / (A_rms*B_rms);
 }   
 
-void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
+void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, 
 	    cuComplex* Pprp_field, float* tmpZ, float* tmpXY, specie s, float runtime, 
-            float *flux1_phase, float *flux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
+            float *qflux1_phase, float *qflux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
 {   
   
   add_scaled<<<dimGrid,dimBlock>>>(totPr_field, 1., Tprp, .5, Tpar, 1.5, Dens);
@@ -491,7 +491,7 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(totPr_field);
   volflux(vPhi_tmp, totPr_field, tmp, tmpXY);
-  flux1 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  qflux1 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
  /* //if(write_phase) {  
     float vPhi_rms;
     float totPr_rms;
@@ -505,7 +505,7 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
     rms(&vPhi_rms, vPhi_tmp, tmpXY);
     rms(&totPr_rms, totPr_field, tmpXY);
 
-    *flux1_phase = flux1/(vPhi_rms*totPr_rms);
+    *qflux1_phase = qflux1/(vPhi_rms*totPr_rms);
 
     volflux<<<dimGrid,dimBlock>>>(tmpXY,vPhi_tmp,Dens,jacobian,1./fluxDen);
     Dens_flux = sumReduc(tmpXY, Nx*(Ny/2+1), false);
@@ -528,18 +528,18 @@ void fluxes(float *flux, float flux1, float flux2, cuComplex* Dens, cuComplex* T
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(Pprp_field);
   volflux(vPhi_tmp, Pprp_field, tmp, tmpXY);
-  flux2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  qflux2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
   //if(write_phase) {  
     float Pprp_rms;
 
     rms(&vPhi_rms, vPhi_tmp, tmpXY);
     rms(&Pprp_rms, Pprp_field, tmpXY);
-    *flux2_phase = flux2/(vPhi_rms*Pprp_rms);
+    *qflux2_phase = qflux2/(vPhi_rms*Pprp_rms);
   //}
   
-  *flux = -(flux1+flux2)*s.dens*s.temp;
+  *qflux = -(qflux1+qflux2)*s.dens*s.temp;
     
-  //wpfx[s+nSpecies*time] = (flux1+flux2) * n[s] * temp[s];
+  //wpfx[s+nSpecies*time] = (qflux1+qflux2) * n[s] * temp[s];
 
   //calculate particle flux
   nbar<<<dimGrid,dimBlock>>>(nbar_field, Dens, Tprp, Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
@@ -672,7 +672,7 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
 }
 
 //time history of flux
-void fluxWrite(FILE* fluxfile, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
+void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
 		int converge_count, float time, specie* species)
 {
   if(time == 0) {
@@ -1093,7 +1093,7 @@ void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComp
 
 
 void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
-                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* wpfx_sum, float* Phi2_kxky_sum, 
+                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float Phi_zf_kx1_avg, float dtSum,
 		int counter, float runtime, float dt, float timer, char* restartfileName)
 {
@@ -1147,7 +1147,8 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
   fwrite(&dt,sizeof(float),1,restart);
   fwrite(&timer,sizeof(float),1,restart);
   
-  fwrite(wpfx_sum, sizeof(float)*nSpecies, 1, restart);
+  fwrite(wpfxAvg, sizeof(float)*nSpecies, 1, restart);
+  fwrite(pflxAvg, sizeof(float)*nSpecies, 1, restart);
   fwrite(Phi2_kxky_sum_h,sizeof(float)*Nx*(Ny/2+1),1,restart);
   fwrite(&expectation_ky_sum, sizeof(float), 1, restart);
   fwrite(&expectation_kx_sum, sizeof(float), 1, restart);
@@ -1185,7 +1186,7 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
 }
 
 void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
-                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* wpfx_sum, float* Phi2_kxky_sum, 
+                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
 		int* counter, float* runtime, float* dt, float* timer, char* restartfileName)  
 {
@@ -1221,7 +1222,8 @@ void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex
   fread(dt, sizeof(float),1,restart);
   fread(timer, sizeof(float),1,restart);
   
-  fread(wpfx_sum, sizeof(float)*nSpecies, 1, restart);
+  fread(wpfxAvg, sizeof(float)*nSpecies, 1, restart);
+  fread(pflxAvg, sizeof(float)*nSpecies, 1, restart);
   fread(Phi2_kxky_sum_h, sizeof(float)*Nx*(Ny/2+1),1,restart);
   cudaMemcpy(Phi2_kxky_sum, Phi2_kxky_sum_h, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyHostToDevice);
   

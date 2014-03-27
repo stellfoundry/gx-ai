@@ -688,7 +688,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   strcat(outfileName, "out");
   outfile = fopen(outfileName, "w+");
 
-  run_gryfx(gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
+  run_gryfx(gryfxouts->pflux, gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
 
 
   
