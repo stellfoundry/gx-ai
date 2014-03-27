@@ -9,6 +9,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float dtBox[navg];
   cuComplex* omegaAvg_h;
   float wpfx[nSpecies];
+  float pflx[nSpecies];
   float wpfx_sum[nSpecies];
   float tmpX_h[Nx];
   float tmpY_h[Ny/2+1];
@@ -87,7 +88,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float dtSum;
   //diagnostics arrays
   float wpfxAvg[nSpecies];
-  float pfluxAvg[nSpecies];
+  float pflxAvg[nSpecies];
   float *Phi2_kxky_sum;
   float *wpfxnorm_kxky_sum;
   float *Phi2_zonal_sum;
@@ -601,7 +602,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     
   } 
   else {
-    restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum,Phi2_kxky_sum, Phi2_zonal_sum,
+    restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
     			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
     			&dtSum, &counter,&runtime,&dt,&totaltimer,restartfileName);
 			
@@ -941,9 +942,6 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       // wpfx_avg[t] = wpfx_sum[t]/dtSum[t]
  
       // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
-      for(int s=0; s<nSpecies; s++) {
-        wpfx_sum[s] = wpfx[s]*dt*alpha_avg + wpfx_sum[s]*(1.-alpha_avg);
-      }
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha_avg, Phi2_kxky_sum, dt*alpha_avg, tmpXY, Nx, Ny, 1);
       add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha_avg, Phi2_zonal_sum, dt*alpha_avg, tmpX, Nx, 1, 1);
       add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha_avg, zCorr_sum, dt*alpha_avg, tmpYZ, 1, Ny, Nz);
@@ -962,17 +960,13 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       dtSum = dtSum*(1.-alpha_avg) + dt*alpha_avg;
       
       // **_sum/dtSum gives time average of **
-      for(int s=0; s<nSpecies; s++) {
-        if(dtSum == 0) wpfxAvg[s] = 0;
-	else wpfxAvg[s] = (float) wpfx_sum[s]/dtSum;
-      }        
       Phi_zf_rms_avg = Phi_zf_rms_sum/dtSum;
       Dnlpm_avg = Dnlpm_sum/dtSum;
 
-     for(int s=0; s<nSpecies; s++) {
-       wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
-       pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
-     }
+      for(int s=0; s<nSpecies; s++) {
+        wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
+        pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
+      }
 
       alpha_nlpm = dt/tau_nlpm;
       mu_nlpm = exp(-alpha_nlpm);
@@ -1015,7 +1009,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     if(!write_omega && counter%nwrite==0) printf("wpfx = %f, dt = %f, Dnlpm = %f\n", wpfx[0],dt, Dnlpm);
     
     // write flux to file
-    fluxWrite(fluxfile,wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
+    fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
     if(counter%nwrite==0) fflush(NULL);
              
     if(counter%nwrite==0 || stopcount==nstop-1 || counter==nSteps-1) {
@@ -1079,7 +1073,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       
       if(counter>nsave) {	
         printf("RESTARTING FROM LAST RESTART FILE...\n");
-	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum,Phi2_kxky_sum, Phi2_zonal_sum,
+	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
     			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
     			&dtSum, &counter,&runtime,&dt,&totaltimer,restartfileName);
       
@@ -1100,7 +1094,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       cudaEventElapsedTime(&timer,start,stop);
       totaltimer+=timer;
       cudaEventRecord(start,0);
-      restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum,Phi2_kxky_sum, Phi2_zonal_sum,
+      restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
       			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
       			dtSum,counter,runtime,dt,totaltimer,restartfileName);
     }
@@ -1134,7 +1128,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   
   for(int s=0; s<nSpecies; s++) {
     qflux[s] = wpfxAvg[s];
-    pflux[s] = pfluxAvg[s];
+    pflux[s] = pflxAvg[s];
   }
   
   ////////////////////////////////////////////////////////////
@@ -1142,7 +1136,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   if(DEBUG) getError("before restartWrite");  
   
   // save for restart run
-  restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,wpfx_sum, Phi2_kxky_sum, Phi2_zonal_sum, 
+  restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
   			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
   			dtSum,counter,runtime,dt,totaltimer,restartfileName);
   
