@@ -480,8 +480,8 @@ void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
 }   
 
 void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
-            cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, 
-	    cuComplex* Pprp_field, float* tmpZ, float* tmpXY, specie s, float runtime, 
+            cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, cuComplex* Pprp_field, cuComplex* nbar_field,
+            float* tmpZ, float* tmpXY, specie s, float runtime, 
             float *qflux1_phase, float *qflux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
 {   
   
@@ -529,14 +529,14 @@ void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* D
   mask<<<dimGrid,dimBlock>>>(Pprp_field);
   volflux(vPhi_tmp, Pprp_field, tmp, tmpXY);
   qflux2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
-  //if(write_phase) {  
+  /*//if(write_phase) {  
     float Pprp_rms;
 
     rms(&vPhi_rms, vPhi_tmp, tmpXY);
     rms(&Pprp_rms, Pprp_field, tmpXY);
     *qflux2_phase = qflux2/(vPhi_rms*Pprp_rms);
   //}
-  
+  */
   *qflux = -(qflux1+qflux2)*s.dens*s.temp;
     
   //wpfx[s+nSpecies*time] = (qflux1+qflux2) * n[s] * temp[s];

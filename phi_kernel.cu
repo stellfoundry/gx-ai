@@ -812,7 +812,7 @@ __global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
 }      
   
 __global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, cuComplex* Phi,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+		      float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
   unsigned int idy = get_idy(); 
   unsigned int idx = get_idx();

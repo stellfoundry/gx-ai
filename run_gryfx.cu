@@ -10,6 +10,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cuComplex* omegaAvg_h;
   float wpfx[nSpecies];
   float pflx[nSpecies];
+  float wpfx_old[nSpecies];
+  float pflx_old[nSpecies];
   float wpfx_sum[nSpecies];
   float tmpX_h[Nx];
   float tmpY_h[Ny/2+1];
@@ -905,7 +907,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     //calculate instantaneous heat flux
     for(int s=0; s<nSpecies; s++) {  
       fluxes(&pflx[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
-             tmp,tmp,tmp,field,field,tmpZ,tmpXY,species[s],runtime,
+             tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],runtime,
              &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
     }
     
@@ -964,8 +966,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       Dnlpm_avg = Dnlpm_sum/dtSum;
 
       for(int s=0; s<nSpecies; s++) {
-        wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
-        pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
+        wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
+        pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
       }
 
       alpha_nlpm = dt/tau_nlpm;
