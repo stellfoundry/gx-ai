@@ -542,7 +542,7 @@ void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* D
   //wpfx[s+nSpecies*time] = (qflux1+qflux2) * n[s] * temp[s];
 
   //calculate particle flux
-  nbar<<<dimGrid,dimBlock>>>(nbar_field, Dens, Tprp, Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
+  //nbar<<<dimGrid,dimBlock>>>(nbar_field, Dens, Tprp, Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
   iOmegaStar<<<dimGrid,dimBlock>>>(vPhi_tmp, Phi, ky);
   mask<<<dimGrid,dimBlock>>>(nbar_field);
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);

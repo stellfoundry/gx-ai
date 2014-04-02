@@ -178,6 +178,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cudaMalloc((void**) &bmagInv, sizeof(float)*Nz); 
   cudaMalloc((void**) &bmag_complex, sizeof(cuComplex)*(Nz/2+1));
   cudaMalloc((void**) &jacobian, sizeof(float)*Nz);
+  cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
   
   //from input file
   cudaMalloc((void**) &gbdrift, sizeof(float)*Nz);
@@ -288,13 +289,19 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   //for flux calculations
   multdiv<<<dimGrid,dimBlock>>>(tmpZ, jacobian, grho,1,1,Nz,1);
   fluxDen = sumReduc(tmpZ,Nz,false);
+  //PhiAvg denominator for qneut
+  cudaMemset(PhiAvgDenom, 1, sizeof(float)*Nx);
+  //phiavgdenom<<<dimGrid,dimBlock>>>(PhiAvgDenom, jacobian, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
   
   if(DEBUG) getError("run_gryfx.cu, after init"); 
  
   cudaMemcpy(kx_h,kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
+
+  if(DEBUG) getError("after k memcpy 1");
+
   cudaMemcpy(ky_h,ky, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
   
-  
+  if(DEBUG) getError("after k memcpy 2");
   
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   //set up kxCover and kyCover for covering space z-transforms
@@ -565,17 +572,10 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     if(init == DENS) {
       // Solve for initial phi
       // assumes the initial conditions have been moved to the device
-      if(nSpecies!=1) { 
-	qneut<<<dimGrid,dimBlock>>>(Phi, Dens[ELECTRON], Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-      } else if(ION == 0) {
-	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	if(iphi00==2) {
-          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        }
-      }
+      qneut(Phi, Dens, Tprp, tmp, tmp, field, species);
     }
  
+    if(DEBUG) getError("after initial qneut");
     
     
     runtime=0;
@@ -745,15 +745,9 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	       nu_nlpm, tmpX, tmpXZ, CtmpX);
 	         
     }
-      if(nSpecies!=1) { 
-	qneut<<<dimGrid,dimBlock>>>(Phi1, Dens1[ELECTRON], Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-      } else if(ION == 0) {
-	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi1, tau, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	if(iphi00==2) {
-          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens1[ION], Tprp1[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens1[ION], Tprp1[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        }
-      }
+
+    qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species);
+
 /*
   if(DEBUG) {*/
   if(counter==0) fieldWrite(Dens1[ION], field_h, "dens.5.field", filename); 
@@ -813,15 +807,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	       nu_nlpm, tmpX, tmpXZ, CtmpX);
     }
 
-      if(nSpecies!=1) { 
-	qneut<<<dimGrid,dimBlock>>>(Phi1, Dens[ELECTRON], Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv); 
-      } else if(ION == 0) {
-	if(iphi00==1) qneutETG<<<dimGrid,dimBlock>>>(Phi1, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	if(iphi00==2) {
-          qneutAdiab_part1<<<dimGrid,dimBlock>>>(tmp, field, tau, Dens[ION], Tprp[ION], jacobian, species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-	  qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi1, tmp, field, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        }
-      }
+    qneut(Phi1, Dens, Tprp, tmp, tmp, field, species);
     
 
     mask<<<dimGrid,dimBlock>>>(Phi1);

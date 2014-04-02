@@ -1,9 +1,10 @@
 //#include "simpledataio_cuda.h"
 
-int Nx, Ny, Nz, zThreads, totalThreads;
+int Nx, Ny, Nz, zThreads, totalThreads, zBlockThreads;
 float X0, Y0;
 int Zp;
-__constant__ int nx,ny,nz,zthreads,totalthreads;
+int nSpecies;
+__constant__ int nx,ny,nz, nspecies, zthreads,totalthreads, zblockthreads;
 __constant__ float X0_d,Y0_d;
 __constant__ int Zp_d;
 
@@ -16,7 +17,6 @@ dim3 dimBlock, dimGrid;
 #define FORCE 2
 
 //species variables defined in gs2 namelist
-int nSpecies=1;
 typedef struct {
   float z;
   float mass;
@@ -130,6 +130,7 @@ cuComplex *bmag_complex;
 cuComplex *deriv_nlps;
 float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
 float* jacobian;
+float* PhiAvgDenom;
 
 float *kx_h, *ky_h, *kz_h;
 

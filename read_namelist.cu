@@ -66,7 +66,7 @@ void read_namelist(char* filename)
   
   //maxdt?
   
-  if(fnr_get_int(&namelist_struct, "species_knobs", "nspec", &nSpecies)) nSpecies=1;
+  if(fnr_get_int(&namelist_struct, "species_knobs", "nspec", &nSpecies)) *&nSpecies=1;
   
   char* nonlinear;
   nonlinear = (char*) malloc(sizeof(char)*4);

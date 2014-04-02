@@ -43,7 +43,9 @@ CU_DEPS := \
       gryfx_lib.h \
       read_geo.cu \
       global_vars.h \
-      write_data.cu
+      write_data.cu \
+      qneut.cu \
+      qneut_kernel.cu
 
 
 FILES     = *.cu *.c *.cpp Makefile
