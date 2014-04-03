@@ -35,22 +35,23 @@ __global__ void qneut(cuComplex* Phi, cuComplex* Dens_e, cuComplex* Dens_i, cuCo
 }     
 
 __global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau, int nspecies)
 {  
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
   unsigned int idz = get_idz();
   
-  if(nz<=zblockthreads) {
+  if(nz<=zthreads) {
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
         
       float pfilter2 = 0.;    
+      float bidx;
     
       for(int i=0; i<nspecies; i++) {
-        float bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
         pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
       }
 
@@ -63,13 +64,12 @@ __global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s,
 }
 
 __global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* PhiAvgDenom, float* jacobian, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau, int nspecies)
 {  
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
   unsigned int idz = get_idz();
   
-  if(nz<=zblockthreads) {
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
 
@@ -78,9 +78,10 @@ __global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* 
       unsigned int idxy = idy + (ny/2+1)*idx;
         
       float pfilter2 = 0.;    
+      float bidx;
     
       for(int i=0; i<nspecies; i++) {
-        float bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
         pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
       }
 
@@ -104,7 +105,6 @@ __global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* 
       Phi[index] = ( nbartot_field[index] + tau*PhiAvg ) / (tau + pfilter2);
 
      }
-  }
       
 }
 
@@ -252,7 +252,6 @@ __global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp,
   unsigned int idz = get_idz(); 
   
   
-  if(nz<=zthreads) {
     if( idy<(ny/2+1) && idx<nx && idz<nz ) {
 
       float bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
@@ -262,30 +261,34 @@ __global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp,
       nbar[index] = (Dens[index]/(1.+bidx/2.) - bidx*Tprp[index]/(2*pow(1.+bidx/2.,2)))*s.dens*s.z;
       
     }
-  }
 }    
 
-__global__ void phiavgdenom(float* PhiAvgDenom, float* jacobian, specie* s, float* kx, float* ky, float shat, float* gds2, float* gds21, float* gds22, float* bmagInv,float tau)
+__global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float* jacobian, specie* s, float* kx, float* ky, float shat, float* gds2, float* gds21, float* gds22, float* bmagInv,float tau, int nspecies)
 {   
-  unsigned int idy = get_idy();
+  unsigned int idy = 0;
   unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
 
-  if( idy==0 && idx!=0 && idx<nx ) {
+  if( idy==0 && idx!=0 && idx<nx && idz<nz ) {
  
+  unsigned int idxz = idx + nx*idz;
+  
   float pfilter2 = 0.;
-  float tmp = 0.;
-
-  for(int idz=0; idz<nz; idz++) {
+  float bidx;
     
     for(int i=0; i<nspecies; i++) {
-      float bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
     }
    
-    tmp = pfilter2*jacobian[idz]/( tau + pfilter2 );
-    PhiAvgDenom[idx] = PhiAvgDenom[idx] + tmp;
-  }
+    PhiAvgDenom_tmpXZ[idxz] = pfilter2*jacobian[idz]/( tau + pfilter2 );
  
+    __syncthreads();
+
+    for(int i=0; i<nz; i++) {
+      PhiAvgDenom[idx] = PhiAvgDenom[idx] + PhiAvgDenom_tmpXZ[idx + nx*i];
+    }
+    
   }
 
 }

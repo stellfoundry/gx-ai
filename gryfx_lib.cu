@@ -634,11 +634,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
   cudaGetDeviceProperties(&prop,dev);
 
-  *&zBlockThreads = prop.maxThreadsDim[2];
+  zBlockThreads = prop.maxThreadsDim[2];
 
   *&zThreads = zBlockThreads*prop.maxGridSize[2];
 
-  *&totalThreads = prop.maxThreadsPerBlock;     
+  totalThreads = prop.maxThreadsPerBlock;     
 
 
   if(Nz>zBlockThreads) dimBlock.z = zBlockThreads;
@@ -664,7 +664,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     dimBlock.y = (int) sqrt(totalThreads/zBlockThreads);
     dimBlock.z = zBlockThreads;
   }  
-  
+ 
   //for dirac
   if(prop.maxGridSize[2] != 1) {
     dimBlock.x = 8;
@@ -672,10 +672,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     dimBlock.z = 8;
   }
 */  
-  dimGrid.x = Nx/dimBlock.x+1;
-  dimGrid.y = Ny/dimBlock.y+1;
+  dimGrid.x = Nx/dimBlock.x+2;
+  dimGrid.y = Ny/dimBlock.y+2;
   if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
-  else dimGrid.z = Nz/dimBlock.z+1;
+  else dimGrid.z = Nz/dimBlock.z+2;
 
   
   //if (DEBUG) 
@@ -686,12 +686,12 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nspecies, &nSpecies, sizeof(int), 0, cudaMemcpyHostToDevice);
+  //cudaMemcpyToSymbol(nspecies, &nSpecies, sizeof(int), 0, cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(X0_d, &X0, sizeof(float),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(Y0_d, &Y0, sizeof(float),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(Zp_d, &Zp, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(zthreads, &zThreads, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(zblockthreads, &zBlockThreads, sizeof(int),0,cudaMemcpyHostToDevice);
+ // cudaMemcpyToSymbol(zblockthreads, &zBlockThreads, sizeof(int),0,cudaMemcpyHostToDevice);
 
   if(DEBUG) getError("gryfx.cu, before run");
   

@@ -300,7 +300,7 @@ void read_namelist(char* filename)
   if(fnr_get_string(&namelist_struct, "collision_knobs", "collision_model", &collisions)) collisions="none";
   
   species = (specie*) malloc(sizeof(specie)*nSpecies);
-    
+   
   for(int s=1; s<nSpecies+1; s++) {
 //		printf("s= %d\n", s);
 

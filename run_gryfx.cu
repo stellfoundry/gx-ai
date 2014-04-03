@@ -69,7 +69,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cuComplex *omegaAvg;
   
   //float *Phi2_XYBox[navg];
-  
+  specie* species_d;
   
   float dt_old;
   float avgdt;
@@ -180,6 +180,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cudaMalloc((void**) &jacobian, sizeof(float)*Nz);
   cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
   
+  cudaMalloc((void**) &species_d, sizeof(specie)*nSpecies);
+
   //from input file
   cudaMalloc((void**) &gbdrift, sizeof(float)*Nz);
   cudaMalloc((void**) &grho, sizeof(float)*Nz);
@@ -226,6 +228,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float tau_nlpm = 10.;
 
   if(DEBUG) getError("run_gryfx.cu, after device alloc");
+
+  cudaMemcpy(species_d, species, sizeof(specie)*nSpecies, cudaMemcpyHostToDevice);
   
   cudaMemcpy(gbdrift, gbdrift_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
   cudaMemcpy(grho, grho_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
@@ -286,13 +290,15 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   //cudaMemset(jump, 0, sizeof(float)*Ny);
   //cudaMemset(kx_shift,0,sizeof(float)*Ny);
   if(DEBUG) getError("after cudaMemset"); 
+
   //for flux calculations
   multdiv<<<dimGrid,dimBlock>>>(tmpZ, jacobian, grho,1,1,Nz,1);
   fluxDen = sumReduc(tmpZ,Nz,false);
+
   //PhiAvg denominator for qneut
-  cudaMemset(PhiAvgDenom, 1, sizeof(float)*Nx);
-  //phiavgdenom<<<dimGrid,dimBlock>>>(PhiAvgDenom, jacobian, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
-  
+  cudaMemset(PhiAvgDenom, 0, sizeof(float)*Nx);
+  phiavgdenom<<<dimGrid,dimBlock>>>(PhiAvgDenom, tmpXZ, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau, nSpecies);  
+
   if(DEBUG) getError("run_gryfx.cu, after init"); 
  
   cudaMemcpy(kx_h,kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
@@ -572,7 +578,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     if(init == DENS) {
       // Solve for initial phi
       // assumes the initial conditions have been moved to the device
-      qneut(Phi, Dens, Tprp, tmp, tmp, field, species);
+      qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
     }
  
     if(DEBUG) getError("after initial qneut");
@@ -669,6 +675,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float alpha_avg = (float) 2./(navg+1.);
   float mu_avg = exp(-alpha_avg);
   float navg_nlpm;
+
+  if(DEBUG) getError("about to start timestep loop");
     
   while(/*counter < 1 &&*/ 
         counter<nSteps &&
@@ -746,7 +754,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	         
     }
 
-    qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species);
+    qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
 
 /*
   if(DEBUG) {*/
@@ -807,7 +815,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	       nu_nlpm, tmpX, tmpXZ, CtmpX);
     }
 
-    qneut(Phi1, Dens, Tprp, tmp, tmp, field, species);
+    qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d);
     
 
     mask<<<dimGrid,dimBlock>>>(Phi1);
