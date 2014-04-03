@@ -297,7 +297,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 
   //PhiAvg denominator for qneut
   cudaMemset(PhiAvgDenom, 0, sizeof(float)*Nx);
-  phiavgdenom<<<dimGrid,dimBlock>>>(PhiAvgDenom, tmpXZ, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau, nSpecies);  
+  phiavgdenom<<<dimGrid,dimBlock>>>(PhiAvgDenom, tmpXZ, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);  
 
   if(DEBUG) getError("run_gryfx.cu, after init"); 
  

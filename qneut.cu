@@ -7,9 +7,9 @@ void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvg
     accum<<<dimGrid,dimBlock>>>(nbartot_field, nbar_tmp, 1);
   }
   if(iphi00==1) {
-    qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau, nSpecies);
+    qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
   }
   if(iphi00==2) {
-    qneutAdiab<<<dimGrid,dimBlock>>>(Phi, PhiAvgNum_tmp, nbartot_field, PhiAvgDenom, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau, nSpecies);
+    qneutAdiab<<<dimGrid,dimBlock>>>(Phi, PhiAvgNum_tmp, nbartot_field, PhiAvgDenom, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
   }
 }

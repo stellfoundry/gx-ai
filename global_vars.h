@@ -4,7 +4,7 @@ int Nx, Ny, Nz, zThreads, totalThreads, zBlockThreads;
 float X0, Y0;
 int Zp;
 int nSpecies;
-__constant__ int nx,ny,nz, zthreads;
+__constant__ int nx,ny,nz, zthreads, nspecies;
 __constant__ float X0_d,Y0_d;
 __constant__ int Zp_d;
 

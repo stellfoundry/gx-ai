@@ -35,7 +35,7 @@ __global__ void qneut(cuComplex* Phi, cuComplex* Dens_e, cuComplex* Dens_i, cuCo
 }     
 
 __global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau, int nspecies)
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
 {  
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -64,7 +64,7 @@ __global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s,
 }
 
 __global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* PhiAvgDenom, float* jacobian, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau, int nspecies)
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
 {  
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -263,7 +263,7 @@ __global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp,
     }
 }    
 
-__global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float* jacobian, specie* s, float* kx, float* ky, float shat, float* gds2, float* gds21, float* gds22, float* bmagInv,float tau, int nspecies)
+__global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float* jacobian, specie* s, float* kx, float* ky, float shat, float* gds2, float* gds21, float* gds22, float* bmagInv,float tau)
 {   
   unsigned int idy = 0;
   unsigned int idx = get_idx();
