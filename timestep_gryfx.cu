@@ -551,4 +551,4 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   //    + vt*sqrt(2)*D_prp*|gradpar|(Qprp-Qprp0) - iOmegaD*( (-1+nu9.y)*Qpar + (-1+nu10.y)*Qprp + (1+nu8.y)*Upar ) + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp ]
 
 }
-
+//
