@@ -1,3 +1,12 @@
+bool get_bool(struct fnr_struct * namelist_struct, char * namelist, char * variable){
+        bool return_value;
+        int result;
+        fnr_get_bool(namelist_struct, namelist, variable, &result);
+        if (result) return_value = true;
+        else return_value = false;
+        return return_value;
+}
+
 void read_namelist(char* filename)
 {
 
@@ -144,7 +153,7 @@ void read_namelist(char* filename)
   
   char* varenna_flag;
   varenna_flag = (char*) malloc(sizeof(char)*4);
-  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna", &varenna_flag)) varenna_flag="on";
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna", &varenna_flag)) varenna_flag="off";
   if( strcmp(varenna_flag,"on") == 0) {
     varenna = true;
   }
@@ -152,6 +161,41 @@ void read_namelist(char* filename)
     varenna = false;
   }
   
+ //////////////////////////
+ // new varenna knobs
+  char* new_varenna_flag;
+  new_varenna_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "new_varenna_knobs", "new_varenna", &new_varenna_flag)) new_varenna_flag="off";
+  if( strcmp(new_varenna_flag,"on") == 0) {
+    new_varenna = true;
+  }
+  else if( strcmp(new_varenna_flag,"off") == 0) {
+    new_varenna = false;
+  }
+
+  char* new_fsa;
+  new_fsa = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "new_varenna_knobs", "new_varenna_fsa", &new_fsa)) new_fsa="on";
+  if( strcmp(new_fsa,"on") == 0) {
+    new_varenna_fsa = true;
+  }
+  else if( strcmp(new_fsa,"off") == 0) {
+    new_varenna_fsa = false;
+  }
+
+  if(fnr_get_int(&namelist_struct, "new_varenna_knobs", "zonal_dens_switch", &zonal_dens_switch)) zonal_dens_switch = 0;
+
+  if(fnr_get_int(&namelist_struct, "new_varenna_knobs", "q0_dens_switch", &q0_dens_switch)) q0_dens_switch = zonal_dens_switch;
+
+  qpar_gradpar_corrections = get_bool(&namelist_struct, "new_varenna_knobs", "qpar_gradpar_corrections"); 
+  qperp_gradpar_corrections = get_bool(&namelist_struct, "new_varenna_knobs", "qperp_gradpar_corrections"); 
+  qpar_bgrad_corrections = get_bool(&namelist_struct, "new_varenna_knobs", "qpar_bgrad_corrections"); 
+  qperp_bgrad_corrections = get_bool(&namelist_struct, "new_varenna_knobs", "qperp_bgrad_corrections"); 
+  qpar0_switch = get_bool(&namelist_struct, "new_varenna_knobs", "qpar0_switch"); 
+  qprp0_switch = get_bool(&namelist_struct, "new_varenna_knobs", "qprp0_switch"); 
+
+  /////////////////////////
+
   char* nlpm;
   nlpm = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm", &nlpm)) nlpm="on";
@@ -176,6 +220,7 @@ void read_namelist(char* filename)
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna)) ivarenna = 1;
   
+
   char* fsa;
   fsa = (char*) malloc(sizeof(char)*4);
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "varenna_fsa", &fsa)) fsa="on";

@@ -100,7 +100,7 @@ __global__ void iOmegaD_ky0(cuComplex* result, cuComplex* f, float rho, float vt
 }
 
 __global__ void absOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, float* kx,float* ky,
-						float shat, float* gb,float* gb0,float* cv,float* cv0, bool varenna)
+						float shat, float* gb,float* gb0,float* cv,float* cv0, bool varenna, bool new_varenna)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -110,7 +110,7 @@ __global__ void absOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, 
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
-      if(idy == 0 && varenna) {
+      if(idy == 0 && (varenna || new_varenna)) {
         result[index].x = 0;
 	result[index].y = 0;
       }

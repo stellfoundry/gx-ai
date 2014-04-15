@@ -27,6 +27,7 @@
 #include "phi_kernel.cu"
 #include "qneut_kernel.cu"
 #include "nlpm_kernel.cu"
+#include "zonal_kernel.cu"
 #include "getfcn.cu"
 #include "read_namelist.cu"
 #include "read_input.cu"
@@ -178,7 +179,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     for(int k=0; k<Nz; k++) {
       z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
       bmag_h[k] = 1./(1+eps*cos(z_h[k]));
-      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //
+      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
       gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
       gds22_h[k] = pow(shat,2);

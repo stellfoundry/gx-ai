@@ -42,7 +42,8 @@ CU_DEPS := \
       nlpm_kernel.cu \
       gryfx_lib.h \
       qneut.cu \
-      qneut_kernel.cu 
+      qneut_kernel.cu \
+      zonal_kernel.cu \
       #read_geo.cu \
 
 

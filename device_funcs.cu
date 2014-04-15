@@ -129,6 +129,18 @@ __device__ float b(float rho, float kx, float ky, float shat, float gds2, float 
   return ( ky * (ky*gds2 + 2*kx*shatInv*gds21) + pow(kx*shatInv,2)*gds22 ) * pow(bmagInv,2) * pow(rho,2);
 }
 
+__device__ float c(float kx, float gds22, float qsf, float eps, float bmagInv, float shat, float rho)
+{ 
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  // -k_r rho_pol / B
+  return kx*shatInv*sqrt(gds22)*qsf/eps*bmagInv*rho;
+}
 
 __host__ __device__ bool operator>(cuComplex f, cuComplex g)
 {

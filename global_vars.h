@@ -118,6 +118,16 @@ char* nlpm_option = "constant";
 
 int ivarenna = 1;
 bool varenna_fsa = false;
+bool new_varenna_fsa = false;
+int zonal_dens_switch = 0;
+int q0_dens_switch = 0;
+
+bool qpar_gradpar_corrections = false;
+bool qpar_bgrad_corrections = false;
+bool qperp_gradpar_corrections = false;
+bool qperp_bgrad_corrections = false;
+bool qpar0_switch = true;
+bool qprp0_switch = true;
 
 int iphi00 = 2;
 int igeo = 0;
@@ -159,6 +169,7 @@ bool S_ALPHA = true;
 
 bool NLPM = false;
 bool varenna = false;
+bool new_varenna = false;
 bool SMAGORINSKY = false;
 bool HYPER = false;
 bool isotropic_shear = false;
@@ -172,11 +183,11 @@ float phiext=-1.;
 //char stopfileName[60];
 //char restartfileName[60];
 char* scan_type;
-char out_stem[100];
+char out_stem[200];
 int scan_number;
 
 char* run_name;
-char restartfileName[60];
+char restartfileName[200];
 
 //diagnostics stuff
 float phi2;

@@ -62,6 +62,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float *tmpYZ;
   float *tmpXYZ;
   cuComplex *CtmpX;
+  cuComplex *CtmpX2;
  
   cuComplex *omega;
   cuComplex *omegaBox[navg];
@@ -164,6 +165,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cudaMalloc((void**) &tmpXZ, sizeof(float)*Nx*Nz);
   cudaMalloc((void**) &tmpYZ, sizeof(float)*(Ny/2+1)*Nz);
   cudaMalloc((void**) &CtmpX, sizeof(cuComplex)*Nx);
+  cudaMalloc((void**) &CtmpX2, sizeof(cuComplex)*Nx);
   cudaMalloc((void**) &tmpXYZ, sizeof(float)*Nx*(Ny/2+1)*Nz); 
  
   cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -282,9 +284,10 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   bmagInit <<<dimGrid,dimBlock>>>(bmag,bmagInv);
   jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
   if(igeo != 0) {
-    //calculate bgrad
+    //calculate bgrad = d/dz ln(B(z)) = 1/B dB/dz
     if(DEBUG) printf("calculating bgrad\n");
     ZDerivB(bgrad, bmag, bmag_complex, kz);
+    multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmag, 1, 1, Nz, -1);
   }  
   if(DEBUG) getError("before cudaMemset");  
   //cudaMemset(jump, 0, sizeof(float)*Ny);
@@ -393,24 +396,24 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   
   //time histories (.time)
   FILE *fluxfile;
-  char fluxfileName[80];
+  char fluxfileName[200];
   strcpy(fluxfileName, out_stem);
   strcat(fluxfileName, "flux.time");
   printf("flux file is %s", fluxfileName); 
 
  
   FILE *omegafile;
-  char omegafileName[80];
+  char omegafileName[200];
   strcpy(omegafileName, out_stem);
   strcat(omegafileName, "omega.time");
   
   FILE *gammafile;
-  char gammafileName[80];
+  char gammafileName[200];
   strcpy(gammafileName, out_stem);
   strcat(gammafileName, "gamma.time");
   
   FILE *phifile;
-  char phifileName[80];
+  char phifileName[200];
   strcpy(phifileName, out_stem);
   strcat(phifileName, "phi.time");
   
@@ -750,7 +753,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
                Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
-	       nu_nlpm, tmpX, tmpXZ, CtmpX);
+	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
 	         
     }
 
@@ -812,7 +815,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
                Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
-	       nu_nlpm, tmpX, tmpXZ, CtmpX);
+	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
     }
 
     qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d);
