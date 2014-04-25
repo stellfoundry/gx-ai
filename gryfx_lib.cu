@@ -661,7 +661,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   dimBlock.x = fx; 
   dimBlock.y = fy;
     
-
+/*
   if(Nz>zThreads) {
     dimBlock.x = (int) sqrt(totalThreads/zBlockThreads);
     dimBlock.y = (int) sqrt(totalThreads/zBlockThreads);
@@ -674,7 +674,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     dimBlock.y = 8;
     dimBlock.z = 8;
   }
-  
+  */
   dimGrid.x = (Nx+dimBlock.x-1)/dimBlock.x;
   dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
   if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
