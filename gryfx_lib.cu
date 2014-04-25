@@ -196,14 +196,14 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       }
       if(SLAB) {
         //omegad=0:
-	//cvdrift_h[k] = 0.;
-        //gbdrift_h[k] = 0.;       
-        //cvdrift0_h[k] = 0.;
-        //gbdrift0_h[k] = 0.;
+	cvdrift_h[k] = 0.;
+        gbdrift_h[k] = 0.;       
+        cvdrift0_h[k] = 0.;
+        gbdrift0_h[k] = 0.;
         //bgrad=0:
-        bgrad_h[k] = 0.;
+        //bgrad_h[k] = 0.;
         //bmag=const:
-        bmag_h[k] = 1.;
+        //bmag_h[k] = 1.;
       }
     }  
   }
@@ -639,6 +639,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
   *&zThreads = zBlockThreads*prop.maxGridSize[2];
 
+  printf("\nzThreads = %d\n", zThreads);
+
   totalThreads = prop.maxThreadsPerBlock;     
 
 
@@ -659,7 +661,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   dimBlock.x = fx; 
   dimBlock.y = fy;
     
-/*
+
   if(Nz>zThreads) {
     dimBlock.x = (int) sqrt(totalThreads/zBlockThreads);
     dimBlock.y = (int) sqrt(totalThreads/zBlockThreads);
@@ -672,11 +674,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     dimBlock.y = 8;
     dimBlock.z = 8;
   }
-*/  
-  dimGrid.x = Nx/dimBlock.x+2;
-  dimGrid.y = Ny/dimBlock.y+2;
+  
+  dimGrid.x = (Nx+dimBlock.x-1)/dimBlock.x;
+  dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
   if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
-  else dimGrid.z = Nz/dimBlock.z+2;
+  else dimGrid.z = (Nz+dimBlock.z-1)/dimBlock.z;
 
   
   //if (DEBUG) 

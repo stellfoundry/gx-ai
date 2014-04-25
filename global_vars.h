@@ -15,6 +15,7 @@ dim3 dimBlock, dimGrid;
 #define PHI 0
 #define DENS 1
 #define FORCE 2
+#define RH_equilibrium 3
 
 //species variables defined in gs2 namelist
 typedef struct {
@@ -122,6 +123,8 @@ bool new_varenna_fsa = false;
 int zonal_dens_switch = 0;
 int q0_dens_switch = 0;
 
+bool tpar_omegad_corrections = true;
+bool tperp_omegad_corrections = true;
 bool qpar_gradpar_corrections = false;
 bool qpar_bgrad_corrections = false;
 bool qperp_gradpar_corrections = false;
@@ -134,7 +137,7 @@ int igeo = 0;
 char* geoFileName;
 
 //other global device arrays
-float *kx, *ky, *kz;
+float *kx, *ky, *kz, *kz_complex;
 float *bmagInv;
 cuComplex *bmag_complex;
 cuComplex *deriv_nlps;

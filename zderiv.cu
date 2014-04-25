@@ -20,7 +20,7 @@ void ZDeriv(cufftComplex *result, cufftComplex* f, float* kz)
   
   //now we have a field result of form result(ky,kx,z)
   
-  scaler = (float)1/(Nz);
+  scaler = (float)gradpar/(Nz);
   
   scale<<<dimGrid,dimBlock>>> (result, result, scaler);
   

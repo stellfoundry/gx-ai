@@ -31,10 +31,10 @@ void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,
     dimBlockCovering.z = 8;
   }
     
-  dimGridCovering.x = Nz/dimBlockCovering.x+1;
-  dimGridCovering.y = nChains/dimBlockCovering.y+1;
+  dimGridCovering.x = (Nz+dimBlockCovering.x-1)/dimBlockCovering.x;
+  dimGridCovering.y = (nChains+dimBlockCovering.y-1)/dimBlockCovering.y;
   if(prop.maxGridSize[2] == 1) dimGridCovering.z = 1;
-  else dimGridCovering.z = nLinks*icovering/dimBlockCovering.z+1;
+  else dimGridCovering.z = (nLinks*icovering+dimBlockCovering.z-1)/dimBlockCovering.z;
   
   zeroCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains,icovering);
   
@@ -54,7 +54,8 @@ void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,
   } else {
     zderiv_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   }
-  
+ 
+ 
   if(nLinks == 1) {
     reality_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g);
   }   

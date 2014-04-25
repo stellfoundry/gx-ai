@@ -357,10 +357,12 @@ __global__ void volflux_zonal_complex(cuComplex* T_fsa_X, cuComplex* T, float* j
   {
     T_fsa_X[idx].x = 0.;
     T_fsa_X[idx].y = 0.;
+    unsigned int idxy = idy + (ny/2+1)*idx;
     for(int idz=0; idz<nz; idz++) {
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-      T_fsa_X[idx] = T_fsa_X[idx] + T[index]*jacobian[idz];
+      T_fsa_X[idx].x = fma(T[idxy+idz*nx*(ny/2+1)].x,jacobian[idz], T_fsa_X[idx].x);
+      T_fsa_X[idx].y = fma(T[idxy+idz*nx*(ny/2+1)].y,jacobian[idz], T_fsa_X[idx].y);
     }
+    __syncthreads();
     T_fsa_X[idx] = T_fsa_X[idx]*fluxDenInv;
   }
 }

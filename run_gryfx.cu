@@ -110,8 +110,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
   kx_h = (float*) malloc(sizeof(float)*Nx);
   ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
-  kz_h = (float*) malloc(sizeof(float)*(Nz/2+1));
-  
+  kz_h = (float*) malloc(sizeof(float)*Nz);  
+
   //zero dtBox array
   for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
     
@@ -175,7 +175,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 
   cudaMalloc((void**) &kx, sizeof(float)*Nx);
   cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
-  cudaMalloc((void**) &kz, sizeof(float)*(Nz/2+1));
+  cudaMalloc((void**) &kz, sizeof(float)*(Nz));
+  cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
 
   cudaMalloc((void**) &bmagInv, sizeof(float)*Nz); 
   cudaMalloc((void**) &bmag_complex, sizeof(cuComplex)*(Nz/2+1));
@@ -286,7 +287,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   if(igeo != 0) {
     //calculate bgrad = d/dz ln(B(z)) = 1/B dB/dz
     if(DEBUG) printf("calculating bgrad\n");
-    ZDerivB(bgrad, bmag, bmag_complex, kz);
+    ZDerivB(bgrad, bmag, bmag_complex, kz_complex);
     multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmag, 1, 1, Nz, -1);
   }  
   if(DEBUG) getError("before cudaMemset");  
@@ -316,7 +317,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   //set up kxCover and kyCover for covering space z-transforms
   int naky, ntheta0;// nshift;
   naky = 1 + (Ny-1)/3;
-  ntheta0 = 1 + 2*(Nx-1)/3;     //MASK IN MIDDLE OF ARRAY
+  ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
   //nshift = Nx - ntheta0;
 
   int idxRight[naky*ntheta0];
@@ -577,6 +578,16 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     zeroC<<<dimGrid,dimBlock>>>(Phi1);
     if(DEBUG) getError("run_gryfx.cu, after zero");
      
+    if(init == RH_equilibrium) {
+       
+      zeroC<<<dimGrid,dimBlock>>>(Dens[0]);
+      zeroC<<<dimGrid,dimBlock>>>(Phi);
+
+      RH_equilibrium_init<<<dimGrid,dimBlock>>>(Dens[0], Upar[0], Tpar[0], Tprp[0], Qpar[0], Qprp[0], kx, gds22, qsf, eps, bmagInv, shat, species[0]);
+
+      qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
+
+    }
     
     if(init == DENS) {
       // Solve for initial phi
@@ -680,7 +691,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float navg_nlpm;
 
   if(DEBUG) getError("about to start timestep loop");
-    
+   
+ 
   while(/*counter < 1 &&*/ 
         counter<nSteps &&
 	stopcount<nstop 

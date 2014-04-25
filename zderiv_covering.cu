@@ -3,14 +3,18 @@ void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int** ky,
 		    char* abs, cufftHandle* plan_covering)
 {
 
-  if(LINEAR && Zp!=1) {
+  if(NO_ZDERIV_COVERING) {
+    zeroC<<<dimGrid,dimBlock>>>(result);
+  }
+  /*if(LINEAR && Zp!=1) {
     reality<<<dimGrid,dimBlock>>>(f);
     ZDeriv(result, f, kz); 
     reality<<<dimGrid,dimBlock>>>(result);
-  }
+  }*/
   else {
 	  reality<<<dimGrid,dimBlock>>>(f);
-	  for(int c=0; c<nClasses; c++) {  
+          mask<<<dimGrid,dimBlock>>>(f);
+	  for(int c=0; c<1; c++) {  
 	      
 	      // can use a separate stream for each class, do some classes at the same time. 
 	      ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, plan_covering[c], streams[c]);
@@ -21,6 +25,7 @@ void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int** ky,
 	 
 	  scale<<<dimGrid,dimBlock>>>(result, result, gradpar);
 	  
+          mask<<<dimGrid,dimBlock>>>(result);
 	  reality<<<dimGrid,dimBlock>>>(result); 	   
   }
 } 

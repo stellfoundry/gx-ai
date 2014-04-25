@@ -149,29 +149,27 @@ int main(int argc, char* argv[])
 
 	if(Nz>zBlockThreads) dimBlock.z = zBlockThreads;
 	else dimBlock.z = Nz;
-	int xy = totalThreads/dimBlock.z;
-	int blockxy = (int) sqrt(xy);
-	//dimBlock = threadsPerBlock, dimGrid = numBlocks
-	dimBlock.x = blockxy;
-	dimBlock.y = blockxy;
+  float otherThreads = totalThreads/dimBlock.z;
+  int xy = floorf(otherThreads);
+  if( (xy%2) != 0 ) xy = xy - 1; // make sure xy is even and less than totalThreads/dimBlock.z
+  //find middle factors of xy
+  int fx, fy;
+  for(int f1 = 1; f1<xy; ++f1) {
+    float f2 = (float) xy/f1;
+    if(f2 == floorf(f2)) {
+      fy = f1; fx = f2;
+    }
+    if(f2<=f1) break;
+  }
+  dimBlock.x = fx;
+  dimBlock.y = fy;
 
-	if(Nz>zThreads) {
-	  dimBlock.x = (int) sqrt(totalThreads/zBlockThreads);
-	  dimBlock.y = (int) sqrt(totalThreads/zBlockThreads);
-	  dimBlock.z = zBlockThreads;
-	}  
+  dimGrid.x = (Nx+dimBlock.x-1)/dimBlock.x;
+  dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
+  if(prop.maxGridSize[2] == 1) dimGrid.z = 1;
+  else dimGrid.z = (Nz+dimBlock.z-1)/dimBlock.z;
 
-	//for dirac
-	if(prop.maxGridSize[2] != 1) {
-	  dimBlock.x = 8;
-	  dimBlock.y = 8;
-	  dimBlock.z = 8;
-	}
-
-	dimGrid.x = Nx/dimBlock.x+1;
-	dimGrid.y = Ny/dimBlock.y+1;
-	if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
-	else dimGrid.z = Nz/dimBlock.z+1;
+ printf("%d %d %d     %d %d %d\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
 	
 	if(DEBUG) getError("After dimGrid/dimBlock setup");
 	

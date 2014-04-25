@@ -227,7 +227,7 @@ __global__ void mask_Z_covering(cufftComplex* f, int nLinks, int nChains)
     if(i<nz && p<nLinks && n<nChains) {
       unsigned int index= i + p*nz + n*nz*nLinks;
       unsigned int idz= i + p*nz;
-      if( idz>(nz-1)/3 && idz<2*(nz)/3+1 ) {
+      if( idz>(nz*nLinks-1)/3 && idz<2*(nz*nLinks/3)+1 ) {
         f[index].x = 0;
         f[index].y = 0;
       }
@@ -258,7 +258,7 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, i
   if(nLinks*icovering <= zthreads) {
     if(i<nz && p<nLinks*icovering) {
       int index = i + p*nz;
-      if(index < (nz*nLinks*icovering)/2) 
+      if(index < (nz*nLinks*icovering)/2+1) 
         kz[index] = (float) index/(Zp_d*nLinks*icovering);
       else
         kz[index] = (float) (index-nz*nLinks*icovering)/(Zp_d*nLinks*icovering);
@@ -274,7 +274,7 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, i
       if(i<nz && p<zthreads) {  
         unsigned int P = p+a*zthreads;
 	int index = i + P*nz;
-	if(index < (nz*nLinks*icovering)/2) 
+	if(index < (nz*nLinks*icovering)/2+1) 
           kz[index] = (float) index/(Zp_d*nLinks*icovering);
         else
           kz[index] = (float) (index-nz*nLinks*icovering)/(Zp_d*nLinks*icovering);
@@ -287,21 +287,22 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, i
 }
 
 //only called for first class (nLinks=1). assumes first ntheta0 chains are ky=0, as currently set up. 
+// g = g(ky=0, kx, kz)
 __global__ void reality_covering(cufftComplex* g)
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
   unsigned int p = 0;  //only 1 link
   
-  int ntheta0 = 1 + 2*(nx-1)/3; 
+  int ntheta0 = 1 + 2*((nx-1)/3); 
   int nLinks = 1;
-  if(i<(nz/2) && n<ntheta0 && i!=0 && n!=0) {
+  if(i<(nz/2+1) && n<((ntheta0+1)/2) && i!=0 && n!=0) {
     unsigned int index1 = i + p*nz + n*nz*nLinks;
     unsigned int index2 = (nz-i) + p*nz + (ntheta0 - n)*nz*nLinks;
     g[index2].x = g[index1].x;
     g[index2].y = -g[index1].y;
   }
-  if(i==0 && n<(ntheta0/2+1) && n!=0) {
+  if(i==0 && n<((ntheta0+1)/2) && n!=0) {
     unsigned int index1 = i + p*nz + n*nz*nLinks;
     unsigned int index2 = i + p*nz + (ntheta0 - n)*nz*nLinks;
     g[index2].x = g[index1].x;

@@ -302,6 +302,10 @@ void read_namelist(char* filename)
   else if( strcmp(initfield,"force") == 0) {
     init = FORCE;
   }
+  else if (strcmp(initfield,"RH_eq") == 0) {
+    init = RH_equilibrium;
+    new_varenna = true;
+  }
   
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &init_amp)) init_amp = 1.e-5;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &phiext)) phiext = -1.;

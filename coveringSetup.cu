@@ -11,10 +11,10 @@ void getNClasses(int *nClasses, int *idxRight, int *idxLeft, int *linksR, int *l
     for(int idy=0; idy<naky; idy++) {
       
       //map indices to kx indices
-      if(idx > (ntheta0)/2 ) {
-        idx0 = idx - ntheta0;     
+      if(idx < (ntheta0+1)/2 ) {
+        idx0 = idx;     
       } else {
-        idx0 = idx;
+        idx0 = idx - ntheta0;
       }       
               
       if(idy == 0) {                 
@@ -26,17 +26,17 @@ void getNClasses(int *nClasses, int *idxRight, int *idxLeft, int *linksR, int *l
       }
       
       //remap to usual indices
-      if(idxL >= 0 && (idxL) < ntheta0/2+1) {
+      if(idxL >= 0 && (idxL) < (ntheta0+1)/2) {
         idxLeft[idy + naky*idx] = idxL;
-      } else if( (idxL+ntheta0)>(ntheta0)/2 && (idxL+ntheta0)<ntheta0 ) {
+      } else if( (idxL+ntheta0)>=(ntheta0+1)/2 && (idxL+ntheta0)<ntheta0 ) {
         idxLeft[idy + naky*idx] = idxL + ntheta0;                   //nshift
       } else {
         idxLeft[idy + naky*idx] = -1;
       }
       
-      if(idxR >= 0 && idxR < (ntheta0)/2+1) {
+      if(idxR >= 0 && idxR < (ntheta0+1)/2) {
         idxRight[idy + naky*idx] = idxR;
-      } else if( (idxR+ntheta0)>(ntheta0)/2 && (idxR+ntheta0)<ntheta0 ) {
+      } else if( (idxR+ntheta0)>=(ntheta0+1)/2 && (idxR+ntheta0)<ntheta0 ) {
         idxRight[idy + naky*idx] = idxR + ntheta0;
       } else {
         idxRight[idy + naky*idx] = -1;
@@ -192,7 +192,7 @@ void kt2ki(int idy, int idx, int *c, int *p, int* linksL, int* linksR, int nClas
 
 void fill(int *ky, int *kx, int idy, int idx, int *idxRight, int c, int p, int n, int naky, int ntheta0, int nshift, int nLinks) {
   int idx0;
-  if(idx < ntheta0/2+1)
+  if(idx < (ntheta0+1)/2)
     idx0=idx;
   else
     idx0=idx+nshift;
@@ -206,7 +206,7 @@ void fill(int *ky, int *kx, int idy, int idx, int *idxRight, int c, int p, int n
     idxR = idxRight[idy + naky*idxR];     
     
     ky[p + nLinks*n] = idy;
-    if(idxR < ntheta0/2) {      
+    if(idxR < (ntheta0+1)/2) {      
       kx[p + nLinks*n] = idxR;
     } else {
       kx[p + nLinks*n] = idxR+nshift;
