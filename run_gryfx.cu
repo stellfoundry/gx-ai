@@ -360,11 +360,22 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float *kz_covering[nClasses];
   cufftHandle plan_covering[nClasses];
   //also set up a stream for each class.
-  streams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
+  zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
+  dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
+  dimBlockCovering.x = 8;
+  dimBlockCovering.y = 8;
+  dimBlockCovering.z = 8;
+
   for(int c=0; c<nClasses; c++) {    
     int n[1] = {nLinks[c]*Nz*icovering};
-    cudaStreamCreate(&(streams[c]));
+    cudaStreamCreate(&(zstreams[c]));
     cufftPlanMany(&plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nChains[c]);
+    cufftSetStream(plan_covering[c], zstreams[c]);
+
+    dimGridCovering[c].x = (Nz+dimBlockCovering.x-1)/dimBlockCovering.x;
+    dimGridCovering[c].y = (nChains[c]+dimBlockCovering.y-1)/dimBlockCovering.y;
+    dimGridCovering[c].z = (nLinks[c]*icovering+dimBlockCovering.z-1)/dimBlockCovering.z;
+
     if(DEBUG) kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
     cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*icovering*Nz*nLinks[c]*nChains[c]);
     cudaMalloc((void**) &kz_covering[c], sizeof(float)*icovering*Nz*nLinks[c]);
@@ -764,7 +775,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
                Qprp[s], Qprp[s], Qprp1[s], 
                Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
 	       field,field,field,field,field,field,
-	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
 	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
 	         
     }
@@ -826,7 +837,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
                Qprp[s], Qprp1[s], Qprp[s], 
                Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
 	       field,field,field,field,field,field,
-	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
 	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
     }
 
@@ -897,10 +908,14 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     
     //copy Phi for next timestep
     cudaMemcpy(Phi, Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(&Dnlpm, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
-    if( strcmp(nlpm_option,"constant") == 0) Dnlpm = dnlpm;
     mask<<<dimGrid,dimBlock>>>(Phi1);
     mask<<<dimGrid,dimBlock>>>(Phi);
+
+
+//DIAGNOSTICS
+
+    cudaMemcpy(&Dnlpm, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
+    if( strcmp(nlpm_option,"constant") == 0) Dnlpm = dnlpm;
     
     /*
     if(counter%nwrite==0) {
@@ -913,16 +928,15 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       pflx_old[s] = pflx[s];
     }
 
+  //if(counter%nwrite==0) {
     //calculate instantaneous heat flux
     for(int s=0; s<nSpecies; s++) {  
       fluxes(&pflx[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
              tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],runtime,
              &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
     }
-    
+  //}  
      
-    //calculate tmpXY = Phi**2(kx,ky)
-    volflux(Phi1,Phi1,tmp,tmpXY);
     volflux_zonal(Phi1,Phi1,tmpX);  //tmpX = Phi_zf**2(kx)
     get_kx1_rms<<<1,1>>>(Phi_zf_kx1_d, tmpX);
     Phi_zf_kx1_old = Phi_zf_kx1;
@@ -930,7 +944,10 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 
     Phi2_zf = sumReduc(tmpX, Nx, false);
     Phi_zf_rms = sqrt(Phi2_zf);   
- 
+
+  //if(counter%nwrite==0) { 
+    //calculate tmpXY = Phi**2(kx,ky)
+    volflux(Phi1,Phi1,tmp,tmpXY);
     //calculate <kx> and <ky>
     expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
     kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
@@ -943,7 +960,8 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     
     //calculate z correlation function = tmpYZ (not normalized)
     zCorrelation<<<dimGrid,dimBlock>>>(tmpYZ, Phi1);
-    
+//  }
+  
     if(counter>0) { //nSteps/4) {
       //we use an exponential moving average
       // wpfx_avg[t] = alpha_avg*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
@@ -984,6 +1002,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       if(runtime<tau_nlpm) Phi_zf_kx1_avg = Phi_zf_kx1; //allow a build-up time of tau_nlpm
       else Phi_zf_kx1_avg = mu_nlpm*Phi_zf_kx1_avg + (1-mu_nlpm)*Phi_zf_kx1 + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(Phi_zf_kx1 - Phi_zf_kx1_old);
 
+/*
       // try to autostop when wpfx converges
       // look at min and max of wpfxAvg over time... if wpfxAvg stays within certain bounds for a given amount of
       // time, it is converged
@@ -1010,20 +1029,22 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	//if wpfxAvg stays inside the bounds, increment the convergence counter.
 	else converge_count++; 
       }    
+*/
     }
 
+    fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
+  
 	     
     if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)          
     
     
     // print wpfx to screen if not printing growth rates
-    if(!write_omega && counter%nwrite==0) printf("wpfx = %f, dt = %f, Dnlpm = %f\n", wpfx[0],dt, Dnlpm);
+    if(!write_omega && counter%nsave==0) printf("wpfx = %f, dt = %f, Dnlpm = %f\n", wpfx[0],dt, Dnlpm);
     
     // write flux to file
-    fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
-    if(counter%nwrite==0) fflush(NULL);
+    if(counter%nsave==0) fflush(NULL);
              
-    if(counter%nwrite==0 || stopcount==nstop-1 || counter==nSteps-1) {
+    if(counter%nsave==0 || stopcount==nstop-1 || counter==nSteps-1) {
       printf("%f    dt=%f   %d: %s\n",runtime,dt,counter,cudaGetErrorString(cudaGetLastError()));
     }
     
@@ -1112,7 +1133,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     
     
     
-    if(counter%nwrite == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
+    if(counter%nsave == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
                         Phi, tmp, tmp, field, tmpZ, CtmpX,
                         tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
   			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 

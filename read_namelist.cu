@@ -161,6 +161,16 @@ void read_namelist(char* filename)
     varenna = false;
   }
   
+  char* new_catto_flag;
+  new_catto_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "new_catto", &new_catto_flag)) new_catto_flag="off";
+  if( strcmp(new_catto_flag,"on") == 0) {
+    new_catto = true;
+  }
+  else if( strcmp(new_catto_flag,"off") == 0) {
+    new_catto = false;
+  }
+
  //////////////////////////
  // new varenna knobs
   char* new_varenna_flag;
@@ -282,6 +292,9 @@ void read_namelist(char* filename)
   
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo)) igeo = 0;
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geoFileName));
+
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "shaping_ps", &shaping_ps)) shaping_ps = 1.6;
+  if(igeo == 0) shaping_ps = 1.6;
 
   char* s_alpha;
   s_alpha = (char*) malloc(sizeof(char)*4);

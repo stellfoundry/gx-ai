@@ -1,40 +1,6 @@
 //for each class
-void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,cuComplex* result, cuComplex* g, float* kz_covering, char* abs, cufftHandle plan, cudaStream_t stream) {
+inline void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComplex* f,cuComplex* result, cuComplex* g, float* kz_covering, char* abs, cufftHandle plan, cudaStream_t stream, dim3 dimGridCovering, dim3 dimBlockCovering) {
     
-  cufftSetStream(plan,stream);
-  dim3 dimBlockCovering;
-  dim3 dimGridCovering;
-  
-  int dev;
-  struct cudaDeviceProp prop;
-  cudaGetDevice(&dev);
-  cudaGetDeviceProperties(&prop,dev);  
-  int zBlockThreads = prop.maxThreadsDim[2];
-  
-  if(nLinks>zBlockThreads) dimBlockCovering.z = zBlockThreads;
-  else dimBlockCovering.z = nLinks;
-  int xy = totalThreads/dimBlockCovering.z;
-  int blockxy = (int) sqrt(xy);  
-  dimBlockCovering.x = blockxy;
-  dimBlockCovering.y = blockxy;
-  
-  if(nLinks>zThreads) {
-    dimBlockCovering.x = (int) sqrt(totalThreads/zBlockThreads);
-    dimBlockCovering.y = (int) sqrt(totalThreads/zBlockThreads);
-    dimBlockCovering.z = zBlockThreads;
-  }    
-  
-  //for dirac
-  if(prop.maxGridSize[2] != 1) {
-    dimBlockCovering.x = 8;
-    dimBlockCovering.y = 8;
-    dimBlockCovering.z = 8;
-  }
-    
-  dimGridCovering.x = (Nz+dimBlockCovering.x-1)/dimBlockCovering.x;
-  dimGridCovering.y = (nChains+dimBlockCovering.y-1)/dimBlockCovering.y;
-  if(prop.maxGridSize[2] == 1) dimGridCovering.z = 1;
-  else dimGridCovering.z = (nLinks*icovering+dimBlockCovering.z-1)/dimBlockCovering.z;
   
   zeroCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains,icovering);
   

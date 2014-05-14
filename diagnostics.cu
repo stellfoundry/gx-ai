@@ -1452,13 +1452,13 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
 
     //calculate and write zonal flow equilibrium Pfirsch-Schluter flows
     float ps_fac;
-    if(varenna && varenna_fsa==true) {
+    if((varenna && varenna_fsa==true) || new_catto) {
       if(ivarenna>0) {
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Tpar[ION], jacobian, 1./fluxDen);
         ps_fac = 3.;
         PSdiagnostic_odd_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
       }
-      if(ivarenna<0) {
+      if(ivarenna<0 || new_catto) {
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = -1.6*pow(eps,1.5)*3.;
         PSdiagnostic_odd_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
@@ -1471,7 +1471,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
         ps_fac = 1.;
         PSdiagnostic_odd_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
       }
-      if(ivarenna<0) {
+      if(ivarenna<0 || new_catto) {
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = -1.6*pow(eps,1.5)*1.;
         PSdiagnostic_odd_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho);  //defined in operations_kernel.cu  
@@ -1479,7 +1479,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
       //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
       fieldWrite(tmp, field_h, "qprp_ps.field", filename);
 
-      if(ivarenna<0) {        
+      if(ivarenna<0 || new_catto) {        
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = -1.6*pow(eps,1.5);
         PSdiagnostic_odd_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho); 
@@ -1487,7 +1487,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
       //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
       fieldWrite(tmp, field_h, "upar_ps.field", filename);
 
-      if(ivarenna<0) {        
+      if(ivarenna<0 || new_catto) {        
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = -1.6*pow(eps,1.5);
         PSdiagnostic_even_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho); 
@@ -1495,7 +1495,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
       //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
       fieldWrite(tmp, field_h, "dens_ps.field", filename);
 
-      if(ivarenna<0) {        
+      if(ivarenna<0 || new_catto) {        
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = -1.6*pow(eps,1.5)*2.;
         PSdiagnostic_even_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho); 
@@ -1504,7 +1504,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
       //normalize<<<dimGrid,dimBlock>>>(tmp,Phi,1);
       fieldWrite(tmp, field_h, "tpar_ps.field", filename);
       
-      if(ivarenna<0) {        
+      if(ivarenna<0 || new_catto) {        
         volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
         ps_fac = 0.;
         PSdiagnostic_even_fsa<<<dimGrid,dimBlock>>>(tmp, ps_fac, kx, gds22, qsf, eps, bmagInv, CtmpX, shat, species[ION].rho); 

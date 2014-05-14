@@ -9,6 +9,8 @@ __constant__ float X0_d,Y0_d;
 __constant__ int Zp_d;
 
 dim3 dimBlock, dimGrid;
+dim3 dimBlockCovering;
+dim3 *dimGridCovering;
 
 #define ION 0
 #define ELECTRON 1
@@ -134,6 +136,7 @@ bool qprp0_switch = true;
 
 int iphi00 = 2;
 int igeo = 0;
+float shaping_ps = 1.6;
 char* geoFileName;
 
 //other global device arrays
@@ -151,7 +154,7 @@ float *kx_h, *ky_h, *kz_h;
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
 
 //streams and events
-cudaStream_t* streams;
+cudaStream_t* zstreams;
 cudaEvent_t end_of_zderiv;
 
 bool DEBUG = false;
@@ -173,6 +176,7 @@ bool S_ALPHA = true;
 bool NLPM = false;
 bool varenna = false;
 bool new_varenna = false;
+bool new_catto = false;
 bool SMAGORINSKY = false;
 bool HYPER = false;
 bool isotropic_shear = false;

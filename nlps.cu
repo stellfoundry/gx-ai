@@ -1,4 +1,4 @@
-void NLPS(cuComplex *result, cuComplex *f, cuComplex *g, float *kx, float *ky)
+inline void NLPS(cuComplex *result, cuComplex *f, cuComplex *g, float *kx, float *ky)
 {
   //bool NLPSDEBUG = false;
 

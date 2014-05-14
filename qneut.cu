@@ -1,4 +1,4 @@
-void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d)
+inline void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d)
 {
   //calculate the real-space ion density (summed over species)
   cudaMemset(nbartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);

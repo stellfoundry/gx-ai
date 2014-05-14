@@ -11,7 +11,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
 	      cuComplex *fields_over_B_tmp, cuComplex *B_gradpar_tmp, 
 	      cuComplex *gradpar_tmp, cuComplex *omegaD_tmp, cuComplex *sum_tmp,
 	      cuComplex *fields_over_B2_tmp, cuComplex *B2_gradpar_tmp, cuComplex * bgrad_tmp, 
-	      cuComplex* hyper_tmp, cuComplex* nlpm_tmp,
+	      cuComplex* hyper_tmp, cuComplex* nlpm_tmp, cuComplex* Tpar0_tmp,
 	      float *gradparB_tmpZ, cufftHandle* plan_covering,
 	      float* nu_nlpm, float* Phi2ZF_tmpX, float* tmpXZ, cuComplex* fluxsurfavg_CtmpX, cuComplex* fluxsurfavg_CtmpX2)
 {
@@ -232,6 +232,11 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   if(varenna) {
     add_scaled_Ky0 <<<dimGrid, dimBlock>>> (sum_tmp, 1.,sum_tmp, -(2*nu[1].x) + (2*mu[1].x), TparOld, -(2*nu[2].x) + (2*mu[2].x), TprpOld);
   }
+  if(new_catto) {
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
+    cattoTpar0<<<dimGrid,dimBlock>>>(Tpar0_tmp, fluxsurfavg_CtmpX, kx, gds22, qsf, eps, bmagInv, shat, s.rho, shaping_ps);
+    add_scaled_Ky0 <<<dimGrid, dimBlock>>> (sum_tmp, 1., sum_tmp, -(2*nu[1].x), Tpar0_tmp, -(2*nu[2].x), TprpOld);
+  } 
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna, new_varenna);
   accum <<<dimGrid, dimBlock>>> (tpar_field, omegaD_tmp, 1);
   // + |OmegaD|*(2*nu1.x*Tpar + 2*nu2.x*Tprp)
@@ -331,6 +336,10 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   if(varenna) {
     add_scaled_Ky0<<<dimGrid,dimBlock>>> (sum_tmp, 1., sum_tmp, -(2*nu[3].x) + (2*mu[3].x), TparOld, -(2*nu[4].x) + (2*mu[4].x), TprpOld);
   }
+  if(new_catto) {
+    //Tprp0 = 0
+    add_scaled_Ky0<<<dimGrid,dimBlock>>> (sum_tmp, 1., sum_tmp, -(2*nu[3].x), TparOld);
+  }
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna, new_varenna);
   accum <<<dimGrid, dimBlock>>> (tprp_field, omegaD_tmp, 1);
   // + |OmegaD|*( (2*nu3.x)*Tpar + (2*nu4.x)*Tprp )
@@ -389,7 +398,14 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*(3+Beta_par), gradpar_tmp);  
   }
 
-  if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3 || abs(ivarenna)==5)  && eps!=0. && varenna_fsa==true) {
+  if(new_catto) {
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
+    ps_fac = -shaping_ps*pow(eps,1.5)*3.;
+    PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+       
+    ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
+  }
+  else if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3 || abs(ivarenna)==5)  && eps!=0. && varenna_fsa==true) {
     if(ivarenna>0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, TparOld, jacobian, 1./fluxDen);
       ps_fac = 3.;
@@ -397,7 +413,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     }
     if(ivarenna<0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
-      ps_fac = -1.6*pow(eps,1.5)*3.;
+      ps_fac = -shaping_ps*pow(eps,1.5)*3.;
       PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
@@ -408,7 +424,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, TparOld, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      ps_fac = -1.6*pow(eps,1.5)*3.;
+      ps_fac = -shaping_ps*pow(eps,1.5)*3.;
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
@@ -447,6 +463,9 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   if(new_varenna) {
     add_scaled_Ky0<<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[6].y), QparOld, -(nu[7].y), QprpOld, -(nu[5].y), UparOld); //effectively nu=0 for ky=0
   }
+  if(new_catto) {
+    add_scaled_Ky0<<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[6].y), QparOld, -(nu[7].y), QprpOld, -(nu[5].y), UparOld); //effectively nu=0 for ky=0
+  }
   if(init == RH_equilibrium) {
     RH_eq_qpard<<<dimGrid,dimBlock>>>(sum_tmp, UparOld, QparOld, QprpOld, kx, gds22, qsf, eps, bmagInv, shat, s);
   }
@@ -459,6 +478,9 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, nu[5].x, UparOld, nu[6].x, QparOld, nu[7].x, QprpOld);  
   if(varenna) {
     add_scaled_Ky0<<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[5].x) + (mu[5].x), UparOld, -(nu[6].x) + (mu[6].x), QparOld, -(nu[7].x) + (mu[7].x), QprpOld);
+  }
+  if(new_catto) {
+    add_scaled_Ky0<<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[5].x), UparOld, -(nu[6].x), QparOld, -(nu[7].x), QprpOld); //effectively nu=0 for ky=0
   }
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna, new_varenna);
   accum <<<dimGrid, dimBlock>>> (qpar_field, omegaD_tmp, 1);
@@ -528,8 +550,15 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
   } 
   // + vt*gradpar( zt*phi_flr + Tprp )
-    
-  if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3 || abs(ivarenna)==5) && eps!=0. && varenna_fsa==true) {
+
+  if(new_catto) {
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
+    ps_fac = -shaping_ps*pow(eps,1.5)*1.;
+    PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+         
+    ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
+  }  
+  else if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3 || abs(ivarenna)==5) && eps!=0. && varenna_fsa==true) {
     if(ivarenna>0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, TprpOld, jacobian, 1./fluxDen);
       ps_fac = 1.;
@@ -537,7 +566,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
     }
     if(ivarenna<0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
-      ps_fac = -1.6*pow(eps,1.5)*1.;
+      ps_fac = -shaping_ps*pow(eps,1.5)*1.;
       PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
@@ -548,7 +577,7 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, TprpOld, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      ps_fac = -1.6*pow(eps,1.5)*1.;
+      ps_fac = -shaping_ps*pow(eps,1.5)*1.;
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, kxCover, kyCover,g_covering, kz_covering, "abs", plan_covering);
@@ -596,6 +625,9 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   if(new_varenna) {
     add_scaled_Ky0<<<dimGrid,dimBlock>>> (sum_tmp, 1., sum_tmp, -(nu[9].y), QparOld, -(nu[10].y), QprpOld, -(nu[8].y), UparOld);  //effectively nu=0
   }  
+  if(new_catto) {
+    add_scaled_Ky0<<<dimGrid,dimBlock>>> (sum_tmp, 1., sum_tmp, -(nu[9].y), QparOld, -(nu[10].y), QprpOld, -(nu[8].y), UparOld);  //effectively nu=0
+  }  
   if(init == RH_equilibrium) {
     RH_eq_qperpd<<<dimGrid,dimBlock>>>(sum_tmp, UparOld, QparOld, QprpOld, kx, gds22, qsf, eps, bmagInv, shat, s);
   }
@@ -606,6 +638,9 @@ void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, nu[8].x, UparOld, nu[9].x, QparOld, nu[10].x, QprpOld);  
   if(varenna) {
     add_scaled_Ky0 <<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[8].x) + (mu[8].x), UparOld, -(nu[9].x) + (mu[9].x), QparOld, -(nu[10].x) + (mu[10].x), QprpOld);
+  }
+  if(new_catto) {
+    add_scaled_Ky0 <<<dimGrid,dimBlock>>>(sum_tmp, 1., sum_tmp, -(nu[8].x), UparOld, -(nu[9].x), QparOld, -(nu[10].x), QprpOld); //effectively nu=0 for ky=0
   }
   absOmegaD <<<dimGrid, dimBlock>>> (omegaD_tmp, sum_tmp, s.rho, s.vt, kx, ky, shat, gbdrift, gbdrift0, cvdrift, cvdrift0,varenna,new_varenna);
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, 1., omegaD_tmp, s.nu_ss, QprpOld);

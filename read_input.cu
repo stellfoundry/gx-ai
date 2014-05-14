@@ -69,7 +69,7 @@ void read_geo_input(FILE* ifile)
     fscanf(ifile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
     cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
     gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
-    if(DEBUG) printf("z: %f \n", cvdrift0_h[i]);  
+    //if(DEBUG) printf("z: %f \n", cvdrift0_h[i]);  
   }
   
 }         
