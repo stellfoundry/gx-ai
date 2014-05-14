@@ -1,4 +1,4 @@
-void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
+inline void timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
               cuComplex *Upar, cuComplex *UparOld, cuComplex *UparNew,
               cuComplex *Tpar, cuComplex *TparOld, cuComplex *TparNew,
               cuComplex *Qpar, cuComplex *QparOld, cuComplex *QparNew,
