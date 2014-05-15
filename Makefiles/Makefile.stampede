@@ -51,7 +51,7 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft #-L ${SIMPLEDATAIO}/lib -l simpledataio
 
@@ -71,13 +71,17 @@ else
   NVCCFLAGS += -O3
 endif
 
+ifeq ($(GS2_zonal),on)
+  NVCCFLAGS += -D GS2_zonal
+endif
+
 .SUFFIXES:
 .SUFFIXES: .cu .o
 .DEFAULT_GOAL := $(TARGET)
 
 
 .cu.o:
-	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< ${GS2}/geo/geo_c.a
+	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< 
 
 gryfx_lib.a: gryfx_lib.o 
 	ar cr gryfx_lib.a gryfx_lib.o

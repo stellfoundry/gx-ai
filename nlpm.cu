@@ -1,9 +1,9 @@
-void shear1(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {  
+inline void shear1(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {  
   nlpm_shear1<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv);
   sumReduc_Partial(nu, nu_tmpXZ, Nx*Nz, Nz, false); 
 }
 
-void shear2(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {
+inline void shear2(float* nu, float* nu_tmpXZ, float* Phi2ZF, specie s) {
   nlpm_shear2<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv);
   sumReduc_Partial(nu, nu_tmpXZ, Nx*Nz, Nz, false); 
   sqrtZ<<<dimGrid,dimBlock>>>(nu, nu);  
@@ -13,7 +13,7 @@ typedef void (*nlpm_switch)(float*, float*, float*, specie);
 nlpm_switch shear[] = {shear1, shear2};
     
 
-void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_nlpm_tmpXZ, specie s)
+inline void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_nlpm_tmpXZ, specie s)
 {
   
   // get zonal flow component of Phi
@@ -23,12 +23,11 @@ void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, float* nu_n
 
 }
 
-void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
+inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
 		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
 		float* Phi2ZF_tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, 
 		specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1)
 {
-  float Dnlpm_h;
   get_nu_nlpm(nu_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s); 
   if(strcmp(nlpm_option,"cutoff") == 0) {
     get_Dnlpm<<<1,1>>>(Dnlpm_d, Phi_zf_kx1, low_cutoff, high_cutoff, s.nu_ss); 

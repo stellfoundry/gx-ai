@@ -449,6 +449,19 @@ __global__ void getky0(float* f_kxky0, cuComplex* f_kxky)
   }
 } 
 
+__global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = 0;
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    res_ky0kxz[index] = f_kykxz[index];
+  }
+}
+
+
 __global__ void get_z0(cuComplex* f_z0, cuComplex* f)
 {
   unsigned int idx = get_idx();

@@ -52,7 +52,7 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS =  -arch=compute_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
+NVCCFLAGS =  -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
 NVCCINCS  = $(CUDA_INCLUDE) -I ${SIMPLEDATAIO}/include
 NVCCLIBS  = $(NVIDIA_DRIVER_LIB) $(CUDA_LIB64) -lcufft #-L ${SIMPLEDATAIO}/lib -l simpledataio
 

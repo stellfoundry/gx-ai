@@ -106,6 +106,11 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   float *shear_rate_z_nz;
   float *shear_rate_nz;  
 
+  cuComplex *dens_ky0_h[nSpecies], *upar_ky0_h[nSpecies], *tpar_ky0_h[nSpecies], *tprp_ky0_h[nSpecies], *qpar_ky0_h[nSpecies], *qprp_ky0_h[nSpecies], *phi_ky0_h;
+  cuComplex *dens_ky0_d[nSpecies], *upar_ky0_d[nSpecies], *tpar_ky0_d[nSpecies], *tprp_ky0_d[nSpecies], *qpar_ky0_d[nSpecies], *qprp_ky0_d[nSpecies], *phi_ky0_d;
+  cuComplex *NLdens_ky0_d[nSpecies], *NLupar_ky0_d[nSpecies], *NLtpar_ky0_d[nSpecies], *NLtprp_ky0_d[nSpecies], *NLqpar_ky0_d[nSpecies], *NLqprp_ky0_d[nSpecies];
+  
+
   omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
   omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
   kx_h = (float*) malloc(sizeof(float)*Nx);
@@ -118,7 +123,32 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   init_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   //Phi_energy = (float*) malloc(sizeof(float));
   
-  cudaEventCreate(&end_of_zderiv); 
+#ifdef GS2_zonal
+  for(int s=0; s<nSpecies; s++) {
+    cudaMallocHost((void**) &dens_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMallocHost((void**) &upar_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMallocHost((void**) &tpar_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMallocHost((void**) &tprp_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMallocHost((void**) &qpar_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMallocHost((void**) &qprp_ky0_h[s], sizeof(cuComplex)*Nx*Nz);
+
+    cudaMalloc((void**) &dens_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &upar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &tpar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &tprp_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &qpar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &qprp_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+
+    cudaMalloc((void**) &NLdens_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &NLupar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &NLtpar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &NLtprp_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &NLqpar_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+    cudaMalloc((void**) &NLqprp_ky0_d[s], sizeof(cuComplex)*Nx*Nz);
+  }
+  cudaMallocHost((void**) &phi_ky0_h, sizeof(cuComplex)*Nx*Nz);
+  cudaMalloc((void**) &phi_ky0_d, sizeof(cuComplex)*Nx*Nz);
+#endif
   
   for(int s=0; s<nSpecies; s++) {
     cudaMalloc((void**) &Dens[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -361,6 +391,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   cufftHandle plan_covering[nClasses];
   //also set up a stream for each class.
   zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
+  end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
   dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
   dimBlockCovering.x = 8;
   dimBlockCovering.y = 8;
@@ -659,9 +690,18 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
   
   //writedat_beginning();
     
-  cudaEvent_t start, stop, start1, stop1;
+  cudaEvent_t start, stop, start1, stop1, nonlin_halfstep, H2D, D2H;
   cudaEventCreate(&start);
   cudaEventCreate(&stop);		
+  cudaEventCreate(&nonlin_halfstep);
+  cudaEventCreate(&H2D);
+  cudaEventCreateWithFlags(&D2H, cudaEventBlockingSync);
+  for(int c=0; c<nClasses; c++) {
+    cudaEventCreate(&end_of_zderiv[c]); 
+  }
+
+  cudaStreamCreate(&copystream);
+
   //cudaEventCreate(&start1); 			    
   //cudaEventCreate(&stop1);
   cudaEventRecord(start,0);
@@ -719,7 +759,7 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
     
 
     //EXBshear bug fixed, need to check if correct
-    ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
+    //ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
     
     
     //if(DEBUG) getError("after exb");
@@ -764,10 +804,59 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
      
     //cudaProfilerStart();
     
-    
-    for(int s=0; s<nSpecies; s++) {
+    if(!LINEAR) {
+      for(int s=0; s<nSpecies; s++) {
            
-      timestep(Dens[s], Dens[s], Dens1[s], 
+        nonlinear_timestep(Dens[s], Dens[s], Dens1[s], 
+               Upar[s], Upar[s], Upar1[s], 
+               Tpar[s], Tpar[s], Tpar1[s], 
+               Qpar[s], Qpar[s], Qpar1[s], 
+               Tprp[s], Tprp[s], Tprp1[s], 
+               Qprp[s], Qprp[s], Qprp1[s], 
+               Phi, 
+               NLdens_ky0_d[s], NLupar_ky0_d[s], NLtpar_ky0_d[s], NLtprp_ky0_d[s], NLqpar_ky0_d[s], NLqprp_ky0_d[s],
+               dt/2., species[s],
+	       field,field,field,field,field,field,
+	       tmp,tmp, true);
+
+        //Moment1 = Moment + (dt/2)*NL(Moment)
+
+#ifdef GS2_zonal
+
+        if(s==nSpecies-1) {  //Only after all species have been done
+          cudaEventRecord(nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
+          cudaStreamWaitEvent(copystream, nonlin_halfstep,0); //wait for all streams before copying
+          cudaMemcpyAsync(dens_ky0_h, NLdens_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaMemcpyAsync(upar_ky0_h, NLupar_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaMemcpyAsync(tpar_ky0_h, NLtpar_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaMemcpyAsync(tprp_ky0_h, NLtprp_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaMemcpyAsync(qpar_ky0_h, NLqpar_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaMemcpyAsync(qprp_ky0_h, NLqprp_ky0_d, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyDeviceToHost, copystream);
+          cudaEventRecord(D2H, copystream);
+        }
+
+#endif
+
+
+        linear_timestep(Dens1[s], Dens[s], Dens1[s], 
+               Upar1[s], Upar[s], Upar1[s], 
+               Tpar1[s], Tpar[s], Tpar1[s], 
+               Qpar1[s], Qpar[s], Qpar1[s], 
+               Tprp1[s], Tprp[s], Tprp1[s], 
+               Qprp1[s], Qprp[s], Qprp1[s], 
+               Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
+	       field,field,field,field,field,field,
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+ 
+        //Moment1 = Moment1 + (dt/2)*L(Moment)
+	         
+      }
+    }
+    else {
+      for(int s=0; s<nSpecies; s++) {
+
+        linear_timestep(Dens[s], Dens[s], Dens1[s], 
                Upar[s], Upar[s], Upar1[s], 
                Tpar[s], Tpar[s], Tpar1[s], 
                Qpar[s], Qpar[s], Qpar1[s], 
@@ -777,14 +866,16 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
 	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
-	         
+         
+        //Moment1 = Moment + (dt/2)*L(Moment)
+      }
     }
 
     qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
 
 /*
   if(DEBUG) {*/
-  if(counter==0) fieldWrite(Dens1[ION], field_h, "dens.5.field", filename); 
+  //if(counter==0) fieldWrite(Dens1[ION], field_h, "dens.5.field", filename); 
 /*  if(counter==0) fieldWrite(Upar1[ION], field_h, "upar.5.field", filename); 
   if(counter==0) fieldWrite(Tpar1[ION], field_h, "tpar.5.field", filename); 
   if(counter==0) fieldWrite(Tprp1[ION], field_h, "tprp.5.field", filename); 
@@ -825,22 +916,59 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
       }
     }
        
-    
-    
-    for(int s=0; s<nSpecies; s++) {
-
-      timestep(Dens[s], Dens1[s], Dens[s], 
+    if(!LINEAR) {
+      for(int s=0; s<nSpecies; s++) {
+           
+        linear_timestep(Dens[s], Dens1[s], Dens[s], 
                Upar[s], Upar1[s], Upar[s], 
                Tpar[s], Tpar1[s], Tpar[s], 
                Qpar[s], Qpar1[s], Qpar[s], 
                Tprp[s], Tprp1[s], Tprp[s], 
                Qprp[s], Qprp1[s], Qprp[s], 
-               Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
+               Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
 	       field,field,field,field,field,field,
 	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
 	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
-    }
 
+#ifdef GS2_zonal
+        if(s==0) replace_ky0<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
+        replace_ky0<<<dimGrid,dimBlock>>>(Dens1[s], dens_ky0_d[s]);
+        replace_ky0<<<dimGrid,dimBlock>>>(Upar1[s], upar_ky0_d[s]);
+        replace_ky0<<<dimGrid,dimBlock>>>(Tpar1[s], tpar_ky0_d[s]);
+        replace_ky0<<<dimGrid,dimBlock>>>(Tprp1[s], tprp_ky0_d[s]);
+        replace_ky0<<<dimGrid,dimBlock>>>(Qpar1[s], qpar_ky0_d[s]);
+        replace_ky0<<<dimGrid,dimBlock>>>(Qprp1[s], qprp_ky0_d[s]);
+#endif
+	         
+        nonlinear_timestep(Dens[s], Dens1[s], Dens[s], 
+               Upar[s], Upar1[s], Upar[s], 
+               Tpar[s], Tpar1[s], Tpar[s], 
+               Qpar[s], Qpar1[s], Qpar[s], 
+               Tprp[s], Tprp1[s], Tprp[s], 
+               Qprp[s], Qprp1[s], Qprp[s], 
+               Phi, 
+               dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
+               dt, species[s],
+	       field,field,field,field,field,field,
+	       tmp,tmp, false);
+      }
+    }
+    else {
+      for(int s=0; s<nSpecies; s++) {
+
+        linear_timestep(Dens[s], Dens1[s], Dens[s], 
+               Upar[s], Upar1[s], Upar[s], 
+               Tpar[s], Tpar1[s], Tpar[s], 
+               Qpar[s], Qpar1[s], Qpar[s], 
+               Tprp[s], Tprp1[s], Tprp[s], 
+               Qprp[s], Qprp1[s], Qprp[s], 
+               Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
+	       field,field,field,field,field,field,
+	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+      }
+    }
+    
     qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d);
     
 
@@ -876,6 +1004,43 @@ void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile
         }
       }
     }
+
+#ifdef GS2_zonal
+  GS2_linear();
+  
+  if(!LINEAR) {
+    cudaEventSynchronize(D2H);
+    GS2_nonlinear();
+  }
+
+  calcGS2moments_ky0(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
+
+  cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*Nx*Nz, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(dens_ky0_d, dens_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(upar_ky0_d, upar_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(tpar_ky0_d, tpar_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(tprp_ky0_d, tprp_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(qpar_ky0_d, qpar_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+  cudaMemcpyAsync(qprp_ky0_d, qprp_ky0_h, sizeof(cuComplex)*Nx*Nz*nSpecies, cudaMemcpyHostToDevice, copystream);
+
+  cudaEventRecord(H2D, copystream);
+  cudaStreamWaitEvent(0, H2D, 0);
+
+  replace_ky0<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
+  for(int s=0; s<nSpecies; s++) {
+    replace_ky0<<<dimGrid,dimBlock>>>(Dens[s], dens_ky0_d[s]);
+    replace_ky0<<<dimGrid,dimBlock>>>(Upar[s], upar_ky0_d[s]);
+    replace_ky0<<<dimGrid,dimBlock>>>(Tpar[s], tpar_ky0_d[s]);
+    replace_ky0<<<dimGrid,dimBlock>>>(Tprp[s], tprp_ky0_d[s]);
+    replace_ky0<<<dimGrid,dimBlock>>>(Qpar[s], qpar_ky0_d[s]);
+    replace_ky0<<<dimGrid,dimBlock>>>(Qprp[s], qprp_ky0_d[s]);
+  }
+
+#endif
+
+
+
+
 /*
     cudaEventRecord(stop1,0);
     cudaEventSynchronize(stop1);

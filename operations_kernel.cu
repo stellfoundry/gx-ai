@@ -1488,3 +1488,16 @@ __global__ void bounds(cuComplex* f, int nLinks, int nChains, int* kxCover, int*
       
 */      
 
+__global__ void replace_ky0(cuComplex* f, cuComplex* f_ky0)
+{
+  
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idz<nz) {
+    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    unsigned int idxz = idx + nx*idz;
+    f[index_ky0] = f_ky0[idxz];
+  
+  }
+}

@@ -18,10 +18,9 @@ inline void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int*
 	      
 	      // can use a separate stream for each class, do some classes at the same time. 
 	      ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, plan_covering[c], zstreams[c], dimGridCovering[c], dimBlockCovering);
-	      
-	  } 
-	  cudaEventRecord(end_of_zderiv, 0);
-	  cudaEventSynchronize(end_of_zderiv);   //wait until all streams are finished before going on
+	      cudaEventRecord(end_of_zderiv[c], zstreams[c]);
+              cudaStreamWaitEvent(0, end_of_zderiv[c], 0); //make sure linear stream waits until each zstream is finished before going on
+          }    
 	 
 	  scale<<<dimGrid,dimBlock>>>(result, result, gradpar);
 	  
