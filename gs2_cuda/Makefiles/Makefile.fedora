@@ -1,0 +1,14 @@
+# simple local makefile by CMR for 64bit fedora linux boxes 
+# assumes installations of:
+#        gfortran 
+#        fftw3
+#        netcdf, mpi
+
+COMPILER = gnu-gfortran
+include Makefile.$(COMPILER)
+FC = mpif90
+F90FLAGS +=  -fintrinsic-modules-path /usr/lib64/gfortran/modules/ -fdefault-double-8
+USE_FFT=fftw3
+FFT_LIB= -lfftw3
+NETCDF_LIB= -lnetcdff -lnetcdf
+
