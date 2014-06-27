@@ -69,6 +69,78 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int N
   }
   fclose(out);
 }
+
+void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+{
+  strcpy(filename,out_stem);
+  strcat(filename,ext);
+  FILE* out = fopen(filename,"w+");
+  cudaMemcpy(f_nopad_h,f_nopad_d,sizeof(cuComplex)*ntheta0*(naky)*Nz,cudaMemcpyDeviceToHost);
+  fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int i=0; i<(Nx-1)/3+1; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;      
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(naky)*i+(naky)*ntheta0*k;
+	//if(index!=0){
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_nopad_h[j+(naky)*i].x, f_nopad_h[j+(naky)*i].y); 
+	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_nopad_h[index].x, f_nopad_h[index].y);    	  
+        //}
+      }     
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(naky)*(i-Nx+ntheta0)+(naky)*ntheta0*k;
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_nopad_h[j+(naky)*(i-Nx+ntheta0)].x, f_nopad_h[j+(naky)*(i-Nx+ntheta0)].y); 
+	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_nopad_h[index].x, f_nopad_h[index].y);    	  
+      }    
+    }
+  }
+  fclose(out);
+}
+void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+{
+  strcpy(filename,out_stem);
+  strcat(filename,ext);
+  FILE* out = fopen(filename,"w+");
+  fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int i=0; i<(Nx-1)/3+1; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;      
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(naky)*i+(naky)*ntheta0*k;
+	//if(index!=0){
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_nopad_h[j+(naky)*i].x, f_nopad_h[j+(naky)*i].y); 
+	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_nopad_h[index].x, f_nopad_h[index].y);    	  
+        //}
+      }     
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(naky)*(i-Nx+ntheta0)+(naky)*ntheta0*k;
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_nopad_h[j+(naky)*(i-Nx+ntheta0)].x, f_nopad_h[j+(naky)*(i-Nx+ntheta0)].y); 
+	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_nopad_h[index].x, f_nopad_h[index].y);    	  
+      }    
+    }
+  }
+  fclose(out);
+}
+
+
 void fieldWriteXY(float* f_d, char* fieldname, float dt)
 {
   char filename[100];  
@@ -671,6 +743,42 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
   fprintf(gammafile, "\n");
 }
 
+//time history of growth rates
+void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, float dtSum, float time)
+{
+  fprintf(omegafile, "\t%f", time);
+  fprintf(gammafile, "\t%f", time);
+  for(int i=0; i<((Nx-1)/3+1); i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i;
+      if(index!=0) {
+	if( isnan(omegaSum[index].x) || isinf(omegaSum[index].x) ) 
+	  fprintf(omegafile, "\t\t\t%f\t", omegaSum[index].x/dtSum); 
+	else
+	  fprintf(omegafile, "\t\t\t%f", omegaSum[index].x/dtSum); 
+	if( isnan(omegaSum[index].y) || isinf(omegaSum[index].y) )
+	  fprintf(gammafile, "\t\t\t%f\t", omegaSum[index].y/dtSum); 
+	else
+	  fprintf(gammafile, "\t\t\t%f", omegaSum[index].y/dtSum); 
+      }
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i;
+      if( isnan(omegaSum[index].x) || isinf(omegaSum[index].x) ) 
+	fprintf(omegafile, "\t\t\t%f\t", omegaSum[index].x/dtSum); 
+      else
+	fprintf(omegafile, "\t\t\t%f", omegaSum[index].x/dtSum); 
+      if( isnan(omegaSum[index].y) || isinf(omegaSum[index].y) )
+	fprintf(gammafile, "\t\t\t%f\t", omegaSum[index].y/dtSum); 
+      else
+	fprintf(gammafile, "\t\t\t%f", omegaSum[index].y/dtSum); 
+    }
+  }
+  fprintf(omegafile, "\n");
+  fprintf(gammafile, "\n");
+}
 //time history of flux
 void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
 		int converge_count, float time, specie* species)

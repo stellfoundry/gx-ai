@@ -366,6 +366,29 @@ __global__ void add_scaled(float* result, float fscaler, float* f, float gscaler
   }
 } 
 
+__global__ void add_scaled(cuComplex* result, float fscaler, cuComplex* f, float gscaler, cuComplex* g,int nx, int ny, int nz)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      result[index] = fscaler*f[index] + gscaler*g[index];      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+        result[index] = fscaler*f[index] + gscaler*g[index];
+      }
+    }
+  }
+} 
 //two fields, complex scalars, ONLY KY=0
 __global__ void add_scaled_Ky0(cuComplex* result, float fscaler, cuComplex* f, float gadd)
 {
@@ -1501,3 +1524,163 @@ __global__ void replace_ky0(cuComplex* f, cuComplex* f_ky0)
   
   }
 }
+
+//use this if input f(ky=0) is unpadded
+__global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
+{
+  
+  unsigned int idx = get_idx();
+  unsigned int idy = 0;
+  unsigned int idz = get_idz();
+
+  unsigned int ntheta0 = 1 + 2*((nx-1)/3);
+
+  if(idx<nx && idz<nz) {
+    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    unsigned int idx_nopad;
+    unsigned int idxz_nopad;
+
+    if(idx<(nx-1)/3+1) {
+      idx_nopad = idx;
+      idxz_nopad = idx_nopad + ntheta0*idz;
+      f[index_ky0] = f_ky0[idxz_nopad];
+    } else if(idx>2*((nx-1)/3)) {
+      idx_nopad = idx - nx + ntheta0;
+      idxz_nopad = idx_nopad + ntheta0*idz;
+      f[index_ky0] = f_ky0[idxz_nopad];
+    }
+    else { //pad with zeros for mask in middle
+      f[index_ky0].x = 0.;
+      f[index_ky0].y = 0.;
+    }
+  }
+}
+
+__global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = 0;
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idz<nz) {
+    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    unsigned int idxz = idx + nx*idz;
+    res_ky0kxz[idxz] = f_kykxz[index_ky0];
+  }
+}
+
+//use this if want result f(ky=0) to be unpadded
+__global__ void getky0_nopad(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
+{
+  unsigned int idx_nopad = get_idx();
+  unsigned int idy = 0;
+  unsigned int idz = get_idz();
+
+  int ntheta0 = 1 + 2*((nx-1)/3);
+
+  if(idx_nopad<ntheta0 && idz<nz) {
+    unsigned int idxz_nopad = idx_nopad + ntheta0*idz;
+
+    unsigned int idx;
+
+    if(idx_nopad<(ntheta0+1)/2) {
+      idx = idx_nopad;
+    } else {
+      idx = idx_nopad + nx - ntheta0; //shift past mask in center, nshift = nx - ntheta0
+    }
+
+    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+    res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
+
+  }
+}
+
+__global__ void replace_fixed_mode(cuComplex* f, cuComplex* fixed, int iky, int ikx, float S)
+{
+
+  unsigned int idz = get_idz();
+
+  if(idz<nz) {
+    f[iky+(ny/2+1)*ikx+nx*(ny/2+1)*idz] = S*fixed[idz];
+  }
+
+}
+
+__global__ void get_fixed_mode(cuComplex* fixed, cuComplex* f, int iky, int ikx)
+{
+
+  unsigned int idz = get_idz();
+
+  if(idz<nz) {
+    fixed[idz] = f[iky+(ny/2+1)*ikx+nx*(ny/2+1)*idz];
+  }
+
+}
+
+__global__ void set_fixed_amplitude(cuComplex* phi_fixed, cuComplex* dens_fixed, cuComplex* upar_fixed, cuComplex* tpar_fixed, cuComplex* tprp_fixed, cuComplex* qpar_fixed, cuComplex* qprp_fixed, cuComplex phi_test_in) 
+{
+  
+  
+  double scaler_real = phi_test_in.x / phi_fixed[nz/2+1].x;
+  double scaler_imag = phi_test_in.y / phi_fixed[nz/2+1].y;
+  
+  cuComplex phi_fixed_z0; 
+  cuComplex dens_fixed_z0;
+  cuComplex upar_fixed_z0;
+  cuComplex tpar_fixed_z0;
+  cuComplex tprp_fixed_z0;
+  cuComplex qpar_fixed_z0;
+  cuComplex qprp_fixed_z0;
+
+   phi_fixed_z0.x  = phi_fixed[nz/2+1].x * scaler_real;
+   dens_fixed_z0.x = dens_fixed[nz/2+1].x * scaler_real;
+   upar_fixed_z0.x = upar_fixed[nz/2+1].x * scaler_real;
+   tpar_fixed_z0.x = tpar_fixed[nz/2+1].x * scaler_real;
+   tprp_fixed_z0.x = tprp_fixed[nz/2+1].x * scaler_real;
+   qpar_fixed_z0.x = qpar_fixed[nz/2+1].x * scaler_real;
+   qprp_fixed_z0.x = qprp_fixed[nz/2+1].x * scaler_real;
+   phi_fixed_z0.y  = phi_fixed[nz/2+1].y * scaler_imag;
+   dens_fixed_z0.y = dens_fixed[nz/2+1].y * scaler_imag;
+   upar_fixed_z0.y = upar_fixed[nz/2+1].y * scaler_imag;
+   tpar_fixed_z0.y = tpar_fixed[nz/2+1].y * scaler_imag;
+   tprp_fixed_z0.y = tprp_fixed[nz/2+1].y * scaler_imag;
+   qpar_fixed_z0.y = qpar_fixed[nz/2+1].y * scaler_imag;
+   qprp_fixed_z0.y = qprp_fixed[nz/2+1].y * scaler_imag;
+  
+
+  unsigned int idz = get_idz();
+ 
+  if(idz<nz) {
+    //determine the scaler multiplier needed to set phi to the desired amplitude for each z
+/*
+    double scaler_real = (double) phi_test_in.x / (double) phi_fixed[nz/2+1].x; 
+    double scaler_imag = (double) phi_test_in.y / (double) phi_fixed[nz/2+1].y;
+  
+    phi_fixed[idz].x = (double)  phi_fixed[idz].x * scaler_real;
+    dens_fixed[idz].x = (double) dens_fixed[idz].x * scaler_real;
+    upar_fixed[idz].x = (double) upar_fixed[idz].x * scaler_real;
+    tpar_fixed[idz].x = (double) tpar_fixed[idz].x * scaler_real;
+    tprp_fixed[idz].x = (double) tprp_fixed[idz].x * scaler_real;
+    qpar_fixed[idz].x = (double) qpar_fixed[idz].x * scaler_real;
+    qprp_fixed[idz].x = (double) qprp_fixed[idz].x * scaler_real;
+    phi_fixed[idz].y = (double)  phi_fixed[idz].y * scaler_imag;
+    dens_fixed[idz].y = (double) dens_fixed[idz].y * scaler_imag;
+    upar_fixed[idz].y = (double) upar_fixed[idz].y * scaler_imag;
+    tpar_fixed[idz].y = (double) tpar_fixed[idz].y * scaler_imag;
+    tprp_fixed[idz].y = (double) tprp_fixed[idz].y * scaler_imag;
+    qpar_fixed[idz].y = (double) qpar_fixed[idz].y * scaler_imag;
+    qprp_fixed[idz].y = (double) qprp_fixed[idz].y * scaler_imag;
+*/
+    phi_fixed[idz] = phi_fixed_z0;
+    dens_fixed[idz] = dens_fixed_z0;
+    upar_fixed[idz] = upar_fixed_z0;
+    tpar_fixed[idz] = tpar_fixed_z0;
+    tprp_fixed[idz] = tprp_fixed_z0;
+    qpar_fixed[idz] = qpar_fixed_z0;
+    qprp_fixed[idz] = qprp_fixed_z0;
+
+  }
+}
+
+

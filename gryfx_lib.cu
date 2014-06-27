@@ -8,6 +8,7 @@
 #include "cufft.h"
 #include "cuda_profiler_api.h"
 #include "libgen.h"
+#include "mpi.h"
 #include "global_vars.h"
 #include "gryfx_lib.h"
 
@@ -49,54 +50,118 @@
 #include "energy.cu"
 #include "timestep_gryfx.cu"
 #include "run_gryfx.cu"
-//#include "read_geo.cu"
+#include "read_geo.cu"
 
+#ifdef GS2_zonal
+//extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength);
+extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength, cuComplex* test);
+extern "C" void gs2_main_mp_finish_gs2_();
+extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
+#endif
 
-void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile){  
+#ifdef GS2_all
+extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
+#endif
+
+void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
-  read_namelist(namelistFile);
-   
-    //update gryfxpars struct with geometry parameters (from read_geo of defaults)
-  gryfxpars->equilibrium_type = equilibrium_type;
-  /*char eqfile[800];*/
-  gryfxpars->irho = irho;
-  gryfxpars->rhoc = rhoc;
-  gryfxpars->bishop = bishop;
-  gryfxpars->nperiod = nperiod;
-  gryfxpars->ntheta = Nz;
 
- /* Miller parameters*/
-  gryfxpars->rmaj = rmaj;
-  gryfxpars->r_geo = r_geo;
-  gryfxpars->akappa = akappa ;
-  gryfxpars->akappri = akappri;
-  gryfxpars->tri = tri;
-  gryfxpars->tripri = tripri;
-  gryfxpars->shift = shift;
-  gryfxpars->qinp = qsf;
-  gryfxpars->shat = shat;
-  gryfxpars->asym = asym;
-  gryfxpars->asympri = asympri;
+#ifdef GS2_zonal
 
-  /* Other geometry parameters - Bishop/Greene & Chance*/
-  gryfxpars->beta_prime_input = beta_prime_input;
-  gryfxpars->s_hat_input = s_hat_input;
+  cuComplex* test_complex;
+  cudaMallocHost((void**) &test_complex, sizeof(cuComplex)*3); 
 
-  /*Flow shear*/
-  gryfxpars->g_exb = g_exb;
-
-  /* Species parameters... I think allowing 20 species should be enough!*/
-
-  gryfxpars->ntspec = nSpecies;
-
-  for (int i=0;i<nSpecies;i++){
-	  gryfxpars->dens[i] = species[i].dens;
-	  gryfxpars->temp[i] = species[i].temp;
-	  gryfxpars->fprim[i] = species[i].fprim;
-	  gryfxpars->tprim[i] = species[i].tprim;
-	  gryfxpars->nu[i] = species[i].nu_ss;
+  for(int i=0; i<3; i++) {
+    test_complex[i].x = i+.2569264702485;
+    test_complex[i].y = -i-2*.2569264702485;
   }
 
+
+  MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
+
+  int length = strlen(namelistFile);
+  gs2_main_mp_init_gs2_(namelistFile, &length, test_complex);
+
+  for(int i=0; i<3; i++) {
+    printf("test_complex %d = %f + i* %f\n", i, test_complex[i].x, test_complex[i].y);
+  }
+
+  //iproc = *mp_mp_iproc_;
+
+  int numdev;
+
+  cudaGetDeviceCount(&numdev);
+  printf("I am proc %d, I have %d CUDA device(s)\n", iproc, numdev);
+
+  //gs2_main_mp_advance_gs2_();  
+
+  //gs2_main_mp_finish_gs2_();
+
+  //exit(1);
+
+
+#endif
+
+#ifdef GS2_all
+  int length = strlen(namelistFile);
+  gs2_main_mp_run_gs2_(namelistFile, &length);
+
+  iproc = *mp_mp_iproc_;
+
+  //exit(1);
+#endif
+
+    read_namelist(namelistFile);
+#ifdef GS2_zonal
+			if(iproc==0) {
+#endif
+
+     
+    printf("namelistFile in CUDA is %s\n", namelistFile);
+      //update gryfxpars struct with geometry parameters (from read_geo of defaults)
+    gryfxpars->equilibrium_type = equilibrium_type;
+    /*char eqfile[800];*/
+    gryfxpars->irho = irho;
+    gryfxpars->rhoc = rhoc;
+    gryfxpars->bishop = bishop;
+    gryfxpars->nperiod = nperiod;
+    gryfxpars->ntheta = Nz;
+  
+   /* Miller parameters*/
+    gryfxpars->rmaj = rmaj;
+    gryfxpars->r_geo = r_geo;
+    gryfxpars->akappa = akappa ;
+    gryfxpars->akappri = akappri;
+    gryfxpars->tri = tri;
+    gryfxpars->tripri = tripri;
+    gryfxpars->shift = shift;
+    gryfxpars->qinp = qsf;
+    gryfxpars->shat = shat;
+    gryfxpars->asym = asym;
+    gryfxpars->asympri = asympri;
+  
+    /* Other geometry parameters - Bishop/Greene & Chance*/
+    gryfxpars->beta_prime_input = beta_prime_input;
+    gryfxpars->s_hat_input = s_hat_input;
+  
+    /*Flow shear*/
+    gryfxpars->g_exb = g_exb;
+  
+    /* Species parameters... I think allowing 20 species should be enough!*/
+  
+    gryfxpars->ntspec = nSpecies;
+  
+    for (int i=0;i<nSpecies;i++){
+  	  gryfxpars->dens[i] = species[i].dens;
+  	  gryfxpars->temp[i] = species[i].temp;
+  	  gryfxpars->fprim[i] = species[i].fprim;
+  	  gryfxpars->tprim[i] = species[i].tprim;
+  	  gryfxpars->nu[i] = species[i].nu_ss;
+    }
+  
+#ifdef GS2_zonal
+			} //end of iproc if
+#endif
 
 }
   
@@ -105,6 +170,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile)
 {
 
+   FILE* outfile;
+
+#ifdef GS2_zonal
+			if(iproc==0) {
+#endif
    equilibrium_type = gryfxpars->equilibrium_type ;
   /*char eqfile[800];*/
    irho = gryfxpars->irho ;
@@ -152,9 +222,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   }
   
   if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
-  else *&X0 = Y0;  
+  //else *&X0 = Y0; 
+  //else use what is set in input file 
   
-
   
   if ( igeo == 0 ) // this is s-alpha
   {
@@ -201,9 +271,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
         cvdrift0_h[k] = 0.;
         gbdrift0_h[k] = 0.;
         //bgrad=0:
-        //bgrad_h[k] = 0.;
+        bgrad_h[k] = 0.;
         //bmag=const:
-        //bmag_h[k] = 1.;
+        bmag_h[k] = 1.;
       }
     }  
   }
@@ -218,12 +288,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
     //read species parameters from namelist, will overwrite geometry parameters below
       
-    //coefficients_struct *coefficients;
-    //constant_coefficients_struct constant_coefficients;
-    //read_geo(&Nz,coefficients,&constant_coefficients);
+    coefficients_struct *coefficients;
+    constant_coefficients_struct constant_coefficients;
+    read_geo(&Nz,coefficients,&constant_coefficients);
     eps = rhoc/rmaj;
   } 
   
+
   printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d   igeo=%d\n", Nx, Ny, Nz, X0, Y0, Zp, igeo);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
   printf("temp=%g  dens=%g nu_ss=%g  inlpm=%d  dnlpm=%f\n", species[ION].temp, species[ION].dens,species[ION].nu_ss, inlpm, dnlpm);
@@ -240,7 +311,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     printf("Device Count: %d\n",ct);
 
     cudaGetDevice(&dev);
-    printf("Device ID: %d, Device Name: %s\n",dev,prop.name);
     cudaDriverGetVersion(&driverVersion);
     cudaRuntimeGetVersion(&runtimeVersion);
     printf("Driver Version / Runtime Version: %d.%d / %d.%d\n", driverVersion/1000, driverVersion%100,runtimeVersion/1000,runtimeVersion%100);
@@ -256,7 +326,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
   }  
   
-  
+#ifdef GS2_zonal
+					}
+#endif
+
   char out_dir_path[100];
   if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
@@ -434,7 +507,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   //set up restart file
   strcpy(restartfileName, out_stem);
   strcat(restartfileName, "restart.bin");
-  
+ 
+  if(secondary_test && !LINEAR) strcpy(restartfileName, secondary_test_restartfileName);
+ 
   if(RESTART) {
     // check if restart file exists
     if( FILE* restartFile = fopen(restartfileName, "r") ) {
@@ -476,6 +551,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     fclose(input);
     fclose(namelist);
   }
+
+#ifdef GS2_zonal
+				if(iproc==0) {
+#endif
 
   /* 
   FILE *ifile;
@@ -699,65 +778,85 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(DEBUG) getError("gryfx.cu, before run");
   
   
-  FILE* outfile;
   char outfileName[60];
   strcpy(outfileName, out_stem);
   strcat(outfileName, "out");
   outfile = fopen(outfileName, "w+");
 
+#ifdef GS2_zonal
+			} //end of iproc if
+#endif
+
   run_gryfx(gryfxouts->pflux, gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
 
 
-  
-  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
-  printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-  printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-  if(LINEAR) printf("[Linear]\t");
-  else printf("[Nonlinear]\t");
-  if(NO_ZDERIV) printf("[No zderiv]\t");
-  if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
-  if(SLAB) printf("[Slab limit]\t");
-  if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
-  if(CONST_CURV) printf("[constant curvature]\t");
-  if(RESTART) printf("[restart]\t");
-  if(NLPM) printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
-  if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
-  if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
-  if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
-  
-  printf("\n\n");
-  
-  
-  fprintf(outfile,"\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
-  fprintf(outfile,"tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-  fprintf(outfile,"shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-  if(LINEAR) fprintf(outfile,"[Linear]\t");
-  else fprintf(outfile,"[Nonlinear]\t");
-  if(NO_ZDERIV) fprintf(outfile,"[No zderiv]\t");
-  if(NO_ZDERIV_COVERING) fprintf(outfile,"[No zderiv_covering]\t");
-  if(SLAB) fprintf(outfile,"[Slab limit]\t");
-  if(varenna) fprintf(outfile,"[varenna: ivarenna=%d]\t", ivarenna);
-  if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
-  if(RESTART) fprintf(outfile,"[restart]\t");
-  if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
-  if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
-  if(HYPER && isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
-  if(HYPER && !isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
-  
-  fprintf(outfile, "\n\n");
-  
-  fclose(outfile);
-  
-  
-  /*
-  fclose(energyfile);
-  fclose(omegafile);
-  fclose(gammafile);
-  fclose(fluxfile);
-  fclose(phikyfile);
-  fclose(phikxfile);
-  fclose(phifile);
-  */
-  
+#ifdef GS2_zonal
+  int last_step = 2*nSteps;
+  gs2_diagnostics_mp_finish_gs2_diagnostics_(&last_step);
+#endif
+
+#ifdef GS2_zonal
+			if(iproc==0) {  
+#endif
+    printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
+    printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
+    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
+    if(LINEAR) printf("[Linear]\t");
+    else printf("[Nonlinear]\t");
+    if(NO_ZDERIV) printf("[No zderiv]\t");
+    if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
+    if(SLAB) printf("[Slab limit]\t");
+    if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
+    if(CONST_CURV) printf("[constant curvature]\t");
+    if(RESTART) printf("[restart]\t");
+    if(NLPM) printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
+    if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
+    if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
+    if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
+    
+    printf("\n\n");
+    
+    
+    fprintf(outfile,"\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
+    fprintf(outfile,"tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
+    fprintf(outfile,"shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
+    if(LINEAR) fprintf(outfile,"[Linear]\t");
+    else fprintf(outfile,"[Nonlinear]\t");
+    if(NO_ZDERIV) fprintf(outfile,"[No zderiv]\t");
+    if(NO_ZDERIV_COVERING) fprintf(outfile,"[No zderiv_covering]\t");
+    if(SLAB) fprintf(outfile,"[Slab limit]\t");
+    if(varenna) fprintf(outfile,"[varenna: ivarenna=%d]\t", ivarenna);
+    if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
+    if(RESTART) fprintf(outfile,"[restart]\t");
+    if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
+    if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
+    if(HYPER && isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
+    if(HYPER && !isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
+    
+    fprintf(outfile, "\n\n");
+    
+    fclose(outfile);
+    
+    
+    /*
+    fclose(energyfile);
+    fclose(omegafile);
+    fclose(gammafile);
+    fclose(fluxfile);
+    fclose(phikyfile);
+    fclose(phikxfile);
+    fclose(phifile);
+    */
+
+#ifdef GS2_zonal
+			} //end of iproc if
+#endif
+
+#ifdef GS2_zonal
+  //MPI_Barrier(MPI_COMM_WORLD);
+  //gs2_main_mp_finish_gs2_();
+#endif
+
+
 }  	
 

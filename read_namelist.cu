@@ -50,6 +50,8 @@ void read_namelist(char* filename)
     //set default jtwist to 2pi*shat so that X0~Y0
     jtwist = (int) round(2*M_PI*shat*Zp);
   }  
+
+  if(jtwist<0) jtwist=0;
  
   if(fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &X0)) *&X0=10;
   //X0 will get overwritten if shat!=0
@@ -67,11 +69,11 @@ void read_namelist(char* filename)
   
   if(fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "navg", &navg)) navg=100;
   
-  if(fnr_get_float(&namelist_struct, "knobs", "dt", &dt)) dt = .02;
+  if(fnr_get_float(&namelist_struct, "knobs", "delt", &dt)) dt = .02;
   
   if(fnr_get_float(&namelist_struct, "knobs", "maxdt", &maxdt)) maxdt = .02;
   
-  if(fnr_get_int(&namelist_struct, "knobs", "nstep", &nSteps)) nSteps = 10000;
+  if(fnr_get_int(&namelist_struct, "knobs", "nstep", &nSteps)) nSteps = 10320;
   
   //maxdt?
   
@@ -347,12 +349,44 @@ void read_namelist(char* filename)
   
   //if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "stopfile", &stopfileName)) stopfileName="c.stop";
   
-  //if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "restartfile", &restartfileName))  restartfileName="restart.bin";
   
   //printf("stopfileName = %s\n", stopfileName);
   
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "scan_type", &scan_type))  scan_type="outputs";
   
+  
+  char* secondary_test_flag;
+  secondary_test_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "secondary_test_knobs", "secondary_test", &secondary_test_flag)) secondary_test_flag="off";
+  if( strcmp(secondary_test_flag,"on") == 0) {
+   secondary_test  = true;
+  }
+  else if( strcmp(secondary_test_flag,"off") == 0) {
+    secondary_test = false;
+  }
+  if(fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_real", &phi_test.x)) phi_test.x = 1.e5;
+  if(fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_imag", &phi_test.y)) phi_test.y = 1.e5;
+
+  if(secondary_test && LINEAR && phi_test.x > phi_test.y) init_amp = phi_test.x;
+  if(secondary_test && LINEAR && phi_test.x < phi_test.y) init_amp = phi_test.y;
+
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "densfac", &NLdensfac)) NLdensfac = 1.;
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "uparfac", &NLuparfac)) NLuparfac = 1.;
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "tparfac", &NLtparfac)) NLtparfac = 1.;
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "tprpfac", &NLtprpfac)) NLtprpfac = 1.;
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "qparfac", &NLqparfac)) NLqparfac = 1.;
+  if(fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "qprpfac", &NLqprpfac)) NLqprpfac = 1.;
+
+  if(NLdensfac!=0) NLdensfac = 1.;
+  if(NLuparfac!=0) NLuparfac = 1.;
+  if(NLtparfac!=0) NLtparfac = 1.;
+  if(NLtprpfac!=0) NLtprpfac = 1.;
+  if(NLqparfac!=0) NLqparfac = 1.;
+  if(NLqprpfac!=0) NLqprpfac = 1.;
+   
+
+  if(fnr_get_string_no_test(&namelist_struct, "secondary_test_knobs", "restartfile", &secondary_test_restartfileName))  secondary_test_restartfileName="restart.bin";
+
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "scan_number", &scan_number)) scan_number = 1;
     
   char* collisions;

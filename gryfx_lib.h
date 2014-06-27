@@ -51,6 +51,7 @@ struct gryfx_outputs_struct {
 };
 
 extern "C"
-void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * namelistFile );
+void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * namelistFile, int mpcom);
 extern "C"
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile);
+

@@ -90,18 +90,6 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
 
   cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
-  if(!LINEAR) {
-    phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, 1);
-    // + {phi_u, Upar}
-    
-    phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, 1);
-    // + {phi_flr, Qprp}
-  }
-  
   addsubt <<<dimGrid, dimBlock>>> (sum_tmp, DensOld, TparOld, 1);
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, sum_tmp, bmagInv);
   ZDerivCovering(gradpar_tmp, fields_over_B_tmp, kxCover, kyCover,g_covering, kz_covering, "",plan_covering);
@@ -167,12 +155,6 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
-  if(!LINEAR) {
-    phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, TparOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (tpar_field, nlps_tmp, 1);
-    // + {phi_u,Tpar}
-  }
     
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, 1., QparOld, 2., UparOld);
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, sum_tmp, bmagInv);
@@ -261,24 +243,6 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   
   cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       
-  if(!LINEAR) {
-    phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, TprpOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, 1);
-    // + {phi_u, Tprp}
-
-    
-    phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, DensOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, 1);
-    // + {phi_flr, Dens}
-    
-    
-    phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, TprpOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, 1);
-    // + {phi_flr2, Tprp}
-  }
   
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, QprpOld, bmagInv);
   multZ <<<dimGrid, dimBlock>>> (fields_over_B2_tmp, fields_over_B_tmp, bmagInv);
@@ -364,13 +328,6 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   
   cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
 
-  
-  if(!LINEAR) {  
-    phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);    
-    NLPS(nlps_tmp, phi_tmp, QparOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (qpar_field, nlps_tmp, 1);
-    // + {phi_u, Qpar}
-  }
   
   if(new_varenna) {
     scale<<<dimGrid,dimBlock>>>(gradpar_tmp, TparOld, (3.+Beta_par));
@@ -501,25 +458,6 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //QPERP
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
-  
-
-  if(!LINEAR) {
-    phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);    
-    NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
-    // + {phi_u, Qprp}
-    
-    phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
-    // + {phi_flr, Upar}
-    
-    phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
-    // + {phi_flr2, Qprp}
-  }
-  
   
   phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, s.zt, phi_tmp, 1., TprpOld);  
@@ -671,10 +609,10 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 	      cuComplex *Phi, 
               cuComplex* NLdens_ky0_d, cuComplex* NLupar_ky0_d, cuComplex* NLtpar_ky0_d, 
               cuComplex* NLtprp_ky0_d, cuComplex* NLqpar_ky0_d, cuComplex* NLqprp_ky0_d,              
-              float dt, specie s,
+              float* dt_full, specie s,
 	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
 	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
-	      cuComplex *phi_tmp, cuComplex *nlps_tmp, bool halfstep) 
+	      cuComplex *phi_tmp, cuComplex *nlps_tmp, int first_half_step) 
 {
 
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -682,10 +620,26 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
   ////////////////////////////////////////     
   //DENSITY
   
-  cudaMemset(dens_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
+  cudaMemset(dens_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
 
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+    if(first_half_step) cfl_flag = true; //only calculate cfl condition and change dt in first bracket of half step
     NLPS(nlps_tmp, phi_tmp, DensOld, kx, ky);    
+    cfl_flag = false;
+
+#ifndef GS2_zonal
+    //if not running in GS2, change the timestep here
+    //if running in GS2, timestep is changed less frequently, with a reset in run_gryfx
+    if(first_half_step) {
+      *dt_full = dt_cfl;
+    }
+#endif
+
+    float dt;
+
+    if(first_half_step) dt = *dt_full/2.;
+    else dt = *dt_full;
+
     accum <<<dimGrid, dimBlock>>> (dens_field, nlps_tmp, 1);
     // +{phi_u,Dens}
     
@@ -694,14 +648,14 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (dens_field, nlps_tmp, 1);  
     // +{phi_flr,Tprp}
 
+
 #ifdef GS2_zonal
-  
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLdens_ky0_d, dens_field);
-    }
+      
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLdens_ky0_d, dens_field);
 
 #endif
 
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(dens_field, dens_field, NLdensfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (DensNew, 1., Dens, -dt, dens_field);
@@ -715,6 +669,7 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
     accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, 1);
     // + {phi_u, Upar}
+
     
     phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);    
@@ -723,11 +678,11 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 
 #ifdef GS2_zonal
   
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLupar_ky0_d, upar_field);
-    }
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLupar_ky0_d, upar_field);
 
 #endif
+
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(upar_field, upar_field, NLuparfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (UparNew, 1., Upar, -dt, upar_field);
@@ -744,11 +699,11 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 
 #ifdef GS2_zonal
   
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLtpar_ky0_d, tpar_field);
-    }
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLtpar_ky0_d, tpar_field);
 
 #endif
+
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(tpar_field, tpar_field, NLtparfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (TparNew, 1., Tpar, -dt, tpar_field);
@@ -777,11 +732,11 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 
 #ifdef GS2_zonal
   
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLtprp_ky0_d, tprp_field);
-    }
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLtprp_ky0_d, tprp_field);
 
 #endif
+
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(tprp_field, tprp_field, NLtprpfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (TprpNew, 1., Tprp, -dt, tprp_field);
@@ -798,11 +753,11 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 
 #ifdef GS2_zonal
   
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLqpar_ky0_d, qpar_field);
-    }
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLqpar_ky0_d, qpar_field);
 
 #endif
+
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(qpar_field, qpar_field, NLqparfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QparNew, 1., Qpar, -dt, qpar_field);
@@ -817,6 +772,7 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
     // + {phi_u, Qprp}
     
+
     phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
     accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
@@ -829,11 +785,11 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 
 #ifdef GS2_zonal
   
-    if(halfstep) {
-      getky0<<<dimGrid,dimBlock>>>(NLqprp_ky0_d, qprp_field);
-    }
+      getky0_nopad<<<dimGrid,dimBlock>>>(NLqprp_ky0_d, qprp_field);
 
 #endif
+
+  if(secondary_test) scale<<<dimGrid,dimBlock>>>(qprp_field, qprp_field, NLqprpfac);
 
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QprpNew, 1., Qprp, -dt, qprp_field);

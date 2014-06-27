@@ -51,12 +51,14 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft #-L ${SIMPLEDATAIO}/lib -l simpledataio
 
 FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
 
+FFT_LIB = -L$(TACC_FFTW2_LIB) -ldrfftw -ldfftw
+FFT_INC = -I$$TACC_FFTW2_INC
 
 #-L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib -lmpi_f90 -lmpi -lmpi_f77
 
@@ -66,13 +68,19 @@ GEO_LIBS=${GS2}/geo/geometry_c_interface.o ${GS2}/geo/geo.a  ${GS2}/utils.a
 
 
 ifeq ($(debug),on)
-  NVCCFLAGS += -g -G -O3
+  NVCCFLAGS += -g -G -O3 
 else
   NVCCFLAGS += -O3
 endif
 
 ifeq ($(GS2_zonal),on)
-  NVCCFLAGS += -D GS2_zonal
+  NVCCFLAGS += -D GS2_zonal -I gs2_cuda
+  GS2_CUDA_FLAGS=gs2_cuda/libgs2.a
+endif
+
+ifeq ($(GS2_all),on)
+  NVCCFLAGS += -D GS2_all -I ${GS2}
+  GS2_CUDA_FLAGS=${GS2}/libgs2.a
 endif
 
 .SUFFIXES:
@@ -98,7 +106,7 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 
 # main program
 $(TARGET): gryfx.o gryfx_lib.a
-	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GEO_LIBS} ${FORTRAN_LIBS} 
+	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 
 
 gryfx_dumb: gryfx.o gryfx_lib_dumb.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCLIBS) $< gryfx_lib_dumb.a ${GEO_LIBS} ${FORTRAN_LIBS} 

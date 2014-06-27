@@ -106,11 +106,11 @@ __device__ float wgt(float b) {
 __device__ float omegaD(float rho, float vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
 {
   float shatInv;
-  if (abs(shat)>1.e-8) {
+  //if (abs(shat)>1.e-8) {
     shatInv = 1./shat;
-  } else {
-    shatInv = 1.;
-  }
+  //} else {
+  //  shatInv = 1.;
+  //}
 
   
   return rho*vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
@@ -120,11 +120,11 @@ __device__ float omegaD(float rho, float vt, float kx, float ky, float shat, flo
 __device__ float b(float rho, float kx, float ky, float shat, float gds2, float gds21, float gds22, float bmagInv)
 {
   float shatInv;
-  if (abs(shat)>1.e-8) {
+  //if (abs(shat)>1.e-8) {
     shatInv = 1./shat;
-  } else {
-    shatInv = 1.;
-  }
+  //} else {
+  //  shatInv = 1.;
+  //}
 
   return ( ky * (ky*gds2 + 2*kx*shatInv*gds21) + pow(kx*shatInv,2)*gds22 ) * pow(bmagInv,2) * pow(rho,2);
 }
@@ -163,6 +163,7 @@ __host__ __device__ cuComplex operator-(cuComplex f, cuComplex g)
   return cuCsubf(f,g);
 }  
 
+/*
 __host__ __device__ cuComplex operator*(float scaler, cuComplex f) 
 {
   cuComplex result;
@@ -172,6 +173,22 @@ __host__ __device__ cuComplex operator*(float scaler, cuComplex f)
 }
 
 __host__ __device__ cuComplex operator*(cuComplex f, float scaler) 
+{
+  cuComplex result;
+  result.x = scaler*f.x;
+  result.y = scaler*f.y;
+  return result;
+}
+*/
+__host__ __device__ cuComplex operator*(double scaler, cuComplex f) 
+{
+  cuComplex result;
+  result.x = scaler*f.x;
+  result.y = scaler*f.y;
+  return result;
+}
+
+__host__ __device__ cuComplex operator*(cuComplex f, double scaler) 
 {
   cuComplex result;
   result.x = scaler*f.x;

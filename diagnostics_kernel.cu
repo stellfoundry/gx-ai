@@ -13,7 +13,7 @@ __global__ void growthRate(cuComplex *omega, cuComplex *phinew, cuComplex *phiol
   {
     unsigned int index = idy + (ny/2+1)*idx;
     
-    cuComplex ratio = phinew[index+nx*(ny/2+1)*((int)(.6*nz+1))] / phiold[index+nx*(ny/2+1)*((int)(.6*nz+1))];
+    cuComplex ratio = phinew[index+nx*(ny/2+1)*((int)(.5*nz+1))] / phiold[index+nx*(ny/2+1)*((int)(.5*nz+1))];
     
     cuComplex log;
     log.x = logf(cuCabsf(ratio));
@@ -448,19 +448,6 @@ __global__ void getky0(float* f_kxky0, cuComplex* f_kxky)
     f_kxky0[idx] = f_kxky[idx_y0].x;
   }
 } 
-
-__global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
-{
-  unsigned int idx = get_idx();
-  unsigned int idy = 0;
-  unsigned int idz = get_idz();
-
-  if(idx<nx && idz<nz) {
-    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-    res_ky0kxz[index] = f_kykxz[index];
-  }
-}
-
 
 __global__ void get_z0(cuComplex* f_z0, cuComplex* f)
 {

@@ -23,9 +23,11 @@ void definitions()
   Nx_unmasked = 2*Nx/3+1;
   Ny_unmasked = (Ny-1)/3+1;
   
+  int ikx_max = (Nx_unmasked+1)/2;
+  int iky_max = Ny_unmasked;
   
-  cflx = shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
-  cfly = ( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
+  cflx = ((float) ikx_max)/X0/cfl;// shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
+  cfly = ((float) iky_max)/Y0/cfl; //( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
   
   bool default_nu = true;
   

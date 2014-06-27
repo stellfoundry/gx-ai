@@ -65,7 +65,7 @@ __global__ void mask(cuComplex* f)
   unsigned int idx = get_idx();
   unsigned int idz = get_idz();
   
-  //nx_unmasked = 2*(nx/3)+1
+  //nx_unmasked = 2*((nx-1)/3)+1
   //ny_unmasked = (ny-1)/3+1
   
   if(nz<=zthreads) {
@@ -73,7 +73,7 @@ __global__ void mask(cuComplex* f)
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
     
     
-    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*(nx/3)+1 ) ) {
+    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*((nx-1)/3)+1 ) ) {
       f[index].x = 0;
       f[index].y = 0;
     }  
@@ -112,7 +112,7 @@ __global__ void mask(float* f)
   unsigned int idx = get_idx();
   unsigned int idz = get_idz();
   
-  //nx_unmasked = 2*(nx/3)+1
+  //nx_unmasked = 2*((nx-1)/3)+1
   //ny_unmasked = (ny-1)/3+1
   
   if(nz<=zthreads) {
@@ -120,7 +120,7 @@ __global__ void mask(float* f)
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
     
     
-    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*(nx/3)+1 ) ) {
+    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*((nx-1)/3)+1 ) ) {
       f[index] = 0;
     }  
     

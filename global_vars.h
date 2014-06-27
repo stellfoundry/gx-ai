@@ -1,5 +1,6 @@
 //#include "simpledataio_cuda.h"
 
+
 int Nx, Ny, Nz, zThreads, totalThreads, zBlockThreads;
 float X0, Y0;
 int Zp;
@@ -50,7 +51,20 @@ cuComplex nu[11];
 cuComplex mu[11];
 
 float endtime;
-float dt=.02;
+float dt = .02;
+float dt_cfl;
+bool cfl_flag = true;
+
+int reset;
+int iproc;
+int mpcom;
+
+extern "C" double run_parameters_mp_code_delt_max_;
+extern "C" int kt_grids_mp_naky_;
+extern "C" double gs2_time_mp_code_dt_;
+extern "C" double gs2_time_mp_code_dt_cfl_;
+extern "C" int* mp_mp_proc0_;
+extern "C" int* mp_mp_iproc_;
 
 //globals defined in eik.out
 int ntgrid;
@@ -90,8 +104,10 @@ int nperiod;
 float rhoc;
 
 //global host arrays from eik.out
-float *gbdrift_h, *grho_h, *z_h, *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
+float *gbdrift_h, *grho_h, *z_h; 
+float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
 float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
+
 
 //global device arrays from eik.out
 float *gbdrift, *grho, *z, *cvdrift, *gds2, *bmag, *bgrad;
@@ -139,6 +155,11 @@ int igeo = 0;
 float shaping_ps = 1.6;
 char* geoFileName;
 
+bool secondary_test;
+cuComplex phi_test;
+float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
+char* secondary_test_restartfileName;
+
 //other global device arrays
 float *kx, *ky, *kz, *kz_complex;
 float *bmagInv;
@@ -149,6 +170,10 @@ float* jacobian;
 float* PhiAvgDenom;
 
 float *kx_h, *ky_h, *kz_h;
+
+cuComplex *field_h;
+
+char filename[80];
 
 //plans
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
