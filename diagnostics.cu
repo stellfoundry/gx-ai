@@ -1702,6 +1702,34 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
     //normalizeCovering(Phi,kxCover,kyCover,kxCover_h,kyCover_h);   //<- need to write
     fieldWriteCovering(Phi,filename,kxCover,kyCover,kxCover_h,kyCover_h);
 
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Phi);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY4, tmp);
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Dens[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "dens_norm.kxky");
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Upar[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "upar_norm.kxky");
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Tpar[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "tpar_norm.kxky");
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Tprp[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "tprp_norm.kxky");
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Qpar[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "qpar_norm.kxky");
+    squareComplex<<<dimGrid,dimBlock>>>(tmp, Qprp[ION]);
+    sumZ<<<dimGrid,dimBlock>>>(tmpXY, tmp);
+    multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
+    kxkyWrite(tmpXY, tmpXY_h, filename, "qprp_norm.kxky");
+
+
     //write out geometry arrays vs z (like gbd, bmag, etc)
     geoWrite("geo.z", filename);
     

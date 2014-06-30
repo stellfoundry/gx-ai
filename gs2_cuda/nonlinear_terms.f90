@@ -219,12 +219,12 @@ contains
        p_y = 6.0
        p_z = 6.0
 
-    densfac = 1. 
-    uparfac = 1. 
-    tparfac = 1. 
+    densfac = 2.
+    uparfac = sqrt(2.) 
+    tparfac = 1.
     tprpfac = 1. 
-    qparfac = 1. 
-    qprpfac = 1.  
+    qparfac = 1./sqrt(2.) 
+    qprpfac = 1./sqrt(2.)
 
        in_file=input_unit_exist("nonlinear_terms_knobs",exist)
        if(exist) read (unit=in_file,nml=nonlinear_terms_knobs)
@@ -388,12 +388,18 @@ contains
                iz = ig + ntgrid + 1
                if(ig==ntgrid) iz = 1 ! periodic point not included in gryfx arrays
                   index_gryfx = 1 + (ik-1) + g_lo%naky*(it-1) + g_lo%naky*g_lo%ntheta0*(iz-1) + 2*ntgrid*g_lo%naky*g_lo%ntheta0*(is-1)
+                !  g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
+                !            2.*(vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
+                !            2.*(vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                !            2.*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                !            4./3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                !            4.*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
                   g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
-                            2.*(vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
-                            2.*(vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
-                            2.*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
-                            4./3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
-                            4.*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
+                            (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
+                            (vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                            sqrt(2.)*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                            sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                            sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
                  ! g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
                  !           2.*(2.*vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
                  !           2.*(2.*vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &

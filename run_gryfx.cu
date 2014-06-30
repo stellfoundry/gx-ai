@@ -583,6 +583,31 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
        for(int i=0; i<Nz; i++) {
          printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
        }
+       cudaMemcpy(CtmpZ_h, upar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("upar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, tpar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("tpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, tprp_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("tprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, qpar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("qpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, qprp_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("qprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
        //initialize density with noise
        RESTART = false; 
        init = DENS;
@@ -944,6 +969,15 @@ if(iproc==0) {
 #ifdef GS2_zonal
 			if(iproc==0) {  
 #endif
+      if(secondary_test && !LINEAR) {
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi, phi_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens[ION], dens_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Upar[ION], upar_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tpar[ION], tpar_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tprp[ION], tprp_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar[ION], qpar_fixed, 1, 0, S_fixed);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp[ION], qprp_fixed, 1, 0, S_fixed);
+      }
   if(DEBUG) getError("about to start timestep loop");
     fieldWrite(Dens[ION], field_h, "dens0.field", filename); 
     fieldWrite(Upar[ION], field_h, "upar0.field", filename); 
@@ -1022,15 +1056,6 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
        
       //cudaProfilerStart();
 
-      if(secondary_test && !LINEAR) {
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi, phi_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens[ION], dens_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Upar[ION], upar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tpar[ION], tpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tprp[ION], tprp_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar[ION], qpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp[ION], qprp_fixed, 1, 0, S_fixed);
-      }
 #ifdef GS2_zonal
 			} //end of iproc if
 #endif

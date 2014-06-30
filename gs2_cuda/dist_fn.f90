@@ -695,16 +695,16 @@ subroutine check_dist_fn(report_unit)
        lf_decompose = .false.
        source_option = 'default'
        in_file = input_unit_exist("dist_fn_knobs", dfexist)
+       densfac_lin = 1./sqrt(2.)
+       uparfac_lin = 1.
+       tparfac_lin = sqrt(2.)
+       tprpfac_lin = sqrt(2.)
+       qparfac_lin = 2.
+       qprpfac_lin = 2.
 !       if (dfexist) read (unit=input_unit("dist_fn_knobs"), nml=dist_fn_knobs)
        if (dfexist) read (unit=in_file, nml=dist_fn_knobs)
        if (tpdriftknob == -9.9e9) tpdriftknob=driftknob
 
-       densfac_lin = 1.
-       uparfac_lin = 1.
-       tparfac_lin = 1.
-       tprpfac_lin = 1.
-       qparfac_lin = 1.
-       qprpfac_lin = 1.
 
 
        in_file = input_unit_exist("source_knobs", skexist)
