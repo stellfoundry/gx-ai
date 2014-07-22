@@ -35,7 +35,7 @@ contains
   !! (EGH - used for Trinity?)
 
 
-subroutine init_gs2 (filename, strlen, test_complex)
+subroutine init_gs2 (filename, strlen)
 
     use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
     use mp, only: init_mp, finish_mp, proc0, nproc, broadcast, scope, subprocs
@@ -76,7 +76,6 @@ subroutine init_gs2 (filename, strlen, test_complex)
     !integer, intent (in), optional :: mpi_comm, job_id
     integer, intent(in) :: strlen
     character (len=strlen), intent (in) :: filename
-    complex*8, dimension(3), intent (inout) :: test_complex
 
     real :: time_init(2) = 0., time_advance(2) = 0., time_finish(2) = 0.
     real :: time_total(2) = 0.
@@ -92,25 +91,6 @@ subroutine init_gs2 (filename, strlen, test_complex)
     character (500), target :: cbuff
 
     integer :: i 
-
-    complex, dimension (:), allocatable :: test_dcomplex
-    complex :: c
-
-    allocate(test_dcomplex(3))
-
-    c = cmplx(pi,-pi)
-
-    do i=1,3
-      test_dcomplex(i) = test_complex(i)
-      write(*,*) 'test_dcomplex_', i, '=', test_dcomplex(i)
-      test_dcomplex(i) = c * test_dcomplex(i)  
-      write(*,*) 'test_dcomplex_', i, '=', test_dcomplex(i)
-      test_complex(i) = c * test_complex(i) 
-      write(*,*) 'test_complex_', i, '=', test_complex(i)
-    end do    
-   
-
-    
 
 
     time_main_loop(1) = 0.
@@ -266,7 +246,7 @@ subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0,
        call getmoms_gryfx(dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0)
        ! does there need to be a barrier before we calculate moments?
        if ( .not. first_half_step ) then 
-          !  call loop_diagnostics (istep, exit)
+    !        call loop_diagnostics (istep, exit)
             call check_time_step (reset, exit)
             !call update_scan_parameter_value(istep, reset, exit)
             if (proc0) call time_message(.false.,time_advance,' Advance time step')

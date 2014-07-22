@@ -779,6 +779,45 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, float dtS
   fprintf(omegafile, "\n");
   fprintf(gammafile, "\n");
 }
+
+void kxkyTimeWrite(FILE* file, float* f, float time)
+{
+  if(time==0) {  
+    fprintf(file, "#\ttime(s)\t");
+    int col = 2;
+    for(int i=0; i<((Nx-1)/3+1); i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {      
+        if(!(i==0 && j==0)) {
+          fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+          col++;
+        }
+      }
+    }
+    for(int i=2*Nx/3+1; i<Nx; i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {
+        fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+        col++;
+      }
+    } 
+    fprintf(file, "\n");
+  }
+  fprintf(file, "\t%f", time);
+  for(int i=0; i<((Nx-1)/3+1); i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i;
+      fprintf(file, "\t\t\t%e\t", f[index]);
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i;
+      fprintf(file, "\t\t\t%e\t", f[index]);
+    }
+  }
+  fprintf(file, "\n");
+}
+
+
 //time history of flux
 void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
 		int converge_count, float time, specie* species)

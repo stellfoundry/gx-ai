@@ -1162,7 +1162,7 @@ contains
            a = ranf()-0.5
            b = ranf()-0.5
          do ig = -ntgrid, ntgrid
-             phi(ig,it,ik) = cmplx(a,b)
+             phi(ig,it,ik) = cmplx(1.,1.)
          end do
 !CMR,28/1/13: 
 ! clean_init debrutalises influence of chop_side on phi with linked bc

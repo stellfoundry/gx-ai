@@ -1322,7 +1322,7 @@ contains
       do it = 1,g_lo%ntheta0
         do ik = 1, g_lo%naky
           do is = 1,g_lo%nspec
-            index_gryfx = 1 + (ik-1) + g_lo%naky*(it-1) + g_lo%naky*g_lo%ntheta0*(iz-1) + 2*ntgrid*g_lo%naky*g_lo%ntheta0*(is-1)
+            index_gryfx = 1 + (ik-1) + g_lo%naky*((it-1)) + g_lo%naky*g_lo%ntheta0*(iz-1) + 2*ntgrid*g_lo%naky*g_lo%ntheta0*(is-1)
             total_gryfx(index_gryfx) = total_small(ig, it, ik, is)
           end do
         end do

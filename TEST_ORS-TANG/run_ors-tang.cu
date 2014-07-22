@@ -113,9 +113,11 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     
     
     //IMPORTANT: scale fields immediately after transform to k-space, not after transform back to real space at end of routine
-    scaler = (float) 2. / (Nx*Ny);
+    scaler = (float) 1. / (Nx*Ny);
     scale<<<dimGrid,dimBlock>>>(fC_d, fC_d, scaler);
     scale<<<dimGrid,dimBlock>>>(gC_d, gC_d, scaler);
+    scale_ky_neq_0<<<dimGrid,dimBlock>>>(fC_d, 2.);
+    scale_ky_neq_0<<<dimGrid,dimBlock>>>(gC_d, 2.);
     
  
     if(!QUIET) {

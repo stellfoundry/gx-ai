@@ -214,7 +214,7 @@ __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g)
   return cuCdivf(f,g);
 }
 
-__device__ int ikx(int idx) {
+__device__ int get_ikx(int idx) {
   if( idx<nx/2+1 )
     return idx;
   else

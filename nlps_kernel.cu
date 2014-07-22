@@ -72,10 +72,11 @@ __global__ void mask(cuComplex* f)
    if(idy<(ny/2+1) && idx<nx && idz<nz) {
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
     
+    int ikx = get_ikx(idx);
     
-    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*((nx-1)/3)+1 ) ) {
-      f[index].x = 0;
-      f[index].y = 0;
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
+      f[index].x = 0.;
+      f[index].y = 0.;
     }  
     
     //also zero the kx=ky=0 mode
@@ -90,8 +91,9 @@ __global__ void mask(cuComplex* f)
     if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
     
+    int ikx = get_ikx(idx);
     
-     if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*nx/3+1 ) ) {
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
        f[index].x = 0;
        f[index].y = 0;
      }  
@@ -120,7 +122,9 @@ __global__ void mask(float* f)
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
     
     
-    if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*((nx-1)/3)+1 ) ) {
+    int ikx = get_ikx(idx);
+    
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
       f[index] = 0;
     }  
     
@@ -135,8 +139,9 @@ __global__ void mask(float* f)
     if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
     
+    int ikx = get_ikx(idx);
     
-     if( idy>(ny-1)/3 || ( idx>(nx-1)/3 && idx<2*nx/3+1 ) ) {
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
        f[index] = 0;
      }  
      //also zero the kx=ky=0 mode

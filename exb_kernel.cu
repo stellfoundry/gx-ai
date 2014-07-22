@@ -31,12 +31,12 @@ __global__ void shiftField(cuComplex* field, int* jump)
     if(idx<nx && idy<(ny/2+1) && idz<nz) {
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
-      int ikx_shifted = ikx(idx) - jump[idy];
+      int ikx_shifted = get_ikx(idx) - jump[idy];
       
       //if field is sheared beyond resolution or mask, set field to zero
       if( ikx_shifted > (nx-1)/3 || ikx_shifted < -(nx-1)/3 ) {
-        field[index].x = 0;
-	field[index].y = 0;
+        field[index].x = 0.;
+	field[index].y = 0.;
       }
       //otherwise 	
       else {
@@ -59,7 +59,7 @@ __global__ void shiftField(cuComplex* field, int* jump)
         unsigned int IDZ = idz+zthreads*i;
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
-	int ikx_shifted = ikx(idx) - jump[idy];
+	int ikx_shifted = get_ikx(idx) - jump[idy];
 
 	//if field is sheared beyond resolution or mask, set field to zero
 	if( ikx_shifted > (nx-1)/3 || ikx_shifted < -(nx-1)/3 ) {

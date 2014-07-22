@@ -403,8 +403,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
       multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmag, 1, 1, Nz, -1);
     }  
     if(DEBUG) getError("before cudaMemset");  
-    //cudaMemset(jump, 0, sizeof(float)*Ny);
-    //cudaMemset(kx_shift,0,sizeof(float)*Ny);
+    cudaMemset(jump, 0, sizeof(float)*Ny);
+    cudaMemset(kx_shift,0,sizeof(float)*Ny);
     if(DEBUG) getError("after cudaMemset"); 
   
     //for flux calculations
@@ -644,7 +644,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   	      //else amp = 1.e-5;
   
   	      if(i==0) {
-  	      	samp = 0.;//init_amp;//*1.e-8;  //initialize zonal flows at much
+  	      	samp = init_amp;//init_amp;//*1.e-8;  //initialize zonal flows at much
   					 //smaller amplitude
   	      }
   	      else {
@@ -749,11 +749,6 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   
       }
       
-      if(init == DENS) {
-        // Solve for initial phi
-        // assumes the initial conditions have been moved to the device
-        qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
-      }
    
       if(DEBUG) getError("after initial qneut");
       
@@ -805,12 +800,11 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   
 
   
-    printf("stopfile = %s\n", stopfileName);
     
     //time histories (.time)
     strcpy(fluxfileName, out_stem);
     strcat(fluxfileName, "flux.time");
-    printf("flux file is %s", fluxfileName); 
+    printf("flux file is %s\n", fluxfileName); 
   
    
     strcpy(omegafileName, out_stem);
@@ -822,6 +816,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     strcpy(phifileName, out_stem);
     strcat(phifileName, "phi.time");
     
+    printf("phi file is %s\n", phifileName);
+
     if(!RESTART) {
       omegafile = fopen(omegafileName, "w+");
       gammafile = fopen(gammafileName, "w+");  
@@ -853,7 +849,9 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     for(int c=0; c<nClasses; c++) {
       cudaEventCreate(&end_of_zderiv[c]); 
     }
-  
+
+    //cudaEventCreate(&end_of_zderiv);  
+
     cudaStreamCreate(&copystream);
 
     //int copystream = 0;
@@ -978,6 +976,14 @@ if(iproc==0) {
         replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar[ION], qpar_fixed, 1, 0, S_fixed);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp[ION], qprp_fixed, 1, 0, S_fixed);
       }
+
+      if(init == DENS) {
+        // Solve for initial phi
+        // assumes the initial conditions have been moved to the device
+        qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
+      }
+
+
   if(DEBUG) getError("about to start timestep loop");
     fieldWrite(Dens[ION], field_h, "dens0.field", filename); 
     fieldWrite(Upar[ION], field_h, "upar0.field", filename); 
@@ -1011,7 +1017,7 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
       
   
       //EXBshear bug fixed, need to check if correct
-      //ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
+      ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
       
       
       //if(DEBUG) getError("after exb");
@@ -1081,10 +1087,18 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, first_half_flag);
+  	       tmp,tmp, first_half_flag,
+	       field_h, counter);
   
           //Moment1 = Moment + (dt/2)*NL(Moment)
   
+
+          if(NLPM) {
+              filterNLPM(Phi, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+            		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
+            	    
+          }  
+
 #ifdef GS2_zonal
   
           //copy NL(t)_ky=0 from D2H
@@ -1103,7 +1117,7 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
             cudaEventRecord(D2H, copystream);
           }
 
-          fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
+          if(counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
   
 #endif
   
@@ -1175,13 +1189,6 @@ if(DEBUG && counter==0) getError("after linear step");
       reality<<<dimGrid,dimBlock>>>(Phi1);
   
       
-      if(!LINEAR && NLPM) {
-        for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-  			tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
-  		    
-        }  
-      }  
       if(HYPER) {
         if(isotropic_shear) {
           for(int s=0; s<nSpecies; s++) {
@@ -1299,10 +1306,16 @@ if(iproc==0) {
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, first_half_flag);
+  	       tmp,tmp, first_half_flag,
+	       field_h, counter);
   
           //Moment = Moment + dt * NL(Moment1)
   
+          if(NLPM) {
+              filterNLPM(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+            		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
+            	    
+          } 
   #ifdef GS2_zonal
   
           //copy NL(t+dt/2)_ky=0 from D2H
@@ -1370,13 +1383,6 @@ if(iproc==0) {
       //f = f(t+dt)
   
           
-      if(!LINEAR && NLPM) {
-        for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-  			tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
-  		    
-        }  
-      } 
       
       if(HYPER) {
         if(isotropic_shear) {
@@ -1548,6 +1554,10 @@ if(iproc==0) {
   
       //calculate tmpXY = Phi**2(kx,ky)
       volflux(Phi,Phi,tmp,tmpXY);
+      if(!LINEAR) {
+        cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+        kxkyTimeWrite(phifile, tmpXY_h, runtime);
+      }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
       kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
@@ -1666,7 +1676,8 @@ if(iproc==0) {
       if(write_omega) {
         if (counter%nwrite==0 || stopcount==nstop-1 || counter==nSteps-1) {
   	printf("ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
-  	for(int i=0; i<(Nx-1)/3+1; i++) {
+  	//for(int i=0; i<1; i++) {
+        for(int i=0; i<((Nx-1)/3+1); i++) {
   	  for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
   	    if(index!=0) {
@@ -1678,7 +1689,8 @@ if(iproc==0) {
   	  }
   	  printf("\n");
   	}
-  	for(int i=2*Nx/3+1; i<Nx; i++) {
+  	//for(int i=2*Nx/3+1; i<2*Nx/3+1; i++) {
+        for(int i=2*Nx/3+1; i<Nx; i++) {
             for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
   	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/dtSum, omegaAvg_h[index].y/dtSum);
@@ -1870,14 +1882,12 @@ if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
       cudaFree(Tprp[s]), cudaFree(Tprp1[s]);
       cudaFree(Qpar[s]), cudaFree(Qpar1[s]);
       cudaFree(Qprp[s]), cudaFree(Qprp1[s]);
-#ifdef GS2_zonal
       cudaFree(dens_ky0_d[s]);
       cudaFree(upar_ky0_d[s]);
       cudaFree(tpar_ky0_d[s]);
       cudaFree(tprp_ky0_d[s]);
       cudaFree(qpar_ky0_d[s]);
       cudaFree(qprp_ky0_d[s]);
-#endif
     }  
     cudaFree(Phi);
     cudaFree(Phi1);
@@ -1938,6 +1948,7 @@ if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
     //cudaProfilerStop();
 #ifdef GS2_zonal
   			} //end of iproc if  
+#endif
     cudaFreeHost(dens_ky0_h);
     cudaFreeHost(upar_ky0_h);
     cudaFreeHost(tpar_ky0_h);
@@ -1945,7 +1956,6 @@ if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
     cudaFreeHost(qpar_ky0_h);
     cudaFreeHost(qprp_ky0_h);
     cudaFreeHost(phi_ky0_h);
-#endif
 }    
     
     

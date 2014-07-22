@@ -258,7 +258,7 @@ __global__ void fixFFT(float* f2)
       if(idy==0) f[index] = .5*f[index];
       */
       
-      if(idy==0) f2[index] = .25*f2[index];
+      if(idy==0) f2[index] = f2[index];
       else f2[index] = .5*f2[index];
     }
   }
@@ -276,7 +276,7 @@ __global__ void fixFFT(float* f2)
           f[index] = .5*f[index];
         }
 	*/
-	if(idy==0) f2[index] = .25*f2[index];
+	if(idy==0) f2[index] = f2[index];
         else f2[index] = .5*f2[index];
       }
     }

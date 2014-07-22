@@ -612,7 +612,8 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
               float* dt_full, specie s,
 	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
 	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
-	      cuComplex *phi_tmp, cuComplex *nlps_tmp, int first_half_step) 
+	      cuComplex *phi_tmp, cuComplex *nlps_tmp, int first_half_step,
+              cuComplex *field_h, int counter) 
 {
 
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -648,6 +649,7 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (dens_field, nlps_tmp, 1);  
     // +{phi_flr,Tprp}
 
+    if(first_half_step && counter==0) fieldWrite(dens_field, field_h, "NLdens_t0.field", filename);
 
 #ifdef GS2_zonal
       

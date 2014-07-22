@@ -44,7 +44,7 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -use_fast_math 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -use_fast_math -D ORSTANG
 NVCCINCS  = 
 NVCCLIBS  = -lcufft -lcudart
 

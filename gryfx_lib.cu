@@ -54,7 +54,7 @@
 
 #ifdef GS2_zonal
 //extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength);
-extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength, cuComplex* test);
+extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength);
 extern "C" void gs2_main_mp_finish_gs2_();
 extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
 #endif
@@ -68,23 +68,13 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
 #ifdef GS2_zonal
 
-  cuComplex* test_complex;
-  cudaMallocHost((void**) &test_complex, sizeof(cuComplex)*3); 
-
-  for(int i=0; i<3; i++) {
-    test_complex[i].x = i+.2569264702485;
-    test_complex[i].y = -i-2*.2569264702485;
-  }
 
 
   MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
 
   int length = strlen(namelistFile);
-  gs2_main_mp_init_gs2_(namelistFile, &length, test_complex);
+  gs2_main_mp_init_gs2_(namelistFile, &length);
 
-  for(int i=0; i<3; i++) {
-    printf("test_complex %d = %f + i* %f\n", i, test_complex[i].x, test_complex[i].y);
-  }
 
   //iproc = *mp_mp_iproc_;
 

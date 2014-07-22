@@ -37,9 +37,10 @@ void energy(float *totEnergy_h, float *kinEnergy_h, float *magEnergy_h,
     multKPerp<<<dimGrid,dimBlock>>> (Phi2, Phi2, kPerp2,-1);
     //kPhi = (kperp**2) * (phi**2)
     
+    scaleReal<<<dimGrid,dimBlock>>>(Phi2, Phi2, (float) .5, Nx, Ny/2+1, Nz);
+    //Phi2 = .5*kperp**2*phi**2
     
-    
-    // integrate kPhi to find kinetic energy
+    // integrate to find kinetic energy
     *kinEnergy_h = sumReduc(Phi2, size, false);
     
      
@@ -52,6 +53,8 @@ void energy(float *totEnergy_h, float *kinEnergy_h, float *magEnergy_h,
     multKPerp<<<dimGrid,dimBlock>>> (Phi2, Phi2, kPerp2,-1);
     //kA = (kperp**2) * (A**2)
             
+    scaleReal<<<dimGrid,dimBlock>>>(Phi2, Phi2, (float) .5, Nx, Ny/2+1, Nz);
+
     // integrate kA to find magnetic energy
     *magEnergy_h = sumReduc(Phi2, size, false);
     

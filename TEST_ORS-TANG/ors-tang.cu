@@ -37,7 +37,6 @@ float *kx_h, *ky_h;
 float kxfac = 1;
 float gradpar = 1;
 
-
 //plans
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan;
 
@@ -211,6 +210,8 @@ int main(int argc, char* argv[])
      	   f[index] = 2*(-cos(x[j]) - cos(y[i])) + 2*(cos(y[i]) + .5*cos(2*x[j]));
    	   g[index] = 2*(-cos(x[j]) - cos(y[i])) - 2*(cos(y[i]) + .5*cos(2*x[j]));  
       	        		   
+           //f[index] = f[index]/2.;
+           //g[index] = g[index]/2.;
     	  }
    	 }
    	} 

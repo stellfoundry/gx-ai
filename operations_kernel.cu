@@ -1683,4 +1683,16 @@ __global__ void set_fixed_amplitude(cuComplex* phi_fixed, cuComplex* dens_fixed,
   }
 }
 
+__global__ void scale_ky_neq_0(cuComplex* f, float scaler) 
+{
 
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idy>0 && idy<(ny/2+1) && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*nx*idz;
+    f[index] = f[index]*scaler;
+  }
+
+}
