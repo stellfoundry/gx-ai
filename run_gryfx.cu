@@ -799,8 +799,6 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     }
   
 
-  
-    
     //time histories (.time)
     strcpy(fluxfileName, out_stem);
     strcat(fluxfileName, "flux.time");
