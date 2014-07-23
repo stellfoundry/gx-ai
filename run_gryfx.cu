@@ -485,7 +485,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     //these are the device arrays... cannot be global because jagged!
     //also set up a stream for each class.
     zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
-    //end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
+    end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
     dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
     dimBlockCovering.x = 8;
     dimBlockCovering.y = 8;
@@ -844,13 +844,13 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaEventCreate(&nonlin_halfstep);
     cudaEventCreate(&H2D);
     cudaEventCreateWithFlags(&D2H, cudaEventBlockingSync);
-    //for(int c=0; c<nClasses; c++) {
-    //  cudaEventCreate(&end_of_zderiv[c]); 
-    //}
+    for(int c=0; c<nClasses; c++) {
+      cudaEventCreate(&end_of_zderiv[c]); 
+    }
 
-    cudaEventCreate(&end_of_zderiv);  
+    //cudaEventCreate(&end_of_zderiv);  
 
-    //cudaStreamCreate(&copystream);
+    cudaStreamCreate(&copystream);
 
     //int copystream = 0;
   

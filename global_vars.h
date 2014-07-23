@@ -181,8 +181,8 @@ cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan
 //streams and events
 cudaStream_t* zstreams;
 cudaStream_t copystream;
-//cudaEvent_t* end_of_zderiv;
-cudaEvent_t end_of_zderiv;
+cudaEvent_t* end_of_zderiv;
+//cudaEvent_t end_of_zderiv;
 
 bool DEBUG = false;
 
