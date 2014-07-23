@@ -173,7 +173,7 @@ float *kx_h, *ky_h, *kz_h;
 
 cuComplex *field_h;
 
-char filename[80];
+char filename[200];
 
 //plans
 cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan, XYplanC2R;
@@ -181,7 +181,8 @@ cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC2R, ZDerivplan
 //streams and events
 cudaStream_t* zstreams;
 cudaStream_t copystream;
-cudaEvent_t* end_of_zderiv;
+//cudaEvent_t* end_of_zderiv;
+cudaEvent_t end_of_zderiv;
 
 bool DEBUG = false;
 

@@ -143,7 +143,7 @@ void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx,
 
 void fieldWriteXY(float* f_d, char* fieldname, float dt)
 {
-  char filename[100];  
+  char filename[200];  
   sprintf(filename, "fields/%s/%s%g",fieldname,fieldname,dt);
   FILE* out = fopen(filename,"w+");
   float *f_h;
@@ -239,7 +239,7 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
 void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h, int C)
 { 
   for(int c=C; c<C+1; c++) {
-    char filename[100];  
+    char filename[200];  
     sprintf(filename, "fields/%s_covering/%s_covering%g_c%d",fieldname,fieldname,dt,c);
     FILE* out = fopen(filename,"w+"); 
     cuComplex *g_h;
@@ -1180,7 +1180,7 @@ bool stabilityCheck(int* Stable, int stableMax)
 
 void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
 {
-  char filename[100];
+  char filename[200];
   sprintf(filename,"./scan/outputs/stability%g_f%g_t%g", dt, species[0].fprim, species[0].tprim);
   FILE* ofile = fopen(filename,"w+");
   fprintf(ofile, "Nx = %d  Ny = %d  Nz = %d  Boxsize = 2pi*(%g,%g,%g)\n\n", Nx, Ny, Nz, X0, Y0, Zp); 
@@ -1498,7 +1498,7 @@ void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tp
         float* Phi2, float* flux1_phase, float* flux2_phase, float* Dens_phase, float* Tpar_phase, float* Tprp_phase,
         float Phi2_sum, float flux1_phase_sum, float flux2_phase_sum, float Dens_phase_sum, float Tpar_phase_sum, float Tprp_phase_sum)
 {
-  char filename[80];  
+  char filename[200];  
 
   
   //scale<<<dimGrid,dimBlock>>>(omegaAvg, omega_sum, (float) 1./dtSum, Nx, Ny, 1

@@ -8,7 +8,7 @@
 #include "cufft.h"
 #include "cuda_profiler_api.h"
 #include "libgen.h"
-#include "mpi.h"
+//#include "mpi.h"
 #include "global_vars.h"
 #include "gryfx_lib.h"
 
@@ -320,7 +320,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 					}
 #endif
 
-  char out_dir_path[100];
+  char out_dir_path[200];
   if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
     if( strcmp(scan_type, "default") == 0) {
@@ -460,7 +460,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       sprintf(out_stem, "scan/tprim_nlpm_scan/tprim%g/nlpm%g/tprim%g_nlpm%g_%d.",species[ION].tprim, dnlpm, species[ION].tprim, dnlpm, scan_number);
 
       sprintf(out_dir_path, "scan/tprim_nlpm_scan/tprim%g/nlpm%g", species[ION].tprim, dnlpm);
-      char out_dir_subpath[100];
+      char out_dir_subpath[200];
       sprintf(out_dir_subpath, "scan/tprim_nlpm_scan/tprim%g", species[ION].tprim);
  
       // check to make sure that the directory 
@@ -528,7 +528,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   //make an input file of form outstem.in if doesn't already exist
   FILE* input;
   FILE* namelist;
-  char inputFile[100];
+  char inputFile[200];
   strcpy(inputFile, out_stem);
   strcat(inputFile, "in");
 
@@ -557,13 +557,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   FILE *phifile;
   
   char* ifileName;
-  char omegafileName[100];
-  char gammafileName[100];
-  char energyfileName[100];
+  char omegafileName[200];
+  char gammafileName[200];
+  char energyfileName[200];
   
-  char phikyfileName[100];
-  char phikxfileName[100];
-  char phifileName[100];
+  char phikyfileName[200];
+  char phikxfileName[200];
+  char phifileName[200];
     
  
   ifileName = "./inputs/eik.out"; 
@@ -768,7 +768,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(DEBUG) getError("gryfx.cu, before run");
   
   
-  char outfileName[60];
+  char outfileName[200];
   strcpy(outfileName, out_stem);
   strcat(outfileName, "out");
   outfile = fopen(outfileName, "w+");

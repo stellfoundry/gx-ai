@@ -62,7 +62,7 @@ __global__ void NLPSderivY(cuComplex* fdy, cuComplex* f, float* ky)
 __global__ void mask(cuComplex* f) 
 {
   unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
+  int idx = get_idx();
   unsigned int idz = get_idz();
   
   //nx_unmasked = 2*((nx-1)/3)+1
@@ -111,7 +111,7 @@ __global__ void mask(cuComplex* f)
 __global__ void mask(float* f) 
 {
   unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
+  int idx = get_idx();
   unsigned int idz = get_idz();
   
   //nx_unmasked = 2*((nx-1)/3)+1
@@ -124,13 +124,13 @@ __global__ void mask(float* f)
     
     int ikx = get_ikx(idx);
     
-    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
-      f[index] = 0;
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx< -(nx-1)/3) {
+      f[index] = 0.;
     }  
     
     //also zero the kx=ky=0 mode
     if( idx==0 && idy==0 ) {
-      f[index] = 0;
+      f[index] = 0.;
     }  
    }
   }

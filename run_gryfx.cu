@@ -14,7 +14,7 @@ extern "C" void mp_mp_broadcast_integer_(int* a);
 inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
 
-    char stopfileName[80];
+    char stopfileName[200];
     FILE *fluxfile;
     char fluxfileName[200];
     FILE *omegafile;
@@ -76,7 +76,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cuComplex *phi_fixed, *dens_fixed, *upar_fixed, *tpar_fixed, *tprp_fixed, *qpar_fixed, *qprp_fixed;
     float S_fixed = 1.;
 
-    char filename[80];
+    char filename[200];
   
     int exit_flag = 0;  
   
@@ -403,8 +403,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
       multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmag, 1, 1, Nz, -1);
     }  
     if(DEBUG) getError("before cudaMemset");  
-    cudaMemset(jump, 0, sizeof(float)*Ny);
-    cudaMemset(kx_shift,0,sizeof(float)*Ny);
+    //cudaMemset(jump, 0, sizeof(float)*Ny);
+    //cudaMemset(kx_shift,0,sizeof(float)*Ny);
     if(DEBUG) getError("after cudaMemset"); 
   
     //for flux calculations
@@ -485,7 +485,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     //these are the device arrays... cannot be global because jagged!
     //also set up a stream for each class.
     zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
-    end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
+    //end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
     dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
     dimBlockCovering.x = 8;
     dimBlockCovering.y = 8;
@@ -844,13 +844,13 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaEventCreate(&nonlin_halfstep);
     cudaEventCreate(&H2D);
     cudaEventCreateWithFlags(&D2H, cudaEventBlockingSync);
-    for(int c=0; c<nClasses; c++) {
-      cudaEventCreate(&end_of_zderiv[c]); 
-    }
+    //for(int c=0; c<nClasses; c++) {
+    //  cudaEventCreate(&end_of_zderiv[c]); 
+    //}
 
-    //cudaEventCreate(&end_of_zderiv);  
+    cudaEventCreate(&end_of_zderiv);  
 
-    cudaStreamCreate(&copystream);
+    //cudaStreamCreate(&copystream);
 
     //int copystream = 0;
   
