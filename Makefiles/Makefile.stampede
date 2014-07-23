@@ -95,7 +95,13 @@ gryfx_lib.a: gryfx_lib.o
 	ar cr gryfx_lib.a gryfx_lib.o
 	ranlib gryfx_lib.a
 
+gryfx_hybrid_lib.a: gryfx_hybrid_lib.o 
+	ar cr gryfx_hybrid_lib.a gryfx_hybrid_lib.o
+	ranlib gryfx_hybrid_lib.a
+
 gryfx_lib.o: gryfx_lib.h $(CU_DEPS)
+
+gryfx_hybrid_lib.o: gryfx_lib.h $(CU_DEPS)
 
 gryfx_lib_dumb.o: gryfx_lib.h
 
@@ -103,15 +109,21 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 	ar cr $@ $<
 	ranlib $@
 
-
 # main program
 $(TARGET): gryfx.o gryfx_lib.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 
+
+gryfx_hybrid: gryfx_hybrid.o gryfx_hybrid_lib.a
+	$(NVCC)  -o $@ $(NVCCFLAGS) -D GS2_zonal -I ${GS2} $(NVCCINCS) $(NVCCLIBS) $< gryfx_hybrid_lib.a gs2_cuda/libgs2.a ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 
+    
 
 gryfx_dumb: gryfx.o gryfx_lib_dumb.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCLIBS) $< gryfx_lib_dumb.a ${GEO_LIBS} ${FORTRAN_LIBS} 
 
 gryfx.o: gryfx_lib.h
+
+gryfx_hybrid.o: 
+	$(NVCC) -c $(NVCCFLAGS) -D GS2_zonal -I ${GS2} $(NVCCINCS) $< gryfx.cu
 
 test_make:
 	@echo TARGET=    $(TARGET)

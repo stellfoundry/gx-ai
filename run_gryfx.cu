@@ -644,7 +644,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   	      //else amp = 1.e-5;
   
   	      if(i==0) {
-  	      	samp = init_amp;//init_amp;//*1.e-8;  //initialize zonal flows at much
+  	      	samp = 0.;//init_amp;//*1.e-8;  //initialize zonal flows at much
   					 //smaller amplitude
   	      }
   	      else {
@@ -1091,11 +1091,6 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
           //Moment1 = Moment + (dt/2)*NL(Moment)
   
 
-          if(NLPM) {
-              filterNLPM(Phi, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-            		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
-            	    
-          }  
 
 #ifdef GS2_zonal
   
@@ -1186,6 +1181,12 @@ if(DEBUG && counter==0) getError("after linear step");
       mask<<<dimGrid,dimBlock>>>(Phi1);
       reality<<<dimGrid,dimBlock>>>(Phi1);
   
+      if(!LINEAR && NLPM) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
+        }	    
+      }  
       
       if(HYPER) {
         if(isotropic_shear) {
@@ -1309,11 +1310,6 @@ if(iproc==0) {
   
           //Moment = Moment + dt * NL(Moment1)
   
-          if(NLPM) {
-              filterNLPM(Phi1, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-            		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
-            	    
-          } 
   #ifdef GS2_zonal
   
           //copy NL(t+dt/2)_ky=0 from D2H
@@ -1367,7 +1363,7 @@ if(iproc==0) {
       
 
         if(!LINEAR && !secondary_test && !write_omega) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
-        else qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d); //don't override Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
+        else qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
       
       if(secondary_test && !LINEAR) {
         replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi1, phi_fixed, 1, 0, S_fixed);
@@ -1380,6 +1376,12 @@ if(iproc==0) {
       }
       //f = f(t+dt)
   
+      if(!LINEAR && NLPM) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
+        }	    
+      } 
           
       
       if(HYPER) {
@@ -1552,10 +1554,10 @@ if(iproc==0) {
   
       //calculate tmpXY = Phi**2(kx,ky)
       volflux(Phi,Phi,tmp,tmpXY);
-      if(!LINEAR) {
-        cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
-        kxkyTimeWrite(phifile, tmpXY_h, runtime);
-      }
+      //if(!LINEAR) {
+      //  cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+      //  kxkyTimeWrite(phifile, tmpXY_h, runtime);
+      //}
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
       kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);

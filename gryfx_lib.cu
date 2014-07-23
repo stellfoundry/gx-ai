@@ -8,7 +8,7 @@
 #include "cufft.h"
 #include "cuda_profiler_api.h"
 #include "libgen.h"
-//#include "mpi.h"
+#include "mpi.h"
 #include "global_vars.h"
 #include "gryfx_lib.h"
 
