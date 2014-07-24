@@ -281,6 +281,10 @@ contains
           if(iostat /= 0) write(6,*) 'Error ',iostat,'reading species parameters'
           close (unit=unit, iostat=iostat)
           if(iostat /= 0) write(6,*) 'Error ',iostat,'closing species parameters namelist'
+
+          !convert from GryfX units to GS2 units
+          vnewk=vnewk/sqrt(2.)
+
           spec(is)%z = z
           spec(is)%mass = mass
           spec(is)%dens = dens
