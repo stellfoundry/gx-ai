@@ -133,6 +133,7 @@ float dnlpm = 1.;
 int inlpm = 2;
 float low_cutoff = .01;
 float high_cutoff = .1;
+float dnlpm_max = 1.;
 char* nlpm_option = "constant";
 
 int ivarenna = 1;

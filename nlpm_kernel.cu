@@ -84,13 +84,13 @@ __global__ void get_kx1_rms(float* Phi_zf_kx1, float* Phi2_zonal)
   *Phi_zf_kx1 = sqrt(Phi2_zonal[ikx1]);
 }
 
-__global__ void get_Dnlpm(float* Dnlpm, float Phi_zf_kx1, float low_cutoff, float high_cutoff, float nu)
+__global__ void get_Dnlpm(float* Dnlpm, float Phi_zf_kx1, float low_cutoff, float high_cutoff, float nu, float dnlpm_max)
 {
   //float low_cutoff= .04; //smallest value of phi_zf that D_nlpm is an effect
   //float high_cutoff = .08; //past this value D=1
   float d = (Phi_zf_kx1 - low_cutoff)/(high_cutoff-low_cutoff);
   if(d<0) d=0.; // 0 < D_nlpm < 1
-  if(d>1) d=1.;
+  if(d>dnlpm_max) d=dnlpm_max;
   *Dnlpm = d;
 }
 

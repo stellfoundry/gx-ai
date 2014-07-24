@@ -225,6 +225,7 @@ void read_namelist(char* filename)
   
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &low_cutoff)) low_cutoff = .01;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = .1;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &dnlpm_max)) dnlpm_max = 1.;
 
   // normalize cutoffs by Y0
   low_cutoff = (float) low_cutoff / Y0;
