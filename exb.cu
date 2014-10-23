@@ -1,4 +1,4 @@
-void ExBshear(cuComplex *Phi, cuComplex **Dens, cuComplex **Upar, cuComplex **Tpar,
+inline void ExBshear(cuComplex *Phi, cuComplex **Dens, cuComplex **Upar, cuComplex **Tpar,
          cuComplex **Tprp, cuComplex **Qpar, cuComplex **Qprp,
 	 float* kx_shift, int* jump, float avgdt)
 {

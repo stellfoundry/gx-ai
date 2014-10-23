@@ -1038,6 +1038,8 @@ if (debug) write(6,*) "init_theta_grid_eik: call read_parameters, ntheta=",nthet
        call init_theta (ntheta)
     endif
 !CMRend
+
+!Here theta is a uniform grid from -pi to pi
     nperiod_geo = nperiod 
     rhoc_save = rhoc
     if (itor == 0) rhoc = 1.5*delrho
@@ -1286,12 +1288,12 @@ contains
 
         call get_unused_unit (iunit)
         open (unit=iunit, file=gridout_file, status="old", err=100)
-        read (unit=iunit, fmt="(a)") line
-        read (unit=iunit, fmt=*) nbset
-        read (unit=iunit, fmt="(a)") line
-        do i = 1, nbset
-           read (unit=iunit, fmt="(a)") line
-        end do
+    !    read (unit=iunit, fmt="(a)") line
+    !    read (unit=iunit, fmt=*) nbset
+    !    read (unit=iunit, fmt="(a)") line
+    !    do i = 1, nbset
+    !       read (unit=iunit, fmt="(a)") line
+    !    end do
 
         read (unit=iunit, fmt="(a)") line
         read (unit=iunit, fmt=*) ntgrid, nperiod, ntheta, &
@@ -1362,16 +1364,18 @@ contains
     call get_unused_unit (unit)
     open (unit=unit, file=gridout_file, status="old")
 
-    read (unit=unit, fmt="(a)") line
-    read (unit=unit, fmt=*) nbset
-    read (unit=unit, fmt="(a)") line
-    do i = 1, nbset
-       read (unit=unit, fmt="(a)") line
-    end do
+    !read (unit=unit, fmt="(a)") line
+    !read (unit=unit, fmt=*) nbset
+    !read (unit=unit, fmt="(a)") line
+    !do i = 1, nbset
+    !   read (unit=unit, fmt="(a)") line
+    !end do
 
     read (unit=unit, fmt="(a)") line
     read (unit=unit, fmt=*) ntgrid, nperiod, ntheta, &
          drhodpsi_input, rmaj, shat_input, kxfac_input, qval_input
+
+    nbset = ntheta/2+1 ! upper bound
 
     close (unit=unit)
   end subroutine file_get_sizes
@@ -1382,6 +1386,7 @@ contains
        Rplot, Zplot, Rprime, Zprime, aplot, aprime, &
        shat, drhodpsi, kxfac, qval, gb_to_cv, Bpol)
     use file_utils, only: get_unused_unit
+    use theta_grid_gridgen, only: theta_grid_gridgen_init, gridgen_get_grids
     implicit none
     integer, intent (in) :: nperiod
     integer, intent (in out) :: ntheta, ntgrid, nbset
@@ -1404,13 +1409,13 @@ contains
 
     call get_unused_unit (unit)
     open (unit=unit, file=gridout_file, status="old")
-    read (unit=unit, fmt="(a)") line
-    read (unit=unit, fmt="(a)") line
-    read (unit=unit, fmt="(a)") line
-    do i = 1, nbset
-       read (unit=unit, fmt=*) bset(i) ! actually alambda
-    end do
-    bset = 1.0/bset ! switch alambda to bset
+    !read (unit=unit, fmt="(a)") line
+    !read (unit=unit, fmt="(a)") line
+    !read (unit=unit, fmt="(a)") line
+    !do i = 1, nbset
+    !   read (unit=unit, fmt=*) bset(i) ! actually alambda
+    !end do
+    !bset = 1.0/bset ! switch alambda to bset
 
     read (unit=unit, fmt="(a)") line
     read (unit=unit, fmt="(a)") line
@@ -1447,26 +1452,26 @@ contains
        end do
     end if
 
-    if (.not. no_geo_info) then
+    !if (.not. no_geo_info) then
 
-       read (unit=unit, fmt="(a)",err=100) line
-       do i = -ntgrid, ntgrid
-          read (unit=unit, fmt=*, err=100) Rplot(i), Rprime(i)
-       end do
+    !   read (unit=unit, fmt="(a)",err=100) line
+    !   do i = -ntgrid, ntgrid
+    !      read (unit=unit, fmt=*, err=100) Rplot(i), Rprime(i)
+    !   end do
 
-       read (unit=unit, fmt="(a)",err=100) line
-       do i = -ntgrid, ntgrid
-          read (unit=unit, fmt=*, err=100) Zplot(i), Zprime(i)
-       end do
+    !   read (unit=unit, fmt="(a)",err=100) line
+    !   do i = -ntgrid, ntgrid
+    !      read (unit=unit, fmt=*, err=100) Zplot(i), Zprime(i)
+    !   end do
 
-       read (unit=unit, fmt="(a)",err=100) line
-       do i = -ntgrid, ntgrid
-          read (unit=unit, fmt=*, err=100) aplot(i), aprime(i)
-       end do
+    !   read (unit=unit, fmt="(a)",err=100) line
+    !   do i = -ntgrid, ntgrid
+    !      read (unit=unit, fmt=*, err=100) aplot(i), aprime(i)
+    !   end do
 
-       close (unit=unit)    
-       return
-    end if
+    !   close (unit=unit)    
+    !   return
+    !end if
 
     ! TMP UNTIL FIGURE OUT HOW TO WORK WITH FILE -- MAB
     ! set coriolis drift to zero
@@ -1480,6 +1485,13 @@ contains
     aplot = 1. ; aprime = 0.
 
     close (unit=unit)
+
+       call theta_grid_gridgen_init
+       call gridgen_get_grids (nperiod, ntheta, ntgrid, nbset, &
+            theta, bset, bmag, &
+            gradpar, gbdrift, gbdrift0, cvdrift, cvdrift0, cdrift, cdrift0, &
+            gbdrift_th, cvdrift_th, gds2, gds21, gds22, gds23, gds24, gds24_noq, grho, &
+            Rplot, Zplot, Rprime, Zprime, aplot, aprime, Bpol)
 
   end subroutine file_get_grids
 
@@ -1607,6 +1619,7 @@ if (debug) write(6,*) "init_theta_grid: call get_grids"
 if (debug) write(6,*) "init_theta_grid: call finish_init"
        call finish_init
     end if
+if (debug) write(6,*) "init_theta_grid: call broadcast_results"
     call broadcast_results
 
   end subroutine init_theta_grid
@@ -1805,6 +1818,8 @@ if (debug) write(6,*) "init_theta_grid: call finish_init"
     ! in case ntgrid changes after gridgen
     if (ntgrid*2+1 /= size(theta)) then
 
+       write(6,*) "ntgrid*2+1 =", ntgrid*2+1, "size(theta) =", size(theta)
+
        eik_save = theta(-ntgrid:ntgrid); deallocate (theta)
        allocate (theta(-ntgrid:ntgrid)); theta = eik_save
 
@@ -1904,6 +1919,7 @@ if (debug) write(6,*) "init_theta_grid: call finish_init"
     use theta_grid_file, only: file_get_sizes, init_theta_grid_file
     use theta_grid_file, only: ntheta_file=>ntheta, nperiod_file=>nperiod
     use theta_grid_file, only: nbset_file=>nbset
+    use mp, only: iproc
     implicit none
     logical:: debug=.false.
 if (debug) write(6,*) 'get_sizes: eqopt_switch=',eqopt_switch
@@ -1929,6 +1945,7 @@ if (debug) write(6,*) 'get_sizes: call file_get_sizes'
     end select
     ntgrid = ntheta/2 + (nperiod-1)*ntheta 
 if (debug) write(6,*) 'get_sizes: done'
+
   end subroutine get_sizes
 
   subroutine get_grids

@@ -1,5 +1,5 @@
 template <class T>
-T sumReduc (T *data, unsigned int nn, bool overwrite)
+inline T sumReduc (T *data, unsigned int nn, bool overwrite)
 {
   unsigned int size;
   int threads = min (nn, maxThreads);
@@ -42,7 +42,7 @@ T sumReduc (T *data, unsigned int nn, bool overwrite)
 }
 
 template <class T>
-void sumReduc_Partial (T *sum, T *data, unsigned int nn, unsigned int outsize, bool overwrite)
+inline void sumReduc_Partial (T *sum, T *data, unsigned int nn, unsigned int outsize, bool overwrite)
 {
   unsigned int size;
   int threads = min (nn, maxThreads);

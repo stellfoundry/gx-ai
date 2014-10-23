@@ -24,6 +24,13 @@ extern "C" void geometry_get_miller_parameters_c(struct miller_parameters_struct
 
 extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficients_struct * constant_coefficients_out);
 
+//void get_gs2_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients){
+//  geometry_get_nz(Nz);
+//  coefficients = (struct coefficients_struct *)malloc(sizeof(struct coefficients_struct)*(*Nz));
+//  geometry_get_constant_coefficients_c(constant_coefficients);
+//  geometry_get_coefficients_c(&Nz, coefficients);
+//}
+
 void read_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients){
 	double s_hat_input, beta_prime_input;
         geometry_vary_s_alpha_c(&s_hat_input, &beta_prime_input);	

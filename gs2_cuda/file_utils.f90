@@ -139,8 +139,6 @@ contains
        call init_input_unit (inp)
     end if
 
-    write (*,*) 'After init_file_utils, arun_name is'
-    write (*,*) arun_name
 
   end subroutine init_file_utils
 

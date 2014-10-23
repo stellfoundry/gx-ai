@@ -11,6 +11,7 @@
 #include "mpi.h"
 #include "global_vars.h"
 #include "gryfx_lib.h"
+#include "nvToolsExt.h"
 
 //#include "write_data.cu"
 #include "device_funcs.cu"
@@ -71,43 +72,51 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
 
   MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
+  //printf("I am proc %d\n", iproc);
+
+  if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
+
+  if(iproc==0) printf("Initializing GS2...\n\n");
 
   int length = strlen(namelistFile);
   gs2_main_mp_init_gs2_(namelistFile, &length);
 
+  if(iproc==0) printf("Finished initializing GS2.\n\n");
+  
 
   //iproc = *mp_mp_iproc_;
 
   int numdev;
 
   cudaGetDeviceCount(&numdev);
-  printf("I am proc %d, I have %d CUDA device(s)\n", iproc, numdev);
 
   //gs2_main_mp_advance_gs2_();  
 
   //gs2_main_mp_finish_gs2_();
 
   //exit(1);
-
+  
 
 #endif
 
 #ifdef GS2_all
+  printf("Running GS2 simulation from within GryfX\n\n");
   int length = strlen(namelistFile);
+  printf("Namelist is %s\n", namelistFile);
   gs2_main_mp_run_gs2_(namelistFile, &length);
 
   iproc = *mp_mp_iproc_;
 
-  //exit(1);
+  exit(1);
 #endif
 
-    read_namelist(namelistFile);
+    read_namelist(namelistFile); // all procs read from namelist, set global variables.
 #ifdef GS2_zonal
 			if(iproc==0) {
 #endif
 
      
-    printf("namelistFile in CUDA is %s\n", namelistFile);
+    printf("Initializing GryfX...\n\nNamelist is %s\n", namelistFile);
       //update gryfxpars struct with geometry parameters (from read_geo of defaults)
     gryfxpars->equilibrium_type = equilibrium_type;
     /*char eqfile[800];*/
@@ -278,9 +287,50 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     
     //read species parameters from namelist, will overwrite geometry parameters below
       
+#ifdef GS2_zonal
+    //if we're already running GS2 and calculating geometry there, we don't need to recalculate, just get what GS2 calculated
+    Nz = geometry_mp_ntheta_;
+
+    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
+    grho_h = (float*) malloc(sizeof(float)*Nz);
+    z_h = (float*) malloc(sizeof(float)*Nz);
+    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
+    gds2_h = (float*) malloc(sizeof(float)*Nz);
+    bmag_h = (float*) malloc(sizeof(float)*Nz);
+    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
+    gds21_h = (float*) malloc(sizeof(float)*Nz);
+    gds22_h = (float*) malloc(sizeof(float)*Nz);
+    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
+    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
+    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
+    
+    gradpar = geometry_mp_gradpar_[0];
+    drhodpsi = theta_grid_mp_drhodpsi_;
+    rmaj = geometry_mp_rmaj_;
+    shat = geometry_mp_shat_;
+    kxfac = geometry_mp_kxfac_;
+    qsf = geometry_mp_qsf_;
+    rhoc = geometry_mp_rhoc_;
+        
+    for(int k=0; k<Nz; k++) {
+      gbdrift_h[k] = geometry_mp_gbdrift_[k]/4.;
+      grho_h[k] = geometry_mp_grho_[k];
+      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
+      cvdrift_h[k] = geometry_mp_cvdrift_[k]/4.;
+      gds2_h[k] = geometry_mp_gds2_[k];
+      bmag_h[k] = geometry_mp_bmag_[k];
+      gds21_h[k] = geometry_mp_gds21_[k];
+      gds22_h[k] = geometry_mp_gds22_[k];
+      cvdrift0_h[k] = geometry_mp_cvdrift0_[k]/4.;
+      gbdrift0_h[k] = geometry_mp_gbdrift0_[k]/4.;
+      jacobian_h[k] = geometry_mp_jacob_[k];
+    }
+
+#else
     coefficients_struct *coefficients;
     constant_coefficients_struct constant_coefficients;
     read_geo(&Nz,coefficients,&constant_coefficients);
+#endif
     eps = rhoc/rmaj;
   } 
   
@@ -327,7 +377,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
       strncpy(out_stem, namelistFile, strlen(namelistFile)-3);
       strcat(out_stem,".\0"); 
-      printf("out_stem = %s\n", out_stem);
+      //printf("out_stem = %s\n", out_stem);
     }
 
 
@@ -336,7 +386,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       sprintf(out_stem, "scan/q_scan/q%g/q%g_%d.", qsf, qsf, scan_number);
       //out_stem = scan/q_scan/qX.X_X/qX.X_X.
       
-      printf("out_stem = %s\n", out_stem);
+      //printf("out_stem = %s\n", out_stem);
 
       sprintf(out_dir_path, "scan/q_scan/q%g", qsf);
 
@@ -415,7 +465,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       sprintf(out_stem, "scan/outputs/cyclone_%d/cyclone_%d.", scan_number, scan_number);
       //out_stem = scan/outputs/cyclone_X/cyclone_X.
       
-      printf("out_stem = %s\n", out_stem);
+      //printf("out_stem = %s\n", out_stem);
 
       sprintf(out_dir_path, "scan/outputs/cyclone_%d", qsf, scan_number);
 
@@ -431,7 +481,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       sprintf(out_stem, "scan/outputs/test/test.");
       //out_stem = scan/outputs/test/test.
       
-      printf("out_stem = %s\n", out_stem);
+      //printf("out_stem = %s\n", out_stem);
 
       sprintf(out_dir_path, "scan/outputs/test");
 
@@ -492,7 +542,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     } */  
   }
 
-  printf("outstem is %s\n", out_stem);
 
   //set up restart file
   strcpy(restartfileName, out_stem);
@@ -708,7 +757,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
   *&zThreads = zBlockThreads*prop.maxGridSize[2];
 
-  printf("\nzThreads = %d\n", zThreads);
+  //printf("\nzThreads = %d\n", zThreads);
 
   totalThreads = prop.maxThreadsPerBlock;     
 
@@ -751,7 +800,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
   
   //if (DEBUG) 
-  printf("%d %d %d     %d %d %d\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
+  printf("dimGrid = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
   
   definitions();
   
@@ -799,10 +848,14 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
     if(CONST_CURV) printf("[constant curvature]\t");
     if(RESTART) printf("[restart]\t");
-    if(NLPM) printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
+    if(NLPM && nlpm_zonal_kx1_only) {
+       printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f, Phi2_zf(kx=1) only]\t", inlpm, dnlpm);
+    }
     if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
     if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
     if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
+    if(no_landau_damping) printf("[No landau damping]\t");
+    if(turn_off_gradients_test) printf("[Gradients turned off halfway through the run]\t");
     
     printf("\n\n");
     

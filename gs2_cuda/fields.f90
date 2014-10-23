@@ -75,6 +75,7 @@ contains
   !! reads parameters and allocates field arrays
   subroutine fields_pre_init
     use theta_grid, only: init_theta_grid
+    use theta_grid_file, only: check_theta_grid_file
     use run_parameters, only: init_run_parameters
     use dist_fn, only: init_dist_fn
     use init_g, only: ginit, init_init_g
@@ -85,6 +86,7 @@ contains
     
     if (debug) write(6,*) "init_fields: init_theta_grid"
     call init_theta_grid
+    if (debug) call check_theta_grid_file(6)
     
 !CMR,30/3/2009:
 ! call init_init_g before init_run_parameters to read delt from restart file
@@ -122,6 +124,7 @@ contains
     if (initialized) return
     initialized = .true.
     
+    if (debug) write(6,*) "init_field: fields_pre_init"
     call fields_pre_init
 
     select case (fieldopt_switch)

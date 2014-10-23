@@ -2563,6 +2563,7 @@ subroutine check_dist_fn(report_unit)
     use nonlinear_terms, only: add_explicit_terms
     use hyper, only: hyper_diff
     use run_parameters, only: fixpar_secondary
+    use mp, only: proc0
     implicit none
     complex, dimension (-ntgrid:,:,:), intent (in out) :: phi, apar, bpar
     complex, dimension (-ntgrid:,:,:), intent (in out) :: phinew, aparnew, bparnew

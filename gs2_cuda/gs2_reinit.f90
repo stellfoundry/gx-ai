@@ -115,17 +115,19 @@ contains
   subroutine check_time_step (reset, exit)
 
     use gs2_time, only: code_dt_cfl, code_dt
-    use mp, only: broadcast
+    use mp, only: broadcast, proc0
 
 !    integer :: istep
     logical :: reset, exit
     logical :: first = .true.
+
 
     call broadcast(code_dt_cfl) !code_dt_cfl is only set on proc 0 by gryfx in nlps.cu
 
     if (first) call init_reinit
     first = .false.
     reset = .false.
+
 
 ! nothing to do if exiting in this iteration
     if (exit) return

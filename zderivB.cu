@@ -4,7 +4,7 @@ void ZDerivB(float* result, float* bmag, cuComplex* bmag_complex, float* kz)
 
   cufftExecR2C(ZDerivBplanR2C, bmag, bmag_complex);
     
-  zderiv<<<dimGrid, dimBlock>>> (bmag_complex, bmag_complex, kz, 1,1,Nz/2+1);
+  zderivB<<<dimGrid, dimBlock>>> (bmag_complex, bmag_complex, kz);
   
   cufftExecC2R(ZDerivBplanC2R, bmag_complex, result);				
   

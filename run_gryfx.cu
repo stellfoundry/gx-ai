@@ -8,6 +8,7 @@ extern "C" void gs2_reinit_mp_reset_time_step_(int* gs2_counter, int* exit);
 extern "C" void dist_fn_mp_getmoms_gryfx_(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
 extern "C" void gs2_diagnostics_mp_loop_diagnostics_(int* gs2_counter, int* exit);
 extern "C" void mp_mp_broadcast_integer_(int* a);
+extern "C" void species_mp_reinit_species_(int* nSpecies, double* dens, double* temp, double* fprim, double* tprim, double* nu);
 #endif
 
 
@@ -25,7 +26,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     char phifileName[200];
     //host variables
 
-    cudaEvent_t start, stop, start1, stop1, nonlin_halfstep, H2D, D2H;
+    cudaEvent_t start, stop, start1, stop1, nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
     int naky, ntheta0;// nshift;
     naky = 1 + (Ny-1)/3;
@@ -46,7 +47,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float Phi_zf_kx1_avg = 0.;
     float alpha_nlpm = 0.;
     float mu_nlpm = 0.;
-    float tau_nlpm = 10.;
+    //float tau_nlpm = 50.;
     cuComplex *init_h;
     float Phi_energy;
     cuComplex *omega_h;  
@@ -157,6 +158,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float avgdt;
     float totaltimer;
     float timer;
+    float GS2timer;
     
     //diagnostics scalars
     float flux1,flux2;
@@ -183,6 +185,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     int *jump;
     
     float *nu_nlpm;
+    float *nu1_nlpm;
+    float *nu22_nlpm;
     float *shear_rate_z;
     float *shear_rate_z_nz;
     float *shear_rate_nz;  
@@ -192,7 +196,6 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     
 ////////////  
 #ifdef GS2_zonal
-  printf("I am proc %d\n", iproc);
     //allocate these host arrays on all procs
     cudaMallocHost((void**) &dens_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
     cudaMallocHost((void**) &upar_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
@@ -329,6 +332,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaMalloc((void**) &jump, sizeof(int)*(Ny/2+1));
     
     cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
+    cudaMalloc((void**) &nu1_nlpm, sizeof(float)*Nz);
+    cudaMalloc((void**) &nu22_nlpm, sizeof(float)*Nz);
     cudaMalloc((void**) &shear_rate_z, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_nz, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_z_nz, sizeof(float)*Nz);  
@@ -397,10 +402,17 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     bmagInit <<<dimGrid,dimBlock>>>(bmag,bmagInv);
     jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
     if(igeo != 0) {
+
+      cudaMemset(bmag_complex, 0, sizeof(cuComplex)*(Nz/2+1));
       //calculate bgrad = d/dz ln(B(z)) = 1/B dB/dz
       if(DEBUG) printf("calculating bgrad\n");
-      ZDerivB(bgrad, bmag, bmag_complex, kz_complex);
-      multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmag, 1, 1, Nz, -1);
+      ZDerivB(bgrad, bmag, bmag_complex, kz);
+      //cufftExecR2C(ZDerivBplanR2C, bmag, bmag_complex);
+      //cudaMemcpy(CtmpZ_h, bmag_complex, sizeof(cuComplex)*(Nz/2+1), cudaMemcpyDeviceToHost);
+      //for(int i=0; i<(Nz/2+1); i++) {
+      //  printf("bmag_complex(kz=%d) = %f + i %f\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+      //}
+      multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmagInv, 1, 1, Nz, 1);
     }  
     if(DEBUG) getError("before cudaMemset");  
     //cudaMemset(jump, 0, sizeof(float)*Ny);
@@ -802,7 +814,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     //time histories (.time)
     strcpy(fluxfileName, out_stem);
     strcat(fluxfileName, "flux.time");
-    printf("flux file is %s\n", fluxfileName); 
+    printf("flux file is %s\n\n", fluxfileName); 
   
    
     strcpy(omegafileName, out_stem);
@@ -814,7 +826,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     strcpy(phifileName, out_stem);
     strcat(phifileName, "phi.time");
     
-    printf("phi file is %s\n", phifileName);
+    //printf("phi file is %s\n", phifileName);
 
     if(!RESTART) {
       omegafile = fopen(omegafileName, "w+");
@@ -847,6 +859,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     for(int c=0; c<nClasses; c++) {
       cudaEventCreate(&end_of_zderiv[c]); 
     }
+    cudaEventCreate(&GS2start);
+    cudaEventCreate(&GS2stop);		
 
     //cudaEventCreate(&end_of_zderiv);  
 
@@ -856,9 +870,9 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   
     //cudaEventCreate(&start1); 			    
     //cudaEventCreate(&stop1);
-    cudaEventRecord(start,0);
+    //cudaEventRecord(start,0);
     
-    cudaProfilerStart();
+    //cudaProfilerStart();
     
     /*
     float step_timer=0.;
@@ -878,6 +892,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
       counter=0;
       gs2_counter=1;
       totaltimer=0.;
+      timer=0.;
+      GS2timer=0.;
     int stopcount = 0;
     int nstop = 10;
     int first_half_flag;
@@ -993,6 +1009,45 @@ if(iproc==0) {
 #ifdef GS2_zonal
 			}
 #endif 
+
+    uint64_t diff;
+    struct timespec clockstart, clockend;
+    //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
+   first_half_flag = 1;
+   // //cudaEventRecord(GS2Istart,0);
+//    clock_gettime(CLOCK_MONOTONIC, &clockstart);
+//   // //getError("Before GS2start");
+//    while(gs2_counter<=1) { 
+//   //   //printf("gs2 step\t");
+//   //   first_half_flag=1;
+//    MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
+//      gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+//      gs2_counter++;
+//   //   first_half_flag=0;
+//    MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
+//      gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+//      gs2_counter++;
+//    }
+//    clock_gettime(CLOCK_MONOTONIC, &clockend);
+//    diff = 1000000000L * (clockend.tv_sec - clockstart.tv_sec) + clockend.tv_nsec - clockstart.tv_nsec;
+//    printf("elapsed time = %llu ns\n", (long long unsigned int) diff);
+//   // //GS2timer = ((double) (clockend - clockstart)) / CLOCKS_PER_SEC;
+//   // //cudaEventRecord(GS2stop,0);
+//   // //getError("After GS2stop");
+//   // //cudaEventElapsedTime(&GS2timer, GS2start, GS2stop);
+//   // //getError("After GS2timer");
+//    printf("proc%d: GS2 time/timestep is %e ns\n", iproc, ((double) diff)/1.);
+//   // 
+//    gs2_counter=1;
+
+    clock_gettime(CLOCK_MONOTONIC, &clockstart);
+#ifdef GS2_zonal
+    if(iproc==0) {
+#endif
+      cudaEventRecord(start,0);
+#ifdef GS2_zonal
+    }
+#endif
    
     while(/*counter < 1 &&*/ 
         counter<nSteps &&
@@ -1001,11 +1056,27 @@ if(iproc==0) {
   	)
     {
 
+      //if(counter==9) cudaProfilerStart();
 #ifdef GS2_zonal
-if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc);
+//     if(turn_off_gradients_test && counter==nSteps/2) {
+//       species[ION].tprim = 0.;
+//       species[ION].fprim = 0.;
+//       double den[1], tem[1], fp[1], tp[1], vnewk[1];
+//       den[0] = (double) species[ION].dens;
+//       tem[0] = (double) species[ION].temp;
+//       fp[0] = (double) species[ION].fprim;
+//       tp[0] = (double) species[ION].tprim;
+//       vnewk[0] = (double) (species[ION].nu_ss/sqrt(2.));
+//       
+//       species_mp_reinit_species_(&nSpecies, den, tem, fp, tp, vnewk);
+//       if(iproc==0) printf("\n\n%d: GryfX gradients have been reset to tprim = %f, fprim = %f; runtime=%f\n\n", counter, species[ION].tprim, species[ION].fprim, runtime);
+//     }
+//if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc);
 			if(iproc==0) {
 #endif
   //    cudaEventRecord(start1,0);
+
+
 #ifndef GS2_zonal
       dt_old = dt;
       //if(!LINEAR && !secondary_test) dt = courant(Phi, tmp, field, resultR_nlps, species);   
@@ -1020,43 +1091,44 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
       
       //if(DEBUG) getError("after exb");
      
-      if(LINEAR) { 
+      //if(LINEAR) { 
       //volflux_zonal<<<dimGrid,dimBlock>>>(tmpX, Phi, Phi, jacobian, 1./fluxDen); 
-      //getPhiVal<<<dimGrid,dimBlock>>>(val, Phi, 0, 4, Nz/2);
+      //  getPhiVal<<<dimGrid,dimBlock>>>(val, Phi1, 0, 4, Nz/2);
+     //   fprintf(phifile, "\n\t%f\t%e", runtime, val);
       
       //getPhiVal<<<dimGrid,dimBlock>>>(val, tmpX, 4);
       
-      getky0z0<<<dimGrid,dimBlock>>>(tmpX, Phi);
+      //getky0z0<<<dimGrid,dimBlock>>>(tmpX, Phi);
   
       //volflux_zonal_complex<<<dimGrid,dimBlock>>>(CtmpX, Phi, jacobian, 1./fluxDen);
       //get_real_X<<<dimGrid,dimBlock>>>(tmpX, CtmpX);
   
       //phiVal[0] = 0;
       //cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
-      cudaMemcpy(tmpX_h, tmpX, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
+      //cudaMemcpy(tmpX_h, tmpX, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
       /*if(runtime == 0) {
         phiVal0 = phiVal[0];
       }*/
   
-      if(counter==0){
-        fprintf(phifile,"t");
-        for(int i=0; i<Nx; i++) {
-          fprintf(phifile, "\tkx=%g", kx_h[i]);
-          if(init==DENS || init==PHI) phi0_X[i] = tmpX_h[i];
-        }
+    //  if(counter==0){
+    //    fprintf(phifile,"t");
+    //    for(int i=0; i<Nx; i++) {
+    //      fprintf(phifile, "\tkx=%g", kx_h[i]);
+    //      if(init==DENS || init==PHI) phi0_X[i] = tmpX_h[i];
+    //    }
   
-      }
-      if(init== DENS || init==PHI) fprintf(phifile, "\n\t%f\t%e", runtime, (float) tmpX_h[0]);///phi0_X[0]);
-      else fprintf(phifile, "\n\t%f\t%e", runtime, (float) 1-tmpX_h[0]); 
-      for(int i=1; i<Nx; i++) {
-        if(init== DENS || init==PHI) fprintf(phifile, "\t%e", (float) tmpX_h[i]);///phi0_X[i]);
-        else fprintf(phifile, "\t%e", (float) 1-tmpX_h[i]); 
-      }
-      }
+    //  }
+    //  if(init== DENS || init==PHI) fprintf(phifile, "\n\t%f\t%e", runtime, (float) tmpX_h[0]);///phi0_X[0]);
+    //  else fprintf(phifile, "\n\t%f\t%e", runtime, (float) 1-tmpX_h[0]); 
+    //  for(int i=1; i<Nx; i++) {
+    //    if(init== DENS || init==PHI) fprintf(phifile, "\t%e", (float) tmpX_h[i]);///phi0_X[i]);
+    //    else fprintf(phifile, "\t%e", (float) 1-tmpX_h[i]); 
+    //  }
+ //     }
   
       
       //calculate diffusion here... for now we just set it to 1
-      diffusion = 1.;
+//      diffusion = 1.;
        
       //cudaProfilerStart();
 
@@ -1068,6 +1140,8 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
   //FIRST HALF OF GRYFX TIMESTEP
   /////////////////////////////////
   
+      //////nvtxRangePushA("Gryfx t->t+dt/2");
+
       first_half_flag = 1;
 #ifdef GS2_zonal
 			if(iproc==0) {
@@ -1150,7 +1224,7 @@ if(DEBUG && counter==0) printf("proc %d has entered the timestep loop\n", iproc)
         }
       }
 
-if(DEBUG && counter==0) getError("after linear step"); 
+//if(DEBUG && counter==0) getError("after linear step"); 
 
       qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
   
@@ -1184,7 +1258,7 @@ if(DEBUG && counter==0) getError("after linear step");
       if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
         }	    
       }  
       
@@ -1208,6 +1282,7 @@ if(DEBUG && counter==0) getError("after linear step");
 			} //end of iproc if
 #endif
 
+      //////nvtxRangePop();
 #ifdef GS2_zonal
     
     //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
@@ -1215,12 +1290,20 @@ if(DEBUG && counter==0) getError("after linear step");
 
     if(!LINEAR) {
       if(iproc==0) cudaEventSynchronize(D2H); //have proc 0 wait for NL(t) to be copied D2H before advancing GS2 if running nonlinearly
-      MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
     }
   
+      //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
+    //nvtxRangePushA("GS2 t->t+dt/2");
+    //cudaEventRecord(GS2start,0);
+
     //advance GS2 t -> t + dt/2  
     gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
     gs2_counter++;
+
+    //nvtxRangePop();
+    //cudaEventRecord(GS2stop,0);
+    //cudaEventElapsedTime(&GS2timer, GS2start, GS2stop);
+    //printf("100 calls of advance_gs2 took %f ms\n", GS2timer);
 
 /*
     if(!LINEAR) {
@@ -1238,6 +1321,7 @@ if(DEBUG && counter==0) getError("after linear step");
     dist_fn_mp_getmoms_gryfx_(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
 */
 
+    //////nvtxRangePushA("copy moms(t+dt/2)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt/2)_ky=0 from H2D
     cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
@@ -1280,12 +1364,14 @@ if(iproc==0) {
       mask<<<dimGrid,dimBlock>>>(Qprp1[s]);
     }
  } 
+    //////nvtxRangePop();
   #endif
          
   /////////////////////////////////
   //SECOND HALF OF GRYFX TIMESTEP
   /////////////////////////////////
 
+    //////nvtxRangePushA("Gryfx t->t+dt");
 
       first_half_flag = 0;
 #ifdef GS2_zonal 
@@ -1379,7 +1465,7 @@ if(iproc==0) {
       if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
         }	    
       } 
           
@@ -1404,16 +1490,20 @@ if(iproc==0) {
 			} //end of iproc if
 #endif
 
+    //////nvtxRangePop();
+
 #ifdef GS2_zonal
     
     
     if(!LINEAR) {
       if(iproc==0) cudaEventSynchronize(D2H); //wait for NL(t+dt/2) to be copied D2H before advancing GS2 if running nonlinearly
-      MPI_Barrier(MPI_COMM_WORLD);
     }
     //advance GS2 t+dt/2 -> t+dt
+      //MPI_Barrier(MPI_COMM_WORLD);
+    //nvtxRangePushA("GS2 t+dt/2->t+dt");
     gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
     gs2_counter++;
+    //nvtxRangePop();
   
 /*
     MPI_Barrier(MPI_COMM_WORLD);
@@ -1429,6 +1519,7 @@ if(iproc==0) {
     dist_fn_mp_getmoms_gryfx_(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
 */
 
+    //////nvtxRangePushA("copy moms(t+dt)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt)_ky=0 from H2D
     cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
@@ -1477,9 +1568,12 @@ if(iproc==0) {
       mask<<<dimGrid,dimBlock>>>(Qprp[s]);
     }
 }  
+
+    //////nvtxRangePop();
   
 #endif
   
+    //////nvtxRangePushA("Diagnostics");
     
 #ifdef GS2_zonal
 			if(iproc==0) {
@@ -1495,6 +1589,11 @@ if(iproc==0) {
       
       //DIAGNOSTICS
        
+     // if(LINEAR) { 
+     //   getPhiVal<<<dimGrid,dimBlock>>>(val, Phi1, 0, 4, Nz/2);
+     //   cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
+     //   fprintf(phifile, "\n\t%f\t%e", runtime, phiVal[0]);
+     // }
     //  cudaEventRecord(start1,0);  
       if(LINEAR || secondary_test || write_omega) {
         growthRate<<<dimGrid,dimBlock>>>(omega,Phi1,Phi,dt);    
@@ -1523,8 +1622,8 @@ if(iproc==0) {
   
   //DIAGNOSTICS
   
-      cudaMemcpy(&Dnlpm, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
       if( strcmp(nlpm_option,"constant") == 0) Dnlpm = dnlpm;
+      else cudaMemcpy(&Dnlpm, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
       
       /*
       if(counter%nwrite==0) {
@@ -1547,17 +1646,22 @@ if(iproc==0) {
       volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
       get_kx1_rms<<<1,1>>>(Phi_zf_kx1_d, tmpX);
       Phi_zf_kx1_old = Phi_zf_kx1;
-      cudaMemcpy(&Phi_zf_kx1, Phi_zf_kx1_d, sizeof(float), cudaMemcpyDeviceToHost);
+      //cudaMemcpy(&Phi_zf_kx1, Phi_zf_kx1_d, sizeof(float), cudaMemcpyDeviceToHost);
   
       Phi2_zf = sumReduc(tmpX, Nx, false);
       Phi_zf_rms = sqrt(Phi2_zf);   
   
       //calculate tmpXY = Phi**2(kx,ky)
       volflux(Phi,Phi,tmp,tmpXY);
-      //if(!LINEAR) {
+      //if(!LINEAR && write_phi2kxky_time) {
       //  cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
-      //  kxkyTimeWrite(phifile, tmpXY_h, runtime);
+      //  kxkyTimeWrite(phikxkyfile, tmpXY_h, runtime);
       //}
+      if(!LINEAR && turn_off_gradients_test) {
+        sumX<<<dimGrid,dimBlock>>>(tmpY, tmpXY);
+        cudaMemcpy(tmpY_h, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
+        kyTimeWrite(phifile, tmpY_h, runtime);
+      }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
       kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
@@ -1713,7 +1817,8 @@ if(iproc==0) {
 #ifdef GS2_zonal
 			} //end of iproc if
 #endif
-
+      //////nvtxRangePop();
+      //if(counter==9) cudaProfilerStop();
       runtime+=dt;
       counter++;       
       //checkstop
@@ -1721,7 +1826,7 @@ if(iproc==0) {
         fclose(checkstop);
         stopcount++;
       }     
-      
+    
 #ifdef GS2_zonal
 			if(iproc==0) {
 #endif
@@ -1796,14 +1901,23 @@ if(iproc==0) {
     dt = gs2_time_mp_code_dt_ * 2. / sqrt(2.);
 
     //gs2_counter++; //each proc has its own gs2_counter
-if(DEBUG) printf("proc %d thinks counter is %d, gs2_counter is %d, nsteps is %d\n", iproc, counter, gs2_counter, nSteps);
+//if(DEBUG) printf("proc %d thinks counter is %d, gs2_counter is %d, nsteps is %d\n", iproc, counter, gs2_counter, nSteps);
   
 #endif
 
     } //end of timestep loop 
  
 #ifdef GS2_zonal
-if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
+//if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
+    //clock_gettime(CLOCK_MONOTONIC, &clockend);
+    //diff = 1000000000L * (clockend.tv_sec - clockstart.tv_sec) + clockend.tv_nsec - clockstart.tv_nsec;
+    //printf("elapsed time = %llu ns\n", (long long unsigned int) diff);
+    ////GS2timer = ((double) (clockend - clockstart)) / CLOCKS_PER_SEC;
+    ////cudaEventRecord(GS2stop,0);
+    ////getError("After GS2stop");
+    ////cudaEventElapsedTime(&GS2timer, GS2start, GS2stop);
+    ////getError("After GS2timer");
+    //printf("proc%d: GS2 time/timestep is %e ns\n", iproc, ((double) diff)/nSteps);
 
 			if(iproc==0) {
 #endif
@@ -1814,7 +1928,7 @@ if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
   
     if(DEBUG) getError("just finished timestep loop");
     
-    cudaProfilerStop();
+    //cudaProfilerStop();
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&timer,start,stop);
@@ -1926,6 +2040,10 @@ if(DEBUG) printf("proc %d exited the timestep loop\n", iproc);
     cudaFree(derivR1_nlps);
     cudaFree(derivR2_nlps);
     cudaFree(resultR_nlps);
+
+    cudaFree(nu_nlpm);
+    cudaFree(nu1_nlpm);
+    cudaFree(nu22_nlpm);
     
     cufftDestroy(NLPSplanR2C);
     cufftDestroy(NLPSplanC2R);

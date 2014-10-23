@@ -19,6 +19,11 @@ void definitions()
   D_prp = sqrt(M_PI)/2.;
   Beta_par = 2.*(32.-9.*M_PI)/(6.*M_PI-16.);
   
+  if(no_landau_damping) {
+    D_par = 0.;
+    D_prp = 0.;
+    Beta_par = 0.;
+  }
   
   Nx_unmasked = 2*Nx/3+1;
   Ny_unmasked = (Ny-1)/3+1;
@@ -55,7 +60,7 @@ void definitions()
   }
   
   //varenna
-  if(abs(ivarenna) == 1 || abs(ivarenna)==4) {
+  if(abs(ivarenna) == 1 || abs(ivarenna)==4 || no_landau_damping) {
   mu[1].x = 0.;
   mu[1].y = 0.; 
   mu[2].x = 0.;

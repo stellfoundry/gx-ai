@@ -1,9 +1,15 @@
-__global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx, 
-		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv)
+__global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx, 
+		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
 {
   unsigned int idz = get_idz();
   unsigned int idy = 0;
   unsigned int idx = get_idx();
+
+  int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+  if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+  unsigned int idx_zonal;
+  if(zonal_kx1_only) idx_zonal = ikx1;
+  else idx_zonal = idx;
   
   if(nz<=zthreads) {
     if(idz<nz && idx<nx) {
@@ -11,7 +17,7 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
       unsigned int idxz = idx + nx*idz;
       
       float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-      nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
+      nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
             
       
     }
@@ -25,7 +31,48 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 	
 	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
-        nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
+        nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
+	
+	
+      }
+    }
+  }
+}
+
+__global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx, 
+		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
+{
+  unsigned int idz = get_idz();
+  unsigned int idy = 0;
+  unsigned int idx = get_idx();
+
+  int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+  if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+  unsigned int idx_zonal;
+  if(zonal_kx1_only) idx_zonal = ikx1;
+  else idx_zonal = idx;
+  
+  if(nz<=zthreads) {
+    if(idz<nz && idx<nx) {
+      
+      unsigned int idxz = idx + nx*idz;
+      
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
+            
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+	unsigned int idxz = idx + nx*IDZ;
+
+	
+	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	
+        nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
 	
 	
       }
@@ -35,12 +82,18 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 
 
 __global__ void nlpm_shear2(float* nu, float* Phi2ZF, float dnlpm, float* kx, 
-		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv)
+		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
 {
   unsigned int idz = get_idz();
   unsigned int idy = 0;
   unsigned int idx = get_idx();
   
+  int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+  if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+  unsigned int idx_zonal;
+  if(zonal_kx1_only) idx_zonal = ikx1;
+  else idx_zonal = idx;
+
   if(nz<=zthreads) {
     if(idz<nz && idx<nx) {
       

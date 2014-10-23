@@ -311,7 +311,7 @@ contains
     use mp, only: broadcast
     use kt_grids, only: ntheta0, naky
     use species, only: nspec
-    use theta_grid, only: ntgrid
+    use theta_grid, only: ntgrid, kxfac
     use gs2_layouts, only: g_lo, ik_idx, it_idx, il_idx, is_idx
     use dist_fn_arrays, only: g, vpa, vperp2
     use gs2_time, only: save_dt_cfl

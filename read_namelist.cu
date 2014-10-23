@@ -71,7 +71,7 @@ void read_namelist(char* filename)
   
   if(fnr_get_float(&namelist_struct, "knobs", "delt", &dt)) dt = .02;
   
-  if(fnr_get_float(&namelist_struct, "knobs", "maxdt", &maxdt)) maxdt = .02;
+  if(fnr_get_float(&namelist_struct, "knobs", "maxdt", &maxdt)) maxdt = dt;
   
   if(fnr_get_int(&namelist_struct, "knobs", "nstep", &nSteps)) nSteps = 10320;
   
@@ -131,6 +131,26 @@ void read_namelist(char* filename)
   }
   else if( strcmp(no_zderiv,"off") == 0) {
     NO_ZDERIV = false;
+  }
+
+  char* no_landau;
+  no_landau = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "no_landau_damping", &no_landau)) no_landau="off";
+  if( strcmp(no_landau,"on") == 0) {
+    no_landau_damping = true;
+  }
+  else if( strcmp(no_landau,"off") == 0) {
+    no_landau_damping = false;
+  }
+
+  char* turn_off_gradients;
+  //turn_off_gradients = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "turn_off_gradients_test", &turn_off_gradients)) turn_off_gradients="off";
+  if( strcmp(turn_off_gradients,"on") == 0) {
+    turn_off_gradients_test = true;
+  }
+  else if( strcmp(turn_off_gradients,"off") == 0) {
+    turn_off_gradients_test = false;
   }
 
   char* slab;
@@ -218,6 +238,25 @@ void read_namelist(char* filename)
     NLPM = false;
   }
 
+  char* dorland_nlpm_flag;
+  dorland_nlpm_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "dorland_nlpm", &dorland_nlpm_flag)) dorland_nlpm_flag="off";
+  if( strcmp(dorland_nlpm_flag,"on") == 0) {
+    dorland_nlpm = true;
+  }
+  else if( strcmp(dorland_nlpm_flag,"off") == 0) {
+    dorland_nlpm = false;
+  }
+
+  char* dorland_nlpm_phase_flag;
+  dorland_nlpm_phase_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "dorland_nlpm_phase", &dorland_nlpm_phase_flag)) dorland_nlpm_phase_flag="on";
+  if( strcmp(dorland_nlpm_phase_flag,"on") == 0) {
+    dorland_nlpm_phase = true;
+  }
+  else if( strcmp(dorland_nlpm_phase_flag,"off") == 0) {
+    dorland_nlpm_phase = false;
+  }
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option)) nlpm_option="cutoff";
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
@@ -226,6 +265,17 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &low_cutoff)) low_cutoff = .01;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = .1;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &dnlpm_max)) dnlpm_max = 1.;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "tau_nlpm", &tau_nlpm)) tau_nlpm = 10.;
+  char* zonal_kx1_only;
+  zonal_kx1_only = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_zonal_kx1_only", &zonal_kx1_only)) zonal_kx1_only="off";
+  if( strcmp(zonal_kx1_only,"on") == 0) {
+    nlpm_zonal_kx1_only = true;
+  }
+  else if( strcmp(zonal_kx1_only,"off") == 0) {
+    nlpm_zonal_kx1_only = false;
+  }
+  
 
   // normalize cutoffs by Y0
   low_cutoff = (float) low_cutoff / Y0;

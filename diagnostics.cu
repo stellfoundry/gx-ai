@@ -1,4 +1,4 @@
-void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
+inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -34,7 +34,7 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
   fclose(out);
 }
 
-void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
+inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -70,7 +70,7 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int N
   fclose(out);
 }
 
-void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+inline void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -105,7 +105,7 @@ void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, cha
   }
   fclose(out);
 }
-void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+inline void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -141,7 +141,7 @@ void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx,
 }
 
 
-void fieldWriteXY(float* f_d, char* fieldname, float dt)
+inline void fieldWriteXY(float* f_d, char* fieldname, float dt)
 {
   char filename[200];  
   sprintf(filename, "fields/%s/%s%g",fieldname,fieldname,dt);
@@ -176,7 +176,7 @@ void fieldWriteXY(float* f_d, char* fieldname, float dt)
   fclose(out);
 }
 
-void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h)
+inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h)
 { 
   for(int c=0; c<nClasses; c++) { 
     sprintf(filename, "%sphi_covering_nperiod%d.field",out_stem,nLinks[c]);
@@ -184,7 +184,7 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
     cuComplex *g_h;
     g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*icovering*nLinks[c]*nChains[c]);
     cuComplex* g_d;
-    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*icovering*nLinks[c]*nChains[c]));
+    cudaMalloc((inline void**) &g_d, sizeof(cuComplex)*(Nz*icovering*nLinks[c]*nChains[c]));
     int xy = totalThreads/nLinks[c];
     int blockxy = (int) sqrt(xy);  
     dim3 dimBlockCovering(blockxy,blockxy,nLinks[c]);
@@ -236,7 +236,7 @@ void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCov
 }
 
 //only a certain class
-void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h, int C)
+inline void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h, int C)
 { 
   for(int c=C; c<C+1; c++) {
     char filename[200];  
@@ -245,7 +245,7 @@ void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,
     cuComplex *g_h;
     g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
     cuComplex* g_d;
-    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*nLinks[c]*nChains[c]));
+    cudaMalloc((inline void**) &g_d, sizeof(cuComplex)*(Nz*nLinks[c]*nChains[c]));
     int xy = totalThreads/nLinks[c];
     int blockxy = (int) sqrt(xy);  
     dim3 dimBlockCovering(blockxy,blockxy,nLinks[c]);
@@ -289,13 +289,13 @@ void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,
   }  
 }
 
-void phiWriteSetup(FILE* out)
+inline void phiWriteSetup(FILE* out)
 {
   fprintf(out, "y\t\tx\t\tPhi(z=0)\n");
 }
 
 //save Phi(x,y,z=0)
-void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_XYz0, float* PhiR_XYz0_h, 
+inline void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_XYz0, float* PhiR_XYz0_h, 
 			float runtime, FILE* phifile)
 {
   get_z0<<<dimGrid,dimBlock>>>(Phi_XYz0, Phi);
@@ -316,7 +316,7 @@ void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_XYz0, fl
 }
 
 
-void boxAvg(cuComplex *fAvg, cuComplex *f, cuComplex **fBox, 
+inline void boxAvg(cuComplex *fAvg, cuComplex *f, cuComplex **fBox, 
                   float dt, float *dtBox, int navg, int counter)
 {
   float dtBoxSum;
@@ -350,7 +350,7 @@ void boxAvg(cuComplex *fAvg, cuComplex *f, cuComplex **fBox,
   }  
 }
 
-void boxAvg(float *fAvg, float *f, float **fBox, 
+inline void boxAvg(float *fAvg, float *f, float **fBox, 
                   float dt, float *dtBox, int navg, int counter, int Nx, int Ny, int Nz)
 {
   float dtBoxSum;
@@ -428,7 +428,7 @@ float boxAvg(float f, float* fBox, float dt, float* dtBox, int navg, int counter
 }
   
 //fill boxes for box averaging, but don't average.  
-void boxFill(float *f, float **fBox, 
+inline void boxFill(float *f, float **fBox, 
         float dt, float *dtBox, int navg, int counter, int Nx, int Ny, int Nz)
 {
   scaleReal<<<dimGrid,dimBlock>>>(fBox[counter%navg],f,dt,Nx,Ny/2+1,1);
@@ -436,7 +436,7 @@ void boxFill(float *f, float **fBox,
 }
 
 //average over box that's already been filled by boxFill()
-void boxAvg_filled(float *fAvg, float **fBox, 
+inline void boxAvg_filled(float *fAvg, float **fBox, 
                   float *dtBox, int navg, int counter, int Nx, int Ny, int Nz)
 {
   //sum boxes, then divide
@@ -467,7 +467,7 @@ void boxAvg_filled(float *fAvg, float **fBox,
 }
   
 //sums over kx,ky by breaking into kx,ky array for each z and reducing. outputs as function of z.
-void kxkySum(float* sum_tmpZ, cuComplex* f_tmp, float* f_tmpXY)
+inline void kxkySum(float* sum_tmpZ, cuComplex* f_tmp, float* f_tmpXY)
 {
   
   //fixFFT<<<dimGrid,dimBlock>>>(f_tmp);
@@ -485,7 +485,7 @@ void kxkySum(float* sum_tmpZ, cuComplex* f_tmp, float* f_tmpXY)
 }
 
 //incredibly slow!!
-void zSum(float* sum_tmpXY, cuComplex* f_tmp, float* f_tmpZ)
+inline void zSum(float* sum_tmpXY, cuComplex* f_tmp, float* f_tmpZ)
 {
   float sum_i;
   
@@ -499,7 +499,7 @@ void zSum(float* sum_tmpXY, cuComplex* f_tmp, float* f_tmpZ)
 
 
 //calculate field line average of f(kx,ky,z)
-void volflux(cuComplex* f, cuComplex* g, cuComplex* tmp, float* flux_tmpXY)
+inline void volflux(cuComplex* f, cuComplex* g, cuComplex* tmp, float* flux_tmpXY)
 {
   
   /*
@@ -526,19 +526,19 @@ void volflux(cuComplex* f, cuComplex* g, cuComplex* tmp, float* flux_tmpXY)
   
 }
 
-void volflux_zonal(cuComplex* f, cuComplex* g, float* flux_tmpX) 
+inline void volflux_zonal(cuComplex* f, cuComplex* g, float* flux_tmpX) 
 {
   volflux_zonal<<<dimGrid,dimBlock>>>(flux_tmpX, f, g, jacobian, 1./(fluxDen*fluxDen));
 }
 
-void rms(float *A_rms, cuComplex* A, float* A_fsa_tmpXY)
+inline void rms(float *A_rms, cuComplex* A, float* A_fsa_tmpXY)
 {
   volflux<<<dimGrid,dimBlock>>>(A_fsa_tmpXY, A, A, jacobian, 1./fluxDen);
   float A2_rms = sumReduc(A_fsa_tmpXY, Nx*(Ny/2+1), false);
   *A_rms = sqrt(A2_rms);
 }
 
-void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
+inline void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
 {
   float A_rms;
   float B_rms;
@@ -551,7 +551,7 @@ void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
   *phase = AB_fsa / (A_rms*B_rms);
 }   
 
-void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
+inline void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, cuComplex* Pprp_field, cuComplex* nbar_field,
             float* tmpZ, float* tmpXY, specie s, float runtime, 
             float *qflux1_phase, float *qflux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
@@ -626,7 +626,7 @@ void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* D
 }
 
 //outputs as function of ky
-void fluxes_k(float* wpfx_tmpY, float *flux1_tmpY,float *flux2_tmpY2,
+inline void fluxes_k(float* wpfx_tmpY, float *flux1_tmpY,float *flux2_tmpY2,
 	    float* wpfx_tmpXY, float* flux1_tmpXY, float* flux2_tmpXY2,
 	    cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, 
@@ -660,7 +660,7 @@ void fluxes_k(float* wpfx_tmpY, float *flux1_tmpY,float *flux2_tmpY2,
 }
 
 // outputs as function of kx and ky
-void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
+inline void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, 
 	    cuComplex* Pprp_field, float* tmpZ, specie s)
 {  
@@ -684,7 +684,7 @@ void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY2, cuCo
 }
 
 
-void omegaWriteSetup(FILE* ofile, char* w)
+inline void omegaWriteSetup(FILE* ofile, char* w)
 {
   fprintf(ofile, "#\ttime(s)\t");
   int col = 2;
@@ -707,7 +707,7 @@ void omegaWriteSetup(FILE* ofile, char* w)
 }
 
 //time history of growth rates
-void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
+inline void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
 {
   fprintf(omegafile, "\t%f", time);
   fprintf(gammafile, "\t%f", time);
@@ -744,7 +744,7 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)
 }
 
 //time history of growth rates
-void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, float dtSum, float time)
+inline void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, float dtSum, float time)
 {
   fprintf(omegafile, "\t%f", time);
   fprintf(gammafile, "\t%f", time);
@@ -780,7 +780,7 @@ void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, float dtS
   fprintf(gammafile, "\n");
 }
 
-void kxkyTimeWrite(FILE* file, float* f, float time)
+inline void kxkyTimeWrite(FILE* file, float* f, float time)
 {
   if(time==0) {  
     fprintf(file, "#\ttime(s)\t");
@@ -817,9 +817,27 @@ void kxkyTimeWrite(FILE* file, float* f, float time)
   fprintf(file, "\n");
 }
 
+inline void kyTimeWrite(FILE* file, float* f, float time)
+{
+  if(time==0) {  
+    fprintf(file, "#\ttime(s)\t");
+    int col = 2;
+      for(int j=0; j<((Ny-1)/3+1); j++) {      
+          fprintf(file, "\t\t\t%d:(ky=%.3g)", col, ky_h[j]);
+          col++;
+      }
+    fprintf(file, "\n");
+  }
+  fprintf(file, "\t%f", time);
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j;
+      fprintf(file, "\t\t\t%e\t", f[index]);
+    }
+  fprintf(file, "\n");
+}
 
 //time history of flux
-void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
+inline void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
 		int converge_count, float time, specie* species)
 {
   if(time == 0) {
@@ -838,7 +856,7 @@ void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* 
 }
 
 //write f vs ky  
-void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext) 
+inline void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext) 
 {
   strcpy(filename,out_stem);
   strcat(filename, ext);
@@ -853,7 +871,7 @@ void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext)
 }  
 
 //write f vs ky  
-void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext, int counter, float runtime) 
+inline void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext, int counter, float runtime) 
 {
   strcpy(filename,out_stem);
   strcat(filename, ext);
@@ -871,7 +889,7 @@ void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext, int c
   fclose(out);
 }  
 
-void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
+inline void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
 {
   strcpy(filename, out_stem);
   strcat(filename, ext);
@@ -885,7 +903,7 @@ void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
   }
 }
 
-void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
+inline void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
 {
   strcpy(filename, out_stem);
   strcat(filename, ext);
@@ -907,7 +925,7 @@ void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
   fclose(out);
 }
 
-void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
+inline void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
   strcat(filename,ext);
@@ -930,7 +948,7 @@ void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
   fclose(out);
 }  
 
-void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext)
+inline void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
   strcat(filename,ext);
@@ -953,7 +971,7 @@ void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext)
   fclose(out);
 }  
 
-void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
+inline void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
   strcat(filename,ext);
@@ -972,7 +990,7 @@ void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
 
 
 //write final growth rates vs kx and ky. fast moving index is ky.
-void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac)
+inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac)
 {
   strcpy(filename, out_stem);
   strcat(filename, ext);
@@ -1000,7 +1018,7 @@ void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac)
 }
 
 //same as above but with kx as fast moving index
-void omegakxkyWrite(cuComplex* omegaAvg_h, char* filename, char* ext)
+inline void omegakxkyWrite(cuComplex* omegaAvg_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
   strcat(filename, ext);
@@ -1023,7 +1041,7 @@ void omegakxkyWrite(cuComplex* omegaAvg_h, char* filename, char* ext)
   }
 }
 
-void omegaAbsDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex* avg,cuComplex* omega, int counter)
+inline void omegaAbsDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex* avg,cuComplex* omega, int counter)
 {
   
   fprintf(omegadiff_file, "\t%d", counter);
@@ -1060,7 +1078,7 @@ void omegaAbsDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex* av
   fprintf(gammadiff_file, "\n");
 }
 
-void omegaPercentDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex* avg,cuComplex* omega, int counter)
+inline void omegaPercentDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex* avg,cuComplex* omega, int counter)
 {
   
   fprintf(omegadiff_file, "\t%d", counter);
@@ -1099,7 +1117,7 @@ void omegaPercentDiffWrite(FILE* omegadiff_file, FILE* gammadiff_file, cuComplex
 
 
 
-void omegaStability(cuComplex* omega, cuComplex* avg, cuComplex* stability, int* Stable, int stableMax)
+inline void omegaStability(cuComplex* omega, cuComplex* avg, cuComplex* stability, int* Stable, int stableMax)
 {
   for(int i=0; i<(Nx-1)/3+1; i++) {
     for(int j=0; j<((Ny-1)/3+1); j++) { 
@@ -1178,7 +1196,7 @@ bool stabilityCheck(int* Stable, int stableMax)
   return STOP;
 }
 
-void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
+inline void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
 {
   char filename[200];
   sprintf(filename,"./scan/outputs/stability%g_f%g_t%g", dt, species[0].fprim, species[0].tprim);
@@ -1201,7 +1219,7 @@ void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
   }
 }    
   
-void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
+inline void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi,float norm)
 {    
        
@@ -1239,7 +1257,7 @@ void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComp
 }   
 
 
-void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
+inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float Phi_zf_kx1_avg, float dtSum,
 		int counter, float runtime, float dt, float timer, char* restartfileName)
@@ -1332,7 +1350,7 @@ void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComple
   
 }
 
-void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
+inline void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
 		int* counter, float* runtime, float* dt, float* timer, char* restartfileName)  
@@ -1426,11 +1444,11 @@ void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex
   
 }
 /*
-void check_b()
+inline void check_b()
 {
   FILE* b_file = fopen("./scan/outputs/b_check", "w++");
   float* b;
-  cudaMalloc((void**) &b, sizeof(float)*Nx*(Ny/2+1)*Nz);
+  cudaMalloc((inline void**) &b, sizeof(float)*Nx*(Ny/2+1)*Nz);
   
   float* b_h = (float*) malloc(sizeof(float)*Nx*(Ny/2+1)*Nz);
   
@@ -1454,7 +1472,7 @@ void check_b()
 }
 */
 
-void geoWrite(char* ext, char* filename)
+inline void geoWrite(char* ext, char* filename)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -1472,7 +1490,7 @@ void geoWrite(char* ext, char* filename)
   cudaMemcpy(cvdrift0_h, cvdrift0, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
   cudaMemcpy(gbdrift0_h, gbdrift0, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
   cudaMemcpy(jacobian_h, jacobian, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
-  cudaMemcpy(kz_h, kz, sizeof(float)*(Nz/2+1), cudaMemcpyDeviceToHost);
+  cudaMemcpy(kz_h, kz, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
   
   fprintf(out, "#\tz:1\t\tbmag:2\t\tbgrad:3\t\tgbd:4\t\tgbd0:5\t\tcvd:6\t\tcvd0:7\t\tgds2:8\t\tgds21:9\t\tgds22:10\tgrho:11\t\tjacobian:12\n");
   for(int i=0; i<Nz; i++) {
@@ -1487,7 +1505,7 @@ void geoWrite(char* ext, char* filename)
   
 }
 
-void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp, cuComplex** Qpar, cuComplex** Qprp, 
+inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp, cuComplex** Qpar, cuComplex** Qprp, 
 	cuComplex* Phi,	cuComplex* tmp, cuComplex* corrNum_tmp, cuComplex* field, float* tmpZ, cuComplex* CtmpX, 
 	float* tmpXY, float* phi2avg_tmpXY, float* corrDen_tmpXY, float* kphi2_tmpXY2, float* tmpXY3, float* tmpXY4, float* phi_corr_tmpYZ, float* phi_corr_J_tmpYZ,
 	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* phi_corr_z0_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2, float* phi_corr_norm_tmpY2,

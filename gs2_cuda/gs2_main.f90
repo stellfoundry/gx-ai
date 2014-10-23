@@ -171,7 +171,7 @@ subroutine init_gs2 (filename, strlen)
     istep_end = nstep
     ilast_step = nstep
     
-    call loop_diagnostics(0,exit)
+    !call loop_diagnostics(0,exit)
 
     
     !if (proc0) write(*,*) 'layout ',layout
@@ -230,14 +230,16 @@ subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0,
     logical :: nofin= .false.
 !    logical, optional, intent(in) :: nofinish
     character (500), target :: cbuff
+    exit = .false.
 
 
 
     !call time_message(.false.,time_main_loop,' Main Loop')
 
     !do istep = 1, nstep
+   
        
-       if (proc0) call time_message(.false.,time_advance,' Advance time step')
+       !if (proc0) call time_message(.false.,time_advance,' Advance time step')
        call advance (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0)
        
        if (nsave > 0 .and. mod(istep, nsave) == 0 .and. istep > 0) &
@@ -246,10 +248,10 @@ subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0,
        call getmoms_gryfx(dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0)
        ! does there need to be a barrier before we calculate moments?
        if ( .not. first_half_step ) then 
-    !        call loop_diagnostics (istep, exit)
+            !call loop_diagnostics (istep, exit)
             call check_time_step (reset, exit)
             !call update_scan_parameter_value(istep, reset, exit)
-            if (proc0) call time_message(.false.,time_advance,' Advance time step')
+            !if (proc0) call time_message(.false.,time_advance,' Advance time step')
             if (reset) then
                ! if called within trinity, do not dump info to screen
                !if (present(job_id)) then

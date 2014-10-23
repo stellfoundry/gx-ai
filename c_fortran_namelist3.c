@@ -310,7 +310,7 @@ struct fnr_struct fnr_read_namelist_file(char * file_name)
 {
 	char * file_string;
 	/*printf("Marker A1\n");*/
-	printf("Reading file %s\n", file_name);
+	//printf("Reading file %s\n", file_name);
 	if (FNR_DEBUG) printf("Reading file\n");
 	fnr_read_file(file_name, &file_string);
 	if (FNR_DEBUG) printf("The string read was: \n%s\n", file_string);

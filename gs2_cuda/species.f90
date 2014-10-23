@@ -390,10 +390,11 @@ contains
     implicit none
 
     integer, intent (in) :: ntspec
-    real, dimension (:), intent (in) :: dens, fprim, temp, tprim, nu
+    real, dimension (1), intent (in) :: dens, fprim, temp, tprim, nu
 
     integer :: is
     logical, save :: first = .true.
+
 
     if(trin_restart) first = .true.
 
@@ -424,6 +425,8 @@ contains
        end if
        first = .false.
     end if
+
+
 
     if (proc0) then
 
@@ -494,6 +497,9 @@ contains
        call broadcast (spec(is)%zt)
        call broadcast (spec(is)%smz)
     end do
+
+    !if(proc0) write(*,*) 'GS2 species have been reset.'
+    !if(proc0) write(*,*) 'ntspec = ', ntspec, ', dens = ', spec(1)%dens, ' , tprim = ', spec(1)%tprim, ' , vnewk = ', spec(1)%vnewk
 
   end subroutine reinit_species
 

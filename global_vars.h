@@ -113,6 +113,11 @@ float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
 float *gbdrift, *grho, *z, *cvdrift, *gds2, *bmag, *bgrad;
 float *gds21, *gds22, *cvdrift0, *gbdrift0;
 
+extern "C" double *geometry_mp_gbdrift_, *geometry_mp_grho_, *geometry_mp_cvdrift_, *geometry_mp_gds2_, *geometry_mp_bmag_;
+extern "C" double *geometry_mp_gds21_, *geometry_mp_gds22_, *geometry_mp_cvdrift0_, *geometry_mp_gbdrift0_, *geometry_mp_jacob_, *geometry_mp_gradpar_;
+extern "C" int geometry_mp_ntheta_, geometry_mp_nperiod_;
+extern "C" double geometry_mp_qsf_, geometry_mp_kxfac_, geometry_mp_shat_, geometry_mp_rmaj_, theta_grid_mp_drhodpsi_, geometry_mp_rhoc_;
+
 //calculated globals
 float D_par;
 float D_prp;
@@ -135,6 +140,10 @@ float low_cutoff = .01;
 float high_cutoff = .1;
 float dnlpm_max = 1.;
 char* nlpm_option = "constant";
+float tau_nlpm = 10.;
+bool nlpm_zonal_kx1_only = false;
+bool dorland_nlpm = false;
+bool dorland_nlpm_phase = true;
 
 int ivarenna = 1;
 bool varenna_fsa = false;
@@ -200,6 +209,8 @@ bool write_omega = true;
 bool write_phi = true;
 bool write_phase = true;
 bool S_ALPHA = true;
+bool no_landau_damping = false;
+bool turn_off_gradients_test = false;
 
 bool NLPM = false;
 bool varenna = false;

@@ -30,11 +30,13 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //all variables _field are the same array       
   
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  //zeroC<<<dimGrid,dimBlock>>>(phi_tmp);
 
   ////////////////////////////////////////     
   //DENSITY
   
   cudaMemset(dens_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
+  //zeroC<<<dimGrid,dimBlock>>>(dens_field);
     
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, UparOld, bmagInv);    
   ZDerivCovering(gradpar_tmp, fields_over_B_tmp, kxCover, kyCover, g_covering, kz_covering, "",plan_covering);  
@@ -89,6 +91,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //UPAR
 
   cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  //zeroC<<<dimGrid,dimBlock>>>(upar_field);
   
   addsubt <<<dimGrid, dimBlock>>> (sum_tmp, DensOld, TparOld, 1);
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, sum_tmp, bmagInv);
@@ -154,6 +157,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //TPAR
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  //zeroC<<<dimGrid,dimBlock>>>(tpar_field);
   
     
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, 1., QparOld, 2., UparOld);
@@ -242,6 +246,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //TPERP
   
   cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  //zeroC<<<dimGrid,dimBlock>>>(tprp_field);
       
   
   multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, QprpOld, bmagInv);
@@ -327,6 +332,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //QPAR
   
   cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
+  //zeroC<<<dimGrid,dimBlock>>>(qpar_field);
 
   
   if(new_varenna) {
@@ -458,6 +464,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
   //QPERP
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
+  //zeroC<<<dimGrid,dimBlock>>>(qprp_field);
   
   phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, s.zt, phi_tmp, 1., TprpOld);  
