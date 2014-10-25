@@ -1568,6 +1568,7 @@ if(iproc==0) {
 			if(iproc==0) {
 #endif  
   
+      //NLPM
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
