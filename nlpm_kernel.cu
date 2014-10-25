@@ -1,5 +1,5 @@
-__global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx, 
-		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
+__global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
+                float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
 {
   unsigned int idz = get_idz();
   unsigned int idy = 0;
@@ -10,6 +10,50 @@ __global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
   unsigned int idx_zonal;
   if(zonal_kx1_only) idx_zonal = ikx1;
   else idx_zonal = idx;
+
+  if(nz<=zthreads) {
+    if(idz<nz && idx<nx) {
+
+      unsigned int idxz = idx + nx*idz;
+
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
+
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idz<zthreads) {
+        unsigned int IDZ = idz + zthreads*i;
+        unsigned int idxz = idx + nx*IDZ;
+
+
+        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+
+        nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
+
+
+      }
+    }
+  }
+}
+
+//for when dorland_phase is complex
+__global__ void nlpm_shear0(cuComplex* nu, cuComplex* PhiZF, float dnlpm, float* kx, 
+		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
+{
+  unsigned int idz = get_idz();
+  unsigned int idy = 0;
+  unsigned int idx = get_idx();
+
+  unsigned int idx_zonal;
+  if(zonal_kx1_only) {
+    int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+    if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+    idx_zonal = ikx1;
+  }
+  else idx_zonal = idx;
   
   if(nz<=zthreads) {
     if(idz<nz && idx<nx) {
@@ -17,7 +61,7 @@ __global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
       unsigned int idxz = idx + nx*idz;
       
       float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-      nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
+      nu[idxz] = kx[idx]*flr(bidx)*PhiZF[idx_zonal];
             
       
     }
@@ -31,7 +75,53 @@ __global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 	
 	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
-        nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
+        nu[idxz] = kx[idx]*flr(bidx)*PhiZF[idx_zonal];
+	
+	
+      }
+    }
+  }
+}
+//for when dorland_phase is complex
+__global__ void nlpm_shear0_ifac(cuComplex* nu, cuComplex* PhiZF, float dnlpm, float* kx, 
+		float rho, float* ky, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv, bool zonal_kx1_only)
+{
+  unsigned int idz = get_idz();
+  unsigned int idy = 0;
+  unsigned int idx = get_idx();
+
+  unsigned int idx_zonal;
+  if(zonal_kx1_only) {
+    int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+    if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+    idx_zonal = ikx1;
+  }
+  else idx_zonal = idx;
+  
+  if(nz<=zthreads) {
+    if(idz<nz && idx<nx) {
+      
+      unsigned int idxz = idx + nx*idz;
+      
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      //need a factor of i
+      nu[idxz].x = -kx[idx]*flr(bidx)*PhiZF[idx_zonal].y;
+      nu[idxz].y = kx[idx]*flr(bidx)*PhiZF[idx_zonal].x;
+            
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+	unsigned int idxz = idx + nx*IDZ;
+
+	
+	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	
+        nu[idxz].x = -kx[idx]*flr(bidx)*PhiZF[idx_zonal].y;
+        nu[idxz].y = kx[idx]*flr(bidx)*PhiZF[idx_zonal].x;
 	
 	
       }
@@ -209,6 +299,37 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
 
 }
 
+//for when dorland_phase is complex
+__global__ void nlpm_filter(cuComplex* field, cuComplex* nu_nlpm, float* ky, float dt_loc, float dnlpm, float kxfac)
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+
+      field[index] = field[index]/( make_cuComplex(1.,0.) + dt_loc*kxfac*(dnlpm)*nu_nlpm[idz]*ky[idy] );
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+	
+	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+	
+
+	field[index] = field[index]/( make_cuComplex(1.,0.) + dt_loc*kxfac*(dnlpm)*nu_nlpm[IDZ]*ky[idy] );
+      }
+    }
+  }
+
+}
+
 __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float dt_loc, float* Dnlpm, float kxfac)
 {
   unsigned int idx = get_idx();
@@ -238,6 +359,5 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
   }
 
 }
-
 
 

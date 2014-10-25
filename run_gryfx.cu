@@ -145,6 +145,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float *tmpXYZ;
     cuComplex *CtmpX;
     cuComplex *CtmpX2;
+    cuComplex *CtmpXZ;
    
     cuComplex *omega;
     cuComplex *omegaBox[navg];
@@ -187,6 +188,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float *nu_nlpm;
     float *nu1_nlpm;
     float *nu22_nlpm;
+    cuComplex *nu1_nlpm_complex;
+    cuComplex *nu22_nlpm_complex;
     float *shear_rate_z;
     float *shear_rate_z_nz;
     float *shear_rate_nz;  
@@ -289,6 +292,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaMalloc((void**) &tmpYZ, sizeof(float)*(Ny/2+1)*Nz);
     cudaMalloc((void**) &CtmpX, sizeof(cuComplex)*Nx);
     cudaMalloc((void**) &CtmpX2, sizeof(cuComplex)*Nx);
+    cudaMalloc((void**) &CtmpXZ, sizeof(cuComplex)*Nx*Nz);
     cudaMalloc((void**) &tmpXYZ, sizeof(float)*Nx*(Ny/2+1)*Nz);
    
     cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -334,6 +338,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
     cudaMalloc((void**) &nu1_nlpm, sizeof(float)*Nz);
     cudaMalloc((void**) &nu22_nlpm, sizeof(float)*Nz);
+    cudaMalloc((void**) &nu1_nlpm_complex, sizeof(cuComplex)*Nz);
+    cudaMalloc((void**) &nu22_nlpm_complex, sizeof(cuComplex)*Nz);
     cudaMalloc((void**) &shear_rate_z, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_nz, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_z_nz, sizeof(float)*Nz);  
@@ -1252,31 +1258,7 @@ if(iproc==0) {
     if(counter==0) fieldWrite(Qprp1[ION], field_h, "qprp.5.field", filename); 
     }
   */
-      mask<<<dimGrid,dimBlock>>>(Phi1);
-      reality<<<dimGrid,dimBlock>>>(Phi1);
   
-      if(!LINEAR && NLPM) {
-        for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg);
-        }	    
-      }  
-      
-      if(HYPER) {
-        if(isotropic_shear) {
-          for(int s=0; s<nSpecies; s++) {
-            filterHyper_iso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-  			tmpXYZ, shear_rate_nz, dt/2.);
-  		    
-          }  
-        }
-        else {
-          for(int s=0; s<nSpecies; s++) {
-            filterHyper_aniso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s],
-                          tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt/2.);
-          }
-        }
-      }
   
 #ifdef GS2_zonal
 			} //end of iproc if
@@ -1367,9 +1349,6 @@ if(iproc==0) {
     //////nvtxRangePop();
   #endif
          
-  /////////////////////////////////
-  //SECOND HALF OF GRYFX TIMESTEP
-  /////////////////////////////////
 
     //////nvtxRangePushA("Gryfx t->t+dt");
 
@@ -1377,7 +1356,40 @@ if(iproc==0) {
 #ifdef GS2_zonal 
 			if(iproc==0) {
 #endif
+
+      //NLPM calculated AFTER ky=0 quantities passed back from GS2!
+      if(!LINEAR && NLPM && dorland_phase_complex) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        }	    
+      }
+      else if(!LINEAR && NLPM) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        }	    
+      }  
+      //hyper too...
+      if(HYPER) {
+        if(isotropic_shear) {
+          for(int s=0; s<nSpecies; s++) {
+            filterHyper_iso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+  			tmpXYZ, shear_rate_nz, dt/2.);
+  		    
+          }  
+        }
+        else {
+          for(int s=0; s<nSpecies; s++) {
+            filterHyper_aniso(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s],
+                          tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt/2.);
+          }
+        }
+      }
  
+  /////////////////////////////////
+  //SECOND HALF OF GRYFX TIMESTEP
+  /////////////////////////////////
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
           //calculate NL(t+dt/2) = NL(Moment1)
@@ -1462,29 +1474,6 @@ if(iproc==0) {
       }
       //f = f(t+dt)
   
-      if(!LINEAR && NLPM) {
-        for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg);
-        }	    
-      } 
-          
-      
-      if(HYPER) {
-        if(isotropic_shear) {
-          for(int s=0; s<nSpecies; s++) {
-            filterHyper_iso(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-  			tmpXYZ, shear_rate_nz, dt);
-  		    
-          }  
-        }
-        else {
-          for(int s=0; s<nSpecies; s++) {
-            filterHyper_aniso(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s],
-                          tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt);
-          }
-        }
-      }
   
 #ifdef GS2_zonal
 			} //end of iproc if
@@ -1579,6 +1568,38 @@ if(iproc==0) {
 			if(iproc==0) {
 #endif  
   
+      if(!LINEAR && NLPM && dorland_phase_complex) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        }	    
+      }
+      else if(!LINEAR && NLPM) {
+        for(int s=0; s<nSpecies; s++) {
+          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        }	    
+      }  
+          
+      
+      if(HYPER) {
+        if(isotropic_shear) {
+          for(int s=0; s<nSpecies; s++) {
+            filterHyper_iso(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+  			tmpXYZ, shear_rate_nz, dt);
+  		    
+          }  
+        }
+        else {
+          for(int s=0; s<nSpecies; s++) {
+            filterHyper_aniso(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s],
+                          tmpXYZ, shear_rate_nz, shear_rate_z, shear_rate_z_nz, dt);
+          }
+        }
+      }
+
+
+
   /*
       cudaEventRecord(stop1,0);
       cudaEventSynchronize(stop1);
@@ -1646,7 +1667,7 @@ if(iproc==0) {
       volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
       get_kx1_rms<<<1,1>>>(Phi_zf_kx1_d, tmpX);
       Phi_zf_kx1_old = Phi_zf_kx1;
-      //cudaMemcpy(&Phi_zf_kx1, Phi_zf_kx1_d, sizeof(float), cudaMemcpyDeviceToHost);
+      cudaMemcpy(&Phi_zf_kx1, Phi_zf_kx1_d, sizeof(float), cudaMemcpyDeviceToHost);
   
       Phi2_zf = sumReduc(tmpX, Nx, false);
       Phi_zf_rms = sqrt(Phi2_zf);   

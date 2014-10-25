@@ -257,6 +257,16 @@ void read_namelist(char* filename)
   else if( strcmp(dorland_nlpm_phase_flag,"off") == 0) {
     dorland_nlpm_phase = false;
   }
+  char* dorland_phase_complex_flag;
+  dorland_phase_complex_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "dorland_phase_complex", &dorland_phase_complex_flag)) dorland_phase_complex_flag="off";
+  if( strcmp(dorland_phase_complex_flag,"on") == 0) {
+    dorland_phase_complex = true;
+  }
+  else if( strcmp(dorland_phase_complex_flag,"off") == 0) {
+    dorland_phase_complex = false;
+  }
+  if(fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &dorland_phase_ifac)) dorland_phase_ifac = 1;
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option)) nlpm_option="cutoff";
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm)) inlpm = 2;
@@ -278,8 +288,10 @@ void read_namelist(char* filename)
   
 
   // normalize cutoffs by Y0
-  low_cutoff = (float) low_cutoff / Y0;
-  high_cutoff = (float) high_cutoff / Y0;
+  if(!dorland_nlpm) {
+    low_cutoff = (float) low_cutoff / Y0;
+    high_cutoff = (float) high_cutoff / Y0;
+  }
 
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna)) ivarenna = 1;
   

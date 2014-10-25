@@ -389,6 +389,31 @@ __global__ void add_scaled(cuComplex* result, float fscaler, cuComplex* f, float
     }
   }
 } 
+__global__ void add_scaled(cuComplex* result, float fscaler, float* f, float gscaler, cuComplex* g,int nx, int ny, int nz)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      result[index].x = fscaler*f[index] + gscaler*g[index].x;      
+      result[index].y = gscaler*g[index].y;      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+        result[index].x = fscaler*f[index] + gscaler*g[index].x;      
+        result[index].y = gscaler*g[index].y;      
+      }
+    }
+  }
+} 
 //two fields, complex scalars, ONLY KY=0
 __global__ void add_scaled_Ky0(cuComplex* result, float fscaler, cuComplex* f, float gadd)
 {

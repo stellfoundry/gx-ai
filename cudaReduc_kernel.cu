@@ -47,6 +47,40 @@ __global__ void reduce2_partial (T *g_idata, T *g_odata, unsigned int n, unsigne
   // write result for this block to global mem
   if (tid == 0) g_odata[blockIdx.x] = sdata[0];
 }
+__global__ void reduce2_partial_complex (cuComplex *g_idata, cuComplex *g_odata, unsigned int n, unsigned int blocksize)
+{
+  extern __shared__ float sdata_real[];
+  //extern __shared__ float sdata_comp[];
+  // load shared mem
+  unsigned int tid = threadIdx.x;
+  unsigned int i = blockIdx.x * blocksize + threadIdx.x;
+ 
+  sdata_real[tid] = (i < n && tid<blocksize) ? g_idata[i].x : 0.;
+  __syncthreads();
+
+  // do reduction in shared mem
+  for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+    if (tid < s) sdata_real[tid] = sdata_real[tid] + sdata_real[tid + s];
+    __syncthreads();
+  }
+
+  // write result for this block to global mem
+  if (tid == 0) g_odata[blockIdx.x].x = sdata_real[0];
+ 
+  __syncthreads();
+
+  sdata_real[tid] = (i < n && tid<blocksize) ? g_idata[i].y : 0.;
+  __syncthreads();
+
+  // do reduction in shared mem
+  for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+    if (tid < s) sdata_real[tid] = sdata_real[tid] + sdata_real[tid + s];
+    __syncthreads();
+  }
+
+  // write result for this block to global mem
+  if (tid == 0) g_odata[blockIdx.x].y = sdata_real[0];
+}
 
 /*
   This version uses n/2 threads --
@@ -341,6 +375,17 @@ void reduce_wrapper_partial (int size, int threads, int blocks, T *idata, T *oda
   reduce2_partial <<< dimGrid, dimBlock, smem >>> (idata, odata, size, size/blocks);
 
 }
+void reduce_wrapper_partial_complex (int size, int threads, int blocks, cuComplex *idata, cuComplex *odata)
+{
+  dim3 dimGrid (blocks,1,1);
+  dim3 dimBlock (threads,1,1);
+  int smem;
+
+  smem = (threads <= 32) ? 2 * threads * sizeof(int) : threads * sizeof(int);
+
+  reduce2_partial_complex <<< dimGrid, dimBlock, smem >>> (idata, odata, size, size/blocks);
+
+}
 template <class T>
 void reduce_wrapper (int size, int threads, int blocks, T *idata, T *odata)
 {
@@ -603,5 +648,12 @@ void swapargs (X &a, X &b)
   b = temp;
 }
 
-
-
+/*
+void swapargs_complex (cuComplex &a, cuComplex &b)
+{ // This function is from "Teach Yourself C++, Ex11.1.1.
+  cuComplex temp;
+  temp = a;
+  a = b;
+  b = temp;
+}
+*/

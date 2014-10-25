@@ -144,6 +144,8 @@ float tau_nlpm = 10.;
 bool nlpm_zonal_kx1_only = false;
 bool dorland_nlpm = false;
 bool dorland_nlpm_phase = true;
+bool dorland_phase_complex = false;
+int dorland_phase_ifac = 1;
 
 int ivarenna = 1;
 bool varenna_fsa = false;

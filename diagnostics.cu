@@ -184,7 +184,7 @@ inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int*
     cuComplex *g_h;
     g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*icovering*nLinks[c]*nChains[c]);
     cuComplex* g_d;
-    cudaMalloc((inline void**) &g_d, sizeof(cuComplex)*(Nz*icovering*nLinks[c]*nChains[c]));
+    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*icovering*nLinks[c]*nChains[c]));
     int xy = totalThreads/nLinks[c];
     int blockxy = (int) sqrt(xy);  
     dim3 dimBlockCovering(blockxy,blockxy,nLinks[c]);
@@ -245,7 +245,7 @@ inline void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** k
     cuComplex *g_h;
     g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*nLinks[c]*nChains[c]);
     cuComplex* g_d;
-    cudaMalloc((inline void**) &g_d, sizeof(cuComplex)*(Nz*nLinks[c]*nChains[c]));
+    cudaMalloc((void**) &g_d, sizeof(cuComplex)*(Nz*nLinks[c]*nChains[c]));
     int xy = totalThreads/nLinks[c];
     int blockxy = (int) sqrt(xy);  
     dim3 dimBlockCovering(blockxy,blockxy,nLinks[c]);
@@ -1448,7 +1448,7 @@ inline void check_b()
 {
   FILE* b_file = fopen("./scan/outputs/b_check", "w++");
   float* b;
-  cudaMalloc((inline void**) &b, sizeof(float)*Nx*(Ny/2+1)*Nz);
+  cudaMalloc((void**) &b, sizeof(float)*Nx*(Ny/2+1)*Nz);
   
   float* b_h = (float*) malloc(sizeof(float)*Nx*(Ny/2+1)*Nz);
   
