@@ -619,12 +619,19 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
               float* dt_full, specie s,
 	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
 	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
-	      cuComplex *phi_tmp, cuComplex *nlps_tmp, int first_half_step,
-              cuComplex *field_h, int counter) 
+	      cuComplex *phi_tmp, cuComplex *nlps_tmp, float* Phi_zf_rms_tmpX, cuComplex* Phi_zf_CtmpX, int first_half_step,
+              cuComplex *field_h, int counter, float kx2Phi_zf_rms) 
 {
 
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
 
+  if(nlpm_nlps) {
+    // get zonal flow component of Phi
+    //Phi2ZF_tmpX = |Phi_zf(kx)|_rms
+    volflux_zonal_rms<<<dimGrid,dimBlock>>>(Phi_zf_rms_tmpX, Phi, Phi, jacobian, 1./(fluxDen*fluxDen) );
+    //complex Phi_zf(kx)
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(Phi_zf_CtmpX, Phi, jacobian, 1./fluxDen);
+  }
   ////////////////////////////////////////     
   //DENSITY
   
@@ -706,6 +713,26 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (tpar_field, nlps_tmp, 1);
     // + {phi_u,Tpar}
 
+    if(nlpm_nlps) {
+      phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, TparOld, kx_abs, ky);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, .4*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, .4*dnlpm, nlps_tmp);
+      }
+      
+      phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, TparOld, kx, ky);  
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -.6*dnlpm*kx2Phi_zf_rms, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -.6*dnlpm, nlps_tmp);
+      }
+    }
+
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLtpar_ky0_d, tpar_field);
@@ -739,6 +766,25 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, 1);
     // + {phi_flr2, Tprp}
 
+    if(nlpm_nlps) {
+      phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, TprpOld, kx_abs, ky);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1.6*dnlpm, nlps_tmp);
+      }
+      
+      phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, TprpOld, kx, ky);  
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -1.3*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -1.3*dnlpm, nlps_tmp);
+      }
+    }
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLtprp_ky0_d, tprp_field);
@@ -760,6 +806,25 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (qpar_field, nlps_tmp, 1);
     // + {phi_u, Qpar}
 
+    if(nlpm_nlps) {
+      phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, QparOld, kx_abs, ky);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, .4*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, .4*dnlpm, nlps_tmp);
+      }      
+
+      phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, QparOld, kx, ky);  
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, -.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, -.6*dnlpm, nlps_tmp);
+      }      
+    }
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLqpar_ky0_d, qpar_field);
@@ -792,6 +857,25 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
     // + {phi_flr2, Qprp}
 
+    if(nlpm_nlps) {
+      phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, QprpOld, kx_abs, ky);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1.6*dnlpm, nlps_tmp);
+      }      
+
+      phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPM_NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);  
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1.3*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      }
+      else {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1.3*dnlpm, nlps_tmp);
+      }      
+    }
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLqprp_ky0_d, qprp_field);

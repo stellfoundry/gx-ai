@@ -113,6 +113,13 @@ inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuCompl
       nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, dnlpm*Phi_zf_rms/low_cutoff, kxfac);
       nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, dnlpm*Phi_zf_rms/low_cutoff, kxfac);
     }
+    if(strcmp(nlpm_option,"quadratic") == 0) {
+      get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu1_nlpm, ky, dt_loc, Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu22_nlpm, ky, dt_loc, Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, Phi_zf_rms*dnlpm, kxfac);
+    }
   }
   else {
     get_nu_nlpm(nu_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s);
@@ -147,11 +154,44 @@ inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuCompl
 inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
 		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
 		float* Phi2ZF_tmpX, cuComplex* PhiZF_CtmpX, float* tmpXZ, cuComplex* CtmpXZ, float* filter_tmpYZ, float* nu_nlpm, cuComplex* nu1_nlpm, cuComplex* nu22_nlpm,
-		specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float Phi_zf_rms)
+		specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float kx2Phi_zf_rms)
 {
-    get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, PhiZF_CtmpX, tmpXZ, CtmpXZ, s);
-    nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu1_nlpm, ky, dt_loc, dnlpm, kxfac);
-    nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu22_nlpm, ky, dt_loc, dnlpm, kxfac); 	
-    nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, dnlpm, kxfac); 	
-    nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, dnlpm, kxfac);  
+  if(!nlpm_kxdep) {
+    if(strcmp(nlpm_option,"constant") == 0 || (strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>low_cutoff)) {
+      get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, PhiZF_CtmpX, tmpXZ, CtmpXZ, s);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu1_nlpm, ky, dt_loc, dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu22_nlpm, ky, dt_loc, dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, dnlpm, kxfac);
+    }
+    if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
+      get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, PhiZF_CtmpX, tmpXZ, CtmpXZ, s);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu1_nlpm, ky, dt_loc, dnlpm*kx2Phi_zf_rms/low_cutoff, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu22_nlpm, ky, dt_loc, dnlpm*kx2Phi_zf_rms/low_cutoff, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, dnlpm*kx2Phi_zf_rms/low_cutoff, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, dnlpm*kx2Phi_zf_rms/low_cutoff, kxfac);
+    }
+    if(strcmp(nlpm_option,"quadratic") == 0) {
+      get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, PhiZF_CtmpX, tmpXZ, CtmpXZ, s);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tpar, nu1_nlpm, ky, dt_loc, kx2Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Tprp, nu22_nlpm, ky, dt_loc, kx2Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qpar, nu1_nlpm, ky, dt_loc, kx2Phi_zf_rms*dnlpm, kxfac);
+      nlpm_filter<<<dimGrid,dimBlock>>>(Qprp, nu22_nlpm, ky, dt_loc, kx2Phi_zf_rms*dnlpm, kxfac);
+    }
+  }
+  else {
+    // get zonal flow component of Phi
+    //Phi2ZF_tmpX = |Phi_zf(kx)|_rms
+    volflux_zonal_rms<<<dimGrid,dimBlock>>>(Phi2ZF_tmpX, Phi, Phi, jacobian, 1./(fluxDen*fluxDen) );
+    //complex Phi_zf(kx)
+    volflux_zonal_complex<<<dimGrid,dimBlock>>>(PhiZF_CtmpX, Phi, jacobian, 1./fluxDen);
+    
+    nlpm_filter_kxdep<<<dimGrid,dimBlock>>>(Tpar, ky, kx, dt_loc, dnlpm, kxfac, .4, Phi2ZF_tmpX, .6, PhiZF_CtmpX, s.rho, shat, gds2, gds21, gds22, bmagInv);
+    nlpm_filter_kxdep<<<dimGrid,dimBlock>>>(Tprp, ky, kx, dt_loc, dnlpm, kxfac, 1.6, Phi2ZF_tmpX, 1.3, PhiZF_CtmpX, s.rho, shat, gds2, gds21, gds22, bmagInv);
+    nlpm_filter_kxdep<<<dimGrid,dimBlock>>>(Qpar, ky, kx, dt_loc, dnlpm, kxfac, .4, Phi2ZF_tmpX, .6, PhiZF_CtmpX, s.rho, shat, gds2, gds21, gds22, bmagInv);
+    nlpm_filter_kxdep<<<dimGrid,dimBlock>>>(Qprp, ky, kx, dt_loc, dnlpm, kxfac, 1.6, Phi2ZF_tmpX, 1.3, PhiZF_CtmpX, s.rho, shat, gds2, gds21, gds22, bmagInv);
+    
+  }
 }
+
+

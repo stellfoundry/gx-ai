@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
   	char* namelistFile;
 	if(argc == 2) {
 	  namelistFile = argv[1];
-//	  printf("namelist = %s\n", namelistFile);
+	  //printf("namelist = %s\n", namelistFile);
 	}
 	else {
 	  namelistFile = "inputs/cyclone_miller_ke.in";

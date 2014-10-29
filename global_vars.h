@@ -146,6 +146,8 @@ bool dorland_nlpm = false;
 bool dorland_nlpm_phase = true;
 bool dorland_phase_complex = false;
 int dorland_phase_ifac = 1;
+bool nlpm_nlps = false;
+bool nlpm_kxdep = false;
 
 int ivarenna = 1;
 bool varenna_fsa = false;
@@ -173,7 +175,7 @@ float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
 char* secondary_test_restartfileName;
 
 //other global device arrays
-float *kx, *ky, *kz, *kz_complex;
+float *kx, *ky, *kz, *kz_complex, *kx_abs;
 float *bmagInv;
 cuComplex *bmag_complex;
 cuComplex *deriv_nlps;

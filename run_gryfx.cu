@@ -70,6 +70,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
    
     float Phi2_zf;
     float Phi_zf_rms;
+    float kx2Phi_zf_rms;
     float Phi_zf_rms_sum;
     float Phi_zf_rms_avg;
     
@@ -301,6 +302,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     cudaMalloc((void**) &resultR_nlps, sizeof(float)*Nx*Ny*Nz);
   
     cudaMalloc((void**) &kx, sizeof(float)*Nx);
+    cudaMalloc((void**) &kx_abs, sizeof(float)*Nx);
     cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
     cudaMalloc((void**) &kz, sizeof(float)*(Nz));
     cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
@@ -395,7 +397,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
       
     // INITIALIZE ARRAYS AS NECESSARY
   
-    kInit  <<< dimGrid, dimBlock >>> (kx, ky, kz, NO_ZDERIV);
+    kInit  <<< dimGrid, dimBlock >>> (kx, ky, kz, kx_abs, NO_ZDERIV);
     kx_max = (float) ((int)((Nx-1)/3))/X0;
     ky_max = (float) ((int)((Ny-1)/3))/Y0;
     kperp2_max = pow(kx_max,2) + pow(ky_max,2);
@@ -1165,8 +1167,8 @@ if(iproc==0) {
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, first_half_flag,
-	       field_h, counter);
+  	       tmp,tmp, tmpX, CtmpX, first_half_flag,
+	       field_h, counter, kx2Phi_zf_rms);
   
           //Moment1 = Moment + (dt/2)*NL(Moment)
   
@@ -1361,13 +1363,13 @@ if(iproc==0) {
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }  
       //hyper too...
@@ -1403,8 +1405,8 @@ if(iproc==0) {
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, first_half_flag,
-	       field_h, counter);
+  	       tmp,tmp, tmpX, CtmpX, first_half_flag,
+	       field_h, counter, kx2Phi_zf_rms);
   
           //Moment = Moment + dt * NL(Moment1)
   
@@ -1572,13 +1574,13 @@ if(iproc==0) {
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, Phi_zf_rms);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }  
           
@@ -1672,6 +1674,12 @@ if(iproc==0) {
   
       Phi2_zf = sumReduc(tmpX, Nx, false);
       Phi_zf_rms = sqrt(Phi2_zf);   
+
+      
+      volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
+      multKx4<<<dimGrid,dimBlock>>>(tmpX, tmpX, kx); 
+      kx2Phi_zf_rms = sumReduc(tmpX, Nx, false);
+      kx2Phi_zf_rms = sqrt(kx2Phi_zf_rms);
   
       //calculate tmpXY = Phi**2(kx,ky)
       volflux(Phi,Phi,tmp,tmpXY);
@@ -1780,7 +1788,7 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
+      fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
     
   	     
       if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)          

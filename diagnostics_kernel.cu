@@ -330,6 +330,41 @@ __global__ void volflux_zonal(float* flux, cuComplex* f, cuComplex* g, float* ja
   
 }
 
+__global__ void volflux_zonal_rms(float* flux, cuComplex* f, cuComplex* g, float* jacobian, float fluxDenSqInv)
+{
+  unsigned int idx = get_idx();
+  
+  
+  
+    if(idx<nx) {
+      unsigned int index;
+      unsigned int idxy0 = 0 + (ny/2+1)*idx;
+      
+      flux[idx] = 0;
+      cuComplex fz;
+      cuComplex gz;
+      cuComplex fsum;
+      cuComplex gsum;
+      cuComplex fg;
+      fsum.x = 0.;
+      fsum.y = 0.;
+      gsum.x = 0.;
+      gsum.y = 0.;
+      float fac = 1.;  //only ky=0 modes      
+      for(int i = 0; i<nz; i++) {
+        index = idxy0 + nx*(ny/2+1)*i;
+	fz = f[index]*jacobian[i];
+	gz = cuConjf( g[index] )*jacobian[i];
+	fsum = fsum + fz;
+	gsum = gsum + gz;
+      }    
+      fg = fsum*gsum;        
+      flux[idx] = sqrt(fac*fg.x*fluxDenSqInv);
+
+    }
+  
+}
+
 __global__ void field_line_avg(cuComplex* favg, cuComplex* f, float* jacobian, float fluxDenInv)
 {  
   unsigned int idx = get_idx();

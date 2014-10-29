@@ -1,4 +1,4 @@
-__global__ void kInit(float* kx, float* ky, float* kz, bool NO_ZDERIV) 
+__global__ void kInit(float* kx, float* ky, float* kz, float* kx_abs, bool NO_ZDERIV) 
 {
   unsigned int idy = get_idy();
   int idx = iget_idx();
@@ -14,6 +14,8 @@ __global__ void kInit(float* kx, float* ky, float* kz, bool NO_ZDERIV)
     } else {						
       kx[idx] = (float) (idx - nx)/X0_d;				
     }
+
+    kx_abs[idx] = abs(kx[idx]);
   }
   
   

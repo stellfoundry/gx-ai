@@ -901,6 +901,19 @@ __global__ void multKx(cuComplex* res, cuComplex* f, float* kx)
   }
 }   
 
+__global__ void multKx4(float* res, float* f, float* kx) 
+{
+  unsigned int idx = get_idx();
+  
+    if(idx<nx) {
+      
+      double kx4 = kx[idx]*kx[idx]*kx[idx]*kx[idx];
+
+      res[idx] = f[idx] * __powf(kx[idx],4.);
+      		 
+    }
+}   
+
 //f(ky) * f(ky,kx,z)
 __global__ void multKy(cuComplex* res, cuComplex* f, float* ky) 
 {
@@ -1554,22 +1567,24 @@ __global__ void replace_ky0(cuComplex* f, cuComplex* f_ky0)
 __global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
 {
   
-  unsigned int idx = get_idx();
+  int idx = get_idx();
   unsigned int idy = 0;
   unsigned int idz = get_idz();
 
   unsigned int ntheta0 = 1 + 2*((nx-1)/3);
 
   if(idx<nx && idz<nz) {
-    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-    unsigned int idx_nopad;
-    unsigned int idxz_nopad;
+    int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    int idx_nopad;
+    int idxz_nopad;
+  
+    int ikx = get_ikx(idx);
 
-    if(idx<(nx-1)/3+1) {
+    if(ikx <= (nx-1)/3 && ikx>=0) {
       idx_nopad = idx;
       idxz_nopad = idx_nopad + ntheta0*idz;
       f[index_ky0] = f_ky0[idxz_nopad];
-    } else if(idx>2*((nx-1)/3)) {
+    } else if(ikx >= -(nx-1)/3) {
       idx_nopad = idx - nx + ntheta0;
       idxz_nopad = idx_nopad + ntheta0*idz;
       f[index_ky0] = f_ky0[idxz_nopad];
@@ -1578,6 +1593,20 @@ __global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
       f[index_ky0].x = 0.;
       f[index_ky0].y = 0.;
     }
+
+  //  if(idx<(nx-1)/3+1) {  // (ntheta0-1)/2+1
+  //    idx_nopad = idx;
+  //    idxz_nopad = idx_nopad + ntheta0*idz;
+  //    f[index_ky0] = f_ky0[idxz_nopad];
+  //  } else if(idx>2*((nx-1)/3)) {
+  //    idx_nopad = idx - nx + ntheta0;
+  //    idxz_nopad = idx_nopad + ntheta0*idz;
+  //    f[index_ky0] = f_ky0[idxz_nopad];
+  //  }
+  //  else { //pad with zeros for mask in middle
+  //    f[index_ky0].x = 0.;
+  //    f[index_ky0].y = 0.;
+  //  }
   }
 }
 
@@ -1597,27 +1626,38 @@ __global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
 //use this if want result f(ky=0) to be unpadded
 __global__ void getky0_nopad(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
 {
-  unsigned int idx_nopad = get_idx();
+  int idx = get_idx();
   unsigned int idy = 0;
   unsigned int idz = get_idz();
 
   int ntheta0 = 1 + 2*((nx-1)/3);
 
-  if(idx_nopad<ntheta0 && idz<nz) {
-    unsigned int idxz_nopad = idx_nopad + ntheta0*idz;
+  if(idx<nx && idz<nz) {
+    int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    int idx_nopad;
+    int idxz_nopad;
 
-    unsigned int idx;
+    int ikx = get_ikx(idx);
 
-    if(idx_nopad<(ntheta0+1)/2) {
-      idx = idx_nopad;
-    } else {
-      idx = idx_nopad + nx - ntheta0; //shift past mask in center, nshift = nx - ntheta0
+    if(ikx <= (nx-1)/3 && ikx>=0) {
+      idx_nopad = idx;
+      idxz_nopad = idx_nopad + ntheta0*idz;
+      res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
+    } else if(ikx >= -(nx-1)/3) {
+      idx_nopad = idx - nx + ntheta0;
+      idxz_nopad = idx_nopad + ntheta0*idz;
+      res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
     }
 
-    unsigned int index_ky0 = 0 + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-    res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
-
+   // if(idx<(nx-1)/3+1) {  // (ntheta0-1)/2+1
+   //   idx_nopad = idx;
+   //   idxz_nopad = idx_nopad + ntheta0*idz;
+   //   res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
+   // } else if(idx>2*((nx-1)/3)) {
+   //   idx_nopad = idx - nx + ntheta0;
+   //   idxz_nopad = idx_nopad + ntheta0*idz;
+   //   res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
+   // }
   }
 }
 

@@ -341,6 +341,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
   printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
   printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
+  if(NLPM && nlpm_kxdep) printf("USING NEW KX DEPENDENCE IN COMPLEX DORLAND NLPM EXPRESSION\n");
+  if(nlpm_nlps) printf("USING NEW NLPS-style NLPM\n");
 
   if(DEBUG) { 
     int ct, dev;

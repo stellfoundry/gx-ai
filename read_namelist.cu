@@ -266,6 +266,30 @@ void read_namelist(char* filename)
   else if( strcmp(dorland_phase_complex_flag,"off") == 0) {
     dorland_phase_complex = false;
   }
+
+  char* nlpm_kxdep_flag;
+  nlpm_kxdep_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_kxdep", &nlpm_kxdep_flag)) nlpm_kxdep_flag="off";
+  if( strcmp(nlpm_kxdep_flag,"on") == 0) {
+    nlpm_kxdep = true;
+  }
+  else if( strcmp(nlpm_kxdep_flag,"off") == 0) {
+    nlpm_kxdep = false;
+  }
+
+  if(nlpm_kxdep) dorland_phase_complex = true;  
+
+  char* nlpm_nlps_flag;
+  nlpm_nlps_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_nlps", &nlpm_nlps_flag)) nlpm_nlps_flag="off";
+  if( strcmp(nlpm_nlps_flag,"on") == 0) {
+    nlpm_nlps = true;
+  }
+  else if( strcmp(nlpm_nlps_flag,"off") == 0) {
+    nlpm_nlps = false;
+  }
+  if(nlpm_nlps) NLPM = false; //turn off normal filter-style NLPM
+
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &dorland_phase_ifac)) dorland_phase_ifac = 1;
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option)) nlpm_option="cutoff";
 

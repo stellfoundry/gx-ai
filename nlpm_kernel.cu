@@ -361,3 +361,45 @@ __global__ void nlpm_filter(cuComplex* field, float* nu_nlpm, float* ky, float d
 }
 
 
+__global__ void nlpm_filter_kxdep(cuComplex* field, float* ky, float* kx, float dt_loc, float dnlpm, float kxfac, float c_abs, float* PhiZF_abs_X, float c_complex, cuComplex* PhiZF_complex_X,
+                float rho, float shat, float* gds2, float* gds21, float*gds22, float* bmagInv)
+					 
+{
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+ 
+      cuComplex nu_nlpm;
+      nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;
+      nu_nlpm.y = c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].y;
+
+      field[index] = field[index]/( make_cuComplex(1.,0.) + dt_loc*kxfac*(dnlpm)*nu_nlpm );
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+	unsigned int IDZ = idz + zthreads*i;
+	
+	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+	
+      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+ 
+      cuComplex nu_nlpm;
+      nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;
+      nu_nlpm.y = c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].y;
+
+      field[index] = field[index]/( make_cuComplex(1.,0.) + dt_loc*kxfac*(dnlpm)*nu_nlpm );
+
+      }
+    }
+  }
+
+}
+
