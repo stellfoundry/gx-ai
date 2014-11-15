@@ -3318,11 +3318,12 @@ subroutine check_dist_fn(report_unit)
     use le_grids, only: nlambda, ng2, lmax, anon, energy, negrid
     use species, only: spec, nspec
     use run_parameters, only: fphi, fapar, fbpar, wunits
-    use gs2_time, only: code_dt
+    use gs2_time, only: dt0 => code_dt, dt1 => code_dt_prev1, dt2 => code_dt_prev2, code_dt
     use gs2_layouts, only: g_lo, ik_idx, it_idx, il_idx, ie_idx, is_idx
     use nonlinear_terms, only: nonlin
     use hyper, only: D_res
     use constants
+    use mp, only: proc0
     implicit none
     complex, dimension (-ntgrid:,:,:), intent (in) :: phi,    apar,    bpar
     complex, dimension (-ntgrid:,:,:), intent (in) :: phinew, aparnew, bparnew
@@ -3333,6 +3334,7 @@ subroutine check_dist_fn(report_unit)
 
     integer :: ig, ik, it, il, ie, is
     complex, dimension (-ntgrid:ntgrid) :: phigavg, apargavg
+    real :: c0, c1, c2
 
 !    call timer (0, 'get_source_term')
 
@@ -3341,6 +3343,13 @@ subroutine check_dist_fn(report_unit)
     il = il_idx(g_lo,iglo)
     ie = ie_idx(g_lo,iglo)
     is = is_idx(g_lo,iglo)
+
+    c0 = (1. / (dt1 + dt2)) * ( &
+         ((dt0 + dt1)**2./dt1)*( (dt0+dt1)/3. + dt2/2. ) &
+         - dt1*(dt1/3. + dt2/2.) )
+    c1 = - dt0**2. * ( dt0/3. + (dt1+dt2)/2. ) / (dt1*dt2)
+    c2 = dt0**2. * ( dt0/3. + dt1/2. ) / ( dt2*(dt1+dt2) )
+
 !CMR, 4/8/2011
 ! apargavg and phigavg combine to give the GK EM potential chi. 
 !          chi = phigavg - apargavg*vpa(:,isgn,iglo)*spec(is)%stm
@@ -3446,10 +3455,14 @@ subroutine check_dist_fn(report_unit)
              case default
                 do ig = -ntgrid, ntgrid
                    if (il < ittp(ig)) cycle
-                   source(ig) = source(ig) + 0.5*code_dt*( &
-                          (23./12.)*gexp_1(ig,isgn,iglo) &
-                        - (4./3.)  *gexp_2(ig,isgn,iglo) &
-                        + (5./12.) *gexp_3(ig,isgn,iglo))
+                 !  source(ig) = source(ig) + 0.5*code_dt*( &
+                 !         (23./12.)*gexp_1(ig,isgn,iglo) &
+                 !       - (4./3.)  *gexp_2(ig,isgn,iglo) &
+                 !       + (5./12.) *gexp_3(ig,isgn,iglo))
+                   source(ig) = source(ig) + 0.5*( &
+                          c0*gexp_1(ig,isgn,iglo) &
+                        + c1*gexp_2(ig,isgn,iglo) &
+                        + c2*gexp_3(ig,isgn,iglo))
                 end do
              end select
           end if
@@ -3470,6 +3483,12 @@ subroutine check_dist_fn(report_unit)
       real :: bd, bdfac_p, bdfac_m
       integer :: i_e, i_s
 !      logical :: first = .true.
+
+    c0 = (1. / (dt1 + dt2)) * ( &
+         ((dt0 + dt1)**2./dt1)*( (dt0+dt1)/3. + dt2/2. ) &
+         - dt1*(dt1/3. + dt2/2.) )
+    c1 = - dt0**2. * ( dt0/3. + (dt1+dt2)/2. ) / (dt1*dt2)
+    c2 = dt0**2. * ( dt0/3. + dt1/2. ) / ( dt2*(dt1+dt2) )
 
 !      if (first) then
       if (.not. allocated(ufac)) then
@@ -3568,10 +3587,14 @@ subroutine check_dist_fn(report_unit)
             end do
          case default
             do ig = -ntgrid, ntgrid-1
-               source(ig) = source(ig) + 0.5*code_dt*( &
-                      (23./12.)*gexp_1(ig,isgn,iglo) &
-                    - (4./3.)  *gexp_2(ig,isgn,iglo) &
-                    + (5./12.) *gexp_3(ig,isgn,iglo))
+            !   source(ig) = source(ig) + 0.5*code_dt*( &
+            !          (23./12.)*gexp_1(ig,isgn,iglo) &
+            !        - (4./3.)  *gexp_2(ig,isgn,iglo) &
+            !        + (5./12.) *gexp_3(ig,isgn,iglo))
+                   source(ig) = source(ig) + 0.5*( &
+                          c0*gexp_1(ig,isgn,iglo) &
+                        + c1*gexp_2(ig,isgn,iglo) &
+                        + c2*gexp_3(ig,isgn,iglo))
             end do
          end select
       end if

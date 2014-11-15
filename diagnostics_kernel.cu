@@ -3,10 +3,10 @@ __global__ void growthRate(cuComplex *omega, cuComplex *phinew, cuComplex *phiol
   unsigned int idx = get_idx();
   unsigned int idy = get_idy();
   
-  //i_dt  i/dt
+  //i_dt = i/dt
   cuComplex i_dt;
   i_dt.x = 0;
-  i_dt.y = 1/dt;
+  i_dt.y = 1./dt;
   
   
   if(idy<(ny/2+1) && idx<nx) 
@@ -284,7 +284,7 @@ __global__ void volflux(float* flux, cuComplex* f, cuComplex* g, float* jacobian
       cuComplex fg;
       if(idy==0) fac = 1.;
       else fac = 0.5;
-      for(int i = 0; i<nz; i++) {
+      for(int i = 1; i<nz; i++) {
         index = idxy + nx*(ny/2+1)*i;
 	fg = f[index] * cuConjf( g[index] )*jacobian[i];
 	flux[idxy] = flux[idxy] + fac*fg.x;
@@ -436,7 +436,7 @@ __global__ void expect_k(float* kphi2_XY, float* phi2_XY, float* k)
       //ignore the ky=0 modes
       if(idy == 0) {
         kphi2_XY[idxy] = 0;
-	phi2_XY[idxy] = 0;
+	//phi2_XY[idxy] = 0;
       }
       else {
         kphi2_XY[idxy] = phi2_XY[idxy] / k[idy];

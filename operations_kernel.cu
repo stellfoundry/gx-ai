@@ -909,7 +909,7 @@ __global__ void multKx4(float* res, float* f, float* kx)
       
       double kx4 = kx[idx]*kx[idx]*kx[idx]*kx[idx];
 
-      res[idx] = f[idx] * __powf(kx[idx],4.);
+      res[idx] = f[idx] * kx4;
       		 
     }
 }   
@@ -1584,7 +1584,7 @@ __global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
       idx_nopad = idx;
       idxz_nopad = idx_nopad + ntheta0*idz;
       f[index_ky0] = f_ky0[idxz_nopad];
-    } else if(ikx >= -(nx-1)/3) {
+    } else if(ikx >= -(nx-1)/3 && ikx < 0) {
       idx_nopad = idx - nx + ntheta0;
       idxz_nopad = idx_nopad + ntheta0*idz;
       f[index_ky0] = f_ky0[idxz_nopad];
@@ -1643,7 +1643,7 @@ __global__ void getky0_nopad(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
       idx_nopad = idx;
       idxz_nopad = idx_nopad + ntheta0*idz;
       res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];
-    } else if(ikx >= -(nx-1)/3) {
+    } else if(ikx >= -(nx-1)/3 && ikx<0) {
       idx_nopad = idx - nx + ntheta0;
       idxz_nopad = idx_nopad + ntheta0*idz;
       res_ky0kxz[idxz_nopad] = f_kykxz[index_ky0];

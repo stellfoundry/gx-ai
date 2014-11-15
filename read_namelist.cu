@@ -69,7 +69,7 @@ void read_namelist(char* filename)
   
   if(fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "navg", &navg)) navg=100;
   
-  if(fnr_get_float(&namelist_struct, "knobs", "delt", &dt)) dt = .02;
+  if(fnr_get_double(&namelist_struct, "knobs", "delt", &dt)) dt = .02;
   
   if(fnr_get_float(&namelist_struct, "knobs", "maxdt", &maxdt)) maxdt = dt;
   
@@ -290,6 +290,16 @@ void read_namelist(char* filename)
   }
   if(nlpm_nlps) NLPM = false; //turn off normal filter-style NLPM
 
+  char* nlpm_cutoff_avg_flag;
+  nlpm_cutoff_avg_flag = (char*) malloc(sizeof(char)*4);
+  if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_cutoff_avg", &nlpm_cutoff_avg_flag)) nlpm_cutoff_avg_flag="off";
+  if( strcmp(nlpm_cutoff_avg_flag,"on") == 0) {
+    nlpm_cutoff_avg = true;
+  }
+  else if( strcmp(nlpm_cutoff_avg_flag,"off") == 0) {
+    nlpm_cutoff_avg = false;
+  }
+
   if(fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &dorland_phase_ifac)) dorland_phase_ifac = 1;
   if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option)) nlpm_option="cutoff";
 
@@ -297,7 +307,9 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm)) dnlpm = 1.;
   
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &low_cutoff)) low_cutoff = .01;
-  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = .1;
+  if(fnr_get_float(&namelist_struct, "gryfx_knobs", "high_cutoff", &high_cutoff)) high_cutoff = -1;
+  if(high_cutoff == -1) {high_cutoff = low_cutoff; low_cutoff = 0.;} //backwards compatability for when only low cutoff specified
+
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &dnlpm_max)) dnlpm_max = 1.;
   if(fnr_get_float(&namelist_struct, "gryfx_knobs", "tau_nlpm", &tau_nlpm)) tau_nlpm = 10.;
   char* zonal_kx1_only;
@@ -312,7 +324,7 @@ void read_namelist(char* filename)
   
 
   // normalize cutoffs by Y0
-  if(!dorland_nlpm) {
+  if(!dorland_nlpm && !nlpm_nlps) {
     low_cutoff = (float) low_cutoff / Y0;
     high_cutoff = (float) high_cutoff / Y0;
   }

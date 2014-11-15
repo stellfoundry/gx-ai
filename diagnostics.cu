@@ -911,7 +911,7 @@ inline void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
   cudaMemcpy(f_kykx_h, f_kykx, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
   fprintf(out, "#\tkx\t\tky\t\t%s\n", ext);
   for(int j=0; j<(Ny-1)/3+1; j++) {
-    fprintf(out,"\n");
+    fprintf(out,"\n\n");
     for(int i=2*Nx/3+1; i<Nx; i++) {
       int idxy = j + (Ny/2+1)*i;
       fprintf(out,"%.4f\t\t%.4f\t\t%e\n", kx_h[i], ky_h[j], f_kykx_h[idxy]);
@@ -990,7 +990,7 @@ inline void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
 
 
 //write final growth rates vs kx and ky. fast moving index is ky.
-inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac)
+inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac, float dtSumInv)
 {
   strcpy(filename, out_stem);
   strcat(filename, ext);
@@ -1003,7 +1003,7 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
     for(int j=0; j<((Ny-1)/3+1); j++) {
       int index = j + (Ny/2+1)*i;
       if(index!=0) {
-	fprintf(out, "%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i], omegaAvg_h[index].x/fac, omegaAvg_h[index].y/fac);
+	fprintf(out, "%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i], omegaAvg_h[index].x*dtSumInv/fac, omegaAvg_h[index].y*dtSumInv/fac);
       }
     }
   }
@@ -1012,7 +1012,7 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
     blockid++;
     for(int j=0; j<((Ny-1)/3+1); j++) {
       int index = j + (Ny/2+1)*i;
-      fprintf(out,"%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i],omegaAvg_h[index].x/fac,omegaAvg_h[index].y/fac);
+      fprintf(out,"%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i],omegaAvg_h[index].x*dtSumInv/fac,omegaAvg_h[index].y*dtSumInv/fac);
     }
   }	  
 }
@@ -1260,7 +1260,7 @@ inline void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar,
 inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float Phi_zf_kx1_avg, float dtSum,
-		int counter, float runtime, float dt, float timer, char* restartfileName)
+		int counter, double runtime, double dt, float timer, char* restartfileName)
 {
   //printf("restart file is\n%s\n", restartfileName);
   FILE *restart;
@@ -1353,7 +1353,7 @@ inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, c
 inline void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
                 cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
 		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
-		int* counter, float* runtime, float* dt, float* timer, char* restartfileName)  
+		int* counter, double* runtime, double* dt, float* timer, char* restartfileName)  
 {
   FILE *restart;
   restart = fopen(restartfileName, "rb");
@@ -1522,7 +1522,7 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
   //scale<<<dimGrid,dimBlock>>>(omegaAvg, omega_sum, (float) 1./dtSum, Nx, Ny, 1
   
   //write final growth rates, with ky or kx as the fast index
-  omegakykxWrite(omegaAvg_h, filename, "omega.kykx", 1.);
+  omegakykxWrite(omegaAvg_h, filename, "omega.kykx", 1., (float) 1./dtSum);
   omegakxkyWrite(omegaAvg_h, filename, "omega.kxky");
   
   //calculate and write wpfx(ky)
@@ -1542,6 +1542,9 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
   scaleReal<<<dimGrid,dimBlock>>>(phi2avg_tmpXY, Phi2_kxky_sum, (float) 1./dtSum, Nx, Ny/2+1,1);
   scaleReal<<<dimGrid,dimBlock>>>(phi2zonal_tmpX2, Phi2_zonal_sum, (float) 1./dtSum, Nx, 1, 1);  
     
+  //write phi**2(kx,ky)
+  kxkyWrite(phi2avg_tmpXY, tmpXY_h, filename, "phi2.kxky");
+
   //write zonal flow component of phi**2(kx)
   kxWrite(phi2zonal_tmpX2, tmpX_h, filename, "phi2_zonal.kx");
   
@@ -1559,8 +1562,6 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
   sumX<<<dimGrid,dimBlock>>>(phi2_ky_tmpY2, phi2avg_tmpXY);
   kyWrite(phi2_ky_tmpY2, tmpY_h, filename, "phi2.ky");
   kyHistoryWrite(phi2_ky_tmpY2, tmpY_h, filename, "phi2.ky.time", counter, runtime);  
-  //write phi**2(kx,ky)
-  kxkyWrite(phi2avg_tmpXY, tmpXY_h, filename, "phi2.kxky");
   
   if(end) {
     //calculate and write wpfx/phi**2(ky)

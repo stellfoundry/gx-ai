@@ -4,7 +4,7 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
               cuComplex *Qpar, cuComplex *QparOld, cuComplex *QparNew,
               cuComplex *Tprp, cuComplex *TprpOld, cuComplex *TprpNew,
               cuComplex *Qprp, cuComplex *QprpOld, cuComplex *QprpNew,
-	      cuComplex *Phi, int** kxCover, int** kyCover, cuComplex** g_covering, float** kz_covering, specie s, float dt,
+	      cuComplex *Phi, int** kxCover, int** kyCover, cuComplex** g_covering, float** kz_covering, specie s, double dt,
 	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
 	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
 	      cuComplex *phi_tmp, cuComplex *nlps_tmp, cuComplex* omegaStar_tmp, cuComplex* qps_tmp,
@@ -616,12 +616,16 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
 	      cuComplex *Phi, 
               cuComplex* NLdens_ky0_d, cuComplex* NLupar_ky0_d, cuComplex* NLtpar_ky0_d, 
               cuComplex* NLtprp_ky0_d, cuComplex* NLqpar_ky0_d, cuComplex* NLqprp_ky0_d,              
-              float* dt_full, specie s,
+              double* dt_full, specie s,
 	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
 	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
 	      cuComplex *phi_tmp, cuComplex *nlps_tmp, float* Phi_zf_rms_tmpX, cuComplex* Phi_zf_CtmpX, int first_half_step,
-              cuComplex *field_h, int counter, float kx2Phi_zf_rms) 
+              cuComplex *field_h, int counter, float kx2Phi_zf_rms_in, float kx2Phi_zf_rms_avg) 
 {
+  float kx2Phi_zf_rms;
+
+  if(nlpm_cutoff_avg) kx2Phi_zf_rms = kx2Phi_zf_rms_avg;
+  else kx2Phi_zf_rms = kx2Phi_zf_rms_in;
 
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
 
@@ -650,7 +654,7 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     }
 #endif
 
-    float dt;
+    double dt;
 
     if(first_half_step) dt = *dt_full/2.;
     else dt = *dt_full;
@@ -716,19 +720,19 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     if(nlpm_nlps) {
       phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, TparOld, kx_abs, ky);
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, .4*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, .4*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, .4*dnlpm, nlps_tmp);
       }
       
       phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, TparOld, kx, ky);  
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -.6*dnlpm*kx2Phi_zf_rms, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -.6*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -.6*dnlpm, nlps_tmp);
       }
     }
@@ -769,19 +773,19 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     if(nlpm_nlps) {
       phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, TprpOld, kx_abs, ky);
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1.6*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1.6*dnlpm, nlps_tmp);
       }
       
       phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, TprpOld, kx, ky);  
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -1.3*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -1.3*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -1.3*dnlpm, nlps_tmp);
       }
     }
@@ -809,19 +813,19 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     if(nlpm_nlps) {
       phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, QparOld, kx_abs, ky);
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, .4*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, .4*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, .4*dnlpm, nlps_tmp);
       }      
 
       phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, QparOld, kx, ky);  
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, -.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, -.6*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, -.6*dnlpm, nlps_tmp);
       }      
     }
@@ -860,19 +864,19 @@ inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *D
     if(nlpm_nlps) {
       phi_flr_zonal_abs<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_rms_tmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, QprpOld, kx_abs, ky);
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1.6*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1.6*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1.6*dnlpm, nlps_tmp);
       }      
 
       phi_flr_zonal_complex<<<dimGrid,dimBlock>>>(phi_tmp, Phi_zf_CtmpX, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPM_NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);  
-      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<low_cutoff) {
-        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1.3*dnlpm*kx2Phi_zf_rms/low_cutoff, nlps_tmp);
+      if(strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms<high_cutoff && kx2Phi_zf_rms>low_cutoff) {
+        add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1.3*dnlpm*(kx2Phi_zf_rms-low_cutoff)/(high_cutoff-low_cutoff), nlps_tmp);
       }
-      else {
+      else if((strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>=high_cutoff) || strcmp(nlpm_option,"constant")==0) {
         add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1.3*dnlpm, nlps_tmp);
       }      
     }

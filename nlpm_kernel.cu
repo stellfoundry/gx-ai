@@ -373,7 +373,7 @@ __global__ void nlpm_filter_kxdep(cuComplex* field, float* ky, float* kx, float 
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      float bidx = b(rho, kx[idx], ky[0], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); //only want ky=0 component of kperp**2
  
       cuComplex nu_nlpm;
       nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;
@@ -389,7 +389,7 @@ __global__ void nlpm_filter_kxdep(cuComplex* field, float* ky, float* kx, float 
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+      float bidx = b(rho, kx[idx], ky[0], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
  
       cuComplex nu_nlpm;
       nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;

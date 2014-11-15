@@ -51,8 +51,8 @@ cuComplex nu[11];
 cuComplex mu[11];
 
 float endtime;
-float dt = .02;
-float dt_cfl;
+double dt = .02;
+double dt_cfl;
 bool cfl_flag = true;
 
 int reset;
@@ -63,6 +63,7 @@ extern "C" double run_parameters_mp_code_delt_max_;
 extern "C" int kt_grids_mp_naky_;
 extern "C" double gs2_time_mp_code_dt_;
 extern "C" double gs2_time_mp_code_dt_cfl_;
+extern "C" double gs2_time_mp_code_time_;
 extern "C" int* mp_mp_proc0_;
 extern "C" int* mp_mp_iproc_;
 
@@ -148,6 +149,7 @@ bool dorland_phase_complex = false;
 int dorland_phase_ifac = 1;
 bool nlpm_nlps = false;
 bool nlpm_kxdep = false;
+bool nlpm_cutoff_avg = false;
 
 int ivarenna = 1;
 bool varenna_fsa = false;

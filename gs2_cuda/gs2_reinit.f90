@@ -72,7 +72,7 @@ contains
     if (proc0 .and. .not. present(job_id)) call time_message(.true.,time_reinit,' Re-initialize')
 
     if (proc0) call dump_ant_amp
-    !call gs2_save_for_restart (gnew, user_time, user_dt, vnmult, istatus, fphi, fapar, fbpar)
+    call gs2_save_for_restart (gnew, user_time, user_dt, vnmult, istatus, fphi, fapar, fbpar)
 
     gnew = 0.
 
@@ -82,11 +82,11 @@ contains
 ! change timestep 
 
 ! If timestep is too big, make it smaller
-    if (code_dt*2.0 > code_dt_cfl) then !we want to make sure dt_gryfx is no too big... dt_gs2 = .5 * dt_gryfx 
+    if (code_dt*2.0 > code_dt_cfl) then !we want to make sure dt_gryfx is not too big... dt_gs2 = .5 * dt_gryfx 
        code_dt = code_dt/delt_adj !changes dt_gs2, not dt_gryfx
 
 ! If timestep is too small, make it bigger
-    else if (code_dt*2.0 < min(dt0, code_dt_cfl/delt_adj/delt_cushion)) then
+    else if (code_dt*2.0 <= min(dt0, code_dt_cfl/delt_adj/delt_cushion)) then
        code_dt = min(code_dt*delt_adj, dt0)  !changes dt_gs2, not dt_gryfx
 
     endif

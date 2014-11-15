@@ -100,7 +100,7 @@ __global__ void get_aniso_shear_z(float* shear_rate_z, cuComplex* Phi, float* kx
       float fac;
       cuComplex s;
       float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
-      if(idy==0) fac = 0.25;
+      if(idy==0) fac = 1.;
       else fac = 0.; //for zonal component, zero ky!=0 modes so that they are not included in sum
       s =  Phi[index]*cuConjf(Phi[index])*pow(kperp2,2)*fac;
       shear_rate_z[index] = s.x;  //shearing rate due to zonal modes (on non-zonal modes)
