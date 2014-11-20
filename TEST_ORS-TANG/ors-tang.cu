@@ -210,8 +210,8 @@ int main(int argc, char* argv[])
      	   f[index] = 2*(-cos(x[j]) - cos(y[i])) + 2*(cos(y[i]) + .5*cos(2*x[j]));
    	   g[index] = 2*(-cos(x[j]) - cos(y[i])) - 2*(cos(y[i]) + .5*cos(2*x[j]));  
       	        		   
-           //f[index] = f[index]/2.;
-           //g[index] = g[index]/2.;
+           f[index] = f[index]*1.e-19;
+           g[index] = g[index]*1.e-19;
     	  }
    	 }
    	} 
@@ -254,7 +254,7 @@ int main(int argc, char* argv[])
 	fprintf(pipe, "set origin .07,.15\n");
 	fprintf(pipe, "set title \"ENERGY PLOTS\"\n");
 	fprintf(pipe, "set xlabel \"Time (s)\"\nset ylabel \"Energy\"\n");
-	fprintf(pipe, "set xtics 0, .5, %f\nset mxtics 5\nset ytics 0, 1\nset mytics 5\nset tics scale 3\n",endtime);
+	//fprintf(pipe, "set xtics 0, .5, %f\nset mxtics 5\nset ytics 0, 1\nset mytics 5\nset tics scale 3\n",endtime);
 	fprintf(pipe, "set label \"Nx=%d   Ny=%d   Nz=%d  Boxsize=2pi*(%f,%f,%f)\\n\\n\\\n", Nx, Ny, Nz, X0, Y0, Zp);
 	fprintf(pipe, "nu=%g   eta=%g\" at 0,-.9\n",nu,eta);
 	fprintf(pipe, "plot [ ] [0:] \"%s\" using 1:2 title \"total energy\" with lines, \\\n", argv[2]);

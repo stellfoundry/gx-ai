@@ -837,7 +837,7 @@ inline void kyTimeWrite(FILE* file, float* f, float time)
 }
 
 //time history of flux
-inline void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float wpfxmax, float wpfxmin, 
+inline void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, float* wpfxAvg, float Dnlpm, float Dnlpm_avg, float Phi_zf_kx1, float Phi_zf_kx1_avg, float Phi_zf_rms, float Phi_zf_rms_avg, float nu1_max, float nu22_max, 
 		int converge_count, float time, specie* species)
 {
   if(time == 0) {
@@ -850,7 +850,7 @@ inline void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, 
   
   fprintf(fluxfile, "\t%f",time);
   for(int s=0; s<nSpecies; s++) {
-    fprintf(fluxfile,"\t%e\t\t%e\t\t%f\t\t%f\t\t%e\t\t%e\t\t%e\t\t%e", wpfx[s], wpfxAvg[s], Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg);
+    fprintf(fluxfile,"\t%e\t\t%e\t\t%f\t\t%f\t\t%e\t\t%e\t\t%e\t\t%e\t\t%e\t\t%e", wpfx[s], wpfxAvg[s], Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, Phi_zf_rms, Phi_zf_rms_avg, nu1_max, nu22_max);
   }
   fprintf(fluxfile,"\n");
 }

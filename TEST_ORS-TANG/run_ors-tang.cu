@@ -10,6 +10,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cufftReal *f_d, *g_d;
     cufftComplex *fC_d, *gC_d;
     cufftComplex *fC1_d, *gC1_d;
+    float* tmpX;
     
     if(DEBUG) getError("After declarations");
     
@@ -24,6 +25,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     cudaMalloc((void**) &derivR2_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &resultR_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &kx, sizeof(float)*Nx);
+    cudaMalloc((void**) &tmpX, sizeof(float)*Nx);
     cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
     cudaMalloc((void**) &kz, sizeof(float)*Nz);
     cudaMalloc((void**) &kPerp2, sizeof(float)*Nx*(Ny/2+1));
@@ -142,7 +144,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     //return;
     
     
-    kInit<<<dimGrid, dimBlock>>> (kx,ky,kz, NO_ZDERIV);
+    kInit<<<dimGrid, dimBlock>>> (kx,ky,kz, tmpX, NO_ZDERIV);
     kPerpInit<<<dimGrid,dimBlock>>>(kPerp2, kx, ky);
     kPerpInvInit<<<dimGrid,dimBlock>>>(kPerp2Inv,kPerp2);
     
@@ -173,7 +175,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
       energy(&totEnergy, &kinEnergy, &magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
       //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
-      fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
+      fprintf(ofile, "\t%e\t%e\t%e\t%e\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
       fflush(NULL);
         
       
@@ -198,7 +200,7 @@ void timestep_test(cufftReal* f, cufftReal* g, FILE* ofile)
     energy(&totEnergy, &kinEnergy, &magEnergy, fC1_d,gC1_d, fC_d, gC_d, kPerp2);
     //fC_d and gC_d are not modified by energy(); fC1_d and gC1_d are modified
       
-    fprintf(ofile, "\t%f\t%f\t%f\t%f\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
+    fprintf(ofile, "\t%e\t%e\t%e\t%e\n", time, totEnergy/Nz, kinEnergy/Nz, magEnergy/Nz);
     
     cudaEventRecord(stop,0);
     cudaEventSynchronize(stop);

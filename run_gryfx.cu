@@ -192,6 +192,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float *nu_nlpm;
     float *nu1_nlpm;
     float *nu22_nlpm;
+    float nu1_nlpm_max;
+    float nu22_nlpm_max;
     cuComplex *nu1_nlpm_complex;
     cuComplex *nu22_nlpm_complex;
     float *shear_rate_z;
@@ -399,6 +401,9 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     if(DEBUG) getError("after plan");
       
     // INITIALIZE ARRAYS AS NECESSARY
+    zero<<<dimGrid,dimBlock>>>(nu22_nlpm, 1, 1, Nz);
+    zero<<<dimGrid,dimBlock>>>(nu1_nlpm, 1, 1, Nz);
+    zero<<<dimGrid,dimBlock>>>(nu_nlpm, 1, 1, Nz);
   
     kInit  <<< dimGrid, dimBlock >>> (kx, ky, kz, kx_abs, NO_ZDERIV);
     kx_max = (float) ((int)((Nx-1)/3))/X0;
@@ -592,7 +597,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
        for(int i=0; i<Nz; i++) {
          printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
        }
-       set_fixed_amplitude<<<dimGrid,dimBlock>>>(phi_fixed, dens_fixed, upar_fixed, tpar_fixed, tprp_fixed, qpar_fixed, qprp_fixed, phi_test);
+       if(SLAB) set_fixed_amplitude<<<dimGrid,dimBlock>>>(phi_fixed, dens_fixed, upar_fixed, tpar_fixed, tprp_fixed, qpar_fixed, qprp_fixed, phi_test);
+       else set_fixed_amplitude_withz<<<dimGrid,dimBlock>>>(phi_fixed, dens_fixed, upar_fixed, tpar_fixed, tprp_fixed, qpar_fixed, qprp_fixed, phi_test);
 
        printf("After set_fixed_amplitude\n");
        cudaMemcpy(CtmpZ_h, phi_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
@@ -666,15 +672,16 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   	      //if(i==0) amp = 1.e-5;
   	      //else amp = 1.e-5;
   
-  	      if(i==0) {
-  	      	samp = 0.;//init_amp;//*1.e-8;  //initialize zonal flows at much
-  					 //smaller amplitude
-  	      }
-  	      else {
-  	      	samp = init_amp;
-  	      }
+  	      //if(i==0) {
+  	      //	samp = 0.;//init_amp;//*1.e-8;  //initialize zonal flows at much
+  	      //  			 //smaller amplitude
+  	      //}
+  	      //else {
+  	      //	samp = init_amp;
+  	      //}
   
-  	      
+  	      if(j==0 && secondary_test) {samp = 0.;}
+              else samp = init_amp;
   
   	      float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
   	      float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
@@ -683,8 +690,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   	      //loop over z here to get rid of randomness in z in initial condition
   	      for(int k=0; k<Nz; k++) {
   	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  		  init_h[index].x = init_amp;//*cos(1*z_h[k]);
-  	          init_h[index].y = init_amp;//init_amp;//*cos(1*z_h[k]);
+  		  init_h[index].x = samp;//*cos(1*z_h[k]);
+  	          init_h[index].y = samp;//init_amp;//*cos(1*z_h[k]);
   	      }
   	      
   	      
@@ -1378,13 +1385,13 @@ if(iproc==0) {
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt/2., Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms, tmp);
         }	    
       }  
       //hyper too...
@@ -1589,13 +1596,13 @@ if(iproc==0) {
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms);
+        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], dt, Dnlpm_d, Phi_zf_kx1_avg, kx2Phi_zf_rms, tmp);
         }	    
       }  
           
@@ -1721,6 +1728,9 @@ if(iproc==0) {
       //calculate z correlation function = tmpYZ (not normalized)
       zCorrelation<<<dimGrid,dimBlock>>>(tmpYZ, Phi);
      // volflux(Phi,Phi,tmp,tmpXY);
+
+      nu1_nlpm_max = maxReduc(nu1_nlpm, Nz, false);
+      nu22_nlpm_max = maxReduc(nu22_nlpm, Nz, false); 
     
       if(counter>0) { 
         //we use an exponential moving average
@@ -1812,7 +1822,7 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, wpfxmax,wpfxmin,converge_count,runtime,species);
+      fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,runtime,species);
     
   	     
       if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)          

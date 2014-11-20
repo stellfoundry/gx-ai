@@ -51,7 +51,7 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${SIMPLEDATAIO}/lib -l simpledataio
 

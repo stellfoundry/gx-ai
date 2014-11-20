@@ -1512,7 +1512,8 @@ __global__ void sqrtZ(float* result, float* f)
   
   if(nz<=zthreads) {
     if(idz < nz) {
-      result[idz] = sqrtf( f[idz] );
+      //result[idz] = sqrt(f[idz]);
+      result[idz] = sqrt(f[idz]);
     }
   }
   else {
@@ -1520,7 +1521,7 @@ __global__ void sqrtZ(float* result, float* f)
       if(idz<zthreads) {
         unsigned int IDZ = idz + zthreads*i;
 	
-	result[IDZ] = sqrtf( f[IDZ] );
+	result[IDZ] = sqrt( f[IDZ] );
       }
     }
   }
@@ -1683,6 +1684,94 @@ __global__ void get_fixed_mode(cuComplex* fixed, cuComplex* f, int iky, int ikx)
 
 }
 
+__global__ void get_fixed_mode(cuComplex* fixed, cuComplex* f, int iky, int ikx, int iz)
+{
+
+    int idz = iz+nz/2+1;
+    fixed[idz] = f[iky+(ny/2+1)*ikx+nx*(ny/2+1)*idz];
+
+}
+
+__global__ void set_fixed_amplitude_withz(cuComplex* phi_fixed, cuComplex* dens_fixed, cuComplex* upar_fixed, cuComplex* tpar_fixed, cuComplex* tprp_fixed, cuComplex* qpar_fixed, cuComplex* qprp_fixed, cuComplex phi_test_in) 
+{
+  
+  
+//  double scaler_rVeal = phi_test_in.x / phi_fixed[nz/2+1].x;
+//  double scaler_imag = phi_test_in.y / phi_fixed[nz/2+1].y;
+//  
+//  cuComplex phi_fixed_z0; 
+//  cuComplex dens_fixed_z0;
+//  cuComplex upar_fixed_z0;
+//  cuComplex tpar_fixed_z0;
+//  cuComplex tprp_fixed_z0;
+//  cuComplex qpar_fixed_z0;
+//  cuComplex qprp_fixed_z0;
+//
+//   phi_fixed_z0.x  = phi_fixed[nz/2+1].x * scaler_real;
+//   dens_fixed_z0.x = dens_fixed[nz/2+1].x * scaler_real;
+//   upar_fixed_z0.x = upar_fixed[nz/2+1].x * scaler_real;
+//   tpar_fixed_z0.x = tpar_fixed[nz/2+1].x * scaler_real;
+//   tprp_fixed_z0.x = tprp_fixed[nz/2+1].x * scaler_real;
+//   qpar_fixed_z0.x = qpar_fixed[nz/2+1].x * scaler_real;
+//   qprp_fixed_z0.x = qprp_fixed[nz/2+1].x * scaler_real;
+//   phi_fixed_z0.y  = phi_fixed[nz/2+1].y * scaler_imag;
+//   dens_fixed_z0.y = dens_fixed[nz/2+1].y * scaler_imag;
+//   upar_fixed_z0.y = upar_fixed[nz/2+1].y * scaler_imag;
+//   tpar_fixed_z0.y = tpar_fixed[nz/2+1].y * scaler_imag;
+//   tprp_fixed_z0.y = tprp_fixed[nz/2+1].y * scaler_imag;
+//   qpar_fixed_z0.y = qpar_fixed[nz/2+1].y * scaler_imag;
+//   qprp_fixed_z0.y = qprp_fixed[nz/2+1].y * scaler_imag;
+  
+
+  unsigned int idz = get_idz();
+ 
+  if(idz<nz) {
+    //determine the scaler multiplier needed to set phi to the desired amplitude for each z
+
+    double scaler_real = (double) phi_test_in.x / (double) phi_fixed[nz/2+1].x; 
+    double scaler_imag = (double) phi_test_in.y / (double) phi_fixed[nz/2+1].y;
+
+    cuComplex phi_fixed_out =  make_cuComplex( phi_fixed[idz].x * scaler_real, phi_fixed[idz].y * scaler_imag);
+    cuComplex dens_fixed_out =  make_cuComplex( dens_fixed[idz].x * scaler_real, dens_fixed[idz].y * scaler_imag);
+    cuComplex upar_fixed_out =  make_cuComplex( upar_fixed[idz].x * scaler_real, upar_fixed[idz].y * scaler_imag);
+    cuComplex tpar_fixed_out =  make_cuComplex( tpar_fixed[idz].x * scaler_real, tpar_fixed[idz].y * scaler_imag);
+    cuComplex tprp_fixed_out =  make_cuComplex( tprp_fixed[idz].x * scaler_real, tprp_fixed[idz].y * scaler_imag);
+    cuComplex qpar_fixed_out =  make_cuComplex( qpar_fixed[idz].x * scaler_real, qpar_fixed[idz].y * scaler_imag);
+    cuComplex qprp_fixed_out =  make_cuComplex( qprp_fixed[idz].x * scaler_real, qprp_fixed[idz].y * scaler_imag);
+   
+    phi_fixed[idz] = phi_fixed_out;
+    dens_fixed[idz] = dens_fixed_out;
+    upar_fixed[idz] = upar_fixed_out;
+    tpar_fixed[idz] = tpar_fixed_out;
+    tprp_fixed[idz] = tprp_fixed_out;
+    qpar_fixed[idz] = qpar_fixed_out;
+    qprp_fixed[idz] = qprp_fixed_out;
+  
+    //phi_fixed[idz].x = (double)  phi_fixed[idz].x * scaler_real;
+    //dens_fixed[idz].x = (double) dens_fixed[idz].x * scaler_real;
+    //upar_fixed[idz].x = (double) upar_fixed[idz].x * scaler_real;
+    //tpar_fixed[idz].x = (double) tpar_fixed[idz].x * scaler_real;
+    //tprp_fixed[idz].x = (double) tprp_fixed[idz].x * scaler_real;
+    //qpar_fixed[idz].x = (double) qpar_fixed[idz].x * scaler_real;
+    //qprp_fixed[idz].x = (double) qprp_fixed[idz].x * scaler_real;
+    //phi_fixed[idz].y = (double)  phi_fixed[idz].y * scaler_imag;
+    //dens_fixed[idz].y = (double) dens_fixed[idz].y * scaler_imag;
+    //upar_fixed[idz].y = (double) upar_fixed[idz].y * scaler_imag;
+    //tpar_fixed[idz].y = (double) tpar_fixed[idz].y * scaler_imag;
+    //tprp_fixed[idz].y = (double) tprp_fixed[idz].y * scaler_imag;
+    //qpar_fixed[idz].y = (double) qpar_fixed[idz].y * scaler_imag;
+    //qprp_fixed[idz].y = (double) qprp_fixed[idz].y * scaler_imag;
+
+//    phi_fixed[idz] = phi_fixed_z0;
+//    dens_fixed[idz] = dens_fixed_z0;
+//    upar_fixed[idz] = upar_fixed_z0;
+//    tpar_fixed[idz] = tpar_fixed_z0;
+//    tprp_fixed[idz] = tprp_fixed_z0;
+//    qpar_fixed[idz] = qpar_fixed_z0;
+//    qprp_fixed[idz] = qprp_fixed_z0;
+
+  }
+}
 __global__ void set_fixed_amplitude(cuComplex* phi_fixed, cuComplex* dens_fixed, cuComplex* upar_fixed, cuComplex* tpar_fixed, cuComplex* tprp_fixed, cuComplex* qpar_fixed, cuComplex* qprp_fixed, cuComplex phi_test_in) 
 {
   
