@@ -69,6 +69,8 @@ subroutine init_gs2 (filename, strlen)
     use parameter_scan, only: update_scan_parameter_value
     use unit_tests, only: functional_test_flag, ilast_step
 
+    use constants, only: pi
+
     implicit none
 
     !integer, intent (in), optional :: mpi_comm, job_id
@@ -87,6 +89,8 @@ subroutine init_gs2 (filename, strlen)
     logical :: nofin= .false.
 !    logical, optional, intent(in) :: nofinish
     character (500), target :: cbuff
+
+    integer :: i 
 
 #ifdef NEW_DIAG
     type(diagnostics_init_options_type) :: diagnostics_init_options
@@ -182,7 +186,7 @@ subroutine init_gs2 (filename, strlen)
     istep_end = nstep
     ilast_step = nstep
     
-    call loop_diagnostics(0,exit)
+    !call loop_diagnostics(0,exit)
 
 #ifdef NEW_DIAG
     ! Create variables
@@ -196,14 +200,14 @@ subroutine init_gs2 (filename, strlen)
 
 end subroutine init_gs2
 
-subroutine advance_gs2 (istep)
+subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0, first_half_step)
 
     use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
     use mp, only: init_mp, finish_mp, proc0, nproc, broadcast, scope, subprocs
     use mp, only: max_reduce, min_reduce, sum_reduce, iproc
     use file_utils, only: init_file_utils, run_name!, finish_file_utils
     use fields, only: init_fields, advance
-    use species, only: ions, electrons, impurity
+    use species, only: ions, electrons, impurity, nspec
     use gs2_diagnostics, only: init_gs2_diagnostics, finish_gs2_diagnostics, gd_reset => reset_init 
     use parameter_scan, only: init_parameter_scan, allocate_target_arrays
     use gs2_diagnostics, only: nsave, pflux_avg, qflux_avg, heat_avg, vflux_avg, start_time
@@ -211,9 +215,11 @@ subroutine advance_gs2 (istep)
     use dist_fn_arrays, only: gnew
     use gs2_save, only: gs2_save_for_restart
     use gs2_diagnostics, only: loop_diagnostics, ensemble_average
+    use kt_grids, only: naky, ntheta0
+    use theta_grid, only: ntgrid
 
 
-
+    use dist_fn, only: getmoms_gryfx
     use gs2_reinit, only: reset_time_step, check_time_step, time_reinit
     use gs2_time, only: update_time, write_dt, init_tstart
     use gs2_time, only: user_time, user_dt
@@ -229,6 +235,9 @@ subroutine advance_gs2 (istep)
     implicit none
 
     integer, intent (in) :: istep!, mpi_comm
+    complex*8, dimension (naky*ntheta0*2*ntgrid*nspec), intent (inout) :: dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0
+    complex*8, dimension (naky*ntheta0*2*ntgrid), intent (out) :: phi_ky0
+    logical, intent (in) :: first_half_step
 
     real :: time_init(2) = 0., time_advance(2) = 0., time_finish(2) = 0.
     real :: time_total(2) = 0.
@@ -236,46 +245,52 @@ subroutine advance_gs2 (istep)
     real :: time_main_loop(2)
     real :: precision_test
 
-    integer :: istep = 0, istatus, istep_end
+    integer :: istatus, istep_end
     logical :: exit, reset, list
     logical :: first_time = .true.
     logical :: nofin= .false.
 !    logical, optional, intent(in) :: nofinish
     character (500), target :: cbuff
+    exit = .false.
 
 
 
     !call time_message(.false.,time_main_loop,' Main Loop')
 
     !do istep = 1, nstep
+   
        
-     !  if (proc0) call time_message(.false.,time_advance,' Advance time step')
-       call advance (istep)
+       !if (proc0) call time_message(.false.,time_advance,' Advance time step')
+       call advance (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0)
        
-       if (nsave > 0 .and. mod(istep, nsave) == 0) &
+       if (nsave > 0 .and. mod(istep, nsave) == 0 .and. istep > 0) &
             call gs2_save_for_restart (gnew, user_time, user_dt, vnmult, istatus, fphi, fapar, fbpar)
        call update_time
-       call loop_diagnostics (istep, exit)
-       call check_time_step (reset, exit)
-       call update_scan_parameter_value(istep, reset, exit)
-       if (proc0) call time_message(.false.,time_advance,' Advance time step')
-       if (reset) then
-          ! if called within trinity, do not dump info to screen
-          !if (present(job_id)) then
-           !  call reset_time_step (istep, exit, job_id)
-          !else       
-             call reset_time_step (istep, exit)
-          !end if
+       call getmoms_gryfx(dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0)
+       ! does there need to be a barrier before we calculate moments?
+       if ( .not. first_half_step ) then 
+            !call loop_diagnostics (istep, exit)
+            call check_time_step (reset, exit)
+            !call update_scan_parameter_value(istep, reset, exit)
+            !if (proc0) call time_message(.false.,time_advance,' Advance time step')
+            if (reset) then
+               ! if called within trinity, do not dump info to screen
+               !if (present(job_id)) then
+                !  call reset_time_step (istep, exit, job_id)
+               !else       
+                  call reset_time_step (istep, exit)
+               !end if
+            end if
        end if
 
        !if (mod(istep,5) == 0) call checkstop(exit)   !!let gryfx take care of this
        
-       call checktime(avail_cpu_time,exit,margin_cpu_time)
+       !call checktime(avail_cpu_time,exit,margin_cpu_time)
        
        if (exit) then
           istep_end = istep
           ilast_step = istep
-          exit
+          !exit
        end if
     !end do
 
@@ -321,144 +336,131 @@ subroutine advance_gs2 (istep)
     
   end subroutine advance_gs2
 
-subroutine advance_gs2_old (mpi_comm, job_id, filename)
-
-    use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
-    use mp, only: init_mp, finish_mp, proc0, nproc, broadcast, scope, subprocs
-    use mp, only: max_reduce, min_reduce, sum_reduce, iproc
-    use file_utils, only: init_file_utils, run_name!, finish_file_utils
-    use fields, only: init_fields, advance
-    use species, only: ions, electrons, impurity
-    use gs2_diagnostics, only: init_gs2_diagnostics, finish_gs2_diagnostics, gd_reset => reset_init 
-    use parameter_scan, only: init_parameter_scan, allocate_target_arrays
-    use gs2_diagnostics, only: nsave, pflux_avg, qflux_avg, heat_avg, vflux_avg, start_time
-    use run_parameters, only: nstep, fphi, fapar, fbpar, avail_cpu_time, margin_cpu_time
-    use dist_fn_arrays, only: gnew
-    use gs2_save, only: gs2_save_for_restart
-    use gs2_diagnostics, only: loop_diagnostics, ensemble_average
-
-#ifdef NEW_DIAG
-    use gs2_diagnostics_new, only: run_diagnostics, init_gs2_diagnostics_new
-    use gs2_diagnostics_new, only: finish_gs2_diagnostics_new, diagnostics_init_options_type
-#endif
-
-
-    use gs2_reinit, only: reset_time_step, check_time_step, time_reinit
-    use gs2_time, only: update_time, write_dt, init_tstart
-    use gs2_time, only: user_time, user_dt
-    use init_g, only: tstart
-    use collisions, only: vnmult
-    use geometry, only: surfarea, dvdrhon
-    use redistribute, only: time_redist
-    use fields_arrays, only: time_field
-    use gs2_layouts, only: layout
-    use parameter_scan, only: update_scan_parameter_value
-    use unit_tests, only: functional_test_flag, ilast_step
-
-    implicit none
-
-    integer, intent (in), optional :: mpi_comm, job_id
-    character (*), intent (in), optional :: filename
-
-    real :: time_init(2) = 0., time_advance(2) = 0., time_finish(2) = 0.
-    real :: time_total(2) = 0.
-    real :: time_interval
-    real :: time_main_loop(2)
-    real :: precision_test
-
-    integer :: istep = 0, istatus, istep_end
-    logical :: exit, reset, list
-    logical :: first_time = .true.
-    logical :: nofin= .false.
-!    logical, optional, intent(in) :: nofinish
-    character (500), target :: cbuff
-
-#ifdef NEW_DIAG
-    type(diagnostics_init_options_type) :: diagnostics_init_options
-#endif
-
-
-    call time_message(.false.,time_main_loop,' Main Loop')
-
-    do istep = 1, nstep
-       
-       if (proc0) call time_message(.false.,time_advance,' Advance time step')
-       call advance (istep)
-       
-       if (nsave > 0 .and. mod(istep, nsave) == 0) &
-            call gs2_save_for_restart (gnew, user_time, user_dt, vnmult, istatus, fphi, fapar, fbpar)
-       call update_time
-       call loop_diagnostics (istep, exit)
-#ifdef NEW_DIAG
-       call run_diagnostics (istep, exit)
-#endif
-       call check_time_step (reset, exit)
-       call update_scan_parameter_value(istep, reset, exit)
-       if (proc0) call time_message(.false.,time_advance,' Advance time step')
-       if (reset) then
-          ! if called within trinity, do not dump info to screen
-          if (present(job_id)) then
-             call reset_time_step (istep, exit, job_id)
-          else       
-             call reset_time_step (istep, exit)
-          end if
-       end if
-
-       if (mod(istep,5) == 0) call checkstop(exit)
-       
-       call checktime(avail_cpu_time,exit,margin_cpu_time)
-       
-       if (exit) then
-          istep_end = istep
-          ilast_step = istep
-          exit
-       end if
-    end do
-
-    call time_message(.false.,time_main_loop,' Main Loop')
-
-    if (proc0) call time_message(.false.,time_finish,' Finished run')
-
-    if (proc0 .and. .not. present(job_id)) call write_dt
-
-    time_interval = user_time-start_time
-
-#ifdef NEW_DIAG
-       if (.not.nofin .and. .not. functional_test_flag ) call finish_gs2_diagnostics_new
-#endif
-       if (.not.nofin .and. .not. functional_test_flag ) call finish_gs2_diagnostics (istep_end)
-       if (.not.nofin .and. .not. functional_test_flag) call finish_gs2
-
-    if (proc0) call time_message(.false.,time_finish,' Finished run')
-
-    if (proc0) call time_message(.false.,time_total,' Total')
-
-    if (proc0) then
-       if (present(job_id)) then
-          print '(/,'' Job ID:'', i4,'', total from timer is:'', 0pf9.2,'' min'',/)', &
-               job_id+1, time_total(1)/60.
-       else if (.not. nofin) then
-!    if (proc0 .and. .not. nofin) then
-
-          print '(/,'' Initialization'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
-               &'' Advance steps'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
-               &''(redistribute'',T25,0pf9.3,'' min'',T40,2pf5.1,'' %)'',/, &
-               &''(field solve'',T25,0pf9.3,'' min'',T40,2pf5.1,'' %)'',/, &
-               &'' Re-initialize'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
-               &'' Finishing'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/,  &
-               &'' total from timer is:'', 0pf9.2,'' min'',/)', &
-               time_init(1)/60.,time_init(1)/time_total(1), &
-               time_advance(1)/60.,time_advance(1)/time_total(1), &
-               time_redist(1)/60.,time_redist(1)/time_total(1), &
-               time_field(1)/60.,time_field(1)/time_total(1), &
-               time_reinit(1)/60.,time_reinit(1)/time_total(1), &
-               time_finish(1)/60.,time_finish(1)/time_total(1),time_total(1)/60.
-       endif
-    end if
-
-    if (.not. present(mpi_comm) .and. .not. nofin) call finish_mp
-    
-  end subroutine advance_gs2_old
+!subroutine advance_gs2_old (mpi_comm, job_id, filename)
+!
+!    use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
+!    use mp, only: init_mp, finish_mp, proc0, nproc, broadcast, scope, subprocs
+!    use mp, only: max_reduce, min_reduce, sum_reduce, iproc
+!    use file_utils, only: init_file_utils, run_name!, finish_file_utils
+!    use fields, only: init_fields, advance
+!    use species, only: ions, electrons, impurity
+!    use gs2_diagnostics, only: init_gs2_diagnostics, finish_gs2_diagnostics, gd_reset => reset_init 
+!    use parameter_scan, only: init_parameter_scan, allocate_target_arrays
+!    use gs2_diagnostics, only: nsave, pflux_avg, qflux_avg, heat_avg, vflux_avg, start_time
+!    use run_parameters, only: nstep, fphi, fapar, fbpar, avail_cpu_time, margin_cpu_time
+!    use dist_fn_arrays, only: gnew
+!    use gs2_save, only: gs2_save_for_restart
+!    use gs2_diagnostics, only: loop_diagnostics, ensemble_average
+!
+!
+!
+!    use gs2_reinit, only: reset_time_step, check_time_step, time_reinit
+!    use gs2_time, only: update_time, write_dt, init_tstart
+!    use gs2_time, only: user_time, user_dt
+!    use init_g, only: tstart
+!    use collisions, only: vnmult
+!    use geometry, only: surfarea, dvdrhon
+!    use redistribute, only: time_redist
+!    use fields_arrays, only: time_field
+!    use gs2_layouts, only: layout
+!    use parameter_scan, only: update_scan_parameter_value
+!    use unit_tests, only: functional_test_flag, ilast_step
+!
+!    implicit none
+!
+!    integer, intent (in), optional :: mpi_comm, job_id
+!    character (*), intent (in), optional :: filename
+!
+!    real :: time_init(2) = 0., time_advance(2) = 0., time_finish(2) = 0.
+!    real :: time_total(2) = 0.
+!    real :: time_interval
+!    real :: time_main_loop(2)
+!    real :: precision_test
+!
+!    integer :: istep = 0, istatus, istep_end
+!    logical :: exit, reset, list
+!    logical :: first_time = .true.
+!    logical :: nofin= .false.
+!!    logical, optional, intent(in) :: nofinish
+!    character (500), target :: cbuff
+!
+!
+!
+!    call time_message(.false.,time_main_loop,' Main Loop')
+!
+!    do istep = 1, nstep
+!       
+!       if (proc0) call time_message(.false.,time_advance,' Advance time step')
+!       call advance (istep)
+!       
+!       if (nsave > 0 .and. mod(istep, nsave) == 0) &
+!            call gs2_save_for_restart (gnew, user_time, user_dt, vnmult, istatus, fphi, fapar, fbpar)
+!       call update_time
+!       call loop_diagnostics (istep, exit)
+!       call check_time_step (reset, exit)
+!       call update_scan_parameter_value(istep, reset, exit)
+!       if (proc0) call time_message(.false.,time_advance,' Advance time step')
+!       if (reset) then
+!          ! if called within trinity, do not dump info to screen
+!          if (present(job_id)) then
+!             call reset_time_step (istep, exit, job_id)
+!          else       
+!             call reset_time_step (istep, exit)
+!          end if
+!       end if
+!
+!       if (mod(istep,5) == 0) call checkstop(exit)
+!       
+!       call checktime(avail_cpu_time,exit,margin_cpu_time)
+!       
+!       if (exit) then
+!          istep_end = istep
+!          ilast_step = istep
+!          exit
+!       end if
+!    end do
+!
+!    call time_message(.false.,time_main_loop,' Main Loop')
+!
+!    if (proc0) call time_message(.false.,time_finish,' Finished run')
+!
+!    if (proc0 .and. .not. present(job_id)) call write_dt
+!
+!    time_interval = user_time-start_time
+!
+!       if (.not.nofin .and. .not. functional_test_flag ) call finish_gs2_diagnostics (istep_end)
+!       if (.not.nofin .and. .not. functional_test_flag) call finish_gs2
+!
+!    if (proc0) call time_message(.false.,time_finish,' Finished run')
+!
+!    if (proc0) call time_message(.false.,time_total,' Total')
+!
+!    if (proc0) then
+!       if (present(job_id)) then
+!          print '(/,'' Job ID:'', i4,'', total from timer is:'', 0pf9.2,'' min'',/)', &
+!               job_id+1, time_total(1)/60.
+!       else if (.not. nofin) then
+!!    if (proc0 .and. .not. nofin) then
+!
+!          print '(/,'' Initialization'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
+!               &'' Advance steps'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
+!               &''(redistribute'',T25,0pf9.3,'' min'',T40,2pf5.1,'' %)'',/, &
+!               &''(field solve'',T25,0pf9.3,'' min'',T40,2pf5.1,'' %)'',/, &
+!               &'' Re-initialize'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/, &
+!               &'' Finishing'',T25,0pf8.2,'' min'',T40,2pf5.1,'' %'',/,  &
+!               &'' total from timer is:'', 0pf9.2,'' min'',/)', &
+!               time_init(1)/60.,time_init(1)/time_total(1), &
+!               time_advance(1)/60.,time_advance(1)/time_total(1), &
+!               time_redist(1)/60.,time_redist(1)/time_total(1), &
+!               time_field(1)/60.,time_field(1)/time_total(1), &
+!               time_reinit(1)/60.,time_reinit(1)/time_total(1), &
+!               time_finish(1)/60.,time_finish(1)/time_total(1),time_total(1)/60.
+!       endif
+!    end if
+!
+!    if (.not. present(mpi_comm) .and. .not. nofin) call finish_mp
+!    
+!  end subroutine advance_gs2_old
   
 ! HJL <
   subroutine trin_finish_gs2
