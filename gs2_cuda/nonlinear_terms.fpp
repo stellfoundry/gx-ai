@@ -41,12 +41,15 @@ module nonlinear_terms
 ! hyperviscosity coefficients
   real :: C_par, C_perp, p_x, p_y, p_z
 
+  real :: densfac, uparfac, tparfac, tprpfac, qparfac, qprpfac
+
   integer :: algorithm = 1
   logical :: nonlin = .false.
   logical :: initialized = .false.
   logical :: initializing = .true.
   logical :: alloc = .true.
   logical :: zip = .false.
+  logical :: lift = .false.
   logical :: accelerated = .false.
 
   logical :: exist
@@ -198,7 +201,8 @@ contains
             text_option('on', flow_mode_on) /)
     character(20) :: flow_mode
     namelist /nonlinear_terms_knobs/ nonlinear_mode, flow_mode, cfl, &
-         C_par, C_perp, p_x, p_y, p_z, zip
+         C_par, C_perp, p_x, p_y, p_z, zip, lift, densfac, uparfac, tparfac, &
+         tprpfac, qparfac, qprpfac
     integer :: ierr, in_file
 !    logical :: done = .false.
 
@@ -214,6 +218,13 @@ contains
        p_x = 6.0
        p_y = 6.0
        p_z = 6.0
+
+    densfac = 1.
+    uparfac = 1./sqrt(2.) 
+    tparfac = 1.
+    tprpfac = 1. 
+    qparfac = 1./sqrt(2.) 
+    qprpfac = 1./sqrt(2.)
 
        in_file=input_unit_exist("nonlinear_terms_knobs",exist)
        if(exist) read (unit=in_file,nml=nonlinear_terms_knobs)
@@ -236,6 +247,13 @@ contains
     call broadcast (p_y)
     call broadcast (p_z)
     call broadcast (zip)
+    call broadcast (lift)
+    call broadcast (densfac)
+    call broadcast (uparfac) 
+    call broadcast (tparfac) 
+    call broadcast (tprpfac) 
+    call broadcast (qparfac) 
+    call broadcast (qprpfac)  
 
     if (flow_mode_switch == flow_mode_on) then
        if (proc0) write(*,*) 'Forcing flow_mode = off'
@@ -250,8 +268,11 @@ contains
   end subroutine read_parameters
 
 !  subroutine add_nonlinear_terms (g1, g2, g3, phi, apar, bpar, istep, bd, fexp)
-  subroutine add_explicit_terms (g1, g2, g3, phi, apar, bpar, istep, bd, fexp)
+  subroutine add_explicit_terms (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, &
+      NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0)
     use theta_grid, only: ntgrid
+    use kt_grids, only: ntheta0, naky
+    use species, only: nspec
     use gs2_layouts, only: g_lo
     use gs2_time, only: save_dt_cfl
     implicit none
@@ -260,6 +281,7 @@ contains
     integer, intent (in) :: istep
     real, intent (in) :: bd
     complex, intent (in) :: fexp
+    complex*8, dimension (naky*ntheta0*2*ntgrid*nspec), intent (in), optional :: NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0
     real :: dt_cfl
     logical, save :: nl = .true.
 
@@ -268,26 +290,35 @@ contains
 !!! NEED TO DO SOMETHING HERE...  BD GGH
        dt_cfl = 1.e8
        call save_dt_cfl (dt_cfl)
-#ifdef LOWFLOW
-       if (istep /=0) &
-            call add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp)
-#endif
+
+
+
+
     case (nonlinear_mode_on)
 !       if (istep /= 0) call add_nl (g1, g2, g3, phi, apar, bpar, istep, bd, fexp)
-       if (istep /= 0) call add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, nl)
+       if (present(NLdens_ky0)) then
+         if (istep /= 0) call add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, nl, NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0)
+       else
+         if (istep /= 0) call add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, nl)
+       end if
     end select
 !  end subroutine add_nonlinear_terms
   end subroutine add_explicit_terms
 
 
-  subroutine add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, nl)
+  subroutine add_explicit (g1, g2, g3, phi, apar, bpar, istep, bd, fexp, nl, NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0)
 
-    use theta_grid, only: ntgrid
+    use mp, only: broadcast
+    use kt_grids, only: ntheta0, naky
+    use species, only: nspec
+    use theta_grid, only: ntgrid, kxfac
     use gs2_layouts, only: g_lo, ik_idx, it_idx, il_idx, is_idx
-    use dist_fn_arrays, only: g
+    use dist_fn_arrays, only: g, vpa, vperp2
     use gs2_time, only: save_dt_cfl
+    use constants, only: zi
 
     implicit none
+
 
     complex, dimension (-ntgrid:,:,g_lo%llim_proc:), intent (in out) :: g1, g2, g3
     complex, dimension (-ntgrid:,:,:), intent (in) :: phi, apar, bpar
@@ -295,11 +326,13 @@ contains
     real, intent (in) :: bd
     complex, intent (in) :: fexp
     logical, intent (in), optional :: nl
+    complex*8, dimension (naky*ntheta0*(2*ntgrid+1)*nspec), intent (in), optional :: NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0
 
     integer :: istep_last = 0
-    integer :: iglo, ik, it
+    integer :: iglo, ik, it, ig, iz, is, isgn, index_gryfx
     real :: zero
     real :: dt_cfl
+   ! real :: densfac, uparfac, tparfac, tprpfac, qparfac, qprpfac
 
     if (initializing) then
        if (present(nl)) then
@@ -309,6 +342,16 @@ contains
        return
     endif
 
+! NLmom_ky0 inputs are in gryfx units
+! NLmoment_gs2 = momfac * NLmoment_gryfx
+
+  !  densfac = 2.0 !1. !1./2. !2. !4.0
+  !  uparfac = sqrt(2.) !1. !densfac/sqrt(2.) !1. !sqrt(2.) !2.0 * sqrt(2.0)
+  !  tparfac = 1. !1. !uparfac/sqrt(2.) !1./sqrt(2.) !1. !2.0
+  !  tprpfac = 1. !1. !uparfac/sqrt(2.) !1./sqrt(2.) !1. !2.0
+  !  qparfac = 1./sqrt(2.) !1. !tparfac/sqrt(2.) !1./2. !1./sqrt(2.) !sqrt(2.0)
+  !  qprpfac = 1./sqrt(2.) !1. !tprpfac/sqrt(2.) !1./2. !1./sqrt(2.) !sqrt(2.0) 
+    
 !
 ! Currently not self-starting.  Need to fix this.
 !
@@ -322,17 +365,76 @@ contains
        ! if running nonlinearly, then compute the nonlinear term at grid points
        ! and store it in g1
        if (present(nl)) then
-          call add_nl (g1, phi, apar, bpar)
+          if(present(NLdens_ky0)) then
+          !instead of calculating nonlinear terms, we use results from GryfX
+
+          !need to make sure all procs know each moment... broadcast
+
+          call broadcast (NLdens_ky0)
+          call broadcast (NLupar_ky0)
+          call broadcast (NLtpar_ky0)
+          call broadcast (NLtprp_ky0)
+          call broadcast (NLqpar_ky0)
+          call broadcast (NLqprp_ky0)
           
+                 
+
+          do iglo = g_lo%llim_proc, g_lo%ulim_proc
+             ik = ik_idx(g_lo,iglo)
+             it = it_idx(g_lo,iglo)
+             is = is_idx(g_lo,iglo)
+             do isgn = 1, 2
+               do ig = -ntgrid, ntgrid
+               iz = ig + ntgrid + 1
+               if(ig==ntgrid) iz = 1 ! periodic point not included in gryfx arrays
+                  index_gryfx = 1 + (ik-1) + g_lo%naky*((it-1)) + g_lo%naky*g_lo%ntheta0*(iz-1) + 2*ntgrid*g_lo%naky*g_lo%ntheta0*(is-1)
+                !  g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
+                !            2.*(vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
+                !            2.*(vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                !            2.*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                !            4./3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                !            4.*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
+                  g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
+                            (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
+                            (vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                            2.*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                            (2./3.*vpa(ig,isgn,iglo)**3. - vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                            2*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
+                 ! g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
+                 !           2.*(2.*vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tparfac*NLtpar_ky0(index_gryfx) + &
+                 !           2.*(2.*vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                 !           2.*sqrt(2.)*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                 !           4./3.*(sqrt(8.)*vpa(ig,isgn,iglo)**3. - 1.5*sqrt(2.)*vpa(ig,isgn,iglo))*( qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                 !           4.*sqrt(2.)*vpa(ig,isgn,iglo)*(2.*vperp2(ig,iglo) - 1.)*( qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
+
+
+                  !assemble NL in GryfX units.. v_t = sqrt(T/m)
+                  !vpa -> sqrt(2)*vpa; vperp2 -> 2*vperp2
+                  !g1(ig,isgn,iglo) =  densfac*NLdens_ky0(index_gryfx) + &
+                  !          .5*(2.*vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 1.)*tparfac*NLtpar_ky0(index_gryfx) + &
+                  !          (vperp2(ig,iglo) - 1.0)*tprpfac*NLtprp_ky0(index_gryfx) + &
+                  !          sqrt(2.)*vpa(ig,isgn,iglo)*uparfac*NLupar_ky0(index_gryfx) + &
+                  !          1./3.*(sqrt(8.)*vpa(ig,isgn,iglo)**3. - 3.*sqrt(2.)*vpa(ig,isgn,iglo))*( .5*qparfac*NLqpar_ky0(index_gryfx) - 3.*uparfac*NLupar_ky0(index_gryfx) ) + &
+                  !          2.*sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( .5*qprpfac*NLqprp_ky0(index_gryfx) - uparfac*NLupar_ky0(index_gryfx) )
+               end do
+             end do
+          end do
+          g1 = -g1 !cmplx(-real(g1), aimag(g1))
+          !convert to GS2 units... sqrt(2) factor for each of moment, phi, kx, ky in bracket {moment,phi}
+          !g1 = g1*4.
+          else
+            call add_nl (g1, phi, apar, bpar)
+          end if
+
           ! takes g1 at grid points and returns 2*g1 at cell centers
           call center (g1)
        else
           g1 = 0.
        end if
 
-#ifdef LOWFLOW
-       ! do something
-#endif
+
+
+
 
     end if
 
@@ -406,20 +508,28 @@ contains
     use gs2_layouts, only: g_lo, ik_idx, it_idx, il_idx, is_idx
     use gs2_layouts, only: accelx_lo, yxf_lo
     use dist_fn_arrays, only: g
-    use species, only: spec
+    use species, only: spec, nspec
     use gs2_transforms, only: transform2, inverse2
     use run_parameters, only: fapar, fbpar, fphi
-    use kt_grids, only: aky, akx
+    use kt_grids, only: aky, akx, ntheta0, naky
     use gs2_time, only: save_dt_cfl
     use constants, only: zi
     implicit none
     complex, dimension (-ntgrid:,:,g_lo%llim_proc:), intent (in out) :: g1
     complex, dimension (-ntgrid:,:,:), intent (in) :: phi, apar, bpar
+    complex, dimension (:,:,:,:), allocatable :: density, upar, tpar, tperp, qpar, qperp
     integer :: i, j, k
     real :: max_vel, zero
     real :: dt_cfl
 
     integer :: iglo, ik, it, is, ig, ia, isgn
+
+    allocate (density(-ntgrid:ntgrid,ntheta0,naky,nspec))
+    allocate (upar(-ntgrid:ntgrid,ntheta0,naky,nspec))
+    allocate (tpar(-ntgrid:ntgrid,ntheta0,naky,nspec))
+    allocate (tperp(-ntgrid:ntgrid,ntheta0,naky,nspec))
+    allocate (qpar(-ntgrid:ntgrid,ntheta0,naky,nspec))
+    allocate (qperp(-ntgrid:ntgrid,ntheta0,naky,nspec))
     
     !Initialise zero so we can be sure tests are sensible
     zero = epsilon(0.0)
@@ -449,15 +559,28 @@ contains
     ! more generally, there should probably be a factor of anon...
     !This is basically doing g_adjust to form i*ky*g_wesson (note the factor anon is missing)
     !/Gives Fourier components of derivative of g_wesson in y direction
-    do iglo = g_lo%llim_proc, g_lo%ulim_proc
-       ik = ik_idx(g_lo,iglo)
-       is = is_idx(g_lo,iglo)
-       do isgn = 1, 2
-          do ig = -ntgrid, ntgrid
-             g1(ig,isgn,iglo) = g1(ig,isgn,iglo)*spec(is)%zt + zi*aky(ik)*g(ig,isgn,iglo)
-          end do
-       end do
-    end do
+    if (lift) then
+      call lift_g
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+            do ig = -ntgrid, ntgrid
+               g1(ig,isgn,iglo) = zi*aky(ik)*g1(ig,isgn,iglo)*spec(is)%zt
+            end do
+         end do
+      end do
+    else
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+            do ig = -ntgrid, ntgrid
+               g1(ig,isgn,iglo) = g1(ig,isgn,iglo)*spec(is)%zt + zi*aky(ik)*g(ig,isgn,iglo)
+            end do
+         end do
+      end do
+    end if
     
     if (accelerated) then
        call transform2 (g1, agb, ia)
@@ -518,15 +641,28 @@ contains
     ! more generally, there should probably be a factor of anon...
     !This is basically doing g_adjust to form i*kx*g_wesson (note the factor anon is missing)
     !/Gives Fourier components of derivative of g_wesson in x direction
-    do iglo = g_lo%llim_proc, g_lo%ulim_proc
-       it = it_idx(g_lo,iglo)
-       is = is_idx(g_lo,iglo)
-       do isgn = 1, 2
-          do ig = -ntgrid, ntgrid
-             g1(ig,isgn,iglo) = g1(ig,isgn,iglo)*spec(is)%zt + zi*akx(it)*g(ig,isgn,iglo)
-          end do
-       end do
-    end do
+    if (lift) then
+      call lift_g
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+            do ig = -ntgrid, ntgrid
+               g1(ig,isgn,iglo) = zi*akx(it)*g1(ig,isgn,iglo)*spec(is)%zt
+            end do
+         end do
+      end do
+    else
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+            do ig = -ntgrid, ntgrid
+               g1(ig,isgn,iglo) = g1(ig,isgn,iglo)*spec(is)%zt + zi*akx(it)*g(ig,isgn,iglo)
+            end do
+         end do
+      end do
+    end if
     
     if (accelerated) then
        call transform2 (g1, agb, ia)
@@ -565,6 +701,8 @@ contains
     else
        call inverse2 (bracket, g1)
     end if
+
+    deallocate(density,upar,tpar,tperp,qpar,qperp)
     
   contains
 
@@ -690,6 +828,380 @@ contains
 
     end subroutine load_ky_bpar
 
+    subroutine lift_g
+
+      use dist_fn_arrays, only: vpa, vperp2
+      use gs2_layouts, only: is_idx
+      use le_grids, only: integrate_moment
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+      
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+        
+    end subroutine lift_g
+    
+    subroutine lift_g_test
+
+      use dist_fn_arrays, only: vpa, vperp2
+      use gs2_layouts, only: is_idx
+      use le_grids, only: integrate_moment
+      use mp, only: sum_reduce, proc0, finish_mp, iproc
+
+      real e_noah
+
+      g = 1.
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+   
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(real(g))
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'density:' 
+        write (*,*) e_noah
+      end if
+
+      g = sqrt(2.)*vpa
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(real(g))
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'upar:' 
+        write (*,*) e_noah
+      end if
+
+      g = vpa*vpa - 0.5
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+  
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+ 
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(g)
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'tpar:' 
+        write (*,*) e_noah
+      end if
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+        do isgn = 1, 2
+          do ig = -ntgrid, ntgrid  
+            g(ig,isgn,iglo) = vperp2(ig,iglo) - 1.
+          end do
+        end do
+      end do
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+  
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(g)
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'tperp:'
+        write (*,*) e_noah
+      end if
+
+
+      g = sqrt(2.)/3.*(vpa**3. - 1.5*vpa)
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+  
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+ 
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(g)
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'qpar:' 
+        write (*,*) e_noah
+      end if
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+        do isgn = 1, 2
+          do ig = -ntgrid, ntgrid  
+            g(ig,isgn,iglo) = sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)
+          end do
+        end do
+      end do
+
+      call integrate_moment (g, density, 1)
+
+      g1 = sqrt(2.)*vpa*g
+      call integrate_moment (g1, upar, 1)
+
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, tpar, 1)
+      tpar = tpar - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qpar, 1)
+
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         do isgn = 1, 2
+            g1(:,isgn,iglo) = vperp2(:,iglo)*g(:,isgn,iglo)
+         end do
+      end do
+      call integrate_moment (g1, tperp, 1)
+      tperp = tperp - density
+  
+      g1 = sqrt(2.)*vpa*g1
+      call integrate_moment (g1, qperp, 1)
+  
+      e_noah = 0.     
+ 
+      do iglo = g_lo%llim_proc, g_lo%ulim_proc
+         it = it_idx(g_lo,iglo)
+         ik = ik_idx(g_lo,iglo)
+         is = is_idx(g_lo,iglo)
+         do isgn = 1, 2
+           do ig = -ntgrid, ntgrid
+              g1(ig,isgn,iglo) = density(ig,it,ik,is) + (vpa(ig,isgn,iglo)*vpa(ig,isgn,iglo) - 0.5)*tpar(ig,it,ik,is) + (vperp2(ig,iglo) - 1.0)*tperp(ig,it,ik,is) + &
+                                 sqrt(2.0)*vpa(ig,isgn,iglo)*upar(ig,it,ik,is) + sqrt(2.)/3.*(vpa(ig,isgn,iglo)**3. - 1.5*vpa(ig,isgn,iglo))*( qpar(ig,it,ik,is) - 3.*upar(ig,it,ik,is) ) + &
+                                 sqrt(2.)*vpa(ig,isgn,iglo)*(vperp2(ig,iglo) - 1.)*( qperp(ig,it,ik,is) - upar(ig,it,ik,is) )
+           end do
+         end do
+      end do
+
+      g = conjg(g-g1)*(g-g1)
+
+      e_noah = sum(g)
+
+      call sum_reduce(e_noah, 0)
+
+      if(proc0) then
+        write (*,*) 'qperp:'
+        write (*,*) e_noah
+      end if
+
+    end subroutine lift_g_test
+
   end subroutine add_nl
 
   subroutine finish_nl_terms
@@ -729,5 +1241,6 @@ contains
   end subroutine finish_nonlinear_terms
 
 end module nonlinear_terms
+
 
 
