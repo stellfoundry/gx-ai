@@ -17,7 +17,7 @@ module dist_fn
   public :: init_dist_fn, finish_dist_fn
   public :: read_parameters, wnml_dist_fn, wnml_dist_fn_species, check_dist_fn
   public :: timeadv, exb_shear, g_exb, g_exbfac
-  public :: getfieldeq, getan, getmoms, getemoms
+  public :: getfieldeq, getan, getmoms, getemoms, getmoms_gryfx
   public :: getfieldeq_nogath
   public :: flux, lf_flux, eexchange
   public :: get_epar, get_heat
@@ -57,6 +57,8 @@ module dist_fn
   logical :: dfexist, skexist, nonad_zero, lf_default, lf_decompose, esv
 !CMR, 12/9/13: New logical cllc to modify order of operator in timeadv
   logical :: cllc
+
+  real :: densfac_lin, uparfac_lin, tparfac_lin, tprpfac_lin, qparfac_lin, qprpfac_lin, phifac_lin
 
   integer :: adiabatic_option_switch
   integer, parameter :: adiabatic_option_default = 1, &
@@ -651,7 +653,8 @@ subroutine check_dist_fn(report_unit)
     namelist /dist_fn_knobs/ boundary_option, nonad_zero, gridfac, apfac, &
          driftknob, tpdriftknob, poisfac, adiabatic_option, &
          kfilter, afilter, mult_imp, test, def_parity, even, wfb, &
-         g_exb, g_exbfac, omprimfac, btor_slab, mach, cllc, lf_default, lf_decompose, esv
+         g_exb, g_exbfac, omprimfac, btor_slab, mach, cllc, lf_default, lf_decompose, esv, &
+         densfac_lin, uparfac_lin, tparfac_lin, tprpfac_lin, qparfac_lin, qprpfac_lin, phifac_lin
     
     namelist /source_knobs/ t0, omega0, gamma0, source0, phi_ext, source_option
     integer :: ierr, is, in_file
@@ -692,9 +695,18 @@ subroutine check_dist_fn(report_unit)
        lf_decompose = .false.
        source_option = 'default'
        in_file = input_unit_exist("dist_fn_knobs", dfexist)
+       densfac_lin = sqrt(2.)
+       uparfac_lin = 2.
+       tparfac_lin = sqrt(2.)
+       tprpfac_lin = sqrt(2.)
+       qparfac_lin = 2.
+       qprpfac_lin = 2.
+       phifac_lin = -1.
 !       if (dfexist) read (unit=input_unit("dist_fn_knobs"), nml=dist_fn_knobs)
        if (dfexist) read (unit=in_file, nml=dist_fn_knobs)
        if (tpdriftknob == -9.9e9) tpdriftknob=driftknob
+
+       if(phifac_lin < 0) phifac_lin = densfac_lin
 
        in_file = input_unit_exist("source_knobs", skexist)
 !       if (skexist) read (unit=input_unit("source_knobs"), nml=source_knobs)
@@ -751,6 +763,12 @@ subroutine check_dist_fn(report_unit)
     call broadcast (lf_decompose)
     call broadcast (even)
     call broadcast (wfb)
+    call broadcast (densfac_lin)
+    call broadcast (uparfac_lin)
+    call broadcast (tparfac_lin)
+    call broadcast (tprpfac_lin)
+    call broadcast (qparfac_lin)
+    call broadcast (qprpfac_lin)
 
     !<DD>Turn off esv if not using linked boundaries
     esv=esv.and.(boundary_option_switch.eq.boundary_option_linked)
@@ -2535,22 +2553,23 @@ subroutine check_dist_fn(report_unit)
   !! adds hyper diffusion if present, and solfp1, from the collisions module,
   !! which adds collisions if present.
 
-  subroutine timeadv (phi, apar, bpar, phinew, aparnew, bparnew, istep, mode, NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0)
+  subroutine timeadv (phi, apar, bpar, phinew, aparnew, bparnew, istep, NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0, mode)
 
-    use kt_grids, only: ntheta0
+    use kt_grids, only: ntheta0, naky
     use species, only: nspec
-    use theta_grid, only: ntgrid, naky
+    use theta_grid, only: ntgrid
     use le_derivatives, only: vspace_derivatives
     use dist_fn_arrays, only: gnew, g, g_fixpar
     use nonlinear_terms, only: add_explicit_terms
     use hyper, only: hyper_diff
     use run_parameters, only: fixpar_secondary
+    use mp, only: proc0
     implicit none
     complex, dimension (-ntgrid:,:,:), intent (in out) :: phi, apar, bpar
     complex, dimension (-ntgrid:,:,:), intent (in out) :: phinew, aparnew, bparnew
     integer, intent (in) :: istep
     integer, optional, intent (in) :: mode
-    complex*8, dimension (naky*ntheta0*2*ntgrid*nspec), intent (in), optional :: NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0
+    complex*8, dimension (naky*ntheta0*2*ntgrid*nspec), intent (in), optional  :: NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0
     integer :: modep
     integer,save :: istep_last=-1
 
@@ -2560,14 +2579,9 @@ subroutine check_dist_fn(report_unit)
     if (istep.eq.0 .or. .not.cllc) then
 !CMR do the usual LC when computing response matrix
        !Calculate the explicit nonlinear terms
-       if(present(NLdens_ky0)) then
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
+        call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
            phi, apar, bpar, istep, bkdiff(1), fexp(1), &
            NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0 )
-       else
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
-           phi, apar, bpar, istep, bkdiff(1), fexp(1))
-       end if
 
        !Solve for gnew
        call invert_rhs (phi, apar, bpar, phinew, aparnew, bparnew, istep)
@@ -2580,14 +2594,9 @@ subroutine check_dist_fn(report_unit)
 !CMR on first half step at istep=1 do CL with all redists
        call vspace_derivatives (gnew, g, g0, phi, apar, bpar, phinew, aparnew, bparnew, modep)
        !Calculate the explicit nonlinear terms
-       if(present(NLdens_ky0)) then
          call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
            phi, apar, bpar, istep, bkdiff(1), fexp(1), &
            NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0 )
-       else
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
-           phi, apar, bpar, istep, bkdiff(1), fexp(1))
-       end if
 
        !Solve for gnew
        call invert_rhs (phi, apar, bpar, phinew, aparnew, bparnew, istep)
@@ -2597,14 +2606,9 @@ subroutine check_dist_fn(report_unit)
 !CMR on first half step do CL with all redists without gtoc redist
        call vspace_derivatives (gnew, g, g0, phi, apar, bpar, phinew, aparnew, bparnew, modep,gtoc=.false.)
        !Calculate the explicit nonlinear terms
-       if(present(NLdens_ky0)) then
          call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
            phi, apar, bpar, istep, bkdiff(1), fexp(1), &
            NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0 )
-       else
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
-           phi, apar, bpar, istep, bkdiff(1), fexp(1))
-       end if
 
        !Solve for gnew
        call invert_rhs (phi, apar, bpar, phinew, aparnew, bparnew, istep)
@@ -2615,14 +2619,9 @@ subroutine check_dist_fn(report_unit)
        !Calculate the explicit nonlinear terms 
        !NB following call should be unnecessary as NL terms not added on second
        !    half of istep: keeping for now as may be needed by some code
-       if(present(NLdens_ky0)) then
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
-           phi, apar, bpar, istep, bkdiff(1), fexp(1), &
-           NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0 )
-       else
-         call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
-           phi, apar, bpar, istep, bkdiff(1), fexp(1))
-       end if
+       !  call add_explicit_terms (gexp_1, gexp_2, gexp_3, &
+       !    phi, apar, bpar, istep, bkdiff(1), fexp(1), &
+       !    NLdens_ky0, NLupar_ky0, NLtpar_ky0, NLtprp_ky0, NLqpar_ky0, NLqprp_ky0 )
 
        !Solve for gnew
        call invert_rhs (phi, apar, bpar, phinew, aparnew, bparnew, istep)
@@ -2630,7 +2629,6 @@ subroutine check_dist_fn(report_unit)
        call hyper_diff (gnew, phinew, bparnew)
        call vspace_derivatives (gnew, g, g0, phi, apar, bpar, phinew, aparnew, bparnew, modep, ctog=.false.)
     endif
-
 
     !Enforce parity if desired (also performed in invert_rhs, but this is required
     !as collisions etc. may break parity?)
@@ -3320,11 +3318,12 @@ subroutine check_dist_fn(report_unit)
     use le_grids, only: nlambda, ng2, lmax, anon, energy, negrid
     use species, only: spec, nspec
     use run_parameters, only: fphi, fapar, fbpar, wunits
-    use gs2_time, only: code_dt
+    use gs2_time, only: dt0 => code_dt, dt1 => code_dt_prev1, dt2 => code_dt_prev2, code_dt
     use gs2_layouts, only: g_lo, ik_idx, it_idx, il_idx, ie_idx, is_idx
     use nonlinear_terms, only: nonlin
     use hyper, only: D_res
     use constants
+    use mp, only: proc0
     implicit none
     complex, dimension (-ntgrid:,:,:), intent (in) :: phi,    apar,    bpar
     complex, dimension (-ntgrid:,:,:), intent (in) :: phinew, aparnew, bparnew
@@ -3335,6 +3334,7 @@ subroutine check_dist_fn(report_unit)
 
     integer :: ig, ik, it, il, ie, is
     complex, dimension (-ntgrid:ntgrid) :: phigavg, apargavg
+    real :: c0, c1, c2
 
 !    call timer (0, 'get_source_term')
 
@@ -3343,6 +3343,13 @@ subroutine check_dist_fn(report_unit)
     il = il_idx(g_lo,iglo)
     ie = ie_idx(g_lo,iglo)
     is = is_idx(g_lo,iglo)
+
+    c0 = (1. / (dt1 + dt2)) * ( &
+         ((dt0 + dt1)**2./dt1)*( (dt0+dt1)/3. + dt2/2. ) &
+         - dt1*(dt1/3. + dt2/2.) )
+    c1 = - dt0**2. * ( dt0/3. + (dt1+dt2)/2. ) / (dt1*dt2)
+    c2 = dt0**2. * ( dt0/3. + dt1/2. ) / ( dt2*(dt1+dt2) )
+
 !CMR, 4/8/2011
 ! apargavg and phigavg combine to give the GK EM potential chi. 
 !          chi = phigavg - apargavg*vpa(:,isgn,iglo)*spec(is)%stm
@@ -3448,10 +3455,14 @@ subroutine check_dist_fn(report_unit)
              case default
                 do ig = -ntgrid, ntgrid
                    if (il < ittp(ig)) cycle
-                   source(ig) = source(ig) + 0.5*code_dt*( &
-                          (23./12.)*gexp_1(ig,isgn,iglo) &
-                        - (4./3.)  *gexp_2(ig,isgn,iglo) &
-                        + (5./12.) *gexp_3(ig,isgn,iglo))
+                 !  source(ig) = source(ig) + 0.5*code_dt*( &
+                 !         (23./12.)*gexp_1(ig,isgn,iglo) &
+                 !       - (4./3.)  *gexp_2(ig,isgn,iglo) &
+                 !       + (5./12.) *gexp_3(ig,isgn,iglo))
+                   source(ig) = source(ig) + 0.5*( &
+                          c0*gexp_1(ig,isgn,iglo) &
+                        + c1*gexp_2(ig,isgn,iglo) &
+                        + c2*gexp_3(ig,isgn,iglo))
                 end do
              end select
           end if
@@ -3472,6 +3483,12 @@ subroutine check_dist_fn(report_unit)
       real :: bd, bdfac_p, bdfac_m
       integer :: i_e, i_s
 !      logical :: first = .true.
+
+    c0 = (1. / (dt1 + dt2)) * ( &
+         ((dt0 + dt1)**2./dt1)*( (dt0+dt1)/3. + dt2/2. ) &
+         - dt1*(dt1/3. + dt2/2.) )
+    c1 = - dt0**2. * ( dt0/3. + (dt1+dt2)/2. ) / (dt1*dt2)
+    c2 = dt0**2. * ( dt0/3. + dt1/2. ) / ( dt2*(dt1+dt2) )
 
 !      if (first) then
       if (.not. allocated(ufac)) then
@@ -3570,10 +3587,14 @@ subroutine check_dist_fn(report_unit)
             end do
          case default
             do ig = -ntgrid, ntgrid-1
-               source(ig) = source(ig) + 0.5*code_dt*( &
-                      (23./12.)*gexp_1(ig,isgn,iglo) &
-                    - (4./3.)  *gexp_2(ig,isgn,iglo) &
-                    + (5./12.) *gexp_3(ig,isgn,iglo))
+            !   source(ig) = source(ig) + 0.5*code_dt*( &
+            !          (23./12.)*gexp_1(ig,isgn,iglo) &
+            !        - (4./3.)  *gexp_2(ig,isgn,iglo) &
+            !        + (5./12.) *gexp_3(ig,isgn,iglo))
+                   source(ig) = source(ig) + 0.5*( &
+                          c0*gexp_1(ig,isgn,iglo) &
+                        + c1*gexp_2(ig,isgn,iglo) &
+                        + c2*gexp_3(ig,isgn,iglo))
             end do
          end select
       end if
@@ -4215,100 +4236,84 @@ subroutine check_dist_fn(report_unit)
     use le_grids, only: integrate_moment_gryfx, anon, energy
     use prof, only: prof_entering, prof_leaving
     use run_parameters, only: fphi, fbpar
-    use fields_arrays, only: phinew, bparnew
+    use fields_arrays, only: phinew, bparnew, phi
     use kt_grids, only: ntheta0, naky
     use mp, only: proc0, iproc
 
     implicit none
-    integer :: ik, it, isgn, ie, is, iglo, ig, iz
+    integer :: ik, it, isgn, ie, is, iglo, ig, iz, index_gryfx
     complex*8, dimension(naky*ntheta0*2*ntgrid*nspec), intent(out) :: density_gryfx, upar_gryfx, &
          tpar_gryfx, tperp_gryfx, qpar_gryfx, qperp_gryfx
     complex*8, dimension(naky*ntheta0*2*ntgrid), intent(out) :: phi_gryfx       
 
-! DJA+CMR: 17/1/06, use g_adjust routine to extract g_wesson
-!                   from gnew, phinew and bparnew.
-!           nb  <delta_f> = g_wesson J0 - q phi/T F_m  where <> = gyroaverage
-!           ie  <delta_f>/F_m = g_wesson J0 - q phi/T
-!
-! use g0 as dist_fn dimensioned working space for all moments
-! (avoid making more copies of gnew to save memory!)
-!
-! set gnew = g_wesson, but return gnew to entry state prior to exit 
-    call g_adjust(gnew,phinew,bparnew,fphi,fbpar)
 
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-! integrate moments over the nonadiabatic part of <delta_f>
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-! set g0= J0 g_wesson = nonadiabatic piece of <delta_f>/F_m 
-    do iglo = g_lo%llim_proc, g_lo%ulim_proc
-       ie = ie_idx(g_lo,iglo) ; is = is_idx(g_lo,iglo)
-       ik = ik_idx(g_lo,iglo) ; it = it_idx(g_lo,iglo)
-       do isgn = 1, 2
-          g0(:,isgn,iglo) = aj0(:,iglo)*gnew(:,isgn,iglo)
-       end do
-    end do
-
-
-! CMR: density is the nonadiabatic piece of perturbed density
-! NB normalised wrt equ'm density for species s: n_s n_ref  
-!    ie multiply by (n_s n_ref) to get abs density pert'n
-    g0 = g0 / sqrt(2.0)
+    g0 = gnew 
     call integrate_moment_gryfx (g0, density_gryfx)
-    !sqrt(2) factor because density_gryfx = density_gs2/sqrt(2) 
 
-! DJA/CMR: upar and tpar moments 
-! (nb adiabatic part of <delta f> does not contribute to upar, tpar or tperp)
-! NB UPAR is normalised to vt_s = sqrt(T_s/m_s) vt_ref
-!    ie multiply by spec(is)%stm * vt_ref to get abs upar
-    g0 = vpa*g0*sqrt(2.0)
+    g0 = vpa*g0
     call integrate_moment_gryfx (g0, upar_gryfx)
-    !upar_gryfx = upar_gs2
+    !upar normalized by v_t = sqrt(2T_0/m)
 
-    g0 = vpa*g0*sqrt(2.0)
+    g0 = 2*vpa*g0
     call integrate_moment_gryfx (g0, tpar_gryfx)
-! tpar transiently stores ppar, nonadiabatic perturbed par pressure 
-!      vpa normalised to: sqrt(2 T_s T_ref/m_s m_ref)
-!  including factor 2 in g0 product ensures 
-!     ppar normalised to: n_s T_s n_ref T_ref 
-!                         ppar = tpar + density, and so:
+    !ppar normalized by n_0 T_0, not nmv_t^2, hence factor of 2 in integrand
     if(proc0) tpar_gryfx = tpar_gryfx - density_gryfx
-    !tpar_gryfx = sqrt(2) tpar_gs2
 
-    g0 = vpa*g0*sqrt(2.0)
+    g0 = vpa*g0
     call integrate_moment_gryfx (g0, qpar_gryfx)
-    !qpar_gryfx = 2 qpar_gs2
+    !qpar normalized by n_0 T_0 v_t
 
     do iglo = g_lo%llim_proc, g_lo%ulim_proc
        do isgn = 1, 2
-          g0(:,isgn,iglo) = sqrt(2.0)*0.5*vperp2(:,iglo)*gnew(:,isgn,iglo)*aj0(:,iglo)
+          g0(:,isgn,iglo) = 2.*.5*vperp2(:,iglo)*gnew(:,isgn,iglo)
        end do
     end do
     call integrate_moment_gryfx (g0, tperp_gryfx)
-! tperp transiently stores pperp, nonadiabatic perturbed perp pressure
-!                          pperp = tperp + density, and so:
-    if(proc0) tperp_gryfx = tperp_gryfx - density_gryfx
-    !tperp_gryfx = sqrt(2) tperp_gs2
-! NB TPAR, and TPERP are normalised by T_s T_ref
-!    ie multiply by T_s T_ref to get abs TPAR, TPERP
+    !pperp normalized by n_0 T_0, not nmv_t^2, hence factor of 2 in integrand
+    if(proc0) tperp_gryfx = (tperp_gryfx - density_gryfx)
 
-    g0 = vpa*g0*sqrt(2.0)
+    g0 = vpa*g0
     call integrate_moment_gryfx (g0, qperp_gryfx)
-    !qperp_gryfx = 2 qperp_gs2
+    !qperp normalized by n_0 T_0 v_t
  
+ !   densfac_lin = 1. / sqrt(2.0)
+ !   uparfac_lin = 1.
+ !   tparfac_lin = sqrt(2.0)
+ !   tprpfac_lin = sqrt(2.0)
+ !   qparfac_lin = 2.0
+ !   qprpfac_lin = 2.0
+
+    if(proc0) then 
+      density_gryfx = densfac_lin*density_gryfx
+      upar_gryfx = uparfac_lin*upar_gryfx
+      tpar_gryfx = tparfac_lin*tpar_gryfx
+      tperp_gryfx = tprpfac_lin*tperp_gryfx
+      qpar_gryfx = qparfac_lin*qpar_gryfx
+      qperp_gryfx = qprpfac_lin*qperp_gryfx
+    end if
+
     if(proc0) then
     do ig = -ntgrid, ntgrid-1
       iz = ig + ntgrid + 1
       do it = 1, g_lo%ntheta0
         do ik = 1, g_lo%naky
-        phi_gryfx(ik+g_lo%naky*it+g_lo%naky*g_lo%ntheta0*iz) = phinew(ig, it, ik) / sqrt(2.0)
+          index_gryfx = 1 + (ik-1) + g_lo%naky*((it-1)) + g_lo%naky*g_lo%ntheta0*(iz-1)
+          phi_gryfx(index_gryfx) = phinew(ig, it, ik)*phifac_lin
+        end do
       end do
     end do
     end if
-    !phi_gryfx = phi_gs2 / sqrt(2)
 
-    call g_adjust(gnew,phinew,bparnew,-fphi,-fbpar)
+    !change to left-handed coordinates
+    !if(proc0) then
+    !  density_gryfx = cmplx(-real(density_gryfx), aimag(density_gryfx))
+    !  upar_gryfx = cmplx(-real(upar_gryfx), aimag(upar_gryfx))
+    !  tpar_gryfx = cmplx(-real(tpar_gryfx), aimag(tpar_gryfx))
+    !  tperp_gryfx = cmplx(-real(tperp_gryfx), aimag(tperp_gryfx))
+    !  qpar_gryfx = cmplx(-real(qpar_gryfx), aimag(qpar_gryfx))
+    !  qperp_gryfx = cmplx(-real(qperp_gryfx), aimag(qperp_gryfx))
+    !  phi_gryfx = cmplx(-real(phi_gryfx), aimag(phi_gryfx))
+    !end if
 
   end subroutine getmoms_gryfx
 
