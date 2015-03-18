@@ -97,9 +97,10 @@ endif
 #  GS2_CUDA_FLAGS=gs2_cuda/libgs2.a
 #endif
 
+GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
+
 ifeq ($(GS2_zonal),on)
-  NVCCFLAGS += -D GS2_zonal -I ${GS2}
-  GS2_CUDA_FLAGS=${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
+  NVCCFLAGS += -D GS2_zonal 
 endif
 
 ifeq ($(GS2_all),on)
