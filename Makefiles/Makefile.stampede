@@ -148,8 +148,8 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 	ar cr $@ $<
 	ranlib $@
 
-CFLAGS=-I$(PWD)/tests/unity $(NVCCFLAGS) $(NVCCINCS) ${GS2_CUDA_FLAGS} ${FFT_INC} ${NETCDF_LIB}
-LDFLAGS=$(NVCCLIBS) ${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
+CFLAGS=-I$(PWD)/tests/unity $(NVCCFLAGS) $(NVCCINCS)  ${FFT_INC} ${NETCDF_LIB}
+LDFLAGS=$(NVCCLIBS) ${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} ${GS2_CUDA_FLAGS}
 
 # main program
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a

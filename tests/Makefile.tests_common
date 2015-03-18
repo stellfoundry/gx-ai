@@ -1,5 +1,5 @@
 
-.SUFFIXES: .fpp .f90 .c .o
+.SUFFIXES: .fpp .f90 .c .o .cu
 .PHONY: all clean
 
 #$(info "F90FLAGS is $(F90FLAGS)")
@@ -14,6 +14,8 @@
 .fpp.f90:
 	$(CPP) $(CPPFLAGS) $< $@ -I $(GK_HEAD_DIR)
 .c.o:
+	$(CC) $(CFLAGS) -c $< -I $(GK_HEAD_DIR)
+.cu.o:
 	$(CC) $(CFLAGS) -c $< -I $(GK_HEAD_DIR)
 	
 # This prevents error messages like m2c: Command not found
