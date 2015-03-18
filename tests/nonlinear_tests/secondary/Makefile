@@ -11,6 +11,7 @@ all:
 	@echo "==> Skipping test in ${PWD}/$(TEST_FOLD) (Test_level ${TEST_LEVEL}, This test ${MY_TEST_LEVEL})."
 else
 all: secondary 
+	$(call RUNCOMMAND,../../../gryfx,secondary_setup.in,)
 	$(call RUNCOMMAND,secondary,secondary.in,)
 endif
 

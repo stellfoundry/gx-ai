@@ -905,3 +905,18 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 }  	
 
+void gryfx_main(int argc, char* argv[], int mpcom) {
+	struct gryfx_parameters_struct gryfxpars;
+	struct gryfx_outputs_struct gryfxouts;
+//	printf("argc = %d\nargv[0] = %s   argv[1] = %s\n", argc, argv[0],argv[1]); 
+  	char* namelistFile;
+	if(argc == 2) {
+	  namelistFile = argv[1];
+	  //printf("namelist = %s\n", namelistFile);
+	}
+	else {
+	  namelistFile = "inputs/cyclone_miller_ke.in";
+	}
+	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
+	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile);
+}

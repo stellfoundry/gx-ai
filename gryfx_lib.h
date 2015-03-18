@@ -1,3 +1,12 @@
+#include <string.h>
+#include <math.h>
+#include <float.h>
+#include <time.h>
+#include "sys/stat.h"
+#include "cufft.h"
+#include "cuda_profiler_api.h"
+#include "mpi.h"
+
 /* These must be in the same order that they appear in
  * fluxes.fpp in trinity*/
 struct gryfx_parameters_struct {
@@ -55,3 +64,4 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * name
 extern "C"
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile);
 
+void gryfx_main(int argc, char* argv[], int mpcom);
