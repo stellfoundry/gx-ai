@@ -101,6 +101,10 @@ then
 fi
 }
 
+function build_gs2 {
+cd $GS2 && ./build_gs2 -c 'libgs2.a geometry_c_interface.o'  && cd $OLDPWD
+}
+
 
 function run_configuration {
 make system_config GK_SYSTEM=$GK_SYSTEM -I Makefiles || exit 1
@@ -109,6 +113,7 @@ make system_config GK_SYSTEM=$GK_SYSTEM -I Makefiles || exit 1
 function setup_build {
 check_system_set
 check_gs2_set
+build_gs2
 run_configuration
 source system_config
 }
@@ -137,7 +142,6 @@ do
       ;;
     g)
       GS2=${OPTARG}
-			cd $GS2 && ./build_gs2 -c 'libgs2.a geometry_c_interface.o'  && cd $OLDPWD
       ;;
     o)
       COMMAND=${OPTARG}
