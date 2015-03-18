@@ -5,6 +5,21 @@
 #     CUDAARCH, SDKDIR                           #
 #  need to be properly defined                   #
 ##################################################
+
+
+define STANDARD_SYSTEM_CONFIGURATION
+module purge ;\
+module load TACC-paths  Linux  cluster-paths  intel/14.0.1.106  mvapich2/1.9a2  xalt/0.4.6  cluster  TACC ;\
+module load fftw3 ;\
+module load netcdf ;\
+module load cuda ;\
+echo Module configuration complete;\
+export MAKEFLAGS='-j -I Makefiles GS2_zonal=on';\
+export CUDAARCH=35;\
+export TESTEXEC='ibrun -n 24';
+endef
+
+
 TARGET    = gryfx
 CU_DEPS := \
       device_funcs.cu \
@@ -67,7 +82,7 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 #-L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib -lmpi_f90 -lmpi -lmpi_f77
 
 
-GEO_LIBS=${GS2}/geo/geometry_c_interface.o ${GS2}/geo/geo.a  ${GS2}/utils.a
+GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 
 
 
@@ -83,8 +98,8 @@ endif
 #endif
 
 ifeq ($(GS2_zonal),on)
-  NVCCFLAGS += -D GS2_zonal -I ${GS2_edmund}
-  GS2_CUDA_FLAGS=${GS2_edmund}/libgs2.a ${GS2_edmund}/libsimpledataio.a 
+  NVCCFLAGS += -D GS2_zonal -I ${GS2}
+  GS2_CUDA_FLAGS=${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 endif
 
 ifeq ($(GS2_all),on)
@@ -96,6 +111,17 @@ endif
 .SUFFIXES: .cu .o
 .DEFAULT_GOAL := $(TARGET)
 
+ifdef STANDARD_SYSTEM_CONFIGURATION
+system_config: Makefiles/Makefile.$(GK_SYSTEM) Makefile
+	@echo "#!/bin/bash " > system_config
+	@echo "$(STANDARD_SYSTEM_CONFIGURATION)" >> system_config
+	@sed -i 's/^ //' system_config
+
+else
+.PHONY: system_config
+system_config:
+	$(error "STANDARD_SYSTEM_CONFIGURATION is not defined for this system")
+endif
 
 .cu.o:
 	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< 
@@ -119,10 +145,10 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 	ranlib $@
 
 # main program
-$(TARGET): gryfx.o gryfx_lib.a
+$(TARGET): gryfx.o gryfx_lib.a $(GS2)/libgs2.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
 
-gryfx_hybrid: gryfx_hybrid.o gryfx_hybrid_lib.a
+gryfx_hybrid: gryfx_hybrid.o gryfx_hybrid_lib.a $(GS2)/libgs2.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) -D GS2_zonal -I ${GS2} $(NVCCINCS) $(NVCCLIBS) $< gryfx_hybrid_lib.a gs2_cuda/libgs2.a ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 
     
 
