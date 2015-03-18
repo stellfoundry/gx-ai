@@ -87,7 +87,6 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 
 GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 
-CFLAGS=-I$(PWD)/tests/unity
 
 
 ifeq ($(debug),on)
@@ -149,12 +148,15 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 	ar cr $@ $<
 	ranlib $@
 
+CFLAGS=-I$(PWD)/tests/unity $(NVCCFLAGS) $(NVCCINCS) ${GS2_CUDA_FLAGS} ${FFT_INC} ${NETCDF_LIB}
+LDFLAGS=$(NVCCLIBS) ${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
+
 # main program
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a
-	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< libgryfx.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
+	$(NVCC)  -o $@  $^ $(CFLAGS) $(LDFLAGS) 
 
 gryfx_hybrid: gryfx_hybrid.o gryfx_hybrid_lib.a $(GS2)/libgs2.a
-	$(NVCC)  -o $@ $(NVCCFLAGS) -D GS2_zonal -I ${GS2} $(NVCCINCS) $(NVCCLIBS) $< gryfx_hybrid_lib.a gs2_cuda/libgs2.a ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 
+	$(NVCC)  -o $@  -I ${GS2} $(NVCCINCS) $(NVCCLIBS) $<  
     
 
 gryfx_dumb: gryfx.o gryfx_lib_dumb.a
