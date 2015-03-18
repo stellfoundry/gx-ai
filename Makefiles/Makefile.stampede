@@ -16,7 +16,9 @@ module load cuda ;\
 echo Module configuration complete;\
 export MAKEFLAGS='-j -I Makefiles GS2_zonal=on';\
 export CUDAARCH=35;\
-export TESTEXEC='ibrun -n 24';
+export TESTEXEC='ibrun -n 24';\
+export TESTEXEC='time ';\
+echo
 endef
 
 
@@ -66,6 +68,8 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
+CC = $(NVCC)
+LD = $(NVCC)
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledataio/lib -l simpledataio
@@ -84,6 +88,7 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 
 GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 
+CFLAGS=-I$(PWD)/tests/unity
 
 
 ifeq ($(debug),on)
@@ -127,9 +132,9 @@ endif
 .cu.o:
 	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< 
 
-gryfx_lib.a: gryfx_lib.o 
-	ar cr gryfx_lib.a gryfx_lib.o
-	ranlib gryfx_lib.a
+libgryfx.a: gryfx_lib.o 
+	ar cr $@ $<
+	ranlib $@
 
 gryfx_hybrid_lib.a: gryfx_hybrid_lib.o 
 	ar cr gryfx_hybrid_lib.a gryfx_hybrid_lib.o
@@ -146,8 +151,8 @@ gryfx_lib_dumb.a: gryfx_lib_dumb.o
 	ranlib $@
 
 # main program
-$(TARGET): gryfx.o gryfx_lib.a $(GS2)/libgs2.a
-	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
+$(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a
+	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< libgryfx.a ${GS2_CUDA_FLAGS} ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} 
 
 gryfx_hybrid: gryfx_hybrid.o gryfx_hybrid_lib.a $(GS2)/libgs2.a
 	$(NVCC)  -o $@ $(NVCCFLAGS) -D GS2_zonal -I ${GS2} $(NVCCINCS) $(NVCCLIBS) $< gryfx_hybrid_lib.a gs2_cuda/libgs2.a ${GEO_LIBS} ${FFT_INC} ${FFT_LIB} ${FORTRAN_LIBS} 

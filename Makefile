@@ -9,4 +9,7 @@ $(error GK_SYSTEM is not set)
 	endif
 endif
 include Makefile.$(GK_SYSTEM)
+export GK_HEAD_DIR=$(PWD)
+TEST_DIR=$(PWD)/tests
+include tests/Makefile.tests_and_benchmarks
 
