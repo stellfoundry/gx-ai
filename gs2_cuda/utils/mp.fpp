@@ -710,7 +710,7 @@ contains
 # endif
   end subroutine broadcast_character
 
-  subroutine broadcast_integer (i)
+  subroutine broadcast_integer (i) 
     implicit none
     integer, intent (in out) :: i
 # ifdef MPI

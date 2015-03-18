@@ -1,14 +1,16 @@
 #ifdef GS2_zonal
-extern "C" void fields_implicit_mp_advance_implicit_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h);
-extern "C" void fields_mp_advance_(int* gs2_counter);
-extern "C" void gs2_main_mp_advance_gs2_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
-extern "C" void gs2_time_mp_update_time_();
-extern "C" void gs2_reinit_mp_check_time_step_(int* reset, int* exit);
-extern "C" void gs2_reinit_mp_reset_time_step_(int* gs2_counter, int* exit);
-extern "C" void dist_fn_mp_getmoms_gryfx_(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
-extern "C" void gs2_diagnostics_mp_loop_diagnostics_(int* gs2_counter, int* exit);
-extern "C" void mp_mp_broadcast_integer_(int* a);
-extern "C" void species_mp_reinit_species_(int* nSpecies, double* dens, double* temp, double* fprim, double* tprim, double* nu);
+//extern "C" void fields_implicit_mp_advance_implicit_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h);
+//extern "C" void fields_mp_advance_(int* gs2_counter);
+//extern "C" void gs2_main_mp_advance_gs2_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
+extern "C" void advance_gs2(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
+//extern "C" void gs2_time_mp_update_time_();
+//extern "C" void gs2_reinit_mp_check_time_step_(int* reset, int* exit);
+//extern "C" void gs2_reinit_mp_reset_time_step_(int* gs2_counter, int* exit);
+extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
+//extern "C" void gs2_diagnostics_mp_loop_diagnostics_(int* gs2_counter, int* exit);
+extern "C" void broadcast_integer(int* a);
+//extern "C" void broadcast_integer(int* a);
+//extern "C" void species_mp_reinit_species_(int* nSpecies, double* dens, double* temp, double* fprim, double* tprim, double* nu);
 #endif
 
 
@@ -680,8 +682,10 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   	      //	samp = init_amp;
   	      //}
   
-  	      if(j==0 && secondary_test) {samp = 0.;}
-              else samp = init_amp;
+//  	      if(j==0 && secondary_test) 
+//		samp = 0.;
+//             else 
+		samp = init_amp;
   
   	      float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
   	      float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
@@ -940,7 +944,7 @@ if(iproc==0) {
 
     //set initial condition from GS2 for ky=0 modes
 
-    dist_fn_mp_getmoms_gryfx_(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
+    getmoms_gryfx(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
       
 if(iproc==0) {
     cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
@@ -1303,7 +1307,7 @@ if(iproc==0) {
     //cudaEventRecord(GS2start,0);
 
     //advance GS2 t -> t + dt/2  
-    gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
     gs2_counter++;
 
     //nvtxRangePop();
@@ -1514,7 +1518,7 @@ if(iproc==0) {
     //advance GS2 t+dt/2 -> t+dt
       //MPI_Barrier(MPI_COMM_WORLD);
     //nvtxRangePushA("GS2 t+dt/2->t+dt");
-    gs2_main_mp_advance_gs2_(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
     gs2_counter++;
     //nvtxRangePop();
   
@@ -1903,7 +1907,7 @@ if(iproc==0) {
         
         stopcount=100;
 #ifdef GS2_zonal
-        mp_mp_broadcast_integer_(&stopcount);
+        broadcast_integer(&stopcount);
 #endif
 /*
         if(counter>nsave) {	

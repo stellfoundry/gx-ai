@@ -34,8 +34,16 @@ contains
   !! All arguments are optional and are not used for gs2. 
   !! (EGH - used for Trinity?)
 
+subroutine init_gs2_c (filename, strlen) bind(c, name='init_gs2')
+   
+    use iso_c_binding
+    integer(c_int), intent(in) :: strlen
+    character(kind=c_char), intent(in) :: filename
+    call init_gs2(filename, strlen)
 
-subroutine init_gs2 (filename, strlen)
+end subroutine init_gs2_c
+
+subroutine init_gs2 (filename, strlen) 
 
     use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
     use mp, only: init_mp, finish_mp, proc0, nproc, broadcast, scope, subprocs
@@ -179,6 +187,26 @@ subroutine init_gs2 (filename, strlen)
 
 end subroutine init_gs2
 
+subroutine advance_gs2_c (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0, first_half_step) &
+                                bind(c, name='advance_gs2')
+  use iso_c_binding
+  use species, only: nspec
+  use kt_grids, only: naky, ntheta0
+  use theta_grid, only: ntgrid
+  implicit none
+  integer(c_int), intent(in) :: istep
+    complex (c_float_complex), intent (inout) :: dens_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (inout) :: upar_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (inout) :: tpar_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (inout) :: tprp_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (inout) :: qpar_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (inout) :: qprp_ky0(naky*ntheta0*2*ntgrid*nspec)
+    complex (c_float_complex), intent (out) :: phi_ky0(naky*ntheta0*2*ntgrid)
+  logical(c_bool), intent (in) :: first_half_step
+  
+  call advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0, first_half_step)
+  
+end subroutine advance_gs2_c 
 subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0, qprp_ky0, phi_ky0, first_half_step)
 
     use job_manage, only: checkstop, job_fork, checktime, time_message, trin_reset, trin_restart
@@ -464,6 +492,11 @@ subroutine advance_gs2 (istep, dens_ky0, upar_ky0, tpar_ky0, tprp_ky0, qpar_ky0,
   end subroutine trin_finish_gs2
 ! > HJL
 
+  subroutine finish_gs2_c bind(c, name='finish_gs2')
+    use iso_c_binding
+    implicit none
+    call finish_gs2
+  end subroutine finish_gs2_c
 
   subroutine finish_gs2
     

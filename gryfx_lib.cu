@@ -54,10 +54,9 @@
 #include "read_geo.cu"
 
 #ifdef GS2_zonal
-//extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength);
-extern "C" void gs2_main_mp_init_gs2_(char* namelistFile, int * strlength);
-extern "C" void gs2_main_mp_finish_gs2_();
-extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
+extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom);
+extern "C" void finish_gs2();
+//extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
 #endif
 
 #ifdef GS2_all
@@ -79,7 +78,8 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   if(iproc==0) printf("Initializing GS2...\n\n");
 
   int length = strlen(namelistFile);
-  gs2_main_mp_init_gs2_(namelistFile, &length);
+  //gs2_main_mp_init_gs2_(namelistFile, &length);
+  init_gs2(&length, namelistFile, &mpcom);
 
   if(iproc==0) printf("Finished initializing GS2.\n\n");
   
@@ -833,7 +833,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 #ifdef GS2_zonal
   int last_step = 2*nSteps;
-  gs2_diagnostics_mp_finish_gs2_diagnostics_(&last_step);
+  //gs2_diagnostics_mp_finish_gs2_diagnostics_(&last_step);
 #endif
 
 #ifdef GS2_zonal
@@ -899,7 +899,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 #ifdef GS2_zonal
   //MPI_Barrier(MPI_COMM_WORLD);
-  //gs2_main_mp_finish_gs2_();
+  finish_gs2();
 #endif
 
 
