@@ -54,7 +54,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     float Phi_energy;
     cuComplex *omega_h;  
     float dtBox[navg];
-    //cuComplex* omegaAvg_h;
+    cuComplex* omegaAvg_h;
     float wpfx[nSpecies];
     float pflx[nSpecies];
     float wpfx_old[nSpecies];
@@ -229,6 +229,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
 #endif
 
     omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
+    omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
     kx_h = (float*) malloc(sizeof(float)*Nx);
     ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));

@@ -997,6 +997,7 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
   FILE* out = fopen(filename, "w+");
   fprintf(out, "#ky\tkx\t\tomega\t\tgamma\n");
   int blockid = 0;
+  int k = 0;
   for(int i=0; i<((Nx-1)/3+1); i++) {
     fprintf(out, "\n#%d\n\n", blockid);
     blockid++;
@@ -1004,6 +1005,8 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
       int index = j + (Ny/2+1)*i;
       if(index!=0) {
 	fprintf(out, "%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i], omegaAvg_h[index].x*dtSumInv/fac, omegaAvg_h[index].y*dtSumInv/fac);
+        omega_out_h[k] = omegaAvg_h[index]*dtSumInv/fac;
+        k++;
       }
     }
   }
@@ -1013,9 +1016,10 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
     for(int j=0; j<((Ny-1)/3+1); j++) {
       int index = j + (Ny/2+1)*i;
       fprintf(out,"%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i],omegaAvg_h[index].x*dtSumInv/fac,omegaAvg_h[index].y*dtSumInv/fac);
+        omega_out_h[k] = omegaAvg_h[index]*dtSumInv/fac;
+        k++;
     }
   }	  
-  fprintf(out,"dtSum is %f", 1./dtSumInv);
 }
 
 //same as above but with kx as fast moving index

@@ -34,6 +34,7 @@ CU_DEPS := \
       nlpm.cu \
       nlpm_kernel.cu \
       gryfx_lib.h \
+      global_vars.h \
       qneut.cu \
       qneut_kernel.cu \
       zonal_kernel.cu \
