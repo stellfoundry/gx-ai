@@ -57,7 +57,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
 
 
-  MPI_Comm_rank(MPI_COMM_WORLD, &iproc);
+  MPI_Comm_rank(mpcom, &iproc);
   //printf("I am proc %d\n", iproc);
 
   if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
