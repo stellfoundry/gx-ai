@@ -165,6 +165,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   /*char eqfile[800];*/
    irho = gryfxpars->irho ;
    rhoc = gryfxpars->rhoc ;
+   eps = rhoc/rmaj;
    bishop = gryfxpars->bishop ;
    nperiod = gryfxpars->nperiod ;
    Nz = gryfxpars->ntheta ;
