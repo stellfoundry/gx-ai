@@ -197,7 +197,7 @@
   ! write_parity not specified --- Writes parities in dist fn and particle fluxes
  nsave = 100 ! Write restart files every nsave timesteps
  nwrite = 10 ! Output diagnostic data every nwrite
- navg = 100 ! Any time averages performed over navg
+ navg = 1 ! Any time averages performed over navg
  omegatol = -0.001 ! The convergence has to be better than one part in 1/omegatol
  omegatinst = 500.0 ! Recommended value: 500.
  save_for_restart = .true. ! Write restart files.

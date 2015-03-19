@@ -1015,6 +1015,7 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
       fprintf(out,"%.4f\t%.4f\t\t%.6f\t%.6f\n", fac*ky_h[j], fac*kx_h[i],omegaAvg_h[index].x*dtSumInv/fac,omegaAvg_h[index].y*dtSumInv/fac);
     }
   }	  
+  fprintf(out,"dtSum is %f", 1./dtSumInv);
 }
 
 //same as above but with kx as fast moving index

@@ -1,4 +1,5 @@
 #include "gryfx_lib.h"
+#include "global_vars.h"
 //#include "write_data.cu"
 #include "device_funcs.cu"
 #include "c_fortran_namelist3.c"

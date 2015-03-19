@@ -258,6 +258,6 @@ cuComplex* tpar_h;
 cuComplex* tprp_h;
 cuComplex* qpar_h;
 cuComplex* qprp_h;
-cuComplex* omega_h;
+cuComplex* omegaAvg_h;
 
 //struct sdatio_file sdatfile;

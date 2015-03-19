@@ -9,7 +9,6 @@
 #include "cuda_profiler_api.h"
 #include "libgen.h"
 #include "mpi.h"
-#include "global_vars.h"
 #include "nvToolsExt.h"
 
 /* These must be in the same order that they appear in

@@ -52,9 +52,9 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     //float tau_nlpm = 50.;
     cuComplex *init_h;
     float Phi_energy;
-    //cuComplex *omega_h;  
+    cuComplex *omega_h;  
     float dtBox[navg];
-    cuComplex* omegaAvg_h;
+    //cuComplex* omegaAvg_h;
     float wpfx[nSpecies];
     float pflx[nSpecies];
     float wpfx_old[nSpecies];
