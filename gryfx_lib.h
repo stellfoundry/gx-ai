@@ -14,6 +14,7 @@
 /* These must be in the same order that they appear in
  * fluxes.fpp in trinity*/
 struct gryfx_parameters_struct {
+   int mpirank;
 	 /* Name of gryfx/gryffin input file*/
 	/*char input_file[1000];*/
 	/*Base geometry parameters - not currently set by trinity 
@@ -53,6 +54,8 @@ struct gryfx_parameters_struct {
 	 double fprim[20];
 	 double tprim[20];
 	 double nu[20];
+
+   void * everything_struct_address;
 };
 
 struct gryfx_outputs_struct {

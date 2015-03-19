@@ -11,6 +11,10 @@
 #
 #######################################
 
+TARGET    = gryfx
+FILES     = *.cu *.c *.cpp Makefile
+VER       = `date +%y%m%d`
+
 #######################################
 # Include system-dependent make variables
 #######################################
