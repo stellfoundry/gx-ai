@@ -49,8 +49,21 @@ int main(int argc, char* argv[])
 {
 
   int proc;
-  cuComplex omega_out_h_correct[] = 
-    {{0.0,0.0}, {0.000006, 2.488744}, {0.000004, 2.488744}, {-0.000006, 2.488744}, {-0.000001, 2.488744}};
+  cuComplex omega_out_h_correct[] =  {
+		{-0.086062,	0.094208  } ,
+		{-0.184508,	0.178823  } ,
+		{-0.299080,	0.236866  } ,
+		{-0.433454,	0.270937  } ,
+		{-0.583825,	0.283765  } ,
+		{-0.742790,	0.278278  } ,
+		{-0.902706,	0.256830  } ,
+		{-1.057670,	0.221767  } ,
+		{-1.203555,	0.175838  } ,
+		{-1.337483,	0.122050  } ,
+		{-1.457503,	0.063530  } ,
+		{-1.562514,	0.003359  } ,
+		{-1.652453,	-0.055654 }
+                };
   MPI_Init(&argc, &argv);
   mpcom_glob = MPI_Comm_c2f(MPI_COMM_WORLD);
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
@@ -60,7 +73,7 @@ int main(int argc, char* argv[])
   gryfx_main(argc_glob, argv_glob, mpcom_glob);
 
   if(proc==0) {
-  if (agrees_with_cuComplex_imag(omega_out_h, omega_out_h_correct, 5, 1.0e-2)==0){
+  if (agrees_with_cuComplex_imag(omega_out_h, omega_out_h_correct, 13, 1.0e-1)==0){
     printf("Growth rates don't match!\n");
     exit(1);
    }
