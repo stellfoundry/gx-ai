@@ -258,6 +258,6 @@
   phi_test_real = 1.e3
   phi_test_imag = 1.e-20
   secondary_test = "on"
-  restartfile = "tests/nonlinear_tests/secondary/secondary_setup.restart.bin"    ! file that is read at beginning from which modes are fixed
+  restartfile = "secondary_setup.restart.bin"    ! file that is read at beginning from which modes are fixed
 /
 
