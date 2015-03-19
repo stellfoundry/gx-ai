@@ -109,6 +109,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     /*char eqfile[800];*/
     gryfxpars->irho = irho;
     gryfxpars->rhoc = rhoc;
+    gryfxpars->rhoc = eps*rmaj;
     gryfxpars->bishop = bishop;
     gryfxpars->nperiod = nperiod;
     gryfxpars->ntheta = Nz;
