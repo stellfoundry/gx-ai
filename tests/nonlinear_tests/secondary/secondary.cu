@@ -45,7 +45,7 @@ int main(int argc, char* argv[])
 {
 
   cuComplex omega_h_correct[] = 
-    {{0.0,0.0} {0.000006, 2.488627} {0.000004, 2.489097} {-0.000006, 2.488627} {-0.000001, 2.489098};
+    {{0.0,0.0} {0.000006, 2.488627} {0.000004, 2.489097} {-0.000006, 2.488627} {-0.000001, 2.489098}};
 #ifdef GS2_zonal
   MPI_Init(&argc, &argv);
   mpcom_glob = MPI_Comm_c2f(MPI_COMM_WORLD);
