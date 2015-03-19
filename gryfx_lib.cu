@@ -366,7 +366,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
       strncpy(out_stem, namelistFile, strlen(namelistFile)-3);
       strcat(out_stem,".\0"); 
-      //printf("out_stem = %s\n", out_stem);
+      printf("out_stem = %s\n", out_stem);
     }
 
 

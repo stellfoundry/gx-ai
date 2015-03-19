@@ -36,7 +36,7 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
 
 ifeq ($(debug),on)
-  NVCCFLAGS += -g -G -O3 
+  NVCCFLAGS += -g -G 
 else
   NVCCFLAGS += -O3
 endif
