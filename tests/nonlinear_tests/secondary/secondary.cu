@@ -16,7 +16,13 @@ int agrees_with_float(float * val, float * correct, const int size, const float 
   result = 1;
 
   for (i=0;i<size;i++)
-    if( !( fabsf((val[i]-correct[i])/correct[i]) < eps) ) {
+    if(
+        (
+          (fabsf(correct[i]) < FLT_MIN) && !(fabsf(val[i]) < FLT_MIN) 
+        ) || (
+          !( fabsf((val[i]-correct[i])/correct[i]) < eps) 
+        ) 
+      ) {
       result = 0;
       printf("Error: %e should be %e\n", val[i], correct[i]);
     }
