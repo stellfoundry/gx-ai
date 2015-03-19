@@ -1,18 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
-#include <time.h>
-#include "sys/stat.h"
-#include "cufft.h"
-#include "cuda_profiler_api.h"
-#include "libgen.h"
-#include "mpi.h"
-#include "global_vars.h"
 #include "gryfx_lib.h"
-#include "nvToolsExt.h"
-
 //#include "write_data.cu"
 #include "device_funcs.cu"
 #include "c_fortran_namelist3.c"

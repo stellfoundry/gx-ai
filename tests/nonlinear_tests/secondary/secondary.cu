@@ -1,42 +1,62 @@
-#include <unity.h>
-#include <setjmp.h>
-#include "gryfx_lib.h"
+#include <math.h>
+#include <float.h>
+#include "cufft.h"
+#include "mpi.h"
 
-/*int main(int argc, char ** argv) {*/
-/*return 0;*/
-/*}*/
+extern cuComplex * omega_h;
+extern void gryfx_main(int argc, char* argv[], int mpcom);
 
 int mpcom_glob;
 int argc_glob;
 char** argv_glob;
 
-void setUp(void)
-{
-  gryfx_main(argc_glob, argv_glob, mpcom_glob);
+int agrees_with_float(float * val, float * correct, const int size, const float eps){
+  int result, i;
+
+  result = 1;
+
+  for (i=0;i<size;i++)
+    if( !( fabsf((val[i]-correct[i])/correct[i]) < eps) ) {
+      result = 0;
+      printf("Error: %e should be %e\n", val[i], correct[i]);
+    }
+
+  return result;
+}
+
+int agrees_with_cuComplex_imag(cuComplex * val, cuComplex * correct, const int size, const float eps){
+  int result, i;
+
+  result = 1;
+
+  for (i=0;i<size;i++)
+    result = result && agrees_with_float(&val[i].y, &correct[i].y, 1, eps);
+  return result;
 }
  
-void tearDown(void)
-{
-}
- 
-void test_secondary_growth_rate(void)
-{
-}
 
 int main(int argc, char* argv[])
 {
+
+  cuComplex omega_h_correct[] = 
+    {{0.0,0.0}};
 #ifdef GS2_zonal
-        MPI_Init(&argc, &argv);
-        mpcom_glob = MPI_Comm_c2f(MPI_COMM_WORLD);
+  MPI_Init(&argc, &argv);
+  mpcom_glob = MPI_Comm_c2f(MPI_COMM_WORLD);
 #endif
   
   argc_glob = argc;
   argv_glob = argv;
+  gryfx_main(argc_glob, argv_glob, mpcom_glob);
 
-  UnityBegin("tests/nonlinear_tests/secondary.cu");
+  if (!agrees_with_cuComplex_imag(omega_h, omega_h_correct, 1, 1.0e-4)){
+    printf("Growth rates don't match!\n");
+    exit(1);
+   }
 
-  RUN_TEST(test_secondary_growth_rate);
-  UnityEnd();
+
+
+
 #ifdef GS2_zonal
         MPI_Finalize();
 #endif

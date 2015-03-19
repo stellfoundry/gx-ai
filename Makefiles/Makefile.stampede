@@ -22,72 +22,18 @@ endef
 
 
 TARGET    = gryfx
-CU_DEPS := \
-      device_funcs.cu \
-      operations_kernel.cu \
-      diagnostics_kernel.cu \
-      exb_kernel.cu \
-      nlps_kernel.cu \
-      zderiv_kernel.cu \
-      covering_kernel.cu \
-      reduc_kernel.cu \
-      cudaReduc_kernel.cu \
-      init_kernel.cu \
-      omega_kernel.cu \
-      phi_kernel.cu \
-      getfcn.cu \
-      c_fortran_namelist3.c \
-      read_namelist.cu \
-      read_input.cu \
-      definitions.cu \
-      diagnostics.cu \
-      coveringSetup.cu \
-      exb.cu \
-      ztransform_covering.cu \
-      zderiv.cu \
-      zderivB.cu \
-      zderiv_covering.cu \
-      nlps.cu \
-      sumReduc.cu \
-      energy.cu \
-      timestep_gryfx.cu \
-      run_gryfx.cu \
-      courant.cu \
-      maxReduc.cu \
-      nlpm.cu \
-      nlpm_kernel.cu \
-      gryfx_lib.h \
-      qneut.cu \
-      qneut_kernel.cu \
-      zonal_kernel.cu \
-      read_geo.cu \
-
-
 FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-CC = $(NVCC)
-LD = $(NVCC)
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledataio/lib -l simpledataio
-
-FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
-
 FFT_LIB = -L$(TACC_FFTW3_LIB) -lfftw3 -lfftw3f
 FFT_INC = -I$$TACC_FFTW3_INC
-
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
-#FFT_LIB = -L$(TACC_FFTW2_LIB) -ldrfftw -ldfftw
-#FFT_INC = -I$$TACC_FFTW2_INC
 
-#-L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib -lmpi_f90 -lmpi -lmpi_f77
-
-
-GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
-
-
+FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G -O3 
@@ -95,10 +41,12 @@ else
   NVCCFLAGS += -O3
 endif
 
-#ifeq ($(GS2_zonal),on)
-#  NVCCFLAGS += -D GS2_zonal -I gs2_cuda
-#  GS2_CUDA_FLAGS=gs2_cuda/libgs2.a
-#endif
+CC = $(NVCC)
+LD = $(NVCC)
+
+
+GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
+
 
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
