@@ -20,6 +20,7 @@ int agrees_with_float(float * val, float * correct, const int size, const float 
         (
           (fabsf(correct[i]) < FLT_MIN) && !(fabsf(val[i]) < FLT_MIN) 
         ) || (
+          (fabsf(correct[i]) > FLT_MIN) && 
           !( fabsf((val[i]-correct[i])/correct[i]) < eps) 
         ) 
       ) {
