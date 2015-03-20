@@ -41,7 +41,7 @@
 #include "read_geo.cu"
 
 #ifdef GS2_zonal
-extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom);
+extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, struct gryfx_parameters_struct * gryfxpars);
 extern "C" void finish_gs2();
 //extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
 #endif
@@ -62,13 +62,6 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
   if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
 
-  if(iproc==0) printf("Initializing GS2...\n\n");
-
-  int length = strlen(namelistFile);
-  //gs2_main_mp_init_gs2_(namelistFile, &length);
-  init_gs2(&length, namelistFile, &mpcom);
-
-  if(iproc==0) printf("Finished initializing GS2.\n\n");
   
 
   //iproc = *mp_mp_iproc_;
@@ -82,6 +75,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   //gs2_main_mp_finish_gs2_();
 
   //exit(1);
+  
   
 
 #endif
@@ -98,6 +92,19 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 #endif
 
     read_namelist(namelistFile); // all procs read from namelist, set global variables.
+
+  char out_dir_path[200];
+  if(SCAN) {
+    //default: out_stem taken from name of namelist given in argument
+    //if( strcmp(scan_type, "default") == 0) {
+  
+      strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
+      //strcat(out_stem,".\0"); 
+      printf("out_stem = %s\n", out_stem);
+    //}
+
+
+  }
 #ifdef GS2_zonal
 			if(iproc==0) {
 #endif
@@ -115,8 +122,8 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     gryfxpars->ntheta = Nz;
   
    /* Miller parameters*/
-    gryfxpars->rmaj = rmaj;
-    gryfxpars->r_geo = r_geo;
+    gryfxpars->rgeo_local = rmaj;
+    gryfxpars->rgeo_lcfs = 0;
     gryfxpars->akappa = akappa ;
     gryfxpars->akappri = akappri;
     gryfxpars->tri = tri;
@@ -154,10 +161,17 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   
 
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars, 
-			struct gryfx_outputs_struct * gryfxouts, char* namelistFile)
+			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
    FILE* outfile;
+  if(iproc==0) printf("Initializing GS2...\n\n");
+
+  //gs2_main_mp_init_gs2_(namelistFile, &length);
+  int length = strlen(namelistFile);
+  init_gs2(&length, namelistFile, &mpcom, gryfxpars);
+
+  if(iproc==0) printf("Finished initializing GS2.\n\n");
 
 #ifdef GS2_zonal
 			if(iproc==0) {
@@ -172,8 +186,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
    Nz = gryfxpars->ntheta ;
 
  /* Miller parameters*/
-   rmaj = gryfxpars->rmaj ;
-   r_geo = gryfxpars->r_geo ;
+   rmaj = gryfxpars->rgeo_local ;
+   //r_geo = gryfxpars->rgeo_lcfs ;
    akappa  = gryfxpars->akappa ;
    akappri = gryfxpars->akappri ;
    tri = gryfxpars->tri ;
@@ -209,6 +223,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	   species[i].nu_ss = gryfxpars->nu[i] ;
   }
   
+  jtwist = (int) round(2*M_PI*abs(shat)*Zp);
+  if(jtwist<0) jtwist=0;
   if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
   //else *&X0 = Y0; 
   //else use what is set in input file 
@@ -361,177 +377,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 					}
 #endif
 
-  char out_dir_path[200];
-  if(SCAN) {
-    //default: out_stem taken from name of namelist given in argument
-    if( strcmp(scan_type, "default") == 0) {
-  
-      strncpy(out_stem, namelistFile, strlen(namelistFile)-3);
-      strcat(out_stem,".\0"); 
-      printf("out_stem = %s\n", out_stem);
-    }
-
-
-    //q scan
-    if( strcmp(scan_type, "q_scan") == 0 ) {
-      sprintf(out_stem, "scan/q_scan/q%g/q%g_%d.", qsf, qsf, scan_number);
-      //out_stem = scan/q_scan/qX.X_X/qX.X_X.
-      
-      //printf("out_stem = %s\n", out_stem);
-
-      sprintf(out_dir_path, "scan/q_scan/q%g", qsf);
-
-      // check to make sure that the directory 
-      // scan/q_scan/qX.X exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }            
-    }  
-
-    //tprim scan
-    if( strcmp(scan_type, "tprim_scan") == 0 ) {
-      sprintf(out_stem, "scan/tprim_scan/tprim%g/tprim%g_%d.", species[ION].tprim, species[ION].tprim, scan_number);
-
-      sprintf(out_dir_path, "scan/tprim_scan/tprim%g", species[ION].tprim);
-      
-      // check to make sure that the directory 
-      // scan/tprim_scan/tprimX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }  
-
-    //eps scan
-    if( strcmp(scan_type, "eps_scan") == 0 ) {
-      sprintf(out_stem, "scan/eps_scan/eps%g/eps%g_%d.", eps, eps, scan_number);
-
-      sprintf(out_dir_path, "scan/eps_scan/eps%g", eps);
-      
-      // check to make sure that the directory 
-      // scan/tprim_scan/tprimX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }  
-
-    //shat scan
-    if( strcmp(scan_type, "shat_scan") == 0 ) {
-      if(!LINEAR) sprintf(out_stem, "scan/shat_scan/shat%g/shat%g_%d.", shat,shat, scan_number);
-      else sprintf(out_stem, "scan/shat_scan/shat%g_lin/shat%g_%d.", shat,shat, scan_number);
-      
-      if(!LINEAR) 
-        sprintf(out_dir_path, "scan/shat_scan/shat%g", shat);
-      else
-        sprintf(out_dir_path, "scan/shat_scan/shat%g_lin", shat);
-      
-
-      // check to make sure that the directory 
-      // scan/shat_scan/shatX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }  
-
-
-    //nlpm scan
-    if( strcmp(scan_type, "nlpm_scan") == 0 ) {
-      sprintf(out_stem, "scan/nlpm_scan/nlpm%g/nlpm%g_%d.", dnlpm, dnlpm, scan_number);
-
-      sprintf(out_dir_path, "scan/nlpm_scan/nlpm%g", dnlpm);
-      
-      // check to make sure that the directory 
-      // scan/nlpm_scan/nlpmX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }  
-    
-    //cyclone
-    if( strcmp(scan_type, "cyclone") == 0 ) {
-      sprintf(out_stem, "scan/outputs/cyclone_%d/cyclone_%d.", scan_number, scan_number);
-      //out_stem = scan/outputs/cyclone_X/cyclone_X.
-      
-      //printf("out_stem = %s\n", out_stem);
-
-      sprintf(out_dir_path, "scan/outputs/cyclone_%d", qsf, scan_number);
-
-      // check to make sure that the directory exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }            
-    }  
-    
-    //test
-    if( strcmp(scan_type, "test") == 0 ) {
-      sprintf(out_stem, "scan/outputs/test/test.");
-      //out_stem = scan/outputs/test/test.
-      
-      //printf("out_stem = %s\n", out_stem);
-
-      sprintf(out_dir_path, "scan/outputs/test");
-
-      // check to make sure that the directory exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }            
-    }  
-
-    //general scan
-    if( strcmp(scan_type, "outputs") == 0 ) {
-      sprintf(out_stem, "scan/outputs/");
-
-      // check to make sure that the directory 
-      // scan/outputs/ exists
-      struct stat st;
-      if( !(stat(out_stem, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }    
-
-    
-    //tprim_nlpm scan
-    if( strcmp(scan_type, "tprim_nlpm_scan") == 0 ) {
-      sprintf(out_stem, "scan/tprim_nlpm_scan/tprim%g/nlpm%g/tprim%g_nlpm%g_%d.",species[ION].tprim, dnlpm, species[ION].tprim, dnlpm, scan_number);
-
-      sprintf(out_dir_path, "scan/tprim_nlpm_scan/tprim%g/nlpm%g", species[ION].tprim, dnlpm);
-      char out_dir_subpath[200];
-      sprintf(out_dir_subpath, "scan/tprim_nlpm_scan/tprim%g", species[ION].tprim);
- 
-      // check to make sure that the directory 
-      // scan/tprim_nlpm_scan/tprimX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_subpath, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-        printf("making directory %s \n", out_dir_subpath);
-	mkdir(out_dir_subpath, 00777);
-      }
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-    }  
-
-    /*else {
-      sprintf(out_stem, "scan/%s_scan/%s/%s_%d.", scan_type, scan_id, scan_type, scan_val, scan_number);
-      //scan_id could be something like 'tprim6nlpm.2'
-      //scan_id should be specified as string in input file
-
-      sprintf(out_dir_path, "scan/%s_scan/%s", dnlpm);
-      
-      // check to make sure that the directory 
-      // scan/nlpm_scan/nlpmX.X/ exists
-      struct stat st;
-      if( !(stat(out_dir_path, &st) == 0 && S_ISDIR(st.st_mode)) ) {
-	mkdir(out_dir_path, 00777);
-      }
-
-    } */  
-  }
 
 
   //set up restart file
@@ -907,5 +752,5 @@ void gryfx_main(int argc, char* argv[], int mpcom) {
 	  namelistFile = "inputs/cyclone_miller_ke.in";
 	}
 	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
-	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile);
+	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
 }

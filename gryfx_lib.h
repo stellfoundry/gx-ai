@@ -28,8 +28,8 @@ struct gryfx_parameters_struct {
 	 int ntheta;
 
 	/* Miller parameters*/
-	 double rmaj;
-	 double r_geo;
+	 double rgeo_lcfs;
+	 double rgeo_local;
 	 double akappa;
 	 double akappri;
 	 double tri;
@@ -69,6 +69,6 @@ struct gryfx_outputs_struct {
 extern "C"
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * namelistFile, int mpcom);
 extern "C"
-void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile);
+void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
 
 void gryfx_main(int argc, char* argv[], int mpcom);

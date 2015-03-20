@@ -48,7 +48,7 @@ void read_namelist(char* filename)
   //now, redefining jtwist = jtwist_old*Zp
   if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &jtwist)) {
     //set default jtwist to 2pi*shat so that X0~Y0
-    jtwist = (int) round(2*M_PI*shat*Zp);
+    jtwist = (int) round(2*M_PI*abs(shat)*Zp);
   }  
 
   if(jtwist<0) jtwist=0;
