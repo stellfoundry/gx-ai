@@ -21,6 +21,14 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "shat", &shat)) shat = 0.8;
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "qinp", &qsf)) qsf = 1.4;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappa", &akappa)) akappa = 1.0;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappri", &akappri)) akappri = 0.0;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "tri", &tri)) tri = 0.0;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "tripri", &tripri)) tripri = 0.0;
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "Rmaj", &rmaj)) rmaj = 1.0;
   
@@ -31,6 +39,8 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "epsl", &epsl)) epsl = 2.0;
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &kxfac)) kxfac = 1.0;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "rhoc", &rhoc)) rhoc = 1.0;
   
   if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod)) nperiod=1;  
   

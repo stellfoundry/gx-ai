@@ -24,6 +24,8 @@ extern "C" void geometry_get_miller_parameters_c(struct miller_parameters_struct
 
 extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficients_struct * constant_coefficients_out);
 
+extern "C" void geometry_mp_finish_geometry_(void);
+
 //void get_gs2_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients){
 //  geometry_get_nz(Nz);
 //  coefficients = (struct coefficients_struct *)malloc(sizeof(struct coefficients_struct)*(*Nz));
@@ -41,8 +43,9 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 	char * eqfile;
 
 	eqfile = (char *)malloc(sizeof(char)*800);
-	equilibrium_type = 3;
-	rhoc = 0.6;
+	equilibrium_type = 3; // CHEASE
+	equilibrium_type = 1; //Miller
+	//rhoc = 0.6;
 	delrho = 0.01; /* Leave at this value*/
 	nperiod = 1;
 	eqfile = "ogyropsi.dat"; 
@@ -89,6 +92,13 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 	cvdrift0_h = (float*) malloc(sizeof(float)**Nz);
 	gbdrift0_h = (float*) malloc(sizeof(float)**Nz); 
 	jacobian_h = (float*) malloc(sizeof(float)**Nz);
+  Rplot_h = (float*) malloc(sizeof(float)**Nz); 
+  Zplot_h = (float*) malloc(sizeof(float)**Nz); 
+  aplot_h = (float*) malloc(sizeof(float)**Nz); 
+  Xplot_h = (float*) malloc(sizeof(float)**Nz); 
+  Yplot_h = (float*) malloc(sizeof(float)**Nz); 
+  deltaFL_h = (float*) malloc(sizeof(float)**Nz); 
+    
 	
 	for(int k=0; k<*Nz; k++) {
 	  z_h[k] = 2*M_PI*(k-*Nz/2)/ *Nz;
@@ -104,6 +114,8 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 	  grho_h[k] = coefficients[k].grho;
 	  jacobian_h[k] = coefficients[k].jacob; 
 	}
+ 
+  geometry_mp_finish_geometry_();
 	  
 
 	/*

@@ -85,6 +85,8 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
   cudaGetDeviceCount(&numdev);
 
+  cudaGetDevice(&gryfxpars->mpirank);
+
   //gs2_main_mp_advance_gs2_();  
 
   //gs2_main_mp_finish_gs2_();
@@ -131,7 +133,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     /*char eqfile[800];*/
     gryfxpars->irho = irho;
     gryfxpars->rhoc = rhoc;
-    gryfxpars->rhoc = eps*rmaj;
+    gryfxpars->eps = eps;
     gryfxpars->bishop = bishop;
     gryfxpars->nperiod = nperiod;
     gryfxpars->ntheta = Nz;
@@ -179,6 +181,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
+//  if(iproc==0) printf("%d: Initializing geometry...\n\n", gpuID);
+//  if (igeo == 2) {
+//    coefficients_struct *coefficients;
+//    constant_coefficients_struct constant_coefficients;
+//    read_geo(&Nz,coefficients,&constant_coefficients);
+//  }
+
    FILE* outfile;
   if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
 
@@ -195,7 +204,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   /*char eqfile[800];*/
    irho = gryfxpars->irho ;
    rhoc = gryfxpars->rhoc ;
-   eps = rhoc/rmaj;
+   eps = gryfxpars->eps;
+   // NB NEED TO SET EPS IN TRINITY!!!
+   //eps = rhoc/rmaj;
    bishop = gryfxpars->bishop ;
    nperiod = gryfxpars->nperiod ;
    Nz = gryfxpars->ntheta ;

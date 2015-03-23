@@ -40,6 +40,9 @@ struct gryfx_parameters_struct {
 	 double asym;
 	 double asympri;
 
+   /* Circular flux surfaces*/
+   double eps;
+
 	 /* Other geometry parameters - Bishop/Greene & Chance*/
 	 double beta_prime_input;
 	 double s_hat_input;
