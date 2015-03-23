@@ -109,6 +109,8 @@ float rhoc;
 float *gbdrift_h, *grho_h, *z_h; 
 float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
 float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
+float *Rplot_h, *Zplot_h, *aplot_h;
+float *Xplot_h, *Yplot_h, *deltaFL_h;
 
 
 //global device arrays from eik.out
@@ -119,6 +121,7 @@ extern "C" double *geometry_mp_gbdrift_, *geometry_mp_grho_, *geometry_mp_cvdrif
 extern "C" double *geometry_mp_gds21_, *geometry_mp_gds22_, *geometry_mp_cvdrift0_, *geometry_mp_gbdrift0_, *geometry_mp_jacob_, *geometry_mp_gradpar_;
 extern "C" int geometry_mp_ntheta_, geometry_mp_nperiod_;
 extern "C" double geometry_mp_qsf_, geometry_mp_kxfac_, geometry_mp_shat_, geometry_mp_rmaj_, theta_grid_mp_drhodpsi_, geometry_mp_rhoc_;
+extern "C" double *geometry_mp_rplot_, *geometry_mp_zplot_, *geometry_mp_aplot_;
 
 //calculated globals
 float D_par;

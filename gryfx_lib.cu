@@ -323,6 +323,12 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
     gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
     jacobian_h = (float*) malloc(sizeof(float)*Nz); 
+    Rplot_h = (float*) malloc(sizeof(float)*Nz); 
+    Zplot_h = (float*) malloc(sizeof(float)*Nz); 
+    aplot_h = (float*) malloc(sizeof(float)*Nz); 
+    Xplot_h = (float*) malloc(sizeof(float)*Nz); 
+    Yplot_h = (float*) malloc(sizeof(float)*Nz); 
+    deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
     
     gradpar = geometry_mp_gradpar_[0];
     drhodpsi = theta_grid_mp_drhodpsi_;
@@ -344,6 +350,15 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       cvdrift0_h[k] = geometry_mp_cvdrift0_[k]/4.;
       gbdrift0_h[k] = geometry_mp_gbdrift0_[k]/4.;
       jacobian_h[k] = geometry_mp_jacob_[k];
+      Rplot_h[k] = geometry_mp_rplot_[k];
+      Zplot_h[k] = geometry_mp_zplot_[k];
+      aplot_h[k] = geometry_mp_aplot_[k];
+      Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
+      Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
+      if(k<Nz-1) {
+        deltaFL_h[k] = sqrt(pow(Xplot_h[k+1]-Xplot_h[k],2) + pow(Yplot_h[k+1]-Yplot_h[k],2) + pow(Zplot_h[k+1]-Zplot_h[k],2));
+        printf("deltaFL[%d] = %f\n", k, deltaFL_h[k]);
+      }
     }
 
 #else
