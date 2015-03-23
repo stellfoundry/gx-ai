@@ -60,10 +60,25 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   MPI_Comm_rank(mpcom, &iproc);
   //printf("I am proc %d\n", iproc);
 
-  if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
+  char serial_full[100];
+  char serial[100];
+  FILE *fp;
 
   
+  if(iproc==0) {
+    fp = popen("nvidia-smi -q | grep Serial", "r");
+    while(fgets(serial_full, sizeof(serial_full)-1,fp) != NULL) {
+      printf("%s\n", serial_full);
+    }
+    pclose(fp);
+    for(int i=0; i<8; i++) {
+     serial[i] = serial_full[strlen(serial_full) - (9-i)];
+    }
+    gpuID = atoi(serial);
+    printf("SN: %d\n", gpuID);
+  }
 
+  if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
   //iproc = *mp_mp_iproc_;
 
   int numdev;
@@ -100,7 +115,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   
       strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
       //strcat(out_stem,".\0"); 
-      printf("out_stem = %s\n", out_stem);
+      if(iproc==0) printf("%d: out_stem = %s\n", gpuID, out_stem);
     //}
 
 
@@ -110,7 +125,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 #endif
 
      
-    printf("Initializing GryfX...\n\nNamelist is %s\n", namelistFile);
+    printf("%d: Initializing GryfX...\tNamelist is %s\n", gpuID, namelistFile);
       //update gryfxpars struct with geometry parameters (from read_geo of defaults)
     gryfxpars->equilibrium_type = equilibrium_type;
     /*char eqfile[800];*/
@@ -165,13 +180,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 {
 
    FILE* outfile;
-  if(iproc==0) printf("Initializing GS2...\n\n");
+  if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
 
   //gs2_main_mp_init_gs2_(namelistFile, &length);
   int length = strlen(namelistFile);
   init_gs2(&length, namelistFile, &mpcom, gryfxpars);
 
-  if(iproc==0) printf("Finished initializing GS2.\n\n");
+  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
 
 #ifdef GS2_zonal
 			if(iproc==0) {
@@ -655,7 +670,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   char outfileName[200];
   strcpy(outfileName, out_stem);
-  strcat(outfileName, "out");
+  strcat(outfileName, "out_gryfx");
   outfile = fopen(outfileName, "w+");
 
 #ifdef GS2_zonal

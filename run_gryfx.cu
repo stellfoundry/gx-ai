@@ -837,7 +837,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     //time histories (.time)
     strcpy(fluxfileName, out_stem);
     strcat(fluxfileName, "flux.time");
-    printf("flux file is %s\n\n", fluxfileName); 
+    printf("%d: flux file is %s\n\n", gpuID, fluxfileName); 
 
    
     strcpy(omegafileName, out_stem);
@@ -1834,7 +1834,7 @@ if(iproc==0) {
       
       
       // print wpfx to screen if not printing growth rates
-      if(!write_omega && counter%nwrite==0) printf("wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", wpfx[0],dt, dt_cfl, Dnlpm);
+      if(!write_omega && counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],dt, dt_cfl, Dnlpm);
       
       // write flux to file
       if(counter%nsave==0) fflush(NULL);
@@ -1896,7 +1896,7 @@ if(iproc==0) {
 #ifdef GS2_zonal
 			if(iproc==0) {
       if(counter%nsave==0 || stopcount==nstop-1 || counter==nSteps-1) {
-        printf("%f    %f     dt=%f   %d: %s\n",runtime,gs2_time_mp_code_time_/sqrt(2.), dt,counter,cudaGetErrorString(cudaGetLastError()));
+        printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,runtime,gs2_time_mp_code_time_/sqrt(2.), dt,counter,cudaGetErrorString(cudaGetLastError()));
       }
 #endif
       

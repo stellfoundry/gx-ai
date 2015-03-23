@@ -58,6 +58,7 @@ bool cfl_flag = true;
 int reset;
 int iproc;
 int mpcom;
+int gpuID;
 
 extern "C" double run_parameters_mp_code_delt_max_;
 extern "C" int kt_grids_mp_naky_;
