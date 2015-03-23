@@ -138,7 +138,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   
    /* Miller parameters*/
     gryfxpars->rgeo_local = rmaj;
-    gryfxpars->rgeo_lcfs = 0;
+    gryfxpars->rgeo_lcfs = rmaj;
     gryfxpars->akappa = akappa ;
     gryfxpars->akappri = akappri;
     gryfxpars->tri = tri;
@@ -355,10 +355,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       aplot_h[k] = geometry_mp_aplot_[k];
       Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
       Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
-      if(k<Nz-1) {
-        deltaFL_h[k] = sqrt(pow(Xplot_h[k+1]-Xplot_h[k],2) + pow(Yplot_h[k+1]-Yplot_h[k],2) + pow(Zplot_h[k+1]-Zplot_h[k],2));
-        printf("deltaFL[%d] = %f\n", k, deltaFL_h[k]);
-      }
     }
 
 #else

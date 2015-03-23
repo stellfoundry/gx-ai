@@ -3,7 +3,10 @@
 #include "cufft.h"
 #include "mpi.h"
 
-extern cuComplex * omega_out_h;
+extern int Nz;
+extern float *z_h;
+extern float *Rplot_h, *Zplot_h, *aplot_h;
+extern float *Xplot_h, *Yplot_h, *deltaFL_h;
 extern void gryfx_main(int argc, char* argv[], int mpcom);
 
 int mpcom_glob;
@@ -49,21 +52,6 @@ int main(int argc, char* argv[])
 {
 
   int proc;
-  cuComplex omega_out_h_correct[] =  {
-		{-0.086062,	0.094208  } ,
-		{-0.184508,	0.178823  } ,
-		{-0.299080,	0.236866  } ,
-		{-0.433454,	0.270937  } ,
-		{-0.583825,	0.283765  } ,
-		{-0.742790,	0.278278  } ,
-		{-0.902706,	0.256830  } ,
-		{-1.057670,	0.221767  } ,
-		{-1.203555,	0.175838  } ,
-		{-1.337483,	0.122050  } ,
-		{-1.457503,	0.063530  } ,
-		{-1.562514,	0.003359  } ,
-		{-1.652453,	-0.055654 }
-                };
   MPI_Init(&argc, &argv);
   mpcom_glob = MPI_Comm_c2f(MPI_COMM_WORLD);
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
@@ -71,13 +59,15 @@ int main(int argc, char* argv[])
   argc_glob = argc;
   argv_glob = argv;
   gryfx_main(argc_glob, argv_glob, mpcom_glob);
-
   if(proc==0) {
-  if (agrees_with_cuComplex_imag(omega_out_h, omega_out_h_correct, 13, 1.0e-1)==0){
-    printf("Growth rates don't match!\n");
-    exit(1);
-   }
-   }
+  for(int k=0; k<Nz; k++) {
+      if(k>0) {
+        deltaFL_h[k] = sqrt(pow(Xplot_h[k-1]-Xplot_h[k],2.) + pow(Yplot_h[k-1]-Yplot_h[k],2.) + pow(Zplot_h[k-1]-Zplot_h[k],2.));
+        printf("%d: deltaFL = %f\tRplot = %f\tZplot = %f\taplot = %f\ttheta = %f\n", k, deltaFL_h[k],Rplot_h[k],Zplot_h[k],aplot_h[k], z_h[k]);
+      }
+  }
+  }
+
 
 
         MPI_Finalize();

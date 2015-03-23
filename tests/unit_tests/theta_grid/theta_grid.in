@@ -45,7 +45,7 @@
 !  
 !==============================
 &theta_grid_parameters
- ntheta = 32 ! Number of points along field line (theta) per 2 pi segment
+ ntheta = 128 ! Number of points along field line (theta) per 2 pi segment
  nperiod = 1 ! Number of 2 pi segments along equilibrium magnetic field.
  eps = 0.18 ! eps=r/R
  epsl = 2.0 ! epsl=2 a/R
@@ -54,7 +54,7 @@
  shift = 0.0 ! shift = -R q**2 dbeta/drho (>0)
  Rmaj = 3.0
  qinp = 1.4
- akappa = 1.0
+ akappa = 2.0
  rhoc = 0.5
  r_geo = 3.0
 /
@@ -79,6 +79,7 @@
  irho = 2
  bishop = 4
  local_eq = .true.
+ equal_arc = .true.
 /
 
 !==============================
