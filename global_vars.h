@@ -58,6 +58,7 @@ bool cfl_flag = true;
 int reset;
 int iproc;
 int mpcom;
+int mpcom_global;
 int gpuID;
 
 extern "C" double run_parameters_mp_code_delt_max_;
@@ -106,11 +107,11 @@ int nperiod;
 float rhoc;
 
 //global host arrays from eik.out
-float *gbdrift_h, *grho_h, *z_h; 
+float *gbdrift_h, *grho_h, *z_h, *z_regular_h; 
 float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
 float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
 float *Rplot_h, *Zplot_h, *aplot_h;
-float *Xplot_h, *Yplot_h, *deltaFL_h;
+float *Xplot_h, *Yplot_h, *deltaFL_h, *gradpar_h;
 
 
 //global device arrays from eik.out

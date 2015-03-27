@@ -4,8 +4,8 @@
 #include "mpi.h"
 
 extern int Nz;
-extern float *z_h;
-extern float *Rplot_h, *Zplot_h, *aplot_h;
+extern float *z_h, *z_regular_h;
+extern float *Rplot_h, *Zplot_h, *aplot_h, *gbdrift_h, *bmag_h, *gradpar_h;
 extern float *Xplot_h, *Yplot_h, *deltaFL_h;
 extern void gryfx_main(int argc, char* argv[], int mpcom);
 
@@ -63,8 +63,15 @@ int main(int argc, char* argv[])
   for(int k=0; k<Nz; k++) {
       if(k>0) {
         deltaFL_h[k] = sqrt(pow(Xplot_h[k-1]-Xplot_h[k],2.) + pow(Yplot_h[k-1]-Yplot_h[k],2.) + pow(Zplot_h[k-1]-Zplot_h[k],2.));
-        printf("%d: deltaFL = %f\tRplot = %f\tZplot = %f\taplot = %f\ttheta = %f\n", k, deltaFL_h[k],Rplot_h[k],Zplot_h[k],aplot_h[k], z_h[k]);
+        //printf("%d: deltaFL = %f\tRplot = %f\tZplot = %f\taplot = %f\ttheta = %f\tgbdrift=%f\n", k, deltaFL_h[k],Rplot_h[k],Zplot_h[k],aplot_h[k], z_h[k], gbdrift_h[k]);
+        printf("%d: deltaFL = %f\ttheta = %f\n", k, deltaFL_h[k], z_h[k]);
       }
+  }
+  for(int k=0; k<Nz; k++) {
+        printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_h[k], z_h[k], z_regular_h[k]);
+  }
+  for(int k=0; k<Nz; k++) {
+        printf("%d: gb=%f bm=%f th=%f\n", k, gbdrift_h[k]*4.0, bmag_h[k], z_h[k]);
   }
   }
 

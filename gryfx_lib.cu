@@ -136,6 +136,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     gryfxpars->eps = eps;
     gryfxpars->bishop = bishop;
     gryfxpars->nperiod = nperiod;
+    printf("nperiod is %d\n", nperiod);
     gryfxpars->ntheta = Nz;
   
    /* Miller parameters*/
@@ -181,22 +182,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
-//  if(iproc==0) printf("%d: Initializing geometry...\n\n", gpuID);
-//  if (igeo == 2) {
-//    coefficients_struct *coefficients;
-//    constant_coefficients_struct constant_coefficients;
-//    read_geo(&Nz,coefficients,&constant_coefficients);
-//  }
-
+   mpcom_global = mpcom;
    FILE* outfile;
-  if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
-
-  //gs2_main_mp_init_gs2_(namelistFile, &length);
-  int length = strlen(namelistFile);
-  init_gs2(&length, namelistFile, &mpcom, gryfxpars);
-
-  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
-
 #ifdef GS2_zonal
 			if(iproc==0) {
 #endif
@@ -209,6 +196,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
    //eps = rhoc/rmaj;
    bishop = gryfxpars->bishop ;
    nperiod = gryfxpars->nperiod ;
+    printf("nperiod2 is %d\n", nperiod);
    Nz = gryfxpars->ntheta ;
 
  /* Miller parameters*/
@@ -255,6 +243,16 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   //else *&X0 = Y0; 
   //else use what is set in input file 
   
+    if(iproc==0) printf("%d: Initializing geometry...\n\n", gpuID);
+    if (igeo == 2) {
+      //if (iproc==0){
+        coefficients_struct *coefficients;
+        constant_coefficients_struct constant_coefficients;
+        read_geo(&Nz,coefficients,&constant_coefficients,gryfxpars);
+      //}
+    }
+
+
   
   if ( igeo == 0 ) // this is s-alpha
   {
@@ -320,58 +318,58 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       
 #ifdef GS2_zonal
     //if we're already running GS2 and calculating geometry there, we don't need to recalculate, just get what GS2 calculated
-    Nz = geometry_mp_ntheta_;
-
-    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-    grho_h = (float*) malloc(sizeof(float)*Nz);
-    z_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-    gds2_h = (float*) malloc(sizeof(float)*Nz);
-    bmag_h = (float*) malloc(sizeof(float)*Nz);
-    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
-    gds21_h = (float*) malloc(sizeof(float)*Nz);
-    gds22_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
-    Rplot_h = (float*) malloc(sizeof(float)*Nz); 
-    Zplot_h = (float*) malloc(sizeof(float)*Nz); 
-    aplot_h = (float*) malloc(sizeof(float)*Nz); 
+//    Nz = geometry_mp_ntheta_;
+//
+//    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
+//    grho_h = (float*) malloc(sizeof(float)*Nz);
+//    z_h = (float*) malloc(sizeof(float)*Nz);
+//    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
+//    gds2_h = (float*) malloc(sizeof(float)*Nz);
+//    bmag_h = (float*) malloc(sizeof(float)*Nz);
+//    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
+//    gds21_h = (float*) malloc(sizeof(float)*Nz);
+//    gds22_h = (float*) malloc(sizeof(float)*Nz);
+//    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
+//    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
+//    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
+//    Rplot_h = (float*) malloc(sizeof(float)*Nz); 
+//    Zplot_h = (float*) malloc(sizeof(float)*Nz); 
+//    aplot_h = (float*) malloc(sizeof(float)*Nz); 
     Xplot_h = (float*) malloc(sizeof(float)*Nz); 
     Yplot_h = (float*) malloc(sizeof(float)*Nz); 
     deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
     
-    gradpar = geometry_mp_gradpar_[0];
-    drhodpsi = theta_grid_mp_drhodpsi_;
-    rmaj = geometry_mp_rmaj_;
-    shat = geometry_mp_shat_;
-    kxfac = geometry_mp_kxfac_;
-    qsf = geometry_mp_qsf_;
-    rhoc = geometry_mp_rhoc_;
+    //gradpar = geometry_mp_gradpar_[0];
+    //drhodpsi = theta_grid_mp_drhodpsi_;
+//    rmaj = geometry_mp_rmaj_;
+//    shat = geometry_mp_shat_;
+//    kxfac = geometry_mp_kxfac_;
+//    qsf = geometry_mp_qsf_;
+//    rhoc = geometry_mp_rhoc_;
         
     for(int k=0; k<Nz; k++) {
-      gbdrift_h[k] = geometry_mp_gbdrift_[k]/4.;
-      grho_h[k] = geometry_mp_grho_[k];
-      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
-      cvdrift_h[k] = geometry_mp_cvdrift_[k]/4.;
-      gds2_h[k] = geometry_mp_gds2_[k];
-      bmag_h[k] = geometry_mp_bmag_[k];
-      gds21_h[k] = geometry_mp_gds21_[k];
-      gds22_h[k] = geometry_mp_gds22_[k];
-      cvdrift0_h[k] = geometry_mp_cvdrift0_[k]/4.;
-      gbdrift0_h[k] = geometry_mp_gbdrift0_[k]/4.;
-      jacobian_h[k] = geometry_mp_jacob_[k];
-      Rplot_h[k] = geometry_mp_rplot_[k];
-      Zplot_h[k] = geometry_mp_zplot_[k];
-      aplot_h[k] = geometry_mp_aplot_[k];
+//    gbdrift_h[k] = geometry_mp_gbdrift_[k]/4.;
+//    grho_h[k] = geometry_mp_grho_[k];
+//    z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
+//    cvdrift_h[k] = geometry_mp_cvdrift_[k]/4.;
+//    gds2_h[k] = geometry_mp_gds2_[k];
+//    bmag_h[k] = geometry_mp_bmag_[k];
+//    gds21_h[k] = geometry_mp_gds21_[k];
+//    gds22_h[k] = geometry_mp_gds22_[k];
+//    cvdrift0_h[k] = geometry_mp_cvdrift0_[k]/4.;
+//    gbdrift0_h[k] = geometry_mp_gbdrift0_[k]/4.;
+//    jacobian_h[k] = geometry_mp_jacob_[k];
+//    Rplot_h[k] = geometry_mp_rplot_[k];
+//    Zplot_h[k] = geometry_mp_zplot_[k];
+//      aplot_h[k] = geometry_mp_aplot_[k];
       Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
       Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
     }
 
 #else
-    coefficients_struct *coefficients;
-    constant_coefficients_struct constant_coefficients;
-    read_geo(&Nz,coefficients,&constant_coefficients);
+//  coefficients_struct *coefficients;
+//  constant_coefficients_struct constant_coefficients;
+//  read_geo(&Nz,coefficients,&constant_coefficients);
 #endif
     eps = rhoc/rmaj;
   } 
@@ -415,6 +413,16 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 #endif
 
 
+  MPI_Barrier(mpcom);
+
+  if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
+
+  //gs2_main_mp_init_gs2_(namelistFile, &length);
+  int length = strlen(namelistFile);
+  init_gs2(&length, namelistFile, &mpcom, gryfxpars);
+  MPI_Barrier(mpcom);
+
+  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
 
   //set up restart file
   strcpy(restartfileName, out_stem);
