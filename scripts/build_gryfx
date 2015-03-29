@@ -102,7 +102,7 @@ fi
 }
 
 function build_gs2 {
-cd $GS2 && ./build_gs2 -c 'libgs2.a geometry_c_interface.o'  && cd $OLDPWD
+cd $GS2 && ./build_gs2 -c 'libgs2.a geometry_c_interface.o' $GS2DBGFLAG && cd $OLDPWD
 }
 
 
@@ -139,6 +139,7 @@ do
       ;;
     d)
       DBGFLAG=debug=on
+      GS2DBGFLAG=-d
       ;;
     g)
       GS2=${OPTARG}

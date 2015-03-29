@@ -102,7 +102,7 @@ libgryfx.a: gryfx_lib.o
 	ar cr $@ $<
 	ranlib $@
 
-gryfx_lib.o: gryfx_lib.h $(CU_DEPS)
+gryfx_lib.o: gryfx_lib.h $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h
 
 # main program
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a

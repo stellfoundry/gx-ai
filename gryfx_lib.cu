@@ -41,7 +41,8 @@
 #include "read_geo.cu"
 
 #ifdef GS2_zonal
-extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, struct gryfx_parameters_struct * gryfxpars);
+extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, int * Nz, float * gryfx_theta, struct gryfx_parameters_struct * gryfxpars);
+//extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom,  struct gryfx_parameters_struct * gryfxpars);
 extern "C" void finish_gs2();
 //extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
 #endif
@@ -137,6 +138,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     gryfxpars->bishop = bishop;
     gryfxpars->nperiod = nperiod;
     printf("nperiod is %d\n", nperiod);
+    printf("Nz is %d\n", Nz);
     gryfxpars->ntheta = Nz;
   
    /* Miller parameters*/
@@ -417,11 +419,22 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
   if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
 
+  // GS2 needs to know z_h so we have to allocate it on all 
+  // procs
+  MPI_Bcast(&Nz, 1, MPI_INT, 0, mpcom);
+  if(iproc!=0) z_h = (float*)malloc(sizeof(float)*Nz);
+  printf("z_h (1) is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+  MPI_Bcast(&z_h[0], Nz, MPI_FLOAT, 0, mpcom);
+
+  printf("z_h is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+
   //gs2_main_mp_init_gs2_(namelistFile, &length);
   int length = strlen(namelistFile);
-  init_gs2(&length, namelistFile, &mpcom, gryfxpars);
+  //init_gs2(&length, namelistFile, &mpcom, gryfxpars);
+  init_gs2(&length, namelistFile, &mpcom, &Nz, z_h, gryfxpars);
   MPI_Barrier(mpcom);
 
+  printf("z_h after is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
 
   //set up restart file
