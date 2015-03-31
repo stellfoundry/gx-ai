@@ -35,7 +35,7 @@ extern "C" void geometry_mp_finish_geometry_(void);
 //}
 
 void read_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients, struct gryfx_parameters_struct * gryfxpars){
-	double s_hat_input, beta_prime_input;
+	double s_hat_input_d, beta_prime_input_d;
 
 	double delrho; 
 	int equilibrium_type, ntheta_out;
@@ -73,8 +73,13 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
   millerpars.qinp=gryfxpars->qinp;
   millerpars.shat=gryfxpars->shat;
 
-  beta_prime_input = 0.0;
-  geometry_vary_s_alpha_c(&gryfxpars->shat, &beta_prime_input);	
+  // The effect of this function depends on the value of bishop
+  // E.g., bishop = 1 ---> this function has no effect
+  //       bishop = 4 ---> this function sets both shat and beta_prime using the bishop relations
+  // other permutations are possible, see http://gyrokinetics.sourceforge.net/wiki/index.php/Gs2_Input_Parameters
+  s_hat_input_d = s_hat_input;
+  beta_prime_input_d = beta_prime_input;
+  geometry_vary_s_alpha_c(&s_hat_input_d, &beta_prime_input_d);	
 
   printf("Nz is %d\n", *Nz);
 

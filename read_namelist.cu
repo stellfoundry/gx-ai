@@ -19,6 +19,10 @@ void read_namelist(char* filename)
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "eps", &eps)) eps = 0.2;
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "shat", &shat)) shat = 0.8;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "beta_prime_input", &beta_prime_input)) beta_prime_input = 0.0;
+
+  if(fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "s_hat_input", &s_hat_input)) s_hat_input = 0.8;
   
   if(fnr_get_float(&namelist_struct, "theta_grid_parameters", "qinp", &qsf)) qsf = 1.4;
 
