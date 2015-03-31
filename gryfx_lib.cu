@@ -41,6 +41,8 @@
 #include "read_geo.cu"
 
 #ifdef GS2_zonal
+//extern "C" double geometry_mp_bi_;
+
 extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, int * Nz, float * gryfx_theta, struct gryfx_parameters_struct * gryfxpars);
 //extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom,  struct gryfx_parameters_struct * gryfxpars);
 extern "C" void finish_gs2();
@@ -319,27 +321,18 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     //read species parameters from namelist, will overwrite geometry parameters below
       
 #ifdef GS2_zonal
-    //if we're already running GS2 and calculating geometry there, we don't need to recalculate, just get what GS2 calculated
-//    Nz = geometry_mp_ntheta_;
-//
-//    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-//    grho_h = (float*) malloc(sizeof(float)*Nz);
-//    z_h = (float*) malloc(sizeof(float)*Nz);
-//    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-//    gds2_h = (float*) malloc(sizeof(float)*Nz);
-//    bmag_h = (float*) malloc(sizeof(float)*Nz);
-//    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
-//    gds21_h = (float*) malloc(sizeof(float)*Nz);
-//    gds22_h = (float*) malloc(sizeof(float)*Nz);
-//    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-//    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-//    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
-//    Rplot_h = (float*) malloc(sizeof(float)*Nz); 
-//    Zplot_h = (float*) malloc(sizeof(float)*Nz); 
-//    aplot_h = (float*) malloc(sizeof(float)*Nz); 
     Xplot_h = (float*) malloc(sizeof(float)*Nz); 
     Yplot_h = (float*) malloc(sizeof(float)*Nz); 
     deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
+   
+    // We calculate eps so that it gets the right
+    // value of eps/qsf in the appropriate places.
+    // However, eps also appears by itself... these
+    // places need to be checked.
+    //double eps_over_q;
+    //bi = geometry_mp_bi_out_; 
+    eps_over_q = 1.0 / (bi * drhodpsi);
+    eps = eps_over_q * qsf;
     
     //gradpar = geometry_mp_gradpar_[0];
     //drhodpsi = theta_grid_mp_drhodpsi_;
@@ -350,20 +343,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 //    rhoc = geometry_mp_rhoc_;
         
     for(int k=0; k<Nz; k++) {
-//    gbdrift_h[k] = geometry_mp_gbdrift_[k]/4.;
-//    grho_h[k] = geometry_mp_grho_[k];
-//    z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
-//    cvdrift_h[k] = geometry_mp_cvdrift_[k]/4.;
-//    gds2_h[k] = geometry_mp_gds2_[k];
-//    bmag_h[k] = geometry_mp_bmag_[k];
-//    gds21_h[k] = geometry_mp_gds21_[k];
-//    gds22_h[k] = geometry_mp_gds22_[k];
-//    cvdrift0_h[k] = geometry_mp_cvdrift0_[k]/4.;
-//    gbdrift0_h[k] = geometry_mp_gbdrift0_[k]/4.;
-//    jacobian_h[k] = geometry_mp_jacob_[k];
-//    Rplot_h[k] = geometry_mp_rplot_[k];
-//    Zplot_h[k] = geometry_mp_zplot_[k];
-//      aplot_h[k] = geometry_mp_aplot_[k];
       Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
       Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
     }
@@ -373,7 +352,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 //  constant_coefficients_struct constant_coefficients;
 //  read_geo(&Nz,coefficients,&constant_coefficients);
 #endif
-    eps = rhoc/rmaj;
+    //eps = rhoc/rmaj;
   } 
   
 

@@ -72,6 +72,7 @@ extern "C" int* mp_mp_iproc_;
 //globals defined in eik.out
 int ntgrid;
 float drhodpsi, rmaj, shat, kxfac, qsf, gradpar, eps, aminor, epsl;
+float eps_over_q, bi;
 
 //other Miller parameters;
 float r_geo, akappa, akappri, tri, tripri, shift, asym, asympri;

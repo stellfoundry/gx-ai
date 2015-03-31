@@ -111,6 +111,7 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 	shat = constant_coefficients->shat;
 	gradpar = coefficients[0].gradpar;
 	drhodpsi = constant_coefficients->drhodpsin;
+	bi = constant_coefficients->bi;
 
   printf("I AM HERE %d\n;", iproc);
 //MPI_Bcast(&shat, 1, MPI_FLOAT, 0, mpcom_global);
