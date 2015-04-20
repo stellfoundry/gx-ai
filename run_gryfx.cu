@@ -1908,6 +1908,7 @@ if(iproc==0) {
         
         stopcount=100;
 #ifdef GS2_zonal
+        abort();
         broadcast_integer(&stopcount);
 #endif
 /*

@@ -143,6 +143,8 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 //deltaFL_h = (float*) malloc(sizeof(float)**Nz); 
 if (iproc==0){
 	
+//FILE* geofile = fopen("geo.out", "w");
+
   printf("Setting coefficients, Nz = %d\n", *Nz);
 	for(int k=0; k<*Nz; k++) {
 	  z_h[k] = 2*M_PI*(k-*Nz/2)/ *Nz;
@@ -163,7 +165,10 @@ if (iproc==0){
 	  Rplot_h[k] = coefficients[k].Rplot_eqarc; 
 	  Zplot_h[k] = coefficients[k].Zplot_eqarc; 
 	  aplot_h[k] = coefficients[k].aplot_eqarc; 
+//fprintf(geofile, " %f %f %f %f %f\n", z_h[k], gds2_h[k], gbdrift_h[k], cvdrift_h[k], grho_h[k]);
+   
 	}
+//fclose(geofile);
  
   geometry_mp_finish_geometry_();
 }	  
