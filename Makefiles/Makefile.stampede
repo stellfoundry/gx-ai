@@ -32,6 +32,7 @@ NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledat
 FFT_LIB = -L$(TACC_FFTW3_LIB) -lfftw3 -lfftw3f
 FFT_INC = -I$$TACC_FFTW3_INC
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
+NETCDF_INC = -I${TACC_NETCDF_INC} 
 
 FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
 

@@ -53,9 +53,10 @@ LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
-CFLAGS=-I$(PWD)/tests/unity $(NVCCFLAGS) $(NVCCINCS)  ${FFT_INC} ${NETCDF_LIB}
+CFLAGS=-I$(PWD)/tests/unity $(NVCCFLAGS) $(NVCCINCS)  ${FFT_INC} ${NETCDF_INC} -I $(PWD)/include -I$(PWD) -I$(GS2)/diagnostics/simpledataio/include
 LDFLAGS=$(NVCCLIBS) ${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} ${GS2_CUDA_FLAGS}
 
+VPATH=.:src
 
 ifeq ($(GS2_zonal),on)
   NVCCFLAGS += -D GS2_zonal 
@@ -75,7 +76,7 @@ endif
 .DEFAULT_GOAL := $(TARGET)
 
 .cu.o:
-	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< 
+	$(NVCC) -c $(CFLAGS) $(NVCCINCS) $< 
 
 #####################################
 # Rule for building the system_config
@@ -102,10 +103,10 @@ libgryfx.a: gryfx_lib.o
 	ar cr $@ $<
 	ranlib $@
 
-gryfx_lib.o: gryfx_lib.h $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h
+gryfx_lib.o: gryfx_lib.h $(CU_DEPS) $(MODULES) $(GS2)/geo/geometry_c_interface.h
 
 # main program
-$(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a
+$(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a $(MODULES)
 	$(NVCC)  -o $@  $^ $(CFLAGS) $(LDFLAGS) 
 
 gryfx.o: gryfx_lib.h

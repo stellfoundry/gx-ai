@@ -1,7 +1,16 @@
-//#include "simpledataio_cuda.h"
+#include "simpledataio_cuda.h"
+#define EXTERN_SWITCH extern
 
+#define EXTERN_SWITCH 
+#include "geometry.h"
+#include "grids.h"
+#include "fields.h"
+#include "outputs.h"
+#define EXTERN_SWITCH extern
 
-int Nx, Ny, Nz, zThreads, totalThreads, zBlockThreads;
+//irho=2;
+
+int zThreads, totalThreads, zBlockThreads;
 float X0, Y0;
 int Zp;
 int nSpecies;
@@ -100,24 +109,6 @@ float cfly;
 int Nx_unmasked;
 int Ny_unmasked;
 
-//input parameters for geometry
-int equilibrium_type;
-int bishop;
-int irho = 2;
-int nperiod;
-float rhoc;
-
-//global host arrays from eik.out
-float *gbdrift_h, *grho_h, *z_h, *z_regular_h; 
-float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
-float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
-float *Rplot_h, *Zplot_h, *aplot_h;
-float *Xplot_h, *Yplot_h, *deltaFL_h, *gradpar_h;
-
-
-//global device arrays from eik.out
-float *gbdrift, *grho, *z, *cvdrift, *gds2, *bmag, *bgrad;
-float *gds21, *gds22, *cvdrift0, *gbdrift0;
 
 extern "C" double *geometry_mp_gbdrift_, *geometry_mp_grho_, *geometry_mp_cvdrift_, *geometry_mp_gds2_, *geometry_mp_bmag_;
 extern "C" double *geometry_mp_gds21_, *geometry_mp_gds22_, *geometry_mp_cvdrift0_, *geometry_mp_gbdrift0_, *geometry_mp_jacob_, *geometry_mp_gradpar_;
@@ -183,15 +174,10 @@ float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
 char* secondary_test_restartfileName;
 
 //other global device arrays
-float *kx, *ky, *kz, *kz_complex, *kx_abs;
-float *bmagInv;
-cuComplex *bmag_complex;
 cuComplex *deriv_nlps;
 float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
-float* jacobian;
 float* PhiAvgDenom;
 
-float *kx_h, *ky_h, *kz_h;
 
 cuComplex *field_h;
 
@@ -257,14 +243,7 @@ float phi2_av;
 float ky_mean;
 float kx_mean;
 float* l_parallel;
-cuComplex* phi_h;
-cuComplex* dens_h;
-cuComplex* upar_h;
-cuComplex* tpar_h;
-cuComplex* tprp_h;
-cuComplex* qpar_h;
-cuComplex* qprp_h;
-cuComplex* omega_out_h;
+
 
 
 //struct sdatio_file sdatfile;

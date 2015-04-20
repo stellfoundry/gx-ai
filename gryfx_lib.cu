@@ -67,6 +67,9 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   char serial[100];
   FILE *fp;
 
+
+ //Set some global defaults
+  //irho = 2;
   
   if(iproc==0) {
     fp = popen("nvidia-smi -q | grep Serial", "r");
