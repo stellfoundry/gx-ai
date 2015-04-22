@@ -14,7 +14,7 @@ extern "C" void broadcast_integer(int* a);
 #endif
 
 
-inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
+inline void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
 
     char stopfileName[200];
@@ -27,6 +27,7 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     FILE *phifile;
     char phifileName[200];
     //host variables
+
 
     cudaEvent_t start, stop, start1, stop1, nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
@@ -233,6 +234,42 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
+
+	/* ev_hd is on the host but the pointers point to memory on the device*/
+	everything_struct * ev_hd = (everything_struct *)malloc(sizeof(everything_struct));
+
+	/* Copy all the immediate values such as input parameters*/ 
+	*ev_hd = *ev_h;
+
+	/* Set the memory_location of ev_hd to let the allocate_or_deallocate_everything 
+		 function know to allocate its arrays on the device*/
+	ev_hd->memory_location = ON_DEVICE;
+
+	allocate_or_deallocate_everything(ALLOCATE, ev_h);
+	allocate_or_deallocate_everything(ALLOCATE, ev_hd);
+	/* This has to be done separately */
+	allocate_geo(ALLOCATE, ON_DEVICE, &ev_hd->geo, &ev_hd->grids.z, &ev_hd->grids.Nz);
+
+	/* ev_d is on the device (and the pointers point to memory on the device)*/
+	everything_struct * ev_d;
+	cudaMalloc((void**) &ev_d, sizeof(everything_struct));
+	cudaMemcpy(ev_d, ev_hd, sizeof(everything_struct), cudaMemcpyHostToDevice);
+	/*(No need to allocate ev_d as its pointers point to the same arrays as ev_hd)*/
+  
+	/* All of this can eventually be deleted when we get rid of the globals */
+	/* Host arrays*/
+	/* Device arrays*/
+		Phi = ev_hd->fields.phi;
+		Phi1 = ev_hd->fields.phi1;
+
+   //omegaAvg_h = ev_h->outs.omega;
+
+
+    writedat_beginning(ev_h);
+
+
+
+
     kx_h = (float*) malloc(sizeof(float)*Nx);
     ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
     kz_h = (float*) malloc(sizeof(float)*Nz);  
@@ -278,8 +315,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
     }  
     
     
-    cudaMalloc((void**) &Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    cudaMalloc((void**) &Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+    //cudaMalloc((void**) &Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+    //cudaMalloc((void**) &Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     
     cudaMalloc((void**) &Phi2_kxky_sum, sizeof(float)*Nx*(Ny/2+1)); 
     cudaMalloc((void**) &wpfxnorm_kxky_sum, sizeof(float)*Nx*(Ny/2+1));
@@ -1726,6 +1763,9 @@ if(iproc==0) {
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
       kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
       Phi2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+
+      ev_h->outs.phi2 = Phi2;
+
       expectation_ky = (float) Phi2/kPhi2;
   
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, kx);
@@ -1854,6 +1894,8 @@ if(iproc==0) {
   	    int index = j + (Ny/2+1)*i;
   	    if(index!=0) {
   	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/dtSum, omegaAvg_h[index].y/dtSum);
+        ev_h->outs.omega[index].x = omegaAvg_h[index].x/dtSum;
+        ev_h->outs.omega[index].y = omegaAvg_h[index].y/dtSum;
   	      if(Stable[index] >= stableMax) printf("\tomega");
   	      if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	      printf("\n");
@@ -1866,6 +1908,8 @@ if(iproc==0) {
             for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
   	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/dtSum, omegaAvg_h[index].y/dtSum);
+        ev_h->outs.omega[index].x = omegaAvg_h[index].x/dtSum;
+        ev_h->outs.omega[index].y = omegaAvg_h[index].y/dtSum;
   	    if(Stable[index] >= stableMax) printf("\tomega");
   	    if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	    printf("\n");
@@ -1882,6 +1926,9 @@ if(iproc==0) {
   */    
       //writedat_each();
       
+	if (counter%nwrite==0){
+  writedat_each(&ev_h->outs, &ev_h->fields, &ev_h->time);
+}
 #ifdef GS2_zonal
 			} //end of iproc if
 #endif
@@ -2134,6 +2181,7 @@ if(iproc==0) {
     fclose(omegafile);
     fclose(gammafile);
     fclose(phifile);
+   writedat_end(ev_h->outs);
     
     //cudaProfilerStop();
 #ifdef GS2_zonal

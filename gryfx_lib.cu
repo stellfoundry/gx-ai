@@ -5,6 +5,7 @@
 #include "read_namelist.h"
 #include "global_variables.h"
 #include "allocations.h"
+#include "write_data.h"
 #include "global_vars.h"
 //#include "write_data.cu"
 #include "device_funcs.cu"
@@ -58,16 +59,6 @@ extern "C" void finish_gs2();
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
 #endif
 
-void set_grid_masks_and_unaliased_sizes(grids_struct * grids){
-	grids->Naky =(grids->Ny-1)/3+1;
-	grids->Ny_complex = grids->Ny/2+1;
-	grids->Nakx = grids->Nx - (2*grids->Nx/3+1 - ((grids->Nx-1)/3+1));
-	grids->NxNyc = grids->Nx * grids->Ny_complex;
-	grids->NxNy = grids->Nx * grids->Ny;
-	grids->NxNycNz = grids->Nx * grids->Ny_complex * grids->Nz;
-	grids->NxNz = grids->Nx * grids->Nz;
-	grids->NycNz = grids->Ny_complex * grids->Nz;
-}
 
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
@@ -135,9 +126,11 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
   read_namelist(&(everything->pars), &(everything->grids), namelistFile);
-	//writedat_set_run_name(&(everything->info.run_name), namelistFile);
+	writedat_set_run_name(&(everything->info.run_name), namelistFile);
 
-	//set_grid_masks_and_unaliased_sizes(&(everything->grids));
+	set_grid_masks_and_unaliased_sizes(&(everything->grids));
+
+  allocate_or_deallocate_everything(ALLOCATE, everything);
 
   char out_dir_path[200];
   if(SCAN) {
@@ -200,6 +193,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   	  gryfxpars->tprim[i] = species[i].tprim;
   	  gryfxpars->nu[i] = species[i].nu_ss;
     }
+	gryfxpars->everything_struct_address = (void *)everything;
   
 #ifdef GS2_zonal
 			} //end of iproc if
@@ -212,6 +206,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
+	everything_struct * everything;
    mpcom_global = mpcom;
    FILE* outfile;
 #ifdef GS2_zonal
@@ -241,6 +236,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
    shat = gryfxpars->shat ;
    asym = gryfxpars->asym ;
    asympri = gryfxpars->asympri ;
+	everything = (everything_struct *)gryfxpars->everything_struct_address;
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
    beta_prime_input = gryfxpars->beta_prime_input ;
@@ -278,7 +274,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
       //if (iproc==0){
         coefficients_struct *coefficients;
         constant_coefficients_struct constant_coefficients;
-        read_geo(&Nz,coefficients,&constant_coefficients,gryfxpars);
+        read_geo(everything, &Nz,coefficients,&constant_coefficients,gryfxpars);
       //}
     }
 
@@ -286,6 +282,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   if ( igeo == 0 ) // this is s-alpha
   {
+		allocate_geo(ALLOCATE, ON_HOST, &(everything->geo), &(everything->grids.z), &everything->grids.Nz);
          
     gbdrift_h = (float*) malloc(sizeof(float)*Nz);
     grho_h = (float*) malloc(sizeof(float)*Nz);
@@ -725,7 +722,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			} //end of iproc if
 #endif
 
-  run_gryfx(gryfxouts->pflux, gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
+  run_gryfx(everything, gryfxouts->pflux, gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
 
 
 #ifdef GS2_zonal

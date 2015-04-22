@@ -34,7 +34,7 @@ extern "C" void geometry_mp_finish_geometry_(void);
 //  geometry_get_coefficients_c(&Nz, coefficients);
 //}
 
-void read_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients, struct gryfx_parameters_struct * gryfxpars){
+void read_geo(everything_struct * everything, int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients, struct gryfx_parameters_struct * gryfxpars){
 	double s_hat_input_d, beta_prime_input_d;
 
 	double delrho; 
@@ -112,6 +112,8 @@ void read_geo(int * Nz, struct coefficients_struct * coefficients, struct consta
 	gradpar = coefficients[0].gradpar;
 	drhodpsi = constant_coefficients->drhodpsin;
 	bi = constant_coefficients->bi;
+
+	allocate_geo(ALLOCATE, ON_HOST, &(everything->geo), &(everything->grids.z), &everything->grids.Nz);
 
   printf("I AM HERE %d\n;", iproc);
 //MPI_Bcast(&shat, 1, MPI_FLOAT, 0, mpcom_global);

@@ -51,3 +51,5 @@ typedef struct {
 	float ** kz_covering;
 
 } grids_struct;
+
+void set_grid_masks_and_unaliased_sizes(grids_struct * grids);

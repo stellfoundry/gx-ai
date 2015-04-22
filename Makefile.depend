@@ -1,5 +1,7 @@
 MODULES = allocations.o\
 			global_variables.o\
+			grids.o\
+			write_data.o\
       read_namelist.o
 
 read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c

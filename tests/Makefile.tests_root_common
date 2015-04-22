@@ -2,7 +2,7 @@
 
 
 # Specify any required modules that are not in libgs2.a
-TEST_MODS=  $(GK_HEAD_DIR)/libgryfx.a  $(GS2)/libgs2.a
+TEST_MODS=  $(GK_HEAD_DIR)/libgryfx.a  $(GS2)/libgs2.a ${GS2}/libsimpledataio.a 
 #TEST_LIBS=  -L$(GK_HEAD_DIR) -lgryfx $(GS2)/libgs2.a
 #TEST_MODS = $(TEST_DEPS)
 
@@ -14,6 +14,8 @@ TESTS_TMP = $(filter $(wildcard */.),$(patsubst %,%/.,$(TESTS)))
 else
 TESTS_TMP = $(wildcard */.)
 endif
+
+EXCLUDE_TESTS?= miller_linear miller_cyclone
 
 ifdef EXCLUDE_TESTS
 TESTS_ACTUAL = $(filter-out $(patsubst %,%/.,$(EXCLUDE_TESTS)),$(TESTS_TMP))
