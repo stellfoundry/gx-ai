@@ -3,7 +3,7 @@
 // memory in the simulation (basically everything except
 // local variables).
 
-#define EXTERN_SWITCH extern
+#include "species.h"
 #include "grids.h"
 #include "fields.h"
 #include "outputs.h"

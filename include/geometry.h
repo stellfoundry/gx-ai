@@ -1,9 +1,3 @@
-//input parameters for geometry
-EXTERN_SWITCH int equilibrium_type;
-EXTERN_SWITCH int bishop;
-EXTERN_SWITCH int irho;
-EXTERN_SWITCH int nperiod;
-EXTERN_SWITCH float rhoc;
 
 //global host arrays from eik.out
 EXTERN_SWITCH float *gbdrift_h, *grho_h, *z_h, *z_regular_h; 

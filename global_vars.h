@@ -1,19 +1,7 @@
-#include "simpledataio_cuda.h"
-#define EXTERN_SWITCH extern
-
-#define EXTERN_SWITCH 
-#include "geometry.h"
-#include "grids.h"
-#include "fields.h"
-#include "outputs.h"
-#define EXTERN_SWITCH extern
 
 //irho=2;
 
 int zThreads, totalThreads, zBlockThreads;
-float X0, Y0;
-int Zp;
-int nSpecies;
 __constant__ int nx,ny,nz, zthreads, nspecies;
 __constant__ float X0_d,Y0_d;
 __constant__ int Zp_d;
@@ -22,32 +10,7 @@ dim3 dimBlock, dimGrid;
 dim3 dimBlockCovering;
 dim3 *dimGridCovering;
 
-#define ION 0
-#define ELECTRON 1
-#define PHI 0
-#define DENS 1
-#define FORCE 2
-#define RH_equilibrium 3
 
-//species variables defined in gs2 namelist
-typedef struct {
-  float z;
-  float mass;
-  float dens;
-  float temp;
-  float tprim;
-  float fprim;
-  float uprim;
-  float zstm;
-  float tz;
-  float zt;
-  float nu_ss;
-  float rho;           
-  float vt;    
-  char type[100];        
-} specie;
-
-specie *species;
 
 
 
@@ -55,12 +18,10 @@ specie *species;
 int nClasses;
 int *nLinks;
 int *nChains;
-int icovering = 1;
 cuComplex nu[11];
 cuComplex mu[11];
 
 float endtime;
-double dt = .02;
 double dt_cfl;
 bool cfl_flag = true;
 
@@ -78,31 +39,11 @@ extern "C" double gs2_time_mp_code_time_;
 extern "C" int* mp_mp_proc0_;
 extern "C" int* mp_mp_iproc_;
 
-//globals defined in eik.out
-int ntgrid;
-float drhodpsi, rmaj, shat, kxfac, qsf, gradpar, eps, aminor, epsl;
-float eps_over_q, bi;
-
-//other Miller parameters;
-float r_geo, akappa, akappri, tri, tripri, shift, asym, asympri;
-
-//Greene & Chance/Bishop parameters
-float beta_prime_input, s_hat_input;
 
 
 //globals defined in gs2 namelist
-int nwrite;
-int nsave;
-int navg;
-int nstop;
 int converge_stop = 10000;
 float converge_bounds = 20;
-float cfl;
-float maxdt= .02;  //.02;
-float g_exb;
-int jtwist;
-float tau;
-int nSteps=10000;
 float fluxDen;
 float cflx;
 float cfly;
@@ -121,8 +62,6 @@ float D_par;
 float D_prp;
 float Beta_par;
 float diffusion;
-float D_hyper=0.1;
-int p_hyper=2;
 float kx_max;
 float ky_max;
 float kx4_max;
@@ -132,46 +71,8 @@ float kx4_max_Inv;
 float kperp2_max;
 float kperp4_max_Inv;
 
-float dnlpm = 1.;
-int inlpm = 2;
-float low_cutoff = .01;
-float high_cutoff = .1;
-float dnlpm_max = 1.;
-char* nlpm_option = "constant";
-float tau_nlpm = 10.;
-bool nlpm_zonal_kx1_only = false;
-bool dorland_nlpm = false;
-bool dorland_nlpm_phase = true;
-bool dorland_phase_complex = false;
-int dorland_phase_ifac = 1;
-bool nlpm_nlps = false;
-bool nlpm_kxdep = false;
-bool nlpm_cutoff_avg = false;
 
-int ivarenna = 1;
-bool varenna_fsa = false;
-bool new_varenna_fsa = false;
-int zonal_dens_switch = 0;
-int q0_dens_switch = 0;
 
-bool tpar_omegad_corrections = true;
-bool tperp_omegad_corrections = true;
-bool qpar_gradpar_corrections = false;
-bool qpar_bgrad_corrections = false;
-bool qperp_gradpar_corrections = false;
-bool qperp_bgrad_corrections = false;
-bool qpar0_switch = true;
-bool qprp0_switch = true;
-
-int iphi00 = 2;
-int igeo = 0;
-float shaping_ps = 1.6;
-char* geoFileName;
-
-bool secondary_test;
-cuComplex phi_test;
-float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
-char* secondary_test_restartfileName;
 
 //other global device arrays
 cuComplex *deriv_nlps;
@@ -192,43 +93,13 @@ cudaStream_t copystream;
 cudaEvent_t* end_of_zderiv;
 //cudaEvent_t end_of_zderiv;
 
-bool DEBUG = false;
 
-bool LINEAR = false;  
-bool RESTART = false;
-bool CHECK_FOR_RESTART = false;
-bool SCAN = true;
-bool NO_ZDERIV = false;
-bool NO_ZDERIV_COVERING = false;
-bool NO_ZDERIV_B = false;
-bool SLAB = false;
-bool CONST_CURV = false;
-bool write_omega = true;
-bool write_phi = true;
-bool write_phase = true;
-bool S_ALPHA = true;
-bool no_landau_damping = false;
-bool turn_off_gradients_test = false;
 
-bool NLPM = false;
-bool varenna = false;
-bool new_varenna = false;
-bool new_catto = false;
-bool SMAGORINSKY = false;
-bool HYPER = false;
-bool isotropic_shear = false;
-bool zero_restart_avg = false;
-
-int init = DENS;
-float init_amp;
-float phiext=-1.;
 
 //char* fluxfileName;
 //char stopfileName[60];
 //char restartfileName[60];
-char* scan_type;
 char out_stem[200];
-int scan_number;
 
 char* run_name;
 char restartfileName[200];

@@ -10,9 +10,15 @@
 #include <stdlib.h>
 #include <regex.h>
 #include <string.h>
+#include <ctype.h>
 
 int FNR_DEBUG=0;
 
+void fnr_downcase(char * string){
+	int i;
+	for (i = 0; string[i]; i++)
+		string[i] = tolower(string[i]);
+}
 void fnr_error_message(char * message, int exit)
 {
 	printf("%s\n", message);
@@ -31,6 +37,8 @@ struct fnr_struct
 	int * namelist_sizes;
 	char *** variable_names;
 	char *** variable_values;
+	int has_defaults;
+	void * defaults_pointer;
 	/*void * template_ptr;*/
 	/*int check_template;*/
 };
@@ -183,6 +191,9 @@ void fnr_match_namelists(char * text, char ** namelist_names, char ** namelist_t
 			strncpy(nnames[i], &text[location+length_match[1].rm_so], name_size-1);
 			nnames[i][name_size - 1 ] = '\0';
 
+			/*Convert namelist name to lowercase (namelists are case insensitive)*/
+			fnr_downcase(nnames[i]);
+
 			/*Assign namelist text*/
 			ntext_size = length_match[2].rm_eo - length_match[2].rm_so + 1;
 			ntexts[i] = (char *)malloc(ntext_size*sizeof(char));
@@ -224,7 +235,8 @@ void fnr_match_variables(char * text, char ** variable_names, char ** variable_v
 
 /* Compile regular expression */
 	/*reti = regcomp(&regex, "(^|\n)[[:space:]]*([_[:alnum:]]+)([[:blank:]]|=)[[:space:]]*=[[:space:]]*(\"([^\"]|\\\\|\\\")+\"|'([[^']|\\\\|\\')+'|[[:alnum:].+-]+)([[:blank:]\r\n]|!)", REG_EXTENDED|REG_NEWLINE);*/
-	reti = regcomp(&regex, "(^|\n|\r)[[:space:]]*([_[:alnum:]]+)([[:blank:]]+=|=)[[:blank:]]*(\"([^\"]|\\\\|\\\")+\"|'([^']|\\\\|\\')+'|[[:alnum:].+-]+)([[:blank:]\r\n]|!)", REG_EXTENDED|REG_NEWLINE);
+	/*reti = regcomp(&regex, "(^|\n|\r)[[:space:]]*([_[:alnum:]]+)([[:blank:]]+=|=)[[:blank:]]*(\"([^\"]|\\\\|\\\")+\"|'([^']|\\\\|\\')+'|[[:alnum:].+-]+)([[:blank:]\r\n]|!)", REG_EXTENDED|REG_NEWLINE);*/
+	reti = regcomp(&regex, "(^|\n|\r)[[:space:]]*([_[:alnum:]]+)([[:blank:]]+=|=)[[:blank:]]*(\"([^\"]|\\\\)+\x22|'([^']|\\\\|\\')+'|[[:alnum:].+-]+)([[:blank:]\r\n]|!)", REG_EXTENDED|REG_NEWLINE);
 	if( reti ){ fprintf(stderr, "Could not compile regex for matching namelist names and texts\n"); exit(1); }
   int i = 0;
 
@@ -246,6 +258,9 @@ void fnr_match_variables(char * text, char ** variable_names, char ** variable_v
 			strncpy(vnames[i], &text[location+length_match[a].rm_so], name_size-1);
 			vnames[i][name_size - 1 ] = '\0';
 
+			/*Convert variable name to lowercase (namelists are case insensitive)*/
+			fnr_downcase(vnames[i]);
+
 			/*Assign variable value*/
 			value_size = length_match[b].rm_eo - length_match[b].rm_so + 1;
 			vvalues[i] = (char *)malloc(value_size*sizeof(char));
@@ -254,8 +269,8 @@ void fnr_match_variables(char * text, char ** variable_names, char ** variable_v
 
 			/*variable_text_size = length_match[2].rm_eo - length_match[2].rm_so;*/
 
-			if (FNR_DEBUG) printf("begin %d, end %d, Size %d, Name %s\n", length_match[2].rm_so, length_match[2].rm_eo, name_size, vnames[i]);
-			if (FNR_DEBUG) printf("begin %d, end %d, Size %d, Name %s\n", length_match[3].rm_so, length_match[3].rm_eo, value_size, vvalues[i]);
+			if (FNR_DEBUG) printf("begin %d, end %d, Size %d, Name %s\n", length_match[a].rm_so, length_match[a].rm_eo, name_size, vnames[i]);
+			if (FNR_DEBUG) printf("begin %d, end %d, Size %d, Name %s\n", length_match[b].rm_so, length_match[b].rm_eo, value_size, vvalues[i]);
 			/*nmatches++;*/
 			i++;
 
@@ -272,6 +287,7 @@ void fnr_match_variables(char * text, char ** variable_names, char ** variable_v
 struct fnr_struct fnr_read_namelist_string(char * file_string)
 {
 	struct fnr_struct namelist_struct;
+	namelist_struct.has_defaults = 0;
 	char  ** namelist_texts;
 	if (FNR_DEBUG) printf("The string to be read is %s\n\n", file_string);
 	/*fnr_match_namelists(file_string, namelist_struct.namelist_names, &namelist_texts);*/
@@ -310,7 +326,7 @@ struct fnr_struct fnr_read_namelist_file(char * file_name)
 {
 	char * file_string;
 	/*printf("Marker A1\n");*/
-	//printf("Reading file %s\n", file_name);
+	printf("Reading file %s\n", file_name);
 	if (FNR_DEBUG) printf("Reading file\n");
 	fnr_read_file(file_name, &file_string);
 	if (FNR_DEBUG) printf("The string read was: \n%s\n", file_string);
@@ -323,6 +339,7 @@ void fnr_free(struct fnr_struct * namelist_struct){
 	for (i=0; i < namelist_struct->n_namelists; i++)
 	{
 		for (j=0; j < namelist_struct->namelist_sizes[i];j++){
+      if (FNR_DEBUG) printf("freeing %s\n", namelist_struct->variable_names[i][j]);
 			free(namelist_struct->variable_names[i][j]);
 			free(namelist_struct->variable_values[i][j]);
 		}
@@ -336,15 +353,25 @@ void fnr_free(struct fnr_struct * namelist_struct){
 	free(namelist_struct->variable_values);
 }
 
+void fnr_set_defaults(fnr_struct * namelist_struct, fnr_struct * defaults_struct){
+	namelist_struct->has_defaults = 1;
+	defaults_struct->has_defaults = 0; /* Just in case someone did something dumb!*/
+	namelist_struct->defaults_pointer = (void *)defaults_struct;
+}
+
 
 int FNR_NAMELIST_NOT_FOUND=1;
 int FNR_VARIABLE_NOT_FOUND=2;
 int FNR_VARIABLE_SSCANF_ERROR=3;
 int FNR_NAMELIST_NOT_IN_TEMPLATE=4;
 int FNR_VARIABLE_NOT_IN_TEMPLATE=5;
+int FNR_NAMELIST_NOT_IN_DEFAULTS=6;
+int FNR_VARIABLE_NOT_IN_DEFAULTS=7;
+int FNR_USED_DEFAULT=8;
 
 int fnr_abort_on_error;
 int fnr_abort_if_missing;
+int fnr_abort_if_no_default;
 
 /* Defaults */
 /*fnr_abort_on_error=1;*/
@@ -356,7 +383,7 @@ void fnr_check_rvalue(const char * namelist, const char * variable, int rvalue)
 	if (!rvalue) return;
 	if (fnr_abort_on_error && rvalue == FNR_VARIABLE_SSCANF_ERROR) 
 	{
-		printf("Error in namelist %s, variable %s\n", namelist, variable);
+		printf("Sscanf error in namelist %s, variable %s: this probably means the variable has been given an incorrect type or there is a typo in its value.\n", namelist, variable);
 		abort();
 	}
 	if (fnr_abort_if_missing && rvalue == FNR_NAMELIST_NOT_FOUND) 
@@ -367,6 +394,16 @@ void fnr_check_rvalue(const char * namelist, const char * variable, int rvalue)
 	if (fnr_abort_if_missing && rvalue == FNR_VARIABLE_NOT_FOUND) 
 	{
 		printf("Missing variable %s in namelist %s\n", variable, namelist);
+		abort();
+	}
+	if (fnr_abort_if_no_default && rvalue == FNR_NAMELIST_NOT_IN_DEFAULTS) 
+	{
+		printf("Namelist %s is not in the defaults\n",  namelist);
+		abort();
+	}
+	if (fnr_abort_if_no_default && rvalue == FNR_VARIABLE_NOT_IN_DEFAULTS) 
+	{
+		printf("Variable %s in namelist %s is not in the defaults\n", variable, namelist);
 		abort();
 	}
 	if (rvalue == FNR_NAMELIST_NOT_IN_TEMPLATE)
@@ -397,9 +434,18 @@ int fnr_get_string_no_test(struct fnr_struct * namelist_struct, const char * nam
 	int found_namelist = 0;
 	int found_variable = 0;
 	int rvalue = 0;
+	/*Convert variable and namelist name to lowercase (namelists are case insensitive)*/
+	char * variable_downcase;
+	char * namelist_downcase;
+	variable_downcase = (char *)malloc(sizeof(char)*(strlen(variable)+1)); 
+	namelist_downcase = (char *)malloc(sizeof(char)*(strlen(namelist)+1)); 
+	strcpy(namelist_downcase, namelist);
+	strcpy(variable_downcase, variable);
+	fnr_downcase(variable_downcase);
+	fnr_downcase(namelist_downcase);
 	for (i=0;i<namelist_struct->n_namelists; i++)
 	{
- 	 if (!strcmp(namelist_struct->namelist_names[i], namelist) )
+ 	 if (!strcmp(namelist_struct->namelist_names[i], namelist_downcase) )
 	 {
 		 found_namelist = 1;	
 		 break;
@@ -410,12 +456,13 @@ int fnr_get_string_no_test(struct fnr_struct * namelist_struct, const char * nam
 	}
 	if (found_namelist)
 	{
-	if (FNR_DEBUG) printf("Found namelist %s, size: %d\n", namelist_struct->namelist_names[i], namelist_struct->namelist_sizes[i]);
+	if (FNR_DEBUG) printf("Found namelist_downcase %s, size: %d\n", namelist_struct->namelist_names[i], namelist_struct->namelist_sizes[i]);
 		for (j=namelist_struct->namelist_sizes[i]-1;j>-1;j--) 
 			/* Must take the last specification of the variable*/
 		{
+			if (FNR_DEBUG) printf("Marker C2.5, j: %d\n", j);
 			if (FNR_DEBUG) printf("Marker C2; %d  %s\n", j, namelist_struct->variable_names[i][j]);
-		 if (!strcmp(namelist_struct->variable_names[i][j], variable))
+		 if (!strcmp(namelist_struct->variable_names[i][j], variable_downcase))
 		 {
 			 found_variable = 1;	
 			 break;
@@ -425,7 +472,7 @@ int fnr_get_string_no_test(struct fnr_struct * namelist_struct, const char * nam
 		if (FNR_DEBUG) printf("Marker C3\n");
 		if (found_variable)
 		{
-			if (FNR_DEBUG) printf("Found variable %s\n", variable);
+			if (FNR_DEBUG) printf("Found variable_downcase %s\n", variable_downcase);
 			char * v = namelist_struct->variable_values[i][j];
 			if (FNR_DEBUG) printf("Found value %s\n", v);
 			char * dq = "\"";
@@ -443,25 +490,47 @@ int fnr_get_string_no_test(struct fnr_struct * namelist_struct, const char * nam
 			}
 			else 
 			{
-				if (FNR_DEBUG) printf("MARKER D4.5; Length of string %d\n", strlen(variable));
+				if (FNR_DEBUG) printf("MARKER D4.5; Length of string %d\n", strlen(variable_downcase));
 				*value = (char *)malloc((strlen(v)+1)*sizeof(char));
 				strcpy(*value, v);
 				if (FNR_DEBUG) printf("MARKER D4.6; copied value %s to output: %s\n", *value, v);
 			}
 		}
 	}
+	/* If the user has provided a set of defaults we try to read it here if we couldn't find it in the namelist*/
 	if (!found_namelist || !found_variable){
-				if (FNR_DEBUG) printf("MARKER D4; Length of string %d\n", strlen(variable));
-				*value = (char *)malloc((strlen(variable)+1)*sizeof(char));
+		if (namelist_struct->has_defaults){
+			struct fnr_struct * defaults_struct = (struct fnr_struct *)namelist_struct->defaults_pointer;
+			if (defaults_struct->has_defaults){
+				printf("Your defaults struct has defaults... this must be wrong\n");
+				abort();
+			}
+			rvalue = fnr_get_string_no_test(defaults_struct, namelist, variable, value);
+			if (rvalue == FNR_NAMELIST_NOT_FOUND) rvalue = FNR_NAMELIST_NOT_IN_DEFAULTS;
+			if (rvalue == FNR_VARIABLE_NOT_FOUND) rvalue = FNR_VARIABLE_NOT_IN_DEFAULTS;
+			if (rvalue == 0) rvalue = FNR_USED_DEFAULT;
+			/*return rvalue;*/
+		}
+		else {
+				if (FNR_DEBUG) printf("MARKER D4; Length of string %d\n", strlen(variable_downcase));
+				*value = (char *)malloc((strlen(variable_downcase)+1)*sizeof(char));
 				/*char empty_string = "";*/
-				if (FNR_DEBUG) printf("Length of variable was %d\n", strlen(variable));
+				if (FNR_DEBUG) printf("Length of variable_downcase was %d\n", strlen(variable_downcase));
 				if (FNR_DEBUG) printf("MARKER D5\n");
-				strcpy(*value, variable);
+				strcpy(*value, variable_downcase);
 				if (FNR_DEBUG) printf("MARKER D5.3\n");
 				/**value[strlen(variable)] = '\0";*/
 				if (FNR_DEBUG) printf("MARKER D5.5\n");
+		}
 	}
+	free(namelist_downcase);
+	free(variable_downcase);
 	return rvalue;
+}
+
+int found_variable_string(int rvalue){
+	if (rvalue==0 || rvalue == FNR_USED_DEFAULT) return 1;
+	else return 0;
 }
 
 int fnr_get_string(struct fnr_struct * namelist_struct, const char * namelist, const char * variable, char ** value)
@@ -473,6 +542,7 @@ int fnr_get_string(struct fnr_struct * namelist_struct, const char * namelist, c
 	return rvalue;
 }
 
+
 int fnr_get_int(struct fnr_struct * namelist_struct, const char * namelist, const char * variable, int * value)
 {
 	char * str_value;
@@ -483,9 +553,9 @@ int fnr_get_int(struct fnr_struct * namelist_struct, const char * namelist, cons
 	/*if (rvalue) return rvalue;*/
 	if (FNR_DEBUG) printf("Size of value is %d\n", strlen(str_value));
 	if (FNR_DEBUG) printf("Str value was %s\n", str_value);
-	if (!rvalue) scfrvalue = sscanf(str_value, "%d", value);
+	if (found_variable_string(rvalue)) scfrvalue = sscanf(str_value, "%d", value);
 	if (FNR_DEBUG) printf("rvalue was %d\n, int is %d\n", rvalue, *value);
-	if (!rvalue && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
+	if (found_variable_string(rvalue) && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
 	/*else rvalue = 0;*/
 	fnr_check_rvalue(namelist, variable, rvalue);
 	return rvalue;
@@ -499,7 +569,7 @@ int fnr_get_bool(struct fnr_struct * namelist_struct, const char * namelist, con
 	rvalue = fnr_get_string(namelist_struct, namelist, variable, &str_value);
 	/*if (rvalue) return rvalue;*/
 	if (FNR_DEBUG) printf("Str value was %s\n", str_value);
-	if (!rvalue) {
+	if (found_variable_string(rvalue)) {
 
 		regex_t regex_true, regex_false;
 		int reti;
@@ -536,9 +606,9 @@ int fnr_get_float(struct fnr_struct * namelist_struct, const char * namelist, co
 	rvalue = fnr_get_string(namelist_struct, namelist, variable, &str_value);
 	/*if (rvalue) return rvalue;*/
 	if (FNR_DEBUG) printf("Str value was %s\n", str_value);
-	if (!rvalue) scfrvalue = sscanf(str_value, "%f", value);
+	if (found_variable_string(rvalue)) scfrvalue = sscanf(str_value, "%f", value);
 	if (FNR_DEBUG) printf("rvalue was %d\n, float is %f\n", rvalue, *value);
-	if (!rvalue && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
+	if (found_variable_string(rvalue) && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
 	/*else rvalue = 0;*/
 	fnr_check_rvalue(namelist, variable, rvalue);
 	if (FNR_DEBUG) printf("Marker E9\n");
@@ -555,9 +625,9 @@ int fnr_get_double(struct fnr_struct * namelist_struct, const char * namelist, c
 	/*if (rvalue) return rvalue;*/
 	if (FNR_DEBUG) printf("Marker E1\n");
 	if (FNR_DEBUG) printf("Str value was %s\n, rvalue %d", str_value, rvalue);
-	if (!rvalue) scfrvalue = sscanf(str_value, "%lf", value);
+	if (found_variable_string(rvalue)) scfrvalue = sscanf(str_value, "%lf", value);
 	if (FNR_DEBUG) printf("scrvalue was %d\n, double is %f\n", rvalue, *value);
-	if (!rvalue && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
+	if (found_variable_string(rvalue) && !scfrvalue) rvalue = FNR_VARIABLE_SSCANF_ERROR;
 	/*else rvalue = 0;*/
 	fnr_check_rvalue(namelist, variable, rvalue);
 	return rvalue;
@@ -579,6 +649,7 @@ void fnr_check_namelist_against_template(struct fnr_struct * namelist_struct, st
 			if (template_rvalue == FNR_NAMELIST_NOT_FOUND) rvalue = FNR_NAMELIST_NOT_IN_TEMPLATE;
 			if (template_rvalue == FNR_VARIABLE_NOT_FOUND) rvalue = FNR_VARIABLE_NOT_IN_TEMPLATE;
 			fnr_check_rvalue(namelist_struct->namelist_names[i], namelist_struct->variable_names[i][j], rvalue);
+      free(dummy);
 		}
 	}
 }

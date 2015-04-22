@@ -1,4 +1,8 @@
-MODULES = allocations.o 
+MODULES = allocations.o\
+			global_variables.o\
+      read_namelist.o
+
+read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
 
 CU_DEPS := \
       device_funcs.cu \
@@ -14,8 +18,6 @@ CU_DEPS := \
       omega_kernel.cu \
       phi_kernel.cu \
       getfcn.cu \
-      c_fortran_namelist3.c \
-      read_namelist.cu \
       read_input.cu \
       definitions.cu \
       diagnostics.cu \

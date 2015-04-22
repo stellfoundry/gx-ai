@@ -1,0 +1,459 @@
+!-------------------LINEAR CYCLONE ITG CASE-----------------------
+! Widely used benchmark case.  Original study published
+! in Phys. Plasmas Vol. 7, p. 969 (Dimits et al.)
+! Can compare linear.out file with linear.test, which
+! is included in this directory.
+!-----------------------------------------------------------------
+
+&collisions_knobs
+ collision_model='none'
+/
+!
+!&hyper_knobs
+! hyper_option = 'visc_only'
+! const_amp = .false.
+! isotropic_shear = .false.
+! D_hypervisc = 0.1
+!/
+
+&theta_grid_parameters
+
+ ntheta = 32
+ nperiod = 1
+ zp = 1
+
+ rhoc = 0.54
+ eps = 0.18 ! 0.2 before 
+ shat = 0.8
+ qinp = 1.4
+ Rmaj = 1.0
+ R_geo = 3.0
+ shift = 0.0
+ akappa = 1.0
+ akappri = 0.0
+ tri = 0.0
+ tripri = 0.0
+ drhodpsi = 1.0
+ epsl = 2.0
+ kxfac = 1.0
+ pk = 1.0
+ kp = 1.0
+/
+&parameters
+ tite = 1.0
+ beta = 0.0
+ zeff = 1.0
+/
+&theta_grid_salpha_knobs
+model_option = "const-curv"
+/
+&theta_grid_eik_knobs
+ itor = 1
+ iflux = 0
+ irho = 2
+
+ ppl_eq = F
+ gen_eq = F
+ efit_eq = F
+ local_eq = F
+
+ eqfile = 'dskeq.cdf'
+ equal_arc = T
+ bishop = 4
+ s_hat_input = 0.8
+ beta_prime_input = 0.0
+ delrho = 1.e-3
+ isym = 0
+ writelots = F
+/
+&fields_knobs
+ field_option='implicit'
+/
+&gs2_diagnostics_knobs
+ !print_flux_line = T
+ !write_nl_flux = T
+ !print_line = F
+ !write_line = F
+ !write_omega = F
+ !write_final_fields = T
+ !write_g = F
+ !write_verr = T
+ !nwrite=     10
+ !navg=   100
+ !nsave = 5000
+ !omegatinst = 500.0
+ !save_for_restart = .true.
+ !omegatol = -1.0e-3
+
+ nwrite = 10
+ nwrite_mult = 10
+ write_any = .true.
+ append_old = .false.
+ enable_parallel = .false.
+ serial_netcdf4 = .false.
+ igomega = 0
+ print_line = .false.
+ print_flux_line = .false.
+ write_line = .true.
+ write_flux_line = .true.
+ write_fields = .true.
+ write_phi_over_time = .false.
+ write_apar_over_time = .false.
+ write_bpar_over_time = .false.
+ make_movie = .false.
+ dump_fields_periodically = .false.
+ write_moments = .true.
+ write_full_moments_notgc = .false.
+ write_ntot_over_time = .false.
+ write_density_over_time = .false.
+ write_upar_over_time = .false.
+ write_tperp_over_time = .false.
+ write_fluxes = .true.
+ write_fluxes_by_mode = .true.
+ write_symmetry = .false.
+ write_parity = .false.
+ write_omega = .true.
+ navg = 10
+ omegatinst = 1.0e6
+ omegatol = -0.001
+ exit_when_converged = .true.
+ write_verr = .true.
+ write_cerr = .false.
+ write_max_verr = .false.
+ ncheck = 10
+ write_heating = .false.
+ write_ascii = .true.
+ write_gyx = .false.
+ write_g = .false.
+ write_lpoly = .false.
+ conv_nstep_av = 4000
+ conv_test_multiplier = 4e-1
+ conv_min_step = 4000
+ conv_max_step = 80000
+ conv_nsteps_converged = 10000
+ use_nonlin_convergence = .false.
+ write_cross_phase = .false.
+ write_correlation = .true.
+ write_correlation_extend = .false.
+ write_jext = .false.
+ write_lorentzian = .false.
+ write_eigenfunc = .false.
+ write_final_fields = .false.
+ write_kpar = .false.
+ write_final_epar = .false.
+ write_final_db = .false.
+ write_final_moments = .false.
+ write_final_antot = .false.
+ write_gs = .false.
+ nsave = 1000
+ save_for_restart = .false.
+ save_many = .false.
+ file_safety_check = .true.
+ save_distfn = .false.
+ write_omavg = .true.
+ write_gg = .false.
+ ob_midplane = .false.
+ write_nl_flux = .true.
+ write_hrate = .false.
+ write_avg_moments = .false.
+ dump_check1 = .false.
+ dump_check2 = .false.
+ nmovie = -1
+/
+&le_grids_knobs
+ ngauss = 5
+ negrid = 12
+ vcut= 2.5
+/
+
+&dist_fn_knobs
+ adiabatic_option="iphi00=2"
+ gridfac=   1.0
+ boundary_option="linked"
+ g_exb = 0.0
+ omprimfac=1.0
+       boundary_option = 'default'
+       nonad_zero = .true.  ! BD: Default value changed to TRUE  8.15.13
+       wfb_cmr= .false.
+       cllc = .false.
+       esv = .false.
+       opt_init_bc = .false.
+       opt_source = .false.
+       adiabatic_option = 'default'
+       poisfac = 0.0
+       gridfac = 1.0  ! used to be 5.e4
+       apfac = 1.0
+       driftknob = 1.0
+       tpdriftknob = -9.9e9
+       t0 = 100.0
+       source0 = 1.0
+       omega0 = 0.0
+       gamma0 = 0.0
+       phi_ext = 0.0
+       afilter = 0.0
+       kfilter = 0.0
+       g_exb = 0.0
+       g_exbfac = 1.0
+       g_exb_error_limit = 0.0
+       g_exb_start_time = -1
+       g_exb_start_timestep = -1
+       mach = 0.0
+       omprimfac = 1.0
+       btor_slab = 0.0
+       wfb = 1.
+       mult_imp = .false.
+       test = .false.
+       def_parity = .false.
+       zero_forbid = .false.
+       even = .true.
+       lf_default = .true.
+       lf_decompose = .false.
+       source_option = 'default'
+/
+
+&kt_grids_knobs
+ grid_option='box'
+/
+
+&kt_grids_box_parameters
+ !naky = (ny-1)/3 + 1 EGH this crashes namelist_reader..fix
+ naky = 0
+ ny = 16
+ nakx = 0
+ nx = 16 
+ ky_min = 0.1
+ y0 = 10
+ x0 = 10
+ jtwist = 5
+/
+&init_g_knobs
+
+    tstart = 0.
+    scale = 1.0
+    ginit_option = "default"
+    width0 = -3.5
+    refac = 1.
+    imfac = 0.
+    den0 = 1.
+    upar0 = 0.
+    tpar0 = 0.
+    tperp0 = 0.
+    den1 = 0.
+    upar1 = 0.
+    tpar1 = 0.
+    tperp1 = 0.
+    den2 = 0.
+    upar2 = 0.
+    tpar2 = 0.
+    tperp2 = 0.
+    phiinit = 1.0
+    dphiinit = 1.0
+    zf_init = 1.0
+    apar0 = 0.
+    chop_side = .true.
+    left = .true.
+    even = .true.
+    clean_init=.false.
+    new_field_init = .true.
+    phiinit0 = 0.
+    phiinit_rand = 0.
+    a0 = 0.
+    b0 = 0.
+    null_phi = .false.
+    null_bpar = .false.
+    null_apar = .false.
+    adj_spec = 0
+    eq_type = 'sinusoidal'
+    prof_width=-0.1
+    eq_mode_n=0
+    eq_mode_u=1
+    input_check_recon=.false.
+    ikpar_init = 0
+    kpar_init = 0.0
+    ikx_init = -1
+    read_many=.false.
+    restart_eig_id = 0
+    constant_random_flag = .false.
+    restart_file = "dummy" ! EGH namelist reader doesn't like empty strings: fix!
+    restart_dir = "dummy"
+
+ chop_side = F
+ phiinit=   1.e-3
+ restart_file = "nc/cyclone_miller_ke.nc"
+ ginit_option= "noise"
+/
+
+&knobs
+  fphi =   1.0
+  fapar =  0.0
+  faperp = 0.0
+  delt = 0.05
+  nstep = 10000
+  fbpar = -1.0
+  faperp = 0.0
+
+ !       include_lowflow = .false.
+  neo_test = .false.
+  wstar_units = .false.
+  eqzip_option = 'none'
+  eqzip = .false.
+  secondary = .true.
+  tertiary = .false.
+  harris = .false.
+  delt_option = 'default'
+  margin = 0.05
+  avail_cpu_time = 1.e10
+  margin_cpu_time = 300.
+  trinity_linear_fluxes = .false.
+  do_eigsolve = .false.
+  immediate_reset = .true.
+  use_old_diagnostics = .false.
+/
+&species_knobs
+ nspec=          1
+/
+&species_parameters_1
+ z=   1.0
+ mass=   1.0
+ dens=   1.0
+ temp=   1.0
+ tprim=  6.9
+ fprim=  2.2
+ uprim=  0.0
+ vnewk=  0.0
+ type='ion'
+/
+&dist_fn_species_knobs_1
+ fexpr= 0.45
+ bakdif= 0.05
+/
+&species_parameters_2
+ z=     -1.0
+ mass=   2.7e-4
+ dens=   1.0
+ temp=   1.0
+ tprim=  2.3
+ fprim=  0.733
+ uprim=  0.0
+ vnewk=  0.0
+ type='electron'
+/
+&dist_fn_species_knobs_2
+ fexpr= 0.45
+ bakdif= 0.05
+/
+&theta_grid_knobs
+ equilibrium_option = "s-alpha" ! or "miller", or "chease"
+ !equilibrium_option='eik'
+/
+&nonlinear_terms_knobs
+ nonlinear_mode='off'
+ cfl = 0.1
+ nonlinear_mode = 'default'
+ flow_mode = 'default'
+ cfl = 0.1
+ C_par = 0.1
+ C_perp = 0.1
+ p_x = 6.0
+ p_y = 6.0
+ p_z = 6.0
+/
+&reinit_knobs
+ delt_adj = 2.0
+ delt_minimum = 1.e-4
+/
+&layouts_knobs
+ layout = 'lxyes'
+ local_field_solve = F
+/
+
+&secondary_test_knobs
+  phi_test_real = 1.0e-5
+  phi_test_imag = 1.0e-5
+  restartfile = "restart.bin"
+  secondary_test = "off"
+/
+
+&gryfx_nonlinear_terms_knobs
+   densfac = 1.
+   uparfac = 1.
+   tparfac = 1.
+   tprpfac = 1.
+   qparfac = 1.
+   qprpfac = 1.
+/
+
+&gryfx_knobs
+  inlpm = 2
+  dnlpm = 1.0
+  hyper = "off"
+  nu_hyper = 1.0
+  p_hyper = 2
+  d_hyper = 0.1 
+  iso_shear = "off"
+  init_amp = 1.0e-5
+  scan_type = "outputs"
+  scan_number = 1
+  zero_restart_avg = "off"
+  no_zderiv_covering = "off"
+  no_zderiv= "off"
+  icovering = 1
+  iphi00 = 2
+  no_landau_damping= "off"
+  turn_off_gradients_test = "off"
+  slab="off"
+  write_omega = "off"
+  write_phi = "off"
+  restart = "off"
+  no_omegad = .false.
+  const_curv = "off"
+  varenna = "off"
+  varenna_fsa = "on"
+  ivarenna = 1
+  new_varenna = "off"
+  new_catto = "off"
+  nlpm = "on"
+  dorland_nlpm = "on"
+  dorland_nlpm_phase = "on"
+  dorland_phase_complex = "on"
+  dorland_phase_ifac = 1
+  nlpm_option = "cutoff"
+  low_cutoff = 0.01
+  high_cutoff = -1
+  dnlpm_max = 1.0
+  tau_nlpm = 10.0
+  
+  nlpm_kxdep = "off"
+  nlpm_nlps = "off"
+  nlpm_cutoff_avg = "off"
+  nlpm_zonal_kx1_only = "off"
+  smagorinsky = "off"
+  init = "density"
+  phiext = -1.0
+  debug = "off"
+
+  igeo = 0
+  shaping_ps = 1.6
+  !s_alpha = "on"  
+  !fluxfile = "./scan/output/linearflux"
+  !stopfile = "linear.stop"
+  !restartfile = "restart/linear.bin"  
+  ostem_rname = .false.
+/
+
+&new_varenna_knobs
+  new_varenna_fsa = "on"
+  zonal_dens_switch = 0
+  q0_dens_switch = 0
+   tpar_omegad_corrections = .true.
+   tperp_omegad_corrections = .true.
+   qpar_gradpar_corrections = .false.
+   qpar_bgrad_corrections = .false.
+   qperp_gradpar_corrections = .false.
+   qperp_bgrad_corrections = .false.
+   qpar0_switch = .true.
+   qprp0_switch = .true.
+/
+
+
+

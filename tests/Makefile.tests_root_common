@@ -3,6 +3,8 @@
 
 # Specify any required modules that are not in libgs2.a
 TEST_MODS=  $(GK_HEAD_DIR)/libgryfx.a  $(GS2)/libgs2.a
+#TEST_LIBS=  -L$(GK_HEAD_DIR) -lgryfx $(GS2)/libgs2.a
+#TEST_MODS = $(TEST_DEPS)
 
 
 # Run the tests in all subfolders unless otherwise specified

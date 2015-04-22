@@ -204,6 +204,8 @@ inline void run_gryfx(double * pflux, double * qflux, FILE* outfile)//, FILE* om
   
     cuComplex *dens_ky0_h, *upar_ky0_h, *tpar_ky0_h, *tprp_ky0_h, *qpar_ky0_h, *qprp_ky0_h, *phi_ky0_h;
     cuComplex *dens_ky0_d[nSpecies], *upar_ky0_d[nSpecies], *tpar_ky0_d[nSpecies], *tprp_ky0_d[nSpecies], *qpar_ky0_d[nSpecies], *qprp_ky0_d[nSpecies], *phi_ky0_d;
+
+    printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time_mp_code_time_/sqrt(2.0));
     
 ////////////  
 #ifdef GS2_zonal

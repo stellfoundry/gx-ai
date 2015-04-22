@@ -46,6 +46,10 @@ export CLEANCOMMAND
 # otherwise it builds everything just to be sure, because recursive
 # make can't resolve dependencies
 TEST_DEPS=libgryfx.a ${GS2}/libgs2.a ${GS2}/geometry_c_interface.o ${GS2}/geo/geometry_c_interface.h gryfx
+#TEST_DEPS=$(GK_HEAD_DIR)/gryfx_lib.o $(GK_HEAD_DIR)/read_namelist.o $(GK_HEAD_DIR)/global_variables.o $(GK_HEAD_DIR)/allocations.o ${GS2}/libgs2.a ${GS2}/geometry_c_interface.o ${GS2}/geo/geometry_c_interface.h 
+#TEST_DEPS=$(GK_HEAD_DIR)/gryfx_lib.o $(GK_HEAD_DIR)/read_namelist.o $(GK_HEAD_DIR)/global_variables.o $(GK_HEAD_DIR)/allocations.o ${GS2}/libgs2.a 
+#TEST_DEPS=$(GK_HEAD_DIR)/gryfx_lib.o $(GK_HEAD_DIR)/read_namelist.o $(GK_HEAD_DIR)/global_variables.o $(GK_HEAD_DIR)/allocations.o ${GS2}/libgs2.a 
+export TEST_DEPS
 
 TESTS_ENVIRONMENT=FC="$(FC)" CC="$(CC)" F90FLAGS="${F90FLAGS}" CPP="$(CPP)"  LD="$(LD)" LDFLAGS="$(LDFLAGS) -L$(PWD) $(SDATIO_LINK) -L$(GS2) -L$(PWD)/tests/unity/" LIBS=" -lgryfx -lgs2 -lunity $(SDATIO_LIB) $(LIBS)" CPPFLAGS="$(CPPFLAGS)" CFLAGS="$(CFLAGS)"
 

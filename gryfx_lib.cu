@@ -1,8 +1,13 @@
 #include "gryfx_lib.h"
+#include "simpledataio_cuda.h"
+#define EXTERN_SWITCH extern
+#include "everything_struct.h"
+#include "read_namelist.h"
+#include "global_variables.h"
+#include "allocations.h"
 #include "global_vars.h"
 //#include "write_data.cu"
 #include "device_funcs.cu"
-#include "c_fortran_namelist3.c"
 #include "operations_kernel.cu"
 #include "diagnostics_kernel.cu"
 #include "exb_kernel.cu"
@@ -18,7 +23,6 @@
 #include "nlpm_kernel.cu"
 #include "zonal_kernel.cu"
 #include "getfcn.cu"
-#include "read_namelist.cu"
 #include "read_input.cu"
 #include "definitions.cu"
 #include "maxReduc.cu"
@@ -40,6 +44,7 @@
 #include "run_gryfx.cu"
 #include "read_geo.cu"
 
+
 #ifdef GS2_zonal
 //extern "C" double geometry_mp_bi_;
 
@@ -53,8 +58,22 @@ extern "C" void finish_gs2();
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
 #endif
 
+void set_grid_masks_and_unaliased_sizes(grids_struct * grids){
+	grids->Naky =(grids->Ny-1)/3+1;
+	grids->Ny_complex = grids->Ny/2+1;
+	grids->Nakx = grids->Nx - (2*grids->Nx/3+1 - ((grids->Nx-1)/3+1));
+	grids->NxNyc = grids->Nx * grids->Ny_complex;
+	grids->NxNy = grids->Nx * grids->Ny;
+	grids->NxNycNz = grids->Nx * grids->Ny_complex * grids->Nz;
+	grids->NxNz = grids->Nx * grids->Nz;
+	grids->NycNz = grids->Ny_complex * grids->Nz;
+}
+
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
+  everything_struct * everything;
+	everything = (everything_struct *)malloc(sizeof(everything_struct));
+	everything->memory_location = ON_HOST;
 
 #ifdef GS2_zonal
 
@@ -67,10 +86,10 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   char serial[100];
   FILE *fp;
 
-
  //Set some global defaults
-  //irho = 2;
   
+ initialize_globals();
+
   if(iproc==0) {
     fp = popen("nvidia-smi -q | grep Serial", "r");
     while(fgets(serial_full, sizeof(serial_full)-1,fp) != NULL) {
@@ -114,7 +133,11 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   exit(1);
 #endif
 
-    read_namelist(namelistFile); // all procs read from namelist, set global variables.
+  //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
+  read_namelist(&(everything->pars), &(everything->grids), namelistFile);
+	//writedat_set_run_name(&(everything->info.run_name), namelistFile);
+
+	//set_grid_masks_and_unaliased_sizes(&(everything->grids));
 
   char out_dir_path[200];
   if(SCAN) {

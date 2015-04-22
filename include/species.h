@@ -1,7 +1,5 @@
 #define ION 0
 #define ELECTRON 1
-#define PHI 0
-#define DENS 1
 
 
 // Defines the species identifiers and the specie struct
