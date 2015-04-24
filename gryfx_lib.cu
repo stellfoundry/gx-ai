@@ -1,51 +1,16 @@
-#include <math.h>
-#include "gryfx_lib.h"
-#include "simpledataio_cuda.h"
-#define EXTERN_SWITCH extern
-#include "everything_struct.h"
-#include "read_namelist.h"
+#include "mpi.h"
+#include "standard_headers.h"
 #include "global_variables.h"
-#include "allocations.h"
+#include "run_gryfx.h"
+#include "read_namelist.h"
 #include "write_data.h"
+#include "allocations.h"
+#include "gryfx_lib.h"
 #include "printout.h"
 #include "gs2.h"
-#include "global_vars.h"
-//#include "write_data.cu"
-#include "device_funcs.cu"
-#include "operations_kernel.cu"
-#include "diagnostics_kernel.cu"
-#include "exb_kernel.cu"
-#include "nlps_kernel.cu"
-#include "zderiv_kernel.cu"
-#include "covering_kernel.cu"
-#include "reduc_kernel.cu"
-#include "cudaReduc_kernel.cu"
-#include "init_kernel.cu"
-#include "omega_kernel.cu"
-#include "phi_kernel.cu"
-#include "qneut_kernel.cu"
-#include "nlpm_kernel.cu"
-#include "zonal_kernel.cu"
-#include "getfcn.cu"
-#include "definitions.cu"
-#include "maxReduc.cu"
-#include "sumReduc.cu"
-#include "diagnostics.cu"
-#include "coveringSetup.cu"
-#include "exb.cu"
-#include "qneut.cu"
-#include "ztransform_covering.cu"
-#include "zderiv.cu"
-#include "zderivB.cu"
-#include "zderiv_covering.cu"
-#include "nlps.cu"
-#include "nlpm.cu"
-#include "hyper.cu"
-#include "courant.cu"
-#include "energy.cu"
-#include "timestep_gryfx.cu"
-#include "run_gryfx.cu"
+#include "get_error.h"
 
+#include "definitions.cu"
 
 
 //Defined at the bottom of this file
@@ -101,22 +66,27 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   gryfx_run_gs2_only(namelistFile);
 #endif
 
+	if(iproc==0) printf("%d: Initializing GryfX...\tNamelist is %s\n", gpuID, namelistFile);
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
   read_namelist(&(everything->pars), &(everything->grids), namelistFile);
 	writedat_set_run_name(&(everything->info.run_name), namelistFile);
 	set_grid_masks_and_unaliased_sizes(&(everything->grids));
-  allocate_or_deallocate_everything(ALLOCATE, everything);
+  //allocate_or_deallocate_everything(ALLOCATE, everything);
 
-  char out_dir_path[200];
-  if(SCAN) {
+  //char out_dir_path[200];
+  //if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
       strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
       if(iproc==0) printf("%d: out_stem = %s\n", gpuID, out_stem);
-  }
-	if(iproc==0) {
-    printf("%d: Initializing GryfX...\tNamelist is %s\n", gpuID, namelistFile);
-    set_gryfxpars(gryfxpars, everything);
-	} //end of iproc if
+  //}
+
+  if (iproc==0) set_gryfxpars(gryfxpars, everything);
+
+  // EGH: this is a nasty way to broadcast gryfxpars... we should
+  // really define a custom MPI datatype. However it should continue
+  // to work as long as all MPI processes are running on the same
+  // architecture. 
+  MPI_Bcast(&gryfxpars, sizeof(gryfxpars), MPI_BYTE, 0, mpcom);
 
 }
   
@@ -125,10 +95,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
-	everything_struct * everything;
+	 everything_struct * everything;
    mpcom_global = mpcom;
    FILE* outfile;
+  
+  
   if(iproc==0) {
+    //Only proc0 needst to import paramters to gryfx
     import_gryfxpars(gryfxpars, &everything);
     printf("%d: Initializing geometry...\n\n", gpuID);
     set_geometry(&everything->grids, &everything->geo, gryfxpars);
@@ -179,6 +152,8 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   strcpy(inputFile, out_stem);
   strcat(inputFile, "in");
 
+  // EGH to Noah... can we get rid of this?
+  // do you ever use the old input file format any more?
   if(!(input = fopen(inputFile, "r"))) {
     char ch;
     input = fopen(inputFile, "w");
@@ -192,151 +167,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 #ifdef GS2_zonal
 				if(iproc==0) {
 #endif
-
-  /* 
-  FILE *ifile;
-  FILE *omegafile;
-  FILE *gammafile;
-  FILE *energyfile;
-  FILE *fluxfile;
-  FILE *phikyfile;
-  FILE *phikxfile;
-  FILE *phifile;
-  
-  char* ifileName;
-  char omegafileName[200];
-  char gammafileName[200];
-  char energyfileName[200];
-  
-  char phikyfileName[200];
-  char phikxfileName[200];
-  char phifileName[200];
-    
- 
-  ifileName = "./inputs/eik.out"; 
-  if(SCAN) {             
-    sprintf(omegafileName, "./scan/outputs/omega/omega%g",dt);
-    sprintf(gammafileName, "./scan/outputs/gamma/gamma%g",dt);
-    sprintf(energyfileName, "./scan/outputs/energy/energy%g",dt);
-    //sprintf(fluxfileName, "./scan/outputs/flux");
-    sprintf(phikyfileName, "./scan/outputs/spectrum/phi_ky");
-    sprintf(phikxfileName, "./scan/outputs/spectrum/phi_ky0_kx");
-    sprintf(phifileName, "./scan/outputs/phi");
-  }
-  else {
-    sprintf(omegafileName, "./outputs/omega");
-    sprintf(gammafileName, "./outputs/gamma");
-    sprintf(energyfileName, "./outputs/energy");
-    //sprintf(fluxfileName, "./outputs/flux");
-    sprintf(phikyfileName, "./outputs/phi_ky");
-    sprintf(phikxfileName, "./outputs/phi_ky0_kx");
-    sprintf(phifileName, "./outputs/phi");
-  }
-  
-
-    
-  //check or set up directory structure for outputs
-  struct stat st;
-  if( !(stat("fields", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("./fields", 00777);
-  }
-  if( !(stat("fields/phi", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("./fields/phi",00777);
-  }
-  if( !(stat("fields/phi_covering", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("./fields/phi_covering",00777);
-  }
-  if( !(stat("fields/dens", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/dens",00777);
-  }
-  if( !(stat("fields/upar", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/upar",00777);
-  }
-  if( !(stat("fields/tpar", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/tpar",00777);
-  }
-  if( !(stat("fields/tprp", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/tprp",00777);
-  }
-  if( !(stat("fields/qpar", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/qpar",00777);
-  }
-  if( !(stat("fields/qprp", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-    mkdir("fields/qprp",00777);
-  }
-  if(SCAN) {
-    if( !(stat("scan", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan", 00777);
-    }
-    if( !(stat("scan/outputs", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan/outputs", 00777);
-    }
-    if( !(stat("scan/outputs/omega", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan/outputs/omega", 00777);
-    }
-    if( !(stat("scan/outputs/gamma", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan/outputs/gamma", 00777);
-    }
-    if( !(stat("scan/outputs/energy", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan/outputs/energy", 00777);
-    }
-    if( !(stat("scan/outputs/spectrum", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./scan/outputs/spectrum", 00777);
-    }
-  }
-  else {
-    if( !(stat("outputs", &st) == 0 && S_ISDIR(st.st_mode)) ) {
-      mkdir("./outputs", 00777);
-    }
-  }
-  
-  
-  
-  if(DEBUG) getError("gryfx.cu, set up directories");
-  
-  ifile = fopen(ifileName,"r");
-  if(!RESTART) {
-    omegafile = fopen(omegafileName, "w+");
-    gammafile = fopen(gammafileName, "w+");
-    energyfile = fopen(energyfileName, "w+");  
-    fluxfile = fopen(fluxfileName, "w+"); 
-    phikyfile = fopen(phikyfileName, "w+"); 
-    phikxfile = fopen(phikxfileName, "w+");
-    phifile = fopen(phifileName, "w+");
-  }
-  else {
-    //don't overwrite, append
-    omegafile = fopen(omegafileName, "a");
-    gammafile = fopen(gammafileName, "a");
-    energyfile = fopen(energyfileName, "a");   
-    fluxfile = fopen(fluxfileName, "a");
-    phikyfile = fopen(phikyfileName, "a");
-    phikxfile = fopen(phikxfileName, "a");
-    phifile = fopen(phifileName, "a");
-  }
-  
-  if(DEBUG) getError("gryfx.cu, opened files");
-    
-  
-
-  
-  
-  
-  //check directory structure for outputs
-  if(omegafile == 0) {
-    printf("could not open %s, check directory structure\n", omegafileName);
-    exit(1);
-  }
-  if(gammafile == 0) {
-    printf("could not open %s, check directory structure\n", gammafileName);
-    exit(1);
-  }
-  if(energyfile == 0) {
-    printf("could not open %s, check directory structure\n", energyfileName);
-    exit(1);
-  }  
-  
-  */
 
 
   ///////////////////////////////////////////////////
@@ -402,17 +232,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   definitions();
   
-  cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nspecies, &nSpecies, sizeof(int), 0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(X0_d, &X0, sizeof(float),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(Y0_d, &Y0, sizeof(float),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(Zp_d, &Zp, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(zthreads, &zThreads, sizeof(int),0,cudaMemcpyHostToDevice);
- // cudaMemcpyToSymbol(zblockthreads, &zBlockThreads, sizeof(int),0,cudaMemcpyHostToDevice);
-
-  if(DEBUG) getError("gryfx.cu, before run");
   
   
   char outfileName[200];
@@ -428,7 +247,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 
 #ifdef GS2_zonal
-  int last_step = 2*nSteps;
+  //int last_step = 2*nSteps;
   //gs2_diagnostics_mp_finish_gs2_diagnostics_(&last_step);
 #endif
 

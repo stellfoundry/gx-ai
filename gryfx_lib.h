@@ -3,13 +3,6 @@
 #include <string.h>
 #include <float.h>
 #include <time.h>
-#include "sys/stat.h"
-#include "cufft.h"
-#include "cuda_profiler_api.h"
-#include "libgen.h"
-#include "mpi.h"
-#include "nvToolsExt.h"
-
 /* These must be in the same order that they appear in
  * fluxes.fpp in trinity*/
 struct gryfx_parameters_struct {

@@ -5,6 +5,8 @@ MODULES = allocations.o\
 			geometry.o\
 			printout.o\
 			gs2.o\
+			gryfx_lib.o\
+			get_error.o\
 			write_data.o\
       read_namelist.o
 

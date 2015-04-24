@@ -1,3 +1,60 @@
+#include <math.h>
+#include "simpledataio_cuda.h"
+#include "cufft.h"
+#include "sys/stat.h"
+#include "cuda_profiler_api.h"
+#include "libgen.h"
+#include "mpi.h"
+#include "nvToolsExt.h"
+
+// EGH: Until we do something more fancy with cudaGetSymbolAddress the following have
+// to have file scope... ie they have to be in the same aggregate source file as the 
+// kernels.
+
+__constant__ int nx,ny,nz, zthreads, nspecies;
+__constant__ float X0_d,Y0_d;
+__constant__ int Zp_d;
+
+#define EXTERN_SWITCH extern
+#include "everything_struct.h"
+#include "global_variables.h"
+#include "allocations.h"
+#include "write_data.h"
+#include "gs2.h"
+#include "get_error.h"
+#include "device_funcs.cu"
+#include "operations_kernel.cu"
+#include "diagnostics_kernel.cu"
+#include "exb_kernel.cu"
+#include "nlps_kernel.cu"
+#include "zderiv_kernel.cu"
+#include "covering_kernel.cu"
+#include "reduc_kernel.cu"
+#include "cudaReduc_kernel.cu"
+#include "init_kernel.cu"
+#include "omega_kernel.cu"
+#include "phi_kernel.cu"
+#include "qneut_kernel.cu"
+#include "nlpm_kernel.cu"
+#include "zonal_kernel.cu"
+#include "getfcn.cu"
+#include "maxReduc.cu"
+#include "sumReduc.cu"
+#include "diagnostics.cu"
+#include "coveringSetup.cu"
+#include "exb.cu"
+#include "qneut.cu"
+#include "ztransform_covering.cu"
+#include "zderiv.cu"
+#include "zderivB.cu"
+#include "zderiv_covering.cu"
+#include "nlps.cu"
+#include "nlpm.cu"
+#include "hyper.cu"
+#include "courant.cu"
+#include "energy.cu"
+#include "timestep_gryfx.cu"
+
 #ifdef GS2_zonal
 //extern "C" void fields_implicit_mp_advance_implicit_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h);
 //extern "C" void fields_mp_advance_(int* gs2_counter);
@@ -14,9 +71,27 @@ extern "C" void broadcast_integer(int* a);
 #endif
 
 
-inline void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
+
+void set_cuda_constants(){
+  cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nspecies, &nSpecies, sizeof(int), 0, cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(X0_d, &X0, sizeof(float),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(Y0_d, &Y0, sizeof(float),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(Zp_d, &Zp, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(zthreads, &zThreads, sizeof(int),0,cudaMemcpyHostToDevice);
+ // cudaMemcpyToSymbol(zblockthreads, &zBlockThreads, sizeof(int),0,cudaMemcpyHostToDevice);
+
+  if(DEBUG) getError("run_gryfx.cu, copied constants");
+}
+
+void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
 
+    if (iproc==0) set_cuda_constants();
+
+    if (iproc==0) printf("dimGrid2 = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
     char stopfileName[200];
     FILE *fluxfile;
     char fluxfileName[200];
@@ -749,6 +824,7 @@ inline void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, 
   	}
         
       if(init == DENS) {
+        if(DEBUG) getError("initializing density");    
         for(int s=0; s<nSpecies; s++) {
           cudaMemset(Dens[s], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
         }
@@ -1119,13 +1195,17 @@ if(iproc==0) {
 #ifdef GS2_zonal
     }
 #endif
+
+    /////////////////////
+    // Begin timestep loop
+    /////////////////////
    
     while(/*counter < 1 &&*/ 
         counter<nSteps &&
   	stopcount<nstop 
   	/*&& converge_count<2*navg*/
   	)
-    {
+     {
 
       //if(counter==9) cudaProfilerStart();
 #ifdef GS2_zonal

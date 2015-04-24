@@ -100,13 +100,13 @@ endif
 # Rules for building gryfx
 ####################################
 
-HEADERS=$(wildcard include/*.h)
+HEADERS=$(wildcard include/*.h) gryfx_lib.h 
 
-libgryfx.a: gryfx_lib.o $(MODULES)
+libgryfx.a: run_gryfx.o $(MODULES)
 	ar cr $@ $^
 	ranlib $@
 
-gryfx_lib.o: gryfx_lib.h $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
+run_gryfx.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 # main program
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a 

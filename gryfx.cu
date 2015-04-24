@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 //#include "global_vars.h"
+#include "mpi.h"
 #include "gryfx_lib.h"
 
 
