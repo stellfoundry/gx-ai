@@ -16,6 +16,7 @@
 //Defined at the bottom of this file
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything);
 void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct ** everything_ptr);
+void initialize_cuda_parallelization(everything_struct * everything);
 
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
@@ -164,10 +165,51 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     fclose(namelist);
   }
 
+	if(iproc==0) {
+
+    initialize_cuda_parallelization(everything); 
+    definitions();
+    char outfileName[200];
+    strcpy(outfileName, out_stem);
+    strcat(outfileName, "out_gryfx");
+    outfile = fopen(outfileName, "w+");
+
+	} //end of iproc if
+
+  /////////////////////////
+  // This is the main call
+  ////////////////////////
+  run_gryfx(everything, gryfxouts->pflux, gryfxouts->qflux, outfile);
+
+	if(iproc==0) {  
+    print_final_summary(everything, outfile);
+    fclose(outfile);
+  } //end of iproc if
+
 #ifdef GS2_zonal
-				if(iproc==0) {
+  gryfx_finish_gs2();
 #endif
 
+
+}  	
+
+void gryfx_main(int argc, char* argv[], int mpcom) {
+	struct gryfx_parameters_struct gryfxpars;
+	struct gryfx_outputs_struct gryfxouts;
+//	printf("argc = %d\nargv[0] = %s   argv[1] = %s\n", argc, argv[0],argv[1]); 
+  	char* namelistFile;
+	if(argc == 2) {
+	  namelistFile = argv[1];
+	  //printf("namelist = %s\n", namelistFile);
+	}
+	else {
+	  namelistFile = "inputs/cyclone_miller_ke.in";
+	}
+	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
+	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
+}
+
+void initialize_cuda_parallelization(everything_struct * everything){
 
   ///////////////////////////////////////////////////
   // set up parallelization 
@@ -207,20 +249,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   dimBlock.x = fx; 
   dimBlock.y = fy;
     
-/*
-  if(Nz>zThreads) {
-    dimBlock.x = (int) sqrt(totalThreads/zBlockThreads);
-    dimBlock.y = (int) sqrt(totalThreads/zBlockThreads);
-    dimBlock.z = zBlockThreads;
-  }  
- 
-  //for dirac
-  if(prop.maxGridSize[2] != 1) {
-    dimBlock.x = 8;
-    dimBlock.y = 8;
-    dimBlock.z = 8;
-  }
-  */
   dimGrid.x = (Nx+dimBlock.x-1)/dimBlock.x;
   dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
   if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
@@ -229,70 +257,6 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   //if (DEBUG) 
   printf("dimGrid = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
-  
-  definitions();
-  
-  
-  
-  char outfileName[200];
-  strcpy(outfileName, out_stem);
-  strcat(outfileName, "out_gryfx");
-  outfile = fopen(outfileName, "w+");
-
-#ifdef GS2_zonal
-			} //end of iproc if
-#endif
-
-  run_gryfx(everything, gryfxouts->pflux, gryfxouts->qflux, outfile);//, omegafile,gammafile,energyfile,fluxfile,phikyfile,phikxfile, phifile);
-
-
-#ifdef GS2_zonal
-  //int last_step = 2*nSteps;
-  //gs2_diagnostics_mp_finish_gs2_diagnostics_(&last_step);
-#endif
-
-#ifdef GS2_zonal
-			if(iproc==0) {  
-#endif
-    print_final_summary(everything, outfile);
-    fclose(outfile);
-    
-    
-    /*
-    fclose(energyfile);
-    fclose(omegafile);
-    fclose(gammafile);
-    fclose(fluxfile);
-    fclose(phikyfile);
-    fclose(phikxfile);
-    fclose(phifile);
-    */
-
-#ifdef GS2_zonal
-			} //end of iproc if
-#endif
-
-#ifdef GS2_zonal
-  gryfx_finish_gs2();
-#endif
-
-
-}  	
-
-void gryfx_main(int argc, char* argv[], int mpcom) {
-	struct gryfx_parameters_struct gryfxpars;
-	struct gryfx_outputs_struct gryfxouts;
-//	printf("argc = %d\nargv[0] = %s   argv[1] = %s\n", argc, argv[0],argv[1]); 
-  	char* namelistFile;
-	if(argc == 2) {
-	  namelistFile = argv[1];
-	  //printf("namelist = %s\n", namelistFile);
-	}
-	else {
-	  namelistFile = "inputs/cyclone_miller_ke.in";
-	}
-	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
-	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
 }
 
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything){
