@@ -4,6 +4,7 @@ MODULES = allocations.o\
 			grids.o\
 			geometry.o\
 			printout.o\
+			gs2.o\
 			write_data.o\
       read_namelist.o
 

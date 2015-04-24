@@ -8,6 +8,7 @@
 #include "allocations.h"
 #include "write_data.h"
 #include "printout.h"
+#include "gs2.h"
 #include "global_vars.h"
 //#include "write_data.cu"
 #include "device_funcs.cu"
@@ -46,18 +47,6 @@
 #include "run_gryfx.cu"
 
 
-#ifdef GS2_zonal
-//extern "C" double geometry_mp_bi_;
-
-extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, int * Nz, float * gryfx_theta, struct gryfx_parameters_struct * gryfxpars);
-//extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom,  struct gryfx_parameters_struct * gryfxpars);
-extern "C" void finish_gs2();
-//extern "C" void gs2_diagnostics_mp_finish_gs2_diagnostics_(int* step);
-#endif
-
-#ifdef GS2_all
-extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
-#endif
 
 //Defined at the bottom of this file
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything);
@@ -109,22 +98,13 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 #endif
 
 #ifdef GS2_all
-  printf("Running GS2 simulation from within GryfX\n\n");
-  int length = strlen(namelistFile);
-  printf("Namelist is %s\n", namelistFile);
-  gs2_main_mp_run_gs2_(namelistFile, &length);
-
-  iproc = *mp_mp_iproc_;
-
-  exit(1);
+  gryfx_run_gs2_only(namelistFile);
 #endif
 
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
   read_namelist(&(everything->pars), &(everything->grids), namelistFile);
 	writedat_set_run_name(&(everything->info.run_name), namelistFile);
-
 	set_grid_masks_and_unaliased_sizes(&(everything->grids));
-
   allocate_or_deallocate_everything(ALLOCATE, everything);
 
   char out_dir_path[200];
@@ -156,28 +136,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if(DEBUG) print_cuda_properties(everything);
 	}
 
-
-  MPI_Barrier(mpcom);
-
   if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
-
-  // GS2 needs to know z_h so we have to allocate it on all 
-  // procs
-  MPI_Bcast(&Nz, 1, MPI_INT, 0, mpcom);
-  if(iproc!=0) z_h = (float*)malloc(sizeof(float)*Nz);
-  printf("z_h (1) is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
-  MPI_Bcast(&z_h[0], Nz, MPI_FLOAT, 0, mpcom);
-
-  printf("z_h is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
-
-  //gs2_main_mp_init_gs2_(namelistFile, &length);
-  int length = strlen(namelistFile);
-  //init_gs2(&length, namelistFile, &mpcom, gryfxpars);
-  init_gs2(&length, namelistFile, &mpcom, &Nz, z_h, gryfxpars);
-  MPI_Barrier(mpcom);
-
-  printf("z_h after is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+  gryfx_initialize_gs2(everything, gryfxpars, namelistFile, mpcom);
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
+
 
   //set up restart file
   strcpy(restartfileName, out_stem);
@@ -492,8 +454,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 #endif
 
 #ifdef GS2_zonal
-  //MPI_Barrier(MPI_COMM_WORLD);
-  finish_gs2();
+  gryfx_finish_gs2();
 #endif
 
 
