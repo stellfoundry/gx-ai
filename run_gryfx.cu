@@ -104,7 +104,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //host variables
 
 
-    cudaEvent_t start, stop, start1, stop1, nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
+    cudaEvent_t start, stop,  nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
     int naky, ntheta0;// nshift;
     naky = 1 + (Ny-1)/3;
@@ -115,34 +115,34 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float Dnlpm = 0;
     float Dnlpm_avg = 0;
     float Dnlpm_sum = 0;
-    float* phiVal; 
+    //float* phiVal; 
     float* val;
-    float phiVal0;
+    //float phiVal0;
   
     float Phi_zf_kx1 = 0.;
     float Phi_zf_kx1_old = 0.;
-    float Phi_zf_kx1_sum = 0.;
+    //float Phi_zf_kx1_sum = 0.;
     float Phi_zf_kx1_avg = 0.;
     float alpha_nlpm = 0.;
     float mu_nlpm = 0.;
     //float tau_nlpm = 50.;
     cuComplex *init_h;
-    float Phi_energy;
-    cuComplex *omega_h;  
-    float dtBox[navg];
+    //float Phi_energy;
+    //cuComplex *omega_h;  
+    //float dtBox[navg];
     cuComplex* omegaAvg_h;
     float wpfx[nSpecies];
     float pflx[nSpecies];
     float wpfx_old[nSpecies];
     float pflx_old[nSpecies];
-    float wpfx_sum[nSpecies];
+    //float wpfx_sum[nSpecies];
     float tmpX_h[Nx];
     float tmpY_h[Ny/2+1];
     float tmpXY_h[Nx*(Ny/2+1)];
     float tmpYZ_h[(Ny/2+1)*Nz];
     float tmpXY_R_h[Nx*Ny];
-    float phi0_X[Nx];
-    cuComplex CtmpX_h[Nx];
+    //float phi0_X[Nx];
+    //cuComplex CtmpX_h[Nx];
     cuComplex field_h[Nx*(Ny/2+1)*Nz];
     cuComplex CtmpZ_h[Nz];
    
@@ -161,7 +161,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     char filename[200];
   
-    int exit_flag = 0;  
+    //int exit_flag = 0;  
   
     double runtime;
     int counter;
@@ -171,26 +171,26 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //nSteps = 100;
     
     int Stable[Nx*(Ny/2+1)*2];
-    cuComplex stability[Nx*(Ny/2+1)];
+    //cuComplex stability[Nx*(Ny/2+1)];
     for(int i=0; i<Nx*(Ny/2+1); i++) {
-      stability[i].x = 0;
-      stability[i].y = 0;
+      //stability[i].x = 0;
+      //stability[i].y = 0;
       Stable[i] = 0;
       Stable[i +Nx*(Ny/2+1)] = 0;
     }
-    bool STABLE_STOP=false;  
+    //bool STABLE_STOP=false;  
     int stableMax = 500;
       
-    float wpfxmax=0.;
-    float wpfxmin=0.;
+    //float wpfxmax=0.;
+    //float wpfxmin=0.;
     int converge_count=0;
     
-    bool startavg=false;
+    //bool startavg=false;
   
-    float dt_start = .02;
+    //float dt_start = .02;
     float alpha_avg = (float) 2./(navg+1.);
     float mu_avg = exp(-alpha_avg);
-    float navg_nlpm;
+    //float navg_nlpm;
 
     /*
     float ky_spectrum1_h[Ny/2+1];
@@ -237,11 +237,11 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //float *Phi2_XYBox[navg];
     specie* species_d;
     
-    double dt_old;
-    double avgdt;
+    //double dt_old;
+    //double avgdt;
     float totaltimer;
     float timer;
-    float GS2timer;
+    //float GS2timer;
     
     //diagnostics scalars
     float flux1,flux2;
@@ -249,7 +249,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum;
    
     float Phi2, kPhi2;
-    float Phi2_sum, kPhi2_sum;
+    float Phi2_sum;//, kPhi2_sum;
     float expectation_ky;
     float expectation_ky_sum;
     float expectation_kx;
@@ -306,7 +306,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 #endif
 
-    omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
+    //omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
 
@@ -353,7 +353,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
   
     //zero dtBox array
-    for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
+    //for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
       
     init_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     //Phi_energy = (float*) malloc(sizeof(float));
@@ -501,7 +501,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if(DEBUG) getError("run_gryfx.cu, after memcpy");
     
     cudaMalloc((void**) &val, sizeof(float));
-    phiVal = (float*) malloc(sizeof(float));
+    //phiVal = (float*) malloc(sizeof(float));
     
     
     //set up plans for NLPS, ZDeriv, and ZDerivB
@@ -788,7 +788,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   	  for(int i=0; i<(Ny/2+1); i++) {
   
   	    //int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  	    int idxy = i + (Ny/2+1)*j;
+  	    //int idxy = i + (Ny/2+1)*j;
   
   	      //if(i==0) amp = 1.e-5;
   	      //else amp = 1.e-5;
@@ -910,7 +910,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       
       
       for(int s=0; s<nSpecies; s++) {
-        wpfx_sum[s]= 0.;
+        //wpfx_sum[s]= 0.;
       }
       expectation_ky_sum= 0.;
       expectation_kx_sum= 0.;
@@ -937,7 +937,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       if(zero_restart_avg) {
         printf("zeroing avg sums...\n");
         for(int s=0; s<nSpecies; s++) {
-          wpfx_sum[s] = 0.;
+          //wpfx_sum[s] = 0.;
         }
         expectation_ky_sum = 0.;
         expectation_kx_sum = 0.;
@@ -1035,7 +1035,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       gs2_counter=1;
       totaltimer=0.;
       timer=0.;
-      GS2timer=0.;
+      //GS2timer=0.;
     int stopcount = 0;
     int nstop = 10;
     int first_half_flag;
@@ -1157,8 +1157,8 @@ if(iproc==0) {
 			}
 #endif 
 
-    uint64_t diff;
-    struct timespec clockstart, clockend;
+    //uint64_t diff;
+    struct timespec clockstart;//, clockend;
     //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
    first_half_flag = 1;
    // //cudaEventRecord(GS2Istart,0);
@@ -1229,10 +1229,10 @@ if(iproc==0) {
 
 
 #ifndef GS2_zonal
-      dt_old = dt;
+      //dt_old = dt;
       //if(!LINEAR && !secondary_test) dt = courant(Phi, tmp, field, resultR_nlps, species);   
 #endif
-      avgdt = .5*(dt_old+dt);    
+      //avgdt = .5*(dt_old+dt);    
 
 #ifdef GS2_zonal
 
@@ -2105,7 +2105,7 @@ if(iproc==0) {
       dt = gs2_time_mp_code_dt_ * 2. / sqrt(2.);  // pass GS2 dt to GryfX, with appropriate normalization
     }
 */  
-    dt_old = dt;
+    //dt_old = dt;
     dt = gs2_time_mp_code_dt_ * 2. / sqrt(2.);
 
     //gs2_counter++; //each proc has its own gs2_counter
@@ -2130,7 +2130,7 @@ if(iproc==0) {
 			if(iproc==0) {
 #endif
   
-    exit_flag = 1; 
+    //exit_flag = 1; 
    
     //gs2_diagnostics_mp_loop_diagnostics_(&gs2_counter, &exit_flag);
   

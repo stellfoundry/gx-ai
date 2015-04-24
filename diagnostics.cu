@@ -933,12 +933,12 @@ inline void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
   cudaMemcpy(f_zky_h, f_zky, sizeof(float)*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\t%s", ext);  
   fprintf(out, "\n");
-  int blockid = 0;
+  //int blockid = 0;
   for(int j=0; j<(Ny-1)/3+1; j++) {
     fprintf(out,"\n");      
     for(int k=0; k<=Nz; k++) {
       int index = j+(Ny/2+1)*k;
-      int index_z0 = j+(Ny/2+1)*(Nz/2);
+      //int index_z0 = j+(Ny/2+1)*(Nz/2);
       
       if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%e\n", -z_h[0], ky_h[j], f_zky_h[j]); 
       else fprintf(out, "\t%f\t\t%f\t\t%e\n", z_h[k], ky_h[j], f_zky_h[index]);    	  
@@ -956,7 +956,7 @@ inline void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext
   cudaMemcpy(f_zky_h, f_zky, sizeof(float)*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\t%s", ext);  
   fprintf(out, "\n");
-  int blockid = 0;
+  //int blockid = 0;
   for(int j=0; j<(Ny-1)/3+1; j++) {
     fprintf(out,"\n");      
     for(int k=0; k<=Nz; k++) {
@@ -1574,7 +1574,7 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
     kyWrite(wpfx_over_phi2_ky_tmpY, tmpY_h, filename, "flux_over_phi2.ky");
     
     //calculate kperp energy spectrum
-    float dkperp = 1./X0;
+    //float dkperp = 1./X0;
     //E_kperp<<<dimGrid,dimBlock>>>(tmpY, phi2avg_tmpXY,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
   }
   

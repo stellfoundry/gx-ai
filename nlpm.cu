@@ -130,7 +130,7 @@ inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuCompl
                 float* Phi2ZF_tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, float* nu1_nlpm, float* nu22_nlpm,
                 specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float Phi_zf_rms, cuComplex* tmp)
 {
-  float nu1max, nu22max;
+  //float nu1max, nu22max;
   if(dorland_nlpm) {
     if(strcmp(nlpm_option,"constant") == 0 || (strcmp(nlpm_option,"cutoff") == 0 && Phi_zf_rms>low_cutoff)) {
       get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, Phi, Phi2ZF_tmpX, tmpXZ, s);

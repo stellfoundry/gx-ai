@@ -186,7 +186,7 @@ __global__ void fixFFT(cufftComplex* f)
   
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+     // unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       /*
       if((idy==0 || idy==ny/2) && idx>nx/2) {

@@ -76,7 +76,9 @@ endif
 .SUFFIXES: .cu .o
 .DEFAULT_GOAL := $(TARGET)
 
-.cu.o:
+HEADERS=$(wildcard include/*.h) 
+
+.cu.o: $(HEADERS)
 	$(NVCC) -c $(CFLAGS) $(NVCCINCS) $< 
 
 #####################################
@@ -100,7 +102,6 @@ endif
 # Rules for building gryfx
 ####################################
 
-HEADERS=$(wildcard include/*.h) gryfx_lib.h 
 
 libgryfx.a: run_gryfx.o $(MODULES)
 	ar cr $@ $^
@@ -112,7 +113,6 @@ run_gryfx.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a 
 	$(NVCC)  -o $@  $^ $(CFLAGS) $(LDFLAGS) 
 
-gryfx.o: gryfx_lib.h $(HEADERS)
 
 
 $(MODULES): $(HEADERS)

@@ -6,8 +6,8 @@ inline void NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, float *kx
   float scaler = (float) 1./(Nx*Ny);	//THIS USED TO HAVE A FACTOR OF 2 			
   float max = 0.;
   float vmax = 0.;
-  float vxmax = 0.;
-  float vymax = 0.;
+  //float vxmax = 0.;
+  //float vymax = 0.;
   int size = Nx*Ny*Nz;
 
   //printf("factor of 2\n");
@@ -94,11 +94,11 @@ inline void NLPM_NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, floa
 
      
   float scaler = (float) 1./(Nx*Ny);	//THIS USED TO HAVE A FACTOR OF 2 			
-  float max = 0.;
-  float vmax = 0.;
-  float vxmax = 0.;
-  float vymax = 0.;
-  int size = Nx*Ny*Nz;
+  //float max = 0.;
+  //float vmax = 0.;
+  //float vxmax = 0.;
+  //float vymax = 0.;
+  //int size = Nx*Ny*Nz;
 
   //printf("factor of 2\n");
   

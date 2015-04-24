@@ -1569,7 +1569,7 @@ __global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
 {
   
   int idx = get_idx();
-  unsigned int idy = 0;
+  //unsigned int idy = 0;
   unsigned int idz = get_idz();
 
   unsigned int ntheta0 = 1 + 2*((nx-1)/3);
@@ -1614,7 +1614,7 @@ __global__ void replace_ky0_nopad(cuComplex* f, cuComplex* f_ky0)
 __global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
 {
   unsigned int idx = get_idx();
-  unsigned int idy = 0;
+  //unsigned int idy = 0;
   unsigned int idz = get_idz();
 
   if(idx<nx && idz<nz) {
@@ -1628,7 +1628,7 @@ __global__ void getky0(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
 __global__ void getky0_nopad(cuComplex* res_ky0kxz, cuComplex* f_kykxz)
 {
   int idx = get_idx();
-  unsigned int idy = 0;
+  //unsigned int idy = 0;
   unsigned int idz = get_idz();
 
   int ntheta0 = 1 + 2*((nx-1)/3);

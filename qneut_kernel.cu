@@ -128,7 +128,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_fi
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      unsigned int idxy = idy + (ny/2+1)*idx;
+      //unsigned int idxy = idy + (ny/2+1)*idx;
 
       float pfilter2 = 0.;
       float bidx;

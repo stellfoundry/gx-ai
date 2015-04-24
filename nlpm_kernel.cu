@@ -180,9 +180,9 @@ __global__ void nlpm_shear2(float* nu, float* Phi2ZF, float dnlpm, float* kx,
   
   int ikx1 = round(X0_d); //determine the index of the kx=1 mode
   if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
-  unsigned int idx_zonal;
-  if(zonal_kx1_only) idx_zonal = ikx1;
-  else idx_zonal = idx;
+  //unsigned int idx_zonal;
+  //if(zonal_kx1_only) idx_zonal = ikx1;
+  //else idx_zonal = idx;
 
   if(nz<=zthreads) {
     if(idz<nz && idx<nx) {
