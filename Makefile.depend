@@ -3,6 +3,7 @@ MODULES = allocations.o\
 			unit_tests.o\
 			grids.o\
 			geometry.o\
+			printout.o\
 			write_data.o\
       read_namelist.o
 

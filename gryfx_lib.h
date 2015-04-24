@@ -74,3 +74,4 @@ extern "C"
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
 
 void gryfx_main(int argc, char* argv[], int mpcom);
+

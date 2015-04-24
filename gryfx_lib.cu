@@ -7,6 +7,7 @@
 #include "global_variables.h"
 #include "allocations.h"
 #include "write_data.h"
+#include "printout.h"
 #include "global_vars.h"
 //#include "write_data.cu"
 #include "device_funcs.cu"
@@ -58,6 +59,9 @@ extern "C" void finish_gs2();
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
 #endif
 
+//Defined at the bottom of this file
+void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything);
+void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct ** everything_ptr);
 
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
@@ -66,8 +70,6 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 	everything->memory_location = ON_HOST;
 
 #ifdef GS2_zonal
-
-
 
   MPI_Comm_rank(mpcom, &iproc);
   //printf("I am proc %d\n", iproc);
@@ -102,14 +104,8 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
   cudaGetDevice(&gryfxpars->mpirank);
 
-  //gs2_main_mp_advance_gs2_();  
-
-  //gs2_main_mp_finish_gs2_();
-
-  //exit(1);
-  
-  
-
+#else
+  iproc=0;
 #endif
 
 #ifdef GS2_all
@@ -134,69 +130,13 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   char out_dir_path[200];
   if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
-    //if( strcmp(scan_type, "default") == 0) {
-  
       strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
-      //strcat(out_stem,".\0"); 
       if(iproc==0) printf("%d: out_stem = %s\n", gpuID, out_stem);
-    //}
-
-
   }
-#ifdef GS2_zonal
-			if(iproc==0) {
-#endif
-
-     
+	if(iproc==0) {
     printf("%d: Initializing GryfX...\tNamelist is %s\n", gpuID, namelistFile);
-      //update gryfxpars struct with geometry parameters (from read_geo of defaults)
-    gryfxpars->equilibrium_type = equilibrium_type;
-    /*char eqfile[800];*/
-    gryfxpars->irho = irho;
-    gryfxpars->rhoc = rhoc;
-    gryfxpars->eps = eps;
-    gryfxpars->bishop = bishop;
-    gryfxpars->nperiod = nperiod;
-    printf("nperiod is %d\n", nperiod);
-    printf("Nz is %d\n", Nz);
-    gryfxpars->ntheta = Nz;
-  
-   /* Miller parameters*/
-    gryfxpars->rgeo_local = rmaj;
-    gryfxpars->rgeo_lcfs = rmaj;
-    gryfxpars->akappa = akappa ;
-    gryfxpars->akappri = akappri;
-    gryfxpars->tri = tri;
-    gryfxpars->tripri = tripri;
-    gryfxpars->shift = shift;
-    gryfxpars->qinp = qsf;
-    gryfxpars->shat = shat;
-    gryfxpars->asym = asym;
-    gryfxpars->asympri = asympri;
-  
-    /* Other geometry parameters - Bishop/Greene & Chance*/
-    gryfxpars->beta_prime_input = beta_prime_input;
-    gryfxpars->s_hat_input = s_hat_input;
-  
-    /*Flow shear*/
-    gryfxpars->g_exb = g_exb;
-  
-    /* Species parameters... I think allowing 20 species should be enough!*/
-  
-    gryfxpars->ntspec = nSpecies;
-  
-    for (int i=0;i<nSpecies;i++){
-  	  gryfxpars->dens[i] = species[i].dens;
-  	  gryfxpars->temp[i] = species[i].temp;
-  	  gryfxpars->fprim[i] = species[i].fprim;
-  	  gryfxpars->tprim[i] = species[i].tprim;
-  	  gryfxpars->nu[i] = species[i].nu_ss;
-    }
-	gryfxpars->everything_struct_address = (void *)everything;
-  
-#ifdef GS2_zonal
-			} //end of iproc if
-#endif
+    set_gryfxpars(gryfxpars, everything);
+	} //end of iproc if
 
 }
   
@@ -208,105 +148,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	everything_struct * everything;
    mpcom_global = mpcom;
    FILE* outfile;
-#ifdef GS2_zonal
-			if(iproc==0) {
-#endif
-   equilibrium_type = gryfxpars->equilibrium_type ;
-  /*char eqfile[800];*/
-   irho = gryfxpars->irho ;
-   rhoc = gryfxpars->rhoc ;
-   eps = gryfxpars->eps;
-   // NB NEED TO SET EPS IN TRINITY!!!
-   //eps = rhoc/rmaj;
-   bishop = gryfxpars->bishop ;
-   nperiod = gryfxpars->nperiod ;
-    printf("nperiod2 is %d\n", nperiod);
-   Nz = gryfxpars->ntheta ;
-
- /* Miller parameters*/
-   rmaj = gryfxpars->rgeo_local ;
-   //r_geo = gryfxpars->rgeo_lcfs ;
-   akappa  = gryfxpars->akappa ;
-   akappri = gryfxpars->akappri ;
-   tri = gryfxpars->tri ;
-   tripri = gryfxpars->tripri ;
-   shift = gryfxpars->shift ;
-   qsf = gryfxpars->qinp ;
-   shat = gryfxpars->shat ;
-   asym = gryfxpars->asym ;
-   asympri = gryfxpars->asympri ;
-	everything = (everything_struct *)gryfxpars->everything_struct_address;
-
-  /* Other geometry parameters - Bishop/Greene & Chance*/
-   beta_prime_input = gryfxpars->beta_prime_input ;
-   s_hat_input = gryfxpars->s_hat_input ;
-
-  /*Flow shear*/
-   g_exb = gryfxpars->g_exb ;
-
-  /* Species parameters... I think allowing 20 species should be enough!*/
-  int oldnSpecies = nSpecies;
-   nSpecies = gryfxpars->ntspec ;
-
-  if (nSpecies!=oldnSpecies){
-	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nSpecies);
-	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
-	  exit(1);
-  }
-	 if (DEBUG) printf("nSpecies was set to %d\n", nSpecies);
-  for (int i=0;i<nSpecies;i++){
-	   species[i].dens = gryfxpars->dens[i] ;
-	   species[i].temp = gryfxpars->temp[i] ;
-	   species[i].fprim = gryfxpars->fprim[i] ;
-	   species[i].tprim = gryfxpars->tprim[i] ;
-	   species[i].nu_ss = gryfxpars->nu[i] ;
-  }
-  
-  jtwist = (int) round(2*M_PI*abs(shat)*Zp);
-  if(jtwist<0) jtwist=0;
-  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
-  //else *&X0 = Y0; 
-  //else use what is set in input file 
-
-  printf("%d: Initializing geometry...\n\n", gpuID);
-  set_geometry(&everything->grids, &everything->geo, gryfxpars);
-
-  printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d   igeo=%d\n", Nx, Ny, Nz, X0, Y0, Zp, igeo);
-  printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-  printf("temp=%g  dens=%g nu_ss=%g  inlpm=%d  dnlpm=%f\n", species[ION].temp, species[ION].dens,species[ION].nu_ss, inlpm, dnlpm);
-  printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-  printf("rgeo=%g  akappa=%g  akappapri=%g  tri=%g  tripri=%g\n", r_geo, akappa, akappri, tri, tripri);
-  printf("asym=%g  asympri=%g  beta_prime_input=%g  rhoc=%g\n", asym, asympri, beta_prime_input, rhoc);
-  if(NLPM && nlpm_kxdep) printf("USING NEW KX DEPENDENCE IN COMPLEX DORLAND NLPM EXPRESSION\n");
-  if(nlpm_nlps) printf("USING NEW NLPS-style NLPM\n");
-
-  if(DEBUG) { 
-    int ct, dev;
-    int driverVersion =0, runtimeVersion=0;
-    struct cudaDeviceProp prop;
-
-    cudaGetDeviceCount(&ct);
-    printf("Device Count: %d\n",ct);
-
-    cudaGetDevice(&dev);
-    cudaDriverGetVersion(&driverVersion);
-    cudaRuntimeGetVersion(&runtimeVersion);
-    printf("Driver Version / Runtime Version: %d.%d / %d.%d\n", driverVersion/1000, driverVersion%100,runtimeVersion/1000,runtimeVersion%100);
-    cudaGetDeviceProperties(&prop,dev);
-    printf("Device Name: %s\n", prop.name);
-    printf("Global Memory (bytes): %lu\n", (unsigned long)prop.totalGlobalMem);
-    printf("Shared Memory per Block (bytes): %lu\n", (unsigned long)prop.sharedMemPerBlock);
-    printf("Registers per Block: %d\n", prop.regsPerBlock);
-    printf("Warp Size (threads): %d\n", prop.warpSize); 
-    printf("Max Threads per Block: %d\n", prop.maxThreadsPerBlock);
-    printf("Max Size of Block Dimension (threads): %d * %d * %d\n", prop.maxThreadsDim[0], 
-	   prop.maxThreadsDim[1], prop.maxThreadsDim[2]);
-    printf("Max Size of Grid Dimension (blocks): %d * %d * %d\n", prop.maxGridSize[0], prop.maxGridSize[1], prop.maxGridSize[2]);
-  }  
-  
-#ifdef GS2_zonal
-					}
-#endif
+  if(iproc==0) {
+    import_gryfxpars(gryfxpars, &everything);
+    printf("%d: Initializing geometry...\n\n", gpuID);
+    set_geometry(&everything->grids, &everything->geo, gryfxpars);
+    print_initial_parameter_summary(everything);
+    if(DEBUG) print_cuda_properties(everything);
+	}
 
 
   MPI_Barrier(mpcom);
@@ -625,47 +473,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 #ifdef GS2_zonal
 			if(iproc==0) {  
 #endif
-    printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
-    printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-    if(LINEAR) printf("[Linear]\t");
-    else printf("[Nonlinear]\t");
-    if(NO_ZDERIV) printf("[No zderiv]\t");
-    if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
-    if(SLAB) printf("[Slab limit]\t");
-    if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
-    if(CONST_CURV) printf("[constant curvature]\t");
-    if(RESTART) printf("[restart]\t");
-    if(NLPM && nlpm_zonal_kx1_only) {
-       printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f, Phi2_zf(kx=1) only]\t", inlpm, dnlpm);
-    }
-    if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
-    if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
-    if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
-    if(no_landau_damping) printf("[No landau damping]\t");
-    if(turn_off_gradients_test) printf("[Gradients turned off halfway through the run]\t");
-    
-    printf("\n\n");
-    
-    
-    fprintf(outfile,"\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
-    fprintf(outfile,"tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
-    fprintf(outfile,"shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
-    if(LINEAR) fprintf(outfile,"[Linear]\t");
-    else fprintf(outfile,"[Nonlinear]\t");
-    if(NO_ZDERIV) fprintf(outfile,"[No zderiv]\t");
-    if(NO_ZDERIV_COVERING) fprintf(outfile,"[No zderiv_covering]\t");
-    if(SLAB) fprintf(outfile,"[Slab limit]\t");
-    if(varenna) fprintf(outfile,"[varenna: ivarenna=%d]\t", ivarenna);
-    if(CONST_CURV) fprintf(outfile,"[constant curvature]\t");
-    if(RESTART) fprintf(outfile,"[restart]\t");
-    if(NLPM) fprintf(outfile,"[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
-    if(SMAGORINSKY) fprintf(outfile,"[Smagorinsky Diffusion]\t");
-    if(HYPER && isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
-    if(HYPER && !isotropic_shear) fprintf(outfile, "[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);
-    
-    fprintf(outfile, "\n\n");
-    
+    print_final_summary(everything, outfile);
     fclose(outfile);
     
     
@@ -705,4 +513,108 @@ void gryfx_main(int argc, char* argv[], int mpcom) {
 	}
 	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
 	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
+}
+
+void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything){
+    gryfxpars->equilibrium_type = equilibrium_type;
+    /*char eqfile[800];*/
+    gryfxpars->irho = irho;
+    gryfxpars->rhoc = rhoc;
+    gryfxpars->eps = eps;
+    gryfxpars->bishop = bishop;
+    gryfxpars->nperiod = nperiod;
+    printf("nperiod is %d\n", nperiod);
+    printf("Nz is %d\n", Nz);
+    gryfxpars->ntheta = Nz;
+  
+   /* Miller parameters*/
+    gryfxpars->rgeo_local = rmaj;
+    gryfxpars->rgeo_lcfs = rmaj;
+    gryfxpars->akappa = akappa ;
+    gryfxpars->akappri = akappri;
+    gryfxpars->tri = tri;
+    gryfxpars->tripri = tripri;
+    gryfxpars->shift = shift;
+    gryfxpars->qinp = qsf;
+    gryfxpars->shat = shat;
+    gryfxpars->asym = asym;
+    gryfxpars->asympri = asympri;
+  
+    /* Other geometry parameters - Bishop/Greene & Chance*/
+    gryfxpars->beta_prime_input = beta_prime_input;
+    gryfxpars->s_hat_input = s_hat_input;
+  
+    /*Flow shear*/
+    gryfxpars->g_exb = g_exb;
+  
+    /* Species parameters... I think allowing 20 species should be enough!*/
+  
+    gryfxpars->ntspec = nSpecies;
+  
+    for (int i=0;i<nSpecies;i++){
+  	  gryfxpars->dens[i] = species[i].dens;
+  	  gryfxpars->temp[i] = species[i].temp;
+  	  gryfxpars->fprim[i] = species[i].fprim;
+  	  gryfxpars->tprim[i] = species[i].tprim;
+  	  gryfxpars->nu[i] = species[i].nu_ss;
+    }
+	gryfxpars->everything_struct_address = (void *)everything;
+}
+void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct ** everything_ptr){
+   equilibrium_type = gryfxpars->equilibrium_type ;
+  /*char eqfile[800];*/
+   irho = gryfxpars->irho ;
+   rhoc = gryfxpars->rhoc ;
+   eps = gryfxpars->eps;
+   // NB NEED TO SET EPS IN TRINITY!!!
+   //eps = rhoc/rmaj;
+   bishop = gryfxpars->bishop ;
+   nperiod = gryfxpars->nperiod ;
+    printf("nperiod2 is %d\n", nperiod);
+   Nz = gryfxpars->ntheta ;
+
+ /* Miller parameters*/
+   rmaj = gryfxpars->rgeo_local ;
+   //r_geo = gryfxpars->rgeo_lcfs ;
+   akappa  = gryfxpars->akappa ;
+   akappri = gryfxpars->akappri ;
+   tri = gryfxpars->tri ;
+   tripri = gryfxpars->tripri ;
+   shift = gryfxpars->shift ;
+   qsf = gryfxpars->qinp ;
+   shat = gryfxpars->shat ;
+   asym = gryfxpars->asym ;
+   asympri = gryfxpars->asympri ;
+	*everything_ptr = (everything_struct *)gryfxpars->everything_struct_address;
+
+  /* Other geometry parameters - Bishop/Greene & Chance*/
+   beta_prime_input = gryfxpars->beta_prime_input ;
+   s_hat_input = gryfxpars->s_hat_input ;
+
+  /*Flow shear*/
+   g_exb = gryfxpars->g_exb ;
+
+  /* Species parameters... I think allowing 20 species should be enough!*/
+  int oldnSpecies = nSpecies;
+   nSpecies = gryfxpars->ntspec ;
+
+  if (nSpecies!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nSpecies);
+	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
+	  exit(1);
+  }
+	 if (DEBUG) printf("nSpecies was set to %d\n", nSpecies);
+  for (int i=0;i<nSpecies;i++){
+	   species[i].dens = gryfxpars->dens[i] ;
+	   species[i].temp = gryfxpars->temp[i] ;
+	   species[i].fprim = gryfxpars->fprim[i] ;
+	   species[i].tprim = gryfxpars->tprim[i] ;
+	   species[i].nu_ss = gryfxpars->nu[i] ;
+  }
+  
+  jtwist = (int) round(2*M_PI*abs(shat)*Zp);
+  if(jtwist<0) jtwist=0;
+  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
+  //else *&X0 = Y0; 
+  //else use what is set in input file 
 }
