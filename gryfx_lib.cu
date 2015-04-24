@@ -1,3 +1,4 @@
+#include <math.h>
 #include "gryfx_lib.h"
 #include "simpledataio_cuda.h"
 #define EXTERN_SWITCH extern
@@ -43,7 +44,6 @@
 #include "energy.cu"
 #include "timestep_gryfx.cu"
 #include "run_gryfx.cu"
-#include "read_geo.cu"
 
 
 #ifdef GS2_zonal
@@ -272,9 +272,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if(iproc==0) printf("%d: Initializing geometry...\n\n", gpuID);
     if (igeo == 2) {
       //if (iproc==0){
-        coefficients_struct *coefficients;
-        constant_coefficients_struct constant_coefficients;
-        read_geo(everything, &Nz,coefficients,&constant_coefficients,gryfxpars);
+        //coefficients_struct *coefficients;
+        //constant_coefficients_struct constant_coefficients;
+        read_geo(&everything->grids,&everything->geo,gryfxpars);
       //}
     }
 

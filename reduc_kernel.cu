@@ -414,3 +414,16 @@ __global__ void sumY_neq_0(float* sum_x, float* f)
     }
   }
 }
+
+__global__ void sumY(float* sum_x, float* f)
+{
+  unsigned int idx = get_idx();
+  
+  if(idx < nx) {
+    sum_x[idx] = 0;
+    for(int i=0; i<ny/2+1; i++) {   
+      sum_x[idx] = sum_x[idx] + f[i + (ny/2+1)*idx];
+    }
+  }
+}
+

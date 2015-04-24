@@ -3,8 +3,8 @@
 #include "species.h"
 #define EXTERN_SWITCH 
 #include "simpledataio_cuda.h"
-#include "geometry.h"
 #include "grids.h"
+#include "geometry.h"
 #include "fields.h"
 #include "outputs.h"
 #include "input_parameters_struct.h"

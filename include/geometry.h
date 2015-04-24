@@ -43,3 +43,5 @@ typedef struct {
 	cuComplex * bmag_complex;
 	float * bmagInv;
 } geometry_coefficents_struct;
+
+void read_geo(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);

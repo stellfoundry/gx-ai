@@ -15,7 +15,7 @@ else
 TESTS_TMP = $(wildcard */.)
 endif
 
-EXCLUDE_TESTS?= miller_linear miller_cyclone
+EXCLUDE_TESTS?= miller_linear 
 
 ifdef EXCLUDE_TESTS
 TESTS_ACTUAL = $(filter-out $(patsubst %,%/.,$(EXCLUDE_TESTS)),$(TESTS_TMP))

@@ -265,14 +265,17 @@ inline void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, 
    //omegaAvg_h = ev_h->outs.omega;
 
 
-    writedat_beginning(ev_h);
 
 
 
 
-    kx_h = (float*) malloc(sizeof(float)*Nx);
-    ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
+    //kx_h = (float*) malloc(sizeof(float)*Nx);
+    //ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
+
+    kx_h = ev_h->grids.kx;
+    ky_h = ev_h->grids.ky;
     kz_h = (float*) malloc(sizeof(float)*Nz);  
+
   
     //zero dtBox array
     for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
@@ -495,6 +498,7 @@ inline void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, 
     
     if(DEBUG) getError("after k memcpy 2");
     
+    writedat_beginning(ev_h);
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //set up kxCover and kyCover for covering space z-transforms
     //nshift = Nx - ntheta0;
@@ -1754,9 +1758,13 @@ if(iproc==0) {
       //  cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
       //  kxkyTimeWrite(phikxkyfile, tmpXY_h, runtime);
       //}
+      sumX<<<dimGrid,dimBlock>>>(tmpY, tmpXY);
+      cudaMemcpy(tmpY_h, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
+      cudaMemcpy(ev_h->outs.phi2_by_ky, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
+      sumY <<< dimGrid, dimBlock >>>(tmpX2, tmpXY);
+      cudaMemcpy(ev_h->outs.phi2_by_kx, tmpX2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
+
       if(!LINEAR && turn_off_gradients_test) {
-        sumX<<<dimGrid,dimBlock>>>(tmpY, tmpXY);
-        cudaMemcpy(tmpY_h, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
         kyTimeWrite(phifile, tmpY_h, runtime);
       }
       //calculate <kx> and <ky>
@@ -1929,6 +1937,7 @@ if(iproc==0) {
 	if (counter%nwrite==0){
   writedat_each(&ev_h->outs, &ev_h->fields, &ev_h->time);
 }
+        ev_h->time.runtime = runtime;
 #ifdef GS2_zonal
 			} //end of iproc if
 #endif

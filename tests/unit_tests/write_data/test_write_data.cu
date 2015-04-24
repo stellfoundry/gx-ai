@@ -16,12 +16,13 @@
 int main(int argc, char* argv[])
 {
 
-  //float shat_correct=0.634;
-  //float eps_correct=0.18;
-  //bool smagorinsky_correct = false;
 
+  int proc;
 
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &proc);
 
+  if (proc==0){
   everything_struct ev;
 
   ev.memory_location = ON_HOST;
@@ -42,7 +43,9 @@ int main(int argc, char* argv[])
 
   allocate_or_deallocate_everything(DEALLOCATE, &ev);
 
+  }
 
+  MPI_Finalize();
    
 	return 0;
 

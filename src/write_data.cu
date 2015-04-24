@@ -40,10 +40,10 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 			dims_are(svar, "zr") || 
 			dims_are(svar, "tz") || 
 			dims_are(svar, "tzr") || 
-			dims_are(svar, "y") || 
-			dims_are(svar, "yr") || 
-			dims_are(svar, "ty") || 
-			dims_are(svar, "tyr") || 
+			dims_are(svar, "Y") || 
+			dims_are(svar, "Yr") || 
+			dims_are(svar, "tY") || 
+			dims_are(svar, "tYr") || 
 			dims_are(svar, "s") || 
 			dims_are(svar, "sr") || 
 			dims_are(svar, "ts") || 
@@ -51,10 +51,10 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 			dims_are(svar, "tr")
 		)
 		sdatio_write_variable(sfile, variable_name, address);
-	else if (dims_are(svar, "x") ||
-			     dims_are(svar, "xr") ||
-			     dims_are(svar, "tx") ||
-					 dims_are(svar, "txr") )
+	else if (dims_are(svar, "X") ||
+			     dims_are(svar, "Xr") ||
+			     dims_are(svar, "tX") ||
+					 dims_are(svar, "tXr") )
 	{
 		int out_index[3];
 		out_index[0] = tstart;
@@ -62,11 +62,11 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 		out_index[2] = 0;
 
 		int * out_ptr;
-		if (dims_are(svar, "x") || dims_are(svar, "xr")) out_ptr = &out_index[1];
+		if (dims_are(svar, "X") || dims_are(svar, "Xr")) out_ptr = &out_index[1];
 		else out_ptr = &out_index[0];
 
 		int ri_count;
-		if (dims_are(svar, "xr")|| dims_are(svar, "txr")) ri_count = 2;
+		if (dims_are(svar, "Xr")|| dims_are(svar, "tXr")) ri_count = 2;
 		else ri_count = 1;
 
   	for(int i=0; i<Nx; i++) {
@@ -78,10 +78,10 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 			out_index[1]++;
 		}
 	}
-	else if (dims_are(svar, "yx") ||
-			     dims_are(svar, "yxr") ||
-			     dims_are(svar, "tyx") ||
-					 dims_are(svar, "tyxr") )
+	else if (dims_are(svar, "YX") ||
+			     dims_are(svar, "YXr") ||
+			     dims_are(svar, "tYX") ||
+					 dims_are(svar, "tYXr") )
 	{
 		int out_index[4];
 		out_index[0] = tstart;
@@ -90,11 +90,11 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 		out_index[3] = 0;
 
 		int * out_ptr;
-		if (dims_are(svar, "yx") || dims_are(svar, "yxr")) out_ptr = &out_index[1];
+		if (dims_are(svar, "YX") || dims_are(svar, "YXr")) out_ptr = &out_index[1];
 		else out_ptr = &out_index[0];
 
 		int ri_count;
-		if (dims_are(svar, "yxr")|| dims_are(svar, "tyxr")) ri_count = 2;
+		if (dims_are(svar, "YXr")|| dims_are(svar, "tYXr")) ri_count = 2;
 		else ri_count = 1;
 
   	for(int iy=0; iy<((Ny-1)/3+1); iy++) {
@@ -110,10 +110,10 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 			out_index[1]++;
 		}
 	}
-	else if (dims_are(svar, "yxz") ||
-			     dims_are(svar, "yxzr") ||
-			     dims_are(svar, "tyxz") ||
-					 dims_are(svar, "tyxzr") )
+	else if (dims_are(svar, "YXz") ||
+			     dims_are(svar, "YXzr") ||
+			     dims_are(svar, "tYXz") ||
+					 dims_are(svar, "tYXzr") )
 	{
 		int out_index[5];
 		out_index[0] = tstart;
@@ -123,11 +123,11 @@ void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * varia
 		out_index[4] = 0;
 
 		int * out_ptr;
-		if (dims_are(svar, "yxz") || dims_are(svar, "yxzr")) out_ptr = &out_index[1];
+		if (dims_are(svar, "YXz") || dims_are(svar, "YXzr")) out_ptr = &out_index[1];
 		else out_ptr = &out_index[0];
 
 		int ri_count;
-		if (dims_are(svar, "yxzr")|| dims_are(svar, "tyxzr")) ri_count = 2;
+		if (dims_are(svar, "YXzr")|| dims_are(svar, "tYXzr")) ri_count = 2;
 		else ri_count = 1;
 
   	for(int iy=0; iy<((Ny-1)/3+1); iy++) {
@@ -170,23 +170,23 @@ void writedat_beginning(everything_struct * ev)
   sdatio_add_dimension(sdatfile, "r", 2, "real and imag parts", "(none)");
     //for(int i=(Nx-1)/3+1; i<2*Nx/3+1; i++) {
      // for(int j=((Ny-1)/3+1); j<(Ny/2+1); j++) {
-  sdatio_add_dimension(sdatfile, "x", Nx - (2*Nx/3+1 - ((Nx-1)/3+1)), "kx coordinate", "1/rho_i");
-  sdatio_add_dimension(sdatfile, "y", ((Ny-1)/3+1), "ky coordinate", "1/rho_i");
+  sdatio_add_dimension(sdatfile, "X", Nx - (2*Nx/3+1 - ((Nx-1)/3+1)), "kx coordinate", "1/rho_i");
+  sdatio_add_dimension(sdatfile, "Y", ((Ny-1)/3+1), "ky coordinate", "1/rho_i");
   sdatio_add_dimension(sdatfile, "z", Nz, "z coordinate", "a");
   sdatio_add_dimension(sdatfile, "s", nSpecies, "species coordinate", "(none)");
   sdatio_add_dimension(sdatfile, "t", SDATIO_UNLIMITED, "time coordinate","a/vt_i");
 
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "kx", "x", "kx grid", "1/rho_i");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "ky", "y", "ky grid", "1/rho_i");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "kx", "X", "kx grid", "1/rho_i");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "ky", "Y", "ky grid", "1/rho_i");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "theta", "z", "theta grid (parallel coordinate, referred to as z within gryfx)", "radians");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "t", "t", "Values of time", "a/vt_i");
   
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi", "yxzr", "Electric potential", "Ti/e");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi_t", "tyxzr", "Electric potential as a function of time.", "Ti/e");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi", "YXzr", "Electric potential", "Ti/e");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi_t", "tYXzr", "Electric potential as a function of time.", "Ti/e");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2", "t", "phi**2 summed over all modes", "(Ti/e)**2");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_ky", "ty", "phi^2 summed over all kx as a function of ky and time", "(Ti/e)**2");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_kx", "tx", "phi^2 summed over all ky as a function of kx and time", "(Ti/e)**2");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "omega", "tyxr", "Real part is frequency, imaginary part is growth rate, as a function of time, x and y", "v_ti/a");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_ky", "tY", "phi^2 summed over all kx as a function of ky and time", "(Ti/e)**2");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_kx", "tX", "phi^2 summed over all ky as a function of kx and time", "(Ti/e)**2");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "omega", "tYXr", "Real part is frequency, imaginary part is growth rate, as a function of time, x and y", "v_ti/a");
 
 	/* Fluxes */
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "hflux_tot", "t", "total heat flux", "(figure it out)");

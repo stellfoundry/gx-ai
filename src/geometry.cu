@@ -1,5 +1,8 @@
 /* Defines structs that are used by geometry_c_interface*/
+#include "standard_headers.h"
 #include "geo/geometry_c_interface.h"
+#include "gryfx_lib.h"
+#include "allocations.h"
 /*#include "/global/u2/n/nmandell/noah/branches/GS2/trunk/geo/geometry_c_interface.h"*/
 /*#include "/global/homes/h/highcock/Code_Carver/gs2/trunk/geo/geometry_c_interface.h"*/
 
@@ -34,21 +37,24 @@ extern "C" void geometry_mp_finish_geometry_(void);
 //  geometry_get_coefficients_c(&Nz, coefficients);
 //}
 
-void read_geo(everything_struct * everything, int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients, struct gryfx_parameters_struct * gryfxpars){
+void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
 	double s_hat_input_d, beta_prime_input_d;
+  
+  struct coefficients_struct * coefficients;
+  struct constant_coefficients_struct constant_coefficients;
 
-	double delrho; 
+	//double delrho; 
 	int equilibrium_type, ntheta_out;
 	int irho;
 	char * eqfile;
   struct miller_parameters_struct millerpars;
 
-  printf("I AM HEREEE %d\n;", iproc);
+//  printf("I AM HEREEE %d\n;", iproc);
 	eqfile = (char *)malloc(sizeof(char)*800);
 	equilibrium_type = 3; // CHEASE
 	equilibrium_type = 1; //Miller
 	//rhoc = 0.6;
-	delrho = 0.01; /* Leave at this value*/
+	//delrho = 0.01; /* Leave at this value*/
 	//nperiod = 1;
 	eqfile = "ogyropsi.dat"; 
 	ntheta_out = 16;
@@ -56,7 +62,7 @@ void read_geo(everything_struct * everything, int * Nz, struct coefficients_stru
 	irho = 2;
 
   // Need to set ntheta_out for Miller
-  ntheta_out = *Nz;
+  ntheta_out = Nz;
 
   printf("nperiod = %d\n", nperiod);
 
@@ -81,13 +87,13 @@ void read_geo(everything_struct * everything, int * Nz, struct coefficients_stru
   beta_prime_input_d = beta_prime_input;
   geometry_vary_s_alpha_c(&s_hat_input_d, &beta_prime_input_d);	
 
-  printf("Nz is %d\n", *Nz);
+  printf("Nz is %d\n", Nz);
 
   geometry_set_miller_parameters_c(&millerpars);
 
 	int grid_size_out;
 
-  grid_size_out = *Nz + 1;
+  grid_size_out = Nz + 1;
 
 	geometry_calculate_coefficients_c(&grid_size_out);
 	printf("Grid size out was %d\n", grid_size_out);
@@ -96,26 +102,27 @@ void read_geo(everything_struct * everything, int * Nz, struct coefficients_stru
 	coefficients = (struct coefficients_struct *)malloc(sizeof(struct coefficients_struct)*grid_size_out);
 	geometry_get_coefficients_c(&grid_size_out, coefficients);
 	printf("Got  coefficients;\n");
-	geometry_get_constant_coefficients_c(constant_coefficients);
+	geometry_get_constant_coefficients_c(&constant_coefficients);
 
 	printf("Got constant coefficients...;\n");
 	
-	*Nz = grid_size_out - 1;
+	Nz = grid_size_out - 1;
 	
-	aminor = constant_coefficients->aminor;
-	kxfac = constant_coefficients->kxfac;
+	aminor = constant_coefficients.aminor;
+	kxfac = constant_coefficients.kxfac;
 	//eps = .18;
-	rmaj = constant_coefficients->rmaj;
-	qsf = constant_coefficients->qsf;
+	rmaj = constant_coefficients.rmaj;
+	qsf = constant_coefficients.qsf;
 	//gradpar = 1./(qsf*rmaj);
-	shat = constant_coefficients->shat;
+	shat = constant_coefficients.shat;
 	gradpar = coefficients[0].gradpar;
-	drhodpsi = constant_coefficients->drhodpsin;
-	bi = constant_coefficients->bi;
+	drhodpsi = constant_coefficients.drhodpsin;
+	bi = constant_coefficients.bi;
 
-	allocate_geo(ALLOCATE, ON_HOST, &(everything->geo), &(everything->grids.z), &everything->grids.Nz);
+  grids->Nz = Nz;
+	allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
 
-  printf("I AM HERE %d\n;", iproc);
+//  printf("I AM HERE %d\n;", iproc);
 //MPI_Bcast(&shat, 1, MPI_FLOAT, 0, mpcom_global);
 //MPI_Bcast(&qsf, 1, MPI_FLOAT, 0, mpcom_global);
 //MPI_Bcast(Nz, 1, MPI_INT, 0, mpcom_global);
@@ -123,33 +130,33 @@ void read_geo(everything_struct * everything, int * Nz, struct coefficients_stru
 	printf("Adjusting jtwist, shat = %e...;\n", shat);
 	if(shat>1e-6) *&X0 = Y0*jtwist/(2*M_PI*shat);
 
-	gradpar_h = (float*) malloc(sizeof(float)**Nz);
-	gbdrift_h = (float*) malloc(sizeof(float)**Nz);
-	grho_h = (float*) malloc(sizeof(float)**Nz);
-	z_h = (float*) malloc(sizeof(float)**Nz);
-  z_regular_h = (float*) malloc(sizeof(float)**Nz);
-	cvdrift_h = (float*) malloc(sizeof(float)**Nz);
-	gds2_h = (float*) malloc(sizeof(float)**Nz);
-	bmag_h = (float*) malloc(sizeof(float)**Nz);
-	bgrad_h = (float*) malloc(sizeof(float)**Nz);     //
-	gds21_h = (float*) malloc(sizeof(float)**Nz);
-	gds22_h = (float*) malloc(sizeof(float)**Nz);
-	cvdrift0_h = (float*) malloc(sizeof(float)**Nz);
-	gbdrift0_h = (float*) malloc(sizeof(float)**Nz); 
-	jacobian_h = (float*) malloc(sizeof(float)**Nz);
-  Rplot_h = (float*) malloc(sizeof(float)**Nz); 
-  Zplot_h = (float*) malloc(sizeof(float)**Nz); 
-  aplot_h = (float*) malloc(sizeof(float)**Nz); 
-//Xplot_h = (float*) malloc(sizeof(float)**Nz); 
-//Yplot_h = (float*) malloc(sizeof(float)**Nz); 
-//deltaFL_h = (float*) malloc(sizeof(float)**Nz); 
-if (iproc==0){
+	gradpar_h = (float*) malloc(sizeof(float)*Nz);
+	gbdrift_h = (float*) malloc(sizeof(float)*Nz);
+	grho_h = (float*) malloc(sizeof(float)*Nz);
+	z_h = (float*) malloc(sizeof(float)*Nz);
+  z_regular_h = (float*) malloc(sizeof(float)*Nz);
+	cvdrift_h = (float*) malloc(sizeof(float)*Nz);
+	gds2_h = (float*) malloc(sizeof(float)*Nz);
+	bmag_h = (float*) malloc(sizeof(float)*Nz);
+	bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
+	gds21_h = (float*) malloc(sizeof(float)*Nz);
+	gds22_h = (float*) malloc(sizeof(float)*Nz);
+	cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
+	gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
+	jacobian_h = (float*) malloc(sizeof(float)*Nz);
+  Rplot_h = (float*) malloc(sizeof(float)*Nz); 
+  Zplot_h = (float*) malloc(sizeof(float)*Nz); 
+  aplot_h = (float*) malloc(sizeof(float)*Nz); 
+//Xplot_h = (float*) malloc(sizeof(float)*Nz); 
+//Yplot_h = (float*) malloc(sizeof(float)*Nz); 
+//deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
+//if (iproc==0){
 	
 //FILE* geofile = fopen("geo.out", "w");
 
-  printf("Setting coefficients, Nz = %d\n", *Nz);
-	for(int k=0; k<*Nz; k++) {
-	  z_h[k] = 2*M_PI*(k-*Nz/2)/ *Nz;
+  printf("Setting coefficients, Nz = %d\n", Nz);
+	for(int k=0; k<Nz; k++) {
+	  z_h[k] = 2*M_PI*(k-Nz/2)/ Nz;
     z_h[k] = coefficients[k].theta_eqarc;
     z_regular_h[k] = coefficients[k].theta;
 	  gradpar_h[k] = coefficients[k].gradpar_eqarc;
@@ -173,7 +180,7 @@ if (iproc==0){
 //fclose(geofile);
  
   geometry_mp_finish_geometry_();
-}	  
+//}	  
 //MPI_Bcast(&z_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
 //MPI_Bcast(&bmag_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
 //MPI_Bcast(&gds2_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
