@@ -3,6 +3,8 @@
 #include "geo/geometry_c_interface.h"
 #include "gryfx_lib.h"
 #include "allocations.h"
+#include "read_input.cu"
+#include "math.h"
 /*#include "/global/u2/n/nmandell/noah/branches/GS2/trunk/geo/geometry_c_interface.h"*/
 /*#include "/global/homes/h/highcock/Code_Carver/gs2/trunk/geo/geometry_c_interface.h"*/
 
@@ -36,6 +38,85 @@ extern "C" void geometry_mp_finish_geometry_(void);
 //  geometry_get_constant_coefficients_c(constant_coefficients);
 //  geometry_get_coefficients_c(&Nz, coefficients);
 //}
+
+void set_geometry(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
+  
+    if (igeo == 2) {
+      //if (iproc==0){
+        //coefficients_struct *coefficients;
+        //constant_coefficients_struct constant_coefficients;
+      //}
+    }
+
+
+  
+  if ( igeo == 0 ) // this is s-alpha
+  {
+    //grids->Nz = Nz;
+		allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
+         
+    
+    gradpar = (float) 1./(qsf*rmaj);
+    
+    drhodpsi = 1.; 
+    
+    for(int k=0; k<Nz; k++) {
+      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
+      bmag_h[k] = 1./(1+eps*cos(z_h[k]));
+      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+      gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
+      gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
+      gds22_h[k] = pow(shat,2);
+      gbdrift_h[k] = 1./(2.*rmaj)*( cos(z_h[k]) + (shat*z_h[k]-shift*sin(z_h[k]))*sin(z_h[k]) );
+      cvdrift_h[k] = gbdrift_h[k];
+      gbdrift0_h[k] = -1./(2.*rmaj)*shat*sin(z_h[k]);
+      cvdrift0_h[k] = gbdrift0_h[k];
+      grho_h[k] = 1;
+      if(CONST_CURV) {
+        cvdrift_h[k] = 1./(2.*rmaj);
+	gbdrift_h[k] = 1./(2.*rmaj);
+	cvdrift0_h[k] = 0.;
+	gbdrift0_h[k] = 0.;
+      }
+      if(SLAB) {
+        //omegad=0:
+	cvdrift_h[k] = 0.;
+        gbdrift_h[k] = 0.;       
+        cvdrift0_h[k] = 0.;
+        gbdrift0_h[k] = 0.;
+        //bgrad=0:
+        bgrad_h[k] = 0.;
+        //bmag=const:
+        bmag_h[k] = 1.;
+      }
+    }  
+  }
+  else if ( igeo == 1) // read geometry from file 
+  {
+    FILE* geoFile = fopen(geoFileName, "r");
+    printf("Reading eik geo file %s\n", geoFileName);
+    read_geo_input(geoFile);
+  }
+  else if ( igeo == 2 ) // calculate geometry from geo module
+  {
+    
+    read_geo(grids,geo,gryfxpars);
+   
+    // We calculate eps so that it gets the right
+    // value of eps/qsf in the appropriate places.
+    // However, eps also appears by itself... these
+    // places need to be checked.
+    //double eps_over_q;
+    //bi = geometry_mp_bi_out_; 
+    eps_over_q = 1.0 / (bi * drhodpsi);
+    eps = eps_over_q * qsf;
+    for(int k=0; k<Nz; k++) {
+      Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
+      Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
+    }
+  } 
+  
+}
 
 void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
 	double s_hat_input_d, beta_prime_input_d;
@@ -130,23 +211,7 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 	printf("Adjusting jtwist, shat = %e...;\n", shat);
 	if(shat>1e-6) *&X0 = Y0*jtwist/(2*M_PI*shat);
 
-	gradpar_h = (float*) malloc(sizeof(float)*Nz);
-	gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-	grho_h = (float*) malloc(sizeof(float)*Nz);
-	z_h = (float*) malloc(sizeof(float)*Nz);
   z_regular_h = (float*) malloc(sizeof(float)*Nz);
-	cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-	gds2_h = (float*) malloc(sizeof(float)*Nz);
-	bmag_h = (float*) malloc(sizeof(float)*Nz);
-	bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
-	gds21_h = (float*) malloc(sizeof(float)*Nz);
-	gds22_h = (float*) malloc(sizeof(float)*Nz);
-	cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-	gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-	jacobian_h = (float*) malloc(sizeof(float)*Nz);
-  Rplot_h = (float*) malloc(sizeof(float)*Nz); 
-  Zplot_h = (float*) malloc(sizeof(float)*Nz); 
-  aplot_h = (float*) malloc(sizeof(float)*Nz); 
 //Xplot_h = (float*) malloc(sizeof(float)*Nz); 
 //Yplot_h = (float*) malloc(sizeof(float)*Nz); 
 //deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
@@ -159,7 +224,7 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 	  z_h[k] = 2*M_PI*(k-Nz/2)/ Nz;
     z_h[k] = coefficients[k].theta_eqarc;
     z_regular_h[k] = coefficients[k].theta;
-	  gradpar_h[k] = coefficients[k].gradpar_eqarc;
+	  gradpar_arr_h[k] = coefficients[k].gradpar_eqarc;
 	  bmag_h[k] = coefficients[k].bmag_eqarc;
 	  //bgrad_h[k] = 1_eqarc;                         //should calculate gradpar*d(bmag)/d(theta) with FFT?
 	  gds2_h[k] = coefficients[k].gds2_eqarc;
@@ -174,6 +239,9 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 	  Rplot_h[k] = coefficients[k].Rplot_eqarc; 
 	  Zplot_h[k] = coefficients[k].Zplot_eqarc; 
 	  aplot_h[k] = coefficients[k].aplot_eqarc; 
+	  Rprime_h[k] = coefficients[k].Rplot_eqarc; 
+	  Zprime_h[k] = coefficients[k].Zplot_eqarc; 
+	  aprime_h[k] = coefficients[k].aplot_eqarc; 
 //fprintf(geofile, " %f %f %f %f %f\n", z_h[k], gds2_h[k], gbdrift_h[k], cvdrift_h[k], grho_h[k]);
    
 	}

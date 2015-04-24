@@ -5,7 +5,7 @@
 
 extern int Nz;
 extern float *z_h, *z_regular_h;
-extern float *Rplot_h, *Zplot_h, *aplot_h, *gbdrift_h, *bmag_h, *gradpar_h;
+extern float *Rplot_h, *Zplot_h, *aplot_h, *gbdrift_h, *bmag_h, *gradpar_arr_h;
 extern float *Xplot_h, *Yplot_h, *deltaFL_h;
 extern void gryfx_main(int argc, char* argv[], int mpcom);
 
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
       }
   }
   for(int k=0; k<Nz; k++) {
-        printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_h[k], z_h[k], z_regular_h[k]);
+        printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_arr_h[k], z_h[k], z_regular_h[k]);
   }
   for(int k=0; k<Nz; k++) {
         printf("%d: gb=%f bm=%f th=%f\n", k, gbdrift_h[k]*4.0, bmag_h[k], z_h[k]);

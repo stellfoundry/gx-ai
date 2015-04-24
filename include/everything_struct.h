@@ -74,6 +74,7 @@ typedef struct {
 
 typedef struct {
 	char * run_name;
+  int gpuID;
 } run_info_struct;
 
 

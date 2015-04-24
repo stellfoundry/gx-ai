@@ -213,6 +213,7 @@ void allocate_grids(int aod, int ml, grids_struct * grids){
 
 /* This one gets called separately for allocating, but not for deallocating */
 void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z_array, int *Nz){
+	alloc_dealloc(&geo->gradpar_arr, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->gbdrift, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->grho, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&*z_array, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, *Nz);
@@ -229,14 +230,18 @@ void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z
 	alloc_dealloc(&geo->Rplot, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->Zplot, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->aplot, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
+	alloc_dealloc(&geo->Xplot, aod, ON_HOST, ml, TYPE_CUCOMPLEX, *Nz);
+	alloc_dealloc(&geo->Yplot, aod, ON_HOST, ml, TYPE_CUCOMPLEX, *Nz);
 	alloc_dealloc(&geo->Rprime, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->Zprime, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->aprime, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
+	alloc_dealloc(&geo->deltaFL, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->bmagInv, aod, ON_DEVICE, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->bmag_complex, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, *Nz);
 
 	/* Geometry globals... to be deleted eventually*/
 	if (ml == ON_HOST){
+    gradpar_arr_h = geo->gradpar_arr;
 		gbdrift_h = geo->gbdrift;
 		grho_h = geo->grho;
 		z_h = *z_array;
@@ -252,9 +257,12 @@ void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z
 		Rplot_h = geo->Rplot;
 		Zplot_h = geo->Zplot;
 		aplot_h = geo->aplot;
+		Xplot_h = geo->Xplot;
+		Yplot_h = geo->Yplot;
 		Rprime_h = geo->Rprime;
 		Zprime_h = geo->Zprime;
 		aprime_h = geo->aprime;
+    deltaFL_h = geo->deltaFL;
 	}
 	else if (ml == ON_DEVICE){
 		gbdrift = geo->gbdrift;

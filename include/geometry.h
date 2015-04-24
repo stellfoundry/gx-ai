@@ -5,7 +5,7 @@ EXTERN_SWITCH float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
 EXTERN_SWITCH float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
 EXTERN_SWITCH float *Rplot_h, *Zplot_h, *aplot_h;
 EXTERN_SWITCH float *Rprime_h, *Zprime_h, *aprime_h;
-EXTERN_SWITCH float *Xplot_h, *Yplot_h, *deltaFL_h, *gradpar_h;
+EXTERN_SWITCH float *Xplot_h, *Yplot_h, *deltaFL_h, *gradpar_arr_h;
 
 
 //global device arrays from eik.out
@@ -17,6 +17,7 @@ EXTERN_SWITCH cuComplex *bmag_complex;
 EXTERN_SWITCH float* jacobian;
 
 typedef struct {
+	float *gradpar_arr;
 	float *gbdrift;
   float *grho;
   float *cvdrift;
@@ -31,9 +32,12 @@ typedef struct {
 	float * Rplot;
 	float * Zplot;
 	float * aplot;
+	float * Xplot;
+	float * Yplot;
 	float * Rprime;
 	float * Zprime;
 	float * aprime;
+	float * deltaFL;
 
 	//float drhodpsi;
 	float gradpar;
@@ -44,4 +48,5 @@ typedef struct {
 	float * bmagInv;
 } geometry_coefficents_struct;
 
+void set_geometry(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
 void read_geo(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);

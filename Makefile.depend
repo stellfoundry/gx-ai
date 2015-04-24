@@ -8,6 +8,8 @@ MODULES = allocations.o\
 
 read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
 
+geometry.o: read_input.cu
+
 CU_DEPS := \
       device_funcs.cu \
       operations_kernel.cu \

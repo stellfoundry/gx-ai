@@ -25,7 +25,6 @@
 #include "nlpm_kernel.cu"
 #include "zonal_kernel.cu"
 #include "getfcn.cu"
-#include "read_input.cu"
 #include "definitions.cu"
 #include "maxReduc.cu"
 #include "sumReduc.cu"
@@ -268,116 +267,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
   //else *&X0 = Y0; 
   //else use what is set in input file 
-  
-    if(iproc==0) printf("%d: Initializing geometry...\n\n", gpuID);
-    if (igeo == 2) {
-      //if (iproc==0){
-        //coefficients_struct *coefficients;
-        //constant_coefficients_struct constant_coefficients;
-        read_geo(&everything->grids,&everything->geo,gryfxpars);
-      //}
-    }
 
-
-  
-  if ( igeo == 0 ) // this is s-alpha
-  {
-		allocate_geo(ALLOCATE, ON_HOST, &(everything->geo), &(everything->grids.z), &everything->grids.Nz);
-         
-    gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-    grho_h = (float*) malloc(sizeof(float)*Nz);
-    z_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-    gds2_h = (float*) malloc(sizeof(float)*Nz);
-    bmag_h = (float*) malloc(sizeof(float)*Nz);
-    bgrad_h = (float*) malloc(sizeof(float)*Nz);     //
-    gds21_h = (float*) malloc(sizeof(float)*Nz);
-    gds22_h = (float*) malloc(sizeof(float)*Nz);
-    cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-    gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-    jacobian_h = (float*) malloc(sizeof(float)*Nz); 
-    
-    gradpar = (float) 1./(qsf*rmaj);
-    
-    drhodpsi = 1.; 
-    
-    for(int k=0; k<Nz; k++) {
-      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
-      bmag_h[k] = 1./(1+eps*cos(z_h[k]));
-      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-      gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
-      gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
-      gds22_h[k] = pow(shat,2);
-      gbdrift_h[k] = 1./(2.*rmaj)*( cos(z_h[k]) + (shat*z_h[k]-shift*sin(z_h[k]))*sin(z_h[k]) );
-      cvdrift_h[k] = gbdrift_h[k];
-      gbdrift0_h[k] = -1./(2.*rmaj)*shat*sin(z_h[k]);
-      cvdrift0_h[k] = gbdrift0_h[k];
-      grho_h[k] = 1;
-      if(CONST_CURV) {
-        cvdrift_h[k] = 1./(2.*rmaj);
-	gbdrift_h[k] = 1./(2.*rmaj);
-	cvdrift0_h[k] = 0.;
-	gbdrift0_h[k] = 0.;
-      }
-      if(SLAB) {
-        //omegad=0:
-	cvdrift_h[k] = 0.;
-        gbdrift_h[k] = 0.;       
-        cvdrift0_h[k] = 0.;
-        gbdrift0_h[k] = 0.;
-        //bgrad=0:
-        bgrad_h[k] = 0.;
-        //bmag=const:
-        bmag_h[k] = 1.;
-      }
-    }  
-  }
-  else if ( igeo == 1) // read geometry from file 
-  {
-    FILE* geoFile = fopen(geoFileName, "r");
-    printf("Reading eik geo file %s\n", geoFileName);
-    read_geo_input(geoFile);
-  }
-  else if ( igeo == 2 ) // calculate geometry from geo module
-  {
-    
-    //read species parameters from namelist, will overwrite geometry parameters below
-      
-#ifdef GS2_zonal
-    Xplot_h = (float*) malloc(sizeof(float)*Nz); 
-    Yplot_h = (float*) malloc(sizeof(float)*Nz); 
-    deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
-   
-    // We calculate eps so that it gets the right
-    // value of eps/qsf in the appropriate places.
-    // However, eps also appears by itself... these
-    // places need to be checked.
-    //double eps_over_q;
-    //bi = geometry_mp_bi_out_; 
-    eps_over_q = 1.0 / (bi * drhodpsi);
-    eps = eps_over_q * qsf;
-    
-    //gradpar = geometry_mp_gradpar_[0];
-    //drhodpsi = theta_grid_mp_drhodpsi_;
-//    rmaj = geometry_mp_rmaj_;
-//    shat = geometry_mp_shat_;
-//    kxfac = geometry_mp_kxfac_;
-//    qsf = geometry_mp_qsf_;
-//    rhoc = geometry_mp_rhoc_;
-        
-    for(int k=0; k<Nz; k++) {
-      Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
-      Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
-    }
-
-#else
-//  coefficients_struct *coefficients;
-//  constant_coefficients_struct constant_coefficients;
-//  read_geo(&Nz,coefficients,&constant_coefficients);
-#endif
-    //eps = rhoc/rmaj;
-  } 
-  
+  printf("%d: Initializing geometry...\n\n", gpuID);
+  set_geometry(&everything->grids, &everything->geo, gryfxpars);
 
   printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d   igeo=%d\n", Nx, Ny, Nz, X0, Y0, Zp, igeo);
   printf("tprim=%g  fprim=%g\njtwist=%d   nSpecies=%d   cfl=%f\n", species[ION].tprim, species[ION].fprim,jtwist,nSpecies,cfl);
