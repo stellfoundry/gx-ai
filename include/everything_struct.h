@@ -28,6 +28,7 @@ typedef struct {
 } time_struct;
 
 typedef struct {
+  int zThreads, totalThreads, zBlockThreads;
 	dim3 dimBlock;
   dim3 dimGrid;
 } cuda_dimensions_struct;

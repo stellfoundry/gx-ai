@@ -2,7 +2,6 @@
 #include "standard_headers.h"
 #include "run_gryfx.h"
 #include "read_namelist.h"
-#include "global_variables.h"
 #include "write_data.h"
 #include "allocations.h"
 #include "gryfx_lib.h"
@@ -204,17 +203,27 @@ void initialize_cuda_parallelization(everything_struct * ev){
   int dev;
   struct cudaDeviceProp prop;
 
+  //Local duplicates for convenience
+  cuda_dimensions_struct * cdims = &ev->cdims;
+  int totalThreads, zBlockThreads;
+  int Nx = ev->grids.Nx;
+  int Ny = ev->grids.Ny;
+  int Nz = ev->grids.Nz;
+	dim3 dimBlock;
+  dim3 dimGrid;
+
+
   cudaGetDevice(&dev);
 
   cudaGetDeviceProperties(&prop,dev);
 
-  zBlockThreads = prop.maxThreadsDim[2];
+  zBlockThreads = cdims->zBlockThreads = prop.maxThreadsDim[2];
 
-  *&zThreads = zBlockThreads*prop.maxGridSize[2];
+  cdims->zThreads = cdims->zBlockThreads*prop.maxGridSize[2];
 
   //printf("\nzThreads = %d\n", zThreads);
 
-  totalThreads = prop.maxThreadsPerBlock;     
+  totalThreads = cdims->totalThreads = prop.maxThreadsPerBlock;     
 
 
   if(Nz>zBlockThreads) dimBlock.z = zBlockThreads;
@@ -238,6 +247,9 @@ void initialize_cuda_parallelization(everything_struct * ev){
   dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
   if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
   else dimGrid.z = (Nz+dimBlock.z-1)/dimBlock.z;
+
+  cdims->dimGrid = dimGrid;
+  cdims->dimBlock = dimBlock;
 
   
   //if (DEBUG) 

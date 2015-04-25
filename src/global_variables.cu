@@ -34,4 +34,9 @@ void set_globals_after_gryfx_lib(everything_struct * ev){
     out_stem = ev->info.run_name;
     restartfileName = ev->info.restart_file_name;
     RESTART = ev->pars.restart;
+    zBlockThreads = ev->cdims.zBlockThreads;
+    zThreads = ev->cdims.zThreads;
+    totalThreads = ev->cdims.totalThreads;
+    dimBlock = ev->cdims.dimBlock;
+    dimGrid = ev->cdims.dimGrid;
 }
