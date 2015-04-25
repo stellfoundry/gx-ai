@@ -22,6 +22,9 @@ typedef struct {
 	float totaltimer;
 	// Step runtime in minutes
 	float timer;
+
+  float cflx;
+  float cfly;
 } time_struct;
 
 typedef struct {
@@ -42,7 +45,18 @@ typedef struct{
 } cuffts_struct;
 
 
+typedef struct {
+  float D_par;
+  float D_prp;
+  float Beta_par;
+  cuComplex nu[11];
+  cuComplex mu[11];
+} damping_coefficients_struct;
   
+typedef struct {
+  int mpcom;
+  int iproc;
+} mpi_info_struct;
 
 typedef struct {
 	FILE * fluxfile;
@@ -74,6 +88,7 @@ typedef struct {
 
 typedef struct {
 	char * run_name;
+	char * restart_file_name;
   int gpuID;
 } run_info_struct;
 
@@ -92,6 +107,9 @@ typedef struct {
 	files_struct files;
 	cuda_dimensions_struct cdims;
 	cuffts_struct ffts;
+  damping_coefficients_struct damps;
+  mpi_info_struct mpi;
+  
 
 	/* Specifies whether the pointers in the struct point 
 	 * to host or device memory */

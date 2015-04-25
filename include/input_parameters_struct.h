@@ -310,6 +310,7 @@ typedef struct {
     bool write_omega;
     bool write_phi;
     bool restart;
+    bool check_for_restart;
     bool no_omegad;
     bool const_curv;
     bool varenna;

@@ -16,8 +16,8 @@ EXTERN_SWITCH dim3 *dimGridCovering;
 EXTERN_SWITCH int nClasses;
 EXTERN_SWITCH int *nLinks;
 EXTERN_SWITCH int *nChains;
-EXTERN_SWITCH cuComplex nu[11];
-EXTERN_SWITCH cuComplex mu[11];
+EXTERN_SWITCH cuComplex * nu;
+EXTERN_SWITCH cuComplex * mu;
 
 EXTERN_SWITCH float endtime;
 EXTERN_SWITCH double dt_cfl;
@@ -97,10 +97,10 @@ EXTERN_SWITCH cudaEvent_t* end_of_zderiv;
 //char* fluxfileName;
 //char stopfileName[60];
 //char restartfileName[60];
-EXTERN_SWITCH char out_stem[200];
+EXTERN_SWITCH char * out_stem;
 
 EXTERN_SWITCH char* run_name;
-EXTERN_SWITCH char restartfileName[200];
+EXTERN_SWITCH char * restartfileName;
 
 //diagnostics stuff
 EXTERN_SWITCH float phi2;
@@ -117,3 +117,4 @@ EXTERN_SWITCH float* l_parallel;
 
 //struct sdatio_file sdatfile;
 void initialize_globals();
+void set_globals_after_gryfx_lib(everything_struct * everything);

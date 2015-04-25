@@ -89,6 +89,7 @@ void set_cuda_constants(){
 void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
 
+    set_globals_after_gryfx_lib(ev_h);
     if (iproc==0) set_cuda_constants();
 
     if (iproc==0) printf("dimGrid2 = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);

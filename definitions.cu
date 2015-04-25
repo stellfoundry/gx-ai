@@ -1,5 +1,8 @@
-void definitions()
+void definitions(everything_struct * ev)
 {
+
+  // This is a local reference to species, not the global variable
+  specie * species = ev->pars.species;
   /*if(gradpar > 1e-8) {
     *&Zp = 1./gradpar;
   }*/
@@ -15,27 +18,32 @@ void definitions()
   }
   
   
-  D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
-  D_prp = sqrt(M_PI)/2.;
-  Beta_par = 2.*(32.-9.*M_PI)/(6.*M_PI-16.);
+  ev->damps.D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
+  ev->damps.D_prp = sqrt(M_PI)/2.;
+  ev->damps.Beta_par = 2.*(32.-9.*M_PI)/(6.*M_PI-16.);
   
-  if(no_landau_damping) {
-    D_par = 0.;
-    D_prp = 0.;
-    Beta_par = 0.;
+  if(ev->pars.no_landau_damping) {
+    ev->damps.D_par = 0.;
+    ev->damps.D_prp = 0.;
+    ev->damps.Beta_par = 0.;
   }
   
-  Nx_unmasked = 2*Nx/3+1;
-  Ny_unmasked = (Ny-1)/3+1;
+  ev->grids.Nx_unmasked = 2*Nx/3+1;
+  ev->grids.Ny_unmasked = (Ny-1)/3+1;
   
-  int ikx_max = (Nx_unmasked+1)/2;
-  int iky_max = Ny_unmasked;
+  int ikx_max = (ev->grids.Nx_unmasked+1)/2;
+  int iky_max = ev->grids.Ny_unmasked;
   
-  cflx = ((float) ikx_max)/X0/cfl;// shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
-  cfly = ((float) iky_max)/Y0/cfl; //( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
+  ev->time.cflx = ((float) ikx_max)/X0/cfl;// shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
+  ev->time.cfly = ((float) iky_max)/Y0/cfl; //( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
   
   bool default_nu = true;
   
+  // These are local variables for convenience, not the 
+  // original globals.
+  cuComplex * nu = ev->damps.nu;
+  cuComplex * mu = ev->damps.mu;
+
   if(default_nu) {
     nu[1].x=2.019;
     nu[1].y=-1.620;
@@ -58,6 +66,8 @@ void definitions()
     nu[10].x= 8.269;
     nu[10].y= 2.060;
   }
+
+  int ivarenna = ev->pars.ivarenna;
   
   //varenna
   if(abs(ivarenna) == 1 || abs(ivarenna)==4 || no_landau_damping) {

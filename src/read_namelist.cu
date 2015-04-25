@@ -173,6 +173,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   
   pars->linear = LINEAR = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
   
+
+  pars->check_for_restart = false;
   char* restart;
   fnr_get_string(&namelist_struct, "gryfx_knobs", "restart", &restart);
   if( strcmp(restart,"on") == 0) {
@@ -180,7 +182,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   }
   else if( strcmp(restart,"exist") == 0) {
     //check if restart file exists
-    CHECK_FOR_RESTART = true;
+    pars->check_for_restart = CHECK_FOR_RESTART = true;
   }
   else if( strcmp(restart,"off") == 0) {
     pars->restart = RESTART = false;

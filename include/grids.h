@@ -29,6 +29,9 @@ typedef struct {
 	int Ny_complex;
 	int Nz_complex;
 
+  int Ny_unmasked;
+  int Nx_unmasked;
+
 	/* A grid the size of kx, true if in the dealiased zone*/
 	bool * kx_mask;
 

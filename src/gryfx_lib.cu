@@ -1,8 +1,8 @@
 #include "mpi.h"
 #include "standard_headers.h"
-#include "global_variables.h"
 #include "run_gryfx.h"
 #include "read_namelist.h"
+#include "global_variables.h"
 #include "write_data.h"
 #include "allocations.h"
 #include "gryfx_lib.h"
@@ -14,18 +14,21 @@
 
 
 //Defined at the bottom of this file
-void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything);
-void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct ** everything_ptr);
-void initialize_cuda_parallelization(everything_struct * everything);
+void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev);
+void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything_ptr);
+void initialize_cuda_parallelization(everything_struct * ev);
+void setup_restart(everything_struct * ev);
 
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
-  everything_struct * everything;
-	everything = (everything_struct *)malloc(sizeof(everything_struct));
-	everything->memory_location = ON_HOST;
+  everything_struct * ev;
+	ev = (everything_struct *)malloc(sizeof(everything_struct));
+	ev->memory_location = ON_HOST;
+  int iproc;
 
 #ifdef GS2_zonal
 
+  
   MPI_Comm_rank(mpcom, &iproc);
   //printf("I am proc %d\n", iproc);
 
@@ -33,9 +36,6 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   char serial[100];
   FILE *fp;
 
- //Set some global defaults
-  
- initialize_globals();
 
   if(iproc==0) {
     fp = popen("nvidia-smi -q | grep Serial", "r");
@@ -46,8 +46,8 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     for(int i=0; i<8; i++) {
      serial[i] = serial_full[strlen(serial_full) - (9-i)];
     }
-    gpuID = atoi(serial);
-    printf("SN: %d\n", gpuID);
+    ev->info.gpuID = atoi(serial);
+    printf("SN: %d\n", ev->info.gpuID);
   }
 
   if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
@@ -63,31 +63,36 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   iproc=0;
 #endif
 
+  ev->mpi.iproc = iproc;
+  ev->mpi.mpcom = mpcom;
+
 #ifdef GS2_all
   gryfx_run_gs2_only(namelistFile);
 #endif
 
-	if(iproc==0) printf("%d: Initializing GryfX...\tNamelist is %s\n", gpuID, namelistFile);
+	if(iproc==0) printf("%d: Initializing GryfX...\tNamelist is %s\n", ev->info.gpuID, namelistFile);
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
-  read_namelist(&(everything->pars), &(everything->grids), namelistFile);
-	writedat_set_run_name(&(everything->info.run_name), namelistFile);
-	set_grid_masks_and_unaliased_sizes(&(everything->grids));
-  //allocate_or_deallocate_everything(ALLOCATE, everything);
+  read_namelist(&(ev->pars), &(ev->grids), namelistFile);
+	writedat_set_run_name(&(ev->info.run_name), namelistFile);
+	set_grid_masks_and_unaliased_sizes(&(ev->grids));
+  //allocate_or_deallocate_everything(ALLOCATE, ev);
 
   //char out_dir_path[200];
   //if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
-      strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
-      if(iproc==0) printf("%d: out_stem = %s\n", gpuID, out_stem);
+      //strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
+      if(iproc==0) printf("%d: out_stem = %s\n", ev->info.gpuID, ev->info.run_name);
   //}
 
-  if (iproc==0) set_gryfxpars(gryfxpars, everything);
+  if (iproc==0) set_gryfxpars(gryfxpars, ev);
 
   // EGH: this is a nasty way to broadcast gryfxpars... we should
   // really define a custom MPI datatype. However it should continue
   // to work as long as all MPI processes are running on the same
   // architecture. 
-  MPI_Bcast(&gryfxpars, sizeof(gryfxpars), MPI_BYTE, 0, mpcom);
+  MPI_Bcast(&*gryfxpars, sizeof(gryfxpars), MPI_BYTE, 0, mpcom);
+  // This has to be set after the broadcast
+	gryfxpars->everything_struct_address = (void *)ev;
 
 }
   
@@ -96,61 +101,41 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
-	 everything_struct * everything;
-   mpcom_global = mpcom;
+	 everything_struct * ev;
    FILE* outfile;
+
+   int iproc;
+   // iproc doesn't necessarily have to be the same as it was in 
+   // gryfx_get_default_parameters_
+   MPI_Comm_rank(mpcom, &iproc);
+	 ev = (everything_struct *)gryfxpars->everything_struct_address;
+   ev->mpi.iproc = iproc;
+   ev->mpi.mpcom = mpcom;
   
   
   if(iproc==0) {
     //Only proc0 needst to import paramters to gryfx
-    import_gryfxpars(gryfxpars, &everything);
-    printf("%d: Initializing geometry...\n\n", gpuID);
-    set_geometry(&everything->grids, &everything->geo, gryfxpars);
-    print_initial_parameter_summary(everything);
-    if(DEBUG) print_cuda_properties(everything);
+    import_gryfxpars(gryfxpars, ev);
+    printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
+    set_geometry(&ev->grids, &ev->geo, gryfxpars);
+    print_initial_parameter_summary(ev);
+    if(DEBUG) print_cuda_properties(ev);
 	}
 
-  if(iproc==0) printf("%d: Initializing GS2...\n\n", gpuID);
-  gryfx_initialize_gs2(everything, gryfxpars, namelistFile, mpcom);
-  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", gpuID);
+  if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
+  gryfx_initialize_gs2(ev, gryfxpars, namelistFile, mpcom);
+  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
+ 
+  // Check if we should and can restart and set the file name
+  setup_restart(ev);
 
 
-  //set up restart file
-  strcpy(restartfileName, out_stem);
-  strcat(restartfileName, "restart.bin");
- 
-  if(secondary_test && !LINEAR) strcpy(restartfileName, secondary_test_restartfileName);
- 
-  if(RESTART) {
-    // check if restart file exists
-    if( FILE* restartFile = fopen(restartfileName, "r") ) {
-      printf("restart file found. restarting...\n");
-    }
-    else{
-      printf("cannot restart because cannot find restart file. changing to no restart\n");
-      RESTART = false;
-    }
-  }			
-  
-  if(CHECK_FOR_RESTART) {
-    printf("restart mode set to exist...\n");
-    //check if restart file exists
-    if(FILE* restartFile = fopen(restartfileName, "r") ) {
-      fclose(restartFile);
-      printf("restart file exists. restarting...\n");
-      RESTART = true;
-    }
-    else {
-      printf("restart file does not exist. starting new run...\n");
-      RESTART = false;
-    }
-  }
   
   //make an input file of form outstem.in if doesn't already exist
   FILE* input;
   FILE* namelist;
   char inputFile[200];
-  strcpy(inputFile, out_stem);
+  strcpy(inputFile, ev->info.run_name);
   strcat(inputFile, "in");
 
   // EGH to Noah... can we get rid of this?
@@ -167,10 +152,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
 	if(iproc==0) {
 
-    initialize_cuda_parallelization(everything); 
-    definitions();
+    initialize_cuda_parallelization(ev); 
+    definitions(ev);
     char outfileName[200];
-    strcpy(outfileName, out_stem);
+    strcpy(outfileName, ev->info.run_name);
     strcat(outfileName, "out_gryfx");
     outfile = fopen(outfileName, "w+");
 
@@ -179,10 +164,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   /////////////////////////
   // This is the main call
   ////////////////////////
-  run_gryfx(everything, gryfxouts->pflux, gryfxouts->qflux, outfile);
+  run_gryfx(ev, gryfxouts->pflux, gryfxouts->qflux, outfile);
 
 	if(iproc==0) {  
-    print_final_summary(everything, outfile);
+    print_final_summary(ev, outfile);
     fclose(outfile);
   } //end of iproc if
 
@@ -209,7 +194,7 @@ void gryfx_main(int argc, char* argv[], int mpcom) {
 	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
 }
 
-void initialize_cuda_parallelization(everything_struct * everything){
+void initialize_cuda_parallelization(everything_struct * ev){
 
   ///////////////////////////////////////////////////
   // set up parallelization 
@@ -259,7 +244,7 @@ void initialize_cuda_parallelization(everything_struct * everything){
   printf("dimGrid = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
 }
 
-void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything){
+void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
     gryfxpars->equilibrium_type = equilibrium_type;
     /*char eqfile[800];*/
     gryfxpars->irho = irho;
@@ -302,9 +287,8 @@ void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct
   	  gryfxpars->tprim[i] = species[i].tprim;
   	  gryfxpars->nu[i] = species[i].nu_ss;
     }
-	gryfxpars->everything_struct_address = (void *)everything;
 }
-void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct ** everything_ptr){
+void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything_ptr){
    equilibrium_type = gryfxpars->equilibrium_type ;
   /*char eqfile[800];*/
    irho = gryfxpars->irho ;
@@ -329,7 +313,6 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
    shat = gryfxpars->shat ;
    asym = gryfxpars->asym ;
    asympri = gryfxpars->asympri ;
-	*everything_ptr = (everything_struct *)gryfxpars->everything_struct_address;
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
    beta_prime_input = gryfxpars->beta_prime_input ;
@@ -361,4 +344,55 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
   if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
   //else *&X0 = Y0; 
   //else use what is set in input file 
+}
+
+void setup_restart(everything_struct * ev){
+  //set up restart file
+  input_parameters_struct * pars = &ev->pars;
+  char * restartfileName;
+
+  //Work out how long the restart file name can be
+  int maxlen, temp;
+  maxlen = strlen(ev->info.run_name) + 12;
+  temp = strlen(pars->secondary_test_restartfileName) + 1;
+  maxlen = maxlen > temp ? maxlen : temp;
+
+  maxlen = maxlen+200;
+
+  //Allocate restartfileName
+  restartfileName = (char*)malloc(sizeof(char) * maxlen);
+  ev->info.restart_file_name = restartfileName;
+
+  
+  strcpy(restartfileName, ev->info.run_name);
+  strcat(restartfileName, "restart.bin");
+ 
+  if(pars->secondary_test && !pars->linear) 
+    strcpy(restartfileName, pars->secondary_test_restartfileName);
+ 
+  if(pars->restart) {
+    // check if restart file exists
+    if( FILE* restartFile = fopen(restartfileName, "r") ) {
+      printf("restart file found. restarting...\n");
+    }
+    else{
+      printf("cannot restart because cannot find restart file. changing to no restart\n");
+      // EGH Perhaps we should abort at this point?
+      pars->restart = false;
+    }
+  }			
+  
+  if(pars->check_for_restart) {
+    printf("restart mode set to exist...\n");
+    //check if restart file exists
+    if(FILE* restartFile = fopen(restartfileName, "r") ) {
+      fclose(restartFile);
+      printf("restart file exists. restarting...\n");
+      pars->restart = true;
+    }
+    else {
+      printf("restart file does not exist. starting new run...\n");
+      pars->restart = false;
+    }
+  }
 }

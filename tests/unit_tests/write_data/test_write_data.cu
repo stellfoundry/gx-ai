@@ -41,6 +41,7 @@ int main(int argc, char* argv[])
   writedat_each(&ev.outs, &ev.fields, &ev.time);
   writedat_end(ev.outs);
 
+  ev.info.restart_file_name = (char*)malloc(sizeof(char)*1);
   allocate_or_deallocate_everything(DEALLOCATE, &ev);
 
   }
