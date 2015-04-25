@@ -4,6 +4,7 @@
 #define FORCE 2
 #define RH_equilibrium 3
 
+#ifndef NO_GLOBALS
 //Globals will be deleted eventually
 //globals defined in gs2 namelist
 EXTERN_SWITCH int nwrite;
@@ -129,6 +130,7 @@ EXTERN_SWITCH char* scan_type;
 EXTERN_SWITCH int scan_number;
 
 EXTERN_SWITCH bool DEBUG;
+#endif
 
 typedef struct {
 	//input parameters for geometry

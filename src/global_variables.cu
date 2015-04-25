@@ -39,4 +39,38 @@ void set_globals_after_gryfx_lib(everything_struct * ev){
     totalThreads = ev->cdims.totalThreads;
     dimBlock = ev->cdims.dimBlock;
     dimGrid = ev->cdims.dimGrid;
+
+    Nx = ev->grids.Nx;
+    Ny = ev->grids.Ny;
+    Nz = ev->grids.Nz;
+
+   input_parameters_struct * pars = &ev->pars;
+   irho = pars->irho ;
+   rhoc = pars->rhoc ;
+   eps = pars->eps;
+   bishop = pars->bishop ;
+   nperiod = pars->nperiod ;
+
+ /* Miller parameters*/
+   rmaj = pars->rmaj ;
+   r_geo = pars->r_geo ;
+   akappa  = pars->akappa ;
+   akappri = pars->akappri ;
+   tri = pars->tri ;
+   tripri = pars->tripri ;
+   shift = pars->shift ;
+   qsf = pars->qsf;
+   shat = pars->shat ;
+    // EGH These appear to be redundant
+
+  /* Other geometry parameters - Bishop/Greene & Chance*/
+   beta_prime_input = pars->beta_prime_input ;
+   s_hat_input = pars->s_hat_input ;
+
+  /*Flow shear*/
+   g_exb = pars->g_exb ;
+
+  jtwist = pars->jtwist;
+  X0 = pars->x0;
+
 }

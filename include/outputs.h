@@ -1,7 +1,9 @@
 //Globals
+#ifndef NO_GLOBALS
 EXTERN_SWITCH cuComplex* omega_out_h;
 // EGH maybe omega_h is the same as omega_out_h?
 EXTERN_SWITCH cuComplex * omega_h;
+#endif
 
 typedef struct {
 	// General stuff

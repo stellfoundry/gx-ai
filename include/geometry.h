@@ -1,4 +1,5 @@
 
+#ifndef NO_GLOBALS
 //global host arrays from eik.out
 EXTERN_SWITCH float *gbdrift_h, *grho_h, *z_h, *z_regular_h; 
 EXTERN_SWITCH float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
@@ -15,6 +16,7 @@ EXTERN_SWITCH float *gds21, *gds22, *cvdrift0, *gbdrift0;
 EXTERN_SWITCH float *bmagInv;
 EXTERN_SWITCH cuComplex *bmag_complex;
 EXTERN_SWITCH float* jacobian;
+#endif
 
 typedef struct {
 	float *gradpar_arr;

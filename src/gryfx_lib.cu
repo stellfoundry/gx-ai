@@ -1,3 +1,4 @@
+#define NO_GLOBALS true
 #include "mpi.h"
 #include "standard_headers.h"
 #include "run_gryfx.h"
@@ -118,7 +119,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
     set_geometry(&ev->grids, &ev->geo, gryfxpars);
     print_initial_parameter_summary(ev);
-    if(DEBUG) print_cuda_properties(ev);
+    if(ev->pars.debug) print_cuda_properties(ev);
 	}
 
   if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
@@ -257,105 +258,111 @@ void initialize_cuda_parallelization(everything_struct * ev){
 }
 
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
-    gryfxpars->equilibrium_type = equilibrium_type;
+    gryfxpars->equilibrium_type = ev->pars.equilibrium_type;
     /*char eqfile[800];*/
-    gryfxpars->irho = irho;
-    gryfxpars->rhoc = rhoc;
-    gryfxpars->eps = eps;
-    gryfxpars->bishop = bishop;
-    gryfxpars->nperiod = nperiod;
-    printf("nperiod is %d\n", nperiod);
-    printf("Nz is %d\n", Nz);
-    gryfxpars->ntheta = Nz;
+    input_parameters_struct * pars = &ev->pars;
+
+    gryfxpars->irho = pars->irho;
+    gryfxpars->rhoc = pars->rhoc;
+    gryfxpars->eps = pars->eps;
+    gryfxpars->bishop = pars->bishop;
+    gryfxpars->nperiod = pars->nperiod;
+    printf("nperiod is %d\n", pars->nperiod);
+    printf("Nz is %d\n", ev->grids.Nz);
+    gryfxpars->ntheta = ev->grids.Nz;
   
    /* Miller parameters*/
-    gryfxpars->rgeo_local = rmaj;
-    gryfxpars->rgeo_lcfs = rmaj;
-    gryfxpars->akappa = akappa ;
-    gryfxpars->akappri = akappri;
-    gryfxpars->tri = tri;
-    gryfxpars->tripri = tripri;
-    gryfxpars->shift = shift;
-    gryfxpars->qinp = qsf;
-    gryfxpars->shat = shat;
-    gryfxpars->asym = asym;
-    gryfxpars->asympri = asympri;
+    gryfxpars->rgeo_local = pars->rmaj;
+    gryfxpars->rgeo_lcfs = pars->rmaj;
+    gryfxpars->akappa = pars->akappa;
+    gryfxpars->akappri = pars->akappri;
+    gryfxpars->tri = pars->tri;
+    gryfxpars->tripri = pars->tripri;
+    gryfxpars->shift = pars->shift;
+    gryfxpars->qinp = pars->qsf;
+    gryfxpars->shat = pars->shat;
+    // EGH These appear to be redundant
+    //gryfxpars->asym = pars->asym;
+    //gryfxpars->asympri = pars->asympri;
   
     /* Other geometry parameters - Bishop/Greene & Chance*/
-    gryfxpars->beta_prime_input = beta_prime_input;
-    gryfxpars->s_hat_input = s_hat_input;
+    gryfxpars->beta_prime_input = pars->beta_prime_input;
+    gryfxpars->s_hat_input = pars->s_hat_input;
   
     /*Flow shear*/
-    gryfxpars->g_exb = g_exb;
+    gryfxpars->g_exb = pars->g_exb;
   
     /* Species parameters... I think allowing 20 species should be enough!*/
   
-    gryfxpars->ntspec = nSpecies;
+    gryfxpars->ntspec = pars->nspec;
   
-    for (int i=0;i<nSpecies;i++){
-  	  gryfxpars->dens[i] = species[i].dens;
-  	  gryfxpars->temp[i] = species[i].temp;
-  	  gryfxpars->fprim[i] = species[i].fprim;
-  	  gryfxpars->tprim[i] = species[i].tprim;
-  	  gryfxpars->nu[i] = species[i].nu_ss;
+    for (int i=0;i<pars->nspec;i++){
+  	  gryfxpars->dens[i] = pars->species[i].dens;
+  	  gryfxpars->temp[i] = pars->species[i].temp;
+  	  gryfxpars->fprim[i] = pars->species[i].fprim;
+  	  gryfxpars->tprim[i] = pars->species[i].tprim;
+  	  gryfxpars->nu[i] = pars->species[i].nu_ss;
     }
 }
-void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything_ptr){
-   equilibrium_type = gryfxpars->equilibrium_type ;
+void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
+   input_parameters_struct * pars = &ev->pars;
+   pars->equilibrium_type = gryfxpars->equilibrium_type ;
   /*char eqfile[800];*/
-   irho = gryfxpars->irho ;
-   rhoc = gryfxpars->rhoc ;
-   eps = gryfxpars->eps;
+   pars->irho = gryfxpars->irho ;
+   pars->rhoc = gryfxpars->rhoc ;
+   pars->eps = gryfxpars->eps;
    // NB NEED TO SET EPS IN TRINITY!!!
    //eps = rhoc/rmaj;
-   bishop = gryfxpars->bishop ;
-   nperiod = gryfxpars->nperiod ;
-    printf("nperiod2 is %d\n", nperiod);
-   Nz = gryfxpars->ntheta ;
+   pars->bishop = gryfxpars->bishop ;
+   pars->nperiod = gryfxpars->nperiod ;
+    printf("nperiod2 is %d\n", pars->nperiod);
+   ev->grids.Nz = gryfxpars->ntheta ;
 
  /* Miller parameters*/
-   rmaj = gryfxpars->rgeo_local ;
+   pars->rmaj = gryfxpars->rgeo_local ;
    //r_geo = gryfxpars->rgeo_lcfs ;
-   akappa  = gryfxpars->akappa ;
-   akappri = gryfxpars->akappri ;
-   tri = gryfxpars->tri ;
-   tripri = gryfxpars->tripri ;
-   shift = gryfxpars->shift ;
-   qsf = gryfxpars->qinp ;
-   shat = gryfxpars->shat ;
-   asym = gryfxpars->asym ;
-   asympri = gryfxpars->asympri ;
+   pars->akappa  = gryfxpars->akappa ;
+   pars->akappri = gryfxpars->akappri ;
+   pars->tri = gryfxpars->tri ;
+   pars->tripri = gryfxpars->tripri ;
+   pars->shift = gryfxpars->shift ;
+   pars->qsf = gryfxpars->qinp ;
+   pars->shat = gryfxpars->shat ;
+    // EGH These appear to be redundant
+   //asym = gryfxpars->asym ;
+   //asympri = gryfxpars->asympri ;
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
-   beta_prime_input = gryfxpars->beta_prime_input ;
-   s_hat_input = gryfxpars->s_hat_input ;
+   pars->beta_prime_input = gryfxpars->beta_prime_input ;
+   pars->s_hat_input = gryfxpars->s_hat_input ;
 
   /*Flow shear*/
-   g_exb = gryfxpars->g_exb ;
+   pars->g_exb = gryfxpars->g_exb ;
 
   /* Species parameters... I think allowing 20 species should be enough!*/
-  int oldnSpecies = nSpecies;
-   nSpecies = gryfxpars->ntspec ;
+  int oldnSpecies = pars->nspec;
+   pars->nspec = gryfxpars->ntspec ;
 
-  if (nSpecies!=oldnSpecies){
-	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nSpecies);
+  if (pars->nspec!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, pars->nspec);
 	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
 	  exit(1);
   }
-	 if (DEBUG) printf("nSpecies was set to %d\n", nSpecies);
-  for (int i=0;i<nSpecies;i++){
-	   species[i].dens = gryfxpars->dens[i] ;
-	   species[i].temp = gryfxpars->temp[i] ;
-	   species[i].fprim = gryfxpars->fprim[i] ;
-	   species[i].tprim = gryfxpars->tprim[i] ;
-	   species[i].nu_ss = gryfxpars->nu[i] ;
+	 if (pars->debug) printf("nSpecies was set to %d\n", pars->nspec);
+  for (int i=0;i<pars->nspec;i++){
+	   pars->species[i].dens = gryfxpars->dens[i] ;
+	   pars->species[i].temp = gryfxpars->temp[i] ;
+	   pars->species[i].fprim = gryfxpars->fprim[i] ;
+	   pars->species[i].tprim = gryfxpars->tprim[i] ;
+	   pars->species[i].nu_ss = gryfxpars->nu[i] ;
   }
   
-  jtwist = (int) round(2*M_PI*abs(shat)*Zp);
+  int jtwist;
+  jtwist = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
   if(jtwist<0) jtwist=0;
-  if(jtwist!=0) *&X0 = Y0*jtwist/(2*M_PI*Zp*abs(shat));  
-  //else *&X0 = Y0; 
+  if(jtwist!=0) pars->x0 = pars->y0*jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
   //else use what is set in input file 
+  pars->jtwist = jtwist;
 }
 
 void setup_restart(everything_struct * ev){

@@ -1,7 +1,9 @@
 //Globals... to be deleted!!
+#ifndef NO_GLOBALS
 EXTERN_SWITCH int Nx, Ny, Nz;
 EXTERN_SWITCH float *kx, *ky, *kz, *kz_complex, *kx_abs;
 EXTERN_SWITCH float *kx_h, *ky_h, *kz_h;
+#endif
 
 typedef struct {
 	float * ky;

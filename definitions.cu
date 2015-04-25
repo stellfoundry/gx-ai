@@ -3,13 +3,17 @@ void definitions(everything_struct * ev)
 
   // This is a local reference to species, not the global variable
   specie * species = ev->pars.species;
+  // Local for convencience
+  int Ny = ev->grids.Ny;
+  int Nx = ev->grids.Nx;
+
   /*if(gradpar > 1e-8) {
     *&Zp = 1./gradpar;
   }*/
   
   //*&Zp = 1;
   
-  for(int s=0; s<nSpecies; s++) {
+  for(int s=0; s<ev->pars.nspec; s++) {
     species[s].vt = sqrt(species[s].temp/species[s].mass);
     species[s].zstm = species[s].z/sqrt(species[s].temp*species[s].mass);
     species[s].tz = species[s].temp/species[s].z;
@@ -34,8 +38,8 @@ void definitions(everything_struct * ev)
   int ikx_max = (ev->grids.Nx_unmasked+1)/2;
   int iky_max = ev->grids.Ny_unmasked;
   
-  ev->time.cflx = ((float) ikx_max)/X0/cfl;// shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
-  ev->time.cfly = ((float) iky_max)/Y0/cfl; //( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
+  ev->time.cflx = ((float) ikx_max)/ev->pars.x0/ev->pars.cfl;// shat*X0*((float)Nx_unmasked) / ( ((float)(Nx_unmasked/2))*2*M_PI*Y0);
+  ev->time.cfly = ((float) iky_max)/ev->pars.y0/ev->pars.cfl; //( (float)(2*(Ny_unmasked-1)) ) / (2*M_PI*Y0);
   
   bool default_nu = true;
   
@@ -70,7 +74,7 @@ void definitions(everything_struct * ev)
   int ivarenna = ev->pars.ivarenna;
   
   //varenna
-  if(abs(ivarenna) == 1 || abs(ivarenna)==4 || no_landau_damping) {
+  if(abs(ivarenna) == 1 || abs(ivarenna)==4 || ev->pars.no_landau_damping) {
   mu[1].x = 0.;
   mu[1].y = 0.; 
   mu[2].x = 0.;
