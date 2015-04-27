@@ -1,4 +1,4 @@
-#define EXTERN_SWITCH extern
+#define NO_GLOBALS true
 #include "cufft.h"
 #include "simpledataio_cuda.h"
 #include "everything_struct.h"
@@ -23,11 +23,20 @@ int dims_are(struct sdatio_variable * svar, char * dimensions){
 	return !(strcmp(svar->dimension_list, dimensions));
 }
 
-void writedat_mask_trans_write_variable(struct sdatio_file * sfile, char * variable_name, void * address){
+/* The purpose of this function is to write the outputs into
+ * the netcdf file in exactly the same way that gs2 does, 
+ * i.e. to tranpose the indices to the gs2 order and mask
+ * the alias meshpoints */
+void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file * sfile, char * variable_name, void * address){
 	struct sdatio_dimension * tdim;
 	tdim = sdatio_find_dimension(sfile, "t");
 	/* The current value of the t index in the output file*/
 	int tstart = tdim->start;
+
+  //Local copies for convenience
+  int Nx = grids->Nx;
+  int Ny = grids->Ny;
+  int Nz = grids->Nz;
 
 	unsigned char * address_char = (unsigned char *)address;
 
@@ -167,13 +176,17 @@ void writedat_beginning(everything_struct * ev)
   sdatio_init(sdatfile, filename);
   sdatio_create_file(sdatfile);
   
+  int Nx = ev->grids.Nx;
+  int Ny = ev->grids.Ny;
+  int Nz = ev->grids.Nz;
+
   sdatio_add_dimension(sdatfile, "r", 2, "real and imag parts", "(none)");
     //for(int i=(Nx-1)/3+1; i<2*Nx/3+1; i++) {
      // for(int j=((Ny-1)/3+1); j<(Ny/2+1); j++) {
   sdatio_add_dimension(sdatfile, "X", Nx - (2*Nx/3+1 - ((Nx-1)/3+1)), "kx coordinate", "1/rho_i");
   sdatio_add_dimension(sdatfile, "Y", ((Ny-1)/3+1), "ky coordinate", "1/rho_i");
   sdatio_add_dimension(sdatfile, "z", Nz, "z coordinate", "a");
-  sdatio_add_dimension(sdatfile, "s", nSpecies, "species coordinate", "(none)");
+  sdatio_add_dimension(sdatfile, "s", ev->pars.nspec, "species coordinate", "(none)");
   sdatio_add_dimension(sdatfile, "t", SDATIO_UNLIMITED, "time coordinate","a/vt_i");
 
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "kx", "X", "kx grid", "1/rho_i");
@@ -202,34 +215,34 @@ void writedat_beginning(everything_struct * ev)
 	sdatio_create_variable(sdatfile, SDATIO_FLOAT, "aprime", "z", "Geometric plotting coefficient", "a");
 
   
-  writedat_mask_trans_write_variable(sdatfile, "kx", &(ev->grids.kx[0]));
-  writedat_mask_trans_write_variable(sdatfile, "ky", &(ev->grids.ky[0]));
-  writedat_mask_trans_write_variable(sdatfile, "theta", &(ev->grids.z[0]));
+  writedat_mask_trans_write_variable(&ev->grids, sdatfile, "kx", &(ev->grids.kx[0]));
+  writedat_mask_trans_write_variable(&ev->grids, sdatfile, "ky", &(ev->grids.ky[0]));
+  writedat_mask_trans_write_variable(&ev->grids, sdatfile, "theta", &(ev->grids.z[0]));
 
 	geometry_coefficents_struct geo = ev->geo;
-	writedat_mask_trans_write_variable(sdatfile, "Rplot",  &(geo.Rplot[0]));
-	writedat_mask_trans_write_variable(sdatfile, "Zplot",  &(geo.Zplot[0]));
-	writedat_mask_trans_write_variable(sdatfile, "aplot",  &(geo.aplot[0]));
-	writedat_mask_trans_write_variable(sdatfile, "Rprime", &(geo.Rprime[0]));
-	writedat_mask_trans_write_variable(sdatfile, "Zprime", &(geo.Zprime[0]));
-	writedat_mask_trans_write_variable(sdatfile, "aprime", &(geo.aprime[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "Rplot",  &(geo.Rplot[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "Zplot",  &(geo.Zplot[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "aplot",  &(geo.aplot[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "Rprime", &(geo.Rprime[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "Zprime", &(geo.Zprime[0]));
+	writedat_mask_trans_write_variable(&ev->grids, sdatfile, "aprime", &(geo.aprime[0]));
 	sdatio_print_variables(sdatfile);
   
 }
 
 
 /* No need to pass outs by reference as we are not modifiying anything*/
-void writedat_each(outputs_struct * outs, fields_struct * flds, time_struct * time)
+void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * flds, time_struct * time)
 {
 	struct sdatio_file * sdatfile = &(outs->sdatfile);
-  writedat_mask_trans_write_variable(sdatfile, "t", &(time->runtime));
-  writedat_mask_trans_write_variable(sdatfile, "phi", &(flds->phi[0]));
-  writedat_mask_trans_write_variable(sdatfile, "phi_t", &(flds->phi[0]));
-  writedat_mask_trans_write_variable(sdatfile, "phi2", &(outs->phi2));
-  writedat_mask_trans_write_variable(sdatfile, "phi2_by_ky", &(outs->phi2_by_ky[0]));
-  writedat_mask_trans_write_variable(sdatfile, "phi2_by_kx", &(outs->phi2_by_kx[0]));
-  writedat_mask_trans_write_variable(sdatfile, "omega", &(outs->omega[0]));
-  writedat_mask_trans_write_variable(sdatfile, "hflux_tot", &(outs->hflux_tot));
+  writedat_mask_trans_write_variable(grids, sdatfile, "t", &(time->runtime));
+  writedat_mask_trans_write_variable(grids, sdatfile, "phi", &(flds->phi[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "phi_t", &(flds->phi[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "phi2", &(outs->phi2));
+  writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_ky", &(outs->phi2_by_ky[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_kx", &(outs->phi2_by_kx[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "omega", &(outs->omega[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "hflux_tot", &(outs->hflux_tot));
   sdatio_increment_start(sdatfile, "t");
   
 }

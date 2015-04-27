@@ -1,4 +1,5 @@
 //Globals... to be deleted!
+#ifndef NO_GLOBALS
 EXTERN_SWITCH cuComplex* phi_h;
 EXTERN_SWITCH cuComplex* dens_h;
 EXTERN_SWITCH cuComplex* upar_h;
@@ -6,6 +7,7 @@ EXTERN_SWITCH cuComplex* tpar_h;
 EXTERN_SWITCH cuComplex* tprp_h;
 EXTERN_SWITCH cuComplex* qpar_h;
 EXTERN_SWITCH cuComplex* qprp_h;
+#endif
 
 typedef struct {
 	// Whole fields and moments

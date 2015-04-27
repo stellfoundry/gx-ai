@@ -8,7 +8,7 @@ void writedat_set_run_name(char ** run_name_ptr, char * input_file);
 void writedat_beginning(everything_struct * ev);
 
 // Write data at the given timestep
-void writedat_each(outputs_struct * outs, fields_struct * flds, time_struct * time);
+void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * flds, time_struct * time);
 
 // Close the output file
 void writedat_end(outputs_struct outs);

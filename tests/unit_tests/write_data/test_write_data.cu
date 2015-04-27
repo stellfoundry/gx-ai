@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
   writedat_set_run_name(&ev.info.run_name, "test_write_data.in");
 
   writedat_beginning(&ev);
-  writedat_each(&ev.outs, &ev.fields, &ev.time);
+  writedat_each(&ev.grids, &ev.outs, &ev.fields, &ev.time);
   writedat_end(ev.outs);
 
   ev.info.restart_file_name = (char*)malloc(sizeof(char)*1);

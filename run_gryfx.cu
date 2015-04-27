@@ -2016,7 +2016,7 @@ if(iproc==0) {
       //writedat_each();
       
 	if (counter%nwrite==0){
-  writedat_each(&ev_h->outs, &ev_h->fields, &ev_h->time);
+  writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 }
         ev_h->time.runtime = runtime;
 #ifdef GS2_zonal
