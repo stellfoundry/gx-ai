@@ -123,7 +123,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	}
 
   if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
-  gryfx_initialize_gs2(ev, gryfxpars, namelistFile, mpcom);
+  gryfx_initialize_gs2(&ev->grids, gryfxpars, namelistFile, mpcom);
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
  
   // Check if we should and can restart and set the file name
