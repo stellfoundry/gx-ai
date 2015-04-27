@@ -5,19 +5,6 @@
 #include "write_data.h"
 //#include "global_vars.h"
 
-/* Allocate and set run name */
-/* If input file is "myrun.in", run_name is "myrun"*/
-void writedat_set_run_name(char ** run_name_ptr, char * input_file){
-
-	*run_name_ptr = (char*)malloc(sizeof(char)*(strlen(input_file)-3+1));
-	printf("Allocated run name pointer\n");
-	strncpy(*run_name_ptr, input_file, strlen(input_file)-3);
-	printf("Copied run name\n");
-	(*run_name_ptr)[strlen(input_file)-3] = '\0';
-	printf("Run name is %s\n", *run_name_ptr);
-
-
-}
 
 int dims_are(struct sdatio_variable * svar, char * dimensions){
 	return !(strcmp(svar->dimension_list, dimensions));

@@ -289,10 +289,6 @@ inline void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** k
   }  
 }
 
-inline void phiWriteSetup(FILE* out)
-{
-  fprintf(out, "y\t\tx\t\tPhi(z=0)\n");
-}
 
 //save Phi(x,y,z=0)
 inline void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_XYz0, float* PhiR_XYz0_h, 
@@ -684,27 +680,6 @@ inline void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY
 }
 
 
-inline void omegaWriteSetup(FILE* ofile, char* w)
-{
-  fprintf(ofile, "#\ttime(s)\t");
-  int col = 2;
-  for(int i=0; i<((Nx-1)/3+1); i++) {
-    for(int j=0; j<((Ny-1)/3+1); j++) {      
-      if(!(i==0 && j==0)) {
-        fprintf(ofile, "\t\t\t%d:(%.3g,%.3g)", col, ky_h[j],kx_h[i]);
-        col++;
-      }
-    }
-  }
-  for(int i=2*Nx/3+1; i<Nx; i++) {
-    for(int j=0; j<((Ny-1)/3+1); j++) {
-      fprintf(ofile, "\t\t\t%d:(%.3g,%.3g)", col, ky_h[j],kx_h[i]);
-      col++;
-    }
-  }
-  
-  fprintf(ofile, "\n");
-}
 
 //time history of growth rates
 inline void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omega,float time)

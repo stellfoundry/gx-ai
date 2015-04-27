@@ -10,6 +10,7 @@
 #include "input_parameters_struct.h"
 #include "geometry.h"
 #include "info.h"
+#include "files.h"
 
 
 typedef struct {
@@ -60,13 +61,6 @@ typedef struct {
   int iproc;
 } mpi_info_struct;
 
-typedef struct {
-	FILE * fluxfile;
-	FILE * omegafile; 
-	FILE * gammafile;
-	FILE * phifile;
-	char stopfileName[60];
-} files_struct;
 
 
 /* A bunch of device arrays to be reused continuously */

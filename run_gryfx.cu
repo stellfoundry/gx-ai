@@ -91,17 +91,12 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     set_globals_after_gryfx_lib(ev_h);
     if (iproc==0) set_cuda_constants();
+    // Open some text files for output
 
-    if (iproc==0) printf("dimGrid2 = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
-    char stopfileName[200];
-    FILE *fluxfile;
-    char fluxfileName[200];
-    FILE *omegafile;
-    char omegafileName[200];
-    FILE *gammafile;
-    char gammafileName[200];
-    FILE *phifile;
-    char phifileName[200];
+    //if (iproc==0) printf("dimGrid2 = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
+    //FILE *omegafile;
+    //FILE *gammafile;
+    //FILE *phifile;
     //host variables
 
 
@@ -574,6 +569,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     
     if(DEBUG) getError("after k memcpy 2");
     
+    setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
     writedat_beginning(ev_h);
     ///////////////////////////////////////////////////////////////////////////////////////////////////
     //set up kxCover and kyCover for covering space z-transforms
@@ -954,42 +950,10 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     }
   
 
-    //time histories (.time)
-    strcpy(fluxfileName, out_stem);
-    strcat(fluxfileName, "flux.time");
-    printf("%d: flux file is %s\n\n", gpuID, fluxfileName); 
 
    
-    strcpy(omegafileName, out_stem);
-    strcat(omegafileName, "omega.time");
-    
-    strcpy(gammafileName, out_stem);
-    strcat(gammafileName, "gamma.time");
-    
-    strcpy(phifileName, out_stem);
-    strcat(phifileName, "phi.time");
     
     //printf("phi file is %s\n", phifileName);
-
-    if(!RESTART) {
-      omegafile = fopen(omegafileName, "w+");
-      gammafile = fopen(gammafileName, "w+");  
-      fluxfile = fopen(fluxfileName, "w+");
-      if(write_omega) {
-        //set up omega output file 
-        omegaWriteSetup(omegafile,"omega");
-        //and gamma output file
-        omegaWriteSetup(gammafile,"gamma");  
-      }
-      phifile = fopen(phifileName, "w+");
-      //phiWriteSetup(phifile);
-    }
-    else {
-      omegafile = fopen(omegafileName, "a");
-      gammafile = fopen(gammafileName, "a");  
-      fluxfile = fopen(fluxfileName, "a");
-      phifile = fopen(phifileName, "a");
-    }
 
 
     //writedat_beginning();
@@ -1029,8 +993,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //MPI_Barrier(MPI_COMM_WORLD);
 #endif 
 
-      strcpy(stopfileName, out_stem);
-      strcat(stopfileName, "stop");
+      //strcpy(stopfileName, out_stem);
+      //strcat(stopfileName, "stop");
       runtime=0.;
       counter=0;
       gs2_counter=1;
@@ -1846,7 +1810,7 @@ if(iproc==0) {
       cudaMemcpy(ev_h->outs.phi2_by_kx, tmpX2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
 
       if(!LINEAR && turn_off_gradients_test) {
-        kyTimeWrite(phifile, tmpY_h, runtime);
+        kyTimeWrite(ev_h->files.phifile, tmpY_h, runtime);
       }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
@@ -1886,12 +1850,12 @@ if(iproc==0) {
             add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha_avg, omegaAvg, dt*alpha_avg, omega, Nx, Ny, 1);
             cudaMemcpy(omegaAvg_h, omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(omegafile,gammafile,omegaAvg_h,dtSum,runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,dtSum,runtime); 
           }
           else {
             cudaMemcpy(omegaAvg_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(omegafile,gammafile,omegaAvg_h,runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,runtime); 
           }             
 
         }  
@@ -1958,10 +1922,10 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,runtime,species);
+      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,runtime,species);
     
   	     
-      if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)          
+      if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
       
       
       // print wpfx to screen if not printing growth rates
@@ -2027,7 +1991,7 @@ if(iproc==0) {
       runtime+=dt;
       counter++;       
       //checkstop
-      if(FILE* checkstop = fopen(stopfileName, "r") ) {
+      if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
         fclose(checkstop);
         stopcount++;
       }     
@@ -2162,7 +2126,7 @@ if(iproc==0) {
     
     if(DEBUG) getError("after restartWrite");
     
-    //phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, phifile); //save time history of Phi(x,y,z=0)      
+    //phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)      
     
     gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
                           Phi, tmp, tmp, field, tmpZ, CtmpX,
@@ -2267,10 +2231,11 @@ if(iproc==0) {
       cudaFree(kz_covering[c]);
     }
     
-    fclose(fluxfile);
-    fclose(omegafile);
-    fclose(gammafile);
-    fclose(phifile);
+    close_files(&ev_h->files);
+    //fclose(fluxfile);
+    //fclose(omegafile);
+    //fclose(gammafile);
+    //fclose(ev_h->files.phifile);
    writedat_end(ev_h->outs);
     
     //cudaProfilerStop();

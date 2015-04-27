@@ -3,6 +3,7 @@ MODULES = allocations.o\
 			unit_tests.o\
 			grids.o\
 			info.o\
+			files.o\
 			geometry.o\
 			printout.o\
 			gs2.o\
