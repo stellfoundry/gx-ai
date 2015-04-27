@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 
   everything_struct * ev = (everything_struct *) gryfxpars.everything_struct_address;
 
-  if (proc==0) read_geo(&ev->pars, &ev->grids, &ev->geo, &gryfxpars);
+  if (proc==0) set_geometry(&ev->pars, &ev->grids, &ev->geo, &gryfxpars);
 
 
   MPI_Finalize();
