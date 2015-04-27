@@ -17,7 +17,6 @@
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev);
 void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * everything_ptr);
 void initialize_cuda_parallelization(everything_struct * ev);
-void setup_restart(everything_struct * ev);
 
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, char * namelistFile, int mpcom) {  
   
@@ -73,7 +72,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 	if(iproc==0) printf("%d: Initializing GryfX...\tNamelist is %s\n", ev->info.gpuID, namelistFile);
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
   read_namelist(&(ev->pars), &(ev->grids), namelistFile);
-	writedat_set_run_name(&(ev->info.run_name), namelistFile);
+	//writedat_set_run_name(&(ev->info.run_name), namelistFile);
 	set_grid_masks_and_unaliased_sizes(&(ev->grids));
   //allocate_or_deallocate_everything(ALLOCATE, ev);
 
@@ -126,8 +125,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   gryfx_initialize_gs2(&ev->grids, gryfxpars, namelistFile, mpcom);
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
  
+  // Copy the name of the namelist file to ev->info.run_name
   // Check if we should and can restart and set the file name
-  setup_restart(ev);
+  setup_info(namelistFile, &ev->pars, &ev->info);
 
 
   
@@ -365,53 +365,3 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
   pars->jtwist = jtwist;
 }
 
-void setup_restart(everything_struct * ev){
-  //set up restart file
-  input_parameters_struct * pars = &ev->pars;
-  char * restartfileName;
-
-  //Work out how long the restart file name can be
-  int maxlen, temp;
-  maxlen = strlen(ev->info.run_name) + 12;
-  temp = strlen(pars->secondary_test_restartfileName) + 1;
-  maxlen = maxlen > temp ? maxlen : temp;
-
-  maxlen = maxlen+200;
-
-  //Allocate restartfileName
-  restartfileName = (char*)malloc(sizeof(char) * maxlen);
-  ev->info.restart_file_name = restartfileName;
-
-  
-  strcpy(restartfileName, ev->info.run_name);
-  strcat(restartfileName, "restart.bin");
- 
-  if(pars->secondary_test && !pars->linear) 
-    strcpy(restartfileName, pars->secondary_test_restartfileName);
- 
-  if(pars->restart) {
-    // check if restart file exists
-    if( FILE* restartFile = fopen(restartfileName, "r") ) {
-      printf("restart file found. restarting...\n");
-    }
-    else{
-      printf("cannot restart because cannot find restart file. changing to no restart\n");
-      // EGH Perhaps we should abort at this point?
-      pars->restart = false;
-    }
-  }			
-  
-  if(pars->check_for_restart) {
-    printf("restart mode set to exist...\n");
-    //check if restart file exists
-    if(FILE* restartFile = fopen(restartfileName, "r") ) {
-      fclose(restartFile);
-      printf("restart file exists. restarting...\n");
-      pars->restart = true;
-    }
-    else {
-      printf("restart file does not exist. starting new run...\n");
-      pars->restart = false;
-    }
-  }
-}

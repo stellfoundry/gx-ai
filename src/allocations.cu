@@ -279,6 +279,18 @@ void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z
 	}
 }
 
+void allocate_info(int aod, int ml, info_struct * info, int run_name_size, int restart_name_size){
+
+	alloc_dealloc(&info->run_name, aod, ON_HOST, ml, TYPE_FLOAT, run_name_size);
+	alloc_dealloc(&info->restart_file_name, aod, ON_HOST, ml, TYPE_FLOAT, restart_name_size);
+	/*Globals...to be deleted eventually*/
+	if (ml == ON_HOST){
+	}
+	else if (ml == ON_DEVICE){
+	}
+
+}
+
 void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_struct * ev){
 	allocate_grids(allocate_or_deallocate, ev->memory_location, &ev->grids);
 	allocate_outputs(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->outs);
@@ -286,9 +298,9 @@ void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_st
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){
 		allocate_geo(allocate_or_deallocate, ev->memory_location, &ev->geo, &ev->grids.z, &ev->grids.Nz);
-    //Make a proper function for these and need to deallocate strings in input pars.
-    free (ev->info.run_name);
-    free (ev->info.restart_file_name);
+    //Info needs to be deallocated on not proc0
+    allocate_info(allocate_or_deallocate, ev->memory_location, &ev->info, -1, -1);
+    //Need to deallocate strings in input pars.
 	}
 }
 

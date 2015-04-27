@@ -9,6 +9,7 @@
 #include "outputs.h"
 #include "input_parameters_struct.h"
 #include "geometry.h"
+#include "info.h"
 
 
 typedef struct {
@@ -87,11 +88,6 @@ typedef struct {
 	float * YZ;
 } temporary_arrays_struct;	
 
-typedef struct {
-	char * run_name;
-	char * restart_file_name;
-  int gpuID;
-} run_info_struct;
 
 
 
@@ -103,7 +99,7 @@ typedef struct {
 	input_parameters_struct pars;
 	time_struct time;
 	grids_struct grids;
-	run_info_struct info;
+	info_struct info;
 	temporary_arrays_struct tmp;
 	files_struct files;
 	cuda_dimensions_struct cdims;

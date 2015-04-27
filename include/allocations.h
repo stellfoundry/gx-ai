@@ -28,6 +28,9 @@ input_parameters_struct * inps_str(everything_struct * ev_d);
 // pointer to the theta section of the grids struct);
 void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z_array, int *Nz);
 
+//This is called separately from gryfx_lib.cu
+void allocate_info(int aod, int ml, info_struct * info, int run_name_size, int restart_name_size);
+
 //Allocate or deallocate the everything struct. allocate_or_deallocate is either
 // ALLOCATE or DEALLOCATE; 
 void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_struct * ev);

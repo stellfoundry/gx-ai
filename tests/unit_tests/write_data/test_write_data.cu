@@ -19,6 +19,8 @@ int main(int argc, char* argv[])
 
   int proc;
 
+  char run_name[] = "test_write_data.in";
+
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &proc);
 
@@ -27,7 +29,7 @@ int main(int argc, char* argv[])
 
   ev.memory_location = ON_HOST;
 
-  read_namelist(&ev.pars, &ev.grids, "test_write_data.in");
+  read_namelist(&ev.pars, &ev.grids, run_name);
 
   set_grid_masks_and_unaliased_sizes(&ev.grids);  
 
@@ -35,13 +37,18 @@ int main(int argc, char* argv[])
 
   allocate_geo(ALLOCATE, ON_HOST, &ev.geo, &ev.grids.z, &ev.grids.Nz);
 
-  writedat_set_run_name(&ev.info.run_name, "test_write_data.in");
+  setup_info(run_name, &ev.pars, &ev.info);
+
+  //ev.info.run_name  = run_name;
+  //ev.info.run_name  = run_name;
+
+  //writedat_set_run_name(&ev.info.run_name, "test_write_data.in");
 
   writedat_beginning(&ev);
   writedat_each(&ev.grids, &ev.outs, &ev.fields, &ev.time);
   writedat_end(ev.outs);
 
-  ev.info.restart_file_name = (char*)malloc(sizeof(char)*1);
+  //ev.info.restart_file_name = (char*)malloc(sizeof(char)*1);
   allocate_or_deallocate_everything(DEALLOCATE, &ev);
 
   }
