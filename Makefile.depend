@@ -12,7 +12,6 @@ MODULES = allocations.o\
 
 read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
 
-geometry.o: read_input.cu
 
 CU_DEPS := \
       device_funcs.cu \
@@ -28,7 +27,6 @@ CU_DEPS := \
       omega_kernel.cu \
       phi_kernel.cu \
       getfcn.cu \
-      read_input.cu \
       definitions.cu \
       diagnostics.cu \
       coveringSetup.cu \

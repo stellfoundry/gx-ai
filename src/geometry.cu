@@ -4,7 +4,6 @@
 #include "geo/geometry_c_interface.h"
 #include "gryfx_lib.h"
 #include "allocations.h"
-#include "read_input.cu"
 #include "math.h"
 /*#include "/global/u2/n/nmandell/noah/branches/GS2/trunk/geo/geometry_c_interface.h"*/
 /*#include "/global/homes/h/highcock/Code_Carver/gs2/trunk/geo/geometry_c_interface.h"*/
@@ -33,6 +32,9 @@ extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficient
 
 extern "C" void geometry_mp_finish_geometry_(void);
 
+//Defined at the bottom
+void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
+void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
 
 void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
 
@@ -92,7 +94,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
   else if ( pars->igeo == 2 ) // calculate geometry from geo module
   {
     
-    read_geo(pars,grids,geo,gryfxpars);
+    run_general_geometry_module(pars,grids,geo,gryfxpars);
    
     // We calculate eps so that it gets the right
     // value of eps/qsf in the appropriate places.
@@ -111,7 +113,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
   
 }
 
-void read_geo(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
+void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
 	double s_hat_input_d, beta_prime_input_d;
   
   struct coefficients_struct * coefficients;
@@ -247,3 +249,74 @@ void read_geo(input_parameters_struct * pars, grids_struct * grids, geometry_coe
 	/*free(coefficients);*/
 
 }
+void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile) 
+{    
+  int nLines;
+  fpos_t* lineStartPos;
+  int ch;
+
+  int ntgrid;
+
+  
+  rewind(ifile);
+  //find number of lines
+  while( (ch = fgetc(ifile)) != EOF) 
+  {
+    if(ch == '\n') {
+      nLines++;
+    }  
+  }
+  lineStartPos = (fpos_t*) malloc(sizeof(fpos_t)*nLines);
+  int i = 2;
+  rewind(ifile);
+  fgetpos(ifile, &lineStartPos[1]);
+  while( (ch = fgetc(ifile)) != EOF) 
+  {
+    if(ch == '\n') {
+      fgetpos(ifile, &lineStartPos[i]);
+      i++;
+    }
+  }
+  
+  //lineStartPos[i] is start of line i in file... first line is i=1 (not 0)
+  fsetpos(ifile, &lineStartPos[2]);
+  fscanf(ifile, "%d %d %d %f %f %f %f %f", &ntgrid, &pars->nperiod, &grids->Nz, &pars->drhodpsi, &pars->rmaj, &pars->shat, &pars->kxfac, &pars->qsf);
+  if(pars->debug) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n", ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
+
+	allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
+
+  //Local copy for convenience
+  int Nz = grids->Nz;
+  
+
+  //first block
+  for(int i=0; i<Nz; i++) {
+    fsetpos(ifile, &lineStartPos[i+4]);
+    fscanf(ifile, "%f %f %f %f", &geo->gbdrift[i], &geo->gradpar, &geo->grho[i], &grids->z[i]);
+    geo->gbdrift[i] = (1./4.)*geo->gbdrift[i];    
+//    printf("z: %f \n", z[i]);
+  }
+
+  //second block
+  for(int i=0; i<Nz; i++) {
+    fsetpos(ifile, &lineStartPos[i+4 +1*(Nz+2)]);
+    fscanf(ifile, "%f %f %f", &geo->cvdrift[i], &geo->gds2[i], &geo->bmag[i]);
+    geo->cvdrift[i] = (1./4.)*geo->cvdrift[i];
+  }
+
+  //third block
+  for(int i=0; i<Nz; i++) {
+    fsetpos(ifile, &lineStartPos[i+4 +2*(Nz+2)]);
+    fscanf(ifile, "%f %f", &geo->gds21[i], &geo->gds22[i]);
+  }
+
+  //fourth block
+  for(int i=0; i<Nz; i++) {
+    fsetpos(ifile, &lineStartPos[i+4 +3*(Nz+2)]);
+    fscanf(ifile, "%f %f", &geo->cvdrift0[i], &geo->gbdrift0[i]);
+    geo->cvdrift0[i] = (1./4.)*geo->cvdrift0[i];
+    geo->gbdrift0[i] = (1./4.)*geo->gbdrift0[i];
+    //if(DEBUG) printf("z: %f \n", cvdrift0[i]);  
+  }
+  
+}         
