@@ -2,6 +2,7 @@ MODULES = allocations.o\
 			global_variables.o\
 			unit_tests.o\
 			grids.o\
+			everything_struct.o\
 			info.o\
 			files.o\
 			geometry.o\

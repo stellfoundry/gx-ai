@@ -307,25 +307,11 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
 
 	/* ev_hd is on the host but the pointers point to memory on the device*/
-	everything_struct * ev_hd = (everything_struct *)malloc(sizeof(everything_struct));
-
-	/* Copy all the immediate values such as input parameters*/ 
-	*ev_hd = *ev_h;
-
-	/* Set the memory_location of ev_hd to let the allocate_or_deallocate_everything 
-		 function know to allocate its arrays on the device*/
-	ev_hd->memory_location = ON_DEVICE;
-
-	allocate_or_deallocate_everything(ALLOCATE, ev_h);
-	allocate_or_deallocate_everything(ALLOCATE, ev_hd);
-	/* This has to be done separately */
-	allocate_geo(ALLOCATE, ON_DEVICE, &ev_hd->geo, &ev_hd->grids.z, &ev_hd->grids.Nz);
-
+	everything_struct * ev_hd;
 	/* ev_d is on the device (and the pointers point to memory on the device)*/
 	everything_struct * ev_d;
-	cudaMalloc((void**) &ev_d, sizeof(everything_struct));
-	cudaMemcpy(ev_d, ev_hd, sizeof(everything_struct), cudaMemcpyHostToDevice);
-	/*(No need to allocate ev_d as its pointers point to the same arrays as ev_hd)*/
+  setup_everything_structs(ev_h, &ev_hd, &ev_d);
+
   
 	/* All of this can eventually be deleted when we get rid of the globals */
 	/* Host arrays*/

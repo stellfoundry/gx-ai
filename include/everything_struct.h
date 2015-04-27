@@ -110,3 +110,4 @@ typedef struct {
 
 
 
+void setup_everything_structs(everything_struct * ev_h, everything_struct ** ev_hd_ptr, everything_struct ** ev_d_ptr);
