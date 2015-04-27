@@ -1,5 +1,6 @@
-/* Defines structs that are used by geometry_c_interface*/
+#define NO_GLOBALS true
 #include "standard_headers.h"
+/* Defines structs that are used by geometry_c_interface*/
 #include "geo/geometry_c_interface.h"
 #include "gryfx_lib.h"
 #include "allocations.h"
@@ -32,75 +33,66 @@ extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficient
 
 extern "C" void geometry_mp_finish_geometry_(void);
 
-//void get_gs2_geo(int * Nz, struct coefficients_struct * coefficients, struct constant_coefficients_struct * constant_coefficients){
-//  geometry_get_nz(Nz);
-//  coefficients = (struct coefficients_struct *)malloc(sizeof(struct coefficients_struct)*(*Nz));
-//  geometry_get_constant_coefficients_c(constant_coefficients);
-//  geometry_get_coefficients_c(&Nz, coefficients);
-//}
 
-void set_geometry(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
-  
-    if (igeo == 2) {
-      //if (iproc==0){
-        //coefficients_struct *coefficients;
-        //constant_coefficients_struct constant_coefficients;
-      //}
-    }
+void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
 
+
+  //Local reference for convenience
+    float * z_h ;
 
   
-  if ( igeo == 0 ) // this is s-alpha
+  if ( pars->igeo == 0 ) // this is s-alpha
   {
     //grids->Nz = Nz;
 		allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
+    z_h = grids->z;
          
     
-    gradpar = (float) 1./(qsf*rmaj);
+    geo->gradpar = (float) 1./(pars->qsf*pars->rmaj);
     
-    drhodpsi = 1.; 
+    pars->drhodpsi = 1.; 
     
-    for(int k=0; k<Nz; k++) {
-      z_h[k] = 2*M_PI*Zp*(k-Nz/2)/Nz;
-      bmag_h[k] = 1./(1+eps*cos(z_h[k]));
-      bgrad_h[k] = gradpar*eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-      gds2_h[k] = 1. + pow((shat*z_h[k]-shift*sin(z_h[k])),2);
-      gds21_h[k] = -shat*(shat*z_h[k]-shift*sin(z_h[k]));
-      gds22_h[k] = pow(shat,2);
-      gbdrift_h[k] = 1./(2.*rmaj)*( cos(z_h[k]) + (shat*z_h[k]-shift*sin(z_h[k]))*sin(z_h[k]) );
-      cvdrift_h[k] = gbdrift_h[k];
-      gbdrift0_h[k] = -1./(2.*rmaj)*shat*sin(z_h[k]);
-      cvdrift0_h[k] = gbdrift0_h[k];
-      grho_h[k] = 1;
-      if(CONST_CURV) {
-        cvdrift_h[k] = 1./(2.*rmaj);
-	gbdrift_h[k] = 1./(2.*rmaj);
-	cvdrift0_h[k] = 0.;
-	gbdrift0_h[k] = 0.;
+    for(int k=0; k<grids->Nz; k++) {
+      z_h[k] = 2*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
+      geo->bmag[k] = 1./(1+pars->eps*cos(z_h[k]));
+      geo->bgrad[k] = geo->gradpar*pars->eps*sin(z_h[k])*geo->bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+      geo->gds2[k] = 1. + pow((pars->shat*z_h[k]-pars->shift*sin(z_h[k])),2);
+      geo->gds21[k] = -pars->shat*(pars->shat*z_h[k]-pars->shift*sin(z_h[k]));
+      geo->gds22[k] = pow(pars->shat,2);
+      geo->gbdrift[k] = 1./(2.*pars->rmaj)*( cos(z_h[k]) + (pars->shat*z_h[k]-pars->shift*sin(z_h[k]))*sin(z_h[k]) );
+      geo->cvdrift[k] = geo->gbdrift[k];
+      geo->gbdrift0[k] = -1./(2.*pars->rmaj)*pars->shat*sin(z_h[k]);
+      geo->cvdrift0[k] = geo->gbdrift0[k];
+      geo->grho[k] = 1;
+      if(pars->const_curv) {
+        geo->cvdrift[k] = 1./(2.*pars->rmaj);
+        geo->gbdrift[k] = 1./(2.*pars->rmaj);
+        geo->cvdrift0[k] = 0.;
+        geo->gbdrift0[k] = 0.;
       }
-      if(SLAB) {
+      if(pars->slab) {
         //omegad=0:
-	cvdrift_h[k] = 0.;
-        gbdrift_h[k] = 0.;       
-        cvdrift0_h[k] = 0.;
-        gbdrift0_h[k] = 0.;
+        geo->cvdrift[k] = 0.;
+        geo->gbdrift[k] = 0.;       
+        geo->cvdrift0[k] = 0.;
+        geo->gbdrift0[k] = 0.;
         //bgrad=0:
-        bgrad_h[k] = 0.;
+        geo->bgrad[k] = 0.;
         //bmag=const:
-        bmag_h[k] = 1.;
+        geo->bmag[k] = 1.;
       }
     }  
   }
-  else if ( igeo == 1) // read geometry from file 
+  else if ( pars->igeo == 1) // read geometry from file 
   {
-    FILE* geoFile = fopen(geoFileName, "r");
-    printf("Reading eik geo file %s\n", geoFileName);
-    read_geo_input(geoFile);
+    FILE* geoFile = fopen(pars->geofilename, "r");
+    printf("Reading eik geo file %s\n", pars->geofilename);
+    read_geo_input(pars, grids, geo, geoFile);
   }
-  else if ( igeo == 2 ) // calculate geometry from geo module
+  else if ( pars->igeo == 2 ) // calculate geometry from geo module
   {
     
-    read_geo(grids,geo,gryfxpars);
+    read_geo(pars,grids,geo,gryfxpars);
    
     // We calculate eps so that it gets the right
     // value of eps/qsf in the appropriate places.
@@ -108,17 +100,18 @@ void set_geometry(grids_struct * grids, geometry_coefficents_struct * geo, struc
     // places need to be checked.
     //double eps_over_q;
     //bi = geometry_mp_bi_out_; 
-    eps_over_q = 1.0 / (bi * drhodpsi);
-    eps = eps_over_q * qsf;
-    for(int k=0; k<Nz; k++) {
-      Xplot_h[k] = Rplot_h[k]*cos(aplot_h[k]);
-      Yplot_h[k] = Rplot_h[k]*sin(aplot_h[k]);
+    float eps_over_q;
+    eps_over_q = 1.0 / (geo->bi * pars->drhodpsi);
+    pars->eps = eps_over_q * pars->qsf;
+    for(int k=0; k<grids->Nz; k++) {
+      geo->Xplot[k] = geo->Rplot[k]*cos(geo->aplot[k]);
+      geo->Yplot[k] = geo->Rplot[k]*sin(geo->aplot[k]);
     }
   } 
   
 }
 
-void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
+void read_geo(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
 	double s_hat_input_d, beta_prime_input_d;
   
   struct coefficients_struct * coefficients;
@@ -143,11 +136,11 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 	irho = 2;
 
   // Need to set ntheta_out for Miller
-  ntheta_out = Nz;
+  ntheta_out = grids->Nz;
 
-  printf("nperiod = %d\n", nperiod);
+  printf("nperiod = %d\n", pars->nperiod);
 
-	geometry_set_inputs_c(&equilibrium_type, eqfile, &irho, &gryfxpars->rhoc, &bishop, &gryfxpars->nperiod, &ntheta_out);
+	geometry_set_inputs_c(&equilibrium_type, eqfile, &irho, &gryfxpars->rhoc, &pars->bishop, &gryfxpars->nperiod, &ntheta_out);
 
   geometry_get_miller_parameters_c(&millerpars);
   millerpars.rmaj=gryfxpars->rgeo_lcfs;
@@ -164,17 +157,17 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
   // E.g., bishop = 1 ---> this function has no effect
   //       bishop = 4 ---> this function sets both shat and beta_prime using the bishop relations
   // other permutations are possible, see http://gyrokinetics.sourceforge.net/wiki/index.php/Gs2_Input_Parameters
-  s_hat_input_d = s_hat_input;
-  beta_prime_input_d = beta_prime_input;
+  s_hat_input_d = pars->s_hat_input;
+  beta_prime_input_d = pars->beta_prime_input;
   geometry_vary_s_alpha_c(&s_hat_input_d, &beta_prime_input_d);	
 
-  printf("Nz is %d\n", Nz);
+  printf("Nz is %d\n", grids->Nz);
 
   geometry_set_miller_parameters_c(&millerpars);
 
 	int grid_size_out;
 
-  grid_size_out = Nz + 1;
+  grid_size_out = grids->Nz + 1;
 
 	geometry_calculate_coefficients_c(&grid_size_out);
 	printf("Grid size out was %d\n", grid_size_out);
@@ -187,20 +180,20 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 
 	printf("Got constant coefficients...;\n");
 	
-	Nz = grid_size_out - 1;
+	grids->Nz = grid_size_out - 1;
 	
-	aminor = constant_coefficients.aminor;
-	kxfac = constant_coefficients.kxfac;
+	geo->aminor = constant_coefficients.aminor;
+	pars->kxfac = constant_coefficients.kxfac;
 	//eps = .18;
-	rmaj = constant_coefficients.rmaj;
-	qsf = constant_coefficients.qsf;
-	//gradpar = 1./(qsf*rmaj);
-	shat = constant_coefficients.shat;
-	gradpar = coefficients[0].gradpar;
-	drhodpsi = constant_coefficients.drhodpsin;
-	bi = constant_coefficients.bi;
+	pars->rmaj = constant_coefficients.rmaj;
+	pars->qsf = constant_coefficients.qsf;
+	//geo->gradpar = 1./(qsf*pars->rmaj);
+	pars->shat = constant_coefficients.shat;
+	geo->gradpar = coefficients[0].gradpar;
+	pars->drhodpsi = constant_coefficients.drhodpsin;
+	geo->bi = constant_coefficients.bi;
 
-  grids->Nz = Nz;
+  //grids->Nz = Nz;
 	allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
 
 //  printf("I AM HERE %d\n;", iproc);
@@ -208,60 +201,38 @@ void read_geo(grids_struct * grids, geometry_coefficents_struct * geo,  struct g
 //MPI_Bcast(&qsf, 1, MPI_FLOAT, 0, mpcom_global);
 //MPI_Bcast(Nz, 1, MPI_INT, 0, mpcom_global);
 
-	printf("Adjusting jtwist, shat = %e...;\n", shat);
-	if(shat>1e-6) *&X0 = Y0*jtwist/(2*M_PI*shat);
+	printf("Adjusting jtwist, shat = %e...;\n", pars->shat);
+	if(pars->shat>1e-6) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->shat);
 
-  z_regular_h = (float*) malloc(sizeof(float)*Nz);
-//Xplot_h = (float*) malloc(sizeof(float)*Nz); 
-//Yplot_h = (float*) malloc(sizeof(float)*Nz); 
-//deltaFL_h = (float*) malloc(sizeof(float)*Nz); 
-//if (iproc==0){
+  //z_regular_h = (float*) malloc(sizeof(float)*grids->Nz);
 	
-//FILE* geofile = fopen("geo.out", "w");
-
-  printf("Setting coefficients, Nz = %d\n", Nz);
-	for(int k=0; k<Nz; k++) {
-	  z_h[k] = 2*M_PI*(k-Nz/2)/ Nz;
-    z_h[k] = coefficients[k].theta_eqarc;
-    z_regular_h[k] = coefficients[k].theta;
-	  gradpar_arr_h[k] = coefficients[k].gradpar_eqarc;
-	  bmag_h[k] = coefficients[k].bmag_eqarc;
-	  //bgrad_h[k] = 1_eqarc;                         //should calculate gradpar*d(bmag)/d(theta) with FFT?
-	  gds2_h[k] = coefficients[k].gds2_eqarc;
-	  gds21_h[k] = coefficients[k].gds21_eqarc;
-	  gds22_h[k] = coefficients[k].gds22_eqarc;
-	  gbdrift_h[k] = coefficients[k].gbdrift_eqarc/4.0;
-	  cvdrift_h[k] = coefficients[k].cvdrift_eqarc/4.0;
-	  gbdrift0_h[k] = coefficients[k].gbdrift0_eqarc/4.0;
-	  cvdrift0_h[k] = coefficients[k].cvdrift0_eqarc/4.0;
-	  grho_h[k] = coefficients[k].grho_eqarc;
-	  jacobian_h[k] = coefficients[k].jacob_eqarc; 
-	  Rplot_h[k] = coefficients[k].Rplot_eqarc; 
-	  Zplot_h[k] = coefficients[k].Zplot_eqarc; 
-	  aplot_h[k] = coefficients[k].aplot_eqarc; 
-	  Rprime_h[k] = coefficients[k].Rplot_eqarc; 
-	  Zprime_h[k] = coefficients[k].Zplot_eqarc; 
-	  aprime_h[k] = coefficients[k].aplot_eqarc; 
-//fprintf(geofile, " %f %f %f %f %f\n", z_h[k], gds2_h[k], gbdrift_h[k], cvdrift_h[k], grho_h[k]);
+  printf("Setting coefficients, Nz = %d\n", grids->Nz);
+	for(int k=0; k<grids->Nz; k++) {
+	  //z_h[k] = 2*M_PI*(k-grids->Nz/2)/ grids->Nz;
+    grids->z[k] = coefficients[k].theta_eqarc;
+    //z_regular_h[k] = coefficients[k].theta;
+	  geo->gradpar_arr[k] = coefficients[k].gradpar_eqarc;
+	  geo->bmag[k] = coefficients[k].bmag_eqarc;
+	  //geo->bgrad[k] = 1_eqarc;                         //should calculate gradpar*d(bmag)/d(theta) with FFT?
+	  geo->gds2[k] = coefficients[k].gds2_eqarc;
+	  geo->gds21[k] = coefficients[k].gds21_eqarc;
+	  geo->gds22[k] = coefficients[k].gds22_eqarc;
+	  geo->gbdrift[k] = coefficients[k].gbdrift_eqarc/4.0;
+	  geo->cvdrift[k] = coefficients[k].cvdrift_eqarc/4.0;
+	  geo->gbdrift0[k] = coefficients[k].gbdrift0_eqarc/4.0;
+	  geo->cvdrift0[k] = coefficients[k].cvdrift0_eqarc/4.0;
+	  geo->grho[k] = coefficients[k].grho_eqarc;
+	  geo->jacobian[k] = coefficients[k].jacob_eqarc; 
+	  geo->Rplot[k] = coefficients[k].Rplot_eqarc; 
+	  geo->Zplot[k] = coefficients[k].Zplot_eqarc; 
+	  geo->aplot[k] = coefficients[k].aplot_eqarc; 
+	  geo->Rprime[k] = coefficients[k].Rplot_eqarc; 
+	  geo->Zprime[k] = coefficients[k].Zplot_eqarc; 
+	  geo->aprime[k] = coefficients[k].aplot_eqarc; 
    
 	}
-//fclose(geofile);
  
   geometry_mp_finish_geometry_();
-//}	  
-//MPI_Bcast(&z_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&bmag_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&gds2_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&gds21_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&gds22_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&gbdrift0_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&cvdrift0_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&grho_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&jacobian_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&Rplot_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&Zplot_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//MPI_Bcast(&aplot_h[0], *Nz, MPI_FLOAT, 0, mpcom_global);
-//exit(0);
 
 	/*
 	printf("\nbmag was %f %f %f %f %f etc\n ", 

@@ -73,4 +73,11 @@ void set_globals_after_gryfx_lib(everything_struct * ev){
   jtwist = pars->jtwist;
   X0 = pars->x0;
 
+  //set in geometry.cu
+  drhodpsi = pars->drhodpsi;
+  kxfac = pars->kxfac;
+  gradpar = ev->geo.gradpar;
+  bi = ev->geo.bi;
+  aminor = ev->geo.aminor;
+
 }

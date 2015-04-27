@@ -17,9 +17,8 @@ EXTERN_SWITCH int jtwist;
 EXTERN_SWITCH float tau;
 //
 //globals defined in eik.out
-EXTERN_SWITCH int ntgrid;
 EXTERN_SWITCH float drhodpsi, rmaj, shat, kxfac, qsf, gradpar, eps, aminor, epsl;
-EXTERN_SWITCH float eps_over_q, bi;
+EXTERN_SWITCH float bi;
 
 //other Miller parameters;
 EXTERN_SWITCH float r_geo, akappa, akappri, tri, tripri, shift, asym, asympri;
@@ -341,6 +340,7 @@ typedef struct {
 
     int igeo;
     float shaping_ps;
+    char * geofilename;
     //char * fluxfile;
     //char * stopfile;
     //char * restartfile;

@@ -435,6 +435,7 @@ model_option = "const-curv"
 
   igeo = 0
   shaping_ps = 1.6
+  geofile = "eik.out"
   !s_alpha = "on"  
   !fluxfile = "./scan/output/linearflux"
   !stopfile = "linear.stop"

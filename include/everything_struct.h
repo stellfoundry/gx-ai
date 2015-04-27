@@ -7,8 +7,8 @@
 #include "grids.h"
 #include "fields.h"
 #include "outputs.h"
-#include "geometry.h"
 #include "input_parameters_struct.h"
+#include "geometry.h"
 
 
 typedef struct {

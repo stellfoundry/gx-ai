@@ -1,8 +1,11 @@
-void read_geo_input(FILE* ifile) 
+void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile) 
 {    
   int nLines;
   fpos_t* lineStartPos;
   int ch;
+
+  int ntgrid;
+
   
   rewind(ifile);
   //find number of lines
@@ -26,50 +29,43 @@ void read_geo_input(FILE* ifile)
   
   //lineStartPos[i] is start of line i in file... first line is i=1 (not 0)
   fsetpos(ifile, &lineStartPos[2]);
-  fscanf(ifile, "%d %d %d %f %f %f %f %f", &ntgrid, &nperiod, &Nz, &drhodpsi, &rmaj, &shat, &kxfac, &qsf);
-  if(DEBUG) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n", ntgrid, nperiod, Nz, rmaj);
+  fscanf(ifile, "%d %d %d %f %f %f %f %f", &ntgrid, &pars->nperiod, &grids->Nz, &pars->drhodpsi, &pars->rmaj, &pars->shat, &pars->kxfac, &pars->qsf);
+  if(pars->debug) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n", ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
+
+	allocate_geo(ALLOCATE, ON_HOST, geo, &grids->z, &grids->Nz);
+
+  //Local copy for convenience
+  int Nz = grids->Nz;
   
-  gbdrift_h = (float*) malloc(sizeof(float)*Nz);
-  grho_h = (float*) malloc(sizeof(float)*Nz);
-  z_h = (float*) malloc(sizeof(float)*Nz);
-  cvdrift_h = (float*) malloc(sizeof(float)*Nz);
-  gds2_h = (float*) malloc(sizeof(float)*Nz);
-  bmag_h = (float*) malloc(sizeof(float)*Nz);
-  gds21_h = (float*) malloc(sizeof(float)*Nz);
-  gds22_h = (float*) malloc(sizeof(float)*Nz);
-  cvdrift0_h = (float*) malloc(sizeof(float)*Nz);
-  gbdrift0_h = (float*) malloc(sizeof(float)*Nz); 
-  bgrad_h = (float*) malloc(sizeof(float)*Nz);
-  jacobian_h = (float*) malloc(sizeof(float)*Nz);
 
   //first block
   for(int i=0; i<Nz; i++) {
     fsetpos(ifile, &lineStartPos[i+4]);
-    fscanf(ifile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
-    gbdrift_h[i] = (1./4.)*gbdrift_h[i];    
-//    printf("z: %f \n", z_h[i]);
+    fscanf(ifile, "%f %f %f %f", &geo->gbdrift[i], &geo->gradpar, &geo->grho[i], &grids->z[i]);
+    geo->gbdrift[i] = (1./4.)*geo->gbdrift[i];    
+//    printf("z: %f \n", z[i]);
   }
 
   //second block
   for(int i=0; i<Nz; i++) {
     fsetpos(ifile, &lineStartPos[i+4 +1*(Nz+2)]);
-    fscanf(ifile, "%f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i]);
-    cvdrift_h[i] = (1./4.)*cvdrift_h[i];
+    fscanf(ifile, "%f %f %f", &geo->cvdrift[i], &geo->gds2[i], &geo->bmag[i]);
+    geo->cvdrift[i] = (1./4.)*geo->cvdrift[i];
   }
 
   //third block
   for(int i=0; i<Nz; i++) {
     fsetpos(ifile, &lineStartPos[i+4 +2*(Nz+2)]);
-    fscanf(ifile, "%f %f", &gds21_h[i], &gds22_h[i]);
+    fscanf(ifile, "%f %f", &geo->gds21[i], &geo->gds22[i]);
   }
 
   //fourth block
   for(int i=0; i<Nz; i++) {
     fsetpos(ifile, &lineStartPos[i+4 +3*(Nz+2)]);
-    fscanf(ifile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
-    cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
-    gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
-    //if(DEBUG) printf("z: %f \n", cvdrift0_h[i]);  
+    fscanf(ifile, "%f %f", &geo->cvdrift0[i], &geo->gbdrift0[i]);
+    geo->cvdrift0[i] = (1./4.)*geo->cvdrift0[i];
+    geo->gbdrift0[i] = (1./4.)*geo->gbdrift0[i];
+    //if(DEBUG) printf("z: %f \n", cvdrift0[i]);  
   }
   
 }         

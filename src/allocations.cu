@@ -286,6 +286,7 @@ void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_st
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){
 		allocate_geo(allocate_or_deallocate, ev->memory_location, &ev->geo, &ev->grids.z, &ev->grids.Nz);
+    //Make a proper function for these and need to deallocate strings in input pars.
     free (ev->info.run_name);
     free (ev->info.restart_file_name);
 	}

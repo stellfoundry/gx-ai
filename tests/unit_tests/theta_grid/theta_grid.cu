@@ -68,7 +68,8 @@ int main(int argc, char* argv[])
       }
   }
   for(int k=0; k<Nz; k++) {
-        printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_arr_h[k], z_h[k], z_regular_h[k]);
+        //printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_arr_h[k], z_h[k], z_regular_h[k]);
+        printf("%d: gp=%f th=%f thr=%f\n", k, gradpar_arr_h[k], z_h[k], 0.0);
   }
   for(int k=0; k<Nz; k++) {
         printf("%d: gb=%f bm=%f th=%f\n", k, gbdrift_h[k]*4.0, bmag_h[k], z_h[k]);

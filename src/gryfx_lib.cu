@@ -117,7 +117,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     //Only proc0 needst to import paramters to gryfx
     import_gryfxpars(gryfxpars, ev);
     printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
-    set_geometry(&ev->grids, &ev->geo, gryfxpars);
+    set_geometry(&ev->pars, &ev->grids, &ev->geo, gryfxpars);
     print_initial_parameter_summary(ev);
     if(ev->pars.debug) print_cuda_properties(ev);
 	}

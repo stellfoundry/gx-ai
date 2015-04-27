@@ -16,6 +16,8 @@ EXTERN_SWITCH float *gds21, *gds22, *cvdrift0, *gbdrift0;
 EXTERN_SWITCH float *bmagInv;
 EXTERN_SWITCH cuComplex *bmag_complex;
 EXTERN_SWITCH float* jacobian;
+
+//EXTERN_SWITCH int ntgrid;
 #endif
 
 typedef struct {
@@ -43,6 +45,9 @@ typedef struct {
 
 	//float drhodpsi;
 	float gradpar;
+  float bi;
+  float aminor;
+
 
 	float fluxDen;
 
@@ -50,5 +55,5 @@ typedef struct {
 	float * bmagInv;
 } geometry_coefficents_struct;
 
-void set_geometry(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
-void read_geo(grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+void read_geo(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);

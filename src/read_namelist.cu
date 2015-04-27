@@ -310,8 +310,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &pars->igeo);
   igeo=pars->igeo;
 
-  // EGH Assume this is now obsolete
-  //if(fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geoFileName));
+  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geoFileName);
+  pars->geofilename = geoFileName;
 
   fnr_get_float(&namelist_struct, "gryfx_knobs", "shaping_ps", &pars->shaping_ps);
   shaping_ps=pars->shaping_ps;
