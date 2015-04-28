@@ -4,6 +4,7 @@
 #include "geo/geometry_c_interface.h"
 #include "gryfx_lib.h"
 #include "allocations.h"
+#include "get_error.h"
 #include "math.h"
 /*#include "/global/u2/n/nmandell/noah/branches/GS2/trunk/geo/geometry_c_interface.h"*/
 /*#include "/global/homes/h/highcock/Code_Carver/gs2/trunk/geo/geometry_c_interface.h"*/
@@ -320,3 +321,18 @@ void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geomet
   }
   
 }         
+
+void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz){
+  //return;
+  cudaMemcpy(geo->gbdrift, geo_h->gbdrift, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->grho, geo_h->grho, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->cvdrift, geo_h->cvdrift, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->gds2, geo_h->gds2, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->bmag, geo_h->bmag, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  if(pars->igeo==0) cudaMemcpy(geo->bgrad, geo_h->bgrad, sizeof(float)*Nz, cudaMemcpyHostToDevice);    //
+  cudaMemcpy(geo->gds21, geo_h->gds21, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->gds22, geo_h->gds22, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->cvdrift0, geo_h->cvdrift0, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(geo->gbdrift0, geo_h->gbdrift0, sizeof(float)*Nz, cudaMemcpyHostToDevice);
+  if(pars->debug) getError("run_gryfx.cu, after memcpy");
+}

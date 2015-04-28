@@ -117,6 +117,9 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     import_gryfxpars(gryfxpars, ev);
     printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
     set_geometry(&ev->pars, &ev->grids, &ev->geo, gryfxpars);
+    //Note the printout module still uses globals which may no 
+    //longer be in sync with ev at this point. Need to remove globals
+    //from printout.cu
     print_initial_parameter_summary(ev);
     if(ev->pars.debug) print_cuda_properties(ev);
 	}
@@ -170,7 +173,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     print_final_summary(ev, outfile);
     fclose(outfile);
   } //end of iproc if
-
+  free(ev);
 #ifdef GS2_zonal
   gryfx_finish_gs2();
 #endif

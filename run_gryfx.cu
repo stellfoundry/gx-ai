@@ -421,18 +421,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     
     cudaMalloc((void**) &species_d, sizeof(specie)*nSpecies);
   
-    //from input file
-    cudaMalloc((void**) &gbdrift, sizeof(float)*Nz);
-    cudaMalloc((void**) &grho, sizeof(float)*Nz);
-    cudaMalloc((void**) &z, sizeof(float)*Nz);
-    cudaMalloc((void**) &cvdrift, sizeof(float)*Nz);
-    cudaMalloc((void**) &gds2, sizeof(float)*Nz);
-    cudaMalloc((void**) &bmag, sizeof(float)*Nz);
-    cudaMalloc((void**) &bgrad, sizeof(float)*Nz);    //
-    cudaMalloc((void**) &gds21, sizeof(float)*Nz);
-    cudaMalloc((void**) &gds22, sizeof(float)*Nz);
-    cudaMalloc((void**) &cvdrift0, sizeof(float)*Nz);
-    cudaMalloc((void**) &gbdrift0, sizeof(float)*Nz);
     
     cudaMalloc((void**) &omega, sizeof(cuComplex)*Nx*(Ny/2+1));
     for(int t=0; t<navg; t++) {
@@ -469,19 +457,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   
     cudaMemcpy(species_d, species, sizeof(specie)*nSpecies, cudaMemcpyHostToDevice);
     
-    cudaMemcpy(gbdrift, gbdrift_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(grho, grho_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
     cudaMemcpy(z, z_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(cvdrift, cvdrift_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(gds2, gds2_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(bmag, bmag_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    if(igeo==0) cudaMemcpy(bgrad, bgrad_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);    //
-    cudaMemcpy(gds21, gds21_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(gds22, gds22_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(cvdrift0, cvdrift0_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    cudaMemcpy(gbdrift0, gbdrift0_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-    if(DEBUG) getError("run_gryfx.cu, after memcpy");
-    
+
+    copy_geo_arrays_to_device(&ev_hd->geo, &ev_h->geo, &ev_h->pars, ev_h->grids.Nz); 
     cudaMalloc((void**) &val, sizeof(float));
     //phiVal = (float*) malloc(sizeof(float));
     
@@ -2184,10 +2162,6 @@ if(iproc==0) {
       //cudaFree(Phi2_XYBox[t]);
       if(LINEAR) cudaFree(omegaBox[t]);
     }
-    cudaFree(gbdrift), cudaFree(gbdrift0);
-    cudaFree(grho), cudaFree(z);
-    cudaFree(cvdrift), cudaFree(cvdrift0);
-    cudaFree(gds2), cudaFree(gds21), cudaFree(gds22);
     
     cudaFree(kx_shift), cudaFree(jump);
     
