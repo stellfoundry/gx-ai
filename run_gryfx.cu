@@ -7,6 +7,7 @@
 #include "mpi.h"
 #include "nvToolsExt.h"
 
+
 // EGH: Until we do something more fancy with cudaGetSymbolAddress the following have
 // to have file scope... ie they have to be in the same aggregate source file as the 
 // kernels.
@@ -54,6 +55,7 @@ __constant__ int Zp_d;
 #include "courant.cu"
 #include "energy.cu"
 #include "timestep_gryfx.cu"
+
 
 #ifdef GS2_zonal
 //extern "C" void fields_implicit_mp_advance_implicit_(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h);
@@ -199,12 +201,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     */
     //device variables; main device arrays will be capitalized
     if(DEBUG) getError("run_gryfx.cu, before device alloc");
-    cuComplex *Dens[nSpecies];  
-    cuComplex *Upar[nSpecies],  *Tpar[nSpecies];
-    cuComplex *Qpar[nSpecies],  *Tprp[nSpecies],  *Qprp[nSpecies];
-    cuComplex *Dens1[nSpecies], *Upar1[nSpecies], *Tpar1[nSpecies]; 
-    cuComplex *Qpar1[nSpecies], *Tprp1[nSpecies], *Qprp1[nSpecies];
-    cuComplex *Phi; cuComplex *Phi1; 
     
     //tmps for timestep routine
     cuComplex *field, *tmp;
@@ -306,20 +302,25 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
 
+} //end if iproc
+
 	/* ev_hd is on the host but the pointers point to memory on the device*/
 	everything_struct * ev_hd;
 	/* ev_d is on the device (and the pointers point to memory on the device)*/
 	everything_struct * ev_d;
   setup_everything_structs(ev_h, &ev_hd, &ev_d);
 
-  
-	/* All of this can eventually be deleted when we get rid of the globals */
-	/* Host arrays*/
-	/* Device arrays*/
-		Phi = ev_hd->fields.phi;
-		Phi1 = ev_hd->fields.phi1;
+// The file local_pointers.cu
+//declares and assigns local 
+// pointers to members of the everything
+// structs, for example Phi... it should
+// eventually be unnecessary
+#include "local_pointers.cu"
+
 
    //omegaAvg_h = ev_h->outs.omega;
+
+if (iproc==0){
 
 
 
@@ -354,25 +355,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     cudaMalloc((void**) &phi_ky0_d, sizeof(cuComplex)*ntheta0*Nz);
   //#endif
     
-    for(int s=0; s<nSpecies; s++) {
-      cudaMalloc((void**) &Dens[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Dens1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-  
-      cudaMalloc((void**) &Upar[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Upar1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-  
-      cudaMalloc((void**) &Tpar[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Tpar1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-  
-      cudaMalloc((void**) &Qpar[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Qpar1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-  
-      cudaMalloc((void**) &Tprp[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Tprp1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-  
-      cudaMalloc((void**) &Qprp[s],  sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      cudaMalloc((void**) &Qprp1[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    }  
     
     
     //cudaMalloc((void**) &Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);

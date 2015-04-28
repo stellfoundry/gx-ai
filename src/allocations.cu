@@ -128,18 +128,18 @@ void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fiel
 	alloc_dealloc(&fields->phi1, aod, ON_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
 
 
-//	allocate_field_species_array(&fields->dens, aod, ml, grids);
-//	allocate_field_species_array(&fields->dens1, aod, ml, grids);
-//	allocate_field_species_array(&fields->upar, aod, ml, grids);
-//	allocate_field_species_array(&fields->upar1, aod, ml, grids);
-//	allocate_field_species_array(&fields->tpar, aod, ml, grids);
-//	allocate_field_species_array(&fields->tpar1, aod, ml, grids);
-//	allocate_field_species_array(&fields->tprp, aod, ml, grids);
-//	allocate_field_species_array(&fields->tprp1, aod, ml, grids);
-//	allocate_field_species_array(&fields->qpar, aod, ml, grids);
-//	allocate_field_species_array(&fields->qpar1, aod, ml, grids);
-//	allocate_field_species_array(&fields->qprp, aod, ml, grids);
-//	allocate_field_species_array(&fields->qprp1, aod, ml, grids);
+	allocate_field_species_array(&fields->dens, aod, ml, grids);
+	allocate_field_species_array(&fields->dens1, aod, ml, grids);
+	allocate_field_species_array(&fields->upar, aod, ml, grids);
+	allocate_field_species_array(&fields->upar1, aod, ml, grids);
+	allocate_field_species_array(&fields->tpar, aod, ml, grids);
+	allocate_field_species_array(&fields->tpar1, aod, ml, grids);
+	allocate_field_species_array(&fields->tprp, aod, ml, grids);
+	allocate_field_species_array(&fields->tprp1, aod, ml, grids);
+	allocate_field_species_array(&fields->qpar, aod, ml, grids);
+	allocate_field_species_array(&fields->qpar1, aod, ml, grids);
+	allocate_field_species_array(&fields->qprp, aod, ml, grids);
+	allocate_field_species_array(&fields->qprp1, aod, ml, grids);
 
 
 	/*Globals...to be deleted eventually*/
