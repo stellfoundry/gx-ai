@@ -294,18 +294,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 if (iproc==0){
 
-
-
-
-
-
-    //kx_h = (float*) malloc(sizeof(float)*Nx);
-    //ky_h = (float*) malloc(sizeof(float)*(Ny/2+1));
-
-    kx_h = ev_h->grids.kx;
-    ky_h = ev_h->grids.ky;
-    kz_h = (float*) malloc(sizeof(float)*Nz);  
-
   
     //zero dtBox array
     //for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
@@ -340,10 +328,7 @@ if (iproc==0){
     cudaMalloc((void**) &derivR2_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &resultR_nlps, sizeof(float)*Nx*Ny*Nz);
   
-    cudaMalloc((void**) &kx, sizeof(float)*Nx);
     cudaMalloc((void**) &kx_abs, sizeof(float)*Nx);
-    cudaMalloc((void**) &ky, sizeof(float)*(Ny/2+1));
-    cudaMalloc((void**) &kz, sizeof(float)*(Nz));
     cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
   
     cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
@@ -2053,12 +2038,12 @@ if(iproc==0) {
       
     //cleanup  
     for(int s=0; s<nSpecies; s++) {
-      cudaFree(Dens[s]), cudaFree(Dens1[s]);
-      cudaFree(Upar[s]), cudaFree(Upar1[s]);
-      cudaFree(Tpar[s]), cudaFree(Tpar1[s]);
-      cudaFree(Tprp[s]), cudaFree(Tprp1[s]);
-      cudaFree(Qpar[s]), cudaFree(Qpar1[s]);
-      cudaFree(Qprp[s]), cudaFree(Qprp1[s]);
+//      cudaFree(Dens[s]), cudaFree(Dens1[s]);
+//      cudaFree(Upar[s]), cudaFree(Upar1[s]);
+//      cudaFree(Tpar[s]), cudaFree(Tpar1[s]);
+//      cudaFree(Tprp[s]), cudaFree(Tprp1[s]);
+//      cudaFree(Qpar[s]), cudaFree(Qpar1[s]);
+//      cudaFree(Qprp[s]), cudaFree(Qprp1[s]);
       cudaFree(dens_ky0_d[s]);
       cudaFree(upar_ky0_d[s]);
       cudaFree(tpar_ky0_d[s]);
@@ -2091,10 +2076,10 @@ if(iproc==0) {
       if(LINEAR) cudaFree(omegaBox[t]);
     }
     
-    cudaFree(kx_shift), cudaFree(jump);
+    //cudaFree(kx_shift), cudaFree(jump);
     
       
-    cudaFree(kx), cudaFree(ky), cudaFree(kz);
+    //cudaFree(kx), cudaFree(ky), cudaFree(kz);
     
     cudaFree(deriv_nlps);
     cudaFree(derivR1_nlps);

@@ -45,9 +45,12 @@
 
 
     //Some globals
+
+    //Host
+    //Device
     jacobian = ev_hd->geo.jacobian;
     bmagInv = ev_hd->geo.bmagInv;
     bmag_complex = ev_hd->geo.bmag_complex;
-//
+
 //
 //

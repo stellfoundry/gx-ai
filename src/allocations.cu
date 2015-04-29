@@ -195,13 +195,14 @@ void allocate_grids(int aod, int ml, grids_struct * grids){
 
 	alloc_dealloc(&grids->kx, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&grids->ky, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
-	alloc_dealloc(&grids->kz, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nz);
+	alloc_dealloc(&grids->kz, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nz);
 	alloc_dealloc(&grids->kx_shift, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&grids->jump, aod, ON_DEVICE, ml, TYPE_INT, grids->Ny_complex);
 	/*Globals...to be deleted eventually*/
 	if (ml == ON_HOST){
 		kx_h = grids->kx;
 		ky_h =  grids->ky;
+		kz_h =  grids->kz;
 	}
 	else if (ml == ON_DEVICE){
 		kx = grids->kx;
@@ -276,6 +277,9 @@ void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z
 		gds22 = geo->gds22;
 		cvdrift0 = geo->cvdrift0;
 		gbdrift0 = geo->gbdrift0;
+    jacobian = geo->jacobian;
+    bmagInv = geo->bmagInv;
+    bmag_complex = geo->bmag_complex;
 	}
 }
 
