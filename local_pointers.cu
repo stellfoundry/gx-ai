@@ -21,8 +21,9 @@
 
     cuComplex * field = ev_hd->fields.field;
 
-    float * kx_shift = ev_hd->grids.kx_shift;
-    int * jump = ev_hd->grids.jump;
+    // EGH: Not being used yet but will be
+    //float * kx_shift = ev_hd->grids.kx_shift;
+    //int * jump = ev_hd->grids.jump;
 //
     cuComplex * omega = ev_hd->outs.omega;
     float * Phi2_kxky_sum = ev_hd->outs.phi2_by_mode_movav;
@@ -48,9 +49,6 @@
 
     //Host
     //Device
-    jacobian = ev_hd->geo.jacobian;
-    bmagInv = ev_hd->geo.bmagInv;
-    bmag_complex = ev_hd->geo.bmag_complex;
 
 //
 //

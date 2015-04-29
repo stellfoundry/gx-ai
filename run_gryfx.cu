@@ -55,6 +55,7 @@ __constant__ int Zp_d;
 #include "courant.cu"
 #include "energy.cu"
 #include "timestep_gryfx.cu"
+#include "run_gryfx_functions.cu"
 
 
 #ifdef GS2_zonal
@@ -406,29 +407,15 @@ if (iproc==0){
     kx4_max_Inv = 1. / kx4_max;
     kperp4_max_Inv = 1. / pow(kperp2_max,2);
     if(DEBUG) printf("kperp4_max_Inv = %f\n", kperp4_max_Inv);
-    bmagInit <<<dimGrid,dimBlock>>>(bmag,bmagInv);
-    jacobianInit<<<dimGrid,dimBlock>>> (jacobian,drhodpsi,gradpar,bmag);
-    if(igeo != 0) {
 
-      cudaMemset(bmag_complex, 0, sizeof(cuComplex)*(Nz/2+1));
-      //calculate bgrad = d/dz ln(B(z)) = 1/B dB/dz
-      if(DEBUG) printf("calculating bgrad\n");
-      ZDerivB(bgrad, bmag, bmag_complex, kz);
-      //cufftExecR2C(ZDerivBplanR2C, bmag, bmag_complex);
-      //cudaMemcpy(CtmpZ_h, bmag_complex, sizeof(cuComplex)*(Nz/2+1), cudaMemcpyDeviceToHost);
-      //for(int i=0; i<(Nz/2+1); i++) {
-      //  printf("bmag_complex(kz=%d) = %f + i %f\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-      //}
-      multdiv<<<dimGrid,dimBlock>>>(bgrad, bgrad, bmagInv, 1, 1, Nz, 1);
-    }  
-    if(DEBUG) getError("before cudaMemset");  
+  	calculate_additional_geo_arrays(
+        ev_h->grids.Nz, ev_hd->grids.kz, ev_hd->tmp.Z,
+        &ev_h->pars, &ev_h->cdims, 
+        &ev_hd->geo, &ev_h->geo);
+
     //cudaMemset(jump, 0, sizeof(float)*Ny);
     //cudaMemset(kx_shift,0,sizeof(float)*Ny);
-    if(DEBUG) getError("after cudaMemset"); 
   
-    //for flux calculations
-    multdiv<<<dimGrid,dimBlock>>>(tmpZ, jacobian, grho,1,1,Nz,1);
-    fluxDen = sumReduc(tmpZ,Nz,false);
   
     //PhiAvg denominator for qneut
     cudaMemset(PhiAvgDenom, 0, sizeof(float)*Nx);

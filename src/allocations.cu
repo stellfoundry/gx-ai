@@ -238,7 +238,7 @@ void allocate_geo(int aod, int ml, geometry_coefficents_struct * geo, float ** z
 	alloc_dealloc(&geo->aprime, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->deltaFL, aod, ON_HOST, ml, TYPE_FLOAT, *Nz);
 	alloc_dealloc(&geo->bmagInv, aod, ON_DEVICE, ml, TYPE_FLOAT, *Nz);
-	alloc_dealloc(&geo->bmag_complex, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, *Nz);
+	alloc_dealloc(&geo->bmag_complex, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, (*Nz/2 + 1));
 
 	/* Geometry globals... to be deleted eventually*/
 	if (ml == ON_HOST){

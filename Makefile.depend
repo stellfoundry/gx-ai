@@ -25,6 +25,8 @@ CU_DEPS := \
       zderiv_kernel.cu \
       covering_kernel.cu \
       reduc_kernel.cu \
+      run_gryfx_functions.cu \
+      local_pointers.cu \
       cudaReduc_kernel.cu \
       init_kernel.cu \
       omega_kernel.cu \
