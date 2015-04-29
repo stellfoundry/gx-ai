@@ -74,6 +74,7 @@ extern "C" void broadcast_integer(int* a);
 
 
 
+
 void set_cuda_constants(){
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
