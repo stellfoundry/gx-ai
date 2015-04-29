@@ -16,6 +16,9 @@ typedef struct {
 	int Nz;
 	int Nspecies; /* set equal to pars.nspec */
 
+  int naky;
+  int ntheta0;
+
 	int NxNyc;
 	int NxNy;
 	int NxNycNz;

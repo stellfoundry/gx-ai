@@ -121,3 +121,118 @@ void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
 	ZDerivplan = ffts->ZDerivplan;
   if(DEBUG) getError("after plan");
 }
+void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * grids_h, input_parameters_struct * pars, cuffts_struct * ffts_h, cuda_streams_struct * streams, cuda_dimensions_struct * cdims, cuda_events_struct * events){
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+  //set up kxCover and kyCover for covering space z-transforms
+  int naky = grids_h->naky;
+  int ntheta0 = grids_h->ntheta0;// nshift;
+
+  int idxRight[naky*ntheta0];
+  int idxLeft[naky*ntheta0];
+
+  int linksR[naky*ntheta0];
+  int linksL[naky*ntheta0];
+
+  int n_k[naky*ntheta0];
+
+  //Local duplicate for convenience
+  int icovering = pars->icovering;
+
+  if(iproc==0) getNClasses(&grids_h->nClasses, idxRight, idxLeft, linksR, linksL, n_k, naky, ntheta0, pars->jtwist);
+	grids_d->nClasses = grids_h->nClasses;
+
+  
+  if(DEBUG) getError("run_gryfx.cu, after nclasses");
+
+	/* For brevity*/
+	int ncls = grids_h->nClasses;
+	int Nz = grids_h->Nz;
+
+	/* Declare two local pointers for brevity */
+  int *nlinks, *nchains;
+
+
+	/* Declare two local pointers for brevity */
+  int **kxCover_h, **kyCover_h;
+
+  if(iproc==0)  {
+    nlinks = grids_h->nLinks = (int*) malloc(sizeof(int)*ncls);
+    nchains = grids_h->nChains = (int*) malloc(sizeof(int)*ncls);
+
+
+    /*Globals - to be deleted*/
+    nClasses = grids_h->nClasses;
+    nLinks = nlinks;
+    nChains = nchains;
+    getNLinksChains(grids_h->nLinks, grids_h->nChains, n_k, ncls, naky, ntheta0);
+    kxCover_h = grids_h->kxCover = (int**) malloc(sizeof(int*)*ncls);
+    kyCover_h = grids_h->kyCover = (int**) malloc(sizeof(int*)*ncls);
+    for(int c=0; c<ncls; c++) {   
+      kyCover_h[c] = (int*) malloc(sizeof(int)*nlinks[c]*nchains[c]);
+      kxCover_h[c] = (int*) malloc(sizeof(int)*nlinks[c]*nchains[c]);
+    }  
+
+    kFill(ncls, nchains, nlinks, kyCover_h, kxCover_h, linksL, linksR, idxRight, naky, ntheta0); 
+    
+    if(DEBUG) getError("run_gryfx.cu, after kFill");
+
+  
+
+  //these are the device arrays... cannot be global because jagged!
+  //int *kxCover[nClasses];
+  //int *kyCover[nClasses];
+  //also set up a stream for each class.
+    streams->zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
+    events->end_of_zderiv =  (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
+    cdims->dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
+    cdims->dimBlockCovering.x = 8;
+    cdims->dimBlockCovering.y = 8;
+    cdims->dimBlockCovering.z = 8;
+
+  // Update Globals
+  zstreams = streams->zstreams ;
+  end_of_zderiv = events->end_of_zderiv;
+  dimBlockCovering = cdims->dimBlockCovering;
+  dimGridCovering = cdims->dimGridCovering;
+  
+
+  grids_d->kxCover = (int**) malloc(sizeof(int*)*ncls);
+  grids_d->kyCover = (int**) malloc(sizeof(int*)*ncls);
+
+	/* Declare two local pointers for brevity */
+  //cuComplex ** g_covering;
+  //float ** kz_covering;
+
+	//g_covering = grids_d->g_covering = (cuComplex **)malloc(sizeof(cuComplex*)*ncls);
+	//kz_covering = grids_d->kz_covering = (cuComplex **)malloc(sizeof(cuComplex*)*ncls);
+	grids_d->g_covering = (cuComplex **)malloc(sizeof(cuComplex*)*ncls);
+	grids_d->kz_covering = (float **)malloc(sizeof(float*)*ncls);
+
+  //cufftHandle plan_covering[nClasses];
+	ffts_h->plan_covering = (cufftHandle *)malloc(sizeof(cufftHandle)*ncls);
+  for(int c=0; c<ncls; c++) {    
+    int n[1] = {nlinks[c]*Nz};
+    cudaStreamCreate(&(streams->zstreams[c]));
+    cufftPlanMany(&ffts_h->plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nchains[c]);
+
+    cdims->dimGridCovering[c].x = (Nz+cdims->dimBlockCovering.x-1)/cdims->dimBlockCovering.x;
+    cdims->dimGridCovering[c].y = (grids_h->nChains[c]+cdims->dimBlockCovering.y-1)/cdims->dimBlockCovering.y;
+    cdims->dimGridCovering[c].z = (grids_h->nLinks[c]*icovering+dimBlockCovering.z-1)/dimBlockCovering.z;
+    if(pars->debug) kPrint(grids_h->nLinks[c], grids_h->nChains[c], grids_h->kyCover[c], grids_h->kxCover[c]); 
+  
+    //kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
+    cudaMalloc((void**) &grids_d->g_covering[c], sizeof(cuComplex)*Nz*nlinks[c]*nchains[c]);
+    cudaMalloc((void**) &grids_d->kz_covering[c], sizeof(float)*Nz*nlinks[c]);
+    cudaMalloc((void**) &grids_d->kxCover[c], sizeof(int)*nlinks[c]*nchains[c]);
+    cudaMalloc((void**) &grids_d->kyCover[c], sizeof(int)*nlinks[c]*nchains[c]);    
+    cudaMemcpy(grids_d->kxCover[c], grids_h->kxCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);
+    cudaMemcpy(grids_d->kyCover[c], grids_h->kyCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);    
+  }    
+  //printf("nLinks[0] = %d  nChains[0] = %d\n", nLinks[0],nChains[0]);
+  
+
+  if(DEBUG) getError("run_gryfx.cu, after kCover");
+  } // end if iproc==0
+  ///////////////////////////////////////////////////////////////////////////////////////////////////
+}
+

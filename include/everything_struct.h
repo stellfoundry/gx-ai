@@ -33,7 +33,18 @@ typedef struct {
   int zThreads, totalThreads, zBlockThreads;
 	dim3 dimBlock;
   dim3 dimGrid;
+	dim3 dimBlockCovering;
+  dim3 * dimGridCovering;
 } cuda_dimensions_struct;
+
+typedef struct {
+  cudaStream_t * zstreams;
+  cudaStream_t copystream;
+} cuda_streams_struct;
+
+typedef struct {
+  cudaEvent_t * end_of_zderiv;
+} cuda_events_struct;
 
 typedef struct{
 	cufftHandle NLPSplanR2C;
@@ -100,6 +111,8 @@ typedef struct {
 	cuffts_struct ffts;
   damping_coefficients_struct damps;
   mpi_info_struct mpi;
+  cuda_streams_struct streams;
+  cuda_events_struct events;
   
 
 	/* Specifies whether the pointers in the struct point 

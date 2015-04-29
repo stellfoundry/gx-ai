@@ -98,9 +98,10 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     cudaEvent_t start, stop,  nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
-    int naky, ntheta0;// nshift;
-    naky = 1 + (Ny-1)/3;
-    ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
+    //int naky, ntheta0;// nshift;
+    //naky = 1 + (Ny-1)/3;
+    //ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
+    int ntheta0 = ev_h->grids.ntheta0;
     
     float* Dnlpm_d;
     float* Phi_zf_kx1_d;
@@ -378,7 +379,7 @@ if (iproc==0){
     //set up plans for NLPS, ZDeriv, and ZDerivB
     //plan for ZDerivCovering done below
 	  create_cufft_plans(&ev_h->grids, &ev_h->ffts);
-      
+     
     // INITIALIZE ARRAYS AS NECESSARY
     zero<<<dimGrid,dimBlock>>>(nu22_nlpm, 1, 1, Nz);
     zero<<<dimGrid,dimBlock>>>(nu1_nlpm, 1, 1, Nz);
@@ -409,88 +410,12 @@ if (iproc==0){
 			}
 #endif
   
-    int idxRight[naky*ntheta0];
-    int idxLeft[naky*ntheta0];
   
-    int linksR[naky*ntheta0];
-    int linksL[naky*ntheta0];
-    int n_k[naky*ntheta0];
-
-#ifdef GS2_zonal
-			if(iproc==0) {
-#endif
-    getNClasses(&nClasses, idxRight, idxLeft, linksR, linksL, n_k, naky, ntheta0, jtwist);
-    
-#ifdef GS2_zonal
-			}
-#endif
-
-    int *kxCover[nClasses];
-    int *kyCover[nClasses];
-    cuComplex *g_covering[nClasses];
-    float *kz_covering[nClasses];
-    cufftHandle plan_covering[nClasses];
-    int *kxCover_h[nClasses];
-    int *kyCover_h[nClasses];
-
-#ifdef GS2_zonal
-			if(iproc==0) {
-#endif
-
-    if(DEBUG) getError("run_gryfx.cu, after nclasses");
-  
-    nLinks = (int*) malloc(sizeof(int)*nClasses);
-    nChains = (int*) malloc(sizeof(int)*nClasses);
-  
-    getNLinksChains(nLinks, nChains, n_k, nClasses, naky, ntheta0);
-  
-    
-    //int **kxCover_h, **kyCover_h;
-    //kxCover_h = (int**) malloc(sizeof(int)*nClasses);
-    //kyCover_h = (int**) malloc(sizeof(int)*nClasses);
-    
-    for(int c=0; c<nClasses; c++) {   
-      kyCover_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
-      kxCover_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
-    }  
-  
-    kFill(nClasses, nChains, nLinks, kyCover_h, kxCover_h, linksL, linksR, idxRight, naky, ntheta0); 
-    
-    if(DEBUG) getError("run_gryfx.cu, after kFill");
-  
-    //these are the device arrays... cannot be global because jagged!
-    //also set up a stream for each class.
-    zstreams = (cudaStream_t*) malloc(sizeof(cudaStream_t)*nClasses);
-    end_of_zderiv = (cudaEvent_t*) malloc(sizeof(cudaEvent_t)*nClasses);
-    dimGridCovering = (dim3*) malloc(sizeof(dim3)*nClasses);
-    dimBlockCovering.x = 8;
-    dimBlockCovering.y = 8;
-    dimBlockCovering.z = 8;
+    initialize_z_covering(iproc, &ev_hd->grids, &ev_h->grids, &ev_h->pars, &ev_h->ffts, &ev_h->streams, &ev_h->cdims, &ev_h->events);  
 
 
-
-    for(int c=0; c<nClasses; c++) {    
-      int n[1] = {nLinks[c]*Nz*icovering};
-      cudaStreamCreate(&(zstreams[c]));
-      cufftPlanMany(&plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nChains[c]);
-      //cufftSetStream(plan_covering[c], zstreams[0]);
+if (iproc==0){
   
-      dimGridCovering[c].x = (Nz+dimBlockCovering.x-1)/dimBlockCovering.x;
-      dimGridCovering[c].y = (nChains[c]+dimBlockCovering.y-1)/dimBlockCovering.y;
-      dimGridCovering[c].z = (nLinks[c]*icovering+dimBlockCovering.z-1)/dimBlockCovering.z;
-  
-      if(DEBUG) kPrint(nLinks[c], nChains[c], kyCover_h[c], kxCover_h[c]); 
-      cudaMalloc((void**) &g_covering[c], sizeof(cuComplex)*icovering*Nz*nLinks[c]*nChains[c]);
-      cudaMalloc((void**) &kz_covering[c], sizeof(float)*icovering*Nz*nLinks[c]);
-      cudaMalloc((void**) &kxCover[c], sizeof(int)*nLinks[c]*nChains[c]);
-      cudaMalloc((void**) &kyCover[c], sizeof(int)*nLinks[c]*nChains[c]);    
-      cudaMemcpy(kxCover[c], kxCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
-      cudaMemcpy(kyCover[c], kyCover_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);    
-    }    
-    //printf("nLinks[0] = %d  nChains[0] = %d\n", nLinks[0],nChains[0]);
-    
-  
-    if(DEBUG) getError("run_gryfx.cu, after kCover");
     ///////////////////////////////////////////////////////////////////////////////////////////////////
       
   
@@ -1139,9 +1064,9 @@ if(iproc==0) {
                  Qpar1[s], Qpar[s], Qpar1[s], 
                  Tprp1[s], Tprp[s], Tprp1[s], 
                  Qprp1[s], Qprp[s], Qprp1[s], 
-                 Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
+                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], dt/2.,
   	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
   	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
    
           //Moment1 = Moment1 + (dt/2)*L(Moment)
@@ -1158,9 +1083,9 @@ if(iproc==0) {
                  Qpar[s], Qpar[s], Qpar1[s], 
                  Tprp[s], Tprp[s], Tprp1[s], 
                  Qprp[s], Qprp[s], Qprp1[s], 
-                 Phi, kxCover,kyCover, g_covering, kz_covering, species[s], dt/2.,
+                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], dt/2.,
   	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
   	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
            
           //Moment1 = Moment + (dt/2)*L(Moment)
@@ -1373,9 +1298,9 @@ if(iproc==0) {
                  Qpar[s], Qpar1[s], Qpar[s], 
                  Tprp[s], Tprp1[s], Tprp[s], 
                  Qprp[s], Qprp1[s], Qprp[s], 
-                 Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
+                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], dt,
   	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
   	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
   
           //Moment = Moment + dt * L(Moment1)
@@ -1390,9 +1315,9 @@ if(iproc==0) {
                  Qpar[s], Qpar1[s], Qpar[s], 
                  Tprp[s], Tprp1[s], Tprp[s], 
                  Qprp[s], Qprp1[s], Qprp[s], 
-                 Phi1, kxCover,kyCover, g_covering, kz_covering, species[s], dt,
+                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], dt,
   	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,plan_covering,
+  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
   	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
         }
       }
@@ -1869,8 +1794,8 @@ if(iproc==0) {
                           Phi, tmp, tmp, field, tmpZ, CtmpX,
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
-                          kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
+                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, false,
@@ -1952,8 +1877,8 @@ if(iproc==0) {
                           Phi, tmp, tmp, field, tmpZ, CtmpX,
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
-                          kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
+                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, true,
@@ -2041,11 +1966,11 @@ if(iproc==0) {
     cufftDestroy(ZDerivBplanC2R);
     cufftDestroy(ZDerivplan);
     for(int c=0; c<nClasses; c++) {
-      cufftDestroy(plan_covering[c]);
-      cudaFree(kxCover[c]);
-      cudaFree(kyCover[c]);
-      cudaFree(g_covering[c]); 
-      cudaFree(kz_covering[c]);
+      cufftDestroy(ev_h->ffts.plan_covering[c]);
+      cudaFree(ev_hd->grids.kxCover[c]);
+      cudaFree(ev_hd->grids.kyCover[c]);
+      cudaFree(ev_hd->grids.g_covering[c]); 
+      cudaFree(ev_hd->grids.kz_covering[c]);
     }
     
     close_files(&ev_h->files);

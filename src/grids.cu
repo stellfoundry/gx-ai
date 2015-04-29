@@ -11,4 +11,6 @@ void set_grid_masks_and_unaliased_sizes(grids_struct * grids){
 	grids->NxNycNz = grids->Nx * grids->Ny_complex * grids->Nz;
 	grids->NxNz = grids->Nx * grids->Nz;
 	grids->NycNz = grids->Ny_complex * grids->Nz;
+  grids->naky = 1 + (grids->Ny-1)/3;
+  grids->ntheta0 = 1 + 2*((grids->Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
 }
