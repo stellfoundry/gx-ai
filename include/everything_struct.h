@@ -15,7 +15,7 @@
 
 typedef struct {
 	// Dimensionless simulation time
-	float runtime;
+	double runtime;
 	// Timestep counter
 	int counter;
 	// Used to calculate exponential moving averages

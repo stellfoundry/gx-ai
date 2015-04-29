@@ -74,3 +74,23 @@ void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grid
     kx4_max_Inv=grids_h->kx4_max_Inv;
     kperp4_max_Inv=grids_h->kperp4_max_Inv;
 }
+
+void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims_h, outputs_struct * outs_hd, outputs_struct * outs_h, time_struct * time){
+	int Nx = grids_h->Nx;
+	int Ny = grids_h->Ny;
+	int Nz = grids_h->Nz;
+	dim3 dimGrid = cdims_h->dimGrid;
+	dim3 dimBlock = cdims_h->dimBlock;
+	
+	for(int s=0; s<grids_h->Nspecies; s++) {
+		outs_h->hflux_by_species_movav[s]= 0.;
+	}
+	outs_h->expectation_ky_movav= 0.;
+	outs_h->expectation_kx_movav= 0.;
+	time->dtSum= 0.;
+	zero<<<dimGrid,dimBlock>>>(outs_hd->phi2_by_mode_movav, Nx,Ny/2+1,1);
+	zero<<<dimGrid,dimBlock>>>(outs_hd->hflux_by_mode_movav, Nx, Ny/2+1, 1);
+	zero<<<dimGrid,dimBlock>>>(outs_hd->phi2_zonal_by_kx_movav, Nx, 1,1);
+	//zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
+	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_by_ky_by_deltaz_movav, 1, Ny/2+1, Nz);
+}

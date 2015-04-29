@@ -154,8 +154,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   
     //int exit_flag = 0;  
   
-    double runtime;
-    int counter;
     int gs2_counter;
 
 
@@ -225,7 +223,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float expectation_ky_sum;
     float expectation_kx;
     float expectation_kx_sum;
-    float dtSum;
     //diagnostics arrays
     float wpfxAvg[nSpecies];
     float pflxAvg[nSpecies];
@@ -282,6 +279,12 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 	/* ev_d is on the device (and the pointers point to memory on the device)*/
 	everything_struct * ev_d;
   setup_everything_structs(ev_h, &ev_hd, &ev_d);
+
+  /* The time struct handles the 
+   * run progression, e.g. runtime,
+   * counter etc. Here we create a local
+   * reference for brevity */
+  time_struct * tm = &ev_h->time;
 
 // The file local_pointers.cu
 //declares and assigns local 
@@ -533,7 +536,7 @@ if (iproc==0){
     if(secondary_test && !LINEAR && RESTART) { 
       restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
       			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
-      			&dtSum, &counter,&runtime,&dt,&totaltimer,secondary_test_restartfileName);
+      			&tm->dtSum, &tm->counter,&tm->runtime,&dt,&totaltimer,secondary_test_restartfileName);
   			
        fieldWrite(Phi, field_h, "phi_restarted.field", filename);
 
@@ -602,9 +605,9 @@ if (iproc==0){
        init = DENS;
 
        //restart run from t=0
-       counter = 0;
-       runtime = 0.;
-       dtSum = 0.;
+       tm->counter = 0;
+       tm->runtime = 0.;
+       tm->dtSum = 0.;
 
        maxdt = .1/(phi_test.x*kx_h[1]*ky_h[1]);
     } 
@@ -753,7 +756,7 @@ if (iproc==0){
       }
       expectation_ky_sum= 0.;
       expectation_kx_sum= 0.;
-      dtSum= 0.;
+      tm->dtSum= 0.;
       flux1_phase_sum = 0.;
       flux2_phase_sum = 0.;
       Dens_phase_sum = 0.;
@@ -771,7 +774,7 @@ if (iproc==0){
     else {
       restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
       			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
-      			&dtSum, &counter,&runtime,&dt,&totaltimer,restartfileName);
+      			&tm->dtSum, &tm->counter,&tm->runtime,&dt,&totaltimer,restartfileName);
   			
       if(zero_restart_avg) {
         printf("zeroing avg sums...\n");
@@ -780,7 +783,7 @@ if (iproc==0){
         }
         expectation_ky_sum = 0.;
         expectation_kx_sum = 0.;
-        dtSum = 0.;
+        tm->dtSum = 0.;
         zero<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, Nx, Ny/2+1, 1);
         zero<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, Nx, 1, 1);
         zero<<<dimGrid,dimBlock>>>(zCorr_sum, 1, Ny/2+1, Nz);
@@ -837,8 +840,8 @@ if (iproc==0){
 
       //strcpy(stopfileName, out_stem);
       //strcat(stopfileName, "stop");
-      runtime=0.;
-      counter=0;
+      tm->runtime=0.;
+      tm->counter=0;
       gs2_counter=1;
       totaltimer=0.;
       timer=0.;
@@ -1008,7 +1011,7 @@ if(iproc==0) {
     /////////////////////
    
     while(/*counter < 1 &&*/ 
-        counter<nSteps &&
+        tm->counter<nSteps &&
   	stopcount<nstop 
   	/*&& converge_count<2*navg*/
   	)
@@ -1043,7 +1046,7 @@ if(iproc==0) {
 
 #ifdef GS2_zonal
 
-      if(gs2_time_mp_code_time_/sqrt(2.) - runtime > .0001) printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time_mp_code_time_/sqrt(2.), runtime); 
+      if(gs2_time_mp_code_time_/sqrt(2.) - tm->runtime > .0001) printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time_mp_code_time_/sqrt(2.), tm->runtime); 
 
 #endif
 
@@ -1125,7 +1128,7 @@ if(iproc==0) {
                  &dt, species[s],
   	       field,field,field,field,field,field,
   	       tmp,tmp, tmpX, CtmpX, first_half_flag,
-	       field_h, counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
+	       field_h, tm->counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
   
           //Moment1 = Moment + (dt/2)*NL(Moment)
   
@@ -1149,7 +1152,7 @@ if(iproc==0) {
             cudaEventRecord(D2H, copystream);
           }
 
-          if(counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
+          if(tm->counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
   
 #endif
   
@@ -1194,7 +1197,7 @@ if(iproc==0) {
       qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
   
       if(secondary_test && !LINEAR) {
-        if(runtime < .02/maxdt/M_PI) S_fixed = 1.;// sin(.01/maxdt * runtime);
+        if(tm->runtime < .02/maxdt/M_PI) S_fixed = 1.;// sin(.01/maxdt * tm->runtime);
         else S_fixed = 1.;
         replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi1, phi_fixed, 1, 0, S_fixed);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens1[ION], dens_fixed, 1, 0, S_fixed);
@@ -1363,7 +1366,7 @@ if(iproc==0) {
                  &dt, species[s],
   	       field,field,field,field,field,field,
   	       tmp,tmp, tmpX, CtmpX, first_half_flag,
-	       field_h, counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
+	       field_h, tm->counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
   
           //Moment = Moment + dt * NL(Moment1)
   
@@ -1620,7 +1623,7 @@ if(iproc==0) {
       //calculate instantaneous heat flux
       for(int s=0; s<nSpecies; s++) {  
         fluxes(&pflx[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
-               tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],runtime,
+               tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],tm->runtime,
                &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
       }
        
@@ -1652,7 +1655,7 @@ if(iproc==0) {
       cudaMemcpy(ev_h->outs.phi2_by_kx, tmpX2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
 
       if(!LINEAR && turn_off_gradients_test) {
-        kyTimeWrite(ev_h->files.phifile, tmpY_h, runtime);
+        kyTimeWrite(ev_h->files.phifile, tmpY_h, tm->runtime);
       }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
@@ -1674,30 +1677,30 @@ if(iproc==0) {
       nu1_nlpm_max = maxReduc(nu1_nlpm, Nz, false);
       nu22_nlpm_max = maxReduc(nu22_nlpm, Nz, false); 
     
-      if(counter>0) { 
+      if(tm->counter>0) { 
         //we use an exponential moving average
         // wpfx_avg[t] = alpha_avg*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
         // now with time weighting...
         // wpfx_sum[t] = alpha_avg*dt*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
-        // dtSum[t] = alpha_avg*dt[t] + (1-alpha_avg)*dtSum[t-1]
-        // wpfx_avg[t] = wpfx_sum[t]/dtSum[t]
+        // tm->dtSum[t] = alpha_avg*dt[t] + (1-alpha_avg)*tm->dtSum[t-1]
+        // wpfx_avg[t] = wpfx_sum[t]/tm->dtSum[t]
    
         // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
-        dtSum = dtSum*(1.-alpha_avg) + dt*alpha_avg;
+        tm->dtSum = tm->dtSum*(1.-alpha_avg) + dt*alpha_avg;
         add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha_avg, Phi2_kxky_sum, dt*alpha_avg, tmpXY, Nx, Ny, 1);
         add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha_avg, Phi2_zonal_sum, dt*alpha_avg, tmpX, Nx, 1, 1);
         add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha_avg, zCorr_sum, dt*alpha_avg, tmpYZ, 1, Ny, Nz);
         if(LINEAR || write_omega || secondary_test) {
-          if(counter>0) {
+          if(tm->counter>0) {
             add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha_avg, omegaAvg, dt*alpha_avg, omega, Nx, Ny, 1);
             cudaMemcpy(omegaAvg_h, omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,dtSum,runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,tm->dtSum,tm->runtime); 
           }
           else {
             cudaMemcpy(omegaAvg_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,tm->runtime); 
           }             
 
         }  
@@ -1715,9 +1718,9 @@ if(iproc==0) {
   
         
         // **_sum/dtSum gives time average of **
-        Phi_zf_rms_avg = Phi_zf_rms_sum/dtSum;
+        Phi_zf_rms_avg = Phi_zf_rms_sum/tm->dtSum;
         //kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
-        Dnlpm_avg = Dnlpm_sum/dtSum;
+        Dnlpm_avg = Dnlpm_sum/tm->dtSum;
   
         for(int s=0; s<nSpecies; s++) {
           wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
@@ -1726,7 +1729,7 @@ if(iproc==0) {
   
         alpha_nlpm = dt/tau_nlpm;
         mu_nlpm = exp(-alpha_nlpm);
-        if(runtime<20) {
+        if(tm->runtime<20) {
           Phi_zf_kx1_avg = Phi_zf_kx1; //allow a build-up time of tau_nlpm
           kx2Phi_zf_rms_avg = kx2Phi_zf_rms;
         }
@@ -1764,33 +1767,33 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,runtime,species);
+      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, kx2Phi_zf_rms, kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,tm->runtime,species);
     
   	     
-      if(counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
+      if(tm->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, tm->runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
       
       
       // print wpfx to screen if not printing growth rates
-      if(!write_omega && counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],dt, dt_cfl, Dnlpm);
+      if(!write_omega && tm->counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],dt, dt_cfl, Dnlpm);
       
       // write flux to file
-      if(counter%nsave==0) fflush(NULL);
+      if(tm->counter%nsave==0) fflush(NULL);
                
       
       
       
       //print growth rates to screen every nwrite timesteps if write_omega
       if(write_omega) {
-        if (counter%nwrite==0 || stopcount==nstop-1 || counter==nSteps-1) {
+        if (tm->counter%nwrite==0 || stopcount==nstop-1 || tm->counter==nSteps-1) {
   	printf("ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
   	//for(int i=0; i<1; i++) {
         for(int i=0; i<((Nx-1)/3+1); i++) {
   	  for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
   	    if(index!=0) {
-  	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/dtSum, omegaAvg_h[index].y/dtSum);
-        ev_h->outs.omega[index].x = omegaAvg_h[index].x/dtSum;
-        ev_h->outs.omega[index].y = omegaAvg_h[index].y/dtSum;
+  	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/tm->dtSum, omegaAvg_h[index].y/tm->dtSum);
+        ev_h->outs.omega[index].x = omegaAvg_h[index].x/tm->dtSum;
+        ev_h->outs.omega[index].y = omegaAvg_h[index].y/tm->dtSum;
   	      if(Stable[index] >= stableMax) printf("\tomega");
   	      if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	      printf("\n");
@@ -1802,9 +1805,9 @@ if(iproc==0) {
         for(int i=2*Nx/3+1; i<Nx; i++) {
             for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
-  	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/dtSum, omegaAvg_h[index].y/dtSum);
-        ev_h->outs.omega[index].x = omegaAvg_h[index].x/dtSum;
-        ev_h->outs.omega[index].y = omegaAvg_h[index].y/dtSum;
+  	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/tm->dtSum, omegaAvg_h[index].y/tm->dtSum);
+        ev_h->outs.omega[index].x = omegaAvg_h[index].x/tm->dtSum;
+        ev_h->outs.omega[index].y = omegaAvg_h[index].y/tm->dtSum;
   	    if(Stable[index] >= stableMax) printf("\tomega");
   	    if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	    printf("\n");
@@ -1821,17 +1824,16 @@ if(iproc==0) {
   */    
       //writedat_each();
       
-	if (counter%nwrite==0){
+	if (tm->counter%nwrite==0){
   writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 }
-        ev_h->time.runtime = runtime;
 #ifdef GS2_zonal
 			} //end of iproc if
 #endif
       //////nvtxRangePop();
-      //if(counter==9) cudaProfilerStop();
-      runtime+=dt;
-      counter++;       
+      //if(tm->counter==9) cudaProfilerStop();
+      tm->runtime+=dt;
+      tm->counter++;       
       //checkstop
       if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
         fclose(checkstop);
@@ -1840,8 +1842,8 @@ if(iproc==0) {
     
 #ifdef GS2_zonal
 			if(iproc==0) {
-      if(counter%nsave==0 || stopcount==nstop-1 || counter==nSteps-1) {
-        printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,runtime,gs2_time_mp_code_time_/sqrt(2.), dt,counter,cudaGetErrorString(cudaGetLastError()));
+      if(tm->counter%nsave==0 || stopcount==nstop-1 || tm->counter==nSteps-1) {
+        printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,tm->runtime,gs2_time_mp_code_time_/sqrt(2.), dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
       }
 #endif
       
@@ -1857,11 +1859,11 @@ if(iproc==0) {
         broadcast_integer(&stopcount);
 #endif
 /*
-        if(counter>nsave) {	
+        if(tm->counter>nsave) {	
           printf("RESTARTING FROM LAST RESTART FILE...\n");
   	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
       			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
-      			&dtSum, &counter,&runtime,&dt,&totaltimer,restartfileName);
+      			&tm->dtSum, &tm->counter,&runtime,&dt,&totaltimer,restartfileName);
         
           printf("cfl was %f. maxdt was %f.\n", cfl, maxdt);
           cfl = .8*cfl;
@@ -1874,7 +1876,7 @@ if(iproc==0) {
         } */
       }
   
-      else if(counter%nsave==0) {
+      else if(tm->counter%nsave==0) {
         cudaEventRecord(stop,0);
         cudaEventSynchronize(stop);
         cudaEventElapsedTime(&timer,start,stop);
@@ -1882,20 +1884,20 @@ if(iproc==0) {
         cudaEventRecord(start,0);
         restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
         			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
-        			dtSum,counter,runtime,dt,totaltimer,restartfileName);
+        			tm->dtSum,tm->counter,tm->runtime,dt,totaltimer,restartfileName);
       }
       
       
       
-      if(counter%nsave == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
+      if(tm->counter%nsave == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
                           Phi, tmp, tmp, field, tmpZ, CtmpX,
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                           kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-  			expectation_kx_sum, dtSum,
-  			counter, runtime, false,
+  			expectation_kx_sum, tm->dtSum,
+  			tm->counter, tm->runtime, false,
   			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
   			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
   
@@ -1949,8 +1951,8 @@ if(iproc==0) {
     cudaEventElapsedTime(&timer,start,stop);
     totaltimer+=timer;
     
-    nSteps = counter;     //counter at which fields were last calculated
-    endtime = runtime;    //time at which fields were last calculated
+    nSteps = tm->counter;     //counter at which fields were last calculated
+    endtime = tm->runtime;    //time at which fields were last calculated
     
     for(int s=0; s<nSpecies; s++) {
       qflux[s] = wpfxAvg[s];
@@ -1964,7 +1966,7 @@ if(iproc==0) {
     // save for restart run
     restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
     			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
-    			dtSum,counter,runtime,dt,totaltimer,restartfileName);
+    			tm->dtSum,tm->counter,tm->runtime,dt,totaltimer,restartfileName);
     
     if(DEBUG) getError("after restartWrite");
     
@@ -1977,8 +1979,8 @@ if(iproc==0) {
                           kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                           kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-  			expectation_kx_sum, dtSum,
-  			counter, runtime, true,
+  			expectation_kx_sum, tm->dtSum,
+  			tm->counter, tm->runtime, true,
   			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
   			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
   
@@ -1988,9 +1990,9 @@ if(iproc==0) {
     //if(write_omega) stabilityWrite(stability,Stable,stableMax);
       
     //Timing       
-    printf("Total steps: %d\n", counter);
+    printf("Total steps: %d\n", tm->counter);
     printf("Total time (min): %f\n",totaltimer/60000.);    //convert ms to minutes
-    printf("Avg time/timestep (s): %f\n",totaltimer/counter/1000.);   //convert ms to s
+    printf("Avg time/timestep (s): %f\n",totaltimer/tm->counter/1000.);   //convert ms to s
     //printf("Advance steps:\t%f min\t(%f%)\n", step_timer_total/60000., 100*step_timer_total/totaltimer);
     //printf("Diagnostics:\t%f min\t(%f%)\n", diagnostics_timer_total/60000., 100*diagnostics_timer_total/totaltimer);
   
@@ -2000,8 +2002,8 @@ if(iproc==0) {
     fprintf(outfile,"Q_i = %f\n Phi_zf_rms = %f\n Phi2 = %f\n", qflux[ION],Phi_zf_rms_avg, Phi2);
     fprintf(outfile, "flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
     fprintf(outfile,"\nTotal time (min): %f\n",totaltimer/60000);
-    fprintf(outfile,"Total steps: %d\n", counter);
-    fprintf(outfile,"Avg time/timestep (s): %f\n",totaltimer/counter/1000);
+    fprintf(outfile,"Total steps: %d\n", tm->counter);
+    fprintf(outfile,"Avg time/timestep (s): %f\n",totaltimer/tm->counter/1000);
       
     //cleanup  
     for(int s=0; s<nSpecies; s++) {
