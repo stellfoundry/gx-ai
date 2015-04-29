@@ -38,6 +38,10 @@ typedef struct {
 } cuda_dimensions_struct;
 
 typedef struct {
+  cuComplex *phi, *dens, *upar, *tpar, *tprp, *qpar, *qprp;
+} secondary_fixed_arrays_struct;
+
+typedef struct {
   cudaStream_t * zstreams;
   cudaStream_t copystream;
 } cuda_streams_struct;
@@ -113,6 +117,7 @@ typedef struct {
   mpi_info_struct mpi;
   cuda_streams_struct streams;
   cuda_events_struct events;
+  secondary_fixed_arrays_struct sfixed;
   
 
 	/* Specifies whether the pointers in the struct point 

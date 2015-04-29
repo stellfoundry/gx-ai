@@ -297,10 +297,26 @@ void allocate_info(int aod, int ml, info_struct * info, int run_name_size, int r
 
 }
 
+void allocate_sfixed(int aod, int ml, secondary_fixed_arrays_struct * sfixed, int Nz){
+	alloc_dealloc(&sfixed->phi, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->dens, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->upar, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->tpar, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->tprp, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->qpar, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&sfixed->qprp, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+
+	/* Geometry globals... to be deleted eventually*/
+	if (ml == ON_HOST){
+	}
+	else if (ml == ON_DEVICE){
+	}
+}
 void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_struct * ev){
 	allocate_grids(allocate_or_deallocate, ev->memory_location, &ev->grids);
 	allocate_outputs(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->outs);
 	allocate_fields(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->fields);
+	allocate_sfixed(allocate_or_deallocate, ev->memory_location, &ev->sfixed, ev->grids.Nz);
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){
 		allocate_geo(allocate_or_deallocate, ev->memory_location, &ev->geo, &ev->grids.z, &ev->grids.Nz);

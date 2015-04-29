@@ -21,6 +21,15 @@
 
     cuComplex * field = ev_hd->fields.field;
 
+    // For secondary instability calculation
+    cuComplex *phi_fixed = ev_hd->sfixed.phi;
+    cuComplex *dens_fixed = ev_hd->sfixed.dens;
+    cuComplex *upar_fixed = ev_hd->sfixed.upar;
+    cuComplex *tpar_fixed = ev_hd->sfixed.tpar;
+    cuComplex *tprp_fixed = ev_hd->sfixed.tprp;
+    cuComplex *qpar_fixed = ev_hd->sfixed.qpar;
+    cuComplex *qprp_fixed = ev_hd->sfixed.qprp;
+
     // EGH: Not being used yet but will be
     //float * kx_shift = ev_hd->grids.kx_shift;
     //int * jump = ev_hd->grids.jump;

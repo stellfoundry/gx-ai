@@ -147,7 +147,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float kx2Phi_zf_rms_avg;
     
     //for secondary test
-    cuComplex *phi_fixed, *dens_fixed, *upar_fixed, *tpar_fixed, *tprp_fixed, *qpar_fixed, *qprp_fixed;
     float S_fixed = 1.;
 
     char filename[200];
@@ -362,13 +361,6 @@ if (iproc==0){
     cudaMalloc((void**) &Dnlpm_d, sizeof(float));
     cudaMalloc((void**) &Phi_zf_kx1_d, sizeof(float));
 
-    cudaMalloc((void**) &phi_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &dens_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &upar_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &tpar_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &tprp_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &qpar_fixed, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &qprp_fixed, sizeof(cuComplex)*Nz);
   
   
     if(DEBUG) getError("run_gryfx.cu, after device alloc");
@@ -403,32 +395,27 @@ if (iproc==0){
   
     if(DEBUG) getError("run_gryfx.cu, after init"); 
    
-    
-    setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
-    writedat_beginning(ev_h);
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-    //set up kxCover and kyCover for covering space z-transforms
-    //nshift = Nx - ntheta0;
-  
 #ifdef GS2_zonal
 			}
 #endif
   
   
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
+    //set up kxCover and kyCover for covering space z-transforms
+    //nshift = Nx - ntheta0;
     initialize_z_covering(iproc, &ev_hd->grids, &ev_h->grids, &ev_h->pars, &ev_h->ffts, &ev_h->streams, &ev_h->cdims, &ev_h->events);  
 
+    ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 if (iproc==0){
-  
-    ///////////////////////////////////////////////////////////////////////////////////////////////////
-      
-  
-    
   
     
     ////////////////////////////////////////////////
     // set up some diagnostics/control flow files //
     ////////////////////////////////////////////////
+    
+    setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
+    writedat_beginning(ev_h);
     
     
     
