@@ -94,14 +94,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     set_globals_after_gryfx_lib(ev_h);
     if (iproc==0) set_cuda_constants();
-    // Open some text files for output
-
-    //if (iproc==0) printf("dimGrid2 = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
-    //FILE *omegafile;
-    //FILE *gammafile;
-    //FILE *phifile;
-    //host variables
-
 
     cudaEvent_t start, stop,  nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
@@ -130,7 +122,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //cuComplex *omega_h;  
     //float dtBox[navg];
     cuComplex* omegaAvg_h;
-    float wpfx[nSpecies];
     float pflx[nSpecies];
     float wpfx_old[nSpecies];
     float pflx_old[nSpecies];
@@ -204,25 +195,11 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if(DEBUG) getError("run_gryfx.cu, before device alloc");
     
     //tmps for timestep routine
-    cuComplex *field, *tmp;
-    float *tmpZ;  
-    float *tmpX;
-    float *tmpX2;
-    float *tmpY;
-    float *tmpY2;
-    float *tmpXY;
-    float *tmpXY2;
-    float *tmpXY3;
-    float *tmpXY4;
-    float *tmpXY_R;
-    float *tmpXZ;
-    float *tmpYZ;
     float *tmpXYZ;
     cuComplex *CtmpX;
     cuComplex *CtmpX2;
     cuComplex *CtmpXZ;
    
-    cuComplex *omega;
     cuComplex *omegaBox[navg];
     
     cuComplex *omegaAvg;
@@ -251,14 +228,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //diagnostics arrays
     float wpfxAvg[nSpecies];
     float pflxAvg[nSpecies];
-    float *Phi2_kxky_sum;
-    float *wpfxnorm_kxky_sum;
-    float *Phi2_zonal_sum;
     //cuComplex *Phi_sum;
-    float *zCorr_sum;
     
-    float *kx_shift;
-    int *jump;
     
     float *nu_nlpm;
     float *nu1_nlpm;
@@ -357,30 +328,8 @@ if (iproc==0){
   //#endif
     
     
-    
-    //cudaMalloc((void**) &Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    //cudaMalloc((void**) &Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    
-    cudaMalloc((void**) &Phi2_kxky_sum, sizeof(float)*Nx*(Ny/2+1)); 
-    cudaMalloc((void**) &wpfxnorm_kxky_sum, sizeof(float)*Nx*(Ny/2+1));
-    cudaMalloc((void**) &Phi2_zonal_sum, sizeof(float)*Nx); 
     //cudaMalloc((void**) &Phi_sum, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    cudaMalloc((void**) &zCorr_sum, sizeof(float)*(Ny/2+1)*Nz);
     
-    cudaMalloc((void**) &field, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    cudaMalloc((void**) &tmp,   sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    cudaMalloc((void**) &tmpZ, sizeof(float)*Nz);
-    cudaMalloc((void**) &tmpX, sizeof(float)*Nx);
-    cudaMalloc((void**) &tmpX2, sizeof(float)*Nx);
-    cudaMalloc((void**) &tmpY, sizeof(float)*(Ny/2+1));
-    cudaMalloc((void**) &tmpY2, sizeof(float)*(Ny/2+1));
-    cudaMalloc((void**) &tmpXY, sizeof(float)*Nx*(Ny/2+1));
-    cudaMalloc((void**) &tmpXY2, sizeof(float)*Nx*(Ny/2+1));
-    cudaMalloc((void**) &tmpXY3, sizeof(float)*Nx*(Ny/2+1));
-    cudaMalloc((void**) &tmpXY4, sizeof(float)*Nx*(Ny/2+1));
-    cudaMalloc((void**) &tmpXY_R, sizeof(float)*Nx*Ny);
-    cudaMalloc((void**) &tmpXZ, sizeof(float)*Nx*Nz);
-    cudaMalloc((void**) &tmpYZ, sizeof(float)*(Ny/2+1)*Nz);
     cudaMalloc((void**) &CtmpX, sizeof(cuComplex)*Nx);
     cudaMalloc((void**) &CtmpX2, sizeof(cuComplex)*Nx);
     cudaMalloc((void**) &CtmpXZ, sizeof(cuComplex)*Nx*Nz);
@@ -397,23 +346,17 @@ if (iproc==0){
     cudaMalloc((void**) &kz, sizeof(float)*(Nz));
     cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
   
-    cudaMalloc((void**) &bmagInv, sizeof(float)*Nz); 
-    cudaMalloc((void**) &bmag_complex, sizeof(cuComplex)*(Nz/2+1));
-    cudaMalloc((void**) &jacobian, sizeof(float)*Nz);
     cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
     
     cudaMalloc((void**) &species_d, sizeof(specie)*nSpecies);
   
     
-    cudaMalloc((void**) &omega, sizeof(cuComplex)*Nx*(Ny/2+1));
     for(int t=0; t<navg; t++) {
       if(LINEAR || secondary_test) cudaMalloc((void**) &omegaBox[t], sizeof(cuComplex)*Nx*(Ny/2+1));
       //cudaMalloc((void**) &Phi2_XYBox[t], sizeof(float)*Nx*(Ny/2+1));
     }
     cudaMalloc((void**) &omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1));
     
-    cudaMalloc((void**) &kx_shift, sizeof(float)*(Ny/2+1));
-    cudaMalloc((void**) &jump, sizeof(int)*(Ny/2+1));
     
     cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
     cudaMalloc((void**) &nu1_nlpm, sizeof(float)*Nz);
@@ -2123,24 +2066,26 @@ if(iproc==0) {
       cudaFree(qpar_ky0_d[s]);
       cudaFree(qprp_ky0_d[s]);
     }  
-    cudaFree(Phi);
-    cudaFree(Phi1);
-    cudaFree(Phi2_kxky_sum);
+    //cudaFree(Phi);
+    //cudaFree(Phi1);
+    //cudaFree(Phi2_kxky_sum);
     //cudaFree(Phi_sum);
     cudaFree(phi_ky0_d);
     
-    cudaFree(tmp);
-    cudaFree(field);      
-    cudaFree(tmpZ);
-    cudaFree(tmpX);
-    cudaFree(tmpY);
-    cudaFree(tmpY2);
-    cudaFree(tmpXY);
-    cudaFree(tmpXY2);
-    cudaFree(tmpYZ);
+    //cudaFree(tmp);
+    //cudaFree(field);      
+    //cudaFree(tmpZ);
+    //cudaFree(tmpX);
+    //cudaFree(tmpY);
+    //cudaFree(tmpY2);
+    //cudaFree(tmpXY);
+    //cudaFree(tmpXY2);
+    //cudaFree(tmpYZ);
     
-    cudaFree(bmag), cudaFree(bmagInv), cudaFree(bmag_complex), cudaFree(bgrad);
-    cudaFree(omega); cudaFree(omegaAvg);
+    //cudaFree(bmag);
+    cudaFree(bmagInv), cudaFree(bmag_complex), cudaFree(bgrad);
+    //cudaFree(omega);
+    cudaFree(omegaAvg);
     for(int t=0; t<navg; t++) {
       //cudaFree(Phi2_XYBox[t]);
       if(LINEAR) cudaFree(omegaBox[t]);
@@ -2148,7 +2093,6 @@ if(iproc==0) {
     
     cudaFree(kx_shift), cudaFree(jump);
     
-    cudaFree(jacobian);
       
     cudaFree(kx), cudaFree(ky), cudaFree(kz);
     
