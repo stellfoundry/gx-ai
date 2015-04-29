@@ -220,9 +220,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float Phi2, kPhi2;
     float Phi2_sum;//, kPhi2_sum;
     float expectation_ky;
-    float expectation_ky_sum;
     float expectation_kx;
-    float expectation_kx_sum;
     //diagnostics arrays
     float wpfxAvg[nSpecies];
     float pflxAvg[nSpecies];
@@ -285,6 +283,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
    * counter etc. Here we create a local
    * reference for brevity */
   time_struct * tm = &ev_h->time;
+
+  outputs_struct * outs = &ev_h->outs;
 
 // The file local_pointers.cu
 //declares and assigns local 
@@ -535,7 +535,7 @@ if (iproc==0){
     //if running nonlinear part of secondary test...
     if(secondary_test && !LINEAR && RESTART) { 
       restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-      			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
+      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
       			&tm->dtSum, &tm->counter,&tm->runtime,&dt,&totaltimer,secondary_test_restartfileName);
   			
        fieldWrite(Phi, field_h, "phi_restarted.field", filename);
@@ -750,30 +750,21 @@ if (iproc==0){
       
       
       
+		  zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       
-      for(int s=0; s<nSpecies; s++) {
-        //wpfx_sum[s]= 0.;
-      }
-      expectation_ky_sum= 0.;
-      expectation_kx_sum= 0.;
-      tm->dtSum= 0.;
       flux1_phase_sum = 0.;
       flux2_phase_sum = 0.;
       Dens_phase_sum = 0.;
       Tpar_phase_sum = 0.;
       Tprp_phase_sum = 0.;
-      zero<<<dimGrid,dimBlock>>>(Phi2_kxky_sum,Nx,Ny/2+1,1);
-      zero<<<dimGrid,dimBlock>>>(wpfxnorm_kxky_sum, Nx, Ny/2+1, 1);
-      zero<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, Nx, 1,1);
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
-      zero<<<dimGrid,dimBlock>>>(zCorr_sum, 1, Ny/2+1, Nz);
       
           
       
     } 
     else {
       restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-      			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
+      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
       			&tm->dtSum, &tm->counter,&tm->runtime,&dt,&totaltimer,restartfileName);
   			
       if(zero_restart_avg) {
@@ -781,8 +772,8 @@ if (iproc==0){
         for(int s=0; s<nSpecies; s++) {
           //wpfx_sum[s] = 0.;
         }
-        expectation_ky_sum = 0.;
-        expectation_kx_sum = 0.;
+        outs->expectation_ky_movav = 0.;
+        outs->expectation_kx_movav = 0.;
         tm->dtSum = 0.;
         zero<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, Nx, Ny/2+1, 1);
         zero<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, Nx, 1, 1);
@@ -1704,8 +1695,8 @@ if(iproc==0) {
           }             
 
         }  
-        expectation_kx_sum = expectation_kx_sum*(1.-alpha_avg) + expectation_kx*dt*alpha_avg;
-        expectation_ky_sum = expectation_ky_sum*(1.-alpha_avg) + expectation_ky*dt*alpha_avg;
+        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-alpha_avg) + expectation_kx*dt*alpha_avg;
+        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-alpha_avg) + expectation_ky*dt*alpha_avg;
         Phi2_sum = Phi2_sum*(1.-alpha_avg) + Phi2*dt*alpha_avg;
         Phi_zf_rms_sum = Phi_zf_rms_sum*(1.-alpha_avg) + Phi_zf_rms*dt*alpha_avg;
         kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-alpha_avg) + kx2Phi_zf_rms*dt*alpha_avg;
@@ -1862,7 +1853,7 @@ if(iproc==0) {
         if(tm->counter>nsave) {	
           printf("RESTARTING FROM LAST RESTART FILE...\n");
   	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-      			zCorr_sum,&expectation_ky_sum, &expectation_kx_sum, &Phi_zf_kx1_avg,
+      			zCorr_sum,&outs->expectation_ky_movav, &expectation_kx_sum, &Phi_zf_kx1_avg,
       			&tm->dtSum, &tm->counter,&runtime,&dt,&totaltimer,restartfileName);
         
           printf("cfl was %f. maxdt was %f.\n", cfl, maxdt);
@@ -1883,7 +1874,7 @@ if(iproc==0) {
         totaltimer+=timer;
         cudaEventRecord(start,0);
         restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
-        			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
+        			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, Phi_zf_kx1_avg,
         			tm->dtSum,tm->counter,tm->runtime,dt,totaltimer,restartfileName);
       }
       
@@ -1895,8 +1886,8 @@ if(iproc==0) {
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                           kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
-  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-  			expectation_kx_sum, tm->dtSum,
+  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
+  			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, false,
   			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
   			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
@@ -1965,7 +1956,7 @@ if(iproc==0) {
     
     // save for restart run
     restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
-    			zCorr_sum, expectation_ky_sum, expectation_kx_sum, Phi_zf_kx1_avg,
+    			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, Phi_zf_kx1_avg,
     			tm->dtSum,tm->counter,tm->runtime,dt,totaltimer,restartfileName);
     
     if(DEBUG) getError("after restartWrite");
@@ -1978,8 +1969,8 @@ if(iproc==0) {
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           kxCover, kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
                           kxCover_h, kyCover_h, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
-  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, expectation_ky_sum, 
-  			expectation_kx_sum, tm->dtSum,
+  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
+  			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, true,
   			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
   			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
