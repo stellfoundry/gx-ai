@@ -194,6 +194,7 @@ void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_
 void allocate_grids(int aod, int ml, grids_struct * grids){
 
 	alloc_dealloc(&grids->kx, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
+	alloc_dealloc(&grids->kx_abs, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&grids->ky, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&grids->kz, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nz);
 	alloc_dealloc(&grids->kx_shift, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
@@ -206,6 +207,7 @@ void allocate_grids(int aod, int ml, grids_struct * grids){
 	}
 	else if (ml == ON_DEVICE){
 		kx = grids->kx;
+		kx_abs = grids->kx_abs;
 		ky = grids->ky;
 		kz = grids->kz;
 	}

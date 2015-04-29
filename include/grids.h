@@ -8,6 +8,7 @@ EXTERN_SWITCH float *kx_h, *ky_h, *kz_h;
 typedef struct {
 	float * ky;
 	float * kx;
+	float * kx_abs;
 	float * z;
 	float * kz;
 	int Nx;
@@ -54,6 +55,15 @@ typedef struct {
 	int ** kyCover;
 	cuComplex ** g_covering;
 	float ** kz_covering;
+
+  float kx_max;
+  float ky_max;
+  float kperp2_max;
+  float kx4_max;
+  float ky4_max;
+  float ky_max_Inv;
+  float kx4_max_Inv;
+  float kperp4_max_Inv;
 
 } grids_struct;
 

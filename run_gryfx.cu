@@ -329,7 +329,6 @@ if (iproc==0){
     cudaMalloc((void**) &derivR2_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &resultR_nlps, sizeof(float)*Nx*Ny*Nz);
   
-    cudaMalloc((void**) &kx_abs, sizeof(float)*Nx);
     cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
   
     cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
@@ -397,25 +396,13 @@ if (iproc==0){
     zero<<<dimGrid,dimBlock>>>(nu1_nlpm, 1, 1, Nz);
     zero<<<dimGrid,dimBlock>>>(nu_nlpm, 1, 1, Nz);
   
-    kInit  <<< dimGrid, dimBlock >>> (kx, ky, kz, kx_abs, NO_ZDERIV);
-    kx_max = (float) ((int)((Nx-1)/3))/X0;
-    ky_max = (float) ((int)((Ny-1)/3))/Y0;
-    kperp2_max = pow(kx_max,2) + pow(ky_max,2);
-    kx4_max = pow(kx_max,4);
-    ky4_max = pow(ky_max,4);
-    ky_max_Inv = 1. / ky_max;
-    kx4_max_Inv = 1. / kx4_max;
-    kperp4_max_Inv = 1. / pow(kperp2_max,2);
-    if(DEBUG) printf("kperp4_max_Inv = %f\n", kperp4_max_Inv);
+	  initialize_grids(&ev_h->pars, &ev_hd->grids, &ev_h->grids, &ev_h->cdims); 
 
   	calculate_additional_geo_arrays(
         ev_h->grids.Nz, ev_hd->grids.kz, ev_hd->tmp.Z,
         &ev_h->pars, &ev_h->cdims, 
         &ev_hd->geo, &ev_h->geo);
 
-    //cudaMemset(jump, 0, sizeof(float)*Ny);
-    //cudaMemset(kx_shift,0,sizeof(float)*Ny);
-  
   
     //PhiAvg denominator for qneut
     cudaMemset(PhiAvgDenom, 0, sizeof(float)*Nx);
@@ -423,13 +410,6 @@ if (iproc==0){
   
     if(DEBUG) getError("run_gryfx.cu, after init"); 
    
-    cudaMemcpy(kx_h,kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
-  
-    if(DEBUG) getError("after k memcpy 1");
-  
-    cudaMemcpy(ky_h,ky, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
-    
-    if(DEBUG) getError("after k memcpy 2");
     
     setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
     writedat_beginning(ev_h);
