@@ -118,7 +118,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float alpha_nlpm = 0.;
     float mu_nlpm = 0.;
     //float tau_nlpm = 50.;
-    cuComplex *init_h;
+    //cuComplex *init_h;
     //float Phi_energy;
     //cuComplex *omega_h;  
     //float dtBox[navg];
@@ -278,6 +278,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 	everything_struct * ev_d;
   setup_everything_structs(ev_h, &ev_hd, &ev_d);
 
+
   /* The time struct handles the 
    * run progression, e.g. runtime,
    * counter etc. Here we create a local
@@ -302,7 +303,7 @@ if (iproc==0){
     //zero dtBox array
     //for(int t=0; t<navg; t++) {  dtBox[t] = 0;  }
       
-    init_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+    //init_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     //Phi_energy = (float*) malloc(sizeof(float));
     
   //#ifdef GS2_zonal
@@ -337,6 +338,9 @@ if (iproc==0){
     cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*Nx);
     
     cudaMalloc((void**) &species_d, sizeof(specie)*nSpecies);
+
+  /* Temporary hack */
+  ev_hd->pars.species = species_d;
   
     
     for(int t=0; t<navg; t++) {
@@ -426,10 +430,6 @@ if (iproc==0){
     // set up some diagnostics/control flow files //
     ////////////////////////////////////////////////
     
-    
-    //set up stopfile
-    //strcpy(stopfileName, out_stem);
-    //strcat(stopfileName, "stop");
     
     
     ////////////////////////////////////////////
@@ -525,140 +525,11 @@ if (iproc==0){
     //float amp;
     
     if(!RESTART) {
+      set_initial_conditions_no_restart(
+          &ev_h->pars, &ev_d->pars, &ev_h->grids, &ev_d->grids, 
+          &ev_h->cdims, &ev_d->geo, &ev_hd->fields, &ev_hd->tmp);
       
-        for(int index=0; index<Nx*(Ny/2+1)*Nz; index++) 
-        {
-  	init_h[index].x = 0;
-  	init_h[index].y = 0;
-        }
-        //amp = 1.e-5; //e-20;
-        
-        srand(22);
-        float samp;
   
-  	for(int j=0; j<Nx; j++) {
-  	  for(int i=0; i<(Ny/2+1); i++) {
-  
-  	    //int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  	    //int idxy = i + (Ny/2+1)*j;
-  
-  	      //if(i==0) amp = 1.e-5;
-  	      //else amp = 1.e-5;
-  
-  	      //if(i==0) {
-  	      //	samp = 0.;//init_amp;//*1.e-8;  //initialize zonal flows at much
-  	      //  			 //smaller amplitude
-  	      //}
-  	      //else {
-  	      //	samp = init_amp;
-  	      //}
-  
-//  	      if(j==0 && secondary_test) 
-//		samp = 0.;
-//             else 
-		samp = init_amp;
-  
-  	      float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-  	      float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-  	      //printf("%e\n", ra);
-  
-  	      //loop over z here to get rid of randomness in z in initial condition
-  	      for(int k=0; k<Nz; k++) {
-  	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  		  init_h[index].x = samp;//*cos(1*z_h[k]);
-  	          init_h[index].y = samp;//init_amp;//*cos(1*z_h[k]);
-  	      }
-  	      
-  	      
-  	        
-  	      
-  	  }
-  	}
-        
-      if(init == DENS) {
-        if(DEBUG) getError("initializing density");    
-        for(int s=0; s<nSpecies; s++) {
-          cudaMemset(Dens[s], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-        }
-        
-        
-  
-        cudaMemcpy(Dens[ION], init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
-        if(DEBUG) getError("after copy");    
-  
-        //enforce reality condition -- this is CRUCIAL when initializing in k-space
-        reality<<<dimGrid,dimBlock>>>(Dens[ION]);
-        
-        mask<<<dimGrid,dimBlock>>>(Dens[ION]);  
-  
-        cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-        
-      }
-      
-      if(init == PHI) {
-        
-        
-        
-        cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
-        
-        cudaMemcpy(Phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
-      
-        cudaMemset(Dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
-  
-        mask<<<dimGrid,dimBlock>>>(Phi);
-  
-        reality<<<dimGrid,dimBlock>>>(Phi);
-      } 
-  
-      if(init == FORCE) {
-        cudaMemset(Phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-        cudaMemset(Dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-      }   
-     
-  
-      for(int s=0; s<nSpecies; s++) {
-        zeroC <<< dimGrid, dimBlock >>> (Dens1[s]);
-        if(s!=0) zeroC<<<dimGrid,dimBlock>>>(Dens[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Upar[s]);
-        
-        zeroC <<< dimGrid, dimBlock >>> (Tpar[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Qpar[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Tprp[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Qprp[s]);
-        
-        zeroC <<< dimGrid, dimBlock >>> (Upar1[s]);
-        
-        zeroC <<< dimGrid, dimBlock >>> (Tpar1[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Qpar1[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Tprp1[s]);
-  
-        zeroC <<< dimGrid, dimBlock >>> (Qprp1[s]);
-      }
-      
-      zeroC<<<dimGrid,dimBlock>>>(Phi1);
-      if(DEBUG) getError("run_gryfx.cu, after zero");
-       
-      if(init == RH_equilibrium) {
-         
-        zeroC<<<dimGrid,dimBlock>>>(Dens[0]);
-        zeroC<<<dimGrid,dimBlock>>>(Phi);
-  
-        RH_equilibrium_init<<<dimGrid,dimBlock>>>(Dens[0], Upar[0], Tpar[0], Tprp[0], Qpar[0], Qprp[0], kx, gds22, qsf, eps, bmagInv, shat, species[0]);
-  
-        qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
-  
-      }
-      
-   
-      if(DEBUG) getError("after initial qneut");
-      
-      
       
 		  zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       

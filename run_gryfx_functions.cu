@@ -236,3 +236,146 @@ void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * gri
   ///////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
+void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_parameters_struct * pars_d, grids_struct * grids_h, grids_struct * grids_d, cuda_dimensions_struct * cdims, geometry_coefficents_struct * geo_d, fields_struct * fields_hd, temporary_arrays_struct * tmp){
+    
+  cuComplex *init_h;
+  init_h = (cuComplex*) malloc(sizeof(cuComplex)*grids_h->NxNycNz);
+	/*For brevity*/
+	int Nx = grids_h->Nx;
+	int Nyc = grids_h->Ny_complex;
+	int Nz = grids_h->Nz;
+	int NxNycNz = grids_h->NxNycNz;
+	dim3 dimGrid = cdims->dimGrid;
+	dim3 dimBlock = cdims->dimBlock;
+
+      for(int index=0; index<NxNycNz; index++) 
+      {
+	init_h[index].x = 0;
+	init_h[index].y = 0;
+      }
+      
+      srand(22);
+      float samp;
+  	for(int j=0; j<Nx; j++) {
+  	  for(int i=0; i<Nyc; i++) {
+		samp = init_amp;
+  
+  	      float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+  	      float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+  	      //printf("%e\n", ra);
+  
+  	      //loop over z here to get rid of randomness in z in initial condition
+  	      for(int k=0; k<Nz; k++) {
+  	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
+  		  init_h[index].x = samp;//*cos(1*z_h[k]);
+  	          init_h[index].y = samp;//init_amp;//*cos(1*z_h[k]);
+  	      }
+  	      
+  	      
+  	        
+  	      
+  	  }
+  	}
+
+    if(pars_h->init == DENS) {
+      if(pars_h->debug) getError("initializing density");    
+
+      for(int s=0; s<pars_h->nspec; s++) {
+        cudaMemset(fields_hd->dens[s], 0, sizeof(cuComplex)*NxNycNz);
+      }
+      
+      
+
+      cudaMemcpy(fields_hd->dens[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->dens[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->dens[ION]);  
+
+      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*NxNycNz);
+      
+    }
+    
+    if(pars_h->init == PHI) {
+      
+      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
+      
+      cudaMemcpy(fields_hd->phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    
+      cudaMemset(fields_hd->dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
+      mask<<<dimGrid,dimBlock>>>(fields_hd->phi);
+
+      reality<<<dimGrid,dimBlock>>>(fields_hd->phi);
+    }  
+    if(init == FORCE) {
+      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*NxNycNz);
+      cudaMemset(fields_hd->dens[ION], 0, sizeof(cuComplex)*NxNycNz);
+    }   
+   
+
+    for(int s=0; s<nSpecies; s++) {
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->dens1[s]);
+      if(s!=0) zeroC <<< dimGrid,dimBlock >>> (fields_hd->dens[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->upar[s]);
+      
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->tpar[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->qpar[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->tprp[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->qprp[s]);
+      
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->upar1[s]);
+      
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->tpar1[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->qpar1[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->tprp1[s]);
+
+      zeroC <<< dimGrid, dimBlock >>> (fields_hd->qprp1[s]);
+    }
+    
+    zeroC <<< dimGrid,dimBlock >>> (fields_hd->phi1);
+    if(DEBUG) getError("run_gryfx.cu, after zero");
+     
+    
+//    if(pars_h->init == DENS) {
+//      // Solve for initial phi
+//      // assumes the initial conditions have been moved to the device
+//      if(nSpecies!=1) { 
+//	qneut <<< dimGrid,dimBlock >>> (fields_hd->phi, fields_hd->dens[ELECTRON], fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d); 
+//      } else if(ELECTRON == 0) { 
+//	qneut <<< dimGrid,dimBlock >>> (fields_hd->phi, pars_h->tite, fields_hd->dens[ELECTRON], fields_hd->tprp[ELECTRON], pars_h->species[ELECTRON].rho, pars_d, grids_d, geo_d);
+//      } else if(ION == 0) {
+//	//qneut <<< dimGrid,dimBlock >>> (Phi, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky,  gds2, gds21, gds22, bmagInv);
+//	qneutAdiab_part1 <<< dimGrid,dimBlock >>> (tmp->CXYZ, fields_hd->field, tau, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
+//	qneutAdiab_part2 <<< dimGrid,dimBlock >>> (fields_hd->phi, tmp->CXYZ, fields_hd->field, tau, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
+//      }
+//    }
+ 
+    
+      if(init == RH_equilibrium) {
+         
+        zeroC<<<dimGrid,dimBlock>>>(fields_hd->dens[0]);
+        zeroC<<<dimGrid,dimBlock>>>(fields_hd->phi);
+  
+        RH_equilibrium_init<<<dimGrid,dimBlock>>>(
+          fields_hd->dens[0], fields_hd->upar[0], fields_hd->tpar[0],
+          fields_hd->tprp[0], fields_hd->qpar[0], fields_hd->qprp[0],
+          grids_d->kx, geo_d->gds22, pars_h->qsf, pars_h->eps,
+          geo_d->bmagInv, pars_d->shat, species[0]);
+  
+        //EGH: Why do we only do an initial qneut for RH_equilibrium?
+        qneut(fields_hd->phi, fields_hd->dens, fields_hd->tprp,
+          tmp->CXYZ, tmp->CXYZ, fields_hd->field, species, pars_d->species);
+  
+      }
+      
+   
+      if(DEBUG) getError("after initial qneut");
+}
