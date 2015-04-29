@@ -108,7 +108,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float Dnlpm_avg = 0;
     float Dnlpm_sum = 0;
     //float* phiVal; 
-    float* val;
     //float phiVal0;
   
     float Phi_zf_kx1 = 0.;
@@ -374,25 +373,11 @@ if (iproc==0){
     cudaMemcpy(z, z_h, sizeof(float)*Nz, cudaMemcpyHostToDevice);
 
     copy_geo_arrays_to_device(&ev_hd->geo, &ev_h->geo, &ev_h->pars, ev_h->grids.Nz); 
-    cudaMalloc((void**) &val, sizeof(float));
-    //phiVal = (float*) malloc(sizeof(float));
     
     
     //set up plans for NLPS, ZDeriv, and ZDerivB
     //plan for ZDerivCovering done below
-    int NLPSfftdims[2] = {Nx, Ny};
-    cufftPlanMany(&NLPSplanR2C, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, Nz);
-    cufftPlanMany(&NLPSplanC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, Nz);
-    cufftPlan1d(&ZDerivBplanR2C, Nz, CUFFT_R2C, 1);
-    cufftPlan1d(&ZDerivBplanC2R, Nz, CUFFT_C2R, 1);  
-    cufftPlan2d(&XYplanC2R, Nx, Ny, CUFFT_C2R);  //for diagnostics
-    int n[1] = {Nz};
-    int inembed[1] = {(Ny/2+1)*Nx*Nz};
-    int onembed[1] = {(Ny/2+1)*Nx*(Nz)};
-    cufftPlanMany(&ZDerivplan,1,n,inembed,(Ny/2+1)*Nx,1,
-                                  onembed,(Ny/2+1)*Nx,1,CUFFT_C2C,(Ny/2+1)*Nx);	
-                       //    n rank  nembed  stride   dist
-    if(DEBUG) getError("after plan");
+	  create_cufft_plans(&ev_h->grids, &ev_h->ffts);
       
     // INITIALIZE ARRAYS AS NECESSARY
     zero<<<dimGrid,dimBlock>>>(nu22_nlpm, 1, 1, Nz);

@@ -94,3 +94,30 @@ void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims
 	//zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
 	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_by_ky_by_deltaz_movav, 1, Ny/2+1, Nz);
 }
+
+void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
+  //set up plans for NLPS, ZDeriv, and ZDerivB
+  //plan for ZDerivCovering done below
+  int NLPSfftdims[2] = {grids->Nx, grids->Ny};
+  cufftPlanMany(&ffts->NLPSplanR2C, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, grids->Nz);
+  cufftPlanMany(&ffts->NLPSplanC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, grids->Nz);
+  cufftPlan1d(&ffts->ZDerivBplanR2C, grids->Nz, CUFFT_R2C, 1);
+  cufftPlan1d(&ffts->ZDerivBplanC2R, grids->Nz, CUFFT_C2R, 1);  
+  cufftPlan2d(&ffts->XYplanC2R, grids->Nx, grids->Ny, CUFFT_C2R);  //for diagnostics
+
+  int n[1] = {grids->Nz};
+  int inembed[1] = {grids->NxNycNz};
+  int onembed[1] = {grids->NxNycNz};
+  cufftPlanMany(&ffts->ZDerivplan,1,n,inembed,grids->NxNyc,1,
+                                onembed,grids->NxNyc,1,CUFFT_C2C,grids->NxNyc);	
+                     //    n rank  nembed  stride   dist
+
+	/* Globals... to be removed eventually*/
+	NLPSplanR2C = ffts->NLPSplanR2C;
+	NLPSplanC2R = ffts->NLPSplanC2R;
+	ZDerivBplanR2C = ffts->ZDerivBplanR2C;
+	ZDerivBplanC2R = ffts->ZDerivBplanC2R;
+	XYplanC2R = ffts->XYplanC2R;
+	ZDerivplan = ffts->ZDerivplan;
+  if(DEBUG) getError("after plan");
+}
