@@ -87,7 +87,7 @@ EXTERN_SWITCH cufftHandle NLPSplanR2C, NLPSplanC2R, ZDerivBplanR2C, ZDerivBplanC
 
 //streams and events
 EXTERN_SWITCH cudaStream_t* zstreams;
-EXTERN_SWITCH cudaStream_t copystream;
+//EXTERN_SWITCH cudaStream_t copystream;
 EXTERN_SWITCH cudaEvent_t* end_of_zderiv;
 //cudaEvent_t end_of_zderiv;
 

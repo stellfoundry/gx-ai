@@ -512,3 +512,24 @@ if(iproc==0) {
 
     getmoms_gryfx(hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi);
 }
+
+void copy_hybrid_arrays_from_host_to_device_async(
+  grids_struct * grids,
+  hybrid_zonal_arrays_struct * hybrid_h,
+  hybrid_zonal_arrays_struct * hybrid_d,
+  cuda_streams_struct * streams
+)
+{
+  int nSpecies = grids->Nspecies;
+  int ntheta0 = grids->ntheta0;
+  int Nz = grids->Nz;
+  cudaMemcpyAsync(hybrid_d->phi, hybrid_h->phi, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+  for(int s=0; s<nSpecies; s++) {
+    cudaMemcpyAsync(hybrid_d->dens[s], hybrid_h->dens_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->upar[s], hybrid_h->upar_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->tpar[s], hybrid_h->tpar_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->tprp[s], hybrid_h->tprp_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->qpar[s], hybrid_h->qpar_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->qprp[s], hybrid_h->qprp_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+  }
+}

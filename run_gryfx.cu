@@ -267,6 +267,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
    * like moving averages */
   outputs_struct * outs = &ev_h->outs;
   cuda_events_struct * events = &ev_h->events;
+  cuda_streams_struct * streams = &ev_h->streams;
 
 
 
@@ -475,18 +476,12 @@ if (iproc==0){
       &ev_h->hybrid, &ev_hd->hybrid);
       
 if(iproc==0) {
-    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-    for(int s=0; s<nSpecies; s++) {
-      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-    }
+    copy_hybrid_arrays_from_host_to_device_async(
+        &ev_h->grids, &ev_h->hybrid, 
+        &ev_hd->hybrid, streams);
     
   
-    cudaEventRecord(events->H2D, copystream);
+    cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
    
     fieldWrite_nopad_h(phi_ky0_h, "phi0.field", filename, Nx, 1, Nz, ntheta0, 1);
@@ -738,16 +733,16 @@ if(iproc==0) {
   
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
-            cudaStreamWaitEvent(copystream, events->nonlin_halfstep,0); //wait for all streams before copying
+            cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
             for(int i=0; i<nSpecies; i++) {
-              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
+              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
             }
-            cudaEventRecord(events->D2H, copystream);
+            cudaEventRecord(events->D2H, streams->copystream);
           }
 
           if(tm->counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
@@ -866,18 +861,18 @@ if(iproc==0) {
     //////nvtxRangePushA("copy moms(t+tm->dt/2)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt/2)_ky=0 from H2D
-    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
+    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
     for(int s=0; s<nSpecies; s++) {
-      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
+      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
     }
     
   
-    cudaEventRecord(events->H2D, copystream);
+    cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
    
     //replace ky=0 modes with results from GS2
@@ -974,16 +969,16 @@ if(iproc==0) {
   
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
-            cudaStreamWaitEvent(copystream, events->nonlin_halfstep,0); //wait for all streams before copying
+            cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
             for(int i=0; i<nSpecies; i++) {
-              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
-              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
+              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
             }
-            cudaEventRecord(events->D2H, copystream);
+            cudaEventRecord(events->D2H, streams->copystream);
           }
   
   #endif
@@ -1071,18 +1066,18 @@ if(iproc==0) {
     //////nvtxRangePushA("copy moms(t+dt)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt)_ky=0 from H2D
-    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
+    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
     for(int s=0; s<nSpecies; s++) {
-      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
-      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
+      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
+      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
     }
     
   
-    cudaEventRecord(events->H2D, copystream);
+    cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
    
     if(!LINEAR && !secondary_test && !write_omega) {
