@@ -465,7 +465,6 @@ if (iproc==0){
       //GS2timer=0.;
     int stopcount = 0;
     int nstop = 10;
-    int first_half_flag;
 
 #ifdef GS2_zonal
 
@@ -523,7 +522,7 @@ if(iproc==0) {
     //uint64_t diff;
     struct timespec clockstart;//, clockend;
     //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
-   first_half_flag = 1;
+   tm->first_half_flag = 1;
    // //cudaEventRecord(GS2Istart,0);
 //    clock_gettime(CLOCK_MONOTONIC, &clockstart);
 //   // //getError("Before GS2start");
@@ -663,7 +662,7 @@ if(iproc==0) {
   
       //////nvtxRangePushA("Gryfx t->t+tm->dt/2");
 
-      first_half_flag = 1;
+      tm->first_half_flag = 1;
 #ifdef GS2_zonal
 			if(iproc==0) {
 #endif
@@ -680,7 +679,7 @@ if(iproc==0) {
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &tm->dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, tmpX, CtmpX, first_half_flag,
+  	       tmp,tmp, tmpX, CtmpX, tm->first_half_flag,
 	       field_h, tm->counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
   
           //Moment1 = Moment + (dt/2)*NL(Moment)
@@ -794,7 +793,7 @@ if(iproc==0) {
     //cudaEventRecord(GS2start,0);
 
     //advance GS2 t -> t + tm->dt/2  
-    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
     gs2_counter++;
 
     //nvtxRangePop();
@@ -867,7 +866,7 @@ if(iproc==0) {
 
     //////nvtxRangePushA("Gryfx t->t+dt");
 
-      first_half_flag = 0;
+      tm->first_half_flag = 0;
 #ifdef GS2_zonal 
 			if(iproc==0) {
 #endif
@@ -918,7 +917,7 @@ if(iproc==0) {
                  dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
                  &tm->dt, species[s],
   	       field,field,field,field,field,field,
-  	       tmp,tmp, tmpX, CtmpX, first_half_flag,
+  	       tmp,tmp, tmpX, CtmpX, tm->first_half_flag,
 	       field_h, tm->counter, kx2Phi_zf_rms, kx2Phi_zf_rms_avg);
   
           //Moment = Moment + dt * NL(Moment1)
@@ -1005,7 +1004,7 @@ if(iproc==0) {
     //advance GS2 t+dt/2 -> t+dt
       //MPI_Barrier(MPI_COMM_WORLD);
     //nvtxRangePushA("GS2 t+dt/2->t+dt");
-    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &first_half_flag);
+    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
     gs2_counter++;
     //nvtxRangePop();
   

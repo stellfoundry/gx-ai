@@ -25,6 +25,8 @@ typedef struct {
 	// Step runtime in minutes
 	float timer;
 
+  int first_half_flag;
+
   double dt;
 
   float cflx;
