@@ -56,6 +56,22 @@
     float * tmpXZ = ev_hd->tmp.XZ;
     float * tmpYZ = ev_hd->tmp.YZ;
 
+    cuComplex * dens_ky0_h = ev_h->hybrid.dens_h;
+    cuComplex * upar_ky0_h = ev_h->hybrid.upar_h;
+    cuComplex * tpar_ky0_h = ev_h->hybrid.tpar_h;
+    cuComplex * tprp_ky0_h = ev_h->hybrid.tprp_h;
+    cuComplex * qpar_ky0_h = ev_h->hybrid.qpar_h;
+    cuComplex * qprp_ky0_h = ev_h->hybrid.qprp_h;
+    cuComplex * phi_ky0_h = ev_h->hybrid.phi;
+
+    cuComplex ** dens_ky0_d = ev_hd->hybrid.dens;
+    cuComplex ** upar_ky0_d = ev_hd->hybrid.upar;
+    cuComplex ** tpar_ky0_d = ev_hd->hybrid.tpar;
+    cuComplex ** tprp_ky0_d = ev_hd->hybrid.tprp;
+    cuComplex ** qpar_ky0_d = ev_hd->hybrid.qpar;
+    cuComplex ** qprp_ky0_d = ev_hd->hybrid.qprp;
+    cuComplex * phi_ky0_d = ev_hd->hybrid.phi;
+
 
     //Some globals
 

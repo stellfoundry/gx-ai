@@ -79,6 +79,23 @@ typedef struct {
   int iproc;
 } mpi_info_struct;
 
+typedef struct {
+
+	cuComplex * phi;
+	cuComplex ** dens;
+	cuComplex ** upar;
+	cuComplex ** tpar;
+	cuComplex ** tprp;
+	cuComplex ** qpar;
+	cuComplex ** qprp;
+	cuComplex * dens_h;
+	cuComplex * upar_h;
+	cuComplex * tpar_h;
+	cuComplex * tprp_h;
+	cuComplex * qpar_h;
+	cuComplex * qprp_h;
+	
+} hybrid_zonal_arrays_struct;
 
 
 /* A bunch of device arrays to be reused continuously */
@@ -122,6 +139,7 @@ typedef struct {
   cuda_streams_struct streams;
   cuda_events_struct events;
   secondary_fixed_arrays_struct sfixed;
+  hybrid_zonal_arrays_struct hybrid;
   
 
 	/* Specifies whether the pointers in the struct point 

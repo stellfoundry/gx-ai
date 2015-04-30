@@ -7,6 +7,7 @@ void setup_everything_structs(everything_struct * ev_h, everything_struct ** ev_
 	/* ev_d is on the device (and the pointers point to memory on the device)*/
   /* ev_d is only allocated for proc0 */
 
+  allocate_or_deallocate_everything(ALLOCATE, ev_h);
   *ev_hd_ptr = (everything_struct*)malloc(sizeof(everything_struct));
   if (ev_h->mpi.iproc==0){
     cudaMalloc((void**) ev_d_ptr, sizeof(everything_struct));
@@ -18,7 +19,6 @@ void setup_everything_structs(everything_struct * ev_h, everything_struct ** ev_
        function know to allocate its arrays on the device*/
     (*ev_hd_ptr)->memory_location = ON_DEVICE;
 
-    allocate_or_deallocate_everything(ALLOCATE, ev_h);
     allocate_or_deallocate_everything(ALLOCATE, *ev_hd_ptr);
     /* This has to be done separately */
     allocate_geo(ALLOCATE, ON_DEVICE, &(*ev_hd_ptr)->geo, &(*ev_hd_ptr)->grids.z, &(*ev_hd_ptr)->grids.Nz);

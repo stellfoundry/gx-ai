@@ -119,6 +119,45 @@ void allocate_field_species_array(cuComplex *** ptr, int aod, int ml, grids_stru
 	//printf("allocate_field_species_array\n");
 }
 
+void allocate_hybrid_zonal_field_species_array(cuComplex *** ptr, int aod, int ml, grids_struct * grids){
+	int i;
+	if (aod == ALLOCATE) alloc_dealloc((void *)ptr, aod, ON_HOST, ON_HOST, TYPE_CUCOMPLEX_PTR, grids->Nspecies); 
+	/* Remember:
+		  ptr is a pointer to a single cuComplex **
+			*ptr is a pointer to an array of Nspecies (cuComplex *)s
+		  (*ptr)[i] is a cuComplex *;
+		  &(*ptr)[i] is the address of that cuComplex *;
+		*/	
+	for (i=0; i<grids->Nspecies; i++){
+		alloc_dealloc(&(*ptr)[i], aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->ntheta0*grids->Nz); 
+	}
+	if (aod == DEALLOCATE) alloc_dealloc((void *)ptr, aod, ON_HOST, ON_HOST, TYPE_CUCOMPLEX_PTR, grids->Nspecies); 
+	//printf("allocate_field_species_array\n");
+}
+void allocate_hybrid_zonal_arrays(int aod, int ml, grids_struct * grids, hybrid_zonal_arrays_struct * hybrid){
+	alloc_dealloc(&hybrid->phi, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0);
+
+	allocate_hybrid_zonal_field_species_array(&hybrid->dens, aod, ml, grids);
+	allocate_hybrid_zonal_field_species_array(&hybrid->upar, aod, ml, grids);
+	allocate_hybrid_zonal_field_species_array(&hybrid->tpar, aod, ml, grids);
+	allocate_hybrid_zonal_field_species_array(&hybrid->tprp, aod, ml, grids);
+	allocate_hybrid_zonal_field_species_array(&hybrid->qpar, aod, ml, grids);
+	allocate_hybrid_zonal_field_species_array(&hybrid->qprp, aod, ml, grids);
+
+	alloc_dealloc(&hybrid->dens_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+	alloc_dealloc(&hybrid->upar_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+	alloc_dealloc(&hybrid->tpar_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+	alloc_dealloc(&hybrid->tprp_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+	alloc_dealloc(&hybrid->qpar_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+	alloc_dealloc(&hybrid->qprp_h, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz*grids->ntheta0*grids->Nspecies);
+
+	/*Globals...to be deleted eventually*/
+	if (ml == ON_HOST){
+	}
+	else if (ml == ON_DEVICE){
+	}
+}
+
 void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fields){
 	/* Host and device */
 	alloc_dealloc(&fields->phi, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
@@ -321,6 +360,7 @@ void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_st
 	allocate_grids(allocate_or_deallocate, ev->memory_location, &ev->grids);
 	allocate_outputs(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->outs);
 	allocate_fields(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->fields);
+	allocate_hybrid_zonal_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->hybrid);
 	allocate_sfixed(allocate_or_deallocate, ev->memory_location, &ev->sfixed, ev->grids.Nz);
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){

@@ -234,30 +234,11 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float *shear_rate_z_nz;
     float *shear_rate_nz;  
   
-    cuComplex *dens_ky0_h, *upar_ky0_h, *tpar_ky0_h, *tprp_ky0_h, *qpar_ky0_h, *qprp_ky0_h, *phi_ky0_h;
-    cuComplex *dens_ky0_d[nSpecies], *upar_ky0_d[nSpecies], *tpar_ky0_d[nSpecies], *tprp_ky0_d[nSpecies], *qpar_ky0_d[nSpecies], *qprp_ky0_d[nSpecies], *phi_ky0_d;
 
     printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time_mp_code_time_/sqrt(2.0));
     
 ////////////  
 #ifdef GS2_zonal
-    //allocate these host arrays on all procs
-    cudaMallocHost((void**) &dens_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &upar_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &tpar_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &tprp_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &qpar_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &qprp_ky0_h, sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    cudaMallocHost((void**) &phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz);
-
-/*    dens_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    upar_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    tpar_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    tprp_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    qpar_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    qprp_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    phi_ky0_h = (cuComplex*) malloc(sizeof(cuComplex)*ntheta0*Nz);
-*/
 			if(iproc==0) {
 
 #endif
@@ -309,17 +290,6 @@ if (iproc==0){
     //Phi_energy = (float*) malloc(sizeof(float));
     
   //#ifdef GS2_zonal
-    for(int s=0; s<nSpecies; s++) {
-  
-      cudaMalloc((void**) &dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-      cudaMalloc((void**) &upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-      cudaMalloc((void**) &tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-      cudaMalloc((void**) &tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-      cudaMalloc((void**) &qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-      cudaMalloc((void**) &qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz);
-  
-    }
-    cudaMalloc((void**) &phi_ky0_d, sizeof(cuComplex)*ntheta0*Nz);
   //#endif
     
     
