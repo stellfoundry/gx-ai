@@ -135,7 +135,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //float phi0_X[Nx];
     //cuComplex CtmpX_h[Nx];
     cuComplex field_h[Nx*(Ny/2+1)*Nz];
-    cuComplex CtmpZ_h[Nz];
+    //cuComplex CtmpZ_h[Nz];
    
     float Phi2_zf;
     float Phi_zf_rms;
@@ -431,74 +431,12 @@ if (iproc==0){
     
     //if running nonlinear part of secondary test...
     if(secondary_test && !LINEAR && RESTART) { 
-      restartRead(ev_h, ev_hd, &Phi_zf_rms);
-//      restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-//      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
-//      			&tm->dtSum, &tm->counter,&tm->runtime,&tm->dt,&tm->totaltimer,secondary_test_restartfileName);
-  			
-      //Check restart was successful
+       restartRead(ev_h, ev_hd, &Phi_zf_rms);
+       //Check restart was successful
        fieldWrite(Phi, field_h, "phi_restarted.field", filename);
-
-       get_fixed_mode<<<dimGrid,dimBlock>>>(phi_fixed, Phi, 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(dens_fixed, Dens[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(upar_fixed, Upar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(tpar_fixed, Tpar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(tprp_fixed, Tprp[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(qpar_fixed, Qpar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(qprp_fixed, Qprp[ION], 1, 0);
-
-       printf("Before set_fixed_amplitude\n");
-       cudaMemcpy(CtmpZ_h, phi_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("phi_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-
-       cudaMemcpy(CtmpZ_h, dens_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       if(SLAB) set_fixed_amplitude<<<dimGrid,dimBlock>>>(phi_fixed, dens_fixed, upar_fixed, tpar_fixed, tprp_fixed, qpar_fixed, qprp_fixed, phi_test);
-       else set_fixed_amplitude_withz<<<dimGrid,dimBlock>>>(phi_fixed, dens_fixed, upar_fixed, tpar_fixed, tprp_fixed, qpar_fixed, qprp_fixed, phi_test);
-
-       printf("After set_fixed_amplitude\n");
-       cudaMemcpy(CtmpZ_h, phi_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("phi_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-
-       cudaMemcpy(CtmpZ_h, dens_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       cudaMemcpy(CtmpZ_h, upar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("upar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       cudaMemcpy(CtmpZ_h, tpar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("tpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       cudaMemcpy(CtmpZ_h, tprp_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("tprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       cudaMemcpy(CtmpZ_h, qpar_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("qpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
-       cudaMemcpy(CtmpZ_h, qprp_fixed, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
- 
-       for(int i=0; i<Nz; i++) {
-         printf("qprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
-       }
+       load_fixed_arrays_from_restart(
+            ev_h->grids.Nz, ev_h->tmp.CZ, &ev_h->pars,
+            &ev_hd->sfixed, &ev_hd->fields);
        //initialize density with noise
        RESTART = false; 
        init = DENS;

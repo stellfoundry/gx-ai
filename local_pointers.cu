@@ -47,6 +47,7 @@
     float * tmpY = ev_hd->tmp.Y;
     float * tmpY2 = ev_hd->tmp.Y2;
     float * tmpZ = ev_hd->tmp.Z;
+    //cuComplex * CtmpZ_h = ev_h->tmp.CZ;
     float * tmpXY = ev_hd->tmp.XY;
     float * tmpXY2 = ev_hd->tmp.XY2;
     float * tmpXY3 = ev_hd->tmp.XY3;

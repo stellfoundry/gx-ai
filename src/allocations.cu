@@ -186,6 +186,7 @@ void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_
 	alloc_dealloc(&tmp->Y, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&tmp->Y2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&tmp->Z, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nz);
+	alloc_dealloc(&tmp->CZ, aod, ON_HOST, ml, TYPE_CUCOMPLEX, grids->Nz);
 	alloc_dealloc(&tmp->XY, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&tmp->XY2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&tmp->XY3, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Ny_complex);

@@ -88,6 +88,7 @@ typedef struct {
 	float * Y;
 	float * Y2;
 	float * Z;
+	cuComplex * CZ;
 
 	float * XY;
 	float * XY2;

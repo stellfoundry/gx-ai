@@ -379,3 +379,78 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
    
       if(DEBUG) getError("after initial qneut");
 }
+
+void load_fixed_arrays_from_restart(
+      int Nz,
+      cuComplex * CtmpZ_h,
+      input_parameters_struct * pars,
+      secondary_fixed_arrays_struct * sfixed, 
+      fields_struct * fields /* fields on device */
+
+){
+//      restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
+//      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
+//      			&tm->dtSum, &tm->counter,&tm->runtime,&tm->dt,&tm->totaltimer,secondary_test_restartfileName);
+  			
+
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->phi, fields->phi, 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->dens, fields->dens[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->upar, fields->upar[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tpar, fields->tpar[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tprp, fields->tprp[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qpar, fields->qpar[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qprp, fields->qprp[ION], 1, 0);
+
+       printf("Before set_fixed_amplitude\n");
+       cudaMemcpy(CtmpZ_h, sfixed->phi, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("phi_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+
+       cudaMemcpy(CtmpZ_h, sfixed->dens, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       if(SLAB) set_fixed_amplitude<<<dimGrid,dimBlock>>>(sfixed->phi, sfixed->dens, sfixed->upar, sfixed->tpar, sfixed->tprp, sfixed->qpar, sfixed->qprp, phi_test);
+       else set_fixed_amplitude_withz<<<dimGrid,dimBlock>>>(sfixed->phi, sfixed->dens, sfixed->upar, sfixed->tpar, sfixed->tprp, sfixed->qpar, sfixed->qprp, phi_test);
+
+       printf("After set_fixed_amplitude\n");
+       cudaMemcpy(CtmpZ_h, sfixed->phi, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("phi_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+
+       cudaMemcpy(CtmpZ_h, sfixed->dens, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("dens_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, sfixed->upar, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("upar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, sfixed->tpar, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("tpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, sfixed->tprp, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("tprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, sfixed->qpar, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("qpar_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+       cudaMemcpy(CtmpZ_h, sfixed->qprp, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
+ 
+       for(int i=0; i<Nz; i++) {
+         printf("qprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
+       }
+}
