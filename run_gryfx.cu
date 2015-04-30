@@ -146,7 +146,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float kx2Phi_zf_rms_avg;
     
     //for secondary test
-    float S_fixed = 1.;
+    float S_fixed = 1.; // Remove eventually
+    ev_h->sfixed.S = S_fixed;
 
     char filename[200];
   
@@ -489,11 +490,7 @@ if(iproc==0) {
       &ev_h->cdims, &ev_hd->fields,
       &ev_hd->hybrid, ev_h->fields.field);
    
-   
-}  
-    //gs2_main_mp_advance_gs2_();
-    //printf("finished gs2\n");
-    //exit(1);
+} // if iproc 
   
 #endif
     
@@ -501,13 +498,8 @@ if(iproc==0) {
 			if(iproc==0) {  
 #endif
       if(secondary_test && !LINEAR) {
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi, phi_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens[ION], dens_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Upar[ION], upar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tpar[ION], tpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tprp[ION], tprp_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar[ION], qpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp[ION], qprp_fixed, 1, 0, S_fixed);
+        copy_fixed_modes_into_fields(
+          &ev_h->cdims, &ev_hd->fields, &ev_hd->sfixed);
       }
 
       if(init == DENS) {

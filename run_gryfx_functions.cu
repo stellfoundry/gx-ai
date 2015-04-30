@@ -575,3 +575,20 @@ void replace_zonal_fields_with_hybrid(
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
     fieldWrite(fields_d->phi, field_h, "phi_2.field", filename); 
 }
+
+void copy_fixed_modes_into_fields(
+  cuda_dimensions_struct * cdims,
+  fields_struct * fields_d,
+  secondary_fixed_arrays_struct * sfixed
+    )
+{
+    dim3 dimGrid = cdims->dimGrid;
+    dim3 dimBlock = cdims->dimBlock;
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->phi, sfixed->phi, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, 1, 0, sfixed->S);
+}

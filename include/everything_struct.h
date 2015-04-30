@@ -41,6 +41,7 @@ typedef struct {
 
 typedef struct {
   cuComplex *phi, *dens, *upar, *tpar, *tprp, *qpar, *qprp;
+  float S;
 } secondary_fixed_arrays_struct;
 
 typedef struct {
