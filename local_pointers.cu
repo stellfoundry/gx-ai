@@ -21,6 +21,7 @@
     cuComplex ** Qprp = ev_hd->fields.qprp;
     cuComplex ** Qprp1 = ev_hd->fields.qprp1;
 
+    cuComplex * field_h = ev_h->fields.field;
     cuComplex * field = ev_hd->fields.field;
 
     // For secondary instability calculation

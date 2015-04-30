@@ -533,3 +533,45 @@ void copy_hybrid_arrays_from_host_to_device_async(
     cudaMemcpyAsync(hybrid_d->qprp[s], hybrid_h->qprp_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
   }
 }
+
+void replace_zonal_fields_with_hybrid(
+  cuda_dimensions_struct * cdims,
+  fields_struct * fields_d,
+  hybrid_zonal_arrays_struct * hybrid_d,
+  cuComplex * field_h
+)
+{
+    char filename[200];
+    dim3 dimGrid = cdims->dimGrid;
+    dim3 dimBlock = cdims->dimBlock;
+
+    //replace ky=0 modes with results from GS2
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
+    for(int s=0; s<nSpecies; s++) {
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->dens[s], hybrid_d->dens[s]);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->upar[s], hybrid_d->upar[s]);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->tpar[s], hybrid_d->tpar[s]);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->tprp[s], hybrid_d->tprp[s]);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->qpar[s], hybrid_d->qpar[s]);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->qprp[s], hybrid_d->qprp[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->dens[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->upar[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->tpar[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->tprp[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->qpar[s]);
+      reality<<<dimGrid,dimBlock>>>(fields_d->qprp[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->dens[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->upar[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->tpar[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->tprp[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->qpar[s]);
+      mask<<<dimGrid,dimBlock>>>(fields_d->qprp[s]);
+    }
+    reality<<<dimGrid,dimBlock>>>(fields_d->phi);
+    mask<<<dimGrid,dimBlock>>>(fields_d->phi);
+
+    fieldWrite(fields_d->phi, field_h, "phi_1.field", filename); 
+    getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, fields_d->phi);
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
+    fieldWrite(fields_d->phi, field_h, "phi_2.field", filename); 
+}

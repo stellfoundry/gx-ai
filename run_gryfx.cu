@@ -133,7 +133,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float tmpXY_R_h[Nx*Ny];
     //float phi0_X[Nx];
     //cuComplex CtmpX_h[Nx];
-    cuComplex field_h[Nx*(Ny/2+1)*Nz];
+    //cuComplex field_h[Nx*(Ny/2+1)*Nz];
     //cuComplex CtmpZ_h[Nz];
    
     float Phi2_zf;
@@ -483,38 +483,12 @@ if(iproc==0) {
   
     cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
-   
+    
     fieldWrite_nopad_h(phi_ky0_h, "phi0.field", filename, Nx, 1, Nz, ntheta0, 1);
-
-    //replace ky=0 modes with results from GS2
-    replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi, phi_ky0_d);
-    for(int s=0; s<nSpecies; s++) {
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Dens[s], dens_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Upar[s], upar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tpar[s], tpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tprp[s], tprp_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qpar[s], qpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qprp[s], qprp_ky0_d[s]);
-      reality<<<dimGrid,dimBlock>>>(Dens[s]);
-      reality<<<dimGrid,dimBlock>>>(Upar[s]);
-      reality<<<dimGrid,dimBlock>>>(Tpar[s]);
-      reality<<<dimGrid,dimBlock>>>(Tprp[s]);
-      reality<<<dimGrid,dimBlock>>>(Qpar[s]);
-      reality<<<dimGrid,dimBlock>>>(Qprp[s]);
-      mask<<<dimGrid,dimBlock>>>(Dens[s]);
-      mask<<<dimGrid,dimBlock>>>(Upar[s]);
-      mask<<<dimGrid,dimBlock>>>(Tpar[s]);
-      mask<<<dimGrid,dimBlock>>>(Tprp[s]);
-      mask<<<dimGrid,dimBlock>>>(Qpar[s]);
-      mask<<<dimGrid,dimBlock>>>(Qprp[s]);
-    }
-    reality<<<dimGrid,dimBlock>>>(Phi);
-    mask<<<dimGrid,dimBlock>>>(Phi);
-
-    fieldWrite(Phi, field_h, "phi_1.field", filename); 
-    getky0_nopad<<<dimGrid,dimBlock>>>(phi_ky0_d, Phi);
-    replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi, phi_ky0_d);
-    fieldWrite(Phi, field_h, "phi_2.field", filename); 
+    replace_zonal_fields_with_hybrid(
+      &ev_h->cdims, &ev_hd->fields,
+      &ev_hd->hybrid, ev_h->fields.field);
+   
    
 }  
     //gs2_main_mp_advance_gs2_();
