@@ -454,3 +454,29 @@ void load_fixed_arrays_from_restart(
          printf("qprp_fixed(idz=%d) = (%e,%e)\n", i, CtmpZ_h[i].x, CtmpZ_h[i].y);
        }
 }
+
+void create_cuda_events_and_streams(cuda_events_struct * events, cuda_streams_struct * streams, int nClasses){
+    cudaEventCreate(&events->start);
+    cudaEventCreate(&events->stop);		
+    cudaEventCreate(&events->nonlin_halfstep);
+    cudaEventCreate(&events->H2D);
+    cudaEventCreateWithFlags(&events->D2H, cudaEventBlockingSync);
+    for(int c=0; c<nClasses; c++) {
+      cudaEventCreate(&events->end_of_zderiv[c]); 
+    }
+    cudaEventCreate(&events->GS2start);
+    cudaEventCreate(&events->GS2stop);		
+
+    //cudaEventCreate(&end_of_zderiv);  
+
+    cudaStreamCreate(&streams->copystream);
+
+    //int copystream = 0;
+  
+    //cudaEventCreate(&start1); 			    
+    //cudaEventCreate(&stop1);
+    //cudaEventRecord(events->start,0);
+    
+    //cudaProfilerStart();
+}
+

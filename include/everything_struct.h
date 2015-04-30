@@ -49,6 +49,7 @@ typedef struct {
 } cuda_streams_struct;
 
 typedef struct {
+  cudaEvent_t start, stop,  nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
   cudaEvent_t * end_of_zderiv;
 } cuda_events_struct;
 

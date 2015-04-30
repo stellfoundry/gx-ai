@@ -1781,4 +1781,3 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
 
 }
 
-

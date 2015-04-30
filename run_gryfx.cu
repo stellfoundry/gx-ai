@@ -96,7 +96,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     set_globals_after_gryfx_lib(ev_h);
     if (iproc==0) set_cuda_constants();
 
-    cudaEvent_t start, stop,  nonlin_halfstep, H2D, D2H, GS2start, GS2stop;
     
     //int naky, ntheta0;// nshift;
     //naky = 1 + (Ny-1)/3;
@@ -283,8 +282,12 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   time_struct * tm = &ev_h->time;
   //Initialize dt
   tm->dt = ev_h->pars.dt;
-
+  /* The outputs struct contains
+   * like moving averages */
   outputs_struct * outs = &ev_h->outs;
+  cuda_events_struct * events = &ev_h->events;
+
+
 
 // The file local_pointers.cu
 //declares and assigns local 
@@ -455,9 +458,6 @@ if (iproc==0){
       set_initial_conditions_no_restart(
           &ev_h->pars, &ev_d->pars, &ev_h->grids, &ev_d->grids, 
           &ev_h->cdims, &ev_d->geo, &ev_hd->fields, &ev_hd->tmp);
-      
-  
-      
 		  zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       
       flux1_phase_sum = 0.;
@@ -466,85 +466,30 @@ if (iproc==0){
       Tpar_phase_sum = 0.;
       Tprp_phase_sum = 0.;
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
-      
-          
-      
     } 
     else {
       restartRead(ev_h, ev_hd, &Phi_zf_rms);
-//      restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-//      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
-//      			&tm->dtSum, &tm->counter,&tm->runtime,&tm->dt,&tm->totaltimer,restartfileName);
-  			
       if(zero_restart_avg) {
-        printf("zeroing avg sums...\n");
-        for(int s=0; s<nSpecies; s++) {
-          //wpfx_sum[s] = 0.;
-        }
-        outs->expectation_ky_movav = 0.;
-        outs->expectation_kx_movav = 0.;
-        tm->dtSum = 0.;
-        zero<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, Nx, Ny/2+1, 1);
-        zero<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, Nx, 1, 1);
-        zero<<<dimGrid,dimBlock>>>(zCorr_sum, 1, Ny/2+1, Nz);
+		    zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       }
-
-
-  	
-    
     }
-  
-
-
-   
-    
-    //printf("phi file is %s\n", phifileName);
-
-
-    //writedat_beginning();
       
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);		
-    cudaEventCreate(&nonlin_halfstep);
-    cudaEventCreate(&H2D);
-    cudaEventCreateWithFlags(&D2H, cudaEventBlockingSync);
-    for(int c=0; c<nClasses; c++) {
-      cudaEventCreate(&end_of_zderiv[c]); 
-    }
-    cudaEventCreate(&GS2start);
-    cudaEventCreate(&GS2stop);		
-
-    //cudaEventCreate(&end_of_zderiv);  
-
-    cudaStreamCreate(&copystream);
-
-    //int copystream = 0;
-  
-    //cudaEventCreate(&start1); 			    
-    //cudaEventCreate(&stop1);
-    //cudaEventRecord(start,0);
-    
-    //cudaProfilerStart();
-    
+    create_cuda_events_and_streams(events, &ev_h->streams, ev_h->grids.nClasses);
     /*
     float step_timer=0.;
     float step_timer_total=0.;
     float diagnostics_timer=0.;
     float diagnostics_timer_total=0.;
     */ 
-
 #ifdef GS2_zonal    
 			} //end of iproc if    
     //MPI_Barrier(MPI_COMM_WORLD);
 #endif 
-
-      //strcpy(stopfileName, out_stem);
-      //strcat(stopfileName, "stop");
-      tm->runtime=0.;
-      tm->counter=0;
-      gs2_counter=1;
-      tm->totaltimer=0.;
-      tm->timer=0.;
+    tm->runtime=0.;
+    tm->counter=0;
+    gs2_counter=1;
+    tm->totaltimer=0.;
+    tm->timer=0.;
       //GS2timer=0.;
     int stopcount = 0;
     int nstop = 10;
@@ -588,8 +533,8 @@ if(iproc==0) {
     }
     
   
-    cudaEventRecord(H2D, copystream);
-    cudaStreamWaitEvent(0, H2D, 0);
+    cudaEventRecord(events->H2D, copystream);
+    cudaStreamWaitEvent(0, events->H2D, 0);
    
     fieldWrite_nopad_h(phi_ky0_h, "phi0.field", filename, Nx, 1, Nz, ntheta0, 1);
 
@@ -701,7 +646,7 @@ if(iproc==0) {
 #ifdef GS2_zonal
     if(iproc==0) {
 #endif
-      cudaEventRecord(start,0);
+      cudaEventRecord(events->start,0);
 #ifdef GS2_zonal
     }
 #endif
@@ -839,8 +784,8 @@ if(iproc==0) {
           //copy NL(t)_ky=0 from D2H
   
           if(s==nSpecies-1) {  //Only after all species have been done
-            cudaEventRecord(nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
-            cudaStreamWaitEvent(copystream, nonlin_halfstep,0); //wait for all streams before copying
+            cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
+            cudaStreamWaitEvent(copystream, events->nonlin_halfstep,0); //wait for all streams before copying
             for(int i=0; i<nSpecies; i++) {
               cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
               cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
@@ -849,7 +794,7 @@ if(iproc==0) {
               cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
               cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
             }
-            cudaEventRecord(D2H, copystream);
+            cudaEventRecord(events->D2H, copystream);
           }
 
           if(tm->counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ntheta0, 1);
@@ -933,7 +878,7 @@ if(iproc==0) {
 
 
     if(!LINEAR) {
-      if(iproc==0) cudaEventSynchronize(D2H); //have proc 0 wait for NL(t) to be copied D2H before advancing GS2 if running nonlinearly
+      if(iproc==0) cudaEventSynchronize(events->D2H); //have proc 0 wait for NL(t) to be copied D2H before advancing GS2 if running nonlinearly
     }
   
       //MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
@@ -979,8 +924,8 @@ if(iproc==0) {
     }
     
   
-    cudaEventRecord(H2D, copystream);
-    cudaStreamWaitEvent(0, H2D, 0);
+    cudaEventRecord(events->H2D, copystream);
+    cudaStreamWaitEvent(0, events->H2D, 0);
    
     //replace ky=0 modes with results from GS2
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
@@ -1075,8 +1020,8 @@ if(iproc==0) {
           //copy NL(t+dt/2)_ky=0 from D2H
   
           if(s==nSpecies-1) {  //Only after all species have been done
-            cudaEventRecord(nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
-            cudaStreamWaitEvent(copystream, nonlin_halfstep,0); //wait for all streams before copying
+            cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
+            cudaStreamWaitEvent(copystream, events->nonlin_halfstep,0); //wait for all streams before copying
             for(int i=0; i<nSpecies; i++) {
               cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
               cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
@@ -1085,7 +1030,7 @@ if(iproc==0) {
               cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
               cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, copystream);
             }
-            cudaEventRecord(D2H, copystream);
+            cudaEventRecord(events->D2H, copystream);
           }
   
   #endif
@@ -1147,7 +1092,7 @@ if(iproc==0) {
     
     
     if(!LINEAR) {
-      if(iproc==0) cudaEventSynchronize(D2H); //wait for NL(t+dt/2) to be copied D2H before advancing GS2 if running nonlinearly
+      if(iproc==0) cudaEventSynchronize(events->D2H); //wait for NL(t+dt/2) to be copied D2H before advancing GS2 if running nonlinearly
     }
     //advance GS2 t+dt/2 -> t+dt
       //MPI_Barrier(MPI_COMM_WORLD);
@@ -1184,8 +1129,8 @@ if(iproc==0) {
     }
     
   
-    cudaEventRecord(H2D, copystream);
-    cudaStreamWaitEvent(0, H2D, 0);
+    cudaEventRecord(events->H2D, copystream);
+    cudaStreamWaitEvent(0, events->H2D, 0);
    
     if(!LINEAR && !secondary_test && !write_omega) {
       replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi, phi_ky0_d);
@@ -1577,11 +1522,11 @@ if(iproc==0) {
       }
   
       else if(tm->counter%nsave==0) {
-        cudaEventRecord(stop,0);
-        cudaEventSynchronize(stop);
-        cudaEventElapsedTime(&tm->timer,start,stop);
+        cudaEventRecord(events->stop,0);
+        cudaEventSynchronize(events->stop);
+        cudaEventElapsedTime(&tm->timer,events->start,events->stop);
         tm->totaltimer+=tm->timer;
-        cudaEventRecord(start,0);
+        cudaEventRecord(events->start,0);
         restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
         			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, Phi_zf_kx1_avg,
         			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
@@ -1647,9 +1592,9 @@ if(iproc==0) {
     if(DEBUG) getError("just finished timestep loop");
     
     //cudaProfilerStop();
-    cudaEventRecord(stop,0);
-    cudaEventSynchronize(stop);
-    cudaEventElapsedTime(&tm->timer,start,stop);
+    cudaEventRecord(events->stop,0);
+    cudaEventSynchronize(events->stop);
+    cudaEventElapsedTime(&tm->timer,events->start,events->stop);
     tm->totaltimer+=tm->timer;
     
     nSteps = tm->counter;     //counter at which fields were last calculated
