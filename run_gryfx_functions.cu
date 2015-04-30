@@ -480,3 +480,35 @@ void create_cuda_events_and_streams(cuda_events_struct * events, cuda_streams_st
     //cudaProfilerStart();
 }
 
+void initialize_hybrid_arrays(int iproc,
+  grids_struct * grids,
+  hybrid_zonal_arrays_struct * hybrid_h,
+  hybrid_zonal_arrays_struct * hybrid_d)
+{
+  int nSpecies = grids->Nspecies;
+  int ntheta0 = grids->ntheta0;
+  int Nz = grids->Nz;
+if(iproc==0) {
+    cudaMemset(hybrid_d->phi, 0., sizeof(cuComplex)*ntheta0*Nz);
+    for(int s=0; s<nSpecies; s++) {
+      cudaMemset(hybrid_d->dens[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+      cudaMemset(hybrid_d->upar[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+      cudaMemset(hybrid_d->tpar[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+      cudaMemset(hybrid_d->tprp[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+      cudaMemset(hybrid_d->qpar[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+      cudaMemset(hybrid_d->qprp[s], 0., sizeof(cuComplex)*ntheta0*Nz);
+    }
+}    
+
+    memset(hybrid_h->phi, 0., sizeof(cuComplex)*ntheta0*Nz);
+    memset(hybrid_h->dens_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+    memset(hybrid_h->upar_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+    memset(hybrid_h->tpar_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+    memset(hybrid_h->tprp_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+    memset(hybrid_h->qpar_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+    memset(hybrid_h->qprp_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
+
+    //set initial condition from GS2 for ky=0 modes
+
+    getmoms_gryfx(hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi);
+}

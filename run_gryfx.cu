@@ -55,7 +55,6 @@ __constant__ int Zp_d;
 #include "courant.cu"
 #include "energy.cu"
 #include "timestep_gryfx.cu"
-#include "run_gryfx_functions.cu"
 
 
 #ifdef GS2_zonal
@@ -75,6 +74,7 @@ extern "C" void broadcast_integer(int* a);
 
 
 
+#include "run_gryfx_functions.cu"
 
 void set_cuda_constants(){
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
@@ -467,29 +467,12 @@ if (iproc==0){
 
 #ifdef GS2_zonal
 
-if(iproc==0) {
-    cudaMemset(phi_ky0_d, 0., sizeof(cuComplex)*ntheta0*Nz);
-    for(int s=0; s<nSpecies; s++) {
-      cudaMemset(dens_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-      cudaMemset(upar_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-      cudaMemset(tpar_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-      cudaMemset(tprp_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-      cudaMemset(qpar_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-      cudaMemset(qprp_ky0_d[s], 0., sizeof(cuComplex)*ntheta0*Nz);
-    }
-}    
-
-    memset(phi_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz);
-    memset(dens_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    memset(upar_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    memset(tpar_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    memset(tprp_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    memset(qpar_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-    memset(qprp_ky0_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
-
-    //set initial condition from GS2 for ky=0 modes
-
-    getmoms_gryfx(dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h);
+    //MPI_Bcast(&ev_h->grids.Nz, 1, MPI_INT, 0, ev_h->mpi.mpcom);
+    //MPI_Bcast(&ev_h->grids.ntheta0, 1, MPI_INT, 0, ev_h->mpi.mpcom);
+    //MPI_Bcast(&ev_h->grids.Nspecies, 1, MPI_INT, 0, ev_h->mpi.mpcom);
+      initialize_hybrid_arrays(ev_h->mpi.iproc,
+       &ev_h->grids,
+      &ev_h->hybrid, &ev_hd->hybrid);
       
 if(iproc==0) {
     cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, copystream);
@@ -1629,18 +1612,11 @@ if(iproc==0) {
 //      cudaFree(Tprp[s]), cudaFree(Tprp1[s]);
 //      cudaFree(Qpar[s]), cudaFree(Qpar1[s]);
 //      cudaFree(Qprp[s]), cudaFree(Qprp1[s]);
-      cudaFree(dens_ky0_d[s]);
-      cudaFree(upar_ky0_d[s]);
-      cudaFree(tpar_ky0_d[s]);
-      cudaFree(tprp_ky0_d[s]);
-      cudaFree(qpar_ky0_d[s]);
-      cudaFree(qprp_ky0_d[s]);
     }  
     //cudaFree(Phi);
     //cudaFree(Phi1);
     //cudaFree(Phi2_kxky_sum);
     //cudaFree(Phi_sum);
-    cudaFree(phi_ky0_d);
     
     //cudaFree(tmp);
     //cudaFree(field);      
@@ -1699,13 +1675,6 @@ if(iproc==0) {
 #ifdef GS2_zonal
   			} //end of iproc if  
 #endif
-    cudaFreeHost(dens_ky0_h);
-    cudaFreeHost(upar_ky0_h);
-    cudaFreeHost(tpar_ky0_h);
-    cudaFreeHost(tprp_ky0_h);
-    cudaFreeHost(qpar_ky0_h);
-    cudaFreeHost(qprp_ky0_h);
-    cudaFreeHost(phi_ky0_h);
 }    
     
     
