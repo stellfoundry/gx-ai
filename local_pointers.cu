@@ -1,6 +1,8 @@
 
   /* Host arrays*/
     float * wpfx = ev_h->outs.hflux_by_species;
+    float * wpfxAvg = ev_h->outs.hflux_by_species_movav;
+    float * pflxAvg = ev_h->outs.hflux_by_species_movav;
     //float * wpfx_sum = ev_h->outs.hflux_by_species_movav;
   /* Device arrays*/
     cuComplex * Phi = ev_hd->fields.phi;
@@ -38,7 +40,7 @@
     float * Phi2_kxky_sum = ev_hd->outs.phi2_by_mode_movav;
     float * Phi2_zonal_sum = ev_hd->outs.phi2_zonal_by_kx_movav;
     float * wpfxnorm_kxky_sum = ev_hd->outs.hflux_by_mode_movav;
-    float * zCorr_sum = ev_hd->outs.par_corr_by_ky_by_deltaz_movav;
+    float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
     float  * tmpX = ev_hd->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;

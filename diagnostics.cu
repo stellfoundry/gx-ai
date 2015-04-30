@@ -1330,11 +1330,12 @@ inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, c
   
 }
 
-inline void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
-                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
-		float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
-		int* counter, double* runtime, double* dt, float* timer, char* restartfileName)  
-{
+inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd, float * Phi_zf_kx1_avg){
+
+  //cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
+    //            cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
+		//float* Phi2_zonal_sum, float* zCorr_sum, float* expectation_ky_sum, float* expectation_kx_sum, float* Phi_zf_kx1_avg, float* dtSum,
+		//int* counter, double* runtime, double* dt, float* timer, char* restartfileName;
   FILE *restart;
   restart = fopen(restartfileName, "rb");
   cuComplex *Dens_h[nSpecies];
@@ -1362,48 +1363,50 @@ inline void restartRead(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cu
   Phi2_zonal_sum_h = (float*) malloc(sizeof(float)*Nx);
   zCorr_sum_h = (float*) malloc(sizeof(float)*(Ny/2+1)*Nz);
     
-  fread(counter,sizeof(int),1,restart);  
-  fread(runtime,sizeof(float),1,restart); 
-  fread(dt, sizeof(float),1,restart);
-  fread(timer, sizeof(float),1,restart);
+  fread(&ev_h->time.counter,sizeof(int),1,restart);  
+  fread(&ev_h->time.runtime,sizeof(float),1,restart); 
+  fread(&ev_h->time.dt, sizeof(float),1,restart);
+  fread(&ev_h->time.totaltimer, sizeof(float),1,restart);
+  /* Update global*/
+  dt = ev_h->time.dt;
   
-  fread(wpfxAvg, sizeof(float)*nSpecies, 1, restart);
-  fread(pflxAvg, sizeof(float)*nSpecies, 1, restart);
+  fread(ev_h->outs.hflux_by_species_movav, sizeof(float)*nSpecies, 1, restart);
+  fread(ev_h->outs.pflux_by_species_movav, sizeof(float)*nSpecies, 1, restart);
   fread(Phi2_kxky_sum_h, sizeof(float)*Nx*(Ny/2+1),1,restart);
-  cudaMemcpy(Phi2_kxky_sum, Phi2_kxky_sum_h, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyHostToDevice);
+  cudaMemcpy(ev_hd->outs.phi2_by_mode_movav, Phi2_kxky_sum_h, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyHostToDevice);
   
-  fread(expectation_ky_sum, sizeof(float),1,restart);
-  fread(expectation_kx_sum, sizeof(float),1,restart);
-  fread(dtSum,sizeof(float),1,restart); 
+  fread(&ev_h->outs.expectation_ky_movav, sizeof(float),1,restart);
+  fread(&ev_h->outs.expectation_kx_movav, sizeof(float),1,restart);
+  fread(&ev_h->time.dtSum,sizeof(float),1,restart); 
   
     
   for(int s=0; s<nSpecies; s++) {
     fread(Dens_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Dens[s], Dens_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.dens[s], Dens_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
     fread(Upar_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Upar[s], Upar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.upar[s], Upar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
     fread(Tpar_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Tpar[s], Tpar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.tpar[s], Tpar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
     fread(Tprp_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Tprp[s], Tprp_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.tprp[s], Tprp_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
     fread(Qpar_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Qpar[s], Qpar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.qpar[s], Qpar_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
     
     fread(Qprp_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
-    cudaMemcpy(Qprp[s], Qprp_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    cudaMemcpy(ev_hd->fields.qprp[s], Qprp_h[s], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
   }
   fread(Phi_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
-  cudaMemcpy(Phi, Phi_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+  cudaMemcpy(ev_hd->fields.phi, Phi_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
   
   fread(zCorr_sum_h,sizeof(float)*(Ny/2+1)*Nz,1,restart);
-  cudaMemcpy(zCorr_sum, zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);  
+  cudaMemcpy(ev_hd->outs.par_corr_kydz_movav, zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);  
   
   fread(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
-  cudaMemcpy(Phi2_zonal_sum, Phi2_zonal_sum_h, sizeof(float)*Nx, cudaMemcpyHostToDevice);
+  cudaMemcpy(ev_hd->outs.phi2_zonal_by_kx_movav, Phi2_zonal_sum_h, sizeof(float)*Nx, cudaMemcpyHostToDevice);
       
   fread(Phi_zf_kx1_avg, sizeof(float), 1, restart);
 

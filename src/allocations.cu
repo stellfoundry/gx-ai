@@ -164,7 +164,11 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 	alloc_dealloc(&outs->hflux_by_species, aod, ON_HOST, ml,  TYPE_FLOAT, grids->Nspecies);
 	alloc_dealloc(&outs->hflux_by_species_movav, aod, ON_HOST, ml,  TYPE_FLOAT, grids->Nspecies);
 
-	alloc_dealloc(&outs->par_corr_by_ky_by_deltaz_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nz*grids->Ny_complex);
+	alloc_dealloc(&outs->pflux_by_mode_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nx*grids->Ny_complex);
+	alloc_dealloc(&outs->pflux_by_species, aod, ON_HOST, ml,  TYPE_FLOAT, grids->Nspecies);
+	alloc_dealloc(&outs->pflux_by_species_movav, aod, ON_HOST, ml,  TYPE_FLOAT, grids->Nspecies);
+
+	alloc_dealloc(&outs->par_corr_kydz_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nz*grids->Ny_complex);
 
 	/*Globals...to be deleted eventually*/
 	if (ml == ON_HOST){

@@ -25,8 +25,6 @@ typedef struct {
 	float * phi2_by_mode_movav;
 	float * phi2_zonal_by_kx_movav;
 
-	float * hflux_by_mode_movav;
-	float * hflux_by_species_movav;
 	
 	// Expectation values of wavenumbers
 	//
@@ -34,16 +32,22 @@ typedef struct {
 	float expectation_ky_movav;
 
 	// Parallel correlation as a function of y and delta z
-	float * par_corr_by_ky_by_deltaz_movav;
+	float * par_corr_kydz_movav;
 	
 
 	// Total fluxes
 
 	float hflux_tot;
 	
-  // Fluxes by species 
+  // Fluxes by species and by mode
 	
 	float * hflux_by_species;
+	float * hflux_by_mode_movav;
+	float * hflux_by_species_movav;
+
+	float * pflux_by_species;
+	float * pflux_by_mode_movav;
+	float * pflux_by_species_movav;
 	
 
 	// Omega as a function of kx and ky

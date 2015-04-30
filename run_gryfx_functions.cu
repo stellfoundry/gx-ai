@@ -92,7 +92,7 @@ void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims
 	zero<<<dimGrid,dimBlock>>>(outs_hd->hflux_by_mode_movav, Nx, Ny/2+1, 1);
 	zero<<<dimGrid,dimBlock>>>(outs_hd->phi2_zonal_by_kx_movav, Nx, 1,1);
 	//zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
-	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_by_ky_by_deltaz_movav, 1, Ny/2+1, Nz);
+	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_kydz_movav, 1, Ny/2+1, Nz);
 }
 
 void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
