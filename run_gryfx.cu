@@ -126,7 +126,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float wpfx_old[nSpecies];
     float pflx_old[nSpecies];
     //float wpfx_sum[nSpecies];
-    float tmpX_h[Nx];
+    //float tmpX_h[Nx];
     float tmpY_h[Ny/2+1];
     float tmpXY_h[Nx*(Ny/2+1)];
     float tmpYZ_h[(Ny/2+1)*Nz];
@@ -510,17 +510,11 @@ if(iproc==0) {
 
 
   if(DEBUG) getError("about to start timestep loop");
-    fieldWrite(Dens[ION], field_h, "dens0.field", filename); 
-    fieldWrite(Upar[ION], field_h, "upar0.field", filename); 
-    fieldWrite(Tpar[ION], field_h, "tpar0.field", filename); 
-    fieldWrite(Tprp[ION], field_h, "tprp0.field", filename); 
-    fieldWrite(Qpar[ION], field_h, "qpar0.field", filename); 
-    fieldWrite(Qprp[ION], field_h, "qprp0.field", filename); 
-    fieldWrite(Phi, field_h, "phi0.field", filename); 
 
-  volflux(Phi,Phi,tmp,tmpXY);
-  sumY_neq_0<<<dimGrid,dimBlock>>>(tmpX, tmpXY);
-  kxWrite(tmpX, tmpX_h, filename, "phi2_0.kx");
+  write_initial_fields(
+    &ev_h->cdims, &ev_hd->fields,
+    &ev_hd->tmp, ev_h->fields.field,
+    ev_h->tmp.X);
 
 #ifdef GS2_zonal
 			}

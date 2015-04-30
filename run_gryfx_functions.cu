@@ -592,3 +592,25 @@ void copy_fixed_modes_into_fields(
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, 1, 0, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, 1, 0, sfixed->S);
 }
+
+void write_initial_fields(
+  cuda_dimensions_struct * cdims,
+  fields_struct * fields_d,
+  temporary_arrays_struct * tmp_d,
+  cuComplex * field_h,
+  float * tmpX_h
+)
+{
+    char filename[200];
+    fieldWrite(fields_d->dens[ION], field_h, "dens0.field", filename); 
+    fieldWrite(fields_d->upar[ION], field_h, "upar0.field", filename); 
+    fieldWrite(fields_d->tpar[ION], field_h, "tpar0.field", filename); 
+    fieldWrite(fields_d->tprp[ION], field_h, "tprp0.field", filename); 
+    fieldWrite(fields_d->qpar[ION], field_h, "qpar0.field", filename); 
+    fieldWrite(fields_d->qprp[ION], field_h, "qprp0.field", filename); 
+    fieldWrite(fields_d->phi, field_h, "phi0.field", filename); 
+
+  volflux(fields_d->phi,fields_d->phi,tmp_d->CXYZ,tmp_d->XY);
+  sumY_neq_0<<<cdims->dimGrid,cdims->dimBlock>>>(tmp_d->X, tmp_d->XY);
+  kxWrite(tmp_d->X, tmpX_h, filename, "phi2_0.kx");
+}

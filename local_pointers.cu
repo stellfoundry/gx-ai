@@ -44,6 +44,7 @@
     float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
     float  * tmpX = ev_hd->tmp.X;
+    float  * tmpX_h = ev_h->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;
     float * tmpY = ev_hd->tmp.Y;
     float * tmpY2 = ev_hd->tmp.Y2;
