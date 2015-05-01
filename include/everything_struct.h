@@ -140,6 +140,11 @@ typedef struct {
 typedef struct {
 
   fields_struct  fields;
+  //This is used only on the device and contains
+  //pointers which point to fields, e.g. fields1.dens = fields.dens1
+  //Eventually we will get rid of fields.*1 and replace them entirely
+  //with fields1.*
+  fields_struct  fields1;
 	geometry_coefficents_struct  geo;
 	outputs_struct  outs;
 	input_parameters_struct pars;

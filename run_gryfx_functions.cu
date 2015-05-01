@@ -601,12 +601,13 @@ void replace_zonal_fields_with_hybrid(
 void copy_fixed_modes_into_fields(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
+  cuComplex * phi_d, //Need  phi separate cos sometimes need dens1 but not phi1 etc
   secondary_fixed_arrays_struct * sfixed
     )
 {
     dim3 dimGrid = cdims->dimGrid;
     dim3 dimBlock = cdims->dimBlock;
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->phi, sfixed->phi, 1, 0, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, 1, 0, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, 1, 0, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, 1, 0, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, 1, 0, sfixed->S);

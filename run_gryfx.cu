@@ -488,7 +488,7 @@ if(iproc==0) {
 #endif
       if(secondary_test && !LINEAR) {
         copy_fixed_modes_into_fields(
-          &ev_h->cdims, &ev_hd->fields, &ev_hd->sfixed);
+          &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed);
       }
 
       if(init == DENS) {
@@ -708,15 +708,10 @@ if(iproc==0) {
       qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
   
       if(secondary_test && !LINEAR) {
-        if(tm->runtime < .02/maxdt/M_PI) S_fixed = 1.;// sin(.01/maxdt * tm->runtime);
-        else S_fixed = 1.;
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi1, phi_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens1[ION], dens_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Upar1[ION], upar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tpar1[ION], tpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tprp1[ION], tprp_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar1[ION], qpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp1[ION], qprp_fixed, 1, 0, S_fixed);
+        if(tm->runtime < .02/maxdt/M_PI) ev_h->sfixed.S = 1.;// sin(.01/maxdt * tm->runtime);
+        else ev_h->sfixed.S = 1.;
+        copy_fixed_modes_into_fields(
+          &ev_h->cdims, &ev_hd->fields1, ev_hd->fields1.phi, &ev_hd->sfixed);
       }
 
       //f1 = f(t+tm->dt/2)
@@ -915,16 +910,10 @@ if(iproc==0) {
         else qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
       
       if(secondary_test && !LINEAR) {
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Phi1, phi_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Dens[ION], dens_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Upar[ION], upar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tpar[ION], tpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Tprp[ION], tprp_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qpar[ION], qpar_fixed, 1, 0, S_fixed);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(Qprp[ION], qprp_fixed, 1, 0, S_fixed);
+        copy_fixed_modes_into_fields(
+          &ev_h->cdims, &ev_hd->fields, ev_hd->fields1.phi, &ev_hd->sfixed);
       }
       //f = f(t+dt)
-  
   
 #ifdef GS2_zonal
 			} //end of iproc if

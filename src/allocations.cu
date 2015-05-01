@@ -158,7 +158,7 @@ void allocate_hybrid_zonal_arrays(int aod, int ml, grids_struct * grids, hybrid_
 	}
 }
 
-void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fields){
+void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fields, fields_struct * fields1){
 	/* Host and device */
 	alloc_dealloc(&fields->phi, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
 	/* A temporary array */
@@ -179,6 +179,14 @@ void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fiel
 	allocate_field_species_array(&fields->qpar1, aod, ml, grids);
 	allocate_field_species_array(&fields->qprp, aod, ml, grids);
 	allocate_field_species_array(&fields->qprp1, aod, ml, grids);
+
+  fields1->phi = fields->phi1;
+  fields1->dens = fields->dens1;
+  fields1->upar = fields->upar1;
+  fields1->tpar = fields->tpar1;
+  fields1->tprp = fields->tprp1;
+  fields1->qpar = fields->qpar1;
+  fields1->qprp = fields->qprp1;
 
 
 	/*Globals...to be deleted eventually*/
@@ -374,7 +382,7 @@ void allocate_nlpm(int aod, int ml, nlpm_struct * nlpm, int Nz){
 void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_struct * ev){
 	allocate_grids(allocate_or_deallocate, ev->memory_location, &ev->grids);
 	allocate_outputs(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->outs);
-	allocate_fields(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->fields);
+	allocate_fields(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->fields, &ev->fields1);
 	allocate_hybrid_zonal_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->hybrid);
 	allocate_sfixed(allocate_or_deallocate, ev->memory_location, &ev->sfixed, ev->grids.Nz);
 	allocate_nlpm(allocate_or_deallocate, ev->memory_location, &ev->nlpm, ev->grids.Nz);
