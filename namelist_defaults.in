@@ -8,13 +8,13 @@
 &collisions_knobs
  collision_model='none'
 /
-!
-!&hyper_knobs
-! hyper_option = 'visc_only'
-! const_amp = .false.
-! isotropic_shear = .false.
-! D_hypervisc = 0.1
-!/
+
+&hyper_knobs
+ hyper_option = 'none'
+ const_amp = .false.
+ isotropic_shear = .false.
+ D_hypervisc = 0.1
+/
 
 &theta_grid_parameters
 

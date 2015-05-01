@@ -941,7 +941,7 @@ if(iproc==0) {
 
     replace_zonal_fields_with_hybrid(
       0,
-      &ev_h->cdims, &ev_hd->fields1,
+      &ev_h->cdims, &ev_hd->fields,
       phiptr,
       &ev_hd->hybrid, ev_h->fields.field);
 }  
