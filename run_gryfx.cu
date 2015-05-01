@@ -478,6 +478,7 @@ if(iproc==0) {
     replace_zonal_fields_with_hybrid(
       1,
       &ev_h->cdims, &ev_hd->fields,
+      ev_hd->fields.phi,
       &ev_hd->hybrid, ev_h->fields.field);
    
 } // if iproc 
@@ -786,6 +787,7 @@ if(iproc==0) {
     replace_zonal_fields_with_hybrid(
       0,
       &ev_h->cdims, &ev_hd->fields1,
+      ev_hd->fields1.phi,
       &ev_hd->hybrid, ev_h->fields.field);
    
  } 
@@ -928,38 +930,20 @@ if(iproc==0) {
   
     cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
+
+    cuComplex * phiptr;
    
     if(!LINEAR && !secondary_test && !write_omega) {
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi, phi_ky0_d);
-      mask<<<dimGrid,dimBlock>>>(Phi);
-      reality<<<dimGrid,dimBlock>>>(Phi);
+      phiptr = ev_hd->fields.phi;
     } else {
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
-      mask<<<dimGrid,dimBlock>>>(Phi1);
-      reality<<<dimGrid,dimBlock>>>(Phi1);
+      phiptr = ev_hd->fields1.phi;
     }
-    for(int s=0; s<nSpecies; s++) {
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Dens[s], dens_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Upar[s], upar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tpar[s], tpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tprp[s], tprp_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qpar[s], qpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qprp[s], qprp_ky0_d[s]);
 
-      reality<<<dimGrid,dimBlock>>>(Dens[s]);
-      reality<<<dimGrid,dimBlock>>>(Upar[s]);
-      reality<<<dimGrid,dimBlock>>>(Tpar[s]);
-      reality<<<dimGrid,dimBlock>>>(Tprp[s]);
-      reality<<<dimGrid,dimBlock>>>(Qpar[s]);
-      reality<<<dimGrid,dimBlock>>>(Qprp[s]);
-
-      mask<<<dimGrid,dimBlock>>>(Dens[s]);
-      mask<<<dimGrid,dimBlock>>>(Upar[s]);
-      mask<<<dimGrid,dimBlock>>>(Tpar[s]);
-      mask<<<dimGrid,dimBlock>>>(Tprp[s]);
-      mask<<<dimGrid,dimBlock>>>(Qpar[s]);
-      mask<<<dimGrid,dimBlock>>>(Qprp[s]);
-    }
+    replace_zonal_fields_with_hybrid(
+      0,
+      &ev_h->cdims, &ev_hd->fields1,
+      phiptr,
+      &ev_hd->hybrid, ev_h->fields.field);
 }  
 
     //////nvtxRangePop();

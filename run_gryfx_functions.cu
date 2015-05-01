@@ -560,6 +560,7 @@ void replace_zonal_fields_with_hybrid(
   int first_call,
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
+  cuComplex * phi_d, //Needs to be passed in separately
   hybrid_zonal_arrays_struct * hybrid_d,
   cuComplex * field_h
 )
@@ -569,7 +570,10 @@ void replace_zonal_fields_with_hybrid(
     dim3 dimBlock = cdims->dimBlock;
 
     //replace ky=0 modes with results from GS2
-    replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(phi_d, hybrid_d->phi);
+    reality<<<dimGrid,dimBlock>>>(phi_d);
+    mask<<<dimGrid,dimBlock>>>(phi_d);
+
     for(int s=0; s<nSpecies; s++) {
       replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->dens[s], hybrid_d->dens[s]);
       replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->upar[s], hybrid_d->upar[s]);
@@ -590,14 +594,12 @@ void replace_zonal_fields_with_hybrid(
       mask<<<dimGrid,dimBlock>>>(fields_d->qpar[s]);
       mask<<<dimGrid,dimBlock>>>(fields_d->qprp[s]);
     }
-    reality<<<dimGrid,dimBlock>>>(fields_d->phi);
-    mask<<<dimGrid,dimBlock>>>(fields_d->phi);
 
     if (first_call==1){
-      fieldWrite(fields_d->phi, field_h, "phi_1.field", filename); 
-      getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, fields_d->phi);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
-      fieldWrite(fields_d->phi, field_h, "phi_2.field", filename); 
+      fieldWrite(phi_d, field_h, "phi_1.field", filename); 
+      getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, phi_d);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(phi_d, hybrid_d->phi);
+      fieldWrite(phi_d, field_h, "phi_2.field", filename); 
   }
 }
 
