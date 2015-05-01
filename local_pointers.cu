@@ -11,15 +11,15 @@
     cuComplex ** Dens = ev_hd->fields.dens;
     cuComplex ** Dens1 = ev_hd->fields.dens1;
     cuComplex ** Upar = ev_hd->fields.upar;
-    cuComplex ** Upar1 = ev_hd->fields.upar1;
+    //cuComplex ** Upar1 = ev_hd->fields.upar1;
     cuComplex ** Tpar = ev_hd->fields.tpar;
-    cuComplex ** Tpar1 = ev_hd->fields.tpar1;
+    //cuComplex ** Tpar1 = ev_hd->fields.tpar1;
     cuComplex ** Tprp = ev_hd->fields.tprp;
     cuComplex ** Tprp1 = ev_hd->fields.tprp1;
     cuComplex ** Qpar = ev_hd->fields.qpar;
-    cuComplex ** Qpar1 = ev_hd->fields.qpar1;
+    //cuComplex ** Qpar1 = ev_hd->fields.qpar1;
     cuComplex ** Qprp = ev_hd->fields.qprp;
-    cuComplex ** Qprp1 = ev_hd->fields.qprp1;
+    //cuComplex ** Qprp1 = ev_hd->fields.qprp1;
 
     cuComplex * field_h = ev_h->fields.field;
     cuComplex * field = ev_hd->fields.field;
@@ -44,7 +44,7 @@
     float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
     cuComplex * CtmpX = ev_hd->tmp.CX;
-    cuComplex *CtmpXZ = ev_hd->tmp.CXZ;
+    //cuComplex *CtmpXZ = ev_hd->tmp.CXZ;
     //cuComplex * CtmpX2 = ev_hd->tmp.CX;
     float  * tmpX = ev_hd->tmp.X;
     float  * tmpX_h = ev_h->tmp.X;
@@ -60,6 +60,7 @@
     float * tmpXY_R = ev_hd->tmp.XY_R;
     float * tmpXZ = ev_hd->tmp.XZ;
     float * tmpYZ = ev_hd->tmp.YZ;
+    //float * tmpXYZ = ev_hd->tmp.XYZ;
 
     cuComplex * dens_ky0_h = ev_h->hybrid.dens_h;
     cuComplex * upar_ky0_h = ev_h->hybrid.upar_h;
@@ -81,12 +82,16 @@
     float *nu_nlpm = ev_hd->nlpm.nu;
     float *nu1_nlpm = ev_hd->nlpm.nu1;
     float *nu22_nlpm = ev_hd->nlpm.nu22;
-    cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
-    cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
+    //cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
+    //cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
 
     float* Dnlpm_d = &ev_d->nlpm.D; // This is a pointer to memory on the device
                                     // because ev_d is on the device
     //float* Phi_zf_kx1_d;
+
+    //float *shear_rate_z = ev_hd->hyper.shear_rate_z;
+    //float *shear_rate_z_nz = ev_hd->hyper.shear_rate_z_nz;
+    //float *shear_rate_nz = ev_hd->hyper.shear_rate_nz;  
 
     //Some globals
 

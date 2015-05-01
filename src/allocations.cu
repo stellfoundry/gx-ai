@@ -244,6 +244,7 @@ void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_
 	alloc_dealloc(&tmp->XZ, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Nz);
 	alloc_dealloc(&tmp->CXZ, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Nz);
 	alloc_dealloc(&tmp->YZ, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex*grids->Nz);
+	alloc_dealloc(&tmp->XYZ, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Ny_complex*grids->Nz);
 }
 
 void allocate_grids(int aod, int ml, grids_struct * grids){
@@ -380,6 +381,17 @@ void allocate_nlpm(int aod, int ml, nlpm_struct * nlpm, int Nz){
 	else if (ml == ON_DEVICE){
 	}
 }
+void allocate_hyper(int aod, int ml, hyper_struct * hyper, int Nz){
+	alloc_dealloc(&hyper->shear_rate_z, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+	alloc_dealloc(&hyper->shear_rate_z_nz, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+	alloc_dealloc(&hyper->shear_rate_nz, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+
+	/* globals... to be deleted eventually*/
+	if (ml == ON_HOST){
+	}
+	else if (ml == ON_DEVICE){
+	}
+}
 void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_struct * ev){
 	allocate_grids(allocate_or_deallocate, ev->memory_location, &ev->grids);
 	allocate_outputs(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->outs);
@@ -387,6 +399,7 @@ void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_st
 	allocate_hybrid_zonal_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->hybrid);
 	allocate_sfixed(allocate_or_deallocate, ev->memory_location, &ev->sfixed, ev->grids.Nz);
 	allocate_nlpm(allocate_or_deallocate, ev->memory_location, &ev->nlpm, ev->grids.Nz);
+	allocate_hyper(allocate_or_deallocate, ev->memory_location, &ev->hyper, ev->grids.Nz);
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){
 		allocate_geo(allocate_or_deallocate, ev->memory_location, &ev->geo, &ev->grids.z, &ev->grids.Nz);

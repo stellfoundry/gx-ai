@@ -52,10 +52,16 @@ void iso_shear(float* shear_rate_nz_tmpZ, float* shear_rate_nz_tmpXYZ, cuComplex
   sqrtZ<<<dimGrid,dimBlock>>>(shear_rate_nz_tmpZ, shear_rate_nz_tmpZ);
 }
 
-void filterHyper_iso(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar, 
-                 cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
+void filterHyper_iso(int is, fields_struct * fields_d, 
 		 float* tmpXYZ, float* shear_rate_nz, float dt_loc)
 {
+  cuComplex* Phi = fields_d->phi;
+  cuComplex* Dens = fields_d->dens[is];
+  cuComplex* Upar = fields_d->upar[is];
+  cuComplex* Tpar = fields_d->tpar[is];
+  cuComplex* Tprp = fields_d->tprp[is];
+  cuComplex* Qpar = fields_d->qpar[is];
+  cuComplex* Qprp = fields_d->qprp[is];
   iso_shear(shear_rate_nz, tmpXYZ, Phi); 
   hyper_filter_iso<<<dimGrid,dimBlock>>>(Dens, shear_rate_nz, kx, ky, kperp4_max_Inv, dt_loc,D_hyper);
   hyper_filter_iso<<<dimGrid,dimBlock>>>(Upar, shear_rate_nz, kx, ky, kperp4_max_Inv, dt_loc,D_hyper);
@@ -194,10 +200,18 @@ void aniso_shear(float* shear_rate_nz, float* shear_rate_z, float* shear_rate_z_
   finish_get_aniso_shear<<<dimGrid,dimBlock>>>(shear_rate_nz,shear_rate_z,shear_rate_z_nz); 
 }
 
-void filterHyper_aniso(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar, 
-                 cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
-		 float* tmpXYZ, float* shear_rate_nz, float* shear_rate_z, float* shear_rate_z_nz, float dt_loc)
+void filterHyper_aniso(int is, fields_struct * fields_d,		 float* tmpXYZ, hyper_struct * hyper, float dt_loc)
 {
+  cuComplex* Phi = fields_d->phi;
+  cuComplex* Dens = fields_d->dens[is];
+  cuComplex* Upar = fields_d->upar[is];
+  cuComplex* Tpar = fields_d->tpar[is];
+  cuComplex* Tprp = fields_d->tprp[is];
+  cuComplex* Qpar = fields_d->qpar[is];
+  cuComplex* Qprp = fields_d->qprp[is];
+  float* shear_rate_nz = hyper->shear_rate_nz;
+  float* shear_rate_z = hyper->shear_rate_z;
+  float* shear_rate_z_nz = hyper->shear_rate_z_nz;
   aniso_shear(shear_rate_nz, shear_rate_z, shear_rate_z_nz, tmpXYZ, Phi); 
   hyper_filter_aniso<<<dimGrid,dimBlock>>>(Dens, shear_rate_nz, shear_rate_z, shear_rate_z_nz, kx, ky,
   			                   kperp4_max_Inv, kx4_max_Inv, ky_max_Inv, dt_loc,D_hyper);

@@ -124,6 +124,7 @@ typedef struct {
 
 	float * XZ;
 	float * YZ;
+	float * XYZ;
 } temporary_arrays_struct;	
 
 typedef struct {
@@ -139,6 +140,11 @@ typedef struct {
 } nlpm_struct;
 
 
+typedef struct {
+    float *shear_rate_z;
+    float *shear_rate_z_nz;
+    float *shear_rate_nz;  
+} hyper_struct;
 
 
 typedef struct {
@@ -166,6 +172,7 @@ typedef struct {
   secondary_fixed_arrays_struct sfixed;
   hybrid_zonal_arrays_struct hybrid;
   nlpm_struct nlpm;
+  hyper_struct hyper;
   
 
 	/* Specifies whether the pointers in the struct point 
