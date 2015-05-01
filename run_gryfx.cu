@@ -921,15 +921,9 @@ if(iproc==0) {
     //////nvtxRangePushA("copy moms(t+dt)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt)_ky=0 from H2D
-    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-    for(int s=0; s<nSpecies; s++) {
-      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-    }
+    copy_hybrid_arrays_from_host_to_device_async(
+        &ev_h->grids, &ev_h->hybrid, 
+        &ev_hd->hybrid, streams);
     
   
     cudaEventRecord(events->H2D, streams->copystream);
