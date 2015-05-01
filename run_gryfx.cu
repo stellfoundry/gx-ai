@@ -659,7 +659,9 @@ if(iproc==0) {
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
           //calculate NL(t) = NL(Moment)
-          nonlinear_timestep(s, ev_h, ev_hd, ev_d);
+          // first_half_flag determines which half of 
+          // RK2 we are doing
+          nonlinear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
           //Moment1 = Moment + (dt/2)*NL(Moment)
 
 #ifdef GS2_zonal
@@ -685,8 +687,10 @@ if(iproc==0) {
 #endif
   
           //calculate L(t) = L(Moment)
+          // first_half_flag determines which half of 
+          // RK2 we are doing
           // The new fields end up in dens1 etc
-          linear_timestep(s, ev_h, ev_hd, ev_d);
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
 //          linear_timestep(Dens1[s], Dens[s], Dens1[s], 
 //                 Upar1[s], Upar[s], Upar1[s], 
 //                 Tpar1[s], Tpar[s], Tpar1[s], 
@@ -706,8 +710,10 @@ if(iproc==0) {
         for(int s=0; s<nSpecies; s++) {
   
           //calculate L(t) = L(Moment)
+          // first_half_flag determines which half of 
+          // RK2 we are doing
           // The new fields end up in dens1 etc
-          linear_timestep(s, ev_h, ev_hd, ev_d);
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
 //          linear_timestep(Dens[s], Dens[s], Dens1[s], 
 //                 Upar[s], Upar[s], Upar1[s], 
 //                 Tpar[s], Tpar[s], Tpar1[s], 
@@ -886,8 +892,10 @@ if(iproc==0) {
   /////////////////////////////////
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
+          // first_half_flag determines which half of 
+          // RK2 we are doing
           //calculate NL(t+tm->dt/2) = NL(Moment1)
-          nonlinear_timestep(s, ev_h, ev_hd, ev_d);
+          nonlinear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
   
           //Moment = Moment + dt * NL(Moment1)
   
@@ -911,8 +919,10 @@ if(iproc==0) {
   
   #endif
   
+          // first_half_flag determines which half of 
+          // RK2 we are doing
           // The new fields end up in dens etc
-          linear_timestep(s, ev_h, ev_hd, ev_d);
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
           //calculate L(t+dt/2)=L(Moment1) 
 //          linear_timestep(Dens[s], Dens1[s], Dens[s], 
 //                 Upar[s], Upar1[s], Upar[s], 
@@ -924,7 +934,7 @@ if(iproc==0) {
 //  	       field,field,field,field,field,field,
 //  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
 //  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
-            linear_timestep(s, ev_h, ev_hd, ev_d);
+ //           linear_timestep(s, ev_h, ev_hd, ev_d);
   
           //Moment = Moment + dt * L(Moment1)
   	}         
@@ -932,8 +942,10 @@ if(iproc==0) {
       else { //if only linear
         for(int s=0; s<nSpecies; s++) {
   
+          // first_half_flag determines which half of 
+          // RK2 we are doing
           // The new fields end up in dens etc
-          linear_timestep(s, ev_h, ev_hd, ev_d);
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
 //          linear_timestep(Dens[s], Dens1[s], Dens[s], 
 //                 Upar[s], Upar1[s], Upar[s], 
 //                 Tpar[s], Tpar1[s], Tpar[s], 

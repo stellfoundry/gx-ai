@@ -1,5 +1,6 @@
 inline void linear_timestep(
   int is,
+  int first_half_step,
   everything_struct * ev_h,
   everything_struct * ev_hd,
   everything_struct * ev_d 
@@ -23,7 +24,6 @@ cuComplex *QprpOld; cuComplex *QprpNew;
 
 double dt = ev_h->time.dt;
 
-int first_half_step = ev_h->time.first_half_flag;
 if (first_half_step==1){
   //First half of RK2
   dt = dt/2.0;
@@ -724,6 +724,7 @@ cuComplex* fluxsurfavg_CtmpX2 = ev_hd->tmp.CX2;
 
 inline void nonlinear_timestep(
   int is,
+  int first_half_step,
   everything_struct * ev_h,
   everything_struct * ev_hd,
   everything_struct * ev_d) 
@@ -746,7 +747,6 @@ cuComplex* NLqpar_ky0_d = ev_hd->hybrid.qpar[is];
 cuComplex* NLqprp_ky0_d = ev_hd->hybrid.qprp[is];
 
 double* dt_full = &ev_h->time.dt;
-int first_half_step = ev_h->time.first_half_flag;
 int counter = ev_h->time.counter;
 
 specie s = ev_h->pars.species[is];
