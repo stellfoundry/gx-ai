@@ -223,6 +223,7 @@ void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_
 	alloc_dealloc(&tmp->X, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&tmp->X2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&tmp->CX, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx);
+	alloc_dealloc(&tmp->CX2, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx);
 	alloc_dealloc(&tmp->Y, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&tmp->Y2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
 	alloc_dealloc(&tmp->Z, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nz);
@@ -351,7 +352,20 @@ void allocate_sfixed(int aod, int ml, secondary_fixed_arrays_struct * sfixed, in
 	alloc_dealloc(&sfixed->qpar, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
 	alloc_dealloc(&sfixed->qprp, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
 
-	/* Geometry globals... to be deleted eventually*/
+	/* globals... to be deleted eventually*/
+	if (ml == ON_HOST){
+	}
+	else if (ml == ON_DEVICE){
+	}
+}
+void allocate_nlpm(int aod, int ml, nlpm_struct * nlpm, int Nz){
+	alloc_dealloc(&nlpm->nu, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+	alloc_dealloc(&nlpm->nu1, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+	alloc_dealloc(&nlpm->nu22, aod, ON_DEVICE, ml, TYPE_FLOAT, Nz);
+	alloc_dealloc(&nlpm->nu1_complex, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+	alloc_dealloc(&nlpm->nu22_complex, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, Nz);
+
+	/* globals... to be deleted eventually*/
 	if (ml == ON_HOST){
 	}
 	else if (ml == ON_DEVICE){
@@ -363,6 +377,7 @@ void allocate_or_deallocate_everything(int allocate_or_deallocate, everything_st
 	allocate_fields(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->fields);
 	allocate_hybrid_zonal_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->hybrid);
 	allocate_sfixed(allocate_or_deallocate, ev->memory_location, &ev->sfixed, ev->grids.Nz);
+	allocate_nlpm(allocate_or_deallocate, ev->memory_location, &ev->nlpm, ev->grids.Nz);
 	allocate_temporary_arrays(allocate_or_deallocate, ev->memory_location, &ev->grids, &ev->tmp);
 	if (allocate_or_deallocate == DEALLOCATE){
 		allocate_geo(allocate_or_deallocate, ev->memory_location, &ev->geo, &ev->grids.z, &ev->grids.Nz);

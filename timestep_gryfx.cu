@@ -1,20 +1,135 @@
-inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
-              cuComplex *Upar, cuComplex *UparOld, cuComplex *UparNew,
-              cuComplex *Tpar, cuComplex *TparOld, cuComplex *TparNew,
-              cuComplex *Qpar, cuComplex *QparOld, cuComplex *QparNew,
-              cuComplex *Tprp, cuComplex *TprpOld, cuComplex *TprpNew,
-              cuComplex *Qprp, cuComplex *QprpOld, cuComplex *QprpNew,
-	      cuComplex *Phi, int** kxCover, int** kyCover, cuComplex** g_covering, float** kz_covering, specie s, double dt,
-	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
-	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
-	      cuComplex *phi_tmp, cuComplex *nlps_tmp, cuComplex* omegaStar_tmp, cuComplex* qps_tmp,
-	      cuComplex *fields_over_B_tmp, cuComplex *B_gradpar_tmp, 
-	      cuComplex *gradpar_tmp, cuComplex *omegaD_tmp, cuComplex *sum_tmp,
-	      cuComplex *fields_over_B2_tmp, cuComplex *B2_gradpar_tmp, cuComplex * bgrad_tmp, 
-	      cuComplex* hyper_tmp, cuComplex* nlpm_tmp, cuComplex* Tpar0_tmp,
-	      float *gradparB_tmpZ, cufftHandle* plan_covering,
-	      float* nu_nlpm, float* Phi2ZF_tmpX, float* tmpXZ, cuComplex* fluxsurfavg_CtmpX, cuComplex* fluxsurfavg_CtmpX2)
+inline void linear_timestep(
+  int is,
+  everything_struct * ev_h,
+  everything_struct * ev_hd,
+  everything_struct * ev_d 
+)
 {
+cuComplex *Dens;
+cuComplex *Upar;
+cuComplex *Tpar;
+cuComplex *Qpar;
+cuComplex *Tprp;
+cuComplex *Qprp;
+cuComplex *Phi;// = ev_hd->fields.phi;
+
+cuComplex *DensOld; cuComplex *DensNew;
+cuComplex *UparOld; cuComplex *UparNew;
+cuComplex *TparOld; cuComplex *TparNew;
+cuComplex *QparOld; cuComplex *QparNew;
+cuComplex *TprpOld; cuComplex *TprpNew;
+cuComplex *QprpOld; cuComplex *QprpNew;
+
+
+double dt = ev_h->time.dt;
+
+int first_half_step = ev_h->time.first_half_flag;
+if (first_half_step==1){
+  //First half of RK2
+  dt = dt/2.0;
+  if(!LINEAR){
+    Dens = ev_hd->fields.dens1[is];
+    Upar = ev_hd->fields.upar1[is];
+    Tpar = ev_hd->fields.tpar1[is];
+    Tprp = ev_hd->fields.tprp1[is];
+    Qpar = ev_hd->fields.qpar1[is];
+    Qprp = ev_hd->fields.qprp1[is];
+  }
+  else {
+    Dens = ev_hd->fields.dens[is];
+    Upar = ev_hd->fields.upar[is];
+    Tpar = ev_hd->fields.tpar[is];
+    Tprp = ev_hd->fields.tprp[is];
+    Qpar = ev_hd->fields.qpar[is];
+    Qprp = ev_hd->fields.qprp[is];
+  }
+  DensOld = ev_hd->fields.dens[is];
+  UparOld = ev_hd->fields.upar[is];
+  TparOld = ev_hd->fields.tpar[is];
+  TprpOld = ev_hd->fields.tprp[is];
+  QparOld = ev_hd->fields.qpar[is];
+  QprpOld = ev_hd->fields.qprp[is];
+  DensNew = ev_hd->fields.dens1[is];
+  UparNew = ev_hd->fields.upar1[is];
+  TparNew = ev_hd->fields.tpar1[is];
+  TprpNew = ev_hd->fields.tprp1[is];
+  QparNew = ev_hd->fields.qpar1[is];
+  QprpNew = ev_hd->fields.qprp1[is];
+  Phi = ev_hd->fields.phi;
+}
+else {
+  if(!LINEAR){
+    Dens = ev_hd->fields.dens[is];
+    Upar = ev_hd->fields.upar[is];
+    Tpar = ev_hd->fields.tpar[is];
+    Tprp = ev_hd->fields.tprp[is];
+    Qpar = ev_hd->fields.qpar[is];
+    Qprp = ev_hd->fields.qprp[is];
+  }
+  else {
+    Dens = ev_hd->fields.dens[is];
+    Upar = ev_hd->fields.upar[is];
+    Tpar = ev_hd->fields.tpar[is];
+    Tprp = ev_hd->fields.tprp[is];
+    Qpar = ev_hd->fields.qpar[is];
+    Qprp = ev_hd->fields.qprp[is];
+  }
+  DensNew = ev_hd->fields.dens[is];
+  UparNew = ev_hd->fields.upar[is];
+  TparNew = ev_hd->fields.tpar[is];
+  TprpNew = ev_hd->fields.tprp[is];
+  QparNew = ev_hd->fields.qpar[is];
+  QprpNew = ev_hd->fields.qprp[is];
+  DensOld = ev_hd->fields.dens1[is];
+  UparOld = ev_hd->fields.upar1[is];
+  TparOld = ev_hd->fields.tpar1[is];
+  TprpOld = ev_hd->fields.tprp1[is];
+  QparOld = ev_hd->fields.qpar1[is];
+  QprpOld = ev_hd->fields.qprp1[is];
+  Phi = ev_hd->fields.phi1;
+}
+
+int** kxCover = ev_hd->grids.kxCover;
+int** kyCover = ev_hd->grids.kyCover;
+cuComplex** g_covering = ev_hd->grids.g_covering;
+float** kz_covering = ev_hd->grids.kz_covering;
+specie s = ev_h->pars.species[is];
+
+cuComplex *dens_field = ev_hd->fields.field;
+cuComplex *upar_field = ev_hd->fields.field;
+cuComplex *tpar_field = ev_hd->fields.field;
+cuComplex *qpar_field = ev_hd->fields.field;
+cuComplex *tprp_field = ev_hd->fields.field;
+cuComplex *qprp_field = ev_hd->fields.field;
+
+cuComplex *phi_tmp = ev_hd->tmp.CXYZ;
+cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
+cuComplex* omegaStar_tmp = ev_hd->tmp.CXYZ;
+cuComplex* qps_tmp = ev_hd->tmp.CXYZ;
+
+cuComplex *fields_over_B_tmp = ev_hd->tmp.CXYZ;
+cuComplex *B_gradpar_tmp = ev_hd->tmp.CXYZ;
+
+cuComplex *gradpar_tmp = ev_hd->tmp.CXYZ;
+cuComplex *omegaD_tmp = ev_hd->tmp.CXYZ;
+cuComplex *sum_tmp = ev_hd->tmp.CXYZ;
+
+cuComplex *fields_over_B2_tmp = ev_hd->tmp.CXYZ;
+cuComplex *B2_gradpar_tmp = ev_hd->tmp.CXYZ;
+cuComplex * bgrad_tmp = ev_hd->tmp.CXYZ;
+
+cuComplex* hyper_tmp = ev_hd->tmp.CXYZ;
+cuComplex* nlpm_tmp = ev_hd->tmp.CXYZ;
+cuComplex* Tpar0_tmp = ev_hd->tmp.CXYZ;
+
+float *gradparB_tmpZ = ev_hd->tmp.Z;
+cufftHandle* plan_covering = ev_h->ffts.plan_covering;
+
+float* nu_nlpm = ev_hd->nlpm.nu;
+float* Phi2ZF_tmpX = ev_hd->tmp.X;
+float* tmpXZ = ev_hd->tmp.XZ;
+cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
+cuComplex* fluxsurfavg_CtmpX2 = ev_hd->tmp.CX2;
   
   /*
   //calculate nu_nlpm for this timestep... to be used in each field equation

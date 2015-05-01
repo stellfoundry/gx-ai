@@ -44,6 +44,7 @@
     float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
     cuComplex * CtmpX = ev_hd->tmp.CX;
+    cuComplex * CtmpX2 = ev_hd->tmp.CX;
     float  * tmpX = ev_hd->tmp.X;
     float  * tmpX_h = ev_h->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;
@@ -75,6 +76,12 @@
     cuComplex ** qprp_ky0_d = ev_hd->hybrid.qprp;
     cuComplex * phi_ky0_d = ev_hd->hybrid.phi;
 
+
+    float *nu_nlpm = ev_hd->nlpm.nu;
+    float *nu1_nlpm = ev_hd->nlpm.nu1;
+    float *nu22_nlpm = ev_hd->nlpm.nu22;
+    cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
+    cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
 
     //Some globals
 

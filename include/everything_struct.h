@@ -111,6 +111,8 @@ typedef struct {
 	float * Z;
 	cuComplex * CZ;
 	cuComplex * CX;
+	cuComplex * CX2;
+
 
 	float * XY;
 	float * XY2;
@@ -125,6 +127,11 @@ typedef struct {
 typedef struct {
   float kx2Phi_zf_rms;
   float kx2Phi_zf_rms_avg;
+  float *nu;
+  float *nu1;
+  float *nu22;
+  cuComplex *nu1_complex;
+  cuComplex *nu22_complex;
 } nlpm_struct;
 
 

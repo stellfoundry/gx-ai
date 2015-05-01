@@ -192,7 +192,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     
     //tmps for timestep routine
     float *tmpXYZ;
-    cuComplex *CtmpX2;
     cuComplex *CtmpXZ;
    
     cuComplex *omegaBox[navg];
@@ -221,13 +220,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //cuComplex *Phi_sum;
     
     
-    float *nu_nlpm;
-    float *nu1_nlpm;
-    float *nu22_nlpm;
     float nu1_nlpm_max;
     float nu22_nlpm_max;
-    cuComplex *nu1_nlpm_complex;
-    cuComplex *nu22_nlpm_complex;
     float *shear_rate_z;
     float *shear_rate_z_nz;
     float *shear_rate_nz;  
@@ -295,7 +289,6 @@ if (iproc==0){
     
     //cudaMalloc((void**) &Phi_sum, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     
-    cudaMalloc((void**) &CtmpX2, sizeof(cuComplex)*Nx);
     cudaMalloc((void**) &CtmpXZ, sizeof(cuComplex)*Nx*Nz);
     cudaMalloc((void**) &tmpXYZ, sizeof(float)*Nx*(Ny/2+1)*Nz);
    
@@ -321,11 +314,11 @@ if (iproc==0){
     cudaMalloc((void**) &omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1));
     
     
-    cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
-    cudaMalloc((void**) &nu1_nlpm, sizeof(float)*Nz);
-    cudaMalloc((void**) &nu22_nlpm, sizeof(float)*Nz);
-    cudaMalloc((void**) &nu1_nlpm_complex, sizeof(cuComplex)*Nz);
-    cudaMalloc((void**) &nu22_nlpm_complex, sizeof(cuComplex)*Nz);
+//    cudaMalloc((void**) &nu_nlpm, sizeof(float)*Nz);
+//    cudaMalloc((void**) &nu1_nlpm, sizeof(float)*Nz);
+//    cudaMalloc((void**) &nu22_nlpm, sizeof(float)*Nz);
+//    cudaMalloc((void**) &nu1_nlpm_complex, sizeof(cuComplex)*Nz);
+//    cudaMalloc((void**) &nu22_nlpm_complex, sizeof(cuComplex)*Nz);
     cudaMalloc((void**) &shear_rate_z, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_nz, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_z_nz, sizeof(float)*Nz);  
@@ -666,23 +659,8 @@ if(iproc==0) {
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
           //calculate NL(t) = NL(Moment)
-//          nonlinear_timestep(Dens[s], Dens[s], Dens1[s], 
-//                 Upar[s], Upar[s], Upar1[s], 
-//                 Tpar[s], Tpar[s], Tpar1[s], 
-//                 Qpar[s], Qpar[s], Qpar1[s], 
-//                 Tprp[s], Tprp[s], Tprp1[s], 
-//                 Qprp[s], Qprp[s], Qprp1[s], 
-//                 Phi, 
-//                 dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
-//                 &tm->dt, species[s],
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp, tmpX, CtmpX, tm->first_half_flag,
-//	       field_h, tm->counter, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg);
           nonlinear_timestep(s, ev_h, ev_hd, ev_d);
-  
           //Moment1 = Moment + (dt/2)*NL(Moment)
-  
-
 
 #ifdef GS2_zonal
   
@@ -707,16 +685,18 @@ if(iproc==0) {
 #endif
   
           //calculate L(t) = L(Moment)
-          linear_timestep(Dens1[s], Dens[s], Dens1[s], 
-                 Upar1[s], Upar[s], Upar1[s], 
-                 Tpar1[s], Tpar[s], Tpar1[s], 
-                 Qpar1[s], Qpar[s], Qpar1[s], 
-                 Tprp1[s], Tprp[s], Tprp1[s], 
-                 Qprp1[s], Qprp[s], Qprp1[s], 
-                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
-  	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+          // The new fields end up in dens1 etc
+          linear_timestep(s, ev_h, ev_hd, ev_d);
+//          linear_timestep(Dens1[s], Dens[s], Dens1[s], 
+//                 Upar1[s], Upar[s], Upar1[s], 
+//                 Tpar1[s], Tpar[s], Tpar1[s], 
+//                 Qpar1[s], Qpar[s], Qpar1[s], 
+//                 Tprp1[s], Tprp[s], Tprp1[s], 
+//                 Qprp1[s], Qprp[s], Qprp1[s], 
+//                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
+//  	       field,field,field,field,field,field,
+//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
+//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
    
           //Moment1 = Moment1 + (tm->dt/2)*L(Moment)
 
@@ -726,16 +706,18 @@ if(iproc==0) {
         for(int s=0; s<nSpecies; s++) {
   
           //calculate L(t) = L(Moment)
-          linear_timestep(Dens[s], Dens[s], Dens1[s], 
-                 Upar[s], Upar[s], Upar1[s], 
-                 Tpar[s], Tpar[s], Tpar1[s], 
-                 Qpar[s], Qpar[s], Qpar1[s], 
-                 Tprp[s], Tprp[s], Tprp1[s], 
-                 Qprp[s], Qprp[s], Qprp1[s], 
-                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
-  	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+          // The new fields end up in dens1 etc
+          linear_timestep(s, ev_h, ev_hd, ev_d);
+//          linear_timestep(Dens[s], Dens[s], Dens1[s], 
+//                 Upar[s], Upar[s], Upar1[s], 
+//                 Tpar[s], Tpar[s], Tpar1[s], 
+//                 Qpar[s], Qpar[s], Qpar1[s], 
+//                 Tprp[s], Tprp[s], Tprp1[s], 
+//                 Qprp[s], Qprp[s], Qprp1[s], 
+//                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
+//  	       field,field,field,field,field,field,
+//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
+//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
            
           //Moment1 = Moment + (tm->dt/2)*L(Moment)
 
@@ -905,18 +887,6 @@ if(iproc==0) {
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
           //calculate NL(t+tm->dt/2) = NL(Moment1)
-//          nonlinear_timestep(Dens[s], Dens1[s], Dens[s], 
-//                 Upar[s], Upar1[s], Upar[s], 
-//                 Tpar[s], Tpar1[s], Tpar[s], 
-//                 Qpar[s], Qpar1[s], Qpar[s], 
-//                 Tprp[s], Tprp1[s], Tprp[s], 
-//                 Qprp[s], Qprp1[s], Qprp[s], 
-//                 Phi1, 
-//                 dens_ky0_d[s], upar_ky0_d[s], tpar_ky0_d[s], tprp_ky0_d[s], qpar_ky0_d[s], qprp_ky0_d[s],
-//                 &tm->dt, species[s],
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp, tmpX, CtmpX, tm->first_half_flag,
-//	       field_h, tm->counter, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg);
           nonlinear_timestep(s, ev_h, ev_hd, ev_d);
   
           //Moment = Moment + dt * NL(Moment1)
@@ -941,17 +911,20 @@ if(iproc==0) {
   
   #endif
   
+          // The new fields end up in dens etc
+          linear_timestep(s, ev_h, ev_hd, ev_d);
           //calculate L(t+dt/2)=L(Moment1) 
-          linear_timestep(Dens[s], Dens1[s], Dens[s], 
-                 Upar[s], Upar1[s], Upar[s], 
-                 Tpar[s], Tpar1[s], Tpar[s], 
-                 Qpar[s], Qpar1[s], Qpar[s], 
-                 Tprp[s], Tprp1[s], Tprp[s], 
-                 Qprp[s], Qprp1[s], Qprp[s], 
-                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
-  	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+//          linear_timestep(Dens[s], Dens1[s], Dens[s], 
+//                 Upar[s], Upar1[s], Upar[s], 
+//                 Tpar[s], Tpar1[s], Tpar[s], 
+//                 Qpar[s], Qpar1[s], Qpar[s], 
+//                 Tprp[s], Tprp1[s], Tprp[s], 
+//                 Qprp[s], Qprp1[s], Qprp[s], 
+//                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
+//  	       field,field,field,field,field,field,
+//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
+//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+            linear_timestep(s, ev_h, ev_hd, ev_d);
   
           //Moment = Moment + dt * L(Moment1)
   	}         
@@ -959,16 +932,18 @@ if(iproc==0) {
       else { //if only linear
         for(int s=0; s<nSpecies; s++) {
   
-          linear_timestep(Dens[s], Dens1[s], Dens[s], 
-                 Upar[s], Upar1[s], Upar[s], 
-                 Tpar[s], Tpar1[s], Tpar[s], 
-                 Qpar[s], Qpar1[s], Qpar[s], 
-                 Tprp[s], Tprp1[s], Tprp[s], 
-                 Qprp[s], Qprp1[s], Qprp[s], 
-                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
-  	       field,field,field,field,field,field,
-  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
+          // The new fields end up in dens etc
+          linear_timestep(s, ev_h, ev_hd, ev_d);
+//          linear_timestep(Dens[s], Dens1[s], Dens[s], 
+//                 Upar[s], Upar1[s], Upar[s], 
+//                 Tpar[s], Tpar1[s], Tpar[s], 
+//                 Qpar[s], Qpar1[s], Qpar[s], 
+//                 Tprp[s], Tprp1[s], Tprp[s], 
+//                 Qprp[s], Qprp1[s], Qprp[s], 
+//                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
+//  	       field,field,field,field,field,field,
+//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
+//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
         }
       }
       
