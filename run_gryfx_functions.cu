@@ -547,12 +547,12 @@ void copy_hybrid_arrays_from_device_to_host_async(
   for(int i=0; i<nSpecies; i++) {
     int s = i; //EGH s should certainly be i here. The only reason this loop 
                // worked before was because there was only one species.
-    cudaMemcpyAsync(hybrid_d->dens_h + s*ntheta0*Nz, hybrid_d->dens[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-    cudaMemcpyAsync(hybrid_d->upar_h + s*ntheta0*Nz, hybrid_d->upar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-    cudaMemcpyAsync(hybrid_d->tpar_h + s*ntheta0*Nz, hybrid_d->tpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-    cudaMemcpyAsync(hybrid_d->tprp_h + s*ntheta0*Nz, hybrid_d->tprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-    cudaMemcpyAsync(hybrid_d->qpar_h + s*ntheta0*Nz, hybrid_d->qpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-    cudaMemcpyAsync(hybrid_d->qprp_h + s*ntheta0*Nz, hybrid_d->qprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->dens_h + s*ntheta0*Nz, hybrid_d->dens[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->upar_h + s*ntheta0*Nz, hybrid_d->upar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->tpar_h + s*ntheta0*Nz, hybrid_d->tpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->tprp_h + s*ntheta0*Nz, hybrid_d->tprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->qpar_h + s*ntheta0*Nz, hybrid_d->qpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_h->qprp_h + s*ntheta0*Nz, hybrid_d->qprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
   }
 }
 

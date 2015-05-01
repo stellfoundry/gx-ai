@@ -788,31 +788,6 @@ if(iproc==0) {
       &ev_h->cdims, &ev_hd->fields1,
       &ev_hd->hybrid, ev_h->fields.field);
    
-//    //replace ky=0 modes with results from GS2
-//    replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
-//    reality<<<dimGrid,dimBlock>>>(Phi1);
-//    mask<<<dimGrid,dimBlock>>>(Phi1);
-//
-//    for(int s=0; s<nSpecies; s++) {
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Dens1[s], dens_ky0_d[s]);
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Upar1[s], upar_ky0_d[s]);
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tpar1[s], tpar_ky0_d[s]);
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tprp1[s], tprp_ky0_d[s]);
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qpar1[s], qpar_ky0_d[s]);
-//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qprp1[s], qprp_ky0_d[s]);
-//      reality<<<dimGrid,dimBlock>>>(Dens1[s]);
-//      reality<<<dimGrid,dimBlock>>>(Upar1[s]);
-//      reality<<<dimGrid,dimBlock>>>(Tpar1[s]);
-//      reality<<<dimGrid,dimBlock>>>(Tprp1[s]);
-//      reality<<<dimGrid,dimBlock>>>(Qpar1[s]);
-//      reality<<<dimGrid,dimBlock>>>(Qprp1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Dens1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Upar1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Tpar1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Tprp1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Qpar1[s]);
-//      mask<<<dimGrid,dimBlock>>>(Qprp1[s]);
-//    }
  } 
     //////nvtxRangePop();
   #endif
@@ -874,14 +849,9 @@ if(iproc==0) {
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
             cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
-            for(int i=0; i<nSpecies; i++) {
-              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-            }
+            copy_hybrid_arrays_from_device_to_host_async(
+                &ev_h->grids, &ev_h->hybrid, &ev_hd->hybrid,
+                &ev_h->streams);
             cudaEventRecord(events->D2H, streams->copystream);
           }
   
