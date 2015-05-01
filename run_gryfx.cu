@@ -476,6 +476,7 @@ if(iproc==0) {
     
     fieldWrite_nopad_h(phi_ky0_h, "phi0.field", filename, Nx, 1, Nz, ntheta0, 1);
     replace_zonal_fields_with_hybrid(
+      1,
       &ev_h->cdims, &ev_hd->fields,
       &ev_hd->hybrid, ev_h->fields.field);
    
@@ -774,45 +775,44 @@ if(iproc==0) {
     //////nvtxRangePushA("copy moms(t+tm->dt/2)_ky=0 from H2D");
 if(iproc==0) {  
     //copy moms(t+dt/2)_ky=0 from H2D
-    cudaMemcpyAsync(phi_ky0_d, phi_ky0_h, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-    for(int s=0; s<nSpecies; s++) {
-      cudaMemcpyAsync(dens_ky0_d[s], dens_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(upar_ky0_d[s], upar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(tpar_ky0_d[s], tpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(tprp_ky0_d[s], tprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(qpar_ky0_d[s], qpar_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-      cudaMemcpyAsync(qprp_ky0_d[s], qprp_ky0_h + s*ntheta0*Nz, sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyHostToDevice, streams->copystream);
-    }
+    copy_hybrid_arrays_from_host_to_device_async(
+        &ev_h->grids, &ev_h->hybrid, 
+        &ev_hd->hybrid, streams);
     
   
     cudaEventRecord(events->H2D, streams->copystream);
     cudaStreamWaitEvent(0, events->H2D, 0);
-   
-    //replace ky=0 modes with results from GS2
-    replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
-    reality<<<dimGrid,dimBlock>>>(Phi1);
-    mask<<<dimGrid,dimBlock>>>(Phi1);
 
-    for(int s=0; s<nSpecies; s++) {
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Dens1[s], dens_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Upar1[s], upar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tpar1[s], tpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tprp1[s], tprp_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qpar1[s], qpar_ky0_d[s]);
-      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qprp1[s], qprp_ky0_d[s]);
-      reality<<<dimGrid,dimBlock>>>(Dens1[s]);
-      reality<<<dimGrid,dimBlock>>>(Upar1[s]);
-      reality<<<dimGrid,dimBlock>>>(Tpar1[s]);
-      reality<<<dimGrid,dimBlock>>>(Tprp1[s]);
-      reality<<<dimGrid,dimBlock>>>(Qpar1[s]);
-      reality<<<dimGrid,dimBlock>>>(Qprp1[s]);
-      mask<<<dimGrid,dimBlock>>>(Dens1[s]);
-      mask<<<dimGrid,dimBlock>>>(Upar1[s]);
-      mask<<<dimGrid,dimBlock>>>(Tpar1[s]);
-      mask<<<dimGrid,dimBlock>>>(Tprp1[s]);
-      mask<<<dimGrid,dimBlock>>>(Qpar1[s]);
-      mask<<<dimGrid,dimBlock>>>(Qprp1[s]);
-    }
+    replace_zonal_fields_with_hybrid(
+      0,
+      &ev_h->cdims, &ev_hd->fields1,
+      &ev_hd->hybrid, ev_h->fields.field);
+   
+//    //replace ky=0 modes with results from GS2
+//    replace_ky0_nopad<<<dimGrid,dimBlock>>>(Phi1, phi_ky0_d);
+//    reality<<<dimGrid,dimBlock>>>(Phi1);
+//    mask<<<dimGrid,dimBlock>>>(Phi1);
+//
+//    for(int s=0; s<nSpecies; s++) {
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Dens1[s], dens_ky0_d[s]);
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Upar1[s], upar_ky0_d[s]);
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tpar1[s], tpar_ky0_d[s]);
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Tprp1[s], tprp_ky0_d[s]);
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qpar1[s], qpar_ky0_d[s]);
+//      replace_ky0_nopad<<<dimGrid,dimBlock>>>(Qprp1[s], qprp_ky0_d[s]);
+//      reality<<<dimGrid,dimBlock>>>(Dens1[s]);
+//      reality<<<dimGrid,dimBlock>>>(Upar1[s]);
+//      reality<<<dimGrid,dimBlock>>>(Tpar1[s]);
+//      reality<<<dimGrid,dimBlock>>>(Tprp1[s]);
+//      reality<<<dimGrid,dimBlock>>>(Qpar1[s]);
+//      reality<<<dimGrid,dimBlock>>>(Qprp1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Dens1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Upar1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Tpar1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Tprp1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Qpar1[s]);
+//      mask<<<dimGrid,dimBlock>>>(Qprp1[s]);
+//    }
  } 
     //////nvtxRangePop();
   #endif

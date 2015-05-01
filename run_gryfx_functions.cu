@@ -557,6 +557,7 @@ void copy_hybrid_arrays_from_device_to_host_async(
 }
 
 void replace_zonal_fields_with_hybrid(
+  int first_call,
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
   hybrid_zonal_arrays_struct * hybrid_d,
@@ -592,10 +593,12 @@ void replace_zonal_fields_with_hybrid(
     reality<<<dimGrid,dimBlock>>>(fields_d->phi);
     mask<<<dimGrid,dimBlock>>>(fields_d->phi);
 
-    fieldWrite(fields_d->phi, field_h, "phi_1.field", filename); 
-    getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, fields_d->phi);
-    replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
-    fieldWrite(fields_d->phi, field_h, "phi_2.field", filename); 
+    if (first_call==1){
+      fieldWrite(fields_d->phi, field_h, "phi_1.field", filename); 
+      getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, fields_d->phi);
+      replace_ky0_nopad<<<dimGrid,dimBlock>>>(fields_d->phi, hybrid_d->phi);
+      fieldWrite(fields_d->phi, field_h, "phi_2.field", filename); 
+  }
 }
 
 void copy_fixed_modes_into_fields(
