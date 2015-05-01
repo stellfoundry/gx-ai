@@ -127,11 +127,13 @@ typedef struct {
 typedef struct {
   float kx2Phi_zf_rms;
   float kx2Phi_zf_rms_avg;
+  float Phi_zf_kx1_avg;
   float *nu;
   float *nu1;
   float *nu22;
   cuComplex *nu1_complex;
   cuComplex *nu22_complex;
+  float D;
 } nlpm_struct;
 
 

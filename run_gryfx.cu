@@ -102,7 +102,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
     int ntheta0 = ev_h->grids.ntheta0;
     
-    float* Dnlpm_d;
     float* Phi_zf_kx1_d;
     float Dnlpm = 0;
     float Dnlpm_avg = 0;
@@ -113,7 +112,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     float Phi_zf_kx1 = 0.;
     float Phi_zf_kx1_old = 0.;
     //float Phi_zf_kx1_sum = 0.;
-    float Phi_zf_kx1_avg = 0.;
     float alpha_nlpm = 0.;
     float mu_nlpm = 0.;
     //float tau_nlpm = 50.;
@@ -262,6 +260,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   cuda_streams_struct * streams = &ev_h->streams;
   nlpm_struct * nlpm = &ev_h->nlpm;
 
+  nlpm->Phi_zf_kx1_avg = 0.;
+
 
 
 // The file local_pointers.cu
@@ -323,7 +323,7 @@ if (iproc==0){
     cudaMalloc((void**) &shear_rate_nz, sizeof(float)*Nz);  
     cudaMalloc((void**) &shear_rate_z_nz, sizeof(float)*Nz);  
   
-    cudaMalloc((void**) &Dnlpm_d, sizeof(float));
+    //cudaMalloc((void**) &Dnlpm_d, sizeof(float));
     cudaMalloc((void**) &Phi_zf_kx1_d, sizeof(float));
 
   
@@ -805,14 +805,21 @@ if(iproc==0) {
       //NLPM calculated AFTER ky=0 quantities passed back from GS2!
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt/2., Dnlpm_d, Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
+          filterNLPMcomplex(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt/2., Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], tm->dt/2., Dnlpm_d, Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, tmp);
+          filterNLPM(s, 
+            &ev_hd->fields1, &ev_hd->tmp,
+            &ev_hd->nlpm, nlpm, tm->dt/2.,
+            ev_h->pars.species[s],
+            &ev_d->nlpm.D); //NB this is ev_d here
+               
+            
+//          filterNLPM(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+//        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], tm->dt/2., Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, tmp);
         }	    
       }  
       //hyper too...
@@ -959,14 +966,22 @@ if(iproc==0) {
       //NLPM
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt, Dnlpm_d, Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
+          filterNLPMcomplex(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt, Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], tm->dt, Dnlpm_d, Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, tmp);
+          filterNLPM(s, 
+            &ev_hd->fields, 
+            &ev_hd->tmp,
+            &ev_hd->nlpm,
+            nlpm,
+            tm->dt,
+            ev_h->pars.species[s],
+            &ev_d->nlpm.D); //NB this is ev_d here
+//          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+//        		tmpX, tmpXZ, tmpYZ, nu_nlpm, nu1_nlpm, nu22_nlpm, species[s], tm->dt, Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, tmp);
         }	    
       }  
           
@@ -1156,11 +1171,11 @@ if(iproc==0) {
         alpha_nlpm = tm->dt/tau_nlpm;
         mu_nlpm = exp(-alpha_nlpm);
         if(tm->runtime<20) {
-          Phi_zf_kx1_avg = Phi_zf_kx1; //allow a build-up time of tau_nlpm
+          nlpm->Phi_zf_kx1_avg = Phi_zf_kx1; //allow a build-up time of tau_nlpm
           nlpm->kx2Phi_zf_rms_avg = nlpm->kx2Phi_zf_rms;
         }
         else { 
-          Phi_zf_kx1_avg = mu_nlpm*Phi_zf_kx1_avg + (1-mu_nlpm)*Phi_zf_kx1 + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(Phi_zf_kx1 - Phi_zf_kx1_old);
+          nlpm->Phi_zf_kx1_avg = mu_nlpm*nlpm->Phi_zf_kx1_avg + (1-mu_nlpm)*Phi_zf_kx1 + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(Phi_zf_kx1 - Phi_zf_kx1_old);
           nlpm->kx2Phi_zf_rms_avg = mu_nlpm*nlpm->kx2Phi_zf_rms_avg + (1-mu_nlpm)*nlpm->kx2Phi_zf_rms + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(nlpm->kx2Phi_zf_rms - kx2Phi_zf_rms_old);
         }
   /*
@@ -1193,7 +1208,7 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,tm->runtime,species);
+      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, Dnlpm, Dnlpm_avg, Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,tm->runtime,species);
     
   	     
       if(tm->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, tm->runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
@@ -1288,7 +1303,7 @@ if(iproc==0) {
         if(tm->counter>nsave) {	
           printf("RESTARTING FROM LAST RESTART FILE...\n");
   	restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
-      			zCorr_sum,&outs->expectation_ky_movav, &expectation_kx_sum, &Phi_zf_kx1_avg,
+      			zCorr_sum,&outs->expectation_ky_movav, &expectation_kx_sum, &nlpm->Phi_zf_kx1_avg,
       			&tm->dtSum, &tm->counter,&runtime,&dt,&totaltimer,restartfileName);
         
           printf("cfl was %f. maxdt was %f.\n", cfl, maxdt);
@@ -1309,7 +1324,7 @@ if(iproc==0) {
         tm->totaltimer+=tm->timer;
         cudaEventRecord(events->start,0);
         restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
-        			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, Phi_zf_kx1_avg,
+        			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
         			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
       }
       
@@ -1392,7 +1407,7 @@ if(iproc==0) {
     
     // save for restart run
     restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
-    			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, Phi_zf_kx1_avg,
+    			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
     			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
     
     if(DEBUG) getError("after restartWrite");

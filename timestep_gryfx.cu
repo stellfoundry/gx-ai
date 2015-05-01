@@ -103,7 +103,7 @@ cuComplex *tprp_field = ev_hd->fields.field;
 cuComplex *qprp_field = ev_hd->fields.field;
 
 cuComplex *phi_tmp = ev_hd->tmp.CXYZ;
-cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
+//cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
 cuComplex* omegaStar_tmp = ev_hd->tmp.CXYZ;
 cuComplex* qps_tmp = ev_hd->tmp.CXYZ;
 
@@ -118,18 +118,18 @@ cuComplex *fields_over_B2_tmp = ev_hd->tmp.CXYZ;
 cuComplex *B2_gradpar_tmp = ev_hd->tmp.CXYZ;
 cuComplex * bgrad_tmp = ev_hd->tmp.CXYZ;
 
-cuComplex* hyper_tmp = ev_hd->tmp.CXYZ;
-cuComplex* nlpm_tmp = ev_hd->tmp.CXYZ;
+//cuComplex* hyper_tmp = ev_hd->tmp.CXYZ;
+//cuComplex* nlpm_tmp = ev_hd->tmp.CXYZ;
 cuComplex* Tpar0_tmp = ev_hd->tmp.CXYZ;
 
-float *gradparB_tmpZ = ev_hd->tmp.Z;
+//float *gradparB_tmpZ = ev_hd->tmp.Z;
 cufftHandle* plan_covering = ev_h->ffts.plan_covering;
 
-float* nu_nlpm = ev_hd->nlpm.nu;
-float* Phi2ZF_tmpX = ev_hd->tmp.X;
-float* tmpXZ = ev_hd->tmp.XZ;
+//float* nu_nlpm = ev_hd->nlpm.nu;
+//float* Phi2ZF_tmpX = ev_hd->tmp.X;
+//float* tmpXZ = ev_hd->tmp.XZ;
 cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
-cuComplex* fluxsurfavg_CtmpX2 = ev_hd->tmp.CX2;
+//cuComplex* fluxsurfavg_CtmpX2 = ev_hd->tmp.CX2;
   
   /*
   //calculate nu_nlpm for this timestep... to be used in each field equation

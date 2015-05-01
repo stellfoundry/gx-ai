@@ -125,11 +125,33 @@ inline void get_dorland_nu_nlpm(float* nu_abs_nlpm, cuComplex* nu1_nlpm, cuCompl
 
 }
 
-inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
-                cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp,
-                float* Phi2ZF_tmpX, float* tmpXZ, float* filter_tmpYZ, float* nu_nlpm, float* nu1_nlpm, float* nu22_nlpm,
-                specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float Phi_zf_rms, cuComplex* tmp)
+inline void filterNLPM(
+  int is,
+  fields_struct * fields_d, 
+  temporary_arrays_struct * tmp_d,
+  nlpm_struct * nlpm_d,
+  nlpm_struct * nlpm_h,
+  float dt_loc,
+  specie s,
+  float* Dnlpm_d
+      )
 {
+cuComplex* Phi = fields_d->phi;
+//cuComplex* Dens = fields_d->dens[is];
+//cuComplex* Upar = fields_d->upar[is];
+cuComplex* Tpar = fields_d->tpar[is];
+cuComplex* Tprp = fields_d->tprp[is];
+cuComplex* Qpar = fields_d->qpar[is];
+cuComplex* Qprp = fields_d->qprp[is];
+float* Phi2ZF_tmpX = tmp_d->X;
+float* tmpXZ = tmp_d->XZ;
+//float* filter_tmpYZ = tmp_d->YZ;
+float* nu_nlpm = nlpm_d->nu;
+float* nu1_nlpm = nlpm_d->nu1;
+float* nu22_nlpm = nlpm_d->nu22;
+float Phi_zf_kx1 = nlpm_h->Phi_zf_kx1_avg;
+float Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
+//cuComplex* tmp  = tmp_d->CXYZ;
   //float nu1max, nu22max;
   if(dorland_nlpm) {
     if(strcmp(nlpm_option,"constant") == 0 || (strcmp(nlpm_option,"cutoff") == 0 && Phi_zf_rms>low_cutoff)) {
@@ -187,7 +209,7 @@ inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuCompl
 }
 
 //for when dorland_phase is complex
-inline void filterNLPM(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
+inline void filterNLPMcomplex(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
 		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
 		float* Phi2ZF_tmpX, cuComplex* PhiZF_CtmpX, float* tmpXZ, cuComplex* CtmpXZ, float* filter_tmpYZ, float* nu_nlpm, cuComplex* nu1_nlpm, cuComplex* nu22_nlpm,
 		float* tmpZ, specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float kx2Phi_zf_rms)

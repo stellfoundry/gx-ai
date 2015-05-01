@@ -25,13 +25,13 @@
     cuComplex * field = ev_hd->fields.field;
 
     // For secondary instability calculation
-    cuComplex *phi_fixed = ev_hd->sfixed.phi;
-    cuComplex *dens_fixed = ev_hd->sfixed.dens;
-    cuComplex *upar_fixed = ev_hd->sfixed.upar;
-    cuComplex *tpar_fixed = ev_hd->sfixed.tpar;
-    cuComplex *tprp_fixed = ev_hd->sfixed.tprp;
-    cuComplex *qpar_fixed = ev_hd->sfixed.qpar;
-    cuComplex *qprp_fixed = ev_hd->sfixed.qprp;
+//    cuComplex *phi_fixed = ev_hd->sfixed.phi;
+//    cuComplex *dens_fixed = ev_hd->sfixed.dens;
+//    cuComplex *upar_fixed = ev_hd->sfixed.upar;
+//    cuComplex *tpar_fixed = ev_hd->sfixed.tpar;
+//    cuComplex *tprp_fixed = ev_hd->sfixed.tprp;
+//    cuComplex *qpar_fixed = ev_hd->sfixed.qpar;
+//    cuComplex *qprp_fixed = ev_hd->sfixed.qprp;
 
     // EGH: Not being used yet but will be
     //float * kx_shift = ev_hd->grids.kx_shift;
@@ -44,7 +44,7 @@
     float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
     cuComplex * CtmpX = ev_hd->tmp.CX;
-    cuComplex * CtmpX2 = ev_hd->tmp.CX;
+    //cuComplex * CtmpX2 = ev_hd->tmp.CX;
     float  * tmpX = ev_hd->tmp.X;
     float  * tmpX_h = ev_h->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;
@@ -68,13 +68,13 @@
     cuComplex * qprp_ky0_h = ev_h->hybrid.qprp_h;
     cuComplex * phi_ky0_h = ev_h->hybrid.phi;
 
-    cuComplex ** dens_ky0_d = ev_hd->hybrid.dens;
-    cuComplex ** upar_ky0_d = ev_hd->hybrid.upar;
-    cuComplex ** tpar_ky0_d = ev_hd->hybrid.tpar;
-    cuComplex ** tprp_ky0_d = ev_hd->hybrid.tprp;
-    cuComplex ** qpar_ky0_d = ev_hd->hybrid.qpar;
-    cuComplex ** qprp_ky0_d = ev_hd->hybrid.qprp;
-    cuComplex * phi_ky0_d = ev_hd->hybrid.phi;
+//    cuComplex ** dens_ky0_d = ev_hd->hybrid.dens;
+//    cuComplex ** upar_ky0_d = ev_hd->hybrid.upar;
+//    cuComplex ** tpar_ky0_d = ev_hd->hybrid.tpar;
+//    cuComplex ** tprp_ky0_d = ev_hd->hybrid.tprp;
+//    cuComplex ** qpar_ky0_d = ev_hd->hybrid.qpar;
+//    cuComplex ** qprp_ky0_d = ev_hd->hybrid.qprp;
+//    cuComplex * phi_ky0_d = ev_hd->hybrid.phi;
 
 
     float *nu_nlpm = ev_hd->nlpm.nu;
@@ -82,6 +82,10 @@
     float *nu22_nlpm = ev_hd->nlpm.nu22;
     cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
     cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
+
+    float* Dnlpm_d = &ev_d->nlpm.D; // This is a pointer to memory on the device
+                                    // because ev_d is on the device
+    //float* Phi_zf_kx1_d;
 
     //Some globals
 
