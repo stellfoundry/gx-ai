@@ -113,6 +113,8 @@ typedef struct {
 	cuComplex * CX;
 	cuComplex * CX2;
 
+	cuComplex * CXZ;
+
 
 	float * XY;
 	float * XY2;

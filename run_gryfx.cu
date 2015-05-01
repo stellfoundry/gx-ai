@@ -190,7 +190,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     
     //tmps for timestep routine
     float *tmpXYZ;
-    cuComplex *CtmpXZ;
+    //cuComplex *CtmpXZ;
    
     cuComplex *omegaBox[navg];
     
@@ -289,7 +289,7 @@ if (iproc==0){
     
     //cudaMalloc((void**) &Phi_sum, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     
-    cudaMalloc((void**) &CtmpXZ, sizeof(cuComplex)*Nx*Nz);
+    //cudaMalloc((void**) &CtmpXZ, sizeof(cuComplex)*Nx*Nz);
     cudaMalloc((void**) &tmpXYZ, sizeof(float)*Nx*(Ny/2+1)*Nz);
    
     cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -805,8 +805,14 @@ if(iproc==0) {
       //NLPM calculated AFTER ky=0 quantities passed back from GS2!
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPMcomplex(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt/2., Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
+          filterNLPMcomplex(s, 
+            &ev_hd->fields1, &ev_hd->tmp,
+            &ev_hd->nlpm, nlpm, tm->dt/2.,
+            ev_h->pars.species[s],
+            &ev_d->nlpm.D); //NB this is ev_d here
+
+//          filterNLPMcomplex(Phi1, Dens1[s], Upar1[s], Tpar1[s], Tprp1[s], Qpar1[s], Qprp1[s], 
+//        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt/2., Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
@@ -966,18 +972,20 @@ if(iproc==0) {
       //NLPM
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
-          filterNLPMcomplex(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
-        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt, Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
+          filterNLPMcomplex(s, 
+            &ev_hd->fields, &ev_hd->tmp,
+            &ev_hd->nlpm, nlpm, tm->dt,
+            ev_h->pars.species[s],
+            &ev_d->nlpm.D); //NB this is ev_d here
+//          filterNLPMcomplex(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 
+//        		tmpX, CtmpX, tmpXZ, CtmpXZ, tmpYZ, nu_nlpm, nu1_nlpm_complex, nu22_nlpm_complex, tmpZ, species[s], tm->dt, Dnlpm_d, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms);
         }	    
       }
       else if(!LINEAR && NLPM) {
         for(int s=0; s<nSpecies; s++) {
           filterNLPM(s, 
-            &ev_hd->fields, 
-            &ev_hd->tmp,
-            &ev_hd->nlpm,
-            nlpm,
-            tm->dt,
+            &ev_hd->fields, &ev_hd->tmp,
+            &ev_hd->nlpm, nlpm, tm->dt,
             ev_h->pars.species[s],
             &ev_d->nlpm.D); //NB this is ev_d here
 //          filterNLPM(Phi, Dens[s], Upar[s], Tpar[s], Tprp[s], Qpar[s], Qprp[s], 

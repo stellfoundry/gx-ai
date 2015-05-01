@@ -209,11 +209,39 @@ float Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
 }
 
 //for when dorland_phase is complex
-inline void filterNLPMcomplex(cuComplex* Phi, cuComplex* Dens, cuComplex* Upar, cuComplex* Tpar,
-		cuComplex* Tprp, cuComplex* Qpar, cuComplex* Qprp, 
-		float* Phi2ZF_tmpX, cuComplex* PhiZF_CtmpX, float* tmpXZ, cuComplex* CtmpXZ, float* filter_tmpYZ, float* nu_nlpm, cuComplex* nu1_nlpm, cuComplex* nu22_nlpm,
-		float* tmpZ, specie s, float dt_loc, float* Dnlpm_d, float Phi_zf_kx1, float kx2Phi_zf_rms)
+inline void filterNLPMcomplex(
+  int is,
+  fields_struct * fields_d, 
+  temporary_arrays_struct * tmp_d,
+  nlpm_struct * nlpm_d,
+  nlpm_struct * nlpm_h,
+  float dt_loc,
+  specie s,
+  float* Dnlpm_d
+)
 {
+cuComplex* Phi = fields_d->phi;
+//cuComplex* Dens = fields_d->dens[is];
+//cuComplex* Upar = fields_d->upar[is];
+cuComplex* Tpar = fields_d->tpar[is];
+cuComplex* Tprp = fields_d->tprp[is];
+cuComplex* Qpar = fields_d->qpar[is];
+cuComplex* Qprp = fields_d->qprp[is];
+float* Phi2ZF_tmpX = tmp_d->X;
+float* tmpXZ = tmp_d->XZ;
+float* filter_tmpYZ = tmp_d->YZ;
+float* nu_nlpm = nlpm_d->nu;
+//float* nu1_nlpm = nlpm_d->nu1;
+//float* nu22_nlpm = nlpm_d->nu22;
+float Phi_zf_kx1 = nlpm_h->Phi_zf_kx1_avg;
+float kx2Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
+//cuComplex* tmp  = tmp_d->CXYZ;
+cuComplex* PhiZF_CtmpX = tmp_d->CX;
+cuComplex* CtmpXZ = tmp_d->CXZ;
+cuComplex* nu1_nlpm = nlpm_d->nu1_complex;
+cuComplex* nu22_nlpm = nlpm_d->nu22_complex;
+float* tmpZ = tmp_d->Z;
+
   if(!nlpm_kxdep) {
     if(strcmp(nlpm_option,"constant") == 0 || (strcmp(nlpm_option,"cutoff") == 0 && kx2Phi_zf_rms>low_cutoff)) {
       get_dorland_nu_nlpm(nu_nlpm, nu1_nlpm, nu22_nlpm, tmpZ, Phi, Phi2ZF_tmpX, PhiZF_CtmpX, tmpXZ, CtmpXZ, s);
