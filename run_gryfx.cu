@@ -671,14 +671,9 @@ if(iproc==0) {
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
             cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
-            for(int i=0; i<nSpecies; i++) {
-              cudaMemcpyAsync(dens_ky0_h + s*ntheta0*Nz, dens_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(upar_ky0_h + s*ntheta0*Nz, upar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(tpar_ky0_h + s*ntheta0*Nz, tpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(tprp_ky0_h + s*ntheta0*Nz, tprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(qpar_ky0_h + s*ntheta0*Nz, qpar_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-              cudaMemcpyAsync(qprp_ky0_h + s*ntheta0*Nz, qprp_ky0_d[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
-            }
+            copy_hybrid_arrays_from_device_to_host_async(
+                &ev_h->grids, &ev_h->hybrid, &ev_hd->hybrid,
+                &ev_h->streams);
             cudaEventRecord(events->D2H, streams->copystream);
           }
 
@@ -690,19 +685,8 @@ if(iproc==0) {
           // first_half_flag determines which half of 
           // RK2 we are doing
           // The new fields end up in dens1 etc
-          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
-//          linear_timestep(Dens1[s], Dens[s], Dens1[s], 
-//                 Upar1[s], Upar[s], Upar1[s], 
-//                 Tpar1[s], Tpar[s], Tpar1[s], 
-//                 Qpar1[s], Qpar[s], Qpar1[s], 
-//                 Tprp1[s], Tprp[s], Tprp1[s], 
-//                 Qprp1[s], Qprp[s], Qprp1[s], 
-//                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
-   
           //Moment1 = Moment1 + (tm->dt/2)*L(Moment)
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
 
   	}         
       }
@@ -713,19 +697,8 @@ if(iproc==0) {
           // first_half_flag determines which half of 
           // RK2 we are doing
           // The new fields end up in dens1 etc
-          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
-//          linear_timestep(Dens[s], Dens[s], Dens1[s], 
-//                 Upar[s], Upar[s], Upar1[s], 
-//                 Tpar[s], Tpar[s], Tpar1[s], 
-//                 Qpar[s], Qpar[s], Qpar1[s], 
-//                 Tprp[s], Tprp[s], Tprp1[s], 
-//                 Qprp[s], Qprp[s], Qprp1[s], 
-//                 Phi, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt/2.,
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
-           
           //Moment1 = Moment + (tm->dt/2)*L(Moment)
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
 
         }
       }
@@ -922,21 +895,9 @@ if(iproc==0) {
           // first_half_flag determines which half of 
           // RK2 we are doing
           // The new fields end up in dens etc
-          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
           //calculate L(t+dt/2)=L(Moment1) 
-//          linear_timestep(Dens[s], Dens1[s], Dens[s], 
-//                 Upar[s], Upar1[s], Upar[s], 
-//                 Tpar[s], Tpar1[s], Tpar[s], 
-//                 Qpar[s], Qpar1[s], Qpar[s], 
-//                 Tprp[s], Tprp1[s], Tprp[s], 
-//                 Qprp[s], Qprp1[s], Qprp[s], 
-//                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
- //           linear_timestep(s, ev_h, ev_hd, ev_d);
-  
           //Moment = Moment + dt * L(Moment1)
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
   	}         
       }
       else { //if only linear
@@ -946,16 +907,6 @@ if(iproc==0) {
           // RK2 we are doing
           // The new fields end up in dens etc
           linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
-//          linear_timestep(Dens[s], Dens1[s], Dens[s], 
-//                 Upar[s], Upar1[s], Upar[s], 
-//                 Tpar[s], Tpar1[s], Tpar[s], 
-//                 Qpar[s], Qpar1[s], Qpar[s], 
-//                 Tprp[s], Tprp1[s], Tprp[s], 
-//                 Qprp[s], Qprp1[s], Qprp[s], 
-//                 Phi1, ev_hd->grids.kxCover,ev_hd->grids.kyCover, ev_hd->grids.g_covering, ev_hd->grids.kz_covering, species[s], tm->dt,
-//  	       field,field,field,field,field,field,
-//  	       tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmp,tmpZ,ev_h->ffts.plan_covering,
-//  	       nu_nlpm, tmpX, tmpXZ, CtmpX, CtmpX2);
         }
       }
       

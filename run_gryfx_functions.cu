@@ -534,6 +534,28 @@ void copy_hybrid_arrays_from_host_to_device_async(
   }
 }
 
+void copy_hybrid_arrays_from_device_to_host_async(
+  grids_struct * grids,
+  hybrid_zonal_arrays_struct * hybrid_h,
+  hybrid_zonal_arrays_struct * hybrid_d,
+  cuda_streams_struct * streams
+)
+{
+  int nSpecies = grids->Nspecies;
+  int ntheta0 = grids->ntheta0;
+  int Nz = grids->Nz;
+  for(int i=0; i<nSpecies; i++) {
+    int s = i; //EGH s should certainly be i here. The only reason this loop 
+               // worked before was because there was only one species.
+    cudaMemcpyAsync(hybrid_d->dens_h + s*ntheta0*Nz, hybrid_d->dens[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->upar_h + s*ntheta0*Nz, hybrid_d->upar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->tpar_h + s*ntheta0*Nz, hybrid_d->tpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->tprp_h + s*ntheta0*Nz, hybrid_d->tprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->qpar_h + s*ntheta0*Nz, hybrid_d->qpar[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+    cudaMemcpyAsync(hybrid_d->qprp_h + s*ntheta0*Nz, hybrid_d->qprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
+  }
+}
+
 void replace_zonal_fields_with_hybrid(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
