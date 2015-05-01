@@ -110,6 +110,7 @@ typedef struct {
 	float * Y2;
 	float * Z;
 	cuComplex * CZ;
+	cuComplex * CX;
 
 	float * XY;
 	float * XY2;
@@ -120,6 +121,11 @@ typedef struct {
 	float * XZ;
 	float * YZ;
 } temporary_arrays_struct;	
+
+typedef struct {
+  float kx2Phi_zf_rms;
+  float kx2Phi_zf_rms_avg;
+} nlpm_struct;
 
 
 
@@ -143,6 +149,7 @@ typedef struct {
   cuda_events_struct events;
   secondary_fixed_arrays_struct sfixed;
   hybrid_zonal_arrays_struct hybrid;
+  nlpm_struct nlpm;
   
 
 	/* Specifies whether the pointers in the struct point 

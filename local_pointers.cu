@@ -43,6 +43,7 @@
     float * wpfxnorm_kxky_sum = ev_hd->outs.hflux_by_mode_movav;
     float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
     cuComplex * tmp = ev_hd->tmp.CXYZ;
+    cuComplex * CtmpX = ev_hd->tmp.CX;
     float  * tmpX = ev_hd->tmp.X;
     float  * tmpX_h = ev_h->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;

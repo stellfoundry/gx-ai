@@ -607,23 +607,90 @@ inline void linear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *Dens
 
 
 
-inline void nonlinear_timestep(cuComplex *Dens, cuComplex *DensOld, cuComplex *DensNew,
-              cuComplex *Upar, cuComplex *UparOld, cuComplex *UparNew,
-              cuComplex *Tpar, cuComplex *TparOld, cuComplex *TparNew,
-              cuComplex *Qpar, cuComplex *QparOld, cuComplex *QparNew,
-              cuComplex *Tprp, cuComplex *TprpOld, cuComplex *TprpNew,
-              cuComplex *Qprp, cuComplex *QprpOld, cuComplex *QprpNew,
-	      cuComplex *Phi, 
-              cuComplex* NLdens_ky0_d, cuComplex* NLupar_ky0_d, cuComplex* NLtpar_ky0_d, 
-              cuComplex* NLtprp_ky0_d, cuComplex* NLqpar_ky0_d, cuComplex* NLqprp_ky0_d,              
-              double* dt_full, specie s,
-	      cuComplex *dens_field, cuComplex *upar_field, cuComplex *tpar_field,
-	      cuComplex *qpar_field, cuComplex *tprp_field, cuComplex *qprp_field, 
-	      cuComplex *phi_tmp, cuComplex *nlps_tmp, float* Phi_zf_rms_tmpX, cuComplex* Phi_zf_CtmpX, int first_half_step,
-              cuComplex *field_h, int counter, float kx2Phi_zf_rms_in, float kx2Phi_zf_rms_avg) 
+inline void nonlinear_timestep(
+  int is,
+  everything_struct * ev_h,
+  everything_struct * ev_hd,
+  everything_struct * ev_d) 
 {
-  float kx2Phi_zf_rms;
 
+cuComplex *Dens = ev_hd->fields.dens[is];
+cuComplex *Upar = ev_hd->fields.upar[is];
+cuComplex *Tpar = ev_hd->fields.tpar[is];
+cuComplex *Qpar = ev_hd->fields.qpar[is];
+cuComplex *Tprp = ev_hd->fields.tprp[is];
+cuComplex *Qprp = ev_hd->fields.qprp[is];
+
+cuComplex *Phi;// = ev_hd->fields.phi;
+
+cuComplex* NLdens_ky0_d = ev_hd->hybrid.dens[is];
+cuComplex* NLupar_ky0_d = ev_hd->hybrid.upar[is];
+cuComplex* NLtpar_ky0_d = ev_hd->hybrid.tpar[is];
+cuComplex* NLtprp_ky0_d = ev_hd->hybrid.tprp[is];
+cuComplex* NLqpar_ky0_d = ev_hd->hybrid.qpar[is];
+cuComplex* NLqprp_ky0_d = ev_hd->hybrid.qprp[is];
+
+double* dt_full = &ev_h->time.dt;
+int first_half_step = ev_h->time.first_half_flag;
+int counter = ev_h->time.counter;
+
+specie s = ev_h->pars.species[is];
+
+cuComplex *dens_field = ev_hd->fields.field;
+cuComplex *upar_field = ev_hd->fields.field;
+cuComplex *tpar_field = ev_hd->fields.field;
+cuComplex *qpar_field = ev_hd->fields.field;
+cuComplex *tprp_field = ev_hd->fields.field;
+cuComplex *qprp_field = ev_hd->fields.field;
+ 
+cuComplex *phi_tmp = ev_hd->tmp.CXYZ;
+cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
+float* Phi_zf_rms_tmpX = ev_hd->tmp.X;
+cuComplex* Phi_zf_CtmpX = ev_hd->tmp.CX;
+cuComplex *field_h = ev_h->fields.field;
+float kx2Phi_zf_rms_in = ev_h->nlpm.kx2Phi_zf_rms;
+float kx2Phi_zf_rms_avg = ev_h->nlpm.kx2Phi_zf_rms_avg;
+
+cuComplex *DensOld; cuComplex *DensNew;
+cuComplex *UparOld; cuComplex *UparNew;
+cuComplex *TparOld; cuComplex *TparNew;
+cuComplex *QparOld; cuComplex *QparNew;
+cuComplex *TprpOld; cuComplex *TprpNew;
+cuComplex *QprpOld; cuComplex *QprpNew;
+
+if (first_half_step==1){
+  DensOld = ev_hd->fields.dens[is];
+  UparOld = ev_hd->fields.upar[is];
+  TparOld = ev_hd->fields.tpar[is];
+  TprpOld = ev_hd->fields.tprp[is];
+  QparOld = ev_hd->fields.qpar[is];
+  QprpOld = ev_hd->fields.qprp[is];
+  DensNew = ev_hd->fields.dens1[is];
+  UparNew = ev_hd->fields.upar1[is];
+  TparNew = ev_hd->fields.tpar1[is];
+  TprpNew = ev_hd->fields.tprp1[is];
+  QparNew = ev_hd->fields.qpar1[is];
+  QprpNew = ev_hd->fields.qprp1[is];
+  Phi = ev_hd->fields.phi;
+}
+else {
+  DensNew = ev_hd->fields.dens[is];
+  UparNew = ev_hd->fields.upar[is];
+  TparNew = ev_hd->fields.tpar[is];
+  TprpNew = ev_hd->fields.tprp[is];
+  QparNew = ev_hd->fields.qpar[is];
+  QprpNew = ev_hd->fields.qprp[is];
+  DensOld = ev_hd->fields.dens1[is];
+  UparOld = ev_hd->fields.upar1[is];
+  TparOld = ev_hd->fields.tpar1[is];
+  TprpOld = ev_hd->fields.tprp1[is];
+  QparOld = ev_hd->fields.qpar1[is];
+  QprpOld = ev_hd->fields.qprp1[is];
+  Phi = ev_hd->fields.phi1;
+}
+
+
+  float kx2Phi_zf_rms;
   if(nlpm_cutoff_avg) kx2Phi_zf_rms = kx2Phi_zf_rms_avg;
   else kx2Phi_zf_rms = kx2Phi_zf_rms_in;
 
