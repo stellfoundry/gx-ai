@@ -130,6 +130,8 @@ typedef struct {
 typedef struct {
   float kx2Phi_zf_rms;
   float kx2Phi_zf_rms_avg;
+  float Phi_zf_kx1;
+  float Phi_zf_kx1_old;
   float Phi_zf_kx1_avg;
   float *nu;
   float *nu1;
@@ -137,6 +139,8 @@ typedef struct {
   cuComplex *nu1_complex;
   cuComplex *nu22_complex;
   float D;
+  float D_avg;
+  float D_sum;
 } nlpm_struct;
 
 
