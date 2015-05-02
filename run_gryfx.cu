@@ -97,26 +97,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if (iproc==0) set_cuda_constants();
 
     
-    //int naky, ntheta0;// nshift;
-    //naky = 1 + (Ny-1)/3;
-    //ntheta0 = 1 + 2*((Nx-1)/3);     //MASK IN MIDDLE OF ARRAY
-    //int ntheta0 = ev_h->grids.ntheta0;
-    
-    //float* Phi_zf_kx1_d;
-    //float* phiVal; 
-    //float phiVal0;
-  
-    //float Phi_zf_kx1 = 0.;
-    //float Phi_zf_kx1_old = 0.;
-    //float Phi_zf_kx1_sum = 0.;
-    //float alpha_nlpm = 0.;
-    //float mu_nlpm = 0.;
-    //float tau_nlpm = 50.;
-    //cuComplex *init_h;
-    //float Phi_energy;
-    //cuComplex *omega_h;  
-    //float dtBox[navg];
-    cuComplex* omegaAvg_h;
     float pflx[nSpecies];
     float wpfx_old[nSpecies];
     float pflx_old[nSpecies];
@@ -187,7 +167,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
    
     cuComplex *omegaBox[navg];
     
-    cuComplex *omegaAvg;
     
     //float *Phi2_XYBox[navg];
     specie* species_d;
@@ -225,7 +204,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     //omega_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
     omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
-    omegaAvg_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1));
 
 } //end if iproc
 
@@ -259,7 +237,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 #include "local_pointers.cu"
 
 
-   //omegaAvg_h = ev_h->outs.omega;
 
 if (iproc==0){
 
@@ -298,7 +275,6 @@ if (iproc==0){
       if(LINEAR || secondary_test) cudaMalloc((void**) &omegaBox[t], sizeof(cuComplex)*Nx*(Ny/2+1));
       //cudaMalloc((void**) &Phi2_XYBox[t], sizeof(float)*Nx*(Ny/2+1));
     }
-    cudaMalloc((void**) &omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1));
     
   
   
@@ -1086,15 +1062,15 @@ if(iproc==0) {
         add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha_avg, zCorr_sum, tm->dt*alpha_avg, tmpYZ, 1, Ny, Nz);
         if(LINEAR || write_omega || secondary_test) {
           if(tm->counter>0) {
-            add_scaled<<<dimGrid,dimBlock>>>(omegaAvg, 1.-alpha_avg, omegaAvg, tm->dt*alpha_avg, omega, Nx, Ny, 1);
-            cudaMemcpy(omegaAvg_h, omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
+            add_scaled<<<dimGrid,dimBlock>>>(ev_hd->outs.omega_avg, 1.-alpha_avg, ev_hd->outs.omega_avg, tm->dt*alpha_avg, omega, Nx, Ny, 1);
+            cudaMemcpy(ev_h->outs.omega_avg, ev_hd->outs.omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,tm->dtSum,tm->runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,ev_h->outs.omega_avg,tm->dtSum,tm->runtime); 
           }
           else {
-            cudaMemcpy(omegaAvg_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
+            cudaMemcpy(ev_h->outs.omega_avg, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,omegaAvg_h,tm->runtime); 
+            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,ev_h->outs.omega_avg,tm->runtime); 
           }             
 
         }  
@@ -1175,9 +1151,9 @@ if(iproc==0) {
   	  for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
   	    if(index!=0) {
-  	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/tm->dtSum, omegaAvg_h[index].y/tm->dtSum);
-        ev_h->outs.omega[index].x = omegaAvg_h[index].x/tm->dtSum;
-        ev_h->outs.omega[index].y = omegaAvg_h[index].y/tm->dtSum;
+  	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
+        ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
+        ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
   	      if(Stable[index] >= stableMax) printf("\tomega");
   	      if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	      printf("\n");
@@ -1189,9 +1165,9 @@ if(iproc==0) {
         for(int i=2*Nx/3+1; i<Nx; i++) {
             for(int j=0; j<((Ny-1)/3+1); j++) {
   	    int index = j + (Ny/2+1)*i;
-  	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], omegaAvg_h[index].x/tm->dtSum, omegaAvg_h[index].y/tm->dtSum);
-        ev_h->outs.omega[index].x = omegaAvg_h[index].x/tm->dtSum;
-        ev_h->outs.omega[index].y = omegaAvg_h[index].y/tm->dtSum;
+  	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
+        ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
+        ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
   	    if(Stable[index] >= stableMax) printf("\tomega");
   	    if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
   	    printf("\n");
@@ -1278,7 +1254,7 @@ if(iproc==0) {
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, false,
@@ -1362,7 +1338,7 @@ if(iproc==0) {
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, omegaAvg_h, qflux, &expectation_ky, &expectation_kx,
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &expectation_ky, &expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, true,
@@ -1417,7 +1393,6 @@ if(iproc==0) {
     //cudaFree(bmag);
     cudaFree(bmagInv), cudaFree(bmag_complex), cudaFree(bgrad);
     //cudaFree(omega);
-    cudaFree(omegaAvg);
     for(int t=0; t<navg; t++) {
       //cudaFree(Phi2_XYBox[t]);
       if(LINEAR) cudaFree(omegaBox[t]);

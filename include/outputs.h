@@ -52,6 +52,7 @@ typedef struct {
 
 	// Omega as a function of kx and ky
 	cuComplex * omega;
+	cuComplex * omega_avg;
 
 
 
