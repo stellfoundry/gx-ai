@@ -109,8 +109,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //float Phi_zf_kx1 = 0.;
     //float Phi_zf_kx1_old = 0.;
     //float Phi_zf_kx1_sum = 0.;
-    float alpha_nlpm = 0.;
-    float mu_nlpm = 0.;
+    //float alpha_nlpm = 0.;
+    //float mu_nlpm = 0.;
     //float tau_nlpm = 50.;
     //cuComplex *init_h;
     //float Phi_energy;
@@ -130,7 +130,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
    
     float Phi2_zf;
     float Phi_zf_rms;
-    float kx2Phi_zf_rms_old;
+    //float kx2Phi_zf_rms_old;
     float Phi_zf_rms_sum;
     float Phi_zf_rms_avg;
     float kx2Phi_zf_rms_sum;
@@ -250,18 +250,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   cuda_streams_struct * streams = &ev_h->streams;
   nlpm_struct * nlpm = &ev_h->nlpm;
 
-  nlpm->Phi_zf_kx1_avg = 0.;
-  nlpm->Phi_zf_kx1 = 0.;
-  nlpm->Phi_zf_kx1_old = 0.;
-  nlpm->D=0.;
-  nlpm->D_avg=0.;
-  nlpm->D_sum=0.;
-  
-    //float Dnlpm = 0;
-    //float Dnlpm_avg = 0;
-    //float Dnlpm_sum = 0;
-
-
 
 // The file local_pointers.cu
 //declares and assigns local 
@@ -327,10 +315,7 @@ if (iproc==0){
     //plan for ZDerivCovering done below
 	  create_cufft_plans(&ev_h->grids, &ev_h->ffts);
      
-    // INITIALIZE ARRAYS AS NECESSARY
-    zero<<<dimGrid,dimBlock>>>(nu22_nlpm, 1, 1, Nz);
-    zero<<<dimGrid,dimBlock>>>(nu1_nlpm, 1, 1, Nz);
-    zero<<<dimGrid,dimBlock>>>(nu_nlpm, 1, 1, Nz);
+    initialize_nlpm_coefficients(&ev_h->cdims, nlpm, &ev_hd->nlpm, ev_h->grids.Nz);
   
 	  initialize_grids(&ev_h->pars, &ev_hd->grids, &ev_h->grids, &ev_h->cdims); 
 
@@ -349,6 +334,7 @@ if (iproc==0){
 #ifdef GS2_zonal
 			}
 #endif
+
   
   
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1041,7 +1027,7 @@ if(iproc==0) {
       cudaMemcpy(&nlpm->Phi_zf_kx1, &ev_d->nlpm.Phi_zf_kx1, sizeof(float), cudaMemcpyDeviceToHost);
       
       //volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
-      kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
+      nlpm->kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
       multKx4<<<dimGrid,dimBlock>>>(tmpX2, tmpX, kx); 
       nlpm->kx2Phi_zf_rms = sumReduc(tmpX2, Nx, false);
       nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
@@ -1128,23 +1114,13 @@ if(iproc==0) {
         // **_sum/dtSum gives time average of **
         Phi_zf_rms_avg = Phi_zf_rms_sum/tm->dtSum;
         //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
-        nlpm->D_avg = nlpm->D_sum/tm->dtSum;
   
         for(int s=0; s<nSpecies; s++) {
           wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
           pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
         }
   
-        alpha_nlpm = tm->dt/tau_nlpm;
-        mu_nlpm = exp(-alpha_nlpm);
-        if(tm->runtime<20) {
-          nlpm->Phi_zf_kx1_avg = nlpm->Phi_zf_kx1; //allow a build-up time of tau_nlpm
-          nlpm->kx2Phi_zf_rms_avg = nlpm->kx2Phi_zf_rms;
-        }
-        else { 
-          nlpm->Phi_zf_kx1_avg = mu_nlpm*nlpm->Phi_zf_kx1_avg + (1-mu_nlpm)*nlpm->Phi_zf_kx1 + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(nlpm->Phi_zf_kx1 - nlpm->Phi_zf_kx1_old);
-          nlpm->kx2Phi_zf_rms_avg = mu_nlpm*nlpm->kx2Phi_zf_rms_avg + (1-mu_nlpm)*nlpm->kx2Phi_zf_rms + (mu_nlpm - (1-mu_nlpm)/alpha_nlpm)*(nlpm->kx2Phi_zf_rms - kx2Phi_zf_rms_old);
-        }
+        update_nlpm_coefficients(nlpm, tm);
   /*
         // try to autostop when wpfx converges
         // look at min and max of wpfxAvg over time... if wpfxAvg stays within certain bounds for a given amount of

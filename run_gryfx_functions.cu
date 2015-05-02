@@ -642,3 +642,45 @@ void write_initial_fields(
   sumY_neq_0<<<cdims->dimGrid,cdims->dimBlock>>>(tmp_d->X, tmp_d->XY);
   kxWrite(tmp_d->X, tmpX_h, filename, "phi2_0.kx");
 }
+
+void update_nlpm_coefficients(
+    nlpm_struct * nlpm,
+    time_struct * tm
+)
+{
+    nlpm->D_avg = nlpm->D_sum/tm->dtSum;
+    nlpm->alpha = tm->dt/tau_nlpm;
+    nlpm->mu = exp(-nlpm->alpha);
+    if(tm->runtime<20) {
+      nlpm->Phi_zf_kx1_avg = nlpm->Phi_zf_kx1; //allow a build-up time of tau_nlpm
+      nlpm->kx2Phi_zf_rms_avg = nlpm->kx2Phi_zf_rms;
+    }
+    else { 
+      nlpm->Phi_zf_kx1_avg = nlpm->mu*nlpm->Phi_zf_kx1_avg + (1-nlpm->mu)*nlpm->Phi_zf_kx1 + (nlpm->mu - (1-nlpm->mu)/nlpm->alpha)*(nlpm->Phi_zf_kx1 - nlpm->Phi_zf_kx1_old);
+      nlpm->kx2Phi_zf_rms_avg = nlpm->mu*nlpm->kx2Phi_zf_rms_avg + (1-nlpm->mu)*nlpm->kx2Phi_zf_rms + (nlpm->mu - (1-nlpm->mu)/nlpm->alpha)*(nlpm->kx2Phi_zf_rms - nlpm->kx2Phi_zf_rms_old);
+    }
+}
+
+void initialize_nlpm_coefficients(
+    cuda_dimensions_struct * cdims,
+    nlpm_struct* nlpm_h, 
+    nlpm_struct* nlpm_d,
+    int Nz
+)
+{
+
+  dim3 dimGrid = cdims->dimGrid;
+  dim3 dimBlock = cdims->dimBlock;
+  nlpm_h->Phi_zf_kx1_avg = 0.;
+  nlpm_h->Phi_zf_kx1 = 0.;
+  nlpm_h->Phi_zf_kx1_old = 0.;
+  nlpm_h->D=0.;
+  nlpm_h->D_avg=0.;
+  nlpm_h->D_sum=0.;
+  nlpm_h->alpha=0.;
+  nlpm_h->mu=0.;
+  // INITIALIZE ARRAYS AS NECESSARY
+  zero<<<dimGrid,dimBlock>>>(nlpm_d->nu22, 1, 1, Nz);
+  zero<<<dimGrid,dimBlock>>>(nlpm_d->nu1, 1, 1, Nz);
+  zero<<<dimGrid,dimBlock>>>(nlpm_d->nu, 1, 1, Nz);
+}
