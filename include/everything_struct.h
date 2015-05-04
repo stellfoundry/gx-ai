@@ -18,6 +18,7 @@ typedef struct {
 	double runtime;
 	// Timestep counter
 	int counter;
+  int gs2_counter;
 	// Used to calculate exponential moving averages
 	float dtSum;
 	// Total runtime in minutes
@@ -153,10 +154,22 @@ typedef struct {
     float *shear_rate_nz;  
 } hyper_struct;
 
+/* Information about how the run
+ * is progressing and whether it has
+ * converged */
+typedef struct {
+  int * stable;
+  int stable_max;
+  int converge_count;
+  int stopcount;
+  int nstop;
+} run_control_struct;
+
 
 typedef struct {
 
   fields_struct  fields;
+
   //This is used only on the device and contains
   //pointers which point to fields, e.g. fields1.dens = fields.dens1
   //Eventually we will get rid of fields.*1 and replace them entirely
@@ -180,6 +193,7 @@ typedef struct {
   hybrid_zonal_arrays_struct hybrid;
   nlpm_struct nlpm;
   hyper_struct hyper;
+  run_control_struct ctrl;
   
 
 	/* Specifies whether the pointers in the struct point 

@@ -50,16 +50,20 @@
     float  * tmpX_h = ev_h->tmp.X;
     float * tmpX2 = ev_hd->tmp.X2;
     float * tmpY = ev_hd->tmp.Y;
+    float * tmpY_h = ev_h->tmp.Y;
     float * tmpY2 = ev_hd->tmp.Y2;
     float * tmpZ = ev_hd->tmp.Z;
     //cuComplex * CtmpZ_h = ev_h->tmp.CZ;
     float * tmpXY = ev_hd->tmp.XY;
+    float * tmpXY_h = ev_h->tmp.XY;
     float * tmpXY2 = ev_hd->tmp.XY2;
     float * tmpXY3 = ev_hd->tmp.XY3;
     float * tmpXY4 = ev_hd->tmp.XY4;
     float * tmpXY_R = ev_hd->tmp.XY_R;
+    float * tmpXY_R_h = ev_h->tmp.XY_R;
     float * tmpXZ = ev_hd->tmp.XZ;
     float * tmpYZ = ev_hd->tmp.YZ;
+    float * tmpYZ_h = ev_h->tmp.YZ;
     //float * tmpXYZ = ev_hd->tmp.XYZ;
 
     cuComplex * dens_ky0_h = ev_h->hybrid.dens_h;

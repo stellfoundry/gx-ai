@@ -10,7 +10,7 @@ void setup_info(char * input_file, input_parameters_struct * pars, info_struct *
 
   //Work out how long the restart file name can be
   int rfn_size, temp;
-  rfn_size = run_name_size + 12;
+  rfn_size = run_name_size + 13;
   temp = strlen(pars->secondary_test_restartfileName) + 1;
   rfn_size = rfn_size > temp ? rfn_size : temp;
 
@@ -33,7 +33,7 @@ void setup_info(char * input_file, input_parameters_struct * pars, info_struct *
 
   
   strcpy(restartfileName, info->run_name);
-  strcat(restartfileName, "restart.bin");
+  strcat(restartfileName, ".restart.bin");
  
   if(pars->secondary_test && !pars->linear) 
     strcpy(restartfileName, pars->secondary_test_restartfileName);
@@ -47,6 +47,7 @@ void setup_info(char * input_file, input_parameters_struct * pars, info_struct *
       printf("cannot restart because cannot find restart file. changing to no restart\n");
       // EGH Perhaps we should abort at this point?
       pars->restart = false;
+      abort();
     }
   }			
   

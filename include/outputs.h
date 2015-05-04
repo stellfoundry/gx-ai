@@ -6,8 +6,11 @@ EXTERN_SWITCH cuComplex * omega_h;
 #endif
 
 typedef struct {
-	// General stuff
+	// The simpledataio object containing the netcdf output file
 	struct sdatio_file sdatfile;
+
+  float mu_avg;
+  float alpha_avg;
 
 	// Total integrated |field|^2 
 	float phi2;
@@ -24,6 +27,12 @@ typedef struct {
 	
 	float * phi2_by_mode_movav;
 	float * phi2_zonal_by_kx_movav;
+
+  //Zonal flow diagnostics
+  float phi2_zf;
+  float phi2_zf_rms;
+  float phi2_zf_rms_sum;
+  float phi2_zf_rms_avg;
 
 	
 	// Expectation values of wavenumbers
@@ -42,10 +51,12 @@ typedef struct {
   // Fluxes by species and by mode
 	
 	float * hflux_by_species;
+	float * hflux_by_species_old;
 	float * hflux_by_mode_movav;
 	float * hflux_by_species_movav;
 
 	float * pflux_by_species;
+	float * pflux_by_species_old;
 	float * pflux_by_mode_movav;
 	float * pflux_by_species_movav;
 	

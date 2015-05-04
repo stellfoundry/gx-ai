@@ -1288,8 +1288,8 @@ inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, c
   cudaMemcpy(zCorr_sum_h, zCorr_sum, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
   fwrite(&counter,sizeof(int),1,restart);
-  fwrite(&runtime,sizeof(float),1,restart);
-  fwrite(&dt,sizeof(float),1,restart);
+  fwrite(&runtime,sizeof(double),1,restart);
+  fwrite(&dt,sizeof(double),1,restart);
   fwrite(&timer,sizeof(float),1,restart);
   
   fwrite(wpfxAvg, sizeof(float)*nSpecies, 1, restart);
@@ -1364,8 +1364,8 @@ inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd, flo
   zCorr_sum_h = (float*) malloc(sizeof(float)*(Ny/2+1)*Nz);
     
   fread(&ev_h->time.counter,sizeof(int),1,restart);  
-  fread(&ev_h->time.runtime,sizeof(float),1,restart); 
-  fread(&ev_h->time.dt, sizeof(float),1,restart);
+  fread(&ev_h->time.runtime,sizeof(double),1,restart); 
+  fread(&ev_h->time.dt, sizeof(double),1,restart);
   fread(&ev_h->time.totaltimer, sizeof(float),1,restart);
   /* Update global*/
   dt = ev_h->time.dt;

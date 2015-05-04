@@ -97,57 +97,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if (iproc==0) set_cuda_constants();
 
     
-    float pflx[nSpecies];
-    float wpfx_old[nSpecies];
-    float pflx_old[nSpecies];
-    //float wpfx_sum[nSpecies];
-    //float tmpX_h[Nx];
-    float tmpY_h[Ny/2+1];
-    float tmpXY_h[Nx*(Ny/2+1)];
-    float tmpYZ_h[(Ny/2+1)*Nz];
-    float tmpXY_R_h[Nx*Ny];
-    //float phi0_X[Nx];
-   
-    float Phi2_zf;
-    float Phi_zf_rms;
-    //float kx2Phi_zf_rms_old;
-    float Phi_zf_rms_sum;
-    float Phi_zf_rms_avg;
-    float kx2Phi_zf_rms_sum;
-    
-    //for secondary test
-    float S_fixed = 1.; // Remove eventually
-    ev_h->sfixed.S = S_fixed;
-
     char filename[200];
-  
-    //int exit_flag = 0;  
-  
-    int gs2_counter;
 
-
-    //nSteps = 100;
-    
-    int Stable[Nx*(Ny/2+1)*2];
-    //cuComplex stability[Nx*(Ny/2+1)];
-    for(int i=0; i<Nx*(Ny/2+1); i++) {
-      //stability[i].x = 0;
-      //stability[i].y = 0;
-      Stable[i] = 0;
-      Stable[i +Nx*(Ny/2+1)] = 0;
-    }
-    //bool STABLE_STOP=false;  
-    int stableMax = 500;
-      
-    //float wpfxmax=0.;
-    //float wpfxmin=0.;
-    int converge_count=0;
-    
-    //bool startavg=false;
-  
-    //float dt_start = .02;
-    float alpha_avg = (float) 2./(navg+1.);
-    float mu_avg = exp(-alpha_avg);
     //float navg_nlpm;
 
     /*
@@ -161,21 +112,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     */
     //device variables; main device arrays will be capitalized
     if(DEBUG) getError("run_gryfx.cu, before device alloc");
-    
-    //tmps for timestep routine
-    //cuComplex *CtmpXZ;
    
-    cuComplex *omegaBox[navg];
-    
-    
-    //float *Phi2_XYBox[navg];
+    //cuComplex *omegaBox[navg];
     specie* species_d;
-    
-    //double dt_old;
-    //double avgdt;
-    //float totaltimer;
-    //float timer;
-    //float GS2timer;
     
     //diagnostics scalars
     float flux1,flux2;
@@ -227,7 +166,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   cuda_events_struct * events = &ev_h->events;
   cuda_streams_struct * streams = &ev_h->streams;
   nlpm_struct * nlpm = &ev_h->nlpm;
+  run_control_struct * ctrl = &ev_h->ctrl;
 
+  initialize_run_control(ctrl, &ev_h->grids);
 
 // The file local_pointers.cu
 //declares and assigns local 
@@ -272,7 +213,7 @@ if (iproc==0){
   
     
     for(int t=0; t<navg; t++) {
-      if(LINEAR || secondary_test) cudaMalloc((void**) &omegaBox[t], sizeof(cuComplex)*Nx*(Ny/2+1));
+      //if(LINEAR || secondary_test) cudaMalloc((void**) &omegaBox[t], sizeof(cuComplex)*Nx*(Ny/2+1));
       //cudaMalloc((void**) &Phi2_XYBox[t], sizeof(float)*Nx*(Ny/2+1));
     }
     
@@ -321,7 +262,9 @@ if (iproc==0){
     ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 if (iproc==0){
+
   
+    initialize_averaging_parameters(outs, ev_h->pars.navg);
     
     ////////////////////////////////////////////////
     // set up some diagnostics/control flow files //
@@ -341,10 +284,11 @@ if (iproc==0){
     
   
     if(DEBUG) getError("run_gryfx.cu, before initial condition"); 
+    ev_hd->sfixed.S = ev_h->sfixed.S=1.0;
     
     //if running nonlinear part of secondary test...
     if(secondary_test && !LINEAR && RESTART) { 
-       restartRead(ev_h, ev_hd, &Phi_zf_rms);
+       restartRead(ev_h, ev_hd, &nlpm->Phi_zf_kx1_avg);
        //Check restart was successful
        fieldWrite(Phi, field_h, "phi_restarted.field", filename);
        load_fixed_arrays_from_restart(
@@ -358,6 +302,7 @@ if (iproc==0){
        tm->counter = 0;
        tm->runtime = 0.;
        tm->dtSum = 0.;
+       //tm->dt=ev_h->pars.dt;
 
        maxdt = .1/(phi_test.x*kx_h[1]*ky_h[1]);
     } 
@@ -378,7 +323,7 @@ if (iproc==0){
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
     } 
     else {
-      restartRead(ev_h, ev_hd, &Phi_zf_rms);
+      restartRead(ev_h, ev_hd, &nlpm->Phi_zf_kx1_avg);
       if(zero_restart_avg) {
 		    zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       }
@@ -397,12 +342,12 @@ if (iproc==0){
 #endif 
     tm->runtime=0.;
     tm->counter=0;
-    gs2_counter=1;
+    tm->gs2_counter=1;
     tm->totaltimer=0.;
     tm->timer=0.;
       //GS2timer=0.;
-    int stopcount = 0;
-    int nstop = 10;
+    ctrl->stopcount = 0;
+    ctrl->nstop = 10;
 
 #ifdef GS2_zonal
 
@@ -504,8 +449,8 @@ if(iproc==0) {
    
     while(/*counter < 1 &&*/ 
         tm->counter<nSteps &&
-  	stopcount<nstop 
-  	/*&& converge_count<2*navg*/
+  	ctrl->stopcount<ctrl->nstop 
+  	/*&& ctrl->converge_count<2*navg*/
   	)
      {
 
@@ -656,6 +601,7 @@ if(iproc==0) {
       if(secondary_test && !LINEAR) {
         if(tm->runtime < .02/maxdt/M_PI) ev_h->sfixed.S = 1.;// sin(.01/maxdt * tm->runtime);
         else ev_h->sfixed.S = 1.;
+        ev_hd->sfixed.S = ev_h->sfixed.S;
         copy_fixed_modes_into_fields( &ev_h->cdims, &ev_hd->fields1,
                ev_hd->fields1.phi, &ev_hd->sfixed);
       }
@@ -693,8 +639,8 @@ if(iproc==0) {
     //cudaEventRecord(GS2start,0);
 
     //advance GS2 t -> t + tm->dt/2  
-    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
-    gs2_counter++;
+    advance_gs2(&tm->gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
+    tm->gs2_counter++;
 
     //nvtxRangePop();
     //cudaEventRecord(GS2stop,0);
@@ -846,8 +792,8 @@ if(iproc==0) {
     //advance GS2 t+dt/2 -> t+dt
       //MPI_Barrier(MPI_COMM_WORLD);
     //nvtxRangePushA("GS2 t+dt/2->t+dt");
-    advance_gs2(&gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
-    gs2_counter++;
+    advance_gs2(&tm->gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
+    tm->gs2_counter++;
     //nvtxRangePop();
   
 /*
@@ -967,8 +913,8 @@ if(iproc==0) {
         
   
         //if(counter>2*navg) {
-  	//omegaStability(omega_h, omegaAvg_h, stability,Stable,stableMax);
-  	//STABLE_STOP = stabilityCheck(Stable,stableMax);
+  	//omegaStability(omega_h, omegaAvg_h, stability,ctrl->stable,stableMax);
+  	//STABLE_STOP = stabilityCheck(ctrl->stable,stableMax);
         //}
       }
       
@@ -986,13 +932,13 @@ if(iproc==0) {
       */
       
       for(int s=0; s<nSpecies; s++) {    
-        wpfx_old[s] = wpfx[s];
-        pflx_old[s] = pflx[s];
+        outs->hflux_by_species_old[s] = wpfx[s];
+        outs->pflux_by_species_old[s] = outs->pflux_by_species[s];
       }
   
       //calculate instantaneous heat flux
       for(int s=0; s<nSpecies; s++) {  
-        fluxes(&pflx[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
+        fluxes(&outs->pflux_by_species[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
                tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],tm->runtime,
                &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
       }
@@ -1009,8 +955,8 @@ if(iproc==0) {
       nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
   
       //volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
-      Phi2_zf = sumReduc(tmpX, Nx, false);
-      Phi_zf_rms = sqrt(Phi2_zf);   
+      outs->phi2_zf = sumReduc(tmpX, Nx, false);
+      outs->phi2_zf_rms = sqrt(outs->phi2_zf);   
 
       //calculate tmpXY = Phi**2(kx,ky)
       volflux(Phi,Phi,tmp,tmpXY);
@@ -1049,20 +995,20 @@ if(iproc==0) {
     
       if(tm->counter>0) { 
         //we use an exponential moving average
-        // wpfx_avg[t] = alpha_avg*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
+        // wpfx_avg[t] = outs->alpha_avg*wpfx[t] + (1-outs->alpha_avg)*wpfx_avg[t-1]
         // now with time weighting...
-        // wpfx_sum[t] = alpha_avg*dt*wpfx[t] + (1-alpha_avg)*wpfx_avg[t-1]
-        // tm->dtSum[t] = alpha_avg*tm->dt[t] + (1-alpha_avg)*tm->dtSum[t-1]
+        // wpfx_sum[t] = outs->alpha_avg*dt*wpfx[t] + (1-outs->alpha_avg)*wpfx_avg[t-1]
+        // tm->dtSum[t] = outs->alpha_avg*tm->dt[t] + (1-outs->alpha_avg)*tm->dtSum[t-1]
         // wpfx_avg[t] = wpfx_sum[t]/tm->dtSum[t]
    
         // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
-        tm->dtSum = tm->dtSum*(1.-alpha_avg) + tm->dt*alpha_avg;
-        add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-alpha_avg, Phi2_kxky_sum, tm->dt*alpha_avg, tmpXY, Nx, Ny, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-alpha_avg, Phi2_zonal_sum, tm->dt*alpha_avg, tmpX, Nx, 1, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-alpha_avg, zCorr_sum, tm->dt*alpha_avg, tmpYZ, 1, Ny, Nz);
+        tm->dtSum = tm->dtSum*(1.-outs->alpha_avg) + tm->dt*outs->alpha_avg;
+        add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-outs->alpha_avg, Phi2_kxky_sum, tm->dt*outs->alpha_avg, tmpXY, Nx, Ny, 1);
+        add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-outs->alpha_avg, Phi2_zonal_sum, tm->dt*outs->alpha_avg, tmpX, Nx, 1, 1);
+        add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-outs->alpha_avg, zCorr_sum, tm->dt*outs->alpha_avg, tmpYZ, 1, Ny, Nz);
         if(LINEAR || write_omega || secondary_test) {
           if(tm->counter>0) {
-            add_scaled<<<dimGrid,dimBlock>>>(ev_hd->outs.omega_avg, 1.-alpha_avg, ev_hd->outs.omega_avg, tm->dt*alpha_avg, omega, Nx, Ny, 1);
+            add_scaled<<<dimGrid,dimBlock>>>(ev_hd->outs.omega_avg, 1.-outs->alpha_avg, ev_hd->outs.omega_avg, tm->dt*outs->alpha_avg, omega, Nx, Ny, 1);
             cudaMemcpy(ev_h->outs.omega_avg, ev_hd->outs.omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
             omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,ev_h->outs.omega_avg,tm->dtSum,tm->runtime); 
@@ -1074,26 +1020,26 @@ if(iproc==0) {
           }             
 
         }  
-        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-alpha_avg) + expectation_kx*tm->dt*alpha_avg;
-        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-alpha_avg) + expectation_ky*tm->dt*alpha_avg;
-        Phi2_sum = Phi2_sum*(1.-alpha_avg) + Phi2*tm->dt*alpha_avg;
-        Phi_zf_rms_sum = Phi_zf_rms_sum*(1.-alpha_avg) + Phi_zf_rms*tm->dt*alpha_avg;
-        kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-alpha_avg) + nlpm->kx2Phi_zf_rms*tm->dt*alpha_avg;
-        flux1_phase_sum = flux1_phase_sum*(1.-alpha_avg) + flux1_phase*tm->dt*alpha_avg;
-        flux2_phase_sum = flux2_phase_sum*(1.-alpha_avg) + flux2_phase*tm->dt*alpha_avg;
-        Dens_phase_sum = Dens_phase_sum*(1.-alpha_avg) + Dens_phase*tm->dt*alpha_avg;
-        Tpar_phase_sum = Tpar_phase_sum*(1.-alpha_avg) + Tpar_phase*tm->dt*alpha_avg;
-        Tprp_phase_sum = Tprp_phase_sum*(1.-alpha_avg) + Tprp_phase*tm->dt*alpha_avg;
-        nlpm->D_sum = nlpm->D_sum*(1.-alpha_avg) + nlpm->D*tm->dt*alpha_avg;
+        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-outs->alpha_avg) + expectation_kx*tm->dt*outs->alpha_avg;
+        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-outs->alpha_avg) + expectation_ky*tm->dt*outs->alpha_avg;
+        Phi2_sum = Phi2_sum*(1.-outs->alpha_avg) + Phi2*tm->dt*outs->alpha_avg;
+        outs->phi2_zf_rms_sum = outs->phi2_zf_rms_sum*(1.-outs->alpha_avg) + outs->phi2_zf_rms*tm->dt*outs->alpha_avg;
+        //kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-outs->alpha_avg) + nlpm->kx2Phi_zf_rms*tm->dt*outs->alpha_avg;
+        flux1_phase_sum = flux1_phase_sum*(1.-outs->alpha_avg) + flux1_phase*tm->dt*outs->alpha_avg;
+        flux2_phase_sum = flux2_phase_sum*(1.-outs->alpha_avg) + flux2_phase*tm->dt*outs->alpha_avg;
+        Dens_phase_sum = Dens_phase_sum*(1.-outs->alpha_avg) + Dens_phase*tm->dt*outs->alpha_avg;
+        Tpar_phase_sum = Tpar_phase_sum*(1.-outs->alpha_avg) + Tpar_phase*tm->dt*outs->alpha_avg;
+        Tprp_phase_sum = Tprp_phase_sum*(1.-outs->alpha_avg) + Tprp_phase*tm->dt*outs->alpha_avg;
+        nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
   
         
         // **_sum/dtSum gives time average of **
-        Phi_zf_rms_avg = Phi_zf_rms_sum/tm->dtSum;
+        outs->phi2_zf_rms_avg = outs->phi2_zf_rms_sum/tm->dtSum;
         //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
   
         for(int s=0; s<nSpecies; s++) {
-          wpfxAvg[s] = mu_avg*wpfxAvg[s] + (1-mu_avg)*wpfx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(wpfx[s] - wpfx_old[s]);
-          pflxAvg[s] = mu_avg*pflxAvg[s] + (1-mu_avg)*pflx[s] + (mu_avg - (1-mu_avg)/alpha_avg)*(pflx[s] - pflx_old[s]);
+          wpfxAvg[s] = outs->mu_avg*wpfxAvg[s] + (1-outs->mu_avg)*wpfx[s] + (outs->mu_avg - (1-outs->mu_avg)/outs->alpha_avg)*(wpfx[s] - outs->hflux_by_species_old[s]);
+          pflxAvg[s] = outs->mu_avg*pflxAvg[s] + (1-outs->mu_avg)*outs->pflux_by_species[s] + (outs->mu_avg - (1-outs->mu_avg)/outs->alpha_avg)*(outs->pflux_by_species[s] - outs->pflux_by_species_old[s]);
         }
   
         update_nlpm_coefficients(nlpm, tm);
@@ -1105,29 +1051,29 @@ if(iproc==0) {
           //set bounds to be +/- .05*wpfxAvg
   	converge_bounds = .1*wpfxAvg[ION];
   	//if counter reaches navg/3, recenter bounds
-  	if(counter == navg || converge_count == navg/3) {
+  	if(counter == navg || ctrl->converge_count == navg/3) {
   	  wpfxmax = wpfxAvg[ION] + .5*converge_bounds;
   	  wpfxmin = wpfxAvg[ION] - .5*converge_bounds;
-  	  converge_count++;
+  	  ctrl->converge_count++;
   	}
   	//if wpfxAvg goes outside the bounds, reset the bounds.
   	else if(wpfxAvg[ION] > wpfxmax) {
             wpfxmax = wpfxAvg[ION] + .3*converge_bounds;
   	  wpfxmin = wpfxmax - converge_bounds;
-  	  converge_count=0;
+  	  ctrl->converge_count=0;
   	}
   	else if(wpfxAvg[ION] < wpfxmin) {
             wpfxmin = wpfxAvg[ION] - .3*converge_bounds;
   	  wpfxmax = wpfxmin + converge_bounds;
-  	  converge_count=0;
+  	  ctrl->converge_count=0;
   	}
   	//if wpfxAvg stays inside the bounds, increment the convergence counter.
-  	else converge_count++; 
+  	else ctrl->converge_count++; 
         }    
   */
       }
   
-      fluxWrite(ev_h->files.fluxfile,pflx, pflxAvg, wpfx,wpfxAvg, nlpm->D, nlpm->D_avg, nlpm->Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,converge_count,tm->runtime,species);
+      fluxWrite(ev_h->files.fluxfile,outs->pflux_by_species, pflxAvg, wpfx,wpfxAvg, nlpm->D, nlpm->D_avg, nlpm->Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,ctrl->converge_count,tm->runtime,species);
     
   	     
       if(tm->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, tm->runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
@@ -1144,7 +1090,7 @@ if(iproc==0) {
       
       //print growth rates to screen every nwrite timesteps if write_omega
       if(write_omega) {
-        if (tm->counter%nwrite==0 || stopcount==nstop-1 || tm->counter==nSteps-1) {
+        if (tm->counter%nwrite==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
   	printf("ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
   	//for(int i=0; i<1; i++) {
         for(int i=0; i<((Nx-1)/3+1); i++) {
@@ -1154,8 +1100,8 @@ if(iproc==0) {
   	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
         ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
         ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
-  	      if(Stable[index] >= stableMax) printf("\tomega");
-  	      if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
+  	      if(ctrl->stable[index] >= ctrl->stable_max) printf("\tomega");
+  	      if(ctrl->stable[index+Nx*(Ny/2+1)] >= ctrl->stable_max) printf("\tgamma");
   	      printf("\n");
   	    }
   	  }
@@ -1168,8 +1114,8 @@ if(iproc==0) {
   	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
         ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
         ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
-  	    if(Stable[index] >= stableMax) printf("\tomega");
-  	    if(Stable[index+Nx*(Ny/2+1)] >= stableMax) printf("\tgamma");
+  	    if(ctrl->stable[index] >= ctrl->stable_max) printf("\tomega");
+  	    if(ctrl->stable[index+Nx*(Ny/2+1)] >= ctrl->stable_max) printf("\tgamma");
   	    printf("\n");
   	  }
   	  printf("\n");
@@ -1197,12 +1143,12 @@ if(iproc==0) {
       //checkstop
       if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
         fclose(checkstop);
-        stopcount++;
+        ctrl->stopcount++;
       }     
     
 #ifdef GS2_zonal
 			if(iproc==0) {
-      if(tm->counter%nsave==0 || stopcount==nstop-1 || tm->counter==nSteps-1) {
+      if(tm->counter%nsave==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
         printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,tm->runtime,gs2_time_mp_code_time_/sqrt(2.), tm->dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
       }
 #endif
@@ -1213,10 +1159,10 @@ if(iproc==0) {
       if(!LINEAR && !secondary_test && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 100000) ) {
         printf("\n-------------\n--RUN ERROR--\n-------------\n\n");
         
-        stopcount=100;
+        ctrl->stopcount=100;
 #ifdef GS2_zonal
         abort();
-        broadcast_integer(&stopcount);
+        broadcast_integer(&ctrl->stopcount);
 #endif
 /*
         if(tm->counter>nsave) {	
@@ -1232,7 +1178,7 @@ if(iproc==0) {
         }
         else{
   	printf("ERROR: FLUX IS NAN AT BEGINNING OF RUN\nENDING RUN...\n\n");
-          stopcount=100;
+          ctrl->stopcount=100;
         } */
       }
   
@@ -1348,7 +1294,7 @@ if(iproc==0) {
   
     
     
-    //if(write_omega) stabilityWrite(stability,Stable,stableMax);
+    //if(write_omega) stabilityWrite(stability,ctrl->stable,ctrl->stable_max);
       
     //Timing       
     printf("Total steps: %d\n", tm->counter);
@@ -1360,7 +1306,7 @@ if(iproc==0) {
     
     fprintf(outfile,"expectation val of ky = %f\n", expectation_ky);
     fprintf(outfile,"expectation val of kx = %f\n", expectation_kx);
-    fprintf(outfile,"Q_i = %f\n Phi_zf_rms = %f\n Phi2 = %f\n", qflux[ION],Phi_zf_rms_avg, Phi2);
+    fprintf(outfile,"Q_i = %f\n Phi_zf_rms = %f\n Phi2 = %f\n", qflux[ION],outs->phi2_zf_rms_avg, Phi2);
     fprintf(outfile, "flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
     fprintf(outfile,"\nTotal time (min): %f\n",tm->totaltimer/60000);
     fprintf(outfile,"Total steps: %d\n", tm->counter);
@@ -1395,7 +1341,7 @@ if(iproc==0) {
     //cudaFree(omega);
     for(int t=0; t<navg; t++) {
       //cudaFree(Phi2_XYBox[t]);
-      if(LINEAR) cudaFree(omegaBox[t]);
+      //if(LINEAR) cudaFree(omegaBox[t]);
     }
     
     //cudaFree(kx_shift), cudaFree(jump);

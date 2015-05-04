@@ -684,3 +684,25 @@ void initialize_nlpm_coefficients(
   zero<<<dimGrid,dimBlock>>>(nlpm_d->nu1, 1, 1, Nz);
   zero<<<dimGrid,dimBlock>>>(nlpm_d->nu, 1, 1, Nz);
 }
+
+void initialize_run_control(run_control_struct * ctrl, grids_struct * grids){
+    int Nx = grids->Nx;
+    int Ny = grids->Ny;
+
+    for(int i=0; i<Nx*(Ny/2+1); i++) {
+      //stability[i].x = 0;
+      //stability[i].y = 0;
+      ctrl->stable[i] = 0;
+      ctrl->stable[i +Nx*(Ny/2+1)] = 0;
+    }
+    //bool STABLE_STOP=false;  
+    ctrl->stable_max = 500;
+      
+    //float wpfxmax=0.;
+    //float wpfxmin=0.;
+    ctrl->converge_count=0;
+}
+void initialize_averaging_parameters(outputs_struct * outs, int navg){
+    outs->alpha_avg = (float) 2./(navg+1.);
+    outs->mu_avg = exp(-outs->alpha_avg);
+}
