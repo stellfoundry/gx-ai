@@ -55,6 +55,7 @@ __constant__ int Zp_d;
 #include "courant.cu"
 #include "energy.cu"
 #include "timestep_gryfx.cu"
+#include "gryfx_run_diagnostics.cu"
 
 
 #ifdef GS2_zonal
@@ -878,62 +879,9 @@ if(iproc==0) {
   */    //cudaProfilerStop();
       
       
-      //DIAGNOSTICS
-       
-     // if(LINEAR) { 
-     //   getPhiVal<<<dimGrid,dimBlock>>>(val, Phi1, 0, 4, Nz/2);
-     //   cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
-     //   fprintf(phifile, "\n\t%f\t%e", runtime, phiVal[0]);
-     // }
-    //  cudaEventRecord(start1,0);  
-      if(LINEAR || secondary_test || write_omega) {
-        growthRate<<<dimGrid,dimBlock>>>(omega,Phi1,Phi,tm->dt);    
-        //cudaMemcpy(omega_h, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);     
-        //weighted average of omega over 'navg' timesteps
-        //boxAvg(omegaAvg, omega, omegaBox, dt, dtBox, navg, counter);
-        //cudaMemcpy(omegaAvg_h, omegaAvg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
-  
-        //copy Phi for next timestep
-        cudaMemcpy(Phi, Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
-        mask<<<dimGrid,dimBlock>>>(Phi1);
-        mask<<<dimGrid,dimBlock>>>(Phi);
-  
-        
-        //print growth rates to files   
-        //omegaWrite(omegafile,gammafile,omegaAvg_h,runtime); 
-        
-  
-        //if(counter>2*navg) {
-  	//omegaStability(omega_h, omegaAvg_h, stability,ctrl->stable,stableMax);
-  	//STABLE_STOP = stabilityCheck(ctrl->stable,stableMax);
-        //}
-      }
-      
-  
-  
-  //DIAGNOSTICS
-  
       if( strcmp(nlpm_option,"constant") == 0) nlpm->D = dnlpm;
       else cudaMemcpy(&nlpm->D, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
-      
-      /*
-      if(counter%nwrite==0) {
-        cudaMemcpy(phi_h, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
-      }
-      */
-      
-      for(int s=0; s<nSpecies; s++) {    
-        outs->hflux_by_species_old[s] = wpfx[s];
-        outs->pflux_by_species_old[s] = outs->pflux_by_species[s];
-      }
-  
-      //calculate instantaneous heat flux
-      for(int s=0; s<nSpecies; s++) {  
-        fluxes(&outs->pflux_by_species[s], &wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,
-               tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],tm->runtime,
-               &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp);        
-      }
-       
+
       volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
       get_kx1_rms<<<1,1>>>(&ev_d->nlpm.Phi_zf_kx1, tmpX);
       nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
@@ -944,175 +892,14 @@ if(iproc==0) {
       multKx4<<<dimGrid,dimBlock>>>(tmpX2, tmpX, kx); 
       nlpm->kx2Phi_zf_rms = sumReduc(tmpX2, Nx, false);
       nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
-  
-      //volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
-      outs->phi2_zf = sumReduc(tmpX, Nx, false);
-      outs->phi2_zf_rms = sqrt(outs->phi2_zf);   
-
-      //calculate tmpXY = Phi**2(kx,ky)
-      volflux(Phi,Phi,tmp,tmpXY);
-      //if(!LINEAR && write_phi2kxky_time) {
-      //  cudaMemcpy(tmpXY_h, tmpXY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
-      //  kxkyTimeWrite(phikxkyfile, tmpXY_h, runtime);
-      //}
-      sumX<<<dimGrid,dimBlock>>>(tmpY, tmpXY);
-      cudaMemcpy(tmpY_h, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
-      cudaMemcpy(ev_h->outs.phi2_by_ky, tmpY, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
-      sumY <<< dimGrid, dimBlock >>>(tmpX2, tmpXY);
-      cudaMemcpy(ev_h->outs.phi2_by_kx, tmpX2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
-
-      if(!LINEAR && turn_off_gradients_test) {
-        kyTimeWrite(ev_h->files.phifile, tmpY_h, tm->runtime);
-      }
-      //calculate <kx> and <ky>
-      expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
-      outs->kphi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
-      outs->phi2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
-
-      //ev_h->outs.phi2 = outs->phi2;
-
-      outs->expectation_ky = (float) outs->phi2/outs->kphi2;
-  
-      expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, kx);
-      outs->kphi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
-      outs->expectation_kx = (float) outs->phi2/outs->kphi2;
-      
-      //calculate z correlation function = tmpYZ (not normalized)
-      zCorrelation<<<dimGrid,dimBlock>>>(tmpYZ, Phi);
-     // volflux(Phi,Phi,tmp,tmpXY);
-
       nlpm->nu1_max = maxReduc(nu1_nlpm, Nz, false);
       nlpm->nu22_max = maxReduc(nu22_nlpm, Nz, false); 
+      nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
+      update_nlpm_coefficients(nlpm, tm);
     
-      if(tm->counter>0) { 
-        //we use an exponential moving average
-        // wpfx_avg[t] = outs->alpha_avg*wpfx[t] + (1-outs->alpha_avg)*wpfx_avg[t-1]
-        // now with time weighting...
-        // wpfx_sum[t] = outs->alpha_avg*dt*wpfx[t] + (1-outs->alpha_avg)*wpfx_avg[t-1]
-        // tm->dtSum[t] = outs->alpha_avg*tm->dt[t] + (1-outs->alpha_avg)*tm->dtSum[t-1]
-        // wpfx_avg[t] = wpfx_sum[t]/tm->dtSum[t]
-   
-        // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
-        tm->dtSum = tm->dtSum*(1.-outs->alpha_avg) + tm->dt*outs->alpha_avg;
-        add_scaled<<<dimGrid,dimBlock>>>(Phi2_kxky_sum, 1.-outs->alpha_avg, Phi2_kxky_sum, tm->dt*outs->alpha_avg, tmpXY, Nx, Ny, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(Phi2_zonal_sum, 1.-outs->alpha_avg, Phi2_zonal_sum, tm->dt*outs->alpha_avg, tmpX, Nx, 1, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(zCorr_sum, 1.-outs->alpha_avg, zCorr_sum, tm->dt*outs->alpha_avg, tmpYZ, 1, Ny, Nz);
-        if(LINEAR || write_omega || secondary_test) {
-          if(tm->counter>0) {
-            add_scaled<<<dimGrid,dimBlock>>>(ev_hd->outs.omega_avg, 1.-outs->alpha_avg, ev_hd->outs.omega_avg, tm->dt*outs->alpha_avg, omega, Nx, Ny, 1);
-            cudaMemcpy(ev_h->outs.omega_avg, ev_hd->outs.omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
-            //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,ev_h->outs.omega_avg,tm->dtSum,tm->runtime); 
-          }
-          else {
-            cudaMemcpy(ev_h->outs.omega_avg, omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
-            //print growth rates to files   
-            omegaWrite(ev_h->files.omegafile,ev_h->files.gammafile,ev_h->outs.omega_avg,tm->runtime); 
-          }             
 
-        }  
-        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-outs->alpha_avg) + outs->expectation_kx*tm->dt*outs->alpha_avg;
-        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-outs->alpha_avg) + outs->expectation_ky*tm->dt*outs->alpha_avg;
-        outs->phi2_movav = outs->phi2_movav*(1.-outs->alpha_avg) + outs->phi2*tm->dt*outs->alpha_avg;
-        outs->phi2_zf_rms_sum = outs->phi2_zf_rms_sum*(1.-outs->alpha_avg) + outs->phi2_zf_rms*tm->dt*outs->alpha_avg;
-        //kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-outs->alpha_avg) + nlpm->kx2Phi_zf_rms*tm->dt*outs->alpha_avg;
-        outs->phases.flux1_sum = outs->phases.flux1_sum*(1.-outs->alpha_avg) + outs->phases.flux1*tm->dt*outs->alpha_avg;
-        outs->phases.flux2_sum = outs->phases.flux2_sum*(1.-outs->alpha_avg) + outs->phases.flux2*tm->dt*outs->alpha_avg;
-        outs->phases.Dens_sum = outs->phases.Dens_sum*(1.-outs->alpha_avg) + outs->phases.Dens*tm->dt*outs->alpha_avg;
-        outs->phases.Tpar_sum = outs->phases.Tpar_sum*(1.-outs->alpha_avg) + outs->phases.Tpar*tm->dt*outs->alpha_avg;
-        outs->phases.Tprp_sum = outs->phases.Tprp_sum*(1.-outs->alpha_avg) + outs->phases.Tprp*tm->dt*outs->alpha_avg;
-        nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
-  
-        
-        // **_sum/dtSum gives time average of **
-        outs->phi2_zf_rms_avg = outs->phi2_zf_rms_sum/tm->dtSum;
-        //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
-  
-        for(int s=0; s<nSpecies; s++) {
-          wpfxAvg[s] = outs->mu_avg*wpfxAvg[s] + (1-outs->mu_avg)*wpfx[s] + (outs->mu_avg - (1-outs->mu_avg)/outs->alpha_avg)*(wpfx[s] - outs->hflux_by_species_old[s]);
-          pflxAvg[s] = outs->mu_avg*pflxAvg[s] + (1-outs->mu_avg)*outs->pflux_by_species[s] + (outs->mu_avg - (1-outs->mu_avg)/outs->alpha_avg)*(outs->pflux_by_species[s] - outs->pflux_by_species_old[s]);
-        }
-  
-        update_nlpm_coefficients(nlpm, tm);
-  /*
-        // try to autostop when wpfx converges
-        // look at min and max of wpfxAvg over time... if wpfxAvg stays within certain bounds for a given amount of
-        // time, it is converged
-        if(counter >= navg*1.2) {
-          //set bounds to be +/- .05*wpfxAvg
-  	converge_bounds = .1*wpfxAvg[ION];
-  	//if counter reaches navg/3, recenter bounds
-  	if(counter == navg || ctrl->converge_count == navg/3) {
-  	  wpfxmax = wpfxAvg[ION] + .5*converge_bounds;
-  	  wpfxmin = wpfxAvg[ION] - .5*converge_bounds;
-  	  ctrl->converge_count++;
-  	}
-  	//if wpfxAvg goes outside the bounds, reset the bounds.
-  	else if(wpfxAvg[ION] > wpfxmax) {
-            wpfxmax = wpfxAvg[ION] + .3*converge_bounds;
-  	  wpfxmin = wpfxmax - converge_bounds;
-  	  ctrl->converge_count=0;
-  	}
-  	else if(wpfxAvg[ION] < wpfxmin) {
-            wpfxmin = wpfxAvg[ION] - .3*converge_bounds;
-  	  wpfxmax = wpfxmin + converge_bounds;
-  	  ctrl->converge_count=0;
-  	}
-  	//if wpfxAvg stays inside the bounds, increment the convergence counter.
-  	else ctrl->converge_count++; 
-        }    
-  */
-      }
-  
-      fluxWrite(ev_h->files.fluxfile,outs->pflux_by_species, pflxAvg, wpfx,wpfxAvg, nlpm->D, nlpm->D_avg, nlpm->Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nlpm->nu1_max,nlpm->nu22_max,ctrl->converge_count,tm->runtime,species);
-    
-  	     
-      if(tm->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, tm->runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
-      
-      
-      // print wpfx to screen if not printing growth rates
-      if(!write_omega && tm->counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],tm->dt, dt_cfl, nlpm->D);
-      
-      // write flux to file
-      if(tm->counter%nsave==0) fflush(NULL);
-               
-      
-      
-      
-      //print growth rates to screen every nwrite timesteps if write_omega
-      if(write_omega) {
-        if (tm->counter%nwrite==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
-  	printf("ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
-  	//for(int i=0; i<1; i++) {
-        for(int i=0; i<((Nx-1)/3+1); i++) {
-  	  for(int j=0; j<((Ny-1)/3+1); j++) {
-  	    int index = j + (Ny/2+1)*i;
-  	    if(index!=0) {
-  	      printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
-        ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
-        ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
-  	      if(ctrl->stable[index] >= ctrl->stable_max) printf("\tomega");
-  	      if(ctrl->stable[index+Nx*(Ny/2+1)] >= ctrl->stable_max) printf("\tgamma");
-  	      printf("\n");
-  	    }
-  	  }
-  	  printf("\n");
-  	}
-  	//for(int i=2*Nx/3+1; i<2*Nx/3+1; i++) {
-        for(int i=2*Nx/3+1; i<Nx; i++) {
-            for(int j=0; j<((Ny-1)/3+1); j++) {
-  	    int index = j + (Ny/2+1)*i;
-  	    printf("%.4f\t%.4f\t\t%.6f\t%.6f", ky_h[j], kx_h[i], ev_h->outs.omega_avg[index].x/tm->dtSum, ev_h->outs.omega_avg[index].y/tm->dtSum);
-        ev_h->outs.omega[index].x = ev_h->outs.omega_avg[index].x/tm->dtSum;
-        ev_h->outs.omega[index].y = ev_h->outs.omega_avg[index].y/tm->dtSum;
-  	    if(ctrl->stable[index] >= ctrl->stable_max) printf("\tomega");
-  	    if(ctrl->stable[index+Nx*(Ny/2+1)] >= ctrl->stable_max) printf("\tgamma");
-  	    printf("\n");
-  	  }
-  	  printf("\n");
-  	}	
-        }            
-      }
+      //DIAGNOSTICS
+      gryfx_run_diagnostics(ev_h, ev_hd);
   /*    
       cudaEventRecord(stop1,0);
       cudaEventSynchronize(stop1);
