@@ -280,7 +280,7 @@ if (iproc==0){
     
     //if running nonlinear part of secondary test...
     if(secondary_test && !LINEAR && RESTART) { 
-       restartRead(ev_h, ev_hd, &nlpm->Phi_zf_kx1_avg);
+       restartRead(ev_h, ev_hd);
        //Check restart was successful
        fieldWrite(Phi, field_h, "phi_restarted.field", filename);
        load_fixed_arrays_from_restart(
@@ -315,7 +315,7 @@ if (iproc==0){
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
     } 
     else {
-      restartRead(ev_h, ev_hd, &nlpm->Phi_zf_kx1_avg);
+      restartRead(ev_h, ev_hd);
       if(zero_restart_avg) {
 		    zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       }

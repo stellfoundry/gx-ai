@@ -1350,7 +1350,7 @@ inline void restartWrite(everything_struct * ev_h,
   
 }
 
-inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd, float * Phi_zf_kx1_avg){
+inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
 
   //cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
     //            cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
@@ -1428,7 +1428,7 @@ inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd, flo
   fread(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
   cudaMemcpy(ev_hd->outs.phi2_zonal_by_kx_movav, Phi2_zonal_sum_h, sizeof(float)*Nx, cudaMemcpyHostToDevice);
       
-  fread(Phi_zf_kx1_avg, sizeof(float), 1, restart);
+  fread(&ev_h->nlpm.Phi_zf_kx1_avg, sizeof(float), 1, restart);
 
   fclose(restart);
   

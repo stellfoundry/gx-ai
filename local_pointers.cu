@@ -89,7 +89,7 @@
     //cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
     //cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
 
-    float* Dnlpm_d = &ev_d->nlpm.D; // This is a pointer to memory on the device
+    //float* Dnlpm_d = &ev_d->nlpm.D; // This is a pointer to memory on the device
                                     // because ev_d is on the device
     //float* Phi_zf_kx1_d;
 
