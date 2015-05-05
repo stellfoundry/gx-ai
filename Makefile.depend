@@ -33,6 +33,7 @@ CU_DEPS := \
       phi_kernel.cu \
       getfcn.cu \
       definitions.cu \
+      gryfx_run_diagnostics.cu \
       diagnostics.cu \
       coveringSetup.cu \
       exb.cu \

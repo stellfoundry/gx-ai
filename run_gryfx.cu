@@ -879,23 +879,16 @@ if(iproc==0) {
   */    //cudaProfilerStop();
       
       
-      if( strcmp(nlpm_option,"constant") == 0) nlpm->D = dnlpm;
-      else cudaMemcpy(&nlpm->D, Dnlpm_d, sizeof(float), cudaMemcpyDeviceToHost);
-
-      volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
-      get_kx1_rms<<<1,1>>>(&ev_d->nlpm.Phi_zf_kx1, tmpX);
-      nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
-      cudaMemcpy(&nlpm->Phi_zf_kx1, &ev_d->nlpm.Phi_zf_kx1, sizeof(float), cudaMemcpyDeviceToHost);
-      
-      //volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
-      nlpm->kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
-      multKx4<<<dimGrid,dimBlock>>>(tmpX2, tmpX, kx); 
-      nlpm->kx2Phi_zf_rms = sumReduc(tmpX2, Nx, false);
-      nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
-      nlpm->nu1_max = maxReduc(nu1_nlpm, Nz, false);
-      nlpm->nu22_max = maxReduc(nu22_nlpm, Nz, false); 
-      nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
-      update_nlpm_coefficients(nlpm, tm);
+      update_nlpm_coefficients(
+        &ev_h->cdims,
+        &ev_h->pars,
+        &ev_h->outs,
+        &ev_h->nlpm,
+        &ev_hd->nlpm,
+        &ev_d->nlpm,
+        ev_hd->fields.phi,
+        &ev_hd->tmp,
+        tm);
     
 
       //DIAGNOSTICS

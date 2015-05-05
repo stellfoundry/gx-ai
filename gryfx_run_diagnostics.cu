@@ -6,7 +6,7 @@ void gryfx_run_diagnostics(
 
   /* Some local shortcuts */
   cuda_dimensions_struct * cdims = &ev_h->cdims;
-  input_parameters_struct * pars_h = &ev_h->pars;
+  //input_parameters_struct * pars_h = &ev_h->pars;
   fields_struct * fields_d = &ev_hd->fields;
   fields_struct * fields1_d = &ev_hd->fields1;
   outputs_struct * outs_h = &ev_h->outs;
@@ -41,6 +41,9 @@ void gryfx_run_diagnostics(
     float * wpfx = outs_h->hflux_by_species;
     float * wpfxAvg = outs_h->hflux_by_species_movav;
     float * pflxAvg = outs_h->hflux_by_species_movav;
+
+    float alphav = outs_h->alpha_avg;
+    float muav = outs_h->mu_avg;
        
      // if(LINEAR) { 
      //   getPhiVal<<<dimGrid,dimBlock>>>(val, Phi1, 0, 4, Nz/2);
@@ -144,20 +147,20 @@ void gryfx_run_diagnostics(
 
       if(tm_h->counter>0) { 
         //we use an exponential moving average
-        // wpfx_avg[t] = outs_h->alpha_avg*wpfx[t] + (1-outs_h->alpha_avg)*wpfx_avg[t-1]
+        // wpfx_avg[t] = alphav*wpfx[t] + (1-alphav)*wpfx_avg[t-1]
         // now with time weighting...
-        // wpfx_sum[t] = outs_h->alpha_avg*dt*wpfx[t] + (1-outs_h->alpha_avg)*wpfx_avg[t-1]
-        // tm_h->dtSum[t] = outs_h->alpha_avg*tm_h->dt[t] + (1-outs_h->alpha_avg)*tm_h->dtSum[t-1]
+        // wpfx_sum[t] = alphav*dt*wpfx[t] + (1-alphav)*wpfx_avg[t-1]
+        // tm_h->dtSum[t] = alphav*tm_h->dt[t] + (1-alphav)*tm_h->dtSum[t-1]
         // wpfx_avg[t] = wpfx_sum[t]/tm_h->dtSum[t]
    
         // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
-        tm_h->dtSum = tm_h->dtSum*(1.-outs_h->alpha_avg) + tm_h->dt*outs_h->alpha_avg;
-        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_by_mode_movav, 1.-outs_h->alpha_avg, outs_d->phi2_by_mode_movav, tm_h->dt*outs_h->alpha_avg, tmp_d->XY, Nx, Ny, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_zonal_by_kx_movav, 1.-outs_h->alpha_avg, outs_d->phi2_zonal_by_kx_movav, tm_h->dt*outs_h->alpha_avg, tmp_d->X, Nx, 1, 1);
-        add_scaled<<<dimGrid,dimBlock>>>(outs_d->par_corr_kydz_movav, 1.-outs_h->alpha_avg, outs_d->par_corr_kydz_movav, tm_h->dt*outs_h->alpha_avg, tmp_d->YZ, 1, Ny, Nz);
+        tm_h->dtSum = tm_h->dtSum*(1.-alphav) + tm_h->dt*alphav;
+        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_by_mode_movav, 1.-alphav, outs_d->phi2_by_mode_movav, tm_h->dt*alphav, tmp_d->XY, Nx, Ny, 1);
+        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_zonal_by_kx_movav, 1.-alphav, outs_d->phi2_zonal_by_kx_movav, tm_h->dt*alphav, tmp_d->X, Nx, 1, 1);
+        add_scaled<<<dimGrid,dimBlock>>>(outs_d->par_corr_kydz_movav, 1.-alphav, outs_d->par_corr_kydz_movav, tm_h->dt*alphav, tmp_d->YZ, 1, Ny, Nz);
         if(LINEAR || write_omega || secondary_test) {
           if(tm_h->counter>0) {
-            add_scaled<<<dimGrid,dimBlock>>>(outs_d->omega_avg, 1.-outs_h->alpha_avg, outs_d->omega_avg, tm_h->dt*outs_h->alpha_avg, outs_d->omega, Nx, Ny, 1);
+            add_scaled<<<dimGrid,dimBlock>>>(outs_d->omega_avg, 1.-alphav, outs_d->omega_avg, tm_h->dt*alphav, outs_d->omega, Nx, Ny, 1);
             cudaMemcpy(outs_h->omega_avg, outs_d->omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
             omegaWrite(files_h->omegafile,files_h->gammafile,outs_h->omega_avg,tm_h->dtSum,tm_h->runtime); 
@@ -169,17 +172,17 @@ void gryfx_run_diagnostics(
           }             
 
         }  
-        outs_h->expectation_kx_movav = outs_h->expectation_kx_movav*(1.-outs_h->alpha_avg) + outs_h->expectation_kx*tm_h->dt*outs_h->alpha_avg;
-        outs_h->expectation_ky_movav = outs_h->expectation_ky_movav*(1.-outs_h->alpha_avg) + outs_h->expectation_ky*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phi2_movav = outs_h->phi2_movav*(1.-outs_h->alpha_avg) + outs_h->phi2*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phi2_zf_rms_sum = outs_h->phi2_zf_rms_sum*(1.-outs_h->alpha_avg) + outs_h->phi2_zf_rms*tm_h->dt*outs_h->alpha_avg;
-        //kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-outs_h->alpha_avg) + nlpm->kx2Phi_zf_rms*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phases.flux1_sum = outs_h->phases.flux1_sum*(1.-outs_h->alpha_avg) + outs_h->phases.flux1*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phases.flux2_sum = outs_h->phases.flux2_sum*(1.-outs_h->alpha_avg) + outs_h->phases.flux2*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phases.Dens_sum = outs_h->phases.Dens_sum*(1.-outs_h->alpha_avg) + outs_h->phases.Dens*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phases.Tpar_sum = outs_h->phases.Tpar_sum*(1.-outs_h->alpha_avg) + outs_h->phases.Tpar*tm_h->dt*outs_h->alpha_avg;
-        outs_h->phases.Tprp_sum = outs_h->phases.Tprp_sum*(1.-outs_h->alpha_avg) + outs_h->phases.Tprp*tm_h->dt*outs_h->alpha_avg;
-        //nlpm->D_sum = nlpm->D_sum*(1.-outs_h->alpha_avg) + nlpm->D*tm_h->dt*outs_h->alpha_avg;
+        outs_h->expectation_kx_movav = outs_h->expectation_kx_movav*(1.-alphav) + outs_h->expectation_kx*tm_h->dt*alphav;
+        outs_h->expectation_ky_movav = outs_h->expectation_ky_movav*(1.-alphav) + outs_h->expectation_ky*tm_h->dt*alphav;
+        outs_h->phi2_movav = outs_h->phi2_movav*(1.-alphav) + outs_h->phi2*tm_h->dt*alphav;
+        outs_h->phi2_zf_rms_sum = outs_h->phi2_zf_rms_sum*(1.-alphav) + outs_h->phi2_zf_rms*tm_h->dt*alphav;
+        //kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-alphav) + nlpm->kx2Phi_zf_rms*tm_h->dt*alphav;
+        outs_h->phases.flux1_sum = outs_h->phases.flux1_sum*(1.-alphav) + outs_h->phases.flux1*tm_h->dt*alphav;
+        outs_h->phases.flux2_sum = outs_h->phases.flux2_sum*(1.-alphav) + outs_h->phases.flux2*tm_h->dt*alphav;
+        outs_h->phases.Dens_sum = outs_h->phases.Dens_sum*(1.-alphav) + outs_h->phases.Dens*tm_h->dt*alphav;
+        outs_h->phases.Tpar_sum = outs_h->phases.Tpar_sum*(1.-alphav) + outs_h->phases.Tpar*tm_h->dt*alphav;
+        outs_h->phases.Tprp_sum = outs_h->phases.Tprp_sum*(1.-alphav) + outs_h->phases.Tprp*tm_h->dt*alphav;
+        //nlpm->D_sum = nlpm->D_sum*(1.-alphav) + nlpm->D*tm_h->dt*alphav;
   
         
         // **_sum/dtSum gives time average of **
@@ -187,8 +190,8 @@ void gryfx_run_diagnostics(
         //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
   
         for(int s=0; s<nSpecies; s++) {
-          wpfxAvg[s] = outs_h->mu_avg*wpfxAvg[s] + (1-outs_h->mu_avg)*wpfx[s] + (outs_h->mu_avg - (1-outs_h->mu_avg)/outs_h->alpha_avg)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
-          pflxAvg[s] = outs_h->mu_avg*pflxAvg[s] + (1-outs_h->mu_avg)*outs_h->pflux_by_species[s] + (outs_h->mu_avg - (1-outs_h->mu_avg)/outs_h->alpha_avg)*(outs_h->pflux_by_species[s] - outs_h->pflux_by_species_old[s]);
+          wpfxAvg[s] = muav*wpfxAvg[s] + (1-muav)*wpfx[s] + (muav - (1-muav)/alphav)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
+          pflxAvg[s] = muav*pflxAvg[s] + (1-muav)*outs_h->pflux_by_species[s] + (muav - (1-muav)/alphav)*(outs_h->pflux_by_species[s] - outs_h->pflux_by_species_old[s]);
         }
   
   /*

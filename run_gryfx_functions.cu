@@ -644,10 +644,36 @@ void write_initial_fields(
 }
 
 void update_nlpm_coefficients(
+    cuda_dimensions_struct * cdims,
+    input_parameters_struct * pars,
+    outputs_struct * outs,
     nlpm_struct * nlpm,
+    nlpm_struct * nlpm_hd,
+    nlpm_struct * nlpm_d,
+    cuComplex * Phi,  
+    temporary_arrays_struct * tmp_d,
     time_struct * tm
 )
 {
+    dim3 dimGrid = cdims->dimGrid;
+    dim3 dimBlock = cdims->dimBlock;
+    if( strcmp(pars->nlpm_option,"constant") == 0) nlpm->D = pars->dnlpm;
+    else cudaMemcpy(&nlpm->D, &nlpm_d->D, sizeof(float), cudaMemcpyDeviceToHost);
+
+    volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
+    get_kx1_rms<<<1,1>>>(&nlpm_d->Phi_zf_kx1, tmp_d->X);
+    nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
+    cudaMemcpy(&nlpm->Phi_zf_kx1, &nlpm_d->Phi_zf_kx1, sizeof(float), cudaMemcpyDeviceToHost);
+    
+    //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
+    nlpm->kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
+    multKx4<<<dimGrid,dimBlock>>>(tmp_d->X2, tmp_d->X, kx); 
+    nlpm->kx2Phi_zf_rms = sumReduc(tmp_d->X2, Nx, false);
+    nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
+    nlpm->nu1_max = maxReduc(nlpm_hd->nu1, Nz, false);
+    nlpm->nu22_max = maxReduc(nlpm_hd->nu22, Nz, false); 
+    nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
+
     nlpm->D_avg = nlpm->D_sum/tm->dtSum;
     nlpm->alpha = tm->dt/tau_nlpm;
     nlpm->mu = exp(-nlpm->alpha);
