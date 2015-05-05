@@ -138,6 +138,8 @@ typedef struct {
   float *nu;
   float *nu1;
   float *nu22;
+  float nu1_max;
+  float nu22_max;
   cuComplex *nu1_complex;
   cuComplex *nu22_complex;
   float D;

@@ -547,11 +547,12 @@ inline void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
   *phase = AB_fsa / (A_rms*B_rms);
 }   
 
-inline void fluxes(float *pflux, float *qflux, float qflux1, float qflux2, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
+inline void fluxes(float *pflux, float *qflux, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, cuComplex* Pprp_field, cuComplex* nbar_field,
             float* tmpZ, float* tmpXY, specie s, float runtime, 
             float *qflux1_phase, float *qflux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
 {   
+ float qflux1, qflux2;
   
   add_scaled<<<dimGrid,dimBlock>>>(totPr_field, 1., Tprp, .5, Tpar, 1.5, Dens);
   phi_u<<<dimGrid,dimBlock>>>(phi_tmp,Phi,s.rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);

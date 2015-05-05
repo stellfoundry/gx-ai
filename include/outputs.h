@@ -5,6 +5,12 @@ EXTERN_SWITCH cuComplex* omega_out_h;
 EXTERN_SWITCH cuComplex * omega_h;
 #endif
 
+typedef struct{
+    //diagnostics scalars
+    float flux1, flux2, Dens, Tpar, Tprp;
+    float flux1_sum, flux2_sum, Dens_sum, Tpar_sum, Tprp_sum;
+} phases_struct;
+
 typedef struct {
 	// The simpledataio object containing the netcdf output file
 	struct sdatio_file sdatfile;
@@ -14,6 +20,9 @@ typedef struct {
 
 	// Total integrated |field|^2 
 	float phi2;
+
+	float kphi2;
+	float phi2_movav;
 
 	// Square of fields and moments averaged over ky and integrated over z
 	float* phi2_by_kx;
@@ -37,6 +46,8 @@ typedef struct {
 	
 	// Expectation values of wavenumbers
 	//
+  float expectation_ky;
+  float expectation_kx;
 	float expectation_kx_movav;
 	float expectation_ky_movav;
 
@@ -66,6 +77,7 @@ typedef struct {
 	cuComplex * omega_avg;
 
 
+  phases_struct phases;
 
 	// Filenames
 	

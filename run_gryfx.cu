@@ -115,22 +115,13 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
    
     //cuComplex *omegaBox[navg];
     specie* species_d;
-    
-    //diagnostics scalars
-    float flux1,flux2;
-    float flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase;
-    float flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum;
    
-    float Phi2, kPhi2;
-    float Phi2_sum;//, kPhi2_sum;
-    float expectation_ky;
-    float expectation_kx;
     //diagnostics arrays
     //cuComplex *Phi_sum;
     
     
-    float nu1_nlpm_max;
-    float nu22_nlpm_max;
+    //float nu1_nlpm_max;
+    //float nu22_nlpm_max;
   
 
     printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time_mp_code_time_/sqrt(2.0));
@@ -315,11 +306,11 @@ if (iproc==0){
           &ev_h->cdims, &ev_d->geo, &ev_hd->fields, &ev_hd->tmp);
 		  zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       
-      flux1_phase_sum = 0.;
-      flux2_phase_sum = 0.;
-      Dens_phase_sum = 0.;
-      Tpar_phase_sum = 0.;
-      Tprp_phase_sum = 0.;
+      outs->phases.flux1_sum = 0.;
+      outs->phases.flux2_sum = 0.;
+      outs->phases.Dens_sum = 0.;
+      outs->phases.Tpar_sum = 0.;
+      outs->phases.Tprp_sum = 0.;
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
     } 
     else {
@@ -938,9 +929,9 @@ if(iproc==0) {
   
       //calculate instantaneous heat flux
       for(int s=0; s<nSpecies; s++) {  
-        fluxes(&outs->pflux_by_species[s], &wpfx[s],flux1,flux2,Dens[s],Tpar[s],Tprp[s],Phi,
+        fluxes(&outs->pflux_by_species[s], &wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,
                tmp,tmp,tmp,field,field,field,tmpZ,tmpXY,species[s],tm->runtime,
-               &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase);        
+               &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp);        
       }
        
       volflux_zonal(Phi,Phi,tmpX);  //tmpX = Phi_zf**2(kx)
@@ -975,23 +966,23 @@ if(iproc==0) {
       }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, ky);
-      kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
-      Phi2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+      outs->kphi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
+      outs->phi2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
 
-      ev_h->outs.phi2 = Phi2;
+      //ev_h->outs.phi2 = outs->phi2;
 
-      expectation_ky = (float) Phi2/kPhi2;
+      outs->expectation_ky = (float) outs->phi2/outs->kphi2;
   
       expect_k<<<dimGrid,dimBlock>>>(tmpXY2, tmpXY, kx);
-      kPhi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
-      expectation_kx = (float) Phi2/kPhi2;
+      outs->kphi2 = sumReduc(tmpXY2, Nx*(Ny/2+1), false);
+      outs->expectation_kx = (float) outs->phi2/outs->kphi2;
       
       //calculate z correlation function = tmpYZ (not normalized)
       zCorrelation<<<dimGrid,dimBlock>>>(tmpYZ, Phi);
      // volflux(Phi,Phi,tmp,tmpXY);
 
-      nu1_nlpm_max = maxReduc(nu1_nlpm, Nz, false);
-      nu22_nlpm_max = maxReduc(nu22_nlpm, Nz, false); 
+      nlpm->nu1_max = maxReduc(nu1_nlpm, Nz, false);
+      nlpm->nu22_max = maxReduc(nu22_nlpm, Nz, false); 
     
       if(tm->counter>0) { 
         //we use an exponential moving average
@@ -1020,16 +1011,16 @@ if(iproc==0) {
           }             
 
         }  
-        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-outs->alpha_avg) + expectation_kx*tm->dt*outs->alpha_avg;
-        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-outs->alpha_avg) + expectation_ky*tm->dt*outs->alpha_avg;
-        Phi2_sum = Phi2_sum*(1.-outs->alpha_avg) + Phi2*tm->dt*outs->alpha_avg;
+        outs->expectation_kx_movav = outs->expectation_kx_movav*(1.-outs->alpha_avg) + outs->expectation_kx*tm->dt*outs->alpha_avg;
+        outs->expectation_ky_movav = outs->expectation_ky_movav*(1.-outs->alpha_avg) + outs->expectation_ky*tm->dt*outs->alpha_avg;
+        outs->phi2_movav = outs->phi2_movav*(1.-outs->alpha_avg) + outs->phi2*tm->dt*outs->alpha_avg;
         outs->phi2_zf_rms_sum = outs->phi2_zf_rms_sum*(1.-outs->alpha_avg) + outs->phi2_zf_rms*tm->dt*outs->alpha_avg;
         //kx2Phi_zf_rms_sum = kx2Phi_zf_rms_sum*(1.-outs->alpha_avg) + nlpm->kx2Phi_zf_rms*tm->dt*outs->alpha_avg;
-        flux1_phase_sum = flux1_phase_sum*(1.-outs->alpha_avg) + flux1_phase*tm->dt*outs->alpha_avg;
-        flux2_phase_sum = flux2_phase_sum*(1.-outs->alpha_avg) + flux2_phase*tm->dt*outs->alpha_avg;
-        Dens_phase_sum = Dens_phase_sum*(1.-outs->alpha_avg) + Dens_phase*tm->dt*outs->alpha_avg;
-        Tpar_phase_sum = Tpar_phase_sum*(1.-outs->alpha_avg) + Tpar_phase*tm->dt*outs->alpha_avg;
-        Tprp_phase_sum = Tprp_phase_sum*(1.-outs->alpha_avg) + Tprp_phase*tm->dt*outs->alpha_avg;
+        outs->phases.flux1_sum = outs->phases.flux1_sum*(1.-outs->alpha_avg) + outs->phases.flux1*tm->dt*outs->alpha_avg;
+        outs->phases.flux2_sum = outs->phases.flux2_sum*(1.-outs->alpha_avg) + outs->phases.flux2*tm->dt*outs->alpha_avg;
+        outs->phases.Dens_sum = outs->phases.Dens_sum*(1.-outs->alpha_avg) + outs->phases.Dens*tm->dt*outs->alpha_avg;
+        outs->phases.Tpar_sum = outs->phases.Tpar_sum*(1.-outs->alpha_avg) + outs->phases.Tpar*tm->dt*outs->alpha_avg;
+        outs->phases.Tprp_sum = outs->phases.Tprp_sum*(1.-outs->alpha_avg) + outs->phases.Tprp*tm->dt*outs->alpha_avg;
         nlpm->D_sum = nlpm->D_sum*(1.-outs->alpha_avg) + nlpm->D*tm->dt*outs->alpha_avg;
   
         
@@ -1073,7 +1064,7 @@ if(iproc==0) {
   */
       }
   
-      fluxWrite(ev_h->files.fluxfile,outs->pflux_by_species, pflxAvg, wpfx,wpfxAvg, nlpm->D, nlpm->D_avg, nlpm->Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nu1_nlpm_max,nu22_nlpm_max,ctrl->converge_count,tm->runtime,species);
+      fluxWrite(ev_h->files.fluxfile,outs->pflux_by_species, pflxAvg, wpfx,wpfxAvg, nlpm->D, nlpm->D_avg, nlpm->Phi_zf_kx1, nlpm->Phi_zf_kx1_avg, nlpm->kx2Phi_zf_rms, nlpm->kx2Phi_zf_rms_avg, nlpm->nu1_max,nlpm->nu22_max,ctrl->converge_count,tm->runtime,species);
     
   	     
       if(tm->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,omega,tmpXY_R,tmpXY_R_h, tm->runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)          
@@ -1200,12 +1191,12 @@ if(iproc==0) {
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &expectation_ky, &expectation_kx,
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, false,
-  			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
-  			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
+  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
+  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
   
 #ifdef GS2_zonal
 			} //end of iproc if
@@ -1284,12 +1275,12 @@ if(iproc==0) {
                           tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
     			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
                           ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &expectation_ky, &expectation_kx,
+                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
   			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
   			outs->expectation_kx_movav, tm->dtSum,
   			tm->counter, tm->runtime, true,
-  			&Phi2, &flux1_phase, &flux2_phase, &Dens_phase, &Tpar_phase, &Tprp_phase,
-  			Phi2_sum, flux1_phase_sum, flux2_phase_sum, Dens_phase_sum, Tpar_phase_sum, Tprp_phase_sum);
+  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
+  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
   
   
     
@@ -1304,10 +1295,10 @@ if(iproc==0) {
     //printf("Diagnostics:\t%f min\t(%f%)\n", diagnostics_timer_total/60000., 100*diagnostics_timer_total/totaltimer);
   
     
-    fprintf(outfile,"expectation val of ky = %f\n", expectation_ky);
-    fprintf(outfile,"expectation val of kx = %f\n", expectation_kx);
-    fprintf(outfile,"Q_i = %f\n Phi_zf_rms = %f\n Phi2 = %f\n", qflux[ION],outs->phi2_zf_rms_avg, Phi2);
-    fprintf(outfile, "flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
+    fprintf(outfile,"expectation val of ky = %f\n", outs->expectation_ky);
+    fprintf(outfile,"expectation val of kx = %f\n", outs->expectation_kx);
+    fprintf(outfile,"Q_i = %f\n Phi_zf_rms = %f\n Phi2 = %f\n", qflux[ION],outs->phi2_zf_rms_avg, outs->phi2);
+    fprintf(outfile, "flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", outs->phases.flux1, outs->phases.flux2, outs->phases.Dens, outs->phases.Tpar, outs->phases.Tprp);
     fprintf(outfile,"\nTotal time (min): %f\n",tm->totaltimer/60000);
     fprintf(outfile,"Total steps: %d\n", tm->counter);
     fprintf(outfile,"Avg time/timestep (s): %f\n",tm->totaltimer/tm->counter/1000);
