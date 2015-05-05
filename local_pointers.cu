@@ -83,9 +83,9 @@
 //    cuComplex * phi_ky0_d = ev_hd->hybrid.phi;
 
 
-    float *nu_nlpm = ev_hd->nlpm.nu;
-    float *nu1_nlpm = ev_hd->nlpm.nu1;
-    float *nu22_nlpm = ev_hd->nlpm.nu22;
+    //float *nu_nlpm = ev_hd->nlpm.nu;
+    //float *nu1_nlpm = ev_hd->nlpm.nu1;
+    //float *nu22_nlpm = ev_hd->nlpm.nu22;
     //cuComplex *nu1_nlpm_complex = ev_hd->nlpm.nu1_complex;
     //cuComplex *nu22_nlpm_complex = ev_hd->nlpm.nu22_complex;
 
