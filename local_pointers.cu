@@ -61,7 +61,7 @@
     //float * tmpXY4 = ev_hd->tmp.XY4;
     //float * tmpXY_R = ev_hd->tmp.XY_R;
     //float * tmpXY_R_h = ev_h->tmp.XY_R;
-    float * tmpXZ = ev_hd->tmp.XZ;
+    //float * tmpXZ = ev_hd->tmp.XZ;
     //float * tmpYZ = ev_hd->tmp.YZ;
     //float * tmpYZ_h = ev_h->tmp.YZ;
     //float * tmpXYZ = ev_hd->tmp.XYZ;

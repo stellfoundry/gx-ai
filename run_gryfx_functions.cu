@@ -732,3 +732,17 @@ void initialize_averaging_parameters(outputs_struct * outs, int navg){
     outs->alpha_avg = (float) 2./(navg+1.);
     outs->mu_avg = exp(-outs->alpha_avg);
 }
+
+void initialize_phi_avg_denom(
+    cuda_dimensions_struct * cdims,
+    input_parameters_struct * pars_h,
+    grids_struct * grids_d,
+    geometry_coefficents_struct * geo_d,
+    specie * species_d,
+    float * tmpXZ
+    )
+{
+    cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*grids_d->Nx);
+    cudaMemset(PhiAvgDenom, 0, sizeof(float)*grids_d->Nx);
+    phiavgdenom<<<cdims->dimGrid,cdims->dimBlock>>>(PhiAvgDenom, tmpXZ, geo_d->jacobian, species_d, grids_d->kx, grids_d->ky, pars_h->shat, geo_d->gds2, geo_d->gds21, geo_d->gds22, geo_d->bmagInv, tau);  
+}
