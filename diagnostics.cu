@@ -1238,12 +1238,31 @@ inline void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar,
 }   
 
 
-inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
-                cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
-		float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, float Phi_zf_kx1_avg, float dtSum,
-		int counter, double runtime, double dt, float timer, char* restartfileName)
+inline void restartWrite(everything_struct * ev_h,
+  everything_struct * ev_hd)
 {
+    cuComplex * Phi = ev_hd->fields.phi;
+    cuComplex ** Dens = ev_hd->fields.dens;
+    cuComplex ** Upar = ev_hd->fields.upar;
+    cuComplex ** Tpar = ev_hd->fields.tpar;
+    cuComplex ** Tprp = ev_hd->fields.tprp;
+    cuComplex ** Qpar = ev_hd->fields.qpar;
+    cuComplex ** Qprp = ev_hd->fields.qprp;
+
+    float * wpfxAvg = ev_h->outs.hflux_by_species_movav;
+    float * pflxAvg = ev_h->outs.hflux_by_species_movav;
+
+    float * Phi2_kxky_sum = ev_hd->outs.phi2_by_mode_movav;
+    float * Phi2_zonal_sum = ev_hd->outs.phi2_zonal_by_kx_movav;
+    float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
+
+    float expectation_ky_sum = ev_h->outs.expectation_ky_movav;
+    float expectation_kx_sum = ev_h->outs.expectation_kx_movav;
+    float Phi_zf_kx1_avg = ev_h->nlpm.Phi_zf_kx1_avg;
+    char* restartfileName = ev_h->info.restart_file_name;
   //printf("restart file is\n%s\n", restartfileName);
+
+
   FILE *restart;
   restart = fopen(restartfileName, "wb");
   cuComplex *Dens_h[nSpecies];
@@ -1288,17 +1307,17 @@ inline void restartWrite(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, c
   zCorr_sum_h = (float*) malloc(sizeof(float)*(Ny/2+1)*Nz);
   cudaMemcpy(zCorr_sum_h, zCorr_sum, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
-  fwrite(&counter,sizeof(int),1,restart);
-  fwrite(&runtime,sizeof(double),1,restart);
-  fwrite(&dt,sizeof(double),1,restart);
-  fwrite(&timer,sizeof(float),1,restart);
+  fwrite(&ev_h->time.counter,sizeof(int),1,restart);
+  fwrite(&ev_h->time.runtime,sizeof(double),1,restart);
+  fwrite(&ev_h->time.dt,sizeof(double),1,restart);
+  fwrite(&ev_h->time.timer,sizeof(float),1,restart);
   
   fwrite(wpfxAvg, sizeof(float)*nSpecies, 1, restart);
   fwrite(pflxAvg, sizeof(float)*nSpecies, 1, restart);
   fwrite(Phi2_kxky_sum_h,sizeof(float)*Nx*(Ny/2+1),1,restart);
   fwrite(&expectation_ky_sum, sizeof(float), 1, restart);
   fwrite(&expectation_kx_sum, sizeof(float), 1, restart);
-  fwrite(&dtSum, sizeof(float), 1, restart);
+  fwrite(&ev_h->time.dtSum, sizeof(float), 1, restart);
   
   for(int s=0; s<nSpecies; s++) {
     fwrite(Dens_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);

@@ -959,9 +959,10 @@ if(iproc==0) {
         cudaEventElapsedTime(&tm->timer,events->start,events->stop);
         tm->totaltimer+=tm->timer;
         cudaEventRecord(events->start,0);
-        restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
-        			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
-        			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
+        restartWrite(ev_h, ev_hd);
+//        restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi,pflxAvg,wpfxAvg,Phi2_kxky_sum, Phi2_zonal_sum,
+//        			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
+//        			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
       }
       
       
@@ -1042,9 +1043,10 @@ if(iproc==0) {
     if(DEBUG) getError("before restartWrite");  
     
     // save for restart run
-    restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
-    			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
-    			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
+    restartWrite(ev_h, ev_hd);
+//    restartWrite(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum, 
+//    			zCorr_sum, outs->expectation_ky_movav, outs->expectation_kx_movav, nlpm->Phi_zf_kx1_avg,
+//    			tm->dtSum,tm->counter,tm->runtime,tm->dt,tm->totaltimer,restartfileName);
     
     if(DEBUG) getError("after restartWrite");
     
