@@ -1508,18 +1508,80 @@ inline void geoWrite(char* ext, char* filename)
   
 }
 
-inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp, cuComplex** Qpar, cuComplex** Qprp, 
-	cuComplex* Phi,	cuComplex* tmp, cuComplex* corrNum_tmp, cuComplex* field, float* tmpZ, cuComplex* CtmpX, 
-	float* tmpXY, float* phi2avg_tmpXY, float* corrDen_tmpXY, float* kphi2_tmpXY2, float* tmpXY3, float* tmpXY4, float* phi_corr_tmpYZ, float* phi_corr_J_tmpYZ,
-	float* phi2avg_tmpX, float* phi2zonal_tmpX2, float* wpfx_over_phi2_ky_tmpY, float* wpfx_ky_tmpY, float* phi_corr_z0_tmpY, float* tmpY, float* tmpY2, float* phi2_ky_tmpY2, float* phi_corr_norm_tmpY2,
-	int** kxCover, int** kyCover, float* tmpX_h, float* tmpY_h, float* tmpXY_h, float* tmpYZ_h, cuComplex* field_h, 
-	int** kxCover_h, int** kyCover_h, cuComplex* omegaAvg_h, double* qflux, float* expectation_ky, float* expectation_kx,
-	float* Phi2_kxky_sum, float* wpfxnorm_kxky_sum, float* Phi2_zonal_sum, float* zCorr_sum, float expectation_ky_sum, float expectation_kx_sum, //cuComplex* omegaAvg,// cuComplex* omega_sum,
-	float dtSum, int counter, float runtime, bool end,
-        float* Phi2, float* flux1_phase, float* flux2_phase, float* Dens_phase, float* Tpar_phase, float* Tprp_phase,
-        float Phi2_sum, float flux1_phase_sum, float flux2_phase_sum, float Dens_phase_sum, float Tpar_phase_sum, float Tprp_phase_sum)
+inline void gryfx_finish_diagnostics(
+  everything_struct * ev_h,
+  everything_struct * ev_hd,
+   bool end
+
+)
 {
   char filename[200];  
+
+    cuComplex * Phi = ev_hd->fields.phi;
+    cuComplex ** Dens = ev_hd->fields.dens;
+    cuComplex ** Upar = ev_hd->fields.upar;
+    cuComplex ** Tpar = ev_hd->fields.tpar;
+    cuComplex ** Tprp = ev_hd->fields.tprp;
+    cuComplex ** Qpar = ev_hd->fields.qpar;
+    cuComplex ** Qprp = ev_hd->fields.qprp;
+
+
+	cuComplex* tmp = ev_hd->tmp.CXYZ;
+  //cuComplex* corrNum_tmp = ev_hd->tmp.CXYZ;
+  cuComplex* field = ev_hd->fields.field;
+  float* tmpZ = ev_hd->tmp.Z;
+  cuComplex* CtmpX = ev_hd->tmp.CX; 
+	float* tmpXY = ev_hd->tmp.XY;
+  float* phi2avg_tmpXY = ev_hd->tmp.XY;
+  //float* corrDen_tmpXY = ev_hd->tmp.XY;
+  float* kphi2_tmpXY2 = ev_hd->tmp.XY2;
+  //float* tmpXY3 = ev_hd->tmp.XY3;
+  float* tmpXY4 = ev_hd->tmp.XY4;
+  float* phi_corr_tmpYZ = ev_hd->tmp.YZ;
+  float* phi_corr_J_tmpYZ = ev_hd->tmp.YZ;
+	float* phi2avg_tmpX = ev_hd->tmp.X;
+  float* phi2zonal_tmpX2 = ev_hd->tmp.X2;
+  float* wpfx_over_phi2_ky_tmpY = ev_hd->tmp.Y;
+  float* wpfx_ky_tmpY = ev_hd->tmp.Y;
+  float* phi_corr_z0_tmpY = ev_hd->tmp.Y;
+  float* tmpY = ev_hd->tmp.Y;
+  float* tmpY2 = ev_hd->tmp.Y2;
+  float* phi2_ky_tmpY2 = ev_hd->tmp.Y2;
+  float* phi_corr_norm_tmpY2 =ev_hd->tmp.Y2;
+	int** kxCover = ev_hd->grids.kxCover;
+  int** kyCover = ev_hd->grids.kyCover;
+  float* tmpX_h = ev_h->tmp.X;
+  float* tmpY_h = ev_h->tmp.Y;
+  float* tmpXY_h = ev_h->tmp.XY; 
+  float* tmpYZ_h = ev_h->tmp.YZ;
+  cuComplex* field_h = ev_h->fields.field;
+	int** kxCover_h = ev_h->grids.kxCover;
+  int** kyCover_h = ev_h->grids.kyCover;
+  cuComplex* omegaAvg_h = ev_h->outs.omega_avg;
+  //double* qflux
+  float* expectation_ky = &ev_h->outs.expectation_ky;
+  float* expectation_kx = &ev_h->outs.expectation_kx;
+  float * Phi2_kxky_sum = ev_hd->outs.phi2_by_mode_movav;
+  //float * wpfxnorm_kxky_sum = ev_hd->outs.hflux_by_mode_movav;
+  float * Phi2_zonal_sum = ev_hd->outs.phi2_zonal_by_kx_movav;
+  float * zCorr_sum = ev_hd->outs.par_corr_kydz_movav;
+  float expectation_ky_sum = ev_h->outs.expectation_ky_movav;
+  float expectation_kx_sum = ev_h->outs.expectation_kx_movav;
+	float dtSum = ev_h->time.dtSum;
+  int counter = ev_h->time.counter;
+  float runtime = ev_h->time.runtime;        
+  float* Phi2 = &ev_h->outs.phi2;
+  float* flux1_phase = &ev_h->outs.phases.flux1;
+  float* flux2_phase = &ev_h->outs.phases.flux2;
+  float* Dens_phase = &ev_h->outs.phases.Dens;
+  float* Tpar_phase = &ev_h->outs.phases.Tpar;
+  float* Tprp_phase = &ev_h->outs.phases.Tprp;
+  float Phi2_sum = ev_h->outs.phi2_movav;
+  float flux1_phase_sum = ev_h->outs.phases.flux1_sum;
+  float flux2_phase_sum = ev_h->outs.phases.flux2_sum;
+  float Dens_phase_sum = ev_h->outs.phases.Dens_sum;
+  float Tpar_phase_sum = ev_h->outs.phases.Tpar_sum;
+  float Tprp_phase_sum = ev_h->outs.phases.Tprp_sum;
 
   
   //scale<<<dimGrid,dimBlock>>>(omegaAvg, omega_sum, (float) 1./dtSum, Nx, Ny, 1
@@ -1588,7 +1650,7 @@ inline void gryfx_finish_diagnostics(cuComplex** Dens, cuComplex** Upar, cuCompl
   
   if(end) printf("Phi2 = %f\nexpectation val of ky = %f\nexpectation val of kx = %f\n", Phi2, *expectation_ky, *expectation_kx);  
 
-  if(end) printf("Q_i = %f\n\n", qflux[ION]);
+  //if(end) printf("Q_i = %f\n\n", qflux[ION]);
   if(end) printf("flux1_phase = %f \t\t flux2_phase = %f\nDens_phase = %f \t\t Tpar_phase = %f \t\t Tprp_phase = %f\n", flux1_phase, flux2_phase, Dens_phase, Tpar_phase, Tprp_phase);
   
   //calculate and write time average of parallel correlation function, C(ky,z)

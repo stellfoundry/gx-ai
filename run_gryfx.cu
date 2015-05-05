@@ -967,17 +967,18 @@ if(iproc==0) {
       
       
       
-      if(tm->counter%nsave == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
-                          Phi, tmp, tmp, field, tmpZ, CtmpX,
-                          tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
-    			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
-                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
-  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
-  			outs->expectation_kx_movav, tm->dtSum,
-  			tm->counter, tm->runtime, false,
-  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
-  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
+     if(tm->counter%nsave == 0) gryfx_finish_diagnostics(ev_h, ev_hd, false);
+//      if(tm->counter%nsave == 0) gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
+//                          Phi, tmp, tmp, field, tmpZ, CtmpX,
+//                          tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
+//    			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
+//                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
+//                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
+//  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
+//  			outs->expectation_kx_movav, tm->dtSum,
+//  			tm->counter, tm->runtime, false,
+//  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
+//  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
   
 #ifdef GS2_zonal
 			} //end of iproc if
@@ -1052,18 +1053,19 @@ if(iproc==0) {
     
     //phiR_historyWrite(Phi1,omega,tmpXY_R,tmpXY_R_h, runtime, ev_h->files.phifile); //save time history of Phi(x,y,z=0)      
     
-    gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
-                          Phi, tmp, tmp, field, tmpZ, CtmpX,
-                          tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
-    			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
-                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
-                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
-  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
-  			outs->expectation_kx_movav, tm->dtSum,
-  			tm->counter, tm->runtime, true,
-  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
-  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
-  
+    gryfx_finish_diagnostics(ev_h, ev_hd, true);
+//    gryfx_finish_diagnostics(Dens, Upar, Tpar, Tprp, Qpar, Qprp, 
+//                          Phi, tmp, tmp, field, tmpZ, CtmpX,
+//                          tmpXY, tmpXY, tmpXY, tmpXY2, tmpXY3, tmpXY4, tmpYZ, tmpYZ,
+//    			tmpX, tmpX2, tmpY, tmpY, tmpY, tmpY, tmpY2, tmpY2, tmpY2, 
+//                          ev_hd->grids.kxCover, ev_hd->grids.kyCover, tmpX_h, tmpY_h, tmpXY_h, tmpYZ_h, field_h, 
+//                          ev_h->grids.kxCover, ev_h->grids.kyCover, ev_h->outs.omega_avg, qflux, &outs->expectation_ky, &outs->expectation_kx,
+//  			Phi2_kxky_sum, wpfxnorm_kxky_sum, Phi2_zonal_sum, zCorr_sum, outs->expectation_ky_movav, 
+//  			outs->expectation_kx_movav, tm->dtSum,
+//  			tm->counter, tm->runtime, true,
+//  			&outs->phi2, &outs->phases.flux1, &outs->phases.flux2, &outs->phases.Dens, &outs->phases.Tpar, &outs->phases.Tprp,
+//  			outs->phi2_movav, outs->phases.flux1_sum, outs->phases.flux2_sum, outs->phases.Dens_sum, outs->phases.Tpar_sum, outs->phases.Tprp_sum);
+//  
   
     
     
