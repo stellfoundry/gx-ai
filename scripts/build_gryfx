@@ -195,7 +195,7 @@ case $COMMAND in
     ;;
   tests|unit_tests|linear_tests|nonlinear_tests|depend|gryfx)
     setup_build
-    make $COMMAND "$TESTSET" $MAKEFLAGSALL
+    make $COMMAND $MAKEFLAGSALL
     ;;
   update)
     echo "update function not implemented yet!"
