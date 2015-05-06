@@ -1,4 +1,4 @@
-inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
+void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -34,7 +34,7 @@ inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename
   fclose(out);
 }
 
-inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
+void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -70,7 +70,7 @@ inline void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename
   fclose(out);
 }
 
-inline void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -105,7 +105,7 @@ inline void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* e
   }
   fclose(out);
 }
-inline void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
+void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
   strcat(filename,ext);
@@ -1238,7 +1238,7 @@ inline void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar,
 }   
 
 
-inline void restartWrite(everything_struct * ev_h,
+void restartWrite(everything_struct * ev_h,
   everything_struct * ev_hd)
 {
     cuComplex * Phi = ev_hd->fields.phi;
@@ -1350,7 +1350,7 @@ inline void restartWrite(everything_struct * ev_h,
   
 }
 
-inline void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
+void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
 
   //cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar, cuComplex** Tprp,
     //            cuComplex** Qpar, cuComplex** Qprp, cuComplex* Phi, float* pflxAvg, float* wpfxAvg, float* Phi2_kxky_sum, 
@@ -1508,7 +1508,7 @@ inline void geoWrite(char* ext, char* filename)
   
 }
 
-inline void gryfx_finish_diagnostics(
+void gryfx_finish_diagnostics(
   everything_struct * ev_h,
   everything_struct * ev_hd,
    bool end

@@ -1,4 +1,4 @@
-inline void linear_timestep(
+void linear_timestep(
   int is,
   int first_half_step,
   everything_struct * ev_h,
@@ -722,7 +722,7 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
 
 
 
-inline void nonlinear_timestep(
+void nonlinear_timestep(
   int is,
   int first_half_step,
   everything_struct * ev_h,

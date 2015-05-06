@@ -103,11 +103,11 @@ endif
 ####################################
 
 
-libgryfx.a: run_gryfx.o $(MODULES)
+libgryfx.a: everything_else.o $(MODULES)
 	ar cr $@ $^
 	ranlib $@
 
-run_gryfx.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
+everything_else.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 # main program
 $(TARGET): gryfx.o libgryfx.a $(GS2)/libgs2.a 

@@ -125,7 +125,7 @@ inline void get_dorland_nu_nlpm(float* nu_abs_nlpm, cuComplex* nu1_nlpm, cuCompl
 
 }
 
-inline void filterNLPM(
+void filterNLPM(
   int is,
   fields_struct * fields_d, 
   temporary_arrays_struct * tmp_d,
@@ -209,7 +209,7 @@ float Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
 }
 
 //for when dorland_phase is complex
-inline void filterNLPMcomplex(
+ void filterNLPMcomplex(
   int is,
   fields_struct * fields_d, 
   temporary_arrays_struct * tmp_d,

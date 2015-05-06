@@ -10,6 +10,7 @@ MODULES = allocations.o\
 			gs2.o\
 			gryfx_lib.o\
 			get_error.o\
+			run_gryfx.o\
 			write_data.o\
       read_namelist.o
 
@@ -45,7 +46,6 @@ CU_DEPS := \
       sumReduc.cu \
       energy.cu \
       timestep_gryfx.cu \
-      run_gryfx.cu \
       courant.cu \
       maxReduc.cu \
       nlpm.cu \
