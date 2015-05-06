@@ -56,15 +56,6 @@ __constant__ int Zp_d;
 #include "energy.cu"
 #include "timestep_gryfx.cu"
 #include "gryfx_run_diagnostics.cu"
-
-#ifdef GS2_zonal
-extern "C" void advance_gs2(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
-extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
-extern "C" void broadcast_integer(int* a);
-#endif
-
-
-
 #include "run_gryfx_functions.cu"
 
 

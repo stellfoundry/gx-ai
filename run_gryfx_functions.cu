@@ -386,8 +386,8 @@ void load_fixed_arrays_from_restart(
       input_parameters_struct * pars,
       secondary_fixed_arrays_struct * sfixed, 
       fields_struct * fields /* fields on device */
-
-){
+)
+{
 //      restartRead(Dens,Upar,Tpar,Tprp,Qpar,Qprp,Phi, pflxAvg, wpfxAvg, Phi2_kxky_sum, Phi2_zonal_sum,
 //      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
 //      			&tm->dtSum, &tm->counter,&tm->runtime,&tm->dt,&tm->totaltimer,secondary_test_restartfileName);
@@ -509,8 +509,9 @@ if(iproc==0) {
     memset(hybrid_h->qprp_h, 0., sizeof(cuComplex)*ntheta0*Nz*nSpecies);
 
     //set initial condition from GS2 for ky=0 modes
+    gryfx_get_gs2_moments(hybrid_h);
 
-    getmoms_gryfx(hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi);
+
 }
 
 void copy_hybrid_arrays_from_host_to_device_async(

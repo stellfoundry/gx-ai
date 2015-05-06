@@ -7,6 +7,8 @@
 
 extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, int * Nz, float * gryfx_theta, struct gryfx_parameters_struct * gryfxpars);
 extern "C" void finish_gs2();
+extern "C" void advance_gs2(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
+extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
 #endif
 
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
@@ -51,4 +53,15 @@ void gryfx_initialize_gs2(grids_struct * grids, struct gryfx_parameters_struct *
 
 void gryfx_finish_gs2(){
   finish_gs2();
+}
+
+void gryfx_advance_gs2(hybrid_zonal_arrays_struct * hybrid_h, time_struct* tm)
+{
+    advance_gs2(&tm->gs2_counter, hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi, &tm->first_half_flag);
+    tm->gs2_counter++;
+}
+
+void gryfx_get_gs2_moments(hybrid_zonal_arrays_struct * hybrid_h)
+{
+    getmoms_gryfx(hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi);
 }

@@ -4,10 +4,9 @@
 #include "global_variables.h"
 #include "get_error.h"
 #include "write_data.h"
+#include "gs2.h"
 
 #ifdef GS2_zonal
-extern "C" void advance_gs2(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
-extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
 extern "C" void broadcast_integer(int* a);
 #endif
 
@@ -327,8 +326,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if(!LINEAR) {
       if(iproc==0) cudaEventSynchronize(events->D2H); //have proc 0 wait for NL(t) to be copied D2H before advancing GS2 if running nonlinearly
     }
-    advance_gs2(&tm->gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
-    tm->gs2_counter++;
+    gryfx_advance_gs2(&ev_h->hybrid, tm);
 
     if(iproc==0) {  
       //copy moms(t+dt/2)_ky=0 from H2D
@@ -444,8 +442,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       if(iproc==0) cudaEventSynchronize(events->D2H); //wait for NL(t+dt/2) to be copied D2H before advancing GS2 if running nonlinearly
     }
     //advance GS2 t+dt/2 -> t+dt
-    advance_gs2(&tm->gs2_counter, dens_ky0_h, upar_ky0_h, tpar_ky0_h, tprp_ky0_h, qpar_ky0_h, qprp_ky0_h, phi_ky0_h, &tm->first_half_flag);
-    tm->gs2_counter++;
+    gryfx_advance_gs2(&ev_h->hybrid, tm);
 
     if(iproc==0) {  
       //copy moms(t+dt)_ky=0 from H2D

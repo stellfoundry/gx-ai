@@ -16,6 +16,8 @@ MODULES = allocations.o\
 
 read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
 
+run_gryfx.o: local_pointers.cu 
+
 
 CU_DEPS := \
       device_funcs.cu \
@@ -27,7 +29,6 @@ CU_DEPS := \
       covering_kernel.cu \
       reduc_kernel.cu \
       run_gryfx_functions.cu \
-      local_pointers.cu \
       cudaReduc_kernel.cu \
       init_kernel.cu \
       omega_kernel.cu \
