@@ -4,3 +4,7 @@ void gryfx_initialize_gs2(grids_struct * grids, struct gryfx_parameters_struct *
 void gryfx_finish_gs2();
 void gryfx_advance_gs2(hybrid_zonal_arrays_struct * hybrid, time_struct* tm);
 void gryfx_get_gs2_moments(hybrid_zonal_arrays_struct * hybrid_h);
+
+double gs2_time();
+double gs2_dt();
+void  set_gs2_dt_cfl(double dt_cfl);

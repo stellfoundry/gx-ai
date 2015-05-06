@@ -9,6 +9,9 @@ extern "C" void init_gs2(int* strlength, char* namelistFile, int * mpcom, int * 
 extern "C" void finish_gs2();
 extern "C" void advance_gs2(int* gs2_counter, cuComplex* dens_ky0_h, cuComplex* upar_ky0_h, cuComplex* tpar_ky0_h, cuComplex* tprp_ky0_h, cuComplex* qpar_ky0_h, cuComplex* qprp_ky0_h, cuComplex* phi_ky0_h, int* first_half_flag);
 extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp, cuComplex* qpar, cuComplex* qprp, cuComplex* phi);
+extern "C" double gs2_time_mp_code_dt_;
+extern "C" double gs2_time_mp_code_dt_cfl_;
+extern "C" double gs2_time_mp_code_time_;
 #endif
 
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
@@ -64,4 +67,19 @@ void gryfx_advance_gs2(hybrid_zonal_arrays_struct * hybrid_h, time_struct* tm)
 void gryfx_get_gs2_moments(hybrid_zonal_arrays_struct * hybrid_h)
 {
     getmoms_gryfx(hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi);
+}
+double gs2_time(){
+  //This need to be fixed.
+  double g2t = gs2_time_mp_code_time_;
+  return g2t;
+}
+double gs2_dt(){
+  //This need to be fixed.
+  double gdt = gs2_time_mp_code_dt_ ;
+  return gdt;
+}
+
+void  set_gs2_dt_cfl(double dt_cfl){
+  //This need to be fixed.
+  gs2_time_mp_code_dt_cfl_ = dt_cfl;
 }

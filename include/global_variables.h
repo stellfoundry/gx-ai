@@ -29,13 +29,13 @@ EXTERN_SWITCH int mpcom;
 EXTERN_SWITCH int mpcom_global;
 EXTERN_SWITCH int gpuID;
 
-extern "C" double run_parameters_mp_code_delt_max_;
-extern "C" int kt_grids_mp_naky_;
-extern "C" double gs2_time_mp_code_dt_;
-extern "C" double gs2_time_mp_code_dt_cfl_;
-extern "C" double gs2_time_mp_code_time_;
-extern "C" int* mp_mp_proc0_;
-extern "C" int* mp_mp_iproc_;
+//extern "C" double run_parameters_mp_code_delt_max_;
+//extern "C" int kt_grids_mp_naky_;
+//extern "C" double gs2_time_mp_code_dt_;
+//extern "C" double gs2_time_mp_code_dt_cfl_;
+//extern "C" double gs2_time_mp_code_time_;
+//extern "C" int* mp_mp_proc0_;
+//extern "C" int* mp_mp_iproc_;
 
 
 

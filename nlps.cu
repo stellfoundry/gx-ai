@@ -80,7 +80,7 @@ inline void NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, float *kx
   if(cfl_flag) {
     dt_cfl = 1./vmax; 
 #ifdef GS2_zonal
-    gs2_time_mp_code_dt_cfl_ = dt_cfl * sqrt(2.); //pass dt_cfl to GS2, with appropriate normalization; this is only on proc 0!
+    set_gs2_dt_cfl(dt_cfl * sqrt(2.)); //pass dt_cfl to GS2, with appropriate normalization; this is only on proc 0!
 #endif
     if(dt_cfl>maxdt) dt_cfl = maxdt;
   }

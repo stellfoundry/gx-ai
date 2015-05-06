@@ -24,7 +24,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   if(DEBUG) getError("run_gryfx.cu, before device alloc");
   specie* species_d;
 
-  printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time_mp_code_time_/sqrt(2.0));
+  printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time()/sqrt(2.0));
 
   /* ev_hd is on the host but the pointers point to memory on the device*/
   everything_struct * ev_hd;
@@ -242,7 +242,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   {
     if(iproc==0) {
 #ifdef GS2_zonal
-      if(gs2_time_mp_code_time_/sqrt(2.) - tm->runtime > .0001) printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time_mp_code_time_/sqrt(2.), tm->runtime); 
+      if(gs2_time()/sqrt(2.) - tm->runtime > .0001) printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time()/sqrt(2.), tm->runtime); 
 #endif
       //EXBshear bug fixed, need to check if correct
       //ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
@@ -525,7 +525,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 #ifdef GS2_zonal
     if(iproc==0) {
       if(tm->counter%nsave==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
-        printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,tm->runtime,gs2_time_mp_code_time_/sqrt(2.), tm->dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
+        printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,tm->runtime,gs2_time()/sqrt(2.), tm->dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
       }
 #endif
 
@@ -559,7 +559,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 
 #ifdef GS2_zonal
-    tm->dt = gs2_time_mp_code_dt_ * 2. / sqrt(2.);
+    tm->dt = gs2_dt() * 2. / sqrt(2.);
     dt = tm->dt;
 #endif
 
