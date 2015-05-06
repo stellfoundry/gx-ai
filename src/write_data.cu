@@ -187,6 +187,7 @@ void writedat_beginning(everything_struct * ev)
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_ky", "tY", "phi^2 summed over all kx as a function of ky and time", "(Ti/e)**2");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi2_by_kx", "tX", "phi^2 summed over all ky as a function of kx and time", "(Ti/e)**2");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "omega", "tYXr", "Real part is frequency, imaginary part is growth rate, as a function of time, x and y", "v_ti/a");
+  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "omega_average", "tYXr", "Average frequency and growth rate, as a function of time, x and y", "v_ti/a");
 
 	/* Fluxes */
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "hflux_tot", "t", "total heat flux", "(figure it out)");
@@ -229,6 +230,7 @@ void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * 
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_ky", &(outs->phi2_by_ky[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_kx", &(outs->phi2_by_kx[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "omega", &(outs->omega[0]));
+  writedat_mask_trans_write_variable(grids, sdatfile, "omega_average", &(outs->omega_out[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "hflux_tot", &(outs->hflux_tot));
   sdatio_increment_start(sdatfile, "t");
   

@@ -74,7 +74,11 @@ typedef struct {
 
 	// Omega as a function of kx and ky
 	cuComplex * omega;
+  // omega_avg is not correctly normalized
+  // by dtSum; omega_out is the actual 
+  // average_growth rate
 	cuComplex * omega_avg;
+	cuComplex * omega_out;
 
 
   phases_struct phases;

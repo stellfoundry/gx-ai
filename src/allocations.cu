@@ -204,6 +204,7 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 
 	alloc_dealloc(&outs->omega, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&outs->omega_avg, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
+	alloc_dealloc(&outs->omega_out, aod, ON_HOST, ml,  TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
 
 	alloc_dealloc(&outs->phi2_by_mode_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&outs->phi2_zonal_by_kx_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nx);
@@ -223,6 +224,7 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 	/*Globals...to be deleted eventually*/
 	if (ml == ON_HOST){
   	omega_h = outs->omega;
+  	omega_out_h = outs->omega_out;
 	}
 	else if (ml == ON_DEVICE){
 	}

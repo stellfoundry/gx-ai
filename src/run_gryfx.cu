@@ -26,11 +26,6 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
   printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time_mp_code_time_/sqrt(2.0));
 
-  ////////////  
-  if(iproc==0) {
-    omega_out_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)); 
-  } //end if iproc
-
   /* ev_hd is on the host but the pointers point to memory on the device*/
   everything_struct * ev_hd;
   /* ev_d is on the device (and the pointers point to memory on the device)*/
