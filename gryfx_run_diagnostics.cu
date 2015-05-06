@@ -91,11 +91,13 @@ void gryfx_run_diagnostics(
         outs_h->pflux_by_species_old[s] = outs_h->pflux_by_species[s];
       }
   
+      outs_h->hflux_tot=0.0;
       //calculate instantaneous heat flux
       for(int s=0; s<nSpecies; s++) {  
         fluxes(&outs_h->pflux_by_species[s], &wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,
                tmp_d->CXYZ,tmp_d->CXYZ,tmp_d->CXYZ,fields_d->field,fields_d->field,fields_d->field,tmp_d->Z,tmp_d->XY,species[s],tm_h->runtime,
                &outs_h->phases.flux1, &outs_h->phases.flux2, &outs_h->phases.Dens, &outs_h->phases.Tpar, &outs_h->phases.Tprp);        
+        outs_h->hflux_tot=outs_h->hflux_tot+wpfx[s];
       }
        
       volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)

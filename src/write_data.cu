@@ -232,6 +232,7 @@ void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * 
   writedat_mask_trans_write_variable(grids, sdatfile, "omega", &(outs->omega[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "omega_average", &(outs->omega_out[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "hflux_tot", &(outs->hflux_tot));
+  writedat_mask_trans_write_variable(grids, sdatfile, "es_heat_flux", &(outs->hflux_by_species));
   sdatio_increment_start(sdatfile, "t");
   
 }
