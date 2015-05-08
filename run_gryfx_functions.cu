@@ -8,6 +8,14 @@ void calculate_additional_geo_arrays(
     geometry_coefficents_struct * geo_d, 
     geometry_coefficents_struct * geo_h){
 
+  // NRM: for some reason, in certain situations CUDA is having trouble when the same
+  // array is both the input and output of a kernel. This was causing problems
+  // within ZDerivB, specifically in the zderivb kernel. see ZDerivB.cu for details.
+  // for this reason, we need to declare and allocate a new array, dz_bmag_complex. 
+  // doing it here should be ok, since this is all initialization and won't affect runtime.
+  cuComplex* dz_bmag_complex;
+  cudaMalloc((void**) &dz_bmag_complex, sizeof(cuComplex)*(Nz/2+1));
+
   bmagInit <<< cdims->dimGrid,cdims->dimBlock >>> (geo_d->bmag, geo_d->bmagInv);
   if(pars->igeo==0) 
     jacobianInit <<< cdims->dimGrid, cdims->dimBlock >>> (
@@ -26,7 +34,7 @@ void calculate_additional_geo_arrays(
     if(pars->debug) printf("calculating bgrad\n");
     cudaMemset(geo_d->bmag_complex, 0, sizeof(cuComplex)*(Nz/2+1));
     //NB This function also sets bmag_complex
-    ZDerivB(geo_d->bgrad, geo_d->bmag, geo_d->bmag_complex, kz);
+    ZDerivB(geo_d->bgrad, geo_d->bmag, geo_d->bmag_complex, dz_bmag_complex, kz);
     multdiv<<<cdims->dimGrid,cdims->dimBlock>>>(geo_d->bgrad, geo_d->bgrad, geo_d->bmagInv, 1, 1, Nz, 1);
     /*
      */
@@ -44,6 +52,7 @@ void calculate_additional_geo_arrays(
 
 void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grids_struct * grids_h, cuda_dimensions_struct * cdims){
 	cudaMemcpy(grids->z, grids_h->z, sizeof(float)*grids->Nz, cudaMemcpyHostToDevice);
+
   kInit  <<< cdims->dimGrid, cdims->dimBlock >>> (grids->kx, grids->ky, grids->kz, grids->kx_abs, NO_ZDERIV);
 
   grids_h->kx_max = (float) ((int)((grids_h->Nx-1)/3))/pars->x0;

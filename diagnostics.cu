@@ -183,7 +183,7 @@ inline void fieldWriteXY(float* f_d, char* fieldname, float dt)
 inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h)
 { 
   for(int c=0; c<nClasses; c++) { 
-    sprintf(filename, "%sphi_covering_nperiod%d.field",out_stem,nLinks[c]);
+    sprintf(filename, "%s.phi_covering_nperiod%d.field",out_stem,nLinks[c]);
     FILE* out = fopen(filename,"w+"); 
     cuComplex *g_h;
     g_h = (cuComplex*) malloc(sizeof(cuComplex)*Nz*icovering*nLinks[c]*nChains[c]);
