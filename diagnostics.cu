@@ -874,6 +874,7 @@ inline void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext
 inline void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_kykx_h, f_kykx, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
@@ -888,6 +889,7 @@ inline void kykxWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
 inline void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext) 
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_kykx_h, f_kykx, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
@@ -978,6 +980,7 @@ inline void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
 inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, float fac, float dtSumInv)
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out = fopen(filename, "w+");
   fprintf(out, "#ky\tkx\t\tomega\t\tgamma\n");
@@ -1011,6 +1014,7 @@ inline void omegakykxWrite(cuComplex* omegaAvg_h, char* filename, char* ext, flo
 inline void omegakxkyWrite(cuComplex* omegaAvg_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out = fopen(filename, "w+");
   fprintf(out, "#kx\tky\t\tomega\t\tgamma\n");

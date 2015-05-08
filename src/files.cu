@@ -53,7 +53,7 @@ void setup_files(files_struct * files, input_parameters_struct * pars, grids_str
   //set up stopfile
   //char stopfileName[60];
   strcpy(files->stopfileName, out_stem);
-  strcat(files->stopfileName, "stop");
+  strcat(files->stopfileName, ".stop");
   
   printf("stopfile = %s\n", files->stopfileName);
 
