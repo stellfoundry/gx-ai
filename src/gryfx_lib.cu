@@ -71,7 +71,11 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
 	if(iproc==0) printf("%d: Initializing GryfX...\tNamelist is %s\n", ev->info.gpuID, namelistFile);
   //  read_namelist(namelistFile); // all procs read from namelist, set global variables.
+
+
+  // parameters are read from namelist and put into input_parameters struct ev->pars
   read_namelist(&(ev->pars), &(ev->grids), namelistFile);
+
 	//writedat_set_run_name(&(ev->info.run_name), namelistFile);
 	set_grid_masks_and_unaliased_sizes(&(ev->grids));
   //allocate_or_deallocate_everything(ALLOCATE, ev);
@@ -83,6 +87,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
       if(iproc==0) printf("%d: out_stem = %s\n", ev->info.gpuID, ev->info.run_name);
   //}
 
+  // copy elements of input_parameters struct ev->pars into gryfx_parameters_struct gryfxpars
   if (iproc==0) set_gryfxpars(gryfxpars, ev);
 
   // EGH: this is a nasty way to broadcast gryfxpars... we should
@@ -113,7 +118,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   
   
   if(iproc==0) {
-    //Only proc0 needst to import paramters to gryfx
+    //Only proc0 needs to import paramters to gryfx
+    // copy elements of gryfx_parameters_struct gryfxpars into input_parameters struct ev->pars.
+    // this is done because gryfxpars may have been changed externally (i.e. by Trinity) 
+    // between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
+    // ev->pars then needs to be updated since ev->pars is what is used in run_gryfx.
     import_gryfxpars(gryfxpars, ev);
     printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
     set_geometry(&ev->pars, &ev->grids, &ev->geo, gryfxpars);
@@ -260,6 +269,7 @@ void initialize_cuda_parallelization(everything_struct * ev){
   printf("dimGrid = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
 }
 
+// this function copies elements of input_parameters struct ev->pars into gryfx_parameters_struct gryfxpars
 void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
     gryfxpars->equilibrium_type = ev->pars.equilibrium_type;
     /*char eqfile[800];*/
@@ -307,6 +317,12 @@ void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct
   	  gryfxpars->nu[i] = pars->species[i].nu_ss;
     }
 }
+
+
+// this function copies elements of gryfx_parameters_struct gryfxpars into input_parameters struct ev->pars.
+// this is done because gryfxpars may have been changed externally (i.e. by Trinity) 
+// between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
+// ev->pars then needs to be updated since ev->pars is what is used in run_gryfx
 void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
    input_parameters_struct * pars = &ev->pars;
    pars->equilibrium_type = gryfxpars->equilibrium_type ;
@@ -359,10 +375,14 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
 	   pars->species[i].tprim = gryfxpars->tprim[i] ;
 	   pars->species[i].nu_ss = gryfxpars->nu[i] ;
   }
-  
-  int jtwist;
-  jtwist = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
-  if(jtwist<0) jtwist=0;
+
+  int jtwist_square, jtwist;
+  // determine value of jtwist needed to make X0~Y0
+  jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
+  // as currently implemented, there is no way to manually set jtwist from input file
+  // there could be some switch here where we choose whether to use
+  // jtwist_in or jtwist_square
+  jtwist = jtwist_square;
   if(jtwist!=0) pars->x0 = pars->y0*jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
   //else use what is set in input file 
   pars->jtwist = jtwist;
