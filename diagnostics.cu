@@ -1,6 +1,7 @@
 void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_h,f_d,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
@@ -37,6 +38,7 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename)
 void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_h,f_d,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
@@ -73,6 +75,7 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int N
 void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_nopad_h,f_nopad_d,sizeof(cuComplex)*ntheta0*(naky)*Nz,cudaMemcpyDeviceToHost);
@@ -108,6 +111,7 @@ void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, cha
 void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
@@ -904,6 +908,7 @@ inline void kxkyWrite(float* f_kykx, float* f_kykx_h, char* filename, char* ext)
 inline void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_zky_h, f_zky, sizeof(float)*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
@@ -927,6 +932,7 @@ inline void zkyWrite(float* f_zky, float* f_zky_h, char* filename, char* ext)
 inline void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_zky_h, f_zky, sizeof(float)*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
@@ -950,6 +956,7 @@ inline void zkyWriteNorm(float* f_zky, float* f_zky_h, char* filename, char* ext
 inline void kxWrite(float* f_kx, float* f_kx_h, char* filename, char* ext)
 {
   strcpy(filename, out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_kx_h, f_kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
@@ -1478,6 +1485,7 @@ inline void check_b()
 inline void geoWrite(char* ext, char* filename)
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename,ext);
   FILE* out = fopen(filename,"w+");
   

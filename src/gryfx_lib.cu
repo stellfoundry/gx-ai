@@ -139,7 +139,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   FILE* namelist;
   char inputFile[200];
   strcpy(inputFile, ev->info.run_name);
-  strcat(inputFile, "in");
+  strcat(inputFile, ".in");
 
   // EGH to Noah... can we get rid of this?
   // do you ever use the old input file format any more?
@@ -159,7 +159,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     definitions(ev);
     char outfileName[200];
     strcpy(outfileName, ev->info.run_name);
-    strcat(outfileName, "out_gryfx");
+    strcat(outfileName, ".out_gryfx");
     outfile = fopen(outfileName, "w+");
 
 	} //end of iproc if
