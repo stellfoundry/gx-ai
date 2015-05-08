@@ -839,6 +839,7 @@ inline void fluxWrite(FILE* fluxfile, float* pflx, float* pflxAvg, float* wpfx, 
 inline void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext) 
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out = fopen(filename,"w+");
   cudaMemcpy(f_ky_h, f_ky, sizeof(float)*(Ny/2+1),cudaMemcpyDeviceToHost);
@@ -854,6 +855,7 @@ inline void kyWrite(float* f_ky, float* f_ky_h, char* filename, char* ext)
 inline void kyHistoryWrite(float* f_ky, float* f_ky_h, char* filename, char* ext, int counter, float runtime) 
 {
   strcpy(filename,out_stem);
+  strcat(filename, ".");
   strcat(filename, ext);
   FILE* out;
   if(counter==0 || counter==1) out = fopen(filename,"w+");
