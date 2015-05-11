@@ -26,6 +26,8 @@ inline void shear0_ifac(cuComplex* nu, cuComplex* nu_CtmpXZ, cuComplex* PhiZF_Ct
 
 inline void shear1(float* nu, float* nu_tmpZ, float* nu_tmpXZ, float* Phi2ZF, specie s) {  
   nlpm_shear1<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv, nlpm_zonal_kx1_only);
+  mask<<<dimGrid,dimBlock>>>(nu_tmpXZ, Nx, 1, Nz);
+  // sum over x
   sumReduc_Partial(nu, nu_tmpXZ, Nx*Nz, Nz, false); 
 }
 
@@ -43,16 +45,10 @@ inline void shear1(float* nu, float* nu_tmpZ, float* nu_tmpXZ, float* Phi2ZF, sp
 //}  
 
 inline void shear2(float* nu, float* nu_tmpZ, float* nu_tmpXZ, float* Phi2ZF, specie s) {
-  //float val;
   nlpm_shear2<<<dimGrid,dimBlock>>>(nu_tmpXZ, Phi2ZF, dnlpm, kx, s.rho, ky, shat, gds2, gds21, gds22, bmagInv, nlpm_zonal_kx1_only);
-  //val = maxReduc(nu_tmpXZ, Nx*Nz, false);
-  //printf("In shear2: max nu(x,z) = %e\n", val);
+  mask<<<dimGrid,dimBlock>>>(nu_tmpXZ, Nx, 1, Nz);
   sumReduc_Partial(nu_tmpZ, nu_tmpXZ, Nx*Nz, Nz, false); 
-  //val = maxReduc(nu_tmpZ, Nz, false);
-  //printf("In shear2: after sumReduc_Partial, max nu(z) = %e\n", val);
   sqrtZ<<<dimGrid,dimBlock>>>(nu, nu_tmpZ);  
-  //val = maxReduc(nu, Nz, false);
-  //printf("In shear2: after sqrtZ, max nu(z) = %e\n", val);
 }  
 
 typedef void (*nlpm_switch)(float*, float*, float*, float*, specie);
@@ -64,6 +60,8 @@ inline void get_nu_nlpm(float* nu_nlpm, cuComplex* Phi, float* Phi2ZF_tmpX, floa
   // get zonal flow component of Phi
   volflux_zonal<<<dimGrid,dimBlock>>>(Phi2ZF_tmpX, Phi, Phi, jacobian, 1./(fluxDen*fluxDen) );
   
+  //zero<<<dimGrid,dimBlock>>>(Phi2ZF_tmpX, Nx, 1, 1);
+
   shear[inlpm](nu_nlpm, tmpZ, nu_nlpm_tmpXZ, Phi2ZF_tmpX, s);  
 
 }
@@ -136,22 +134,22 @@ void filterNLPM(
   float* Dnlpm_d
       )
 {
-cuComplex* Phi = fields_d->phi;
-//cuComplex* Dens = fields_d->dens[is];
-//cuComplex* Upar = fields_d->upar[is];
-cuComplex* Tpar = fields_d->tpar[is];
-cuComplex* Tprp = fields_d->tprp[is];
-cuComplex* Qpar = fields_d->qpar[is];
-cuComplex* Qprp = fields_d->qprp[is];
-float* Phi2ZF_tmpX = tmp_d->X;
-float* tmpXZ = tmp_d->XZ;
-//float* filter_tmpYZ = tmp_d->YZ;
-float* nu_nlpm = nlpm_d->nu;
-float* nu1_nlpm = nlpm_d->nu1;
-float* nu22_nlpm = nlpm_d->nu22;
-float Phi_zf_kx1 = nlpm_h->Phi_zf_kx1_avg;
-float Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
-//cuComplex* tmp  = tmp_d->CXYZ;
+  cuComplex* Phi = fields_d->phi;
+  //cuComplex* Dens = fields_d->dens[is];
+  //cuComplex* Upar = fields_d->upar[is];
+  cuComplex* Tpar = fields_d->tpar[is];
+  cuComplex* Tprp = fields_d->tprp[is];
+  cuComplex* Qpar = fields_d->qpar[is];
+  cuComplex* Qprp = fields_d->qprp[is];
+  float* Phi2ZF_tmpX = tmp_d->X;
+  float* tmpXZ = tmp_d->XZ;
+  //float* filter_tmpYZ = tmp_d->YZ;
+  float* nu_nlpm = nlpm_d->nu;
+  float* nu1_nlpm = nlpm_d->nu1;
+  float* nu22_nlpm = nlpm_d->nu22;
+  float Phi_zf_kx1 = nlpm_h->Phi_zf_kx1_avg;
+  float Phi_zf_rms = nlpm_h->kx2Phi_zf_rms;
+  //cuComplex* tmp  = tmp_d->CXYZ;
   //float nu1max, nu22max;
   if(dorland_nlpm) {
     if(strcmp(nlpm_option,"constant") == 0 || (strcmp(nlpm_option,"cutoff") == 0 && Phi_zf_rms>low_cutoff)) {

@@ -18,11 +18,11 @@ __device__ int iget_idz(void) {return blockIdx.z*blockDim.z+threadIdx.z;}
 
 __device__ float g0(float b) {
 
-  float tol = 1.e-7;
-  float tk, b2, b2sq;
-  float g, x, xi, err;
+  double tol = 1.e-7;
+  double tk, b2, b2sq;
+  double g, x, xi, err;
 
-  if (b == 0) {return 1.0;}
+  if (b < tol) {return 1.0;}
 
   b2 = 0.5 * b;
   b2sq = b2 * b2;
@@ -46,11 +46,11 @@ __device__ float g0(float b) {
 
 __device__ float g1(float b) {
 
-  float tol = 1.e-7;
-  float tk, b2, b2sq;
-  float g, x, xi, xp1i, err;
+  double tol = 1.e-7;
+  double tk, b2, b2sq;
+  double g, x, xi, xp1i, err;
 
-  if (b == 0) {return 0.0;}
+  if (b < tol) {return 0.0;}
 
   b2 = 0.5 * b;
   b2sq = b2 * b2;

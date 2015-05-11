@@ -72,6 +72,42 @@ void fieldWrite(cuComplex* f_d, cuComplex* f_h, char* ext, char* filename, int N
   fclose(out);
 }
 
+void fieldWrite(float* f_d, float* f_h, char* ext, char* filename, int Nx, int Ny, int Nz)
+{
+  strcpy(filename,out_stem);
+  strcat(filename, ".");
+  strcat(filename,ext);
+  FILE* out = fopen(filename,"w+");
+  cudaMemcpy(f_h,f_d,sizeof(float)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)");  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int i=0; i<(Nx-1)/3+1; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;      
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	//if(index!=0){
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_h[j+(Ny/2+1)*i]); 
+	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_h[index]);    	  
+        //}
+      }     
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;
+      for(int k=0; k<=Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\n", -z_h[0], ky_h[j], kx_h[i], f_h[j+(Ny/2+1)*i]); 
+	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\n", z_h[k], ky_h[j], kx_h[i], f_h[index]);    	  
+      }    
+    }
+  }
+  fclose(out);
+}
 void fieldWrite_nopad(cuComplex* f_nopad_d, cuComplex* f_nopad_h, char* ext, char* filename, int Nx, int Ny, int Nz, int ntheta0, int naky)
 {
   strcpy(filename,out_stem);

@@ -136,19 +136,21 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
   unsigned int idy = 0;
   unsigned int idx = get_idx();
 
-  int ikx1 = round(X0_d); //determine the index of the kx=1 mode
-  if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
-  unsigned int idx_zonal;
-  if(zonal_kx1_only) idx_zonal = ikx1;
-  else idx_zonal = idx;
+  //int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+  //if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+  //unsigned int idx_zonal;
+  //if(zonal_kx1_only) idx_zonal = ikx1;
+  //else idx_zonal = idx;
   
   if(nz<=zthreads) {
-    if(idz<nz && idx<nx) {
+    if(idz<nz && idx<nx && idx!=0) {
       
       unsigned int idxz = idx + nx*idz;
       
       float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-      nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
+      nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
+      //nu[idxz] = flr(bidx);
+      //nu[idxz] = abs(kx[idx])*sqrt(Phi2ZF[idx]);//*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
             
       
     }
@@ -162,7 +164,7 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 	
 	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
-        nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
+        nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
 	
 	
       }
@@ -178,8 +180,8 @@ __global__ void nlpm_shear2(float* nu, float* Phi2ZF, float dnlpm, float* kx,
   unsigned int idy = 0;
   unsigned int idx = get_idx();
   
-  int ikx1 = round(X0_d); //determine the index of the kx=1 mode
-  if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
+  //int ikx1 = round(X0_d); //determine the index of the kx=1 mode
+  //if(ikx1 > (nx-1)/3) ikx1=(nx-1)/3; //if kx=1 is not in the box, use the highest kx 
   //unsigned int idx_zonal;
   //if(zonal_kx1_only) idx_zonal = ikx1;
   //else idx_zonal = idx;

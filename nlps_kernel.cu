@@ -154,6 +154,51 @@ __global__ void mask(float* f)
     
 }      
 
+__global__ void mask(float* f, int nx, int ny, int nz) 
+{
+  unsigned int idy = get_idy();
+  int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  //nx_unmasked = 2*((nx-1)/3)+1
+  //ny_unmasked = (ny-1)/3+1
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    
+    
+    int ikx = get_ikx(idx);
+    
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx< -(nx-1)/3) {
+      f[index] = 0.;
+    }  
+    
+    //also zero the kx=ky=0 mode
+    if( idx==0 && idy==0 ) {
+      f[index] = 0.;
+    }  
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+    
+    int ikx = get_ikx(idx);
+    
+    if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3) {
+       f[index] = 0;
+     }  
+     //also zero the kx=ky=0 mode
+     if( idx==0 && idy==0 ) {
+       f[index] = 0;
+     }  
+    }
+   }
+  }
+    
+}      
 
 __global__ void bracket(float* result, float* fdxgdy,  
                       float* fdy, float* gdx, float scaler)
