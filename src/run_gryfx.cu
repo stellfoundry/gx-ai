@@ -24,7 +24,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   if(DEBUG) getError("run_gryfx.cu, before device alloc");
   specie* species_d;
 
+#ifdef GS2_zonal
   printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time()/sqrt(2.0));
+#endif
 
   /* ev_hd is on the host but the pointers point to memory on the device*/
   everything_struct * ev_hd;
@@ -226,13 +228,13 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   tm->first_half_flag = 1;
 
   clock_gettime(CLOCK_MONOTONIC, &clockstart);
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
   if(iproc==0) {
-#endif
+//#endif
     cudaEventRecord(events->start,0);
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
   }
-#endif
+//#endif
 
   /////////////////////
   // Begin timestep loop
@@ -257,9 +259,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     //////nvtxRangePushA("Gryfx t->t+tm->dt/2");
 
     tm->first_half_flag = 1;
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
     if(iproc==0) {
-#endif
+//#endif
       if(!LINEAR) {
         for(int s=0; s<nSpecies; s++) {
           //calculate NL(t) = NL(Moment)
@@ -470,9 +472,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     //////nvtxRangePushA("Diagnostics");
 
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
     if(iproc==0) {
-#endif  
+//#endif  
 
       //NLPM
       if(!LINEAR && NLPM && dorland_phase_complex) {
@@ -513,7 +515,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       gryfx_run_diagnostics(ev_h, ev_hd);
       //if (tm->counter%nwrite==0) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 
+//#ifdef GS2_zonal
     } //end of iproc if
+//#endif
     tm->runtime+=tm->dt;
     tm->counter++;       
     //checkstop
@@ -522,10 +526,15 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       ctrl->stopcount++;
     }     
 
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
     if(iproc==0) {
+#ifdef GS2_zonal
       if(tm->counter%nsave==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
         printf("%d: %f    %f     dt=%f   %d: %s\n",gpuID,tm->runtime,gs2_time()/sqrt(2.), tm->dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
+      }
+#else
+      if(tm->counter%nsave==0 || ctrl->stopcount==ctrl->nstop-1 || tm->counter==nSteps-1) {
+        printf("%d: %f     dt=%f   %d: %s\n",gpuID,tm->runtime, tm->dt,tm->counter,cudaGetErrorString(cudaGetLastError()));
       }
 #endif
 
@@ -554,9 +563,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 
       if(tm->counter%nsave == 0) gryfx_finish_diagnostics(ev_h, ev_hd, false);
-
+//#ifdef GS2_zonal
     } //end of iproc if
-
+//#endif
 
 #ifdef GS2_zonal
     tm->dt = gs2_dt() * 2. / sqrt(2.);

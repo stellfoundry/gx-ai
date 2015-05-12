@@ -12,7 +12,7 @@ extern "C" void getmoms_gryfx(cuComplex* dens, cuComplex* upar, cuComplex* tpar,
 extern "C" double gs2_time_mp_code_dt_;
 extern "C" double gs2_time_mp_code_dt_cfl_;
 extern "C" double gs2_time_mp_code_time_;
-#endif
+//#endif
 
 extern "C" void gs2_main_mp_run_gs2_(char* namelistFile, int * strlength);
 
@@ -83,3 +83,5 @@ void  set_gs2_dt_cfl(double dt_cfl){
   //This need to be fixed.
   gs2_time_mp_code_dt_cfl_ = dt_cfl;
 }
+
+#endif

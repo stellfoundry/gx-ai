@@ -133,9 +133,11 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     if(ev->pars.debug) print_cuda_properties(ev);
 	}
 
+#ifdef GS2_zonal
   if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
   gryfx_initialize_gs2(&ev->grids, gryfxpars, namelistFile, mpcom);
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
+#endif
  
   // Copy the name of the namelist file to ev->info.run_name
   // Check if we should and can restart and set the file name

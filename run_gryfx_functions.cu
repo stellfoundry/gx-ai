@@ -489,6 +489,7 @@ void create_cuda_events_and_streams(cuda_events_struct * events, cuda_streams_st
     //cudaProfilerStart();
 }
 
+#ifdef GS2_zonal
 void initialize_hybrid_arrays(int iproc,
   grids_struct * grids,
   hybrid_zonal_arrays_struct * hybrid_h,
@@ -563,6 +564,7 @@ void copy_hybrid_arrays_from_device_to_host_async(
     cudaMemcpyAsync(hybrid_h->qprp_h + s*ntheta0*Nz, hybrid_d->qprp[s], sizeof(cuComplex)*ntheta0*Nz, cudaMemcpyDeviceToHost, streams->copystream);
   }
 }
+#endif 
 
 void replace_zonal_fields_with_hybrid(
   int first_call,
