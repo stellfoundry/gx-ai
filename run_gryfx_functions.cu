@@ -1,4 +1,3 @@
-
 void calculate_additional_geo_arrays(
     int Nz,
     float * kz,
