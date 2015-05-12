@@ -1,5 +1,5 @@
 
-inline void calculate_additional_geo_arrays(
+void calculate_additional_geo_arrays(
     int Nz,
     float * kz,
     float * tmpZ,
@@ -50,7 +50,7 @@ inline void calculate_additional_geo_arrays(
   if(DEBUG) getError("run_gryfx.cu, after init"); 
 }
 
-inline void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grids_struct * grids_h, cuda_dimensions_struct * cdims){
+void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grids_struct * grids_h, cuda_dimensions_struct * cdims){
 	cudaMemcpy(grids->z, grids_h->z, sizeof(float)*grids->Nz, cudaMemcpyHostToDevice);
 
   kInit  <<< cdims->dimGrid, cdims->dimBlock >>> (grids->kx, grids->ky, grids->kz, grids->kx_abs, NO_ZDERIV);
@@ -84,7 +84,7 @@ inline void initialize_grids(input_parameters_struct * pars, grids_struct * grid
     kperp4_max_Inv=grids_h->kperp4_max_Inv;
 }
 
-inline void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims_h, outputs_struct * outs_hd, outputs_struct * outs_h, time_struct * time){
+void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims_h, outputs_struct * outs_hd, outputs_struct * outs_h, time_struct * time){
 	int Nx = grids_h->Nx;
 	int Ny = grids_h->Ny;
 	int Nz = grids_h->Nz;
@@ -104,7 +104,7 @@ inline void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct 
 	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_kydz_movav, 1, Ny/2+1, Nz);
 }
 
-inline void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
+void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
   //set up plans for NLPS, ZDeriv, and ZDerivB
   //plan for ZDerivCovering done below
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
@@ -130,7 +130,7 @@ inline void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
 	ZDerivplan = ffts->ZDerivplan;
   if(DEBUG) getError("after plan");
 }
-inline void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * grids_h, input_parameters_struct * pars, cuffts_struct * ffts_h, cuda_streams_struct * streams, cuda_dimensions_struct * cdims, cuda_events_struct * events){
+void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * grids_h, input_parameters_struct * pars, cuffts_struct * ffts_h, cuda_streams_struct * streams, cuda_dimensions_struct * cdims, cuda_events_struct * events){
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   //set up kxCover and kyCover for covering space z-transforms
   int naky = grids_h->naky;
@@ -245,7 +245,7 @@ inline void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struc
   ///////////////////////////////////////////////////////////////////////////////////////////////////
 }
 
-inline void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_parameters_struct * pars_d, grids_struct * grids_h, grids_struct * grids_d, cuda_dimensions_struct * cdims, geometry_coefficents_struct * geo_d, fields_struct * fields_hd, temporary_arrays_struct * tmp){
+void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_parameters_struct * pars_d, grids_struct * grids_h, grids_struct * grids_d, cuda_dimensions_struct * cdims, geometry_coefficents_struct * geo_d, fields_struct * fields_hd, temporary_arrays_struct * tmp){
     
   cuComplex *init_h;
   init_h = (cuComplex*) malloc(sizeof(cuComplex)*grids_h->NxNycNz);
@@ -389,7 +389,7 @@ inline void set_initial_conditions_no_restart(input_parameters_struct * pars_h, 
       if(DEBUG) getError("after initial qneut");
 }
 
-inline void load_fixed_arrays_from_restart(
+void load_fixed_arrays_from_restart(
       int Nz,
       cuComplex * CtmpZ_h,
       input_parameters_struct * pars,
@@ -464,7 +464,7 @@ inline void load_fixed_arrays_from_restart(
        }
 }
 
-inline void create_cuda_events_and_streams(cuda_events_struct * events, cuda_streams_struct * streams, int nClasses){
+void create_cuda_events_and_streams(cuda_events_struct * events, cuda_streams_struct * streams, int nClasses){
     cudaEventCreate(&events->start);
     cudaEventCreate(&events->stop);		
     cudaEventCreate(&events->nonlin_halfstep);
@@ -489,7 +489,7 @@ inline void create_cuda_events_and_streams(cuda_events_struct * events, cuda_str
     //cudaProfilerStart();
 }
 
-inline void initialize_hybrid_arrays(int iproc,
+void initialize_hybrid_arrays(int iproc,
   grids_struct * grids,
   hybrid_zonal_arrays_struct * hybrid_h,
   hybrid_zonal_arrays_struct * hybrid_d)
@@ -523,7 +523,7 @@ if(iproc==0) {
 
 }
 
-inline void copy_hybrid_arrays_from_host_to_device_async(
+void copy_hybrid_arrays_from_host_to_device_async(
   grids_struct * grids,
   hybrid_zonal_arrays_struct * hybrid_h,
   hybrid_zonal_arrays_struct * hybrid_d,
@@ -544,7 +544,7 @@ inline void copy_hybrid_arrays_from_host_to_device_async(
   }
 }
 
-inline void copy_hybrid_arrays_from_device_to_host_async(
+void copy_hybrid_arrays_from_device_to_host_async(
   grids_struct * grids,
   hybrid_zonal_arrays_struct * hybrid_h,
   hybrid_zonal_arrays_struct * hybrid_d,
@@ -564,7 +564,7 @@ inline void copy_hybrid_arrays_from_device_to_host_async(
   }
 }
 
-inline void replace_zonal_fields_with_hybrid(
+void replace_zonal_fields_with_hybrid(
   int first_call,
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
@@ -611,7 +611,7 @@ inline void replace_zonal_fields_with_hybrid(
   }
 }
 
-inline void copy_fixed_modes_into_fields(
+void copy_fixed_modes_into_fields(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
   cuComplex * phi_d, //Need  phi separate cos sometimes need dens1 but not phi1 etc
@@ -629,7 +629,7 @@ inline void copy_fixed_modes_into_fields(
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, 1, 0, sfixed->S);
 }
 
-inline void write_initial_fields(
+void write_initial_fields(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
   temporary_arrays_struct * tmp_d,
@@ -651,7 +651,7 @@ inline void write_initial_fields(
   kxWrite(tmp_d->X, tmpX_h, filename, "phi2_0.kx");
 }
 
-inline void update_nlpm_coefficients(
+void update_nlpm_coefficients(
     cuda_dimensions_struct * cdims,
     input_parameters_struct * pars,
     outputs_struct * outs,
@@ -695,7 +695,7 @@ inline void update_nlpm_coefficients(
     }
 }
 
-inline void initialize_nlpm_coefficients(
+void initialize_nlpm_coefficients(
     cuda_dimensions_struct * cdims,
     nlpm_struct* nlpm_h, 
     nlpm_struct* nlpm_d,
@@ -719,7 +719,7 @@ inline void initialize_nlpm_coefficients(
   zero<<<dimGrid,dimBlock>>>(nlpm_d->nu, 1, 1, Nz);
 }
 
-inline void initialize_run_control(run_control_struct * ctrl, grids_struct * grids){
+void initialize_run_control(run_control_struct * ctrl, grids_struct * grids){
     int Nx = grids->Nx;
     int Ny = grids->Ny;
 
@@ -736,12 +736,12 @@ inline void initialize_run_control(run_control_struct * ctrl, grids_struct * gri
     //float wpfxmin=0.;
     ctrl->converge_count=0;
 }
-inline void initialize_averaging_parameters(outputs_struct * outs, int navg){
+void initialize_averaging_parameters(outputs_struct * outs, int navg){
     outs->alpha_avg = (float) 2./(navg+1.);
     outs->mu_avg = exp(-outs->alpha_avg);
 }
 
-inline void initialize_phi_avg_denom(
+void initialize_phi_avg_denom(
     cuda_dimensions_struct * cdims,
     input_parameters_struct * pars_h,
     grids_struct * grids_d,
