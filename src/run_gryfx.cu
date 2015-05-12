@@ -108,7 +108,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     ////////////////////////////////////////////////
 
     setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
-    writedat_beginning(ev_h);
+    //writedat_beginning(ev_h);
     ////////////////////////////////////////////
 
 
@@ -511,7 +511,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
-      if (tm->counter%nwrite==0) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
+      //if (tm->counter%nwrite==0) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 
     } //end of iproc if
     tm->runtime+=tm->dt;
@@ -537,7 +537,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
         ctrl->stopcount=100;
 #ifdef GS2_zonal
-        //abort();
+        abort();
         broadcast_integer(&ctrl->stopcount);
 #endif
       }
@@ -636,7 +636,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     }
 
     close_files(&ev_h->files);
-    writedat_end(ev_h->outs);
+    //writedat_end(ev_h->outs);
 
     //cudaProfilerStop();
   } //end of iproc if  

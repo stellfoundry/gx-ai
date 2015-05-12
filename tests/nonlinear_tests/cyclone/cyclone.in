@@ -184,7 +184,7 @@
  phiinit = 1.e-5 ! Average amplitude of initial perturbation of each Fourier mode.
  restart_file = "cyclone.nc" ! Base of filenames with restart data.
  ginit_option = "noise" ! Sets the way that the distribution function is initialized.
- !restart_dir = "tests/nonlinear_tests/cyclone/nc" 
+ restart_dir = "tests/nonlinear_tests/cyclone/nc" 
  !zf_init = 0.
 /
 &source_knobs
