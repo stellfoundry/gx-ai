@@ -27,6 +27,8 @@ void set_globals_after_gryfx_lib(everything_struct * ev){
     Nx_unmasked = ev->grids.Nx_unmasked;
     nu = ev->damps.nu;
     mu = ev->damps.mu;
+    cflx = ev->time.cflx;
+    cfly = ev->time.cfly;
     // Set in gryfx_lib.cu
     iproc = ev->mpi.iproc;
     mpcom_global = ev->mpi.mpcom;
