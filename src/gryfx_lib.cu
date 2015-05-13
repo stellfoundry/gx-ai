@@ -25,7 +25,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 	ev->memory_location = ON_HOST;
   int iproc;
 
-#ifdef GS2_zonal
+//#ifdef GS2_zonal
 
   
   MPI_Comm_rank(mpcom, &iproc);
@@ -48,8 +48,9 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     ev->info.gpuID = atoi(serial);
     printf("SN: %d\n", ev->info.gpuID);
   }
-
+#ifdef GS2_zonal
   if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
+#endif
   //iproc = *mp_mp_iproc_;
 
   int numdev;
@@ -58,9 +59,9 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
   cudaGetDevice(&gryfxpars->mpirank);
 
-#else
-  iproc=0;
-#endif
+//#else
+//  iproc=0;
+//#endif
 
   ev->mpi.iproc = iproc;
   ev->mpi.mpcom = mpcom;

@@ -14,7 +14,7 @@ module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
 echo Module configuration complete;\
-export MAKEFLAGS='-j -I Makefiles GS2_zonal=on';\
+export MAKEFLAGS='-j -I Makefiles';\
 export CUDAARCH=35;\
 export TESTEXEC='ibrun -n 16 -o 0';\
 echo
