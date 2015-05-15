@@ -62,6 +62,9 @@ VPATH=.:src
 ifeq ($(GS2_zonal),on)
   NVCCFLAGS += -D GS2_zonal 
 endif
+ifeq ($(PROFILE),on)
+  NVCCFLAGS += -D PROFILE 
+endif
 
 ifeq ($(GS2_all),on)
   NVCCFLAGS += -D GS2_all -I ${GS2}

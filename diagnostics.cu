@@ -589,7 +589,7 @@ inline void phase_angle(float *phase, cuComplex* A, cuComplex* B, float* tmpXY)
 
 inline void fluxes(float *pflux, float *qflux, cuComplex* Dens, cuComplex* Tpar, cuComplex* Tprp, cuComplex* Phi, 
             cuComplex* phi_tmp, cuComplex* vPhi_tmp, cuComplex* tmp, cuComplex* totPr_field, cuComplex* Pprp_field, cuComplex* nbar_field,
-            float* tmpZ, float* tmpXY, specie s, float runtime, 
+            float* tmpZ, float* tmpXY, float* tmpXY2, specie s, float runtime, 
             float *qflux1_phase, float *qflux2_phase, float *Dens_phase, float *Tpar_phase, float *Tprp_phase)
 {   
  float qflux1, qflux2;
@@ -600,7 +600,7 @@ inline void fluxes(float *pflux, float *qflux, cuComplex* Dens, cuComplex* Tpar,
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(totPr_field);
   volflux(vPhi_tmp, totPr_field, tmp, tmpXY);
-  qflux1 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  qflux1 = sumReduc(tmpXY, Nx*(Ny/2+1), tmpXY2, tmpXY2);
  /* //if(write_phase) {  
     float vPhi_rms;
     float totPr_rms;
@@ -637,7 +637,7 @@ inline void fluxes(float *pflux, float *qflux, cuComplex* Dens, cuComplex* Tpar,
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   mask<<<dimGrid,dimBlock>>>(Pprp_field);
   volflux(vPhi_tmp, Pprp_field, tmp, tmpXY);
-  qflux2 = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  qflux2 = sumReduc(tmpXY, Nx*(Ny/2+1), tmpXY2, tmpXY2);
   /*//if(write_phase) {  
     float Pprp_rms;
 
@@ -656,7 +656,7 @@ inline void fluxes(float *pflux, float *qflux, cuComplex* Dens, cuComplex* Tpar,
   mask<<<dimGrid,dimBlock>>>(nbar_field);
   mask<<<dimGrid,dimBlock>>>(vPhi_tmp);
   volflux(vPhi_tmp, nbar_field, tmp, tmpXY);
-  float pflux_tmp = sumReduc(tmpXY, Nx*(Ny/2+1), false);
+  float pflux_tmp = sumReduc(tmpXY, Nx*(Ny/2+1), tmpXY2, tmpXY2);
   *pflux = pflux_tmp*s.dens;
 
 

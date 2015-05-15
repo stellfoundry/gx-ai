@@ -127,9 +127,10 @@ fi
 MAKE_OPTIONAL_COMMAND=""
 COMMAND="build"
 GS2_zonal="on"
+PROFILE="off"
 
 #Parse arguments
-while getopts "hds:c:o:t:v:g:z:" OPTIONS
+while getopts "hds:c:p:o:t:v:g:z:" OPTIONS
 do
   case ${OPTIONS} in
     h)
@@ -152,6 +153,9 @@ do
     o)
       COMMAND=${OPTARG}
       ;;
+    p)
+      PROFILE=${OPTARG}
+      ;;
     t)
       COMMAND=tests
       TESTSET=TESTS=$OPTARG
@@ -172,7 +176,7 @@ do
 done
 
 # Define combined make flags
-MAKEFLAGSALL="$MAKEFLAGS $DBGFLAG $VERBSET GK_SYSTEM=$GK_SYSTEM $MAKE_OPTIONAL_COMMAND GS2=$GS2 GS2_zonal=$GS2_zonal" 
+MAKEFLAGSALL="$MAKEFLAGS $DBGFLAG $VERBSET GK_SYSTEM=$GK_SYSTEM $MAKE_OPTIONAL_COMMAND GS2=$GS2 GS2_zonal=$GS2_zonal PROFILE=$PROFILE" 
 
 #Now perform operation
 case $COMMAND in 

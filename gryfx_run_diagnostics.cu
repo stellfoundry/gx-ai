@@ -3,7 +3,9 @@ void gryfx_run_diagnostics(
   everything_struct * ev_hd
 )
 {
-
+#ifdef PROFILE
+PUSH_RANGE("gryfx diagnostics", 5);
+#endif
   /* Some local shortcuts */
   cuda_dimensions_struct * cdims = &ev_h->cdims;
   //input_parameters_struct * pars_h = &ev_h->pars;
@@ -95,7 +97,7 @@ void gryfx_run_diagnostics(
       //calculate instantaneous heat flux
       for(int s=0; s<nSpecies; s++) {  
         fluxes(&outs_h->pflux_by_species[s], &wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,
-               tmp_d->CXYZ,tmp_d->CXYZ,tmp_d->CXYZ,fields_d->field,fields_d->field,fields_d->field,tmp_d->Z,tmp_d->XY,species[s],tm_h->runtime,
+               tmp_d->CXYZ,tmp_d->CXYZ,tmp_d->CXYZ,fields_d->field,fields_d->field,fields_d->field,tmp_d->Z,tmp_d->XY, tmp_d->XY2,species[s],tm_h->runtime,
                &outs_h->phases.flux1, &outs_h->phases.flux2, &outs_h->phases.Dens, &outs_h->phases.Tpar, &outs_h->phases.Tprp);        
         outs_h->hflux_tot=outs_h->hflux_tot+wpfx[s];
       }
@@ -112,7 +114,7 @@ void gryfx_run_diagnostics(
       //nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
   
       //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
-      outs_h->phi2_zf = sumReduc(tmp_d->X, Nx, false);
+      outs_h->phi2_zf = sumReduc(tmp_d->X, Nx, tmp_d->X2, tmp_d->X2);
       outs_h->phi2_zf_rms = sqrt(outs_h->phi2_zf);   
 
       //calculate tmp_d->XY = Phi**2(kx,ky)
@@ -132,15 +134,15 @@ void gryfx_run_diagnostics(
       }
       //calculate <kx> and <ky>
       expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, ky);
-      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), false);
-      outs_h->phi2 = sumReduc(tmp_d->XY, Nx*(Ny/2+1), false);
+      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
+      outs_h->phi2 = sumReduc(tmp_d->XY, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
 
       //outs_h->phi2 = outs->phi2;
 
       outs_h->expectation_ky = (float) outs_h->phi2/outs_h->kphi2;
   
       expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, kx);
-      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), false);
+      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
       outs_h->expectation_kx = (float) outs_h->phi2/outs_h->kphi2;
       
       //calculate z correlation function = tmp_d->YZ (not normalized)
@@ -275,4 +277,7 @@ void gryfx_run_diagnostics(
   	}	
         }            
       }
+#ifdef PROFILE
+POP_RANGE;
+#endif
 }

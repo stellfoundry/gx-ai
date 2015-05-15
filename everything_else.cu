@@ -7,7 +7,6 @@
 #include "mpi.h"
 #include "nvToolsExt.h"
 
-
 // EGH: Until we do something more fancy with cudaGetSymbolAddress the following have
 // to have file scope... ie they have to be in the same aggregate source file as the 
 // kernels.
@@ -17,12 +16,14 @@ __constant__ float X0_d,Y0_d;
 __constant__ int Zp_d;
 
 #define EXTERN_SWITCH extern
+
 #include "everything_struct.h"
 #include "global_variables.h"
 #include "allocations.h"
 #include "write_data.h"
 #include "gs2.h"
 #include "get_error.h"
+#include "profile.h"
 #include "device_funcs.cu"
 #include "operations_kernel.cu"
 #include "diagnostics_kernel.cu"

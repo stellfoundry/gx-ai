@@ -6,6 +6,13 @@ void linear_timestep(
   everything_struct * ev_d 
 )
 {
+#ifdef PROFILE
+PUSH_RANGE("gryfx linear timestep",3);
+
+PUSH_RANGE("setting up",1);
+#endif
+
+
 cuComplex *Dens;
 cuComplex *Upar;
 cuComplex *Tpar;
@@ -147,8 +154,15 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   //zeroC<<<dimGrid,dimBlock>>>(phi_tmp);
 
+#ifdef PROFILE
+POP_RANGE;
+#endif
+
   ////////////////////////////////////////     
   //DENSITY
+#ifdef PROFILE
+PUSH_RANGE("density",2);
+#endif
   
   cudaMemset(dens_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
   //zeroC<<<dimGrid,dimBlock>>>(dens_field);
@@ -202,6 +216,11 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   
   //DensNew = Dens - dt*[ {phi_u, Dens} + {phi_flr,Tprp} + vt*B*gradpar(Upar/B) + iOmegaStar*phi_n - iOmegaD*(phi_nd + 2*Dens + Tpar + Tprp) ]
   
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("upar",3);
+#endif
+
   ////////////////////////////////////////
   //UPAR
 
@@ -270,6 +289,10 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   
   ////////////////////////////////////////
   //TPAR
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("tpar",4);
+#endif
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   //zeroC<<<dimGrid,dimBlock>>>(tpar_field);
@@ -360,6 +383,10 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   ////////////////////////////////////////
   //TPERP
   
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("tprp",5);
+#endif
   cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   //zeroC<<<dimGrid,dimBlock>>>(tprp_field);
       
@@ -445,6 +472,10 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   
   ////////////////////////////////////////
   //QPAR
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("qpar",1);
+#endif
   
   cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
   //zeroC<<<dimGrid,dimBlock>>>(qpar_field);
@@ -577,6 +608,10 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   
   ////////////////////////////////////////
   //QPERP
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("qprp",2);
+#endif
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
   //zeroC<<<dimGrid,dimBlock>>>(qprp_field);
@@ -717,6 +752,11 @@ cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
   //QprpNew = Qprp - dt * [ vt*( zt*phi_qperpb + Tprp - Tpar )*bgrad + {phi_u, Qprp} + {phi_flr, Upar} + {phi_flr2, Qprp} + vt*gradpar( zt*phi_flr + Tprp ) 
   //    + vt*sqrt(2)*D_prp*|gradpar|(Qprp-Qprp0) - iOmegaD*( (-1+nu9.y)*Qpar + (-1+nu10.y)*Qprp + (1+nu8.y)*Upar ) + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp ]
 
+#ifdef PROFILE
+POP_RANGE;
+POP_RANGE;
+#endif
+
 }
 //
 
@@ -730,6 +770,9 @@ void nonlinear_timestep(
   everything_struct * ev_d) 
 {
 
+#ifdef PROFILE
+PUSH_RANGE("gryfx nonlinear timestep",4);
+#endif
 cuComplex *Dens = ev_hd->fields.dens[is];
 cuComplex *Upar = ev_hd->fields.upar[is];
 cuComplex *Tpar = ev_hd->fields.tpar[is];
@@ -821,6 +864,9 @@ else {
   ////////////////////////////////////////     
   //DENSITY
   
+#ifdef PROFILE
+PUSH_RANGE("density",2);
+#endif
   cudaMemset(dens_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
 
     phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
@@ -864,6 +910,10 @@ else {
   
   ////////////////////////////////////////
   //UPAR
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("upar",3);
+#endif
 
   cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
@@ -891,6 +941,10 @@ else {
 
   ////////////////////////////////////////
   //TPAR
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("tpar",4);
+#endif
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
@@ -932,6 +986,10 @@ else {
 
   ////////////////////////////////////////
   //TPERP
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("tprp",5);
+#endif
   
   cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       
@@ -984,6 +1042,10 @@ else {
 
   ////////////////////////////////////////
   //QPAR
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("qpar",1);
+#endif
   
   cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
 
@@ -1024,6 +1086,10 @@ else {
 
   ////////////////////////////////////////
   //QPERP
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("qprp",2);
+#endif
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
   
@@ -1073,6 +1139,10 @@ else {
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QprpNew, 1., Qprp, -dt, qprp_field);
 
+#ifdef PROFILE
+POP_RANGE;
+POP_RANGE;
+#endif
 
 }
 

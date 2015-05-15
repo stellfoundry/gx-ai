@@ -5,6 +5,7 @@
 #include "get_error.h"
 #include "write_data.h"
 #include "gs2.h"
+#include "profile.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
@@ -207,6 +208,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 #endif
 
+ // MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
   if(iproc==0) {  
     if(secondary_test && !LINEAR) {
       copy_fixed_modes_into_fields(
@@ -272,17 +274,30 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 #ifdef GS2_zonal
 
+#ifdef PROFILE
+PUSH_RANGE("copy NL(t)_ky=0 from D2H",1);
+#endif
           //copy NL(t)_ky=0 from D2H
 
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
+#ifdef PROFILE
+PUSH_RANGE("waiting for all streams to finish nonlin_halfstep",2);
+#endif
             cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
+#ifdef PROFILE
+POP_RANGE;
+#endif
             copy_hybrid_arrays_from_device_to_host_async(
                 &ev_h->grids, &ev_h->hybrid, &ev_hd->hybrid, &ev_h->streams);
             cudaEventRecord(events->D2H, streams->copystream);
           }
 
           if(tm->counter==0) fieldWrite_nopad_h(dens_ky0_h, "NLdens.field", filename, Nx, 1, Nz, ev_h->grids.ntheta0, 1);
+
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
 #endif
 
@@ -317,6 +332,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       }
     } //end of iproc if
 
+
     //////nvtxRangePop();
 #ifdef GS2_zonal
 
@@ -324,17 +340,29 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       if(iproc==0) cudaEventSynchronize(events->D2H); //have proc 0 wait for NL(t) to be copied D2H before advancing GS2 if running nonlinearly
     }
     gryfx_advance_gs2(&ev_h->hybrid, tm);
+    // proc0 will not advance past this point until gryfx_advance_gs2 is complete.
 
     if(iproc==0) {  
+#ifdef PROFILE
+PUSH_RANGE("copy moms(t+dt/2)_ky=0 H2D",5);
+#endif
       //copy moms(t+dt/2)_ky=0 from H2D
       copy_hybrid_arrays_from_host_to_device_async(
           &ev_h->grids, &ev_h->hybrid, &ev_hd->hybrid, streams);
       cudaEventRecord(events->H2D, streams->copystream);
+#ifdef PROFILE
+PUSH_RANGE("waiting for copystream to finish H2D",1);
+#endif
       cudaStreamWaitEvent(0, events->H2D, 0);
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
       replace_zonal_fields_with_hybrid( 0, &ev_h->cdims, &ev_hd->fields1,
           ev_hd->fields1.phi, &ev_hd->hybrid, ev_h->fields.field);
-
+#ifdef PROFILE
+POP_RANGE;
+#endif
     } 
     //////nvtxRangePop();
 #endif
@@ -344,6 +372,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     tm->first_half_flag = 0;
     if(iproc==0) {
 
+#ifdef PROFILE
+PUSH_RANGE("NLPM and hyper", 3);
+#endif
       //NLPM calculated AFTER ky=0 quantities passed back from GS2!
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
@@ -373,6 +404,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
           }
         }
       }
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
       /////////////////////////////////
       //SECOND HALF OF GRYFX TIMESTEP
@@ -390,14 +424,26 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
           //copy NL(t+dt/2)_ky=0 from D2H
 
+#ifdef PROFILE
+PUSH_RANGE("copy NL(t+dt/2)_ky=0 from D2H",1);
+#endif
           if(s==nSpecies-1) {  //Only after all species have been done
             cudaEventRecord(events->nonlin_halfstep, 0); //record this after all streams (ie the default stream) reach this point
+#ifdef PROFILE
+PUSH_RANGE("waiting for all streams to finish nonlin_halfstep",2);
+#endif
             cudaStreamWaitEvent(streams->copystream, events->nonlin_halfstep,0); //wait for all streams before copying
+#ifdef PROFILE
+POP_RANGE;
+#endif
             copy_hybrid_arrays_from_device_to_host_async(
                 &ev_h->grids, &ev_h->hybrid, &ev_hd->hybrid,
                 &ev_h->streams);
             cudaEventRecord(events->D2H, streams->copystream);
           }
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
 #endif
 
@@ -440,8 +486,12 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     }
     //advance GS2 t+dt/2 -> t+dt
     gryfx_advance_gs2(&ev_h->hybrid, tm);
+    // proc0 will not advance past this point until gryfx_advance_gs2 is complete.
 
     if(iproc==0) {  
+#ifdef PROFILE
+PUSH_RANGE("copy moms(t+dt/2)_ky=0 H2D",5);
+#endif
       //copy moms(t+dt)_ky=0 from H2D
       copy_hybrid_arrays_from_host_to_device_async(
           &ev_h->grids, &ev_h->hybrid, 
@@ -449,7 +499,13 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 
       cudaEventRecord(events->H2D, streams->copystream);
+#ifdef PROFILE
+PUSH_RANGE("waiting for copystream to finish H2D",1);
+#endif
       cudaStreamWaitEvent(0, events->H2D, 0);
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
       cuComplex * phiptr;
 
@@ -464,6 +520,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
           &ev_h->cdims, &ev_hd->fields,
           phiptr,
           &ev_hd->hybrid, ev_h->fields.field);
+#ifdef PROFILE
+POP_RANGE;
+#endif
     }  
 
     //////nvtxRangePop();
@@ -476,6 +535,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     if(iproc==0) {
 //#endif  
 
+#ifdef PROFILE
+PUSH_RANGE("NLPM and hyper", 3);
+#endif
       //NLPM
       if(!LINEAR && NLPM && dorland_phase_complex) {
         for(int s=0; s<nSpecies; s++) {
@@ -510,6 +572,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       update_nlpm_coefficients( &ev_h->cdims, &ev_h->pars, &ev_h->outs,
           &ev_h->nlpm, &ev_hd->nlpm, &ev_d->nlpm, ev_hd->fields.phi, &ev_hd->tmp, tm);
 
+#ifdef PROFILE
+POP_RANGE;
+#endif
 
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
@@ -521,11 +586,12 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     tm->runtime+=tm->dt;
     tm->counter++;       
     //checkstop
+/*
     if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
       fclose(checkstop);
       ctrl->stopcount++;
     }     
-
+*/
 //#ifdef GS2_zonal
     if(iproc==0) {
 #ifdef GS2_zonal

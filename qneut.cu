@@ -1,5 +1,8 @@
 void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d)
 {
+#ifdef PROFILE
+PUSH_RANGE("qneut", 0);
+#endif
   //calculate the real-space ion density (summed over species)
   cudaMemset(nbartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   cudaMemset(nbar_tmp, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
@@ -14,4 +17,7 @@ void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvg
     qneutAdiab_part1<<<dimGrid,dimBlock>>>(PhiAvgNum_tmp, nbartot_field, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
     qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi, PhiAvgNum_tmp, nbartot_field, PhiAvgDenom, jacobian, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
   }
+#ifdef PROFILE
+POP_RANGE;
+#endif
 }

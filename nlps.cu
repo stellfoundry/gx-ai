@@ -30,7 +30,8 @@ inline void NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, float *kx
   if(cfl_flag) {
     abs<<<dimGrid,dimBlock>>> (derivR2_nlps, derivR1_nlps);        
     scaleReal<<<dimGrid,dimBlock>>>(derivR2_nlps,derivR2_nlps,.5*cfly);      
-    max = maxReduc(derivR2_nlps,size,false);                
+    max = maxReduc(derivR2_nlps,size,derivR1_nlps,derivR2_nlps);                
+    //max = maxReduc(derivR2_nlps,size,false);                
     vmax = max > vmax ? max : vmax;
   }
 #endif
@@ -50,7 +51,8 @@ inline void NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, float *kx
   if(cfl_flag) {
     abs<<<dimGrid,dimBlock>>> (derivR2_nlps, derivR1_nlps);        
     scaleReal<<<dimGrid,dimBlock>>>(derivR2_nlps,derivR2_nlps,.5*cflx);                                                      
-    max = maxReduc(derivR2_nlps,size,false);                
+    max = maxReduc(derivR2_nlps,size,derivR1_nlps, derivR2_nlps);                
+    //max = maxReduc(derivR2_nlps,size,false);                
     vmax = max > vmax ? max : vmax;
   }
 #endif

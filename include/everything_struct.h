@@ -124,6 +124,7 @@ typedef struct {
 	float * XY_R;
 
 	float * XZ;
+	float * XZ2;
 	float * YZ;
 	float * XYZ;
 } temporary_arrays_struct;	

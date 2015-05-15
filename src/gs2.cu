@@ -2,6 +2,7 @@
 #include "standard_headers.h"
 #include "mpi.h"
 #include "gs2.h"
+#include "profile.h"
 
 #ifdef GS2_zonal
 
@@ -60,8 +61,16 @@ void gryfx_finish_gs2(){
 
 void gryfx_advance_gs2(hybrid_zonal_arrays_struct * hybrid_h, time_struct* tm)
 {
+#ifdef PROFILE
+PUSH_RANGE("advance_gs2",1);
+//nvtxRangeId_t gs2_step = nvtxRangeStart("advance_gs2");
+#endif
     advance_gs2(&tm->gs2_counter, hybrid_h->dens_h, hybrid_h->upar_h, hybrid_h->tpar_h, hybrid_h->tprp_h, hybrid_h->qpar_h, hybrid_h->qprp_h, hybrid_h->phi, &tm->first_half_flag);
     tm->gs2_counter++;
+#ifdef PROFILE
+POP_RANGE;
+//nvtxRangeEnd(gs2_step);
+#endif
 }
 
 void gryfx_get_gs2_moments(hybrid_zonal_arrays_struct * hybrid_h)
