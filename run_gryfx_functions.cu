@@ -236,6 +236,8 @@ void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * gri
     cudaMalloc((void**) &grids_d->kyCover[c], sizeof(int)*nlinks[c]*nchains[c]);    
     cudaMemcpy(grids_d->kxCover[c], grids_h->kxCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);
     cudaMemcpy(grids_d->kyCover[c], grids_h->kyCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);    
+
+    kzInitCovering<<<cdims->dimGridCovering[c],cdims->dimBlockCovering>>>(grids_d->kz_covering[c], nlinks[c],NO_ZDERIV_COVERING,icovering);
   }    
   //printf("nLinks[0] = %d  nChains[0] = %d\n", nLinks[0],nChains[0]);
   

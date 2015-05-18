@@ -10,7 +10,7 @@ inline void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComp
   //coveringBounds<<<dimGridCovering,dimBlockCovering,0,stream>>>(g, nLinks, nChains, ky);
   
     
-  kzInitCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(kz_covering, nLinks,NO_ZDERIV_COVERING, icovering);   //NO_ZDERIV is a bool that turns on or off ZDERIV terms
+  //kzInitCovering<<<dimGridCovering,dimBlockCovering,0,stream>>>(kz_covering, nLinks,NO_ZDERIV_COVERING, icovering);   //NO_ZDERIV is a bool that turns on or off ZDERIV terms
   //kz' = kz/nCoupled
   
   cufftExecC2C(plan, g, g, CUFFT_FORWARD);
