@@ -222,6 +222,7 @@ void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * gri
     int n[1] = {nlinks[c]*Nz};
     cudaStreamCreate(&(streams->zstreams[c]));
     cufftPlanMany(&ffts_h->plan_covering[c],1,n,NULL,1,0,NULL,1,0,CUFFT_C2C,nchains[c]);
+    //cufftSetStream(ffts_h->plan_covering[c], streams->zstreams[c]);
 
     cdims->dimGridCovering[c].x = (Nz+cdims->dimBlockCovering.x-1)/cdims->dimBlockCovering.x;
     cdims->dimGridCovering[c].y = (grids_h->nChains[c]+cdims->dimBlockCovering.y-1)/cdims->dimBlockCovering.y;

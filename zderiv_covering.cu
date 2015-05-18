@@ -18,11 +18,14 @@ inline void ZDerivCovering(cufftComplex *result, cufftComplex* f, int** kx, int*
 	      
 	      // can use a separate stream for each class, do some classes at the same time. 
               // ^ This seems to make things slower! We will just use the default stream, 0.
-	      ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, plan_covering[c], 0, dimGridCovering[c], dimBlockCovering);
+              // It is slower to use multiple streams here because launch overhead is not hidden. 
+	      ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, 
+                     plan_covering[c], 0, dimGridCovering[c], dimBlockCovering);
 
-              //Only need this stuff if using multiple streams...
-	      //cudaEventRecord(end_of_zderiv[c], zstreams[c]);
-              //cudaStreamWaitEvent(0, end_of_zderiv[c], 0); //make sure linear stream waits until each zstream is finished before going on
+              //I think this isn't right. If using multiple streams, leave this commented, uncomment stuff about streams outside loop
+              ////Only need this stuff if using multiple streams...
+	      ////cudaEventRecord(end_of_zderiv[c], zstreams[c]);
+              ////cudaStreamWaitEvent(0, end_of_zderiv[c], 0); //make sure linear stream waits until each zstream is finished before going on
           }    
               //Only need this stuff if using multiple streams...
 	      //cudaEventRecord(end_of_zderiv[0], 0);

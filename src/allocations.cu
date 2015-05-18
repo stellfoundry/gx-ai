@@ -20,6 +20,18 @@ void alloc_dealloc(void * pointer_to_array_pointer, int allocate_or_deallocate, 
 		if ( memory_location == ON_HOST){
 			if (when_to_allocate == ON_HOST_AND_DEVICE || when_to_allocate == ON_HOST){
 				switch(type){
+					//case TYPE_INT:
+  					//cudaMallocHost(void_ptrptr, sizeof(int)*size);
+					//	break;
+					//case TYPE_FLOAT:
+  					//cudaMallocHost(void_ptrptr, sizeof(float)*size);
+					//	break;
+					//case TYPE_CUCOMPLEX:
+  					//cudaMallocHost(void_ptrptr, sizeof(cuComplex)*size);
+					//	break;
+					//case TYPE_CUCOMPLEX_PTR:
+  					//cudaMallocHost(void_ptrptr, sizeof(cuComplex *)*size);
+					//	break;
 					case TYPE_INT:
 						*void_ptrptr = (void *)malloc(sizeof(int)*size);
 						break;
@@ -72,6 +84,7 @@ void alloc_dealloc(void * pointer_to_array_pointer, int allocate_or_deallocate, 
 			if (when_to_allocate == ON_HOST_AND_DEVICE || when_to_allocate == ON_HOST){
 				if (*void_ptrptr != NULL){
 					free(*void_ptrptr);
+                                        //cudaFreeHost(*void_ptrptr);
 				}
 				else {
 					printf("Trying to free an unallocated array: help!\n");
