@@ -65,6 +65,8 @@ PUSH_RANGE("gryfx diagnostics", 5);
         cudaMemcpy(Phi, Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
         mask<<<dimGrid,dimBlock>>>(Phi1);
         mask<<<dimGrid,dimBlock>>>(Phi);
+        //Copy Phi to host for writing
+        cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
         
         //print growth rates to files   

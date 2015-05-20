@@ -237,7 +237,7 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 	/*Globals...to be deleted eventually*/
 	if (ml == ON_HOST){
   	omega_h = outs->omega;
-  	omega_out_h = outs->omega_out;
+  	omega_out_h = outs->omega_out+1;
 	}
 	else if (ml == ON_DEVICE){
 	}

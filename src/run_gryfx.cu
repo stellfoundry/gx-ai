@@ -111,7 +111,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     ////////////////////////////////////////////////
 
     setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
-    //writedat_beginning(ev_h);
+    if (ev_h->pars.write_netcdf) writedat_beginning(ev_h);
     ////////////////////////////////////////////
 
 
@@ -578,7 +578,7 @@ POP_RANGE;
 
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
-      //if (tm->counter%nwrite==0) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
+      if (tm->counter%nwrite==0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 
 //#ifdef GS2_zonal
     } //end of iproc if
@@ -711,7 +711,7 @@ POP_RANGE;
     }
 
     close_files(&ev_h->files);
-    //writedat_end(ev_h->outs);
+    if (ev_h->pars.write_netcdf) writedat_end(ev_h->outs);
 
     //cudaProfilerStop();
   } //end of iproc if  

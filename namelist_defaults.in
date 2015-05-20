@@ -403,6 +403,7 @@ model_option = "const-curv"
   no_landau_damping= "off"
   turn_off_gradients_test = "off"
   slab="off"
+  write_netcdf = .true.
   write_omega = "off"
   write_phi = "off"
   restart = "off"

@@ -379,15 +379,20 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
 	   pars->species[i].nu_ss = gryfxpars->nu[i] ;
   }
 
-  int jtwist_square, jtwist;
-  // determine value of jtwist needed to make X0~Y0
-  jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
-  // as currently implemented, there is no way to manually set jtwist from input file
-  // there could be some switch here where we choose whether to use
-  // jtwist_in or jtwist_square
-  jtwist = jtwist_square;
-  if(jtwist!=0) pars->x0 = pars->y0*jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
-  //else use what is set in input file 
-  pars->jtwist = jtwist;
+  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
+  // this triggers the use of jtwist_square... i.e. jtwist is 
+  // set to what it needs to make the box square at the outboard midplane
+  if (pars->jtwist < 0) {
+    int jtwist_square, jtwist;
+    // determine value of jtwist needed to make X0~Y0
+    jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
+    // as currently implemented, there is no way to manually set jtwist from input file
+    // there could be some switch here where we choose whether to use
+    // jtwist_in or jtwist_square
+    jtwist = jtwist_square;
+    if(jtwist!=0) pars->x0 = pars->y0*jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
+    //else use what is set in input file 
+    pars->jtwist = jtwist;
+  }
 }
 

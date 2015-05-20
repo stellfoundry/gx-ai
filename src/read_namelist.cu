@@ -349,6 +349,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &pars->phiext);
   phiext=pars->phiext;
   
+  pars->write_netcdf= get_bool(&namelist_struct, "gryfx_knobs", "write_netcdf");
+
   pars->write_omega= write_omega = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_omega");
 
   pars->write_phi= write_phi = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_phi");

@@ -308,6 +308,7 @@ typedef struct {
     bool no_landau_damping;
     bool turn_off_gradients_test;
     bool slab;
+    bool write_netcdf;
     bool write_omega;
     bool write_phi;
     bool restart;

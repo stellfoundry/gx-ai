@@ -10,11 +10,12 @@ int dims_are(struct sdatio_variable * svar, char * dimensions){
 	return !(strcmp(svar->dimension_list, dimensions));
 }
 
+  
 /* The purpose of this function is to write the outputs into
  * the netcdf file in exactly the same way that gs2 does, 
  * i.e. to tranpose the indices to the gs2 order and mask
  * the alias meshpoints */
-void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file * sfile, char * variable_name, void * address){
+void writedat_mask_trans_write_variable_2(grids_struct * grids, struct sdatio_file * sfile, char * variable_name, void * address, bool mask){
 	struct sdatio_dimension * tdim;
 	tdim = sdatio_find_dimension(sfile, "t");
 	/* The current value of the t index in the output file*/
@@ -66,7 +67,8 @@ void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file
 		else ri_count = 1;
 
   	for(int i=0; i<Nx; i++) {
-			if (i>=((Nx-1)/3+1) && i<(2*Nx/3+1)) continue;
+			if (mask){if (i>=((Nx-1)/3+1) && i<(2*Nx/3+1)) continue; }
+      else { if ( i>= grids->Nakx ) continue;}
 			for (int j=0; j<ri_count; j++){
 				out_index[2] = j;
 				sdatio_write_variable_at_index_fast(sfile, svar, out_ptr, &address_char[(i*ri_count+j)*sz]);
@@ -96,7 +98,8 @@ void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file
   	for(int iy=0; iy<((Ny-1)/3+1); iy++) {
 			out_index[2] = 0;
   		for(int i=0; i<Nx; i++) {
-				if (i>=((Nx-1)/3+1) && i<(2*Nx/3+1)) continue;
+        if (mask){if (i>=((Nx-1)/3+1) && i<(2*Nx/3+1)) continue; }
+        else { if ( i>= grids->Nakx ) continue;}
 				for (int j=0; j<ri_count; j++){
 					out_index[3] = j;
 					sdatio_write_variable_at_index_fast(sfile, svar, out_ptr, &address_char[(i*(Ny/2+1)*ri_count+iy*ri_count+j)*sz]);
@@ -153,6 +156,12 @@ void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file
 
 }
 
+// Call without specifying mask
+void writedat_mask_trans_write_variable(grids_struct * grids, struct sdatio_file * sfile, char * variable_name, void * address){
+  writedat_mask_trans_write_variable_2(grids, sfile, variable_name, address, true);
+}
+
+
 void writedat_beginning(everything_struct * ev)
 {  
 
@@ -179,7 +188,7 @@ void writedat_beginning(everything_struct * ev)
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "kx", "X", "kx grid", "1/rho_i");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "ky", "Y", "ky grid", "1/rho_i");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "theta", "z", "theta grid (parallel coordinate, referred to as z within gryfx)", "radians");
-  sdatio_create_variable(sdatfile, SDATIO_FLOAT, "t", "t", "Values of time", "a/vt_i");
+  sdatio_create_variable(sdatfile, SDATIO_DOUBLE, "t", "t", "Values of time", "a/vt_i");
   
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi", "YXzr", "Electric potential", "Ti/e");
   sdatio_create_variable(sdatfile, SDATIO_FLOAT, "phi_t", "tYXzr", "Electric potential as a function of time.", "Ti/e");
@@ -230,7 +239,7 @@ void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * 
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_ky", &(outs->phi2_by_ky[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_kx", &(outs->phi2_by_kx[0]));
   writedat_mask_trans_write_variable(grids, sdatfile, "omega", &(outs->omega[0]));
-  writedat_mask_trans_write_variable(grids, sdatfile, "omega_average", &(outs->omega_out[0]));
+  writedat_mask_trans_write_variable_2(grids, sdatfile, "omega_average", &(outs->omega_out[0]), false);
   writedat_mask_trans_write_variable(grids, sdatfile, "hflux_tot", &(outs->hflux_tot));
   writedat_mask_trans_write_variable(grids, sdatfile, "es_heat_flux", &(outs->hflux_by_species));
   sdatio_increment_start(sdatfile, "t");
