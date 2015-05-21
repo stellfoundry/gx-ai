@@ -59,8 +59,26 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
 //		pars->equilibrium_type = MILLER;
 //		S_ALPHA = false;
 //	}
+  fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &pars->nperiod);
+  nperiod=pars->nperiod;
+
   fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(grids->Nz));
-	Nz = grids->Nz;
+
+  //The GS2 grid, which includes the periodic point, runs from
+  // -ntgrid:ntgrid and is thus 2*ntgrid+1 in size, where ntgrid
+  // is the same as what is calculated here. This little step
+  // thus ensures that the Gryfx grid corresponds to the GS2 grid
+  // (without the periodic) point.
+  int ntgrid = grids->Nz/2 + (pars->nperiod-1)*grids->Nz;
+  //grids->Nz=2*(2*nperiod-1)*grids->Nz + 1
+ 
+	Nz = grids->Nz = 2*ntgrid;
+
+  
+  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &pars->Zp)==FNR_USED_DEFAULT){
+   pars->Zp = 2*nperiod - 1; 
+  }
+  *&Zp = pars->Zp;
   
   fnr_get_float(&namelist_struct, "theta_grid_parameters", "eps", &(pars->eps));
   eps=pars->eps;
@@ -107,13 +125,6 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   kxfac=pars->kxfac;
 
   
-  fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &pars->nperiod);
-  nperiod=pars->nperiod;
-  
-  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &pars->Zp)==FNR_USED_DEFAULT){
-   pars->Zp = 2*nperiod - 1; 
-  }
-  *&Zp = pars->Zp;
  
 
   fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &(grids->Nx));

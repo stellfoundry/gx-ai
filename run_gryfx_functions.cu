@@ -101,6 +101,10 @@ void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims
 	zero<<<dimGrid,dimBlock>>>(outs_hd->phi2_zonal_by_kx_movav, Nx, 1,1);
 	//zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
 	zero<<<dimGrid,dimBlock>>>(outs_hd->par_corr_kydz_movav, 1, Ny/2+1, Nz);
+  for (int i=0; i < grids_h->NxNyc; i++){
+    outs_h->omega_out[i].x = 0.;
+    outs_h->omega_out[i].y = 0.;
+  }
 }
 
 void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
