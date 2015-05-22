@@ -66,7 +66,7 @@ PUSH_RANGE("gryfx diagnostics", 5);
         mask<<<dimGrid,dimBlock>>>(Phi1);
         mask<<<dimGrid,dimBlock>>>(Phi);
         //Copy Phi to host for writing
-        cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
+        //if(ev_h->pars.write_netcdf) cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
         
         //print growth rates to files   
@@ -97,60 +97,68 @@ PUSH_RANGE("gryfx diagnostics", 5);
   
       outs_h->hflux_tot=0.0;
       //calculate instantaneous heat flux
+#ifdef PROFILE
+PUSH_RANGE("fluxes",5);
+#endif
       for(int s=0; s<nSpecies; s++) {  
         fluxes(&outs_h->pflux_by_species[s], &wpfx[s],Dens[s],Tpar[s],Tprp[s],Phi,
                tmp_d->CXYZ,tmp_d->CXYZ,tmp_d->CXYZ,fields_d->field,fields_d->field,fields_d->field,tmp_d->Z,tmp_d->XY, tmp_d->XY2,species[s],tm_h->runtime,
                &outs_h->phases.flux1, &outs_h->phases.flux2, &outs_h->phases.Dens, &outs_h->phases.Tpar, &outs_h->phases.Tprp);        
         outs_h->hflux_tot=outs_h->hflux_tot+wpfx[s];
       }
+#ifdef PROFILE
+POP_RANGE;
+#endif
        
-      volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
-      //get_kx1_rms<<<1,1>>>(&ev_d->nlpm.Phi_zf_kx1, tmp_d->X);
-      //nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
-      //cudaMemcpy(&nlpm->Phi_zf_kx1, &ev_d->nlpm.Phi_zf_kx1, sizeof(float), cudaMemcpyDeviceToHost);
-      
-      //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
-      //nlpm->kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
-      multKx4<<<dimGrid,dimBlock>>>(tmp_d->X2, tmp_d->X, kx); 
-      //nlpm->kx2Phi_zf_rms = sumReduc(tmp_d->X2, Nx, false);
-      //nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
+      if(ev_h->pars.write_netcdf) {
+        volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
+        //get_kx1_rms<<<1,1>>>(&ev_d->nlpm.Phi_zf_kx1, tmp_d->X);
+        //nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
+        //cudaMemcpy(&nlpm->Phi_zf_kx1, &ev_d->nlpm.Phi_zf_kx1, sizeof(float), cudaMemcpyDeviceToHost);
+        
+        //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
+        //nlpm->kx2Phi_zf_rms_old = nlpm->kx2Phi_zf_rms;
+        multKx4<<<dimGrid,dimBlock>>>(tmp_d->X2, tmp_d->X, kx); 
+        //nlpm->kx2Phi_zf_rms = sumReduc(tmp_d->X2, Nx, false);
+        //nlpm->kx2Phi_zf_rms = sqrt(nlpm->kx2Phi_zf_rms);
   
-      //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
-      outs_h->phi2_zf = sumReduc(tmp_d->X, Nx, tmp_d->X2, tmp_d->X2);
-      outs_h->phi2_zf_rms = sqrt(outs_h->phi2_zf);   
+        //volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
+        outs_h->phi2_zf = sumReduc(tmp_d->X, Nx, tmp_d->X2, tmp_d->X2);
+        outs_h->phi2_zf_rms = sqrt(outs_h->phi2_zf);   
 
-      //calculate tmp_d->XY = Phi**2(kx,ky)
-      volflux(Phi,Phi,tmp_d->CXYZ,tmp_d->XY);
-      //if(!LINEAR && write_phi2kxky_time) {
-      //  cudaMemcpy(tmpXY_h, tmp_d->XY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
-      //  kxkyTimeWrite(phikxkyfile, tmpXY_h, runtime);
-      //}
-      sumX<<<dimGrid,dimBlock>>>(tmp_d->Y, tmp_d->XY);
-      cudaMemcpy(tmp_h->Y, tmp_d->Y, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
-      cudaMemcpy(outs_h->phi2_by_ky, tmp_d->Y, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
-      sumY <<< dimGrid, dimBlock >>>(tmp_d->X2, tmp_d->XY);
-      cudaMemcpy(outs_h->phi2_by_kx, tmp_d->X2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
+        //calculate tmp_d->XY = Phi**2(kx,ky)
+        volflux(Phi,Phi,tmp_d->CXYZ,tmp_d->XY);
+        //if(!LINEAR && write_phi2kxky_time) {
+        //  cudaMemcpy(tmpXY_h, tmp_d->XY, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+        //  kxkyTimeWrite(phikxkyfile, tmpXY_h, runtime);
+        //}
+        sumX<<<dimGrid,dimBlock>>>(tmp_d->Y, tmp_d->XY);
+        cudaMemcpy(tmp_h->Y, tmp_d->Y, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
+        cudaMemcpy(outs_h->phi2_by_ky, tmp_d->Y, sizeof(float)*(Ny/2+1), cudaMemcpyDeviceToHost);
+        sumY <<< dimGrid, dimBlock >>>(tmp_d->X2, tmp_d->XY);
+        cudaMemcpy(outs_h->phi2_by_kx, tmp_d->X2, sizeof(float)*Nx,cudaMemcpyDeviceToHost);
 
-      if(!LINEAR && turn_off_gradients_test) {
-        kyTimeWrite(files_h->phifile, tmp_h->Y, tm_h->runtime);
+        if(!LINEAR && turn_off_gradients_test) {
+          kyTimeWrite(files_h->phifile, tmp_h->Y, tm_h->runtime);
+        }
+        //calculate <kx> and <ky>
+        expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, ky);
+        outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
+        outs_h->phi2 = sumReduc(tmp_d->XY, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
+
+        //outs_h->phi2 = outs->phi2;
+
+        outs_h->expectation_ky = (float) outs_h->phi2/outs_h->kphi2;
+  
+        expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, kx);
+        outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
+        outs_h->expectation_kx = (float) outs_h->phi2/outs_h->kphi2;
+        
+        //calculate z correlation function = tmp_d->YZ (not normalized)
+        zCorrelation<<<dimGrid,dimBlock>>>(tmp_d->YZ, Phi);
+        //volflux(Phi,Phi,tmp_d->CXYZ,tmp_d->XY);
       }
-      //calculate <kx> and <ky>
-      expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, ky);
-      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
-      outs_h->phi2 = sumReduc(tmp_d->XY, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
-
-      //outs_h->phi2 = outs->phi2;
-
-      outs_h->expectation_ky = (float) outs_h->phi2/outs_h->kphi2;
-  
-      expect_k<<<dimGrid,dimBlock>>>(tmp_d->XY2, tmp_d->XY, kx);
-      outs_h->kphi2 = sumReduc(tmp_d->XY2, Nx*(Ny/2+1), tmp_d->XY3, tmp_d->XY3);
-      outs_h->expectation_kx = (float) outs_h->phi2/outs_h->kphi2;
-      
-      //calculate z correlation function = tmp_d->YZ (not normalized)
-      zCorrelation<<<dimGrid,dimBlock>>>(tmp_d->YZ, Phi);
-     // volflux(Phi,Phi,tmp_d->CXYZ,tmp_d->XY);
-
+ 
       if(tm_h->counter>0) { 
         //we use an exponential moving average
         // wpfx_avg[t] = alphav*wpfx[t] + (1-alphav)*wpfx_avg[t-1]

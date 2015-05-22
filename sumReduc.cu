@@ -9,6 +9,7 @@ inline T sumReduc (T *data, unsigned int nn, T *idata, T* odata)
   int blocks = (nn+threads-1)/threads;
   //T *idata, *odata;
   T sum;
+  //T sum_tmp;
   //int sum, *tmp;
 
   //if (!overwrite) cudaMalloc( (void**)&idata, nn*sizeof(T) );
@@ -35,8 +36,7 @@ inline T sumReduc (T *data, unsigned int nn, T *idata, T* odata)
     else            size = (size + (threads*2-1)) / (threads*2);
   }
 
-  
-  cudaMemcpy( &sum, odata, sizeof(T), cudaMemcpyDeviceToHost );
+  cudaMemcpy( &sum, odata, sizeof(T), cudaMemcpyDeviceToHost);
   //cudaFree (odata);
   //if (!overwrite) cudaFree (idata);
   return sum;  

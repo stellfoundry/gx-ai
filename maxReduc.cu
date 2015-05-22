@@ -32,7 +32,7 @@ T maxReduc (T *data, unsigned int nn, T *idata, T* odata)
   }
 
   
-  cudaMemcpy( &max, odata, sizeof(T), cudaMemcpyDeviceToHost );
+  cudaMemcpyAsync( &max, odata, sizeof(T), cudaMemcpyDeviceToHost,0 );
   //cudaFree (odata);
   //if (!overwrite) cudaFree (idata);
   return max;

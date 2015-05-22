@@ -39,6 +39,7 @@ __constant__ int Zp_d;
 #include "qneut_kernel.cu"
 #include "nlpm_kernel.cu"
 #include "zonal_kernel.cu"
+#include "timestep_kernel.cu"
 #include "getfcn.cu"
 #include "maxReduc.cu"
 #include "sumReduc.cu"

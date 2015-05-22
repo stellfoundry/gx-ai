@@ -59,6 +59,15 @@ typedef struct {
 	cuComplex ** g_covering;
 	float ** kz_covering;
 
+	int ** kxCover_d;
+	int ** kyCover_d;
+	cuComplex ** g_covering_d;
+	float ** kz_covering_d;
+	//int * nLinks_d;
+	//int * nChains_d;
+	
+        float * covering_scaler;
+
   float kx_max;
   float ky_max;
   float kperp2_max;

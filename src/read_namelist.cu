@@ -206,6 +206,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
 
   pars->no_zderiv= NO_ZDERIV= get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv");
 
+  zderiv_loop = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zderiv_loop");
+
   pars->no_landau_damping= no_landau_damping = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_landau_damping");
 
   pars->turn_off_gradients_test= turn_off_gradients_test = get_bool_on_off(&namelist_struct, "gryfx_knobs", "turn_off_gradients_test");

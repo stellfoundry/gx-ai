@@ -252,6 +252,7 @@
 /
 
 &gryfx_knobs
+  write_netcdf = .false.
   write_omega = "on"
   write_phi = "off"
   restart = "off"

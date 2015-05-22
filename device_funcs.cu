@@ -163,6 +163,13 @@ __host__ __device__ cuComplex operator-(cuComplex f, cuComplex g)
   return cuCsubf(f,g);
 }  
 
+__host__ __device__ cuComplex operator-(cuComplex f)
+{
+  cuComplex zero;
+  zero.x = 0.;
+  zero.y = 0.;
+  return cuCsubf(zero,f);
+}  
 /*
 __host__ __device__ cuComplex operator*(float scaler, cuComplex f) 
 {

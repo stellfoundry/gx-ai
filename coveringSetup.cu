@@ -21,6 +21,7 @@ void getNClasses(int *nClasses, int *idxRight, int *idxLeft, int *linksR, int *l
         idxL = idx0;
 	idxR = idx0;
       } else {
+        // signs here are correct according to Mike Beer's thesis
         idxL = idx0 + idy*jshift0;
 	idxR = idx0 - idy*jshift0;
       }

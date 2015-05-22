@@ -40,6 +40,7 @@ typedef struct {
   dim3 dimGrid;
 	dim3 dimBlockCovering;
   dim3 * dimGridCovering;
+  dim3 dimGridCovering_all;
 } cuda_dimensions_struct;
 
 typedef struct {

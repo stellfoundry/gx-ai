@@ -1,3 +1,12 @@
+__device__ cuComplex iOmegaStar(float ky) 
+{
+  cuComplex iomegastar;
+  iomegastar.x = 0.;
+  iomegastar.y = ky;
+  
+  return iomegastar;
+}
+
 __global__ void iOmegaStar(cuComplex* result, cuComplex* f, float* ky)
 {
   unsigned int idy = get_idy();
@@ -29,6 +38,22 @@ __global__ void iOmegaStar(cuComplex* result, cuComplex* f, float* ky)
     }
   }   
 }
+
+__device__ cuComplex iOmegaD(float rho, float vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
+{
+  float shatInv;
+  //if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  //} else {
+  //  shatInv = 1.;
+  //}
+  cuComplex iomegad;
+  iomegad.x = 0;
+  iomegad.y = rho*vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
+ 
+  return iomegad;
+}
+
 
 __global__ void iOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, float* kx,float* ky,
 						float shat, float* gb,float* gb0,float* cv,float* cv0)

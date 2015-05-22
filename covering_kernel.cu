@@ -1,6 +1,6 @@
 //kernels for use with the covering space z derivative routines
 
-__global__ void coveringCopy(cufftComplex* g, int nLinks, int nChains, int* ky, int* kx, cufftComplex* f, int icovering) 
+__global__ void coveringCopy(cuComplex* g, int nLinks, int nChains, int* ky, int* kx, cuComplex* f, int icovering) 
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
@@ -49,6 +49,56 @@ __global__ void coveringCopy(cufftComplex* g, int nLinks, int nChains, int* ky, 
   }    	 
 }  
 
+__global__ void coveringCopy_all(cuComplex** g, int* nLinks, int* nChains, int** ky, int** kx, cuComplex* f, int icovering, int nClasses) 
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c]<=zthreads) {
+      if(i<nz && p<nLinks[c] && n<nChains[c]) {
+        unsigned int j= i + p*nz + n*nz*nLinks[c]*icovering; 
+        unsigned int j2= (nz*nLinks[c]*icovering - (i+p*nz)) + n*nz*nLinks[c]*icovering;
+        unsigned int kidx= p + nLinks[c]*n;
+        unsigned int fidx= ky[c][kidx] + (ny/2+1)*kx[c][kidx] + i*nx*(ny/2+1);
+        // if(ky[c][kidx] == 0) { //&& kx[c][kidx] > 6) {
+//           g[j].x = 0;
+//   	g[j].y = 0;
+//         } else{	        
+          g[c][j] = f[fidx]; 
+          if(icovering == 2) {
+            g[c][j2].x = -g[c][j].x;
+            g[c][j2].y = -g[c][j].y;
+          }
+          
+        //} 
+           
+      }
+    }  
+    else {  
+      for(int a=0; a<nLinks[c]/zthreads; a++) {
+        if(i<nz && n<nChains[c] && p<zthreads) {
+          unsigned int P = p+a*zthreads;
+          unsigned int j = i + P*nz + n*nz*nLinks[c]*icovering;
+          unsigned int j2 = (nz*nLinks[c]*icovering - (i+p*nz)) + n*nz*nLinks[c]*icovering;
+          unsigned int kidx = P + n*nLinks[c];
+          unsigned int fidx = ky[c][kidx] + (ny/2+1)*kx[c][kidx] + i*nx*(ny/2+1);
+          //if(ky[c][kidx] == 0 && kx[c][kidx] > 9) {
+            //g[j].x = 0;
+            //g[j].y = 0;
+          //} else{	        
+          g[c][j] = f[fidx]; 
+          if(icovering == 2) {
+            g[c][j2].x = -g[c][j].x;
+            g[c][j2].y = -g[c][j].y;
+          }
+          //} 
+        }
+      }
+    }    	 
+  }
+}  
 __global__ void coveringCopyBack(cufftComplex* f, int nLinks, int nChains, int* ky, int* kx, cufftComplex* g) 
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -78,6 +128,36 @@ __global__ void coveringCopyBack(cufftComplex* f, int nLinks, int nChains, int* 
   }    
 }    
     
+__global__ void coveringCopyBack_all(cuComplex* f, int* nLinks, int* nChains, int** ky, int** kx, cuComplex** g, int nClasses) 
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c] <= zthreads) {
+      if(i<nz && p<nLinks[c] && n<nChains[c]) {
+        unsigned int j= i + p*nz + n*nz*nLinks[c];
+        unsigned int kidx= p + nLinks[c]*n;
+        unsigned int fidx= ky[c][kidx] + (ny/2+1)*kx[c][kidx] + i*nx*(ny/2+1);
+        f[fidx].x = g[c][j].x;  
+        f[fidx].y = g[c][j].y;   
+      }
+    }
+    else {
+      for(int a=0; a<nLinks[c]/zthreads; a++) {
+        if(i<nz && p<zthreads && n<nChains[c]) {
+          unsigned int P = p+a*zthreads;
+          unsigned int j = i + P*nz + n*nz*nLinks[c];
+          unsigned int kidx = P + n*nLinks[c];
+          unsigned int fidx= ky[c][kidx] + (ny/2+1)*kx[c][kidx] + i*nx*(ny/2+1);
+          f[fidx].x = g[c][j].x;  
+          f[fidx].y = g[c][j].y;   
+        } 
+      }
+    }    
+  }
+}    
 
 __global__ void zderiv_covering(cufftComplex* f, int nLinks, int nChains, float* kz, int icovering)
 {
@@ -113,6 +193,42 @@ __global__ void zderiv_covering(cufftComplex* f, int nLinks, int nChains, float*
   }    	  
 }
 
+__global__ void zderiv_covering_all(cuComplex** f, int* nLinks, int* nChains, float** kz, int icovering, int nClasses)
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c]*icovering <= zthreads) {
+      if(i<nz && p<icovering*nLinks[c] && n<nChains[c]) {
+        unsigned int index= i + p*nz + n*nz*nLinks[c]*icovering;
+        unsigned int kidx= i + p*nz;
+        
+        cuComplex tmp;
+        tmp.x = -kz[c][kidx]*f[c][index].y;
+        tmp.y = kz[c][kidx]*f[c][index].x;      
+        f[c][index] = tmp;
+        
+      }
+    }
+    else {
+      for(int a=0; a<nLinks[c]*icovering/zthreads; a++) {
+        if(i<nz && p<zthreads && n<nChains[c]) { 
+          unsigned int P = p+a*zthreads;
+          unsigned int index = i + P*nz + n*nz*nLinks[c]*icovering;
+          unsigned int kidx = i + P*nz;
+          	
+          cuComplex tmp;
+          tmp.x = -kz[c][kidx]*f[c][index].y;
+          tmp.y = kz[c][kidx]*f[c][index].x;      
+          f[c][index] = tmp; 
+        }
+      }
+    }    	  
+  }
+}
+
 __global__ void zderiv_abs_covering(cufftComplex* f, int nLinks, int nChains, float* kz, int icovering)
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
@@ -137,6 +253,33 @@ __global__ void zderiv_abs_covering(cufftComplex* f, int nLinks, int nChains, fl
     }
   }    	  
 }
+
+__global__ void zderiv_abs_covering_all(cuComplex** f, int* nLinks, int* nChains, float** kz, int icovering, int nClasses)
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c]*icovering <= zthreads) {
+      if(i<nz && p<nLinks[c]*icovering && n<nChains[c]) {
+        unsigned int index= i + p*nz + n*nz*nLinks[c]*icovering;
+        unsigned int kidx= i + p*nz;
+        f[c][index] = abs(kz[c][kidx])*f[c][index];
+      }
+    }
+    else {
+      for(int a=0; a<nLinks[c]*icovering/zthreads; a++) {
+        if(i<nz && p<zthreads && n<nChains[c]) { 
+          unsigned int P = p+a*zthreads;
+          unsigned int index = i + P*nz + n*nz*nLinks[c]*icovering;
+          unsigned int kidx = i + P*nz;
+          f[c][index] = abs(kz[c][kidx])*f[c][index];
+        }
+      }
+    }    	  
+  }
+}
     
 __global__ void scale_covering(cufftComplex* f, int nLinks, int nChains, float scaler) 
 {
@@ -159,6 +302,31 @@ __global__ void scale_covering(cufftComplex* f, int nLinks, int nChains, float s
       }
     }
   }    
+}
+
+__global__ void scale_covering_all(cuComplex** f, int* nLinks, int* nChains, float* scaler, int nClasses) 
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c] <= zthreads) {
+      if(i<nz && p<nLinks[c] && n<nChains[c]) {
+        unsigned int index= i + p*nz + n*nz*nLinks[c];  
+        f[c][index] = scaler[c]*f[c][index];
+      }
+    }
+    else {
+      for(int a=0; a<nLinks[c]/zthreads; a++) {
+        if(i<nz && p<zthreads && n<nChains[c]) {
+          unsigned int P = p+a*zthreads;
+          unsigned int index = i + P*nz + n*nz*nLinks[c];
+          f[c][index] = scaler[c]*f[c][index];
+        }
+      }
+    }    
+  }
 }
 
 __global__ void zeroCovering(cufftComplex* f, int nLinks, int nChains, int icovering) 
@@ -186,6 +354,34 @@ __global__ void zeroCovering(cufftComplex* f, int nLinks, int nChains, int icove
   }    	  
 }    
 
+__global__ void zeroCovering_all(cuComplex** f, int* nLinks, int* nChains, int icovering, int nClasses) 
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+
+  unsigned int index;  
+
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c]*icovering <= zthreads) {
+      if(i<nz && p<nLinks[c]*icovering && n<nChains[c]) {
+        index = i + p*nz + n*nz*nLinks[c]*icovering;
+        f[c][index].x = 0;
+        f[c][index].y = 0;
+      }
+    }
+    //else {
+    //  for(int a=0; a<nLinks[c]*icovering/zthreads; a++) {
+    //    if(i<nz && p<zthreads && n<nChains[c]) { 
+    //      unsigned int P = p+a*zthreads;
+    //      unsigned int index = i + P*nz + n*nz*nLinks[c]*icovering;
+    //      f[c][index].x = 0;
+    //      f[c][index].y = 0; 
+    //    }
+    //  }
+    //}    	  
+  }
+}    
 __global__ void coveringBounds(cuComplex* f, int nLinks, int nChains, int* ky)
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;

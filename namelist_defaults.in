@@ -225,7 +225,7 @@ model_option = "const-curv"
  ky_min = 0.1
  y0 = 10
  x0 = 10
- jtwist = 5
+ jtwist = -1
 /
 &init_g_knobs
 
@@ -398,6 +398,7 @@ model_option = "const-curv"
   zero_restart_avg = "off"
   no_zderiv_covering = "off"
   no_zderiv= "off"
+  zderiv_loop = "on"
   icovering = 1
   iphi00 = 2
   no_landau_damping= "off"

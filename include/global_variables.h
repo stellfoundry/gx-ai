@@ -7,6 +7,7 @@ EXTERN_SWITCH int zThreads, totalThreads, zBlockThreads;
 EXTERN_SWITCH dim3 dimBlock, dimGrid;
 EXTERN_SWITCH dim3 dimBlockCovering;
 EXTERN_SWITCH dim3 *dimGridCovering;
+EXTERN_SWITCH dim3 dimGridCovering_all;
 
 
 
@@ -76,6 +77,7 @@ EXTERN_SWITCH float kperp4_max_Inv;
 EXTERN_SWITCH cuComplex *deriv_nlps;
 EXTERN_SWITCH float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
 EXTERN_SWITCH float* PhiAvgDenom;
+//EXTERN_SWITCH cuComplex** g_covering_d;
 
 
 EXTERN_SWITCH cuComplex *field_h;

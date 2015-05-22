@@ -17,7 +17,7 @@ void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grid
 void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims_h, outputs_struct * outs_hd, outputs_struct * outs_h, time_struct * time);
 
 void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts);
-void initialize_z_covering(int iproc, grids_struct * grids_d, grids_struct * grids_h, input_parameters_struct * pars, cuffts_struct * ffts_h, cuda_streams_struct * streams, cuda_dimensions_struct * cdims, cuda_events_struct * events);
+void initialize_z_covering(int iproc, grids_struct * grids_hd, grids_struct * grids_h, grids_struct * grids_d, input_parameters_struct * pars, cuffts_struct * ffts_h, cuda_streams_struct * streams, cuda_dimensions_struct * cdims, cuda_events_struct * events);
 
 void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_parameters_struct * pars_d, grids_struct * grids_h, grids_struct * grids_d, cuda_dimensions_struct * cdims, geometry_coefficents_struct * geo_d, fields_struct * fields_hd, temporary_arrays_struct * tmp);
 

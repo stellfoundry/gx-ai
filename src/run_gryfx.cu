@@ -97,7 +97,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   ///////////////////////////////////////////////////////////////////////////////////////////////////
   //set up kxCover and kyCover for covering space z-transforms
   //nshift = Nx - ntheta0;
-  initialize_z_covering(iproc, &ev_hd->grids, &ev_h->grids, &ev_h->pars, &ev_h->ffts, &ev_h->streams, &ev_h->cdims, &ev_h->events);  
+  initialize_z_covering(iproc, &ev_hd->grids, &ev_h->grids, &ev_d->grids, &ev_h->pars, &ev_h->ffts, &ev_h->streams, &ev_h->cdims, &ev_h->events);  
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -707,8 +707,16 @@ POP_RANGE;
       cudaFree(ev_hd->grids.kxCover[c]);
       cudaFree(ev_hd->grids.kyCover[c]);
       cudaFree(ev_hd->grids.g_covering[c]); 
+      cudaFree(ev_hd->grids.g_covering[c]); 
       cudaFree(ev_hd->grids.kz_covering[c]);
     }
+    //cudaFree(ev_hd->grids.g_covering_d);
+    //cudaFree(ev_hd->grids.kz_covering_d);
+    //cudaFree(ev_hd->grids.nLinks_d);
+    //cudaFree(ev_hd->grids.nChains_d);
+    //cudaFree(ev_hd->grids.kxCover_d);
+    //cudaFree(ev_hd->grids.kyCover_d);
+    //cudaFree(g_covering_d);
 
     close_files(&ev_h->files);
     if (ev_h->pars.write_netcdf) writedat_end(ev_h->outs);
