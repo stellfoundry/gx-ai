@@ -390,9 +390,9 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
     // there could be some switch here where we choose whether to use
     // jtwist_in or jtwist_square
     jtwist = jtwist_square;
-    if(jtwist!=0) pars->x0 = pars->y0*jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
     //else use what is set in input file 
     pars->jtwist = jtwist;
   }
+  if(pars->jtwist!=0) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
 }
 
