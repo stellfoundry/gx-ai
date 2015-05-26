@@ -66,6 +66,7 @@ PUSH_RANGE("gryfx diagnostics", 5);
         mask<<<dimGrid,dimBlock>>>(Phi1);
         mask<<<dimGrid,dimBlock>>>(Phi);
         //Copy Phi to host for writing
+        // this is incredibly slow, should never be done in timestep loop.
         //if(ev_h->pars.write_netcdf) cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
         
@@ -110,7 +111,8 @@ PUSH_RANGE("fluxes",5);
 POP_RANGE;
 #endif
        
-      if(ev_h->pars.write_netcdf) {
+      //if(ev_h->pars.write_netcdf) {
+      if(write_phi) {
         volflux_zonal(Phi,Phi,tmp_d->X);  //tmp_d->X = Phi_zf**2(kx)
         //get_kx1_rms<<<1,1>>>(&ev_d->nlpm.Phi_zf_kx1, tmp_d->X);
         //nlpm->Phi_zf_kx1_old = nlpm->Phi_zf_kx1;
@@ -253,9 +255,9 @@ POP_RANGE;
       
       
       
-      //print growth rates to screen every nwrite timesteps if write_omega
+      //print growth rates to screen every 10 timesteps if write_omega
       if(write_omega) {
-        if (tm_h->counter%nwrite==0 || ctrl->stopcount==ctrl->nstop-1 || tm_h->counter==nSteps-1) {
+        if (tm_h->counter%10==0 || ctrl->stopcount==ctrl->nstop-1 || tm_h->counter==nSteps-1) {
   	printf("ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
   	//for(int i=0; i<1; i++) {
         for(int i=0; i<((Nx-1)/3+1); i++) {

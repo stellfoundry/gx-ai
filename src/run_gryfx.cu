@@ -578,7 +578,7 @@ POP_RANGE;
 
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
-      if (tm->counter%nwrite==0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
+      if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 
 //#ifdef GS2_zonal
     } //end of iproc if

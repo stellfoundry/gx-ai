@@ -86,7 +86,7 @@ model_option = "const-curv"
  !save_for_restart = .true.
  !omegatol = -1.0e-3
 
- nwrite = 10
+ nwrite = 1000
  nwrite_mult = 10
  write_any = .true.
  append_old = .false.
