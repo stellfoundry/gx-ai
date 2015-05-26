@@ -256,7 +256,7 @@ inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int*
 	  if(j==0) kidx = p + nLinks[c]*n;
 	  if(j==1) kidx = (nLinks[c] - p - 1) + nLinks[c]*n;
 	  int index = i + p*Nz + j*Nz*nLinks[c] + n*Nz*nLinks[c]*icovering;	  
-	  float z_cover = 2*M_PI*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);	  
+	  float z_cover = 2*M_PI*Zp*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);	  
 	  fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", z_cover, ky_h[ kyCover_h[c][kidx] ], kx_h[ kxCover_h[c][kidx] ], g_h[index].x, g_h[index].y); 	  
 	}
       }
@@ -265,7 +265,7 @@ inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int*
       int zidx = 0;   
       int kidx = nLinks[c]*n;
       int index = n*Nz*nLinks[c];
-      float z_cover = 2*M_PI*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);
+      float z_cover = 2*M_PI*Zp*(zidx-(Nz*icovering*nLinks[c])/2)/(Nz);
       fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -z_cover, ky_h[ kyCover_h[c][kidx] ], kx_h[ kxCover_h[c][kidx] ], g_h[index].x, g_h[index].y);
       
     }

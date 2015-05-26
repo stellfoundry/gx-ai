@@ -116,7 +116,7 @@ check_gs2_set
 build_gs2
 run_configuration
 source system_config
-if [ "$GS2" != "on" ] 
+if [ "$GS2_zonal" != "on" ] 
 then
   TESTEXEC=
 fi
