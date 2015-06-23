@@ -111,18 +111,35 @@ void create_cufft_plans(grids_struct * grids, cuffts_struct * ffts){
   //set up plans for NLPS, ZDeriv, and ZDerivB
   //plan for ZDerivCovering done below
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
+  int XYcfftdims[2] = {grids->Nx, grids->Ny_complex};
   cufftPlanMany(&ffts->NLPSplanR2C, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, grids->Nz);
   cufftPlanMany(&ffts->NLPSplanC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, grids->Nz);
   cufftPlan1d(&ffts->ZDerivBplanR2C, grids->Nz, CUFFT_R2C, 1);
   cufftPlan1d(&ffts->ZDerivBplanC2R, grids->Nz, CUFFT_C2R, 1);  
   cufftPlan2d(&ffts->XYplanC2R, grids->Nx, grids->Ny, CUFFT_C2R);  //for diagnostics
+  cufftPlan2d(&ffts->XYplanC2C, grids->Nx, grids->Ny/2+1, CUFFT_C2C);  //for diagnostics
+  cufftPlanMany(&ffts->XYplanZ_C2C, 2, XYcfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, grids->Nz);
 
   int n[1] = {grids->Nz};
   int inembed[1] = {grids->NxNycNz};
   int onembed[1] = {grids->NxNycNz};
-  cufftPlanMany(&ffts->ZDerivplan,1,n,inembed,grids->NxNyc,1,
-                                onembed,grids->NxNyc,1,CUFFT_C2C,grids->NxNyc);	
-                     //    n rank  nembed  stride   dist
+  // (ky, kx, z) <-> (ky, kx, kz)
+  cufftPlanMany(&ffts->ZDerivplan, 1,   n, inembed, grids->NxNyc, 1,
+                              //   dim, n, isize,   istride,      idist,
+                                onembed, grids->NxNyc, 1,     CUFFT_C2C, grids->NxNyc);	
+                              //osize,   ostride,      odist, type,      batchsize
+  // isize = size of input data
+  // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
+  // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
+
+  int n1[1] = {grids->Nx};
+  int inembed1[1] = {grids->NxNycNz};
+  int onembed1[1] = {grids->NxNycNz};
+  // (ky, kx, z) <-> (ky, x, z)
+  cufftPlanMany(&ffts->XplanC2C, 1,   n1, inembed1, grids->Ny_complex, 1,
+                              // dim, n,  isize,    istride,           idist,
+                                onembed1, grids->Ny_complex, 1,     CUFFT_C2C, grids->Ny_complex*grids->Nz);	
+                              //osize,    ostride,           odist, type,      batchsize
 
 	/* Globals... to be removed eventually*/
 	NLPSplanR2C = ffts->NLPSplanR2C;
@@ -307,12 +324,27 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
 
       for(int index=0; index<NxNycNz; index++) 
       {
-	init_h[index].x = 0;
-	init_h[index].y = 0;
+	init_h[index].x = 0.;
+	init_h[index].y = 0.;
       }
       
-      srand(22);
-      float samp;
+      if(pars_h->init_single) {
+        //initialize single mode
+        int iky = pars_h->iky_single;
+        int ikx = pars_h->ikx_single;
+        float fac;
+        if(pars_h->nlpm_test && iky==0) fac = .5;
+        else fac = 1.;
+        for(int iz=0; iz<Nz; iz++) {
+          int index = iky + (Ny/2+1)*ikx + (Ny/2+1)*Nx*iz;
+          init_h[index].x = init_amp*fac;
+          init_h[index].y = 0.; //init_amp;
+        }
+      }
+      else {
+        printf("init_amp = %e\n", init_amp);
+        srand(22);
+        float samp;
   	for(int j=0; j<Nx; j++) {
   	  for(int i=0; i<Nyc; i++) {
 		samp = init_amp;
@@ -333,48 +365,11 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
   	      
   	  }
   	}
-
-    if(pars_h->init == DENS) {
-      if(pars_h->debug) getError("initializing density");    
-
-      for(int s=0; s<pars_h->nspec; s++) {
-        cudaMemset(fields_hd->dens[s], 0, sizeof(cuComplex)*NxNycNz);
       }
-      
-      
-
-      cudaMemcpy(fields_hd->dens[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
-      if(DEBUG) getError("after copy");    
-
-      //enforce reality condition -- this is CRUCIAL when initializing in k-space
-      reality <<< dimGrid,dimBlock >>> (fields_hd->dens[ION]);
-      
-      mask<<< dimGrid, dimBlock >>>(fields_hd->dens[ION]);  
-
-      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*NxNycNz);
-      
-    }
-    
-    if(pars_h->init == PHI) {
-      
-      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
-      
-      cudaMemcpy(fields_hd->phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
-    
-      cudaMemset(fields_hd->dens[ION], 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
-      mask<<<dimGrid,dimBlock>>>(fields_hd->phi);
-
-      reality<<<dimGrid,dimBlock>>>(fields_hd->phi);
-    }  
-    if(init == FORCE) {
-      cudaMemset(fields_hd->phi, 0, sizeof(cuComplex)*NxNycNz);
-      cudaMemset(fields_hd->dens[ION], 0, sizeof(cuComplex)*NxNycNz);
-    }   
-   
 
     for(int s=0; s<nSpecies; s++) {
       zeroC <<< dimGrid, dimBlock >>> (fields_hd->dens1[s]);
-      if(s!=0) zeroC <<< dimGrid,dimBlock >>> (fields_hd->dens[s]);
+      zeroC <<< dimGrid,dimBlock >>> (fields_hd->dens[s]);
 
       zeroC <<< dimGrid, dimBlock >>> (fields_hd->upar[s]);
       
@@ -398,7 +393,89 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
     }
     
     zeroC <<< dimGrid,dimBlock >>> (fields_hd->phi1);
+    zeroC <<< dimGrid,dimBlock >>> (fields_hd->phi);
     if(DEBUG) getError("run_gryfx.cu, after zero");
+
+    if(pars_h->init == DENS) {
+      if(pars_h->debug) getError("initializing density");    
+      
+      cudaMemcpy(fields_hd->dens[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->dens[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->dens[ION]);  
+
+    }
+    
+    if(pars_h->init == UPAR) {
+      getError("initializing upar");    
+      
+      cudaMemcpy(fields_hd->upar[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->upar[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->upar[ION]);  
+
+    }
+    if(pars_h->init == TPAR) {
+      getError("initializing tpar");    
+      
+      cudaMemcpy(fields_hd->tpar[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->tpar[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->tpar[ION]);  
+
+    }
+    if(pars_h->init == TPRP) {
+      getError("initializing tperp");    
+      
+      cudaMemcpy(fields_hd->tprp[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->tprp[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->tprp[ION]);  
+
+    }
+    if(pars_h->init == ODD) {
+      getError("initializing odd");    
+      
+      cudaMemcpy(fields_hd->upar[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      cudaMemcpy(fields_hd->qpar[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      //cudaMemcpy(fields_hd->qprp[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
+      if(DEBUG) getError("after copy");    
+
+      scale<<<dimGrid,dimBlock>>>(fields_hd->qpar[ION],fields_hd->qpar[ION],2.);
+
+      //enforce reality condition -- this is CRUCIAL when initializing in k-space
+      reality <<< dimGrid,dimBlock >>> (fields_hd->upar[ION]);
+      reality <<< dimGrid,dimBlock >>> (fields_hd->qpar[ION]);
+      //reality <<< dimGrid,dimBlock >>> (fields_hd->qprp[ION]);
+      
+      mask<<< dimGrid, dimBlock >>>(fields_hd->upar[ION]);  
+      mask<<< dimGrid, dimBlock >>>(fields_hd->qpar[ION]);  
+      //mask<<< dimGrid, dimBlock >>>(fields_hd->qprp[ION]);  
+
+    }
+    if(pars_h->init == PHI) {
+      
+      
+      cudaMemcpy(fields_hd->phi, init_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+    
+      mask<<<dimGrid,dimBlock>>>(fields_hd->phi);
+
+      reality<<<dimGrid,dimBlock>>>(fields_hd->phi);
+    }  
+   
+
      
     
 //    if(pars_h->init == DENS) {
@@ -449,14 +526,17 @@ void load_fixed_arrays_from_restart(
 //      			zCorr_sum,&outs->expectation_ky_movav, &outs->expectation_kx_movav, &Phi_zf_kx1_avg,
 //      			&tm->dtSum, &tm->counter,&tm->runtime,&tm->dt,&tm->totaltimer,secondary_test_restartfileName);
   			
+       int iky = sfixed->iky_fixed;
+       int ikx = sfixed->ikx_fixed;
+       printf("fixed mode: iky=%d, ikx=%d\n", iky, ikx);
 
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->phi, fields->phi, 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->dens, fields->dens[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->upar, fields->upar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tpar, fields->tpar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tprp, fields->tprp[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qpar, fields->qpar[ION], 1, 0);
-       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qprp, fields->qprp[ION], 1, 0);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->phi, fields->phi, iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->dens, fields->dens[ION], iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->upar, fields->upar[ION], iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tpar, fields->tpar[ION], iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->tprp, fields->tprp[ION], iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qpar, fields->qpar[ION], iky, ikx);
+       get_fixed_mode<<<dimGrid,dimBlock>>>(sfixed->qprp, fields->qprp[ION], iky, ikx);
 
        printf("Before set_fixed_amplitude\n");
        cudaMemcpy(CtmpZ_h, sfixed->phi, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
@@ -472,6 +552,7 @@ void load_fixed_arrays_from_restart(
        }
        if(SLAB) set_fixed_amplitude<<<dimGrid,dimBlock>>>(sfixed->phi, sfixed->dens, sfixed->upar, sfixed->tpar, sfixed->tprp, sfixed->qpar, sfixed->qprp, phi_test);
        else set_fixed_amplitude_withz<<<dimGrid,dimBlock>>>(sfixed->phi, sfixed->dens, sfixed->upar, sfixed->tpar, sfixed->tprp, sfixed->qpar, sfixed->qprp, phi_test);
+
 
        printf("After set_fixed_amplitude\n");
        cudaMemcpy(CtmpZ_h, sfixed->phi, sizeof(cuComplex)*Nz, cudaMemcpyDeviceToHost);
@@ -683,18 +764,37 @@ void copy_fixed_modes_into_fields(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
   cuComplex * phi_d, //Need  phi separate cos sometimes need dens1 but not phi1 etc
-  secondary_fixed_arrays_struct * sfixed
+  secondary_fixed_arrays_struct * sfixed,
+  input_parameters_struct * pars
     )
 {
     dim3 dimGrid = cdims->dimGrid;
     dim3 dimBlock = cdims->dimBlock;
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, 1, 0, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, 1, 0, sfixed->S);
+
+       int iky = sfixed->iky_fixed;
+       int ikx = sfixed->ikx_fixed;
+    
+    if(pars->nlpm_test) {
+      cudaMemset(phi_d, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+      replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
+    } else {
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, iky, ikx, sfixed->S);
+    }
+
+    reality<<<dimGrid,dimBlock>>>(phi_d);
+    reality<<<dimGrid,dimBlock>>>(fields_d->dens[ION]);
+    reality<<<dimGrid,dimBlock>>>(fields_d->upar[ION]);
+    reality<<<dimGrid,dimBlock>>>(fields_d->tpar[ION]);
+    reality<<<dimGrid,dimBlock>>>(fields_d->tprp[ION]);
+    reality<<<dimGrid,dimBlock>>>(fields_d->qpar[ION]);
+    reality<<<dimGrid,dimBlock>>>(fields_d->qprp[ION]);
+
 }
 
 void write_initial_fields(

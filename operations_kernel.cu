@@ -1288,7 +1288,7 @@ __global__ void abs(float* res, float* f)
   
   if(nz<=zthreads) {
     if(idy<(ny) && idx<nx && idz<nz) {
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
       
       res[index] = abs( f[index] );
     }
@@ -1296,7 +1296,7 @@ __global__ void abs(float* res, float* f)
   else {
     for(int i=0; i<nz/zthreads; i++) {
       if(idy<(ny) && idx<nx && idz<zthreads) {
-        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
 	
         res[index] = abs( f[index] );
       }
@@ -1850,3 +1850,108 @@ __global__ void scale_ky_neq_0(cuComplex* f, float scaler)
   }
 
 }
+
+__global__ void scale_ky_neq_0(cuComplex* f, float scaler, int nx, int ny, int nz) 
+{
+
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idy>0 && idy<(ny/2+1) && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*nx*idz;
+    f[index] = f[index]*scaler;
+  }
+
+}
+__global__ void sqr_div_real(float* result, float* a, float* b) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny) && idx<nx && idz<nz) {
+    int index = idy + (ny)*idx + nx*(ny)*idz;
+    
+    //if(abs(a[index]) < 1.e-10 || abs(b[index]) < 1.e-10 ) result[index] = 0.;
+    //else 
+      result[index] = 2.*a[index]*a[index];///b[index];
+    
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny) && idx<nx && idz<zthreads) {
+    int index = idy + (ny)*idx + nx*(ny)*idz + nx*ny*zthreads*i;
+    
+    result[index] = a[index]*a[index]/b[index];
+    
+    }
+   }
+  }     
+}    
+
+__global__ void sqr_div_complex(cuComplex* result, cuComplex* a, cuComplex* b, float fac) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny) && idx<nx && idz<nz) {
+    int index = idy + (ny)*idx + nx*(ny)*idz;
+    
+    //if(abs(a[index]) < 1.e-7 || abs(b[index]) < 1.e-7 ) result[index] = 0.;
+    //else 
+      //cuComplex num = fac*a[index]*a[index]*cuConjf(b[index]);
+        cuComplex den = b[index]*cuConjf(b[index]);
+        if(den.x == 0.) {result[index].x = 0.; result[index].y = 0.;}
+      //if(abs(den.x) < 1.e-5) {result[index].x = 0.; result[index].y = 0.;}
+        else 
+          result[index] = fac*a[index]*a[index]/b[index];
+    
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny) && idx<nx && idz<zthreads) {
+    int index = idy + (ny)*idx + nx*(ny)*idz + nx*ny*zthreads*i;
+    
+    result[index] = a[index]*a[index]/b[index];
+    
+    }
+   }
+  }     
+}    
+
+__global__ void sqr_complex(cuComplex* result, cuComplex* a, float fac) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    
+    //if(abs(a[index]) < 1.e-7 || abs(b[index]) < 1.e-7 ) result[index] = 0.;
+    //else 
+      //cuComplex num = fac*a[index]*a[index]*cuConjf(b[index]);
+      //if(abs(den.x) < 1.e-5) {result[index].x = 0.; result[index].y = 0.;}
+        //else 
+          result[index] = fac*a[index]*a[index];
+    
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny) && idx<nx && idz<zthreads) {
+    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+    
+    result[index] = fac*a[index]*a[index];
+    
+    }
+   }
+  }     
+}    

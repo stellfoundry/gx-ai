@@ -3,7 +3,7 @@ inline void NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, float *kx
   //bool NLPSDEBUG = false;
 
      
-  float scaler = (float) 1./(Nx*Ny);	//THIS USED TO HAVE A FACTOR OF 2 			
+  float scaler = (float) 1./(Nx*Ny);
   float max = 0.;
   float vmax = 0.;
   //float vxmax = 0.;
@@ -97,12 +97,60 @@ inline void NLPM_NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, floa
   //bool NLPSDEBUG = false;
 
      
-  float scaler = (float) 1./(Nx*Ny);	//THIS USED TO HAVE A FACTOR OF 2 			
-  //float max = 0.;
-  //float vmax = 0.;
+  float scaler = (float) 1./(Nx*Ny);
+  
+  //////////////////////////////////////////
+  //////////////////////////////////////////
+  // main part of the procedure
+  //////////////////////////////////////////
+  //////////////////////////////////////////
+  
+  //reality<<<dimGrid,dimBlock>>>(f);
+  //reality<<<dimGrid,dimBlock>>>(g);
+  
+  NLPSderivX<<<dimGrid,dimBlock>>>(deriv_nlps,phi,kx);
+  mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
+  cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR1_nlps);   
+  //abs<<<dimGrid,dimBlock>>>(derivR1_nlps, derivR1_nlps);
+
+  NLPSderivY<<<dimGrid,dimBlock>>>(deriv_nlps,moment,ky);
+  mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
+  cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR2_nlps);
+  multdiv<<<dimGrid,dimBlock>>>(resultR_nlps,derivR1_nlps,derivR2_nlps,1);  
+  
+    
+  cufftExecR2C(NLPSplanR2C, resultR_nlps, result);  
+  
+  reality<<<dimGrid,dimBlock>>>(result);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(result,2.);
+    
+
+  ///////////////////////////////////////////////
+  // dealias
+  ///////////////////////////////////////////////
+
+  mask <<<dimGrid,dimBlock>>> (result);
+
+  scale<<<dimGrid,dimBlock>>>(result,result,kxfac*scaler);
+
+    
+}
+
+inline void NLPS_abs(cuComplex *result, cuComplex *phi, cuComplex *moment, float* kx, float *ky)
+{
+  //bool NLPSDEBUG = false;
+
+     
+  float scaler = (float) 1./(Nx*Ny);
+  float max = 0.;
+  float vmax = 0.;
   //float vxmax = 0.;
   //float vymax = 0.;
-  //int size = Nx*Ny*Nz;
+  int size = Nx*Ny*Nz;
 
   //printf("factor of 2\n");
   
@@ -120,15 +168,30 @@ inline void NLPM_NLPS(cuComplex *result, cuComplex *phi, cuComplex *moment, floa
   reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR1_nlps);   
+  abs<<<dimGrid,dimBlock>>>(derivR1_nlps, derivR1_nlps);
 
-  NLPSderivY<<<dimGrid,dimBlock>>>(deriv_nlps,moment,ky);
+  NLPSderivY_abs<<<dimGrid,dimBlock>>>(deriv_nlps,moment,ky);
   mask<<<dimGrid,dimBlock>>>(deriv_nlps);
   reality<<<dimGrid,dimBlock>>>(deriv_nlps);
   scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
   cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR2_nlps);
-  multdiv<<<dimGrid,dimBlock>>>(resultR_nlps,derivR1_nlps,derivR2_nlps,1);  
+  multdiv<<<dimGrid,dimBlock>>>(resultR_nlps,derivR1_nlps,derivR2_nlps,1);
   
-    
+  NLPSderivY<<<dimGrid,dimBlock>>>(deriv_nlps,phi,ky);
+  mask<<<dimGrid,dimBlock>>>(deriv_nlps);
+  reality<<<dimGrid,dimBlock>>>(deriv_nlps);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
+  cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR1_nlps);
+  abs<<<dimGrid,dimBlock>>>(derivR1_nlps, derivR1_nlps);
+
+  NLPSderivX_abs<<<dimGrid,dimBlock>>>(deriv_nlps,moment,kx);
+  mask<<<dimGrid,dimBlock>>>(moment);
+  reality<<<dimGrid,dimBlock>>>(moment);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(deriv_nlps,.5);
+  cufftExecC2R(NLPSplanC2R,deriv_nlps,derivR2_nlps);
+
+  bracket<<<dimGrid,dimBlock>>>(resultR_nlps,resultR_nlps,derivR1_nlps,derivR2_nlps,1.);  
+  
   cufftExecR2C(NLPSplanR2C, resultR_nlps, result);  
   
   reality<<<dimGrid,dimBlock>>>(result);

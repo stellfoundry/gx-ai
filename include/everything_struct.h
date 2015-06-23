@@ -46,6 +46,8 @@ typedef struct {
 typedef struct {
   cuComplex *phi, *dens, *upar, *tpar, *tprp, *qpar, *qprp;
   float S;
+  int iky_fixed;
+  int ikx_fixed;
 } secondary_fixed_arrays_struct;
 
 typedef struct {
@@ -65,6 +67,9 @@ typedef struct{
  	cufftHandle	ZDerivBplanC2R;
   cufftHandle	ZDerivplan;
   cufftHandle	XYplanC2R;
+  cufftHandle   XplanC2C;
+  cufftHandle   XYplanC2C;
+  cufftHandle   XYplanZ_C2C;
 
 	/* Allocated in initialize_z_covering */
 	cufftHandle * plan_covering;
@@ -106,6 +111,7 @@ typedef struct {
 /* A bunch of device arrays to be reused continuously */
 typedef struct {
 	cuComplex * CXYZ;
+        cuComplex * CXYZ2;
 	float * X;
 	float * X2;
 	float * Y;
@@ -115,6 +121,7 @@ typedef struct {
 	cuComplex * CX;
 	cuComplex * CX2;
 
+	cuComplex * CXY;
 	cuComplex * CXZ;
 
 

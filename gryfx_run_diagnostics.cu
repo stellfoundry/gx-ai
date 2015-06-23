@@ -8,7 +8,7 @@ PUSH_RANGE("gryfx diagnostics", 5);
 #endif
   /* Some local shortcuts */
   cuda_dimensions_struct * cdims = &ev_h->cdims;
-  //input_parameters_struct * pars_h = &ev_h->pars;
+  input_parameters_struct * pars_h = &ev_h->pars;
   fields_struct * fields_d = &ev_hd->fields;
   fields_struct * fields1_d = &ev_hd->fields1;
   outputs_struct * outs_h = &ev_h->outs;
@@ -20,6 +20,7 @@ PUSH_RANGE("gryfx diagnostics", 5);
   temporary_arrays_struct * tmp_h = &ev_h->tmp;
   temporary_arrays_struct * tmp_d = &ev_hd->tmp;
   run_control_struct * ctrl = &ev_h->ctrl;
+  cuffts_struct * ffts = &ev_h->ffts;
 
 
     dim3 dimGrid = cdims->dimGrid;
@@ -28,11 +29,11 @@ PUSH_RANGE("gryfx diagnostics", 5);
     cuComplex * Phi1 = fields1_d->phi;
 
     cuComplex ** Dens = fields_d->dens;
-    //cuComplex ** Upar = fields_d->upar;
+    cuComplex ** Upar = fields_d->upar;
     cuComplex ** Tpar = fields_d->tpar;
     cuComplex ** Tprp = fields_d->tprp;
-    //cuComplex ** Qpar = fields_d->qpar;
-    //cuComplex ** Qprp = fields_d->qprp;
+    cuComplex ** Qpar = fields_d->qpar;
+    cuComplex ** Qprp = fields_d->qprp;
     //cuComplex ** Dens1 = fields1_d->dens;
     //cuComplex ** Upar1 = fields1_d->upar;
     //cuComplex ** Tpar1 = fields1_d->tpar;
@@ -47,11 +48,157 @@ PUSH_RANGE("gryfx diagnostics", 5);
     float alphav = outs_h->alpha_avg;
     float muav = outs_h->mu_avg;
        
-     // if(LINEAR) { 
-     //   getPhiVal<<<dimGrid,dimBlock>>>(val, Phi1, 0, 4, Nz/2);
-     //   cudaMemcpy(phiVal, val, sizeof(float), cudaMemcpyDeviceToHost);
-     //   fprintf(phifile, "\n\t%f\t%e", runtime, phiVal[0]);
-     // }
+      if(pars_h->nlpm_test) { 
+
+        int init = pars_h->init;
+        int idx0y0 = pars_h->inlpm; //(Ny/2+1)*(Nx/2+1);
+        if(init==DENS || init==TPRP || init==TPAR) {
+          cudaMemcpy(tmp_d->CXYZ, Dens[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\n\t%f\t%e", tm_h->runtime, outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+          
+          cudaMemcpy(tmp_d->CXYZ, Tprp[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+
+          cudaMemcpy(tmp_d->CXYZ, Tpar[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+        }
+
+        if(init==ODD || init==UPAR) {
+          cudaMemcpy(tmp_d->CXYZ, Upar[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\n\t%f\t%e", tm_h->runtime, outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+
+          cudaMemcpy(tmp_d->CXYZ, Qprp[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+
+          cudaMemcpy(tmp_d->CXYZ, Qpar[0], sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
+          mask<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          reality<<<dimGrid,dimBlock>>>(tmp_d->CXYZ);
+          
+          cufftExecC2C(ffts->XYplanZ_C2C, tmp_d->CXYZ, tmp_d->CXYZ, CUFFT_INVERSE);
+          get_z0<<<dimGrid,dimBlock>>>(outs_d->omega, tmp_d->CXYZ);
+          cudaMemcpy(outs_h->omega, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].x);
+          fprintf(files_h->phifile, "\t\t\t%e", outs_h->omega[idx0y0].y);
+        }
+        //fprintf(files_h->omegafile,"t=%f\n", tm_h->runtime);
+        //for(int j=0; j<=Nx; j++) {
+        //  for(int i=0; i<=Ny; i++) {
+        //    int index = i + Ny*j;
+        //    if(j==Nx) index = i;
+        //    if(i==Ny) index = Ny*j;
+        //    if(i==Ny && j==Nx) index= 0;
+        //    fprintf(files_h->omegafile,"%.6f\t%.6f\t%f\n", 2*Y0*(i-Ny/2)/Ny, 2*X0*(j-Nx/2)/Nx, outs_h->omega[index]);
+        //  }
+        //  fprintf(files_h->omegafile,"\n");
+        //}
+        //fprintf(files_h->omegafile,"\n\n");
+         
+        //getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, Dens[0], pars_h->iky_single, pars_h->ikx_single, Nz/2);
+        //cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        //fprintf(files_h->phifile, "\n\t%f\t%e", tm_h->runtime, outs_h->val[0]);
+        //getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, Dens[0], pars_h->iky_single, pars_h->ikx_single, Nz/2);
+        //cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        //fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        //getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, Tprp[0], pars_h->iky_single, pars_h->ikx_single, Nz/2);
+        //cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        //fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        //getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, Tprp[0], pars_h->iky_single, pars_h->ikx_single, Nz/2);
+        //cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        //fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+      }
+ 
+      if(init == FORCE) {
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Phi1, jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\n\t%f\t%e", tm_h->runtime, outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", tm_h->runtime, outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Dens[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Upar[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Tpar[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Tprp[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Qpar[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+
+        field_line_avg<<<dimGrid,dimBlock>>>(tmp_d->CXY, Qprp[0], jacobian, 1./fluxDen);
+        getModeValReal<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+        getModeValImag<<<dimGrid,dimBlock>>>(outs_d->val, tmp_d->CXY, pars_h->iky_single, pars_h->ikx_single, 0);
+        cudaMemcpy(outs_h->val, outs_d->val, sizeof(float), cudaMemcpyDeviceToHost);
+        fprintf(files_h->phifile, "\t\t\t%e", outs_h->val[0]);
+      }
     //  cudaEventRecord(start1,0);  
       if(LINEAR || secondary_test || write_omega) {
 
@@ -243,8 +390,11 @@ POP_RANGE;
       fluxWrite(files_h->fluxfile,outs_h->pflux_by_species, pflxAvg, wpfx,wpfxAvg, nlpm_h->D, nlpm_h->D_avg, nlpm_h->Phi_zf_kx1, nlpm_h->Phi_zf_kx1_avg, nlpm_h->kx2Phi_zf_rms, nlpm_h->kx2Phi_zf_rms_avg, nlpm_h->nu1_max,nlpm_h->nu22_max,ctrl->converge_count,tm_h->runtime,species);
     
   	     
-      if(tm_h->counter%nsave==0 && write_phi) phiR_historyWrite(Phi,outs_d->omega,tmp_d->XY_R,tmp_h->XY_R, tm_h->runtime, files_h->phifile); //save time history of Phi(x,y,z=0)          
+      if(tm_h->counter==0 && pars_h->nlpm_test) phiR_historyWrite(Phi,outs_d->omega,tmp_d->XY_R,tmp_h->XY_R, tm_h->runtime, files_h->omegafile); //save time history of Phi(x,y,z=0)          
+      if(tm_h->counter==0 && pars_h->nlpm_test) phiR_historyWrite(Dens[0],outs_d->omega,tmp_d->XY_R,tmp_h->XY_R, tm_h->runtime, files_h->omegafile); //save time history of Phi(x,y,z=0)          
       
+      if(tm_h->counter==0 && pars_h->nlpm_test) phiRcomplex_historyWrite(Phi,outs_d->omega,outs_h->omega, tm_h->runtime, files_h->gammafile, ffts->XYplanC2C); //save time history of Phi(x,y,z=0)          
+      if(tm_h->counter==0 && pars_h->nlpm_test) phiRcomplex_historyWrite(Dens[0],outs_d->omega,outs_h->omega, tm_h->runtime, files_h->gammafile, ffts->XYplanC2C); //save time history of Phi(x,y,z=0)          
       
       // print wpfx to screen if not printing growth rates
       if(!write_omega && tm_h->counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],tm_h->dt, dt_cfl, nlpm_h->D);

@@ -46,12 +46,20 @@ void print_final_summary(everything_struct * ev, FILE * outfile){
     if(NO_ZDERIV) printf("[No zderiv]\t");
     if(NO_ZDERIV_COVERING) printf("[No zderiv_covering]\t");
     if(SLAB) printf("[Slab limit]\t");
-    if(varenna) printf("[varenna: ivarenna=%d]\t", ivarenna);
+    if(varenna) printf("[varenna: ivarenna=%d, varenna_fsa=%d]\t", ivarenna, varenna_fsa);
     if(CONST_CURV) printf("[constant curvature]\t");
     if(RESTART) printf("[restart]\t");
-    if(NLPM && nlpm_zonal_kx1_only) {
-       printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f, Phi2_zf(kx=1) only]\t", inlpm, dnlpm);
+    if(NLPM) { 
+      if(nlpm_zonal_kx1_only) {
+         printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f, Phi2_zf(kx=1) only]\t", inlpm, dnlpm);
+      }
+      else if(dorland_nlpm) {
+         printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f, dorland_nlpm]\t", inlpm, dnlpm);
+      } else {
+         printf("[Nonlinear Phase Mixing: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
+      }
     }
+    if(nlpm_nlps) printf("[NLPS NLPM: inlpm=%d, dnlpm=%f]\t", inlpm, dnlpm);
     if(SMAGORINSKY) printf("[Smagorinsky Diffusion]\t");
     if(HYPER && isotropic_shear) printf("[HyperViscocity: D_hyper=%f, isotropic_shear]\t", D_hyper);
     if(HYPER && !isotropic_shear) printf("[HyperViscocity: D_hyper=%f, anisotropic_shear]\t", D_hyper);

@@ -3,6 +3,10 @@
 #define DENS 1
 #define FORCE 2
 #define RH_equilibrium 3
+#define TPRP 4
+#define UPAR 5
+#define TPAR 6
+#define ODD 7
 
 #ifndef NO_GLOBALS
 //Globals will be deleted eventually
@@ -284,6 +288,8 @@ typedef struct {
   // Namelist: gryfx_knobs
     int inlpm;
     float dnlpm;
+    float dnlpm_dens;
+    float dnlpm_tprp;
 		bool hyper;
     float nu_hyper;
     float D_hyper;
@@ -339,6 +345,16 @@ typedef struct {
     int init;
     float phiext;
     bool debug;
+    bool init_single;
+    int iky_single;
+    int ikx_single;
+    int iky_fixed;
+    int ikx_fixed;
+    bool nlpm_test;
+    bool new_nlpm; 
+    bool low_b;
+    bool low_b_all;
+    int iflr;
 
     int igeo;
     float shaping_ps;

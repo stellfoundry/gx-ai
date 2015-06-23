@@ -1,3 +1,57 @@
+__global__ void NLPSderivX_abs(cuComplex* fdx, cuComplex* f, float* kx)                        
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+     //df/dx
+    fdx[index] = -abs(kx[idx])*f[index];			
+   }
+  } 
+  else {
+   for(int i=0; i<nz/zthreads; i++) { 
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+    //df/dx
+     fdx[index] = -abs(kx[idx])*f[index];
+    }
+   }
+  } 
+}  
+
+__global__ void NLPSderivY_abs(cuComplex* fdx, cuComplex* f, float* ky)                        
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+     //df/dx
+     fdx[index] = abs(ky[idy])*f[index];
+   }
+  } 
+  else {
+   for(int i=0; i<nz/zthreads; i++) { 
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+    //df/dx
+     fdx[index] = abs(ky[idy])*f[index];
+    }
+   }
+  } 
+}  
+
 __global__ void NLPSderivX(cuComplex* fdx, cuComplex* f, float* kx)                        
 {
   unsigned int idy = get_idy();

@@ -335,6 +335,7 @@ inline void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_X
 			float runtime, FILE* phifile)
 {
   get_z0<<<dimGrid,dimBlock>>>(Phi_XYz0, Phi);
+  scale_ky_neq_0<<<dimGrid,dimBlock>>>(Phi_XYz0, .5, Nx, Ny, 1);
   cufftExecC2R(XYplanC2R, Phi_XYz0, PhiR_XYz0);
   cudaMemcpy(PhiR_XYz0_h, PhiR_XYz0, sizeof(float)*Nx*Ny, cudaMemcpyDeviceToHost);
   fprintf(phifile,"t=%f\n", runtime);
@@ -344,13 +345,33 @@ inline void phiR_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, float* PhiR_X
       if(j==Nx) index = i;
       if(i==Ny) index = Ny*j;
       if(i==Ny && j==Nx) index= 0;
-      fprintf(phifile,"%.6f\t%.6f\t%f\n", 2*Y0*(i-Ny/2)/Ny, 2*X0*(j-Nx/2)/Nx, PhiR_XYz0_h[index]);
+      fprintf(phifile,"%.6f\t%.6f\t%f\n", 2*M_PI*Y0*(i)/Ny, 2*M_PI*X0*(j)/Nx, PhiR_XYz0_h[index]);
     }
     fprintf(phifile,"\n");
   }
   fprintf(phifile,"\n\n");
 }
 
+inline void phiRcomplex_historyWrite(cuComplex* Phi, cuComplex* Phi_XYz0, cuComplex* Phi_XYz0_h, 
+			float runtime, FILE* phifile, cufftHandle XYplanC2C)
+{
+  get_z0<<<dimGrid,dimBlock>>>(Phi_XYz0, Phi);
+  //scale_ky_neq_0<<<dimGrid,dimBlock>>>(Phi_XYz0, .5, Nx, Ny, 1);
+  cufftExecC2C(XYplanC2C, Phi_XYz0, Phi_XYz0, CUFFT_INVERSE);
+  cudaMemcpy(Phi_XYz0_h, Phi_XYz0, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
+  fprintf(phifile,"t=%f\n", runtime);
+  for(int j=0; j<=Nx; j++) {
+    for(int i=0; i<=Ny/2+1; i++) {
+      int index = i + (Ny/2+1)*j;
+      if(j==Nx) index = i;
+      if(i==Ny/2+1) index = (Ny/2+1)*j;
+      if(i==Ny/2+1 && j==Nx) index= 0;
+      fprintf(phifile,"%.6f\t%.6f\t%f\t%f\n", 2*M_PI*Y0*(i)/(Ny/2+1), 2*M_PI*X0*(j)/Nx, Phi_XYz0_h[index].x, Phi_XYz0_h[index].y);
+    }
+    fprintf(phifile,"\n");
+  }
+  fprintf(phifile,"\n\n");
+}
 
 inline void boxAvg(cuComplex *fAvg, cuComplex *f, cuComplex **fBox, 
                   float dt, float *dtBox, int navg, int counter)

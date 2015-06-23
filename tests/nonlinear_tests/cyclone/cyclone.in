@@ -254,6 +254,7 @@
 /
 
 &gryfx_knobs
+  write_netcdf = .false.
   write_omega = "off"
   write_phi = "off"
   restart = "off"
@@ -262,8 +263,10 @@
   const_curv = "off"
   varenna = "off"
   nlpm = "on"
-  inlpm = 2
+  inlpm = 0
   dnlpm = 0.8
+  dnlpm_dens = 0
+  dnlpm_tprp = 0
   dnlpm_max = 1
   dorland_nlpm = "off"
   dorland_nlpm_phase = "off"
@@ -284,5 +287,7 @@
   scan_number = 1
 /
 
-
+&secondary_test_knobs
+  low_b = "on"
+/
 

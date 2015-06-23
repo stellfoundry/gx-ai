@@ -6,6 +6,7 @@
 #include "write_data.h"
 #include "gs2.h"
 #include "profile.h"
+#include "printout.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
@@ -121,13 +122,22 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
 
     if(DEBUG) getError("run_gryfx.cu, before initial condition"); 
-    ev_hd->sfixed.S = ev_h->sfixed.S=1.0;
 
-    //if running nonlinear part of secondary test...
-    if(secondary_test && !LINEAR && RESTART) { 
+    //if running nonlinear part of secondary test or nlpm_test
+    if( (secondary_test && !LINEAR && RESTART) || (ev_h->pars.nlpm_test && !LINEAR && RESTART) ) { 
+
+      ev_hd->sfixed.S = ev_h->sfixed.S=1.0;
+      if(secondary_test) {
+        // for secondary test, fixed mode is always (ky=ky_min, kx=0)
+        ev_h->pars.iky_fixed = 1;
+        ev_h->pars.ikx_fixed = 0;
+      }
+      ev_hd->sfixed.iky_fixed = ev_h->sfixed.iky_fixed = ev_h->pars.iky_fixed;
+      ev_hd->sfixed.ikx_fixed = ev_h->sfixed.ikx_fixed = ev_h->pars.ikx_fixed;
+
       restartRead(ev_h, ev_hd);
       //Check restart was successful
-      fieldWrite(Phi, field_h, "phi_restarted.field", filename);
+      fieldWrite(ev_hd->fields.phi, field_h, "phi_restarted.field", filename);
       //Here we copy the fields from the restart file into the 
       // arrays in the sfixed struct, which will then be copied back
       // at the appropriate points in the timestep loop.
@@ -135,7 +145,9 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
           &ev_hd->sfixed, &ev_hd->fields);
       //initialize density with noise
       ev_h->pars.restart = RESTART = false; 
-      ev_h->pars.init = init = DENS;
+      //ev_h->pars.init = init = DENS;
+      strcpy(ev_h->info.restart_file_name, ev_h->info.run_name);
+      strcat(ev_h->info.restart_file_name, ".restart.bin");
 
       //restart run from t=0
       tm->counter = 0;
@@ -143,7 +155,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
       tm->dtSum = 0.;
       //tm->dt=ev_h->pars.dt;
 
-      maxdt = .1/(phi_test.x*kx_h[1]*ky_h[1]);
+      maxdt = ev_h->pars.dt;
+      //maxdt = .1/(phi_test.x*kx_h[1]*ky_h[1]);
     } 
 
     //float amp;
@@ -210,15 +223,21 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
  // MPI_Barrier(MPI_COMM_WORLD); //make all procs wait
   if(iproc==0) {  
-    if(secondary_test && !LINEAR) {
+    if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
       copy_fixed_modes_into_fields(
-          &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed);
+          &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed, &ev_h->pars);
     }
 
     // Solve for initial phi
     // assumes the initial conditions have been moved to the device
     if(init == DENS) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
+    if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
+      copy_fixed_modes_into_fields(
+          &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed, &ev_h->pars);
+    }
     if(DEBUG) getError("about to start timestep loop");
+
+
     write_initial_fields(
         &ev_h->cdims, &ev_hd->fields, &ev_hd->tmp, ev_h->fields.field, ev_h->tmp.X);
 
@@ -238,9 +257,13 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   }
 //#endif
 
+  print_initial_parameter_summary(ev_h);
   /////////////////////
   // Begin timestep loop
   /////////////////////
+  if(iproc==0) {
+      if(ev_h->pars.nlpm_test) gryfx_run_diagnostics(ev_h, ev_hd);
+  }
 
   while(tm->counter<nSteps && ctrl->stopcount<ctrl->nstop)
   {
@@ -323,12 +346,11 @@ POP_RANGE;
 
       qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
 
-      if(secondary_test && !LINEAR) {
-        if(tm->runtime < .02/maxdt/M_PI) ev_h->sfixed.S = 1.;// sin(.01/maxdt * tm->runtime);
-        else ev_h->sfixed.S = 1.;
-        ev_hd->sfixed.S = ev_h->sfixed.S;
+      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
+        //ev_h->sfixed.S = 1.;
+        //ev_hd->sfixed.S = ev_h->sfixed.S;
         copy_fixed_modes_into_fields( &ev_h->cdims, &ev_hd->fields1,
-            ev_hd->fields1.phi, &ev_hd->sfixed);
+            ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
       }
     } //end of iproc if
 
@@ -466,12 +488,12 @@ POP_RANGE;
       }
 
 
-      if(!LINEAR && !secondary_test && !write_omega) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
+      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
       else qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
 
-      if(secondary_test && !LINEAR) {
+      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
         copy_fixed_modes_into_fields(
-            &ev_h->cdims, &ev_hd->fields, ev_hd->fields1.phi, &ev_hd->sfixed);
+            &ev_h->cdims, &ev_hd->fields, ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
       }
       //f = f(t+dt)
 
@@ -509,7 +531,7 @@ POP_RANGE;
 
       cuComplex * phiptr;
 
-      if(!LINEAR && !secondary_test && !write_omega) {
+      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) {
         phiptr = ev_hd->fields.phi;
       } else {
         phiptr = ev_hd->fields1.phi;
@@ -576,9 +598,6 @@ PUSH_RANGE("NLPM and hyper", 3);
 POP_RANGE;
 #endif
 
-      //DIAGNOSTICS
-      gryfx_run_diagnostics(ev_h, ev_hd);
-      if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
 
 //#ifdef GS2_zonal
     } //end of iproc if
@@ -586,6 +605,12 @@ POP_RANGE;
     tm->runtime+=tm->dt;
     tm->counter++;       
     //checkstop
+
+    if(iproc==0) {
+      //DIAGNOSTICS
+      gryfx_run_diagnostics(ev_h, ev_hd);
+      if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
+    }
 /*
     if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
       fclose(checkstop);
@@ -607,7 +632,7 @@ POP_RANGE;
 
 
       //check for problems with run
-      if(!LINEAR && !secondary_test && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 100000) ) {
+      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 100000) ) {
         printf("\n-------------\n--RUN ERROR--\n-------------\n\n");
 
         ctrl->stopcount=100;

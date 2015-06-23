@@ -283,6 +283,13 @@ model_option = "const-curv"
  restart_file = "nc/cyclone_miller_ke.nc"
  ginit_option= "noise"
 /
+&source_knobs
+ ! These next 3 options are for the Rosenbluth-Hinton zonal flow tests.
+ !
+ source_option="phiext_full"    ! for zonal flows
+ phi_ext=-.707
+ t0=-10.0
+/
 
 &knobs
   fphi =   1.0
@@ -373,6 +380,10 @@ model_option = "const-curv"
   phi_test_imag = 1.0e-5
   restartfile = "restart.bin"
   secondary_test = "off"
+  nlpm_test = "off"
+  low_b = "off"
+  iky_fixed = 1
+  ikx_fixed = 0
 /
 
 &gryfx_nonlinear_terms_knobs
@@ -385,8 +396,6 @@ model_option = "const-curv"
 /
 
 &gryfx_knobs
-  inlpm = 2
-  dnlpm = 1.0
   hyper = "off"
   nu_hyper = 1.0
   p_hyper = 2
@@ -416,11 +425,15 @@ model_option = "const-curv"
   new_varenna = "off"
   new_catto = "off"
   nlpm = "on"
-  dorland_nlpm = "on"
-  dorland_nlpm_phase = "on"
-  dorland_phase_complex = "on"
+  inlpm = 2
+  dnlpm = 1.0
+  dnlpm_dens = -0.4
+  dnlpm_tprp = 1.6
+  dorland_nlpm = "off"
+  dorland_nlpm_phase = "off"
+  dorland_phase_complex = "off"
   dorland_phase_ifac = 1
-  nlpm_option = "cutoff"
+  nlpm_option = "constant"
   low_cutoff = 0.01
   high_cutoff = -1
   dnlpm_max = 1.0
@@ -434,6 +447,9 @@ model_option = "const-curv"
   init = "density"
   phiext = -1.0
   debug = "off"
+  init_single = "off"
+  iky_single = 1
+  ikx_single = 0
 
   igeo = 0
   shaping_ps = 1.6
@@ -443,6 +459,9 @@ model_option = "const-curv"
   !stopfile = "linear.stop"
   !restartfile = "restart/linear.bin"  
   ostem_rname = .false.
+  low_b_all = "off"
+  new_nlpm = "off"
+  iflr = 1
 /
 
 &new_varenna_knobs

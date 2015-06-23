@@ -3,6 +3,7 @@
 #include "simpledataio_cuda.h"
 #include "everything_struct.h"
 #include "write_data.h"
+#include "profile.h"
 //#include "global_vars.h"
 
 
@@ -232,17 +233,63 @@ void writedat_beginning(everything_struct * ev)
 void writedat_each(grids_struct * grids, outputs_struct * outs, fields_struct * flds, time_struct * time)
 {
 	struct sdatio_file * sdatfile = &(outs->sdatfile);
+#ifdef PROFILE
+PUSH_RANGE("writedat: t",0);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "t", &(time->runtime));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: phi",1);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "phi", &(flds->phi[0]));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: phi_t",2);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "phi_t", &(flds->phi[0]));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: phi2",3);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2", &(outs->phi2));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: phi2_by_ky",4);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_ky", &(outs->phi2_by_ky[0]));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: phi2_by_kx",5);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "phi2_by_kx", &(outs->phi2_by_kx[0]));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: omega",0);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "omega", &(outs->omega[0]));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: omega_average",1);
+#endif
   writedat_mask_trans_write_variable_2(grids, sdatfile, "omega_average", &(outs->omega_out[0]), false);
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: hflux_tot",2);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "hflux_tot", &(outs->hflux_tot));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("writedat: es_heat_flux",3);
+#endif
   writedat_mask_trans_write_variable(grids, sdatfile, "es_heat_flux", &(outs->hflux_by_species));
+#ifdef PROFILE
+POP_RANGE;
+PUSH_RANGE("sdatio_increment_start",4);
+#endif
   sdatio_increment_start(sdatfile, "t");
+#ifdef PROFILE
+POP_RANGE;
+#endif
   
 }
 

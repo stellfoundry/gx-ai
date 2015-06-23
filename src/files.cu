@@ -59,7 +59,7 @@ void setup_files(files_struct * files, input_parameters_struct * pars, grids_str
 
   //time histories (.time)
   
-  if(!pars->restart) {
+  if(!pars->restart || pars->secondary_test || pars->nlpm_test) {
     files->omegafile = open_output_file(out_stem, "omega.time", "w+");
     files->gammafile = open_output_file(out_stem, "gamma.time", "w+");
     files->fluxfile = open_output_file(out_stem, "flux.time", "w+");
@@ -70,7 +70,7 @@ void setup_files(files_struct * files, input_parameters_struct * pars, grids_str
       omegaWriteSetup(grids, files->gammafile,"gamma");  
     }
     files->phifile = open_output_file(out_stem, "phi.time", "w+");
-    phiWriteSetup(files->phifile);
+    //phiWriteSetup(files->phifile);
   }
   else {
     files->omegafile = open_output_file(out_stem, "omega.time", "a");

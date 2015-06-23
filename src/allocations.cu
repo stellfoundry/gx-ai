@@ -234,6 +234,8 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 
 	alloc_dealloc(&outs->par_corr_kydz_movav, aod, ON_DEVICE, ml,  TYPE_FLOAT, grids->Nz*grids->Ny_complex);
 
+	alloc_dealloc(&outs->val, aod, ON_HOST_AND_DEVICE, ml,  TYPE_FLOAT, 1);
+
 	/*Globals...to be deleted eventually*/
 	if (ml == ON_HOST){
   	omega_h = outs->omega;
@@ -246,6 +248,7 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_arrays_struct * tmp){
 
 	alloc_dealloc(&tmp->CXYZ, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex*grids->Nz);
+	alloc_dealloc(&tmp->CXYZ2, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex*grids->Nz);
 	alloc_dealloc(&tmp->X, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&tmp->X2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&tmp->CX, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx);
@@ -262,6 +265,7 @@ void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_
 	alloc_dealloc(&tmp->XZ, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Nz);
 	alloc_dealloc(&tmp->XZ2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Nz);
 	alloc_dealloc(&tmp->CXZ, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Nz);
+	alloc_dealloc(&tmp->CXY, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&tmp->YZ, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex*grids->Nz);
 	alloc_dealloc(&tmp->XYZ, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx*grids->Ny_complex*grids->Nz);
 }

@@ -61,7 +61,8 @@ void copy_fixed_modes_into_fields(
   cuda_dimensions_struct * cdims,
   fields_struct * fields_d,
   cuComplex * phi_d, //Need  phi separate cos sometimes need dens1 but not phi1 etc
-  secondary_fixed_arrays_struct * sfixed
+  secondary_fixed_arrays_struct * sfixed,
+  input_parameters_struct * pars
     );
 void write_initial_fields(
   cuda_dimensions_struct * cdims,

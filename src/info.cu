@@ -35,16 +35,16 @@ void setup_info(char * input_file, input_parameters_struct * pars, info_struct *
   strcpy(restartfileName, info->run_name);
   strcat(restartfileName, ".restart.bin");
  
-  if(pars->secondary_test && !pars->linear) 
+  if((pars->secondary_test || pars->nlpm_test) && !pars->linear) 
     strcpy(restartfileName, pars->secondary_test_restartfileName);
  
   if(pars->restart) {
     // check if restart file exists
     if( FILE* restartFile = fopen(restartfileName, "r") ) {
-      printf("restart file found. restarting...\n");
+      printf("restart file %s found. restarting...\n", restartfileName);
     }
     else{
-      printf("cannot restart because cannot find restart file. changing to no restart\n");
+      printf("cannot restart because cannot find restart file %s. changing to no restart\n", restartfileName);
       // EGH Perhaps we should abort at this point?
       pars->restart = false;
       abort();

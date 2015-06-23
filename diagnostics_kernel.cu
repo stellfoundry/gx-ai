@@ -445,6 +445,25 @@ __global__ void expect_k(float* kphi2_XY, float* phi2_XY, float* k)
   }
 }       
 
+__global__ void getModeVal(float* val, cuComplex* f, int iky, int ikx, int z) 
+{
+  val[0] = f[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].x;
+}
+
+__global__ void getModeValReal(float* val, cuComplex* f, int iky, int ikx, int z) 
+{
+  val[0] = f[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].x;
+}
+__global__ void getModeValImag(float* val, cuComplex* f, int iky, int ikx, int z) 
+{
+  val[0] = f[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].y;
+}
+__global__ void getModeValSq(float* val, cuComplex* f, int iky, int ikx, int z) 
+{
+  cuComplex a = f[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z]*cuConjf(f[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z]);
+  val[0] = a.x;
+}
+
 __global__ void getPhiVal(float* val, cuComplex* Phi, int iky, int ikx, int z) 
 {
   val[0] = Phi[iky + (ny/2+1)*ikx + nx*(ny/2+1)*z].x;

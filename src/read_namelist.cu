@@ -269,6 +269,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &pars->inlpm);
   inlpm=pars->inlpm;
   fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &pars->dnlpm);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_dens", &pars->dnlpm_dens);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_tprp", &pars->dnlpm_tprp);
   dnlpm=pars->dnlpm;
   
   fnr_get_float(&namelist_struct, "gryfx_knobs", "low_cutoff", &pars->low_cutoff);
@@ -351,6 +353,18 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   else if( strcmp(initfield,"force") == 0) {
     init = FORCE;
   }
+  else if( strcmp(initfield,"tperp") == 0) {
+    init = TPRP;
+  }
+  else if( strcmp(initfield,"tpar") == 0) {
+    init = TPAR;
+  }
+  else if( strcmp(initfield,"upar") == 0) {
+    init = UPAR;
+  }
+  else if( strcmp(initfield,"odd") == 0) {
+    init = ODD;
+  }
   else if (strcmp(initfield,"RH_eq") == 0) {
     init = RH_equilibrium;
     pars->new_varenna = new_varenna = true;
@@ -361,6 +375,12 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   init_amp=pars->init_amp;
   fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &pars->phiext);
   phiext=pars->phiext;
+
+
+  pars->init_single = get_bool_on_off(&namelist_struct, "gryfx_knobs", "init_single");
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "iky_single", &(pars->iky_single));
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "ikx_single", &(pars->ikx_single));
+  
   
   pars->write_netcdf= get_bool(&namelist_struct, "gryfx_knobs", "write_netcdf");
 
@@ -380,14 +400,36 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   
   
   pars->secondary_test= secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
+  pars->nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
+  pars->new_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_nlpm");
+  pars->low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
+  pars->low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
+  if(pars->low_b_all) pars->low_b = true;
+
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(pars->iflr));
 
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_real", &phi_test.x);
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_imag", &phi_test.y);
+
+  fnr_get_int(&namelist_struct, "secondary_test_knobs", "iky_fixed", &(pars->iky_fixed));
+  fnr_get_int(&namelist_struct, "secondary_test_knobs", "ikx_fixed", &(pars->ikx_fixed));
 
   if(secondary_test && LINEAR && phi_test.x > phi_test.y) init_amp = phi_test.x;
   if(secondary_test && LINEAR && phi_test.x < phi_test.y) init_amp = phi_test.y;
   pars->phi_test = phi_test;
   pars->init_amp = init_amp;
+
+  if(pars->nlpm_test) { 
+    float fac;
+    if(pars->iky_fixed==0) fac = .5;
+    else fac = 1.;
+    if(phi_test.x > 0.) phi_test.x = pars->x0*pars->y0*fac; 
+    else phi_test.x = 0.;
+    if(phi_test.y > 0.) phi_test.y = pars->x0*pars->y0*fac; 
+    else phi_test.y = 0.;
+    //if(phi_test.x > 0. && phi_test.y > 0.) {phi_test.x = phi_test.x/sqrt(2.); phi_test.y = phi_test.y/sqrt(2.);}
+  }
+
 
   fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "densfac", &pars->NLdensfac);
   NLdensfac=pars->NLdensfac;

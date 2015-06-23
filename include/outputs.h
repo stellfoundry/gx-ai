@@ -18,6 +18,8 @@ typedef struct {
   float mu_avg;
   float alpha_avg;
 
+  float* val; 
+
 	// Total integrated |field|^2 
 	float phi2;
 
