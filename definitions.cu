@@ -1,6 +1,7 @@
 void definitions(everything_struct * ev)
 {
 
+
   // This is a local reference to species, not the global variable
   specie * species = ev->pars.species;
   // Local for convencience
@@ -72,6 +73,7 @@ void definitions(everything_struct * ev)
   }
 
   int ivarenna = ev->pars.ivarenna;
+  printf("\n\n\nivarenna is %d\nBLAH\nBLAH\n", ivarenna);
   
   //varenna
   if(abs(ivarenna) == 1 || abs(ivarenna)==4 || ev->pars.no_landau_damping) {
@@ -119,31 +121,52 @@ void definitions(everything_struct * ev)
   mu[10].y = 0.;
   }
 
+
   if(abs(ivarenna) == 5) {
-  mu[0].x = 0.;
-  mu[0].y = 0.;
   mu[1].x = 0.;
-  mu[1].y = 0.;
+  mu[1].y = 0.5;
+  mu[2].x = 0.;
+  mu[2].y = 0.;
+  mu[3].x = 0.;
+  mu[3].y = 1.;
+  mu[4].x = 0.;
+  mu[4].y = 0.;
+  mu[5].x = 0.;
+  mu[5].y = 0.;//2.;
+  mu[6].x = 0.;
+  mu[6].y = 0.;//8.;
+  mu[7].x = 0.;
+  mu[7].y = 0.;//1.;
+  mu[8].x = 0.;
+  mu[8].y = 0.;//2.;
+  mu[9].x = 0.;
+  mu[9].y = 0.;//2.;
+  mu[10].x = 0.;
+  mu[10].y = 0.;//5.;
+  }
+  
+  if(abs(ivarenna) == 7 || abs(ivarenna)==6) {
+  mu[1].x = 0.;
+  mu[1].y = -2.;
   mu[2].x = 0.;
   mu[2].y = 0.;
   mu[3].x = 0.;
   mu[3].y = 0.;
   mu[4].x = 0.;
-  mu[4].y = 0.;
+  mu[4].y = -1.5;
   mu[5].x = 0.;
-  mu[5].y = -18.;
+  mu[5].y = 2.;
   mu[6].x = 0.;
-  mu[6].y =11.;
+  mu[6].y = 8.;
   mu[7].x = 0.;
-  mu[7].y =3.;
+  mu[7].y = 1.;
   mu[8].x = 0.;
-  mu[8].y = -5.;
+  mu[8].y = 2.;
   mu[9].x = 0.;
-  mu[9].y = 1.;
+  mu[9].y = 2.;
   mu[10].x = 0.;
-  mu[10].y = 7.;
+  mu[10].y = 5.;
   }
-  
 
 }  
   

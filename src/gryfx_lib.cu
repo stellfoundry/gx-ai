@@ -85,7 +85,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   //if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
       //strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
-      if(iproc==0) printf("%d: out_stem = %s\n", ev->info.gpuID, ev->info.run_name);
+      if(iproc==0) printf("%d: out_stem = \n", ev->info.gpuID);//, ev->info.run_name);
   //}
 
   // copy elements of input_parameters struct ev->pars into gryfx_parameters_struct gryfxpars
@@ -393,6 +393,8 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
     //else use what is set in input file 
     pars->jtwist = jtwist;
   }
-  if(pars->jtwist!=0) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
+  if(pars->jtwist!=0 && abs(pars->shat)>1.e-6) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));  
+  //if(abs(pars->shat)<1.e-6) pars->x0 = pars->y0;
+  
 }
 

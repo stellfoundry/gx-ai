@@ -144,7 +144,8 @@ do
       MAKE_OPTIONAL_COMMAND=${OPTARG}
       ;;
     d)
-      DBGFLAG=debug=on
+      DBGFLAG=on
+      debug=on
       GS2DBGFLAG=-d
       ;;
     g)
@@ -158,11 +159,13 @@ do
       ;;
     t)
       COMMAND=tests
-      TESTSET=TESTS=$OPTARG
+      TESTS=$OPTARG
+      TESTSET=$OPTARG
       ;;
     v)
       COMMAND=tests
-      VERBSET=GK_VERBOSITY=$OPTARG
+      GK_VERBOSITY=$OPTARG
+      VERBSET=$OPTARG
       ;;
     z)
       GS2_zonal=${OPTARG}

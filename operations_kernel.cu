@@ -642,6 +642,35 @@ __global__ void add_scaled_Ky0(cuComplex* result, float fscaler, cuComplex* f,
     }
   }
 }   
+
+//five fields
+__global__ void add_scaled(cuComplex* result, float fscaler, cuComplex* f, 
+                                              float gscaler, cuComplex* g,
+					      float hscaler, cuComplex* h,
+					      float jscaler, cuComplex* j,
+					      float kscaler, cuComplex* k)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      result[index] = fscaler*f[index] + gscaler*g[index] + hscaler*h[index] + jscaler*j[index] + kscaler*k[index];      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+        result[index] = fscaler*f[index] + gscaler*g[index] + hscaler*h[index] + jscaler*j[index] + kscaler*k[index];
+      }
+    }
+  }
+}   
   
 //multiply a complex array by a scaler
 
@@ -1207,7 +1236,10 @@ __global__ void multdiv(float* result, float* f, float* g, int a)
         result[index] = f[index] * g[index];
       }	
       if(a == -1) {
-        result[index] = f[index] / g[index];
+        if(g[index]!=0.) {
+          result[index] = f[index] / g[index];
+        }
+        else result[index] = 0.;
       }	
     }
   }
@@ -1280,6 +1312,29 @@ __global__ void squareComplex(float* res, cuComplex* f)
   }
 }  
 
+__global__ void magnitude_xy(float* mag, float* f_x, float* f_y)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      mag[index] = sqrt( f_x[index]*f_x[index] + f_y[index] * f_y[index] );
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+        mag[index] = sqrt( f_x[index]*f_x[index] + f_y[index] * f_y[index] );
+      }
+    }
+  }
+}  
 __global__ void abs(float* res, float* f)
 {
   unsigned int idy = get_idy();
@@ -1304,7 +1359,196 @@ __global__ void abs(float* res, float* f)
   }
 }      
 
+__global__ void abs(cuComplex* res, cuComplex* f)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      res[index].x = cuCabsf( f[index] );
+      res[index].y = 0.;
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+        res[index].x = cuCabsf( f[index] );
+        res[index].y = 0.;
+      }
+    }
+  }
+}      
 
+__global__ void abs_sgn(float* res, float* f, float* g_sgn)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      int sgn = 0;
+
+      if(g_sgn[index]>0) sgn=1;
+      if(g_sgn[index]<0) sgn=-1;
+
+      res[index] = abs(f[index]) * sgn;
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        int sgn = 0;
+
+        if(g_sgn[index]>0) sgn=1;
+        if(g_sgn[index]<0) sgn=-1;
+
+        res[index] = abs(f[index]) * sgn;
+      }
+    }
+  }
+}      
+
+__global__ void abs_sgn(cuComplex* res, cuComplex* f, cuComplex* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      if(cuCabsf(g[index]) != 0) {
+        res[index] = cuCabsf(f[index]) * g[index] / cuCabsf(g[index]);
+      } else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+        if(cuCabsf(g[index]) != 0) {
+          res[index] = cuCabsf(f[index]) * g[index] / cuCabsf(g[index]);
+        } else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }
+      }
+    }
+  }
+}      
+
+__global__ void mult_sgn(cuComplex* res, cuComplex* f, cuComplex* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      if(cuCabsf(g[index]) != 0) {
+        res[index] = f[index] * g[index] / cuCabsf(g[index]);
+      } else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+        if(cuCabsf(g[index]) != 0) {
+          res[index] = cuCabsf(f[index]) * g[index] / cuCabsf(g[index]);
+        } else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }
+      }
+    }
+  }
+}      
+
+__global__ void mult_sgn(float* res, float* f, float* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      if(abs(g[index]) != 0) {
+        res[index] = f[index] * g[index] / abs(g[index]);
+      } else {
+        res[index] = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+
+        if(abs(g[index]) != 0) {
+          res[index] = f[index] * g[index] / abs(g[index]);
+        } else {
+          res[index] = 0.;
+        }
+      }
+    }
+  }
+}      
+__global__ void mult_I(cuComplex* f)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      cuComplex I;
+      I.x = 0.;
+      I.y = 1.;
+
+      f[index] = I*f[index];
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        cuComplex I;
+        I.x = 0.;
+        I.y = 1.;
+
+        f[index] = I*f[index];
+      }
+    }
+  }
+}      
 //fixes roundoff errors after fft
 __global__ void roundoff(cuComplex* f, float max)
 {
@@ -1454,6 +1698,120 @@ __global__ void PfirschSchluter_fsa(cuComplex* Qps, cuComplex* Q, float psfac, f
   }
 }
             
+__global__ void new_varenna_zf(cuComplex* Qps, cuComplex* Q, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+       
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+    
+        float kr = (-kx[idx])*shatInv*sqrt(gds22[idz]);		
+
+	cuComplex tmp;
+	tmp.x = Q[index].x + T[index].y/(kr*qsf/eps*rho);
+	tmp.y = Q[index].y - T[index].x/(kr*qsf/eps*rho);
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index] = Q[index];
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = Q[index].x + (-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].y;
+	  tmp.y = Q[index].y - (-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T[idx].x;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index] = Q[index];
+	}
+      }
+    }
+  }
+}
+
+
+__global__ void new_varenna_zf_fsa(cuComplex* Qps, cuComplex* Q, float* kx, float* gds22, float
+				qsf, float eps, float* bmagInv, cuComplex* T_fluxsurfavg, float shat, float rho)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  float shatInv;
+  if (abs(shat)>1.e-8) {
+    shatInv = 1./shat;
+  } else {
+    shatInv = 1.;
+  }
+  
+  if(nz<=zthreads) {
+    if(idy<ny/2+1 && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      if(idy==0) {
+	//double check signs... k_r = -kx for ky=0?
+
+        float kr = (-kx[idx])*shatInv*sqrt(gds22[idz]);		
+		
+	cuComplex tmp;
+	tmp.x = Q[index].x + T_fluxsurfavg[idx].y/(kr*qsf/eps*rho);
+	tmp.y = Q[index].y - T_fluxsurfavg[idx].x/(kr*qsf/eps*rho);
+	Qps[index] = tmp;
+      }
+      else {
+        Qps[index] = Q[index];
+      }
+      
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<ny/2+1 && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	unsigned int IDZ = idz + zthreads*i;
+	
+	if(idy==0) {
+	  //double check signs... k_r = -kx for ky=0?
+	  cuComplex tmp;
+	  tmp.x = Q[index].x + (-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].y;
+	  tmp.y = Q[index].y - (-kx[idx])*shatInv*sqrt(gds22[IDZ])*qsf/eps*bmagInv[IDZ]*T_fluxsurfavg[idx].x;
+	  Qps[index] = tmp;
+        }
+	else {
+	  Qps[index] = Q[index];
+	}
+      }
+    }
+  }
+}
         
 __global__ void SmagorinskyDiffusion(cuComplex* result, cuComplex* field, float D, 
             float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)     
@@ -1837,6 +2195,19 @@ __global__ void set_fixed_amplitude(cuComplex* phi_fixed, cuComplex* dens_fixed,
   }
 }
 
+__global__ void scale_ky_neq_0(cuComplex* result, cuComplex* f, float scaler) 
+{
+
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idy>0 && idy<(ny/2+1) && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*nx*idz;
+    result[index] = f[index]*scaler;
+  }
+
+}
 __global__ void scale_ky_neq_0(cuComplex* f, float scaler) 
 {
 
@@ -1955,3 +2326,64 @@ __global__ void sqr_complex(cuComplex* result, cuComplex* a, float fac)
    }
   }     
 }    
+
+
+__global__ void zonal_only(cuComplex* f)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    
+    if(idy != 0) {
+      f[index].x = 0.;
+      f[index].y = 0.;
+    }
+    
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+    
+      if(idy != 0) {
+        f[index].x = 0.;
+        f[index].y = 0.;
+      }
+    
+    }
+   }
+  }     
+}    
+
+
+__global__ void copy_ky(cuComplex* f, float* ky)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+ 
+      f[index].x = ky[idy];
+      f[index].y = 0.;
+      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+      f[index].x = ky[idy];
+      f[index].y = 0.;
+	
+      }
+    }
+  }
+} 

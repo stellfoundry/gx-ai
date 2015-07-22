@@ -18,6 +18,8 @@ read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
 
 run_gryfx.o: local_pointers.cu 
 
+gryfx_lib.o: definitions.cu
+
 
 CU_DEPS := \
       device_funcs.cu \

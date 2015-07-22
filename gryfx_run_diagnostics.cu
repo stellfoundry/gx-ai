@@ -43,7 +43,7 @@ PUSH_RANGE("gryfx diagnostics", 5);
 
     float * wpfx = outs_h->hflux_by_species;
     float * wpfxAvg = outs_h->hflux_by_species_movav;
-    float * pflxAvg = outs_h->hflux_by_species_movav;
+    float * pflxAvg = outs_h->pflux_by_species_movav;
 
     float alphav = outs_h->alpha_avg;
     float muav = outs_h->mu_avg;
@@ -257,6 +257,7 @@ PUSH_RANGE("fluxes",5);
 #ifdef PROFILE
 POP_RANGE;
 #endif
+      volflux<<<dimGrid,dimBlock>>>(outs_d->phi2_by_mode, Phi, Phi, jacobian, 1./fluxDen);
        
       //if(ev_h->pars.write_netcdf) {
       if(write_phi) {
@@ -318,9 +319,11 @@ POP_RANGE;
    
         // keep a running total of dt, phi**2(kx,ky), expectation values, etc.
         tm_h->dtSum = tm_h->dtSum*(1.-alphav) + tm_h->dt*alphav;
-        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_by_mode_movav, 1.-alphav, outs_d->phi2_by_mode_movav, tm_h->dt*alphav, tmp_d->XY, Nx, Ny, 1);
+        add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_by_mode_movav, 1.-alphav, outs_d->phi2_by_mode_movav, tm_h->dt*alphav, outs_d->phi2_by_mode, Nx, Ny, 1);
+        if(write_phi) {
         add_scaled<<<dimGrid,dimBlock>>>(outs_d->phi2_zonal_by_kx_movav, 1.-alphav, outs_d->phi2_zonal_by_kx_movav, tm_h->dt*alphav, tmp_d->X, Nx, 1, 1);
         add_scaled<<<dimGrid,dimBlock>>>(outs_d->par_corr_kydz_movav, 1.-alphav, outs_d->par_corr_kydz_movav, tm_h->dt*alphav, tmp_d->YZ, 1, Ny, Nz);
+        }
         if(LINEAR || write_omega || secondary_test) {
           if(tm_h->counter>0) {
             add_scaled<<<dimGrid,dimBlock>>>(outs_d->omega_avg, 1.-alphav, outs_d->omega_avg, tm_h->dt*alphav, outs_d->omega, Nx, Ny, 1);
@@ -335,6 +338,7 @@ POP_RANGE;
           }             
 
         }  
+        if(write_phi) {
         outs_h->expectation_kx_movav = outs_h->expectation_kx_movav*(1.-alphav) + outs_h->expectation_kx*tm_h->dt*alphav;
         outs_h->expectation_ky_movav = outs_h->expectation_ky_movav*(1.-alphav) + outs_h->expectation_ky*tm_h->dt*alphav;
         outs_h->phi2_movav = outs_h->phi2_movav*(1.-alphav) + outs_h->phi2*tm_h->dt*alphav;
@@ -351,9 +355,10 @@ POP_RANGE;
         // **_sum/dtSum gives time average of **
         outs_h->phi2_zf_rms_avg = outs_h->phi2_zf_rms_sum/tm_h->dtSum;
         //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
+        }
   
         for(int s=0; s<nSpecies; s++) {
-          wpfxAvg[s] = muav*wpfxAvg[s] + (1-muav)*wpfx[s] + (muav - (1-muav)/alphav)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
+          wpfxAvg[s] = muav*wpfxAvg[s] + (1.-muav)*wpfx[s] + (muav - (1.-muav)/alphav)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
           pflxAvg[s] = muav*pflxAvg[s] + (1-muav)*outs_h->pflux_by_species[s] + (muav - (1-muav)/alphav)*(outs_h->pflux_by_species[s] - outs_h->pflux_by_species_old[s]);
         }
   

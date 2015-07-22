@@ -239,7 +239,17 @@ __global__ void zderiv_abs_covering(cufftComplex* f, int nLinks, int nChains, fl
     if(i<nz && p<nLinks*icovering && n<nChains) {
       unsigned int index= i + p*nz + n*nz*nLinks*icovering;
       unsigned int kidx= i + p*nz;
+
       f[index] = abs(kz[kidx])*f[index];
+      //cuComplex I;
+      //I.x = 0.;
+      //I.y = 1.;
+      //if(cuCabsf(f[index])!=0.) {
+      //  f[index] = cuCabsf( I*kz[kidx]*f[index] ) * f[index] / cuCabsf(f[index]); 
+      //} else {
+      //  f[index].x = 0.;
+      //  f[index].y = 0.;
+      //}
     }
   }
   else {

@@ -355,6 +355,9 @@ typedef struct {
     bool low_b;
     bool low_b_all;
     int iflr;
+    bool higher_order_moments;
+    bool nlpm_zonal_only;
+    bool nlpm_vol_avg;
 
     int igeo;
     float shaping_ps;

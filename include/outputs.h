@@ -26,6 +26,10 @@ typedef struct {
 	float kphi2;
 	float phi2_movav;
 
+        // Square of fields and moments integrated over z
+        float* phi2_by_mode; 
+	float * phi2_by_mode_movav;
+
 	// Square of fields and moments averaged over ky and integrated over z
 	float* phi2_by_kx;
 	
@@ -36,7 +40,6 @@ typedef struct {
 	// Cumulative weighted sums for calculating exponential
 	// moving averages.
 	
-	float * phi2_by_mode_movav;
 	float * phi2_zonal_by_kx_movav;
 
   //Zonal flow diagnostics

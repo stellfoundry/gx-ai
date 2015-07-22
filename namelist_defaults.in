@@ -210,6 +210,13 @@ model_option = "const-curv"
        lf_default = .true.
        lf_decompose = .false.
        source_option = 'default'
+       densfac_lin = 1.4142           ! ~ rho_i
+       uparfac_lin = 2.                 ! ~ rho_i vti
+       tparfac_lin = 2.8284        ! ~ rho_i vti^2
+       tprpfac_lin = 2.8284        ! ~ rho_i vti^2
+       qparfac_lin = 4.                 ! ~ rho_i vti^3
+       qprpfac_lin = 4.                 ! ~ rho_i vti^3
+       phifac_lin = 1.4142         ! ~ rho_i
 /
 
 &kt_grids_knobs
@@ -286,8 +293,8 @@ model_option = "const-curv"
 &source_knobs
  ! These next 3 options are for the Rosenbluth-Hinton zonal flow tests.
  !
- source_option="phiext_full"    ! for zonal flows
- phi_ext=-.707
+ source_option="default"    ! for zonal flows
+ phi_ext=0.
  t0=-10.0
 /
 
@@ -365,6 +372,12 @@ model_option = "const-curv"
  p_x = 6.0
  p_y = 6.0
  p_z = 6.0
+ densfac = 1.
+ uparfac = .7071
+ tparfac = .5
+ tprpfac = .5
+ qparfac = .35355
+ qprpfac = .35355
 /
 &reinit_knobs
  delt_adj = 2.0
@@ -413,7 +426,7 @@ model_option = "const-curv"
   no_landau_damping= "off"
   turn_off_gradients_test = "off"
   slab="off"
-  write_netcdf = .true.
+  write_netcdf = .false.
   write_omega = "off"
   write_phi = "off"
   restart = "off"
@@ -462,6 +475,9 @@ model_option = "const-curv"
   low_b_all = "off"
   new_nlpm = "off"
   iflr = 1
+  higher_order_moments = "off"
+  nlpm_zonal_only = "off"
+  nlpm_vol_avg = "off"
 /
 
 &new_varenna_knobs

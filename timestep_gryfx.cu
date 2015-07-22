@@ -139,6 +139,10 @@ cufftHandle* plan_covering = ev_h->ffts.plan_covering;
 //float* tmpXZ = ev_hd->tmp.XZ;
 cuComplex* fluxsurfavg_CtmpX = ev_hd->tmp.CX;
 //cuComplex* fluxsurfavg_CtmpX2 = ev_hd->tmp.CX2;
+
+bool higher_order_moments = ev_h->pars.higher_order_moments;
+
+char filename[500];
   
   /*
   //calculate nu_nlpm for this timestep... to be used in each field equation
@@ -235,9 +239,9 @@ PUSH_RANGE("upar",3);
 */
     
   if(init == FORCE) {
-    phi_flr_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    multZ<<<dimGrid,dimBlock>>>(bgrad_tmp,phi_tmp,bgrad);
-    add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt, bgrad_tmp);
+  //  phi_flr_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+  //  multZ<<<dimGrid,dimBlock>>>(bgrad_tmp,phi_tmp,bgrad);
+  //  add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt, bgrad_tmp);
   } 
 
   addsubt <<<dimGrid, dimBlock>>> (sum_tmp, DensOld, TparOld, 1);
@@ -252,11 +256,11 @@ PUSH_RANGE("upar",3);
   add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt*s.zt, gradpar_tmp);
   // + vt*zt*gradpar(phi_u)
  
-  //if(init == FORCE) {
-  //  phi_u_force<<<dimGrid,dimBlock>>>(phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-  //  ZDerivCovering(gradpar_tmp, phi_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);
-  //  add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt*s.zt, gradpar_tmp);
-  //} 
+  if(init == FORCE) {
+    phi_u_force<<<dimGrid,dimBlock>>>(phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    ZDerivCovering(gradpar_tmp, phi_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);
+    add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt*s.zt, gradpar_tmp);
+  } 
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (UparNew, 1., Upar, -dt, upar_field);
@@ -274,11 +278,16 @@ PUSH_RANGE("tpar",4);
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
+  if(higher_order_moments) {
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.dens[0]); // this is rparpar
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.upar[0]); // this is rparprp
+  }
   tpar_linear_terms<<<dimGrid,dimBlock>>>(tpar_field, Phi, DensOld, UparOld, TparOld, TprpOld, QprpOld,
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
                                 gds2, gds21, gds22, bmagInv,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
-                                s.nu_ss, nu[1], nu[2], mu[1], mu[2], varenna);
+                                s.nu_ss, nu[1], nu[2], mu[1], mu[2], varenna,
+                                omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
   // + ( 2*vt*(Qprp + Upar) ) * Bgrad + iOmegaStar*phi_tpar - iOmegaD*( phi_tpard + (6+2*nu1.y)*Tpar + 2*Dens + 2*nu2.y*Tprp ) 
   // + |omegaD|*(2*nu1.x*Tpar + 2*nu2.x*Tprp) + (2*nu_ss/3)*(Tpar - Tprp) 
 
@@ -342,11 +351,16 @@ PUSH_RANGE("tprp",5);
 #endif
   cudaMemset(tprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
+  if(higher_order_moments) {
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.upar[0]); // this is rparprp
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.tpar[0]); // this is rprpprp
+  }
   tprp_linear_terms<<<dimGrid,dimBlock>>>(tprp_field, Phi, DensOld, UparOld, TparOld, TprpOld,
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
                                 gds2, gds21, gds22, bmagInv,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
-                                s.nu_ss, nu[3], nu[4], mu[3], mu[4], varenna);
+                                s.nu_ss, nu[3], nu[4], mu[3], mu[4], varenna,
+                                omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
 /*    
   phi_tperp <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.tprim, s.rho, s.fprim, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   iOmegaStar <<<dimGrid, dimBlock>>> (omegaStar_tmp, phi_tmp, ky);
@@ -401,6 +415,8 @@ PUSH_RANGE("tprp",5);
   
   ////////////////////////////////////////
   //QPAR
+
+
 #ifdef PROFILE
 POP_RANGE;
 PUSH_RANGE("qpar",1);
@@ -408,10 +424,21 @@ PUSH_RANGE("qpar",1);
   
   cudaMemset(qpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
 
-  qpar_linear_terms<<<dimGrid,dimBlock>>>(qpar_field, UparOld, QparOld, QprpOld,
-                                kx, ky, shat, s.rho, s.vt, 
+  if(higher_order_moments) {
+    //replace_ky0_nopad<<<dimGrid,dimBlock>>>(qpar_field, ev_hd->hybrid.upar[0]); // this is rparprp
+
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(bgrad_tmp, ev_hd->hybrid.dens[0]); // this is rparpar
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(qpar_field, ev_hd->hybrid.upar[0]); // this is rparprp
+    add_scaled<<<dimGrid,dimBlock>>>(qpar_field, -1., bgrad_tmp, 3., qpar_field);//, -Beta_par, TparOld, sqrt(2.)*D_par, QparOld);    
+
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.tprp[0]); // this is sparpar
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.qpar[0]); // this is sparprp
+  }
+  qpar_linear_terms<<<dimGrid,dimBlock>>>(qpar_field, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
+                                kx, ky, shat, s.rho, s.vt, bgrad,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
-                                s.nu_ss, nu[5], nu[6], nu[7], mu[5], mu[6], mu[7], varenna);
+                                s.nu_ss, nu[5], nu[6], nu[7], mu[5], mu[6], mu[7], varenna,
+                                qpar_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
 /*  
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, -3.+nu[6].y, QparOld, -3.+nu[7].y, QprpOld, 6.+nu[5].y, UparOld);  
   if(varenna) {
@@ -433,9 +460,25 @@ PUSH_RANGE("qpar",1);
   add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.nu_ss, QparOld);
   // + (nu_ss)*(Qpar)
 */
- 
-  ZDerivCovering(gradpar_tmp, TparOld, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
-  add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*(3+Beta_par), gradpar_tmp);  
+
+higher_order_moments = false;
+if(higher_order_moments) {
+  replace_ky0_nopad<<<dimGrid,dimBlock>>>(gradpar_tmp, ev_hd->hybrid.dens[0]); // this is rparpar
+  //add_scaled<<<dimGrid,dimBlock>>>(sum_tmp, 1., gradpar_tmp, -3., DensOld, -3., TparOld);
+  add_scaled<<<dimGrid,dimBlock>>>(sum_tmp, 0., gradpar_tmp, 0., DensOld, 3., TparOld);
+  multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, sum_tmp, bmagInv);
+  ZDerivCovering(gradpar_tmp, fields_over_B_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
+  multZ <<<dimGrid, dimBlock>>> (B_gradpar_tmp, gradpar_tmp, bmag);
+  add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt, B_gradpar_tmp);  
+} else {
+  //if(varenna) {
+  //  add_scaled<<<dimGrid,dimBlock>>>(gradpar_tmp, 2., DensOld, 2.+(3.+Beta_par), TparOld);
+  //  ZDerivCovering(gradpar_tmp, gradpar_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
+  //  add_scaled<<<dimGrid,dimBlock>>>(qpar_field, 1., qpar_field, s.vt, gradpar_tmp);
+  //} else {
+    ZDerivCovering(gradpar_tmp, TparOld, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
+    add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*(3.+Beta_par), gradpar_tmp);  
+  //}
   if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3)  && eps!=0. && varenna_fsa==true) {
     if(ivarenna>0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, TparOld, jacobian, 1./fluxDen);
@@ -443,9 +486,12 @@ PUSH_RANGE("qpar",1);
       PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
-      ps_fac = -shaping_ps*pow(eps,1.5)*3.;
-      PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+      //volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
+      //ps_fac = -shaping_ps*pow(eps,1.5)*3.;
+      //PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+      add_scaled<<<dimGrid,dimBlock>>>(qps_tmp, 1., DensOld, 1., TparOld);
+      volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, qps_tmp, jacobian, 1./fluxDen);
+      new_varenna_zf_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "abs", plan_covering);
   }
@@ -455,8 +501,9 @@ PUSH_RANGE("qpar",1);
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, TparOld, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      ps_fac = -shaping_ps*pow(eps,1.5)*3.;
-      PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
+      //ps_fac = -shaping_ps*pow(eps,1.5)*3.;
+      //PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
+      new_varenna_zf<<<dimGrid,dimBlock>>>(qps_tmp, QparOld, kx, gds22, qsf, eps, bmagInv, TparOld, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "abs", plan_covering);
   }
@@ -465,7 +512,7 @@ PUSH_RANGE("qpar",1);
   }  
   add_scaled <<<dimGrid, dimBlock>>> (qpar_field, 1., qpar_field, s.vt*sqrt(2)*D_par, gradpar_tmp);  
   // + vt*sqrt(2)*D_par*|gradpar|(Qpar - Qpar0) 
-  
+}
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QparNew, 1., Qpar, -dt, qpar_field);
 
@@ -481,11 +528,23 @@ PUSH_RANGE("qprp",2);
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
 
-  qprp_linear_terms<<<dimGrid,dimBlock>>>(qprp_field, Phi, UparOld, TparOld, TprpOld, QparOld, QprpOld,
+higher_order_moments = true;
+  if(higher_order_moments) {
+    //replace_ky0_nopad<<<dimGrid,dimBlock>>>(qprp_field, ev_hd->hybrid.tpar[0]); // this is rprpprp
+
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(bgrad_tmp, ev_hd->hybrid.upar[0]); // this is rparprp
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(qprp_field, ev_hd->hybrid.tpar[0]); // this is rprpprp
+    add_scaled<<<dimGrid,dimBlock>>>(qprp_field, -2., bgrad_tmp, 1., qprp_field, -1., TparOld, 0., DensOld, 0., TprpOld);    
+
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.qpar[0]); // this is sparprp
+    replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.qprp[0]); // this is sprpprp
+  }
+  qprp_linear_terms<<<dimGrid,dimBlock>>>(qprp_field, Phi, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
                                 gds2, gds21, gds22, bmagInv,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
-                                s.nu_ss, nu[8], nu[9], nu[10], mu[8], mu[9], mu[10], varenna);
+                                s.nu_ss, nu[8], nu[9], nu[10], mu[8], mu[9], mu[10], varenna,
+                                qprp_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
 /*
   phi_qperpb <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, 1., TprpOld, -1., TparOld, s.zt, phi_tmp);
@@ -510,24 +569,51 @@ PUSH_RANGE("qprp",2);
   // + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp
 */
 
+higher_order_moments = false;
   if(init == FORCE) {
     phi_qperpb_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     multZ<<<dimGrid,dimBlock>>>(bgrad_tmp,phi_tmp,bgrad);
     add_scaled<<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, bgrad_tmp);
   } 
   
+if(higher_order_moments) {
+  phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+  ZDerivCovering(gradpar_tmp, phi_tmp, &ev_h->grids, &ev_hd->grids, &ev_d->grids, "", plan_covering);
+  add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.zt*s.vt, gradpar_tmp);
+
+  add_scaled<<<dimGrid,dimBlock>>>(sum_tmp, 1., DensOld, 1., TparOld);
+  multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, sum_tmp, bmagInv);
+  ZDerivCovering(gradpar_tmp, fields_over_B_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
+  multZ <<<dimGrid, dimBlock>>> (B_gradpar_tmp, gradpar_tmp, bmag);
+  add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, -s.vt, B_gradpar_tmp);  
+  
+  //replace_ky0_nopad<<<dimGrid,dimBlock>>>(gradpar_tmp, ev_hd->hybrid.upar[0]); // this is rparprp
+  add_scaled<<<dimGrid,dimBlock>>>(gradpar_tmp, 1., DensOld, 1., TparOld, 1., TprpOld);
+  multZ <<<dimGrid, dimBlock>>> (fields_over_B_tmp, gradpar_tmp, bmagInv);
+  multZ <<<dimGrid, dimBlock>>> (fields_over_B2_tmp, fields_over_B_tmp, bmagInv);
+  ZDerivCovering(gradpar_tmp, fields_over_B2_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "",plan_covering);
+  multZ <<<dimGrid, dimBlock>>> (B_gradpar_tmp, gradpar_tmp, bmag);
+  multZ <<<dimGrid, dimBlock>>> (B2_gradpar_tmp, B_gradpar_tmp, bmag);
+  add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, B2_gradpar_tmp);
+
+  //replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.upar[0]); // this is rparprp
+  //add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, s.zt, phi_tmp, 1., ev_hd->tmp.CXYZ2, -1., DensOld, -1., TparOld);
+  //add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, s.zt, phi_tmp, 1., TprpOld, 0., TparOld);
+} else {
   phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, s.zt, phi_tmp, 1., TprpOld);  
   ZDerivCovering(gradpar_tmp, sum_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
+}
   
-  //if(init == FORCE) {
-  //  phi_flr_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-  //  ZDerivCovering(gradpar_tmp, phi_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
-  //  add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
-  //} 
+  if(init == FORCE) {
+    phi_flr_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    ZDerivCovering(gradpar_tmp, phi_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids,"",plan_covering);  
+    add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt, gradpar_tmp);
+  } 
   // + vt*gradpar( zt*phi_flr + Tprp )
 
+if(!higher_order_moments) {
   if(varenna && (abs(ivarenna)==1 || abs(ivarenna)==3) && eps!=0. && varenna_fsa==true) {
     if(ivarenna>0) {
       volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, TprpOld, jacobian, 1./fluxDen);
@@ -535,9 +621,12 @@ PUSH_RANGE("qprp",2);
       PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
-      ps_fac = -shaping_ps*pow(eps,1.5)*1.;
-      PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+      //volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, Phi, jacobian, 1./fluxDen);
+      //ps_fac = -shaping_ps*pow(eps,1.5)*1.;
+      //PfirschSchluter_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
+      add_scaled<<<dimGrid,dimBlock>>>(qps_tmp, 1., DensOld, 1., TprpOld);
+      volflux_zonal_complex<<<dimGrid,dimBlock>>>(fluxsurfavg_CtmpX, qps_tmp, jacobian, 1./fluxDen);
+      new_varenna_zf_fsa<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, kx, gds22, qsf, eps, bmagInv, fluxsurfavg_CtmpX, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "abs", plan_covering);
   }
@@ -547,8 +636,9 @@ PUSH_RANGE("qprp",2);
       PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, TprpOld, shat, s.rho);  //defined in operations_kernel.cu  
     }
     if(ivarenna<0) {
-      ps_fac = -shaping_ps*pow(eps,1.5)*1.;
-      PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
+      //ps_fac = -shaping_ps*pow(eps,1.5)*1.;
+      //PfirschSchluter<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, ps_fac, kx, gds22, qsf, eps, bmagInv, Phi, shat, s.rho);  //defined in operations_kernel.cu  
+      new_varenna_zf<<<dimGrid,dimBlock>>>(qps_tmp, QprpOld, kx, gds22, qsf, eps, bmagInv, TprpOld, shat, s.rho);  //defined in operations_kernel.cu  
     }      
     ZDerivCovering(gradpar_tmp, qps_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "abs", plan_covering);
   }
@@ -557,6 +647,7 @@ PUSH_RANGE("qprp",2);
   }
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt*sqrt(2)*D_prp, gradpar_tmp);
   // + vt*sqrt(2)*D_prp*|gradpar|(Qprp - Qprp0)
+}
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QprpNew, 1., Qprp, -dt, qprp_field);
@@ -568,6 +659,7 @@ PUSH_RANGE("qprp",2);
 POP_RANGE;
 POP_RANGE;
 #endif
+higher_order_moments = true;
 
 }
 //
@@ -666,6 +758,8 @@ float dnlpm_tprp = ev_h->pars.dnlpm_tprp;
 cuffts_struct * ffts = &ev_h->ffts;
 bool nlpm_test = ev_h->pars.nlpm_test;
 bool new_nlpm = ev_h->pars.new_nlpm;
+bool nlpm_zonal_only = ev_h->pars.nlpm_zonal_only;
+bool nlpm_vol_avg = ev_h->pars.nlpm_vol_avg;
 bool low_b = ev_h->pars.low_b;
 bool low_b_all = ev_h->pars.low_b_all;
 int iflr = ev_h->pars.iflr;
@@ -674,36 +768,36 @@ cuComplex mu_nlpm1;
 cuComplex mu_nlpm2;
 cuComplex mu_nlpm3;
 if(iflr == 1) {
-mu_nlpm1.x = 1.21;
-mu_nlpm1.y = -2.3;
-mu_nlpm2.x = -.55;
-mu_nlpm2.y = 1.99;
-mu_nlpm3.x = .40;
-mu_nlpm3.y = -.52;
+mu_nlpm1.x = dnlpm * 1.21;
+mu_nlpm1.y = dnlpm * -2.3;
+mu_nlpm2.x = dnlpm * -.55;
+mu_nlpm2.y = dnlpm * 1.99;
+mu_nlpm3.x = dnlpm * .40;
+mu_nlpm3.y = dnlpm * -.52;
 }
 if(iflr == 2) {
-mu_nlpm1.x = 1.27;
-mu_nlpm1.y = -2.2;
-mu_nlpm2.x = -.6;
-mu_nlpm2.y = 1.96;
-mu_nlpm3.x = .44;
-mu_nlpm3.y = -.53;
+mu_nlpm1.x = dnlpm * 1.27;
+mu_nlpm1.y = dnlpm * -2.2;
+mu_nlpm2.x = dnlpm * -.6;
+mu_nlpm2.y = dnlpm * 1.96;
+mu_nlpm3.x = dnlpm * .44;
+mu_nlpm3.y = dnlpm * -.53;
 }
 if(iflr == 3) {
-mu_nlpm1.x = 1.27;
-mu_nlpm1.y = -2.22;
-mu_nlpm2.x = -.57;
-mu_nlpm2.y = 1.98;
-mu_nlpm3.x = .42;
-mu_nlpm3.y = -.53;
+mu_nlpm1.x = dnlpm * 1.27;
+mu_nlpm1.y = dnlpm * -2.22;
+mu_nlpm2.x = dnlpm * -.57;
+mu_nlpm2.y = dnlpm * 1.98;
+mu_nlpm3.x = dnlpm * .42;
+mu_nlpm3.y = dnlpm * -.53;
 }
 if(!low_b) {
-mu_nlpm1.x = 1.27;
-mu_nlpm1.y = -2.13;
-mu_nlpm2.x = -.6;
-mu_nlpm2.y = 1.96;
-mu_nlpm3.x = .44;
-mu_nlpm3.y = -.53;
+mu_nlpm1.x = dnlpm * 1.27;
+mu_nlpm1.y = dnlpm * -2.13;
+mu_nlpm2.x = dnlpm * -.6;
+mu_nlpm2.y = dnlpm * 1.96;
+mu_nlpm3.x = dnlpm * .44;
+mu_nlpm3.y = dnlpm * -.53;
 }
 
 
@@ -819,15 +913,21 @@ PUSH_RANGE("tpar",4);
     if(new_nlpm) {
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, TparOld, mu_nlpm3.y); 
       NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (tpar_field, nlps_tmp, 1);
 
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, TparOld, mu_nlpm3.x); 
       NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (tpar_field, nlps_tmp, 1);
+      if(nlpm_vol_avg) {
+        field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
+        accum<<<dimGrid,dimBlock>>> (tpar_field, nlps_tmp, -1);
+      }
     }
 
 
@@ -880,18 +980,28 @@ PUSH_RANGE("tprp",5);
     if(new_nlpm) {
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., DensOld, mu_nlpm1.y, TprpOld); 
+      if(nlpm_zonal_only) {
+        zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
+        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y, DensOld, mu_nlpm1.y, TprpOld); 
+      } else {
+        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., DensOld, mu_nlpm1.y, TprpOld); 
+      }
       NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
       accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
 
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, DensOld, mu_nlpm1.x, TprpOld); 
       NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
       accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      if(nlpm_vol_avg) {
+        field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
+        accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, -1);
+      }
     }
 
-    if(!new_nlpm) { //this term is already included in new_nlpm section above
+    if(nlpm_zonal_only || !new_nlpm) { //this term is already included in new_nlpm section above
       if(low_b) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
       else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPS(nlps_tmp, phi_tmp, DensOld, kx, ky);    
@@ -934,15 +1044,21 @@ PUSH_RANGE("qpar",1);
     if(new_nlpm) {
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, QparOld, mu_nlpm3.y); 
       NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (qpar_field, nlps_tmp, 1);
 
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, QparOld, mu_nlpm3.x); 
       NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (qpar_field, nlps_tmp, 1);
+      if(nlpm_vol_avg) {
+        field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
+        accum<<<dimGrid,dimBlock>>> (qpar_field, nlps_tmp, -1);
+      }
     }
 
 
@@ -975,18 +1091,26 @@ PUSH_RANGE("qprp",2);
     if(new_nlpm) {
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., UparOld, mu_nlpm1.y, QprpOld); 
+      if(nlpm_zonal_only) {
+        zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
+        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y, UparOld, mu_nlpm1.y, QprpOld); 
+      } else add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., UparOld, mu_nlpm1.y, QprpOld); 
       NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, 1);
 
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, UparOld, mu_nlpm1.x, QprpOld); 
       NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
-      accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
+      accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, 1);
+      if(nlpm_vol_avg) {
+        field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
+        accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, -1);
+      }
     }
     
-    if(!new_nlpm) { //this term is already included in new_nlpm section above
+    if(nlpm_zonal_only || !new_nlpm) { //this term is already included in new_nlpm section above
       if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
       else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);

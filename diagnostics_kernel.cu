@@ -382,6 +382,23 @@ __global__ void field_line_avg(cuComplex* favg, cuComplex* f, float* jacobian, f
   }
 }
 
+__global__ void field_line_avg_xyz(cuComplex* favg, cuComplex* f, float* jacobian, float fluxDenInv)
+{  
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int IDZ = get_idz();
+  if(idx<nx && idy<ny/2+1 && IDZ<nz) 
+  {
+    unsigned int idxy = idy + (ny/2+1)*idx;
+    favg[idxy].x = 0.;
+    favg[idxy].y = 0.;
+    for(int idz=0; idz<nz; idz++) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      favg[idxy] = favg[idxy] + f[index]*jacobian[idz];
+    }
+    favg[idxy+nx*(ny/2+1)*IDZ] = favg[idxy]*fluxDenInv;
+  }
+}
 
 
 __global__ void volflux_zonal_complex(cuComplex* T_fsa_X, cuComplex* T, float* jacobian, float fluxDenInv)

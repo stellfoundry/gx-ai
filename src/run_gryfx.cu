@@ -1,5 +1,6 @@
 #include "mpi.h"
 #include "standard_headers.h"
+#include "allocations.h"
 #include "everything_else.h"
 #include "global_variables.h"
 #include "get_error.h"
@@ -27,7 +28,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   specie* species_d;
 
 #ifdef GS2_zonal
-  printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time()/sqrt(2.0));
+  if(iproc==0) printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time()/sqrt(2.0));
 #endif
 
   /* ev_hd is on the host but the pointers point to memory on the device*/
@@ -211,11 +212,13 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     cudaStreamWaitEvent(0, events->H2D, 0);
 
     fieldWrite_nopad_h(phi_ky0_h, "phi0.field", filename, Nx, 1, Nz, ev_h->grids.ntheta0, 1);
-    replace_zonal_fields_with_hybrid(
+    if(!ev_h->pars.higher_order_moments) {
+      replace_zonal_fields_with_hybrid(
         1,
         &ev_h->cdims, &ev_hd->fields,
         ev_hd->fields.phi,
         &ev_hd->hybrid, ev_h->fields.field);
+    }
 
   } // if iproc 
 
@@ -257,7 +260,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
   }
 //#endif
 
-  print_initial_parameter_summary(ev_h);
+  if(iproc==0) print_initial_parameter_summary(ev_h);
   /////////////////////
   // Begin timestep loop
   /////////////////////
@@ -380,8 +383,10 @@ PUSH_RANGE("waiting for copystream to finish H2D",1);
 POP_RANGE;
 #endif
 
+    if(!ev_h->pars.higher_order_moments) {
       replace_zonal_fields_with_hybrid( 0, &ev_h->cdims, &ev_hd->fields1,
           ev_hd->fields1.phi, &ev_hd->hybrid, ev_h->fields.field);
+    }
 #ifdef PROFILE
 POP_RANGE;
 #endif
@@ -537,11 +542,13 @@ POP_RANGE;
         phiptr = ev_hd->fields1.phi;
       }
 
+    if(!ev_h->pars.higher_order_moments) {
       replace_zonal_fields_with_hybrid(
           0,
           &ev_h->cdims, &ev_hd->fields,
           phiptr,
           &ev_hd->hybrid, ev_h->fields.field);
+    }
 #ifdef PROFILE
 POP_RANGE;
 #endif
@@ -609,6 +616,7 @@ POP_RANGE;
     if(iproc==0) {
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
+      if(tm->counter%nsave == 0) gryfx_finish_diagnostics(ev_h, ev_hd, false);
       if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
     }
 /*
@@ -653,7 +661,6 @@ POP_RANGE;
 
 
 
-      if(tm->counter%nsave == 0) gryfx_finish_diagnostics(ev_h, ev_hd, false);
 //#ifdef GS2_zonal
     } //end of iproc if
 //#endif
@@ -745,6 +752,11 @@ POP_RANGE;
 
     close_files(&ev_h->files);
     if (ev_h->pars.write_netcdf) writedat_end(ev_h->outs);
+
+    allocate_or_deallocate_everything(DEALLOCATE, ev_hd);
+    allocate_or_deallocate_everything(DEALLOCATE, ev_h);
+    free(ev_hd);
+    cudaFree(ev_d);
 
     //cudaProfilerStop();
   } //end of iproc if  

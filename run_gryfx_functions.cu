@@ -91,7 +91,12 @@ void zero_moving_averages(grids_struct * grids_h, cuda_dimensions_struct * cdims
 	dim3 dimBlock = cdims_h->dimBlock;
 	
 	for(int s=0; s<grids_h->Nspecies; s++) {
-		outs_h->hflux_by_species_movav[s]= 0.;
+          outs_h->hflux_by_species_movav[s]= 0.;
+          outs_h->hflux_by_species_old[s] = 0.;
+          outs_h->hflux_by_species[s] = 0.;
+          outs_h->pflux_by_species_movav[s]= 0.;
+          outs_h->pflux_by_species_old[s] = 0.;
+          outs_h->pflux_by_species[s] = 0.;
 	}
 	outs_h->expectation_ky_movav= 0.;
 	outs_h->expectation_kx_movav= 0.;
@@ -749,12 +754,12 @@ PUSH_RANGE("replace zonal fields", 3);
       mask<<<dimGrid,dimBlock>>>(fields_d->qprp[s]);
     }
 
-    if (first_call==1){
+    if (first_call==1) {
       fieldWrite(phi_d, field_h, "phi_1.field", filename); 
       getky0_nopad<<<dimGrid,dimBlock>>>(hybrid_d->phi, phi_d);
       replace_ky0_nopad<<<dimGrid,dimBlock>>>(phi_d, hybrid_d->phi);
       fieldWrite(phi_d, field_h, "phi_2.field", filename); 
-  }
+    }
 #ifdef PROFILE
 POP_RANGE;
 #endif
@@ -777,6 +782,12 @@ void copy_fixed_modes_into_fields(
     if(pars->nlpm_test) {
       cudaMemset(phi_d, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, 0.);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, iky, ikx, 0.);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, iky, ikx, 0.);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, iky, ikx, 0.);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, iky, ikx, 0.);
+        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, iky, ikx, 0.);
     } else {
         replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, sfixed->S);

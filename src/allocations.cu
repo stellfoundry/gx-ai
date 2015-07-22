@@ -212,8 +212,9 @@ void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fiel
 
 void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * outs){
 
-	alloc_dealloc(&outs->phi2_by_ky, aod, ON_HOST, ml, TYPE_FLOAT, grids->Ny_complex);
-	alloc_dealloc(&outs->phi2_by_kx, aod, ON_HOST, ml, TYPE_FLOAT, grids->Ny);
+	alloc_dealloc(&outs->phi2_by_ky, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex);
+	alloc_dealloc(&outs->phi2_by_kx, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
+	alloc_dealloc(&outs->phi2_by_mode, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Ny_complex*grids->Nx);
 
 	alloc_dealloc(&outs->omega, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
 	alloc_dealloc(&outs->omega_avg, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex);
@@ -247,7 +248,7 @@ void allocate_outputs(int aod, int ml, grids_struct * grids, outputs_struct * ou
 
 void allocate_temporary_arrays(int aod, int ml, grids_struct * grids, temporary_arrays_struct * tmp){
 
-	alloc_dealloc(&tmp->CXYZ, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex*grids->Nz);
+	alloc_dealloc(&tmp->CXYZ, aod, ON_HOST_AND_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex*grids->Nz);
 	alloc_dealloc(&tmp->CXYZ2, aod, ON_DEVICE, ml, TYPE_CUCOMPLEX, grids->Nx*grids->Ny_complex*grids->Nz);
 	alloc_dealloc(&tmp->X, aod, ON_HOST_AND_DEVICE, ml, TYPE_FLOAT, grids->Nx);
 	alloc_dealloc(&tmp->X2, aod, ON_DEVICE, ml, TYPE_FLOAT, grids->Nx);

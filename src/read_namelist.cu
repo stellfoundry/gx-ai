@@ -398,6 +398,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "scan_type", &pars->scan_type);
   scan_type=pars->scan_type;
   
+  pars->higher_order_moments = get_bool_on_off(&namelist_struct, "gryfx_knobs", "higher_order_moments");
   
   pars->secondary_test= secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
   pars->nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
@@ -405,6 +406,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   pars->low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
   pars->low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
   if(pars->low_b_all) pars->low_b = true;
+  pars->nlpm_zonal_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_only");
+  pars->nlpm_vol_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_vol_avg");
 
   fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(pars->iflr));
 
