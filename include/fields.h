@@ -18,6 +18,9 @@ typedef struct {
 	cuComplex * field;
 	cuComplex * phi1;
 
+        cuComplex * apar;
+        cuComplex * apar1;
+
 	cuComplex ** dens;
 	cuComplex ** dens1;
 	cuComplex ** upar;

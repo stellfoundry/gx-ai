@@ -233,7 +233,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     // Solve for initial phi
     // assumes the initial conditions have been moved to the device
-    if(init == DENS) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d);
+    if(init == DENS) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta);
     if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
       copy_fixed_modes_into_fields(
           &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed, &ev_h->pars);
@@ -347,7 +347,7 @@ POP_RANGE;
 
       //if(DEBUG && counter==0) getError("after linear step"); 
 
-      qneut(Phi1, Dens1, Tprp1, tmp, tmp, field, species, species_d);
+      qneut(Phi1, Apar1, Dens1, Tprp1, Upar1, Qprp1, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta);
 
       if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
         //ev_h->sfixed.S = 1.;
@@ -493,8 +493,8 @@ POP_RANGE;
       }
 
 
-      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) qneut(Phi, Dens, Tprp, tmp, tmp, field, species, species_d); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
-      else qneut(Phi1, Dens, Tprp, tmp, tmp, field, species, species_d); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
+      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
+      else qneut(Phi1, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
 
       if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
         copy_fixed_modes_into_fields(

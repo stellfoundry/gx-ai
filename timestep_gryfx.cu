@@ -20,6 +20,7 @@ cuComplex *Qpar;
 cuComplex *Tprp;
 cuComplex *Qprp;
 cuComplex *Phi;// = ev_hd->fields.phi;
+cuComplex *Apar;
 
 cuComplex *DensOld; cuComplex *DensNew;
 cuComplex *UparOld; cuComplex *UparNew;
@@ -63,6 +64,7 @@ if (first_half_step==1){
   QparNew = ev_hd->fields.qpar1[is];
   QprpNew = ev_hd->fields.qprp1[is];
   Phi = ev_hd->fields.phi;
+  Apar = ev_hd->fields.apar;
 }
 else {
   if(!LINEAR){
@@ -94,6 +96,7 @@ else {
   QparOld = ev_hd->fields.qpar1[is];
   QprpOld = ev_hd->fields.qprp1[is];
   Phi = ev_hd->fields.phi1;
+  Apar = ev_hd->fields.apar1;
 }
 
 //int** kxCover = ev_hd->grids.kxCover;
@@ -111,6 +114,7 @@ cuComplex *tprp_field = ev_hd->fields.field;
 cuComplex *qprp_field = ev_hd->fields.field;
 
 cuComplex *phi_tmp = ev_hd->tmp.CXYZ;
+cuComplex *apar_tmp = ev_hd->tmp.CXYZ;
 //cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
 cuComplex* omegaStar_tmp = ev_hd->tmp.CXYZ;
 cuComplex* qps_tmp = ev_hd->tmp.CXYZ;
@@ -133,6 +137,8 @@ cuComplex* Tpar0_tmp = ev_hd->tmp.CXYZ;
 //float *gradparB_tmpZ = ev_hd->tmp.Z;
 cufftHandle* plan_covering = ev_h->ffts.plan_covering;
 
+float beta = ev_h->pars.beta;
+float fapar = ev_h->pars.fapar;
 
 //float* nu_nlpm = ev_hd->nlpm.nu;
 //float* Phi2ZF_tmpX = ev_hd->tmp.X;
@@ -172,6 +178,18 @@ PUSH_RANGE("density",5);
   
   cudaMemset(dens_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);  
     
+  if(fapar > 0.) {
+    // for electromagnetic, the 'upar' and 'qprp' evolved by the code are actually 
+    // 'upar' = upar + vt*zt*apar_u
+    // 'qprp' = qprp + vt*zt*apar_flr
+    // here we subtract off the apar parts
+    // we will add them back later
+    phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(UparOld, 1., UparOld, -s.vt*s.zt, apar_tmp);
+    
+    phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(QprpOld, 1., QprpOld, -s.vt*s.zt, apar_tmp);
+  }
 
   density_linear_terms<<<dimGrid,dimBlock>>>(dens_field, Phi, DensOld, TparOld, TprpOld, 
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt,
@@ -219,10 +237,10 @@ PUSH_RANGE("upar",3);
 
   cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
-  upar_linear_terms<<<dimGrid,dimBlock>>>(upar_field, Phi, DensOld, UparOld, TprpOld, QparOld, QprpOld,
+  upar_linear_terms<<<dimGrid,dimBlock>>>(upar_field, Phi, Apar, DensOld, UparOld, TprpOld, QparOld, QprpOld,
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
                                 gds2, gds21, gds22, bmagInv,
-                                gbdrift, gbdrift0, cvdrift, cvdrift0);
+                                gbdrift, gbdrift0, cvdrift, cvdrift0, fapar);
   // + vt*( (Dens + Tprp + zt*phi_flr) )*bgrad - iOmegaD*(Qpar + Qprp + 4*Upar)
 
 /*
@@ -262,6 +280,14 @@ PUSH_RANGE("upar",3);
     add_scaled <<<dimGrid, dimBlock>>> (upar_field, 1., upar_field, s.vt*s.zt, gradpar_tmp);
   } 
   
+  if(fapar > 0.) {
+    // for electromagnetic, the 'upar' and 'qprp' evolved by the code are actually 
+    // 'upar' = upar + vt*zt*apar_u
+    // 'qprp' = qprp + vt*zt*apar_flr
+    // here we add back the apar part for upar before advancing 'upar'
+    phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(UparOld, 1., UparOld, s.vt*s.zt, apar_tmp);
+  }
   //step
   add_scaled <<<dimGrid, dimBlock>>> (UparNew, 1., Upar, -dt, upar_field);
   
@@ -277,6 +303,16 @@ PUSH_RANGE("tpar",4);
 #endif
 
   cudaMemset(tpar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+
+  if(fapar > 0.) {
+    // for electromagnetic, the 'upar' and 'qprp' evolved by the code are actually 
+    // 'upar' = upar + vt*zt*apar_u
+    // 'qprp' = qprp + vt*zt*apar_flr
+    // here we subtract off the apar parts
+    // we will add them back later
+    phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(UparOld, 1., UparOld, -s.vt*s.zt, apar_tmp);
+  }
   
   if(higher_order_moments) {
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.dens[0]); // this is rparpar
@@ -434,11 +470,12 @@ PUSH_RANGE("qpar",1);
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.tprp[0]); // this is sparpar
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.qpar[0]); // this is sparprp
   }
-  qpar_linear_terms<<<dimGrid,dimBlock>>>(qpar_field, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
-                                kx, ky, shat, s.rho, s.vt, bgrad,
+  qpar_linear_terms<<<dimGrid,dimBlock>>>(qpar_field, Apar, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
+                                kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
+                                gds2, gds21, gds22, bmagInv,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
                                 s.nu_ss, nu[5], nu[6], nu[7], mu[5], mu[6], mu[7], varenna,
-                                qpar_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
+                                qpar_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments, fapar);
 /*  
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, -3.+nu[6].y, QparOld, -3.+nu[7].y, QprpOld, 6.+nu[5].y, UparOld);  
   if(varenna) {
@@ -461,7 +498,6 @@ PUSH_RANGE("qpar",1);
   // + (nu_ss)*(Qpar)
 */
 
-higher_order_moments = false;
 if(higher_order_moments) {
   replace_ky0_nopad<<<dimGrid,dimBlock>>>(gradpar_tmp, ev_hd->hybrid.dens[0]); // this is rparpar
   //add_scaled<<<dimGrid,dimBlock>>>(sum_tmp, 1., gradpar_tmp, -3., DensOld, -3., TparOld);
@@ -528,7 +564,6 @@ PUSH_RANGE("qprp",2);
   
   cudaMemset(qprp_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz); 
 
-higher_order_moments = true;
   if(higher_order_moments) {
     //replace_ky0_nopad<<<dimGrid,dimBlock>>>(qprp_field, ev_hd->hybrid.tpar[0]); // this is rprpprp
 
@@ -539,12 +574,12 @@ higher_order_moments = true;
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(omegaD_tmp, ev_hd->hybrid.qpar[0]); // this is sparprp
     replace_ky0_nopad<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, ev_hd->hybrid.qprp[0]); // this is sprpprp
   }
-  qprp_linear_terms<<<dimGrid,dimBlock>>>(qprp_field, Phi, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
+  qprp_linear_terms<<<dimGrid,dimBlock>>>(qprp_field, Phi, Apar, DensOld, UparOld, TparOld, TprpOld, QparOld, QprpOld,
                                 kx, ky, shat, s.rho, s.vt, s.tprim, s.fprim, s.zt, bgrad,
                                 gds2, gds21, gds22, bmagInv,
                                 gbdrift, gbdrift0, cvdrift, cvdrift0,
                                 s.nu_ss, nu[8], nu[9], nu[10], mu[8], mu[9], mu[10], varenna,
-                                qprp_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments);
+                                qprp_field, omegaD_tmp, ev_hd->tmp.CXYZ2, higher_order_moments, fapar);
 /*
   phi_qperpb <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
   add_scaled <<<dimGrid, dimBlock>>> (sum_tmp, 1., TprpOld, -1., TparOld, s.zt, phi_tmp);
@@ -569,7 +604,6 @@ higher_order_moments = true;
   // + |omegaD|*(nu8.x*Upar + nu9.x*Qpar + nu10.x*Qprp) + nu_ss*Qprp
 */
 
-higher_order_moments = false;
   if(init == FORCE) {
     phi_qperpb_force <<<dimGrid, dimBlock>>> (phi_tmp, phiext, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     multZ<<<dimGrid,dimBlock>>>(bgrad_tmp,phi_tmp,bgrad);
@@ -648,6 +682,18 @@ if(!higher_order_moments) {
   add_scaled <<<dimGrid, dimBlock>>> (qprp_field, 1., qprp_field, s.vt*sqrt(2)*D_prp, gradpar_tmp);
   // + vt*sqrt(2)*D_prp*|gradpar|(Qprp - Qprp0)
 }
+
+  if(fapar > 0.) {
+    // for electromagnetic, the 'upar' and 'qprp' evolved by the code are actually 
+    // 'upar' = upar + vt*zt*apar_u
+    // 'qprp' = qprp + vt*zt*apar_flr
+    // here we add back the apar parts to upar and qprp before advancing 'qprp' and leaving the linear timestep routine
+    phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(QprpOld, 1., QprpOld, s.vt*s.zt, apar_tmp);
+
+    phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+    add_scaled<<<dimGrid,dimBlock>>>(UparOld, 1., UparOld, s.vt*s.zt, apar_tmp);
+  }
   
   //step
   add_scaled <<<dimGrid, dimBlock>>> (QprpNew, 1., Qprp, -dt, qprp_field);
@@ -659,7 +705,6 @@ if(!higher_order_moments) {
 POP_RANGE;
 POP_RANGE;
 #endif
-higher_order_moments = true;
 
 }
 //
@@ -685,6 +730,7 @@ cuComplex *Tprp = ev_hd->fields.tprp[is];
 cuComplex *Qprp = ev_hd->fields.qprp[is];
 
 cuComplex *Phi;// = ev_hd->fields.phi;
+cuComplex *Apar;
 
 #ifdef GS2_zonal
 cuComplex* NLdens_ky0_d = ev_hd->hybrid.dens[is];
@@ -708,7 +754,12 @@ cuComplex *tprp_field = ev_hd->fields.field;
 cuComplex *qprp_field = ev_hd->fields.field;
  
 cuComplex *phi_tmp = ev_hd->tmp.CXYZ;
+cuComplex *apar_tmp = ev_hd->tmp.CXYZ;
 cuComplex *nlps_tmp = ev_hd->tmp.CXYZ;
+
+cuComplex *fields_over_B_tmp2 = ev_hd->tmp.CXYZ2;
+
+
 float* Phi_zf_rms_tmpX = ev_hd->tmp.X;
 cuComplex* Phi_zf_CtmpX = ev_hd->tmp.CX;
 cuComplex *field_h = ev_h->fields.field;
@@ -736,6 +787,7 @@ if (first_half_step==1){
   QparNew = ev_hd->fields.qpar1[is];
   QprpNew = ev_hd->fields.qprp1[is];
   Phi = ev_hd->fields.phi;
+  Apar = ev_hd->fields.apar;
 }
 else {
   DensNew = ev_hd->fields.dens[is];
@@ -751,6 +803,7 @@ else {
   QparOld = ev_hd->fields.qpar1[is];
   QprpOld = ev_hd->fields.qprp1[is];
   Phi = ev_hd->fields.phi1;
+  Apar = ev_hd->fields.apar1;
 }
 float dnlpm = ev_h->pars.dnlpm;
 float dnlpm_dens = ev_h->pars.dnlpm_dens;
@@ -763,6 +816,9 @@ bool nlpm_vol_avg = ev_h->pars.nlpm_vol_avg;
 bool low_b = ev_h->pars.low_b;
 bool low_b_all = ev_h->pars.low_b_all;
 int iflr = ev_h->pars.iflr;
+
+float beta = ev_h->pars.beta;
+float fapar = ev_h->pars.fapar;
 
 cuComplex mu_nlpm1;
 cuComplex mu_nlpm2;
@@ -801,9 +857,9 @@ mu_nlpm3.y = dnlpm * -.53;
 }
 
 
-  float kx2Phi_zf_rms;
-  if(nlpm_cutoff_avg) kx2Phi_zf_rms = kx2Phi_zf_rms_avg;
-  else kx2Phi_zf_rms = kx2Phi_zf_rms_in;
+  //float kx2Phi_zf_rms;
+  //if(nlpm_cutoff_avg) kx2Phi_zf_rms = kx2Phi_zf_rms_avg;
+  //else kx2Phi_zf_rms = kx2Phi_zf_rms_in;
 
   cudaMemset(phi_tmp, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
 
@@ -850,7 +906,19 @@ PUSH_RANGE("density",2);
     accum <<<dimGrid, dimBlock>>> (dens_field, nlps_tmp, 1);  
     // +{phi_flr,Tprp}
 
+    if(fapar > 0.) {
+      if(low_b) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);      
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);      
+      NLPS(nlps_tmp, apar_tmp, QprpOld, kx, ky);   
+      accum <<<dimGrid, dimBlock>>> (dens_field, nlps_tmp, -1);  
+      // -{apar_flr,Qprp}
 
+      if(low_b) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);          
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+      NLPS(nlps_tmp, apar_tmp, UparOld, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(dens_field, 1., dens_field, -s.vt, nlps_tmp);
+      // -vt*B{apar_u, Upar/B}
+    }
 
 #ifdef GS2_zonal
       
@@ -872,18 +940,53 @@ PUSH_RANGE("upar",3);
 
   cudaMemset(upar_field, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
 
-    if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
-    else phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
+    if(fapar > 0.) {
+      if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., UparOld, -s.vt*s.zt, apar_tmp);
+      if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+    } else {
+      if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
+    }
     accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, 1);
     // + {phi_u, Upar}
 
-    if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
-    else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);    
+    if(fapar > 0.) {
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., QprpOld, -s.vt*s.zt, apar_tmp);
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+    }
+    else {
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);    
+    }
     accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, 1);
     // + {phi_flr, Qprp}
 
+    if(fapar > 0.) {
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, apar_tmp, TprpOld, kx, ky);    
+      accum <<<dimGrid, dimBlock>>> (upar_field, nlps_tmp, -1);
+      // - {apar_flr, Tprp}
+
+      if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_u <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., DensOld, 1., TparOld, s.zt, phi_tmp);
+      if(low_b) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);          
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+      NLPS(nlps_tmp, apar_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(upar_field, 1., upar_field, -s.vt, nlps_tmp);
+      // -vt{apar_u, (Dens+Tpar + s.zt*phi_u}
+    }
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLupar_ky0_d, upar_field);
@@ -930,6 +1033,21 @@ PUSH_RANGE("tpar",4);
       }
     }
 
+    if(fapar > 0.) {
+      if(low_b) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);      
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);      
+      NLPS(nlps_tmp, apar_tmp, QprpOld, kx, ky);   
+      accum <<<dimGrid, dimBlock>>> (tpar_field, nlps_tmp, 1);  
+      // +{apar_flr,Qprp}
+
+      if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., QparOld, 2., UparOld);
+      NLPS(nlps_tmp, apar_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(tpar_field, 1., tpar_field, -s.vt, nlps_tmp);
+      // - vt*{apar_u, Qpar + 2*Upar}
+      
+    }
 
 #ifdef GS2_zonal
   
@@ -1012,8 +1130,23 @@ PUSH_RANGE("tprp",5);
     if(low_b) phi_flr2_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
     else phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
     NLPS(nlps_tmp, phi_tmp, TprpOld, kx, ky);    
-    accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, 1);
+    add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, 1., nlps_tmp);
     // + {phi_flr2, Tprp}
+
+    if(fapar > 0.) {
+      if(low_b) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);      
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);      
+      NLPS(nlps_tmp, apar_tmp, UparOld, kx, ky);   
+      accum <<<dimGrid, dimBlock>>> (tprp_field, nlps_tmp, -1);  
+      // -{apar_flr,Upar}
+
+      if(low_b) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);          
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+      NLPS(nlps_tmp, apar_tmp, QparOld, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -s.vt, nlps_tmp);
+      // -vt*B{apar_u, Qpar/B}
+    }
+    
 
 #ifdef GS2_zonal
   
@@ -1061,6 +1194,13 @@ PUSH_RANGE("qpar",1);
       }
     }
 
+    if(fapar > 0.) {
+      if(low_b) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);          
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+      NLPS(nlps_tmp, apar_tmp, TparOld, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(tprp_field, 1., tprp_field, -s.vt*(3.+Beta_par), nlps_tmp);
+      // -vt*(3.+Beta_par)*{apar_u, Tpar}
+    }
 
 #ifdef GS2_zonal
   
@@ -1089,19 +1229,42 @@ PUSH_RANGE("qprp",2);
     // + {phi_u, Qprp}
 
     if(new_nlpm) {
+      if(fapar > 0.) {
+        if(low_b_all) phi_flr_low_b<<<dimGrid,dimBlock>>>(apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
+        else phi_flr<<<dimGrid,dimBlock>>>(apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        // apar_tmp = apar_flr
+        if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (ev_hd->tmp.CXYZ2, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);    
+        else phi_u <<<dimGrid, dimBlock>>> (ev_hd->tmp.CXYZ2, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);    
+        //ev_hd->tmp.CXYZ2 = apar_u
+      }
+      if(nlpm_zonal_only) {
+        if(fapar>0.) add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y, UparOld, -s.vt*s.zt*(mu_nlpm1.y+mu_nlpm2.y), ev_hd->tmp.CXYZ2, 
+                         mu_nlpm1.y, QprpOld, -s.vt*s.zt*(mu_nlpm1.y), apar_tmp); 
+        else add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y, UparOld, mu_nlpm1.y, QprpOld); 
+      } else {
+        if(fapar>0.) add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., UparOld,
+                         -s.vt*s.zt*(mu_nlpm1.y+mu_nlpm2.y+1.), ev_hd->tmp.CXYZ2, 
+                         mu_nlpm1.y, QprpOld, -s.vt*s.zt*(mu_nlpm1.y), apar_tmp); 
+        else add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., UparOld, mu_nlpm1.y, QprpOld); 
+      }
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      if(nlpm_zonal_only) {
-        zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
-        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y, UparOld, mu_nlpm1.y, QprpOld); 
-      } else add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.y+mu_nlpm2.y+1., UparOld, mu_nlpm1.y, QprpOld); 
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
       accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, 1);
 
+      if(fapar > 0.) {
+        if(low_b_all) phi_flr_low_b<<<dimGrid,dimBlock>>>(apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
+        else phi_flr<<<dimGrid,dimBlock>>>(apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (ev_hd->tmp.CXYZ2, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);    
+        else phi_u <<<dimGrid, dimBlock>>> (ev_hd->tmp.CXYZ2, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);    
+        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, UparOld, -s.vt*s.zt*(mu_nlpm1.x+mu_nlpm2.x), ev_hd->tmp.CXYZ2,
+                         mu_nlpm1.x, QprpOld, -s.vt*s.zt*(mu_nlpm1.x), apar_tmp); 
+      }
+      else add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, UparOld, mu_nlpm1.x, QprpOld); 
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
-      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, UparOld, mu_nlpm1.x, QprpOld); 
+      if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
       accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, 1);
       if(nlpm_vol_avg) {
@@ -1111,19 +1274,56 @@ PUSH_RANGE("qprp",2);
     }
     
     if(nlpm_zonal_only || !new_nlpm) { //this term is already included in new_nlpm section above
-      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
-      else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-      NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
+      if(fapar > 0.) {
+        if(low_b_all) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+        else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., UparOld, -s.vt*s.zt, apar_tmp);
+
+        if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+        else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+      }
+      else {
+        if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+        else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+        NLPS(nlps_tmp, phi_tmp, UparOld, kx, ky);
+      }
       accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
       // + {phi_flr, Upar}
     }  
 
-    if(low_b_all) phi_flr2_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
-    else phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-    NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);
-    accum <<<dimGrid, dimBlock>>> (qprp_field, nlps_tmp, 1);
+    if(fapar > 0.) {
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., QprpOld, -s.vt*s.zt, apar_tmp);
+
+      if(low_b_all) phi_flr2_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+    }
+    else {
+      if(low_b_all) phi_flr2_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr2 <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, phi_tmp, QprpOld, kx, ky);
+    }
+    add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, 1., nlps_tmp);
     // + {phi_flr2, Qprp}
 
+    if(fapar > 0.) {
+      phi_qperpb <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      NLPS(nlps_tmp, apar_tmp, TprpOld, kx, ky);    
+      add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -1., nlps_tmp);
+      // - {apar_flr2 - apar_flr, Tprp}
+
+      if(low_b_all) phi_flr_low_b <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);
+      else phi_flr <<<dimGrid, dimBlock>>> (phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
+      add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, 1., TprpOld, s.zt, phi_tmp);
+      if(low_b) phi_u_low_b <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv, iflr);          
+      else phi_u <<<dimGrid, dimBlock>>> (apar_tmp, Apar, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);          
+      NLPS(nlps_tmp, apar_tmp, ev_hd->tmp.CXYZ2, kx, ky);
+      add_scaled<<<dimGrid,dimBlock>>>(qprp_field, 1., qprp_field, -s.vt, nlps_tmp);
+      // -vt{apar_u, (Tprp + s.zt*phi_flr}
+    }
 #ifdef GS2_zonal
   
       getky0_nopad<<<dimGrid,dimBlock>>>(NLqprp_ky0_d, qprp_field);

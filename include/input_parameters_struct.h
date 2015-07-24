@@ -172,7 +172,7 @@ typedef struct {
 
   // Namelist: parameters
    float tite;
- //  float beta;
+   float beta;
  //  float zeff;
 
   // Namelist: theta_grid_eik_knobs
@@ -248,7 +248,7 @@ typedef struct {
 
   // Namelist: knobs
  //   float fphi;
- //   float fapar;
+    float fapar;
  //  float faperp;
  //    float delt;
     float dt;
@@ -259,6 +259,9 @@ typedef struct {
    int nspec;
 
 	 specie * species;
+
+   
+   bool adiabatic_electrons;
 
 
   // Namelist: dist_fn_species_knobs_2

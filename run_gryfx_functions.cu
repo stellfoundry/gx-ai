@@ -510,8 +510,8 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
           geo_d->bmagInv, pars_d->shat, species[0]);
   
         //EGH: Why do we only do an initial qneut for RH_equilibrium?
-        qneut(fields_hd->phi, fields_hd->dens, fields_hd->tprp,
-          tmp->CXYZ, tmp->CXYZ, fields_hd->field, species, pars_d->species);
+        qneut(fields_hd->phi, fields_hd->apar, fields_hd->dens, fields_hd->tprp, fields_hd->upar, fields_hd->qprp,
+          tmp->CXYZ, tmp->CXYZ, fields_hd->field, species, pars_d->species, pars_h->adiabatic_electrons, pars_h->fapar, pars_h->beta);
   
       }
       

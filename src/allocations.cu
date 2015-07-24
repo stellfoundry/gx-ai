@@ -174,10 +174,12 @@ void allocate_hybrid_zonal_arrays(int aod, int ml, grids_struct * grids, hybrid_
 void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fields, fields_struct * fields1){
 	/* Host and device */
 	alloc_dealloc(&fields->phi, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
+	alloc_dealloc(&fields->apar, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
 	/* A temporary array */
 	alloc_dealloc(&fields->field, aod, ON_HOST_AND_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
 	/* Device only*/
 	alloc_dealloc(&fields->phi1, aod, ON_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
+	alloc_dealloc(&fields->apar1, aod, ON_DEVICE, ml,  TYPE_CUCOMPLEX, grids->NxNycNz);
 
 
 	allocate_field_species_array(&fields->dens, aod, ml, grids);

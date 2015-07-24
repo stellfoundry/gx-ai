@@ -1,38 +1,30 @@
-__global__ void qneut(cuComplex* Phi, cuComplex* Dens_e, cuComplex* Dens_i, cuComplex* Tprp_i, float rho,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+__global__ void qneut(cuComplex* Phi, cuComplex* nbartot_field, cuComplex* n_e, specie* s,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
 {
-  unsigned int idy = get_idy(); 
+  unsigned int idy = get_idy();
   unsigned int idx = get_idx();
-  unsigned int idz = get_idz(); 
+  unsigned int idz = get_idz();
   
-  
-  if(nz<=zthreads) {
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      unsigned int idxy = idy + (ny/2+1)*idx;
+        
+      float pfilter2 = 0.;    
+      float bidx;
       
-      //CHECK SIGNS
-      Phi[index] = ( Dens_e[index] - Dens_i[index]/(1.+bidx/2.) + (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) / (g0(bidx) - 1.); 
-    }
-  }
-  else {
-    for(int i=0; i<nz/zthreads; i++) {
-      if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<zthreads ) {
-
-	unsigned int IDZ = idz + zthreads*i;
-
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
-	
-	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
-	
-	Phi[index] = ( Dens_e[index] - Dens_i[index]/(1.+bidx/2.) + (bidx*Tprp_i[index])/(2.*pow(1.+bidx/2.,2)) ) / (g0(bidx) - 1.);
+      for(int i=0; i<nspecies; i++) {
+        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
       }
+    
+      Phi[index] = ( nbartot_field[index] - n_e[index] ) / pfilter2;
     }
-  }      
-      
-}     
+  
+
+}
 
 __global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s, 
 		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
@@ -361,6 +353,30 @@ __global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float*
 }
 
 
+__global__ void ampere(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float tau)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      unsigned int idxy = idy + (ny/2+1)*idx;
+        
+      float bidx;
+      
+      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+
+      Apar[index] = tau*beta_e*( ubartot_field[index] - upar_e[index] ) / ( 2. * bidx );
+      // DOES THIS NEED ADDITIONAL NORMALIZATIONS ??? also check ubartot
+    
+   }   
+
+}
 
 
 

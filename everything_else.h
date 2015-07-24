@@ -166,4 +166,4 @@ void filterHyper_iso(int is, fields_struct * fields_d,
 
 
 //From qneut.cu
-void qneut(cuComplex* Phi, cuComplex** Dens, cuComplex** Tprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d);
+void qneut(cuComplex* Phi, cuComplex* Apar, cuComplex** Dens, cuComplex** Tprp, cuComplex** Upar, cuComplex** Qprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d, bool adiabatic, float fapar, float beta);

@@ -154,6 +154,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_float(&namelist_struct, "parameters", "tite", &(pars->tite));
   tau=pars->tite;
 
+  fnr_get_float(&namelist_struct, "parameters", "beta", &(pars->beta));
   
   fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "cfl", &(pars->cfl));
   cfl=pars->cfl;
@@ -176,6 +177,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_int(&namelist_struct, "knobs", "nstep", &(pars->nstep));
   nSteps=pars->nstep;
   
+  fnr_get_float(&namelist_struct, "knobs", "fapar", &(pars->fapar));
   //maxdt?
   
   fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(pars->nspec));
@@ -466,6 +468,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   //collisions=pars->collision_model;
   
   pars->species = species = (specie*) malloc(sizeof(specie)*pars->nspec);
+
+  pars->adiabatic_electrons = true;
    
   for(int s=1; s<nSpecies+1; s++) {
 //		printf("s= %d\n", s);
@@ -475,49 +479,60 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
     sprintf(namelist,"species_parameters_%d",s); 
     char* type;
     fnr_get_string(&namelist_struct, namelist, "type", &type); 
-    
+  
+    int ionspec = 0;   
+    int ispec = 1;
+    float mass;
+ 
     if(strcmp(type,"ion") == 0) {
-      fnr_get_float(&namelist_struct, namelist, "z", &species[ION].z);
-      fnr_get_float(&namelist_struct, namelist, "mass", &species[ION].mass);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[ION].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[ION].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[ION].tprim); //6.9
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[ION].fprim); //2.2
-      if(fnr_get_float(&namelist_struct, namelist, "uprim", &species[ION].uprim)) species[ION].uprim=0;
+      fnr_get_float(&namelist_struct, namelist, "mass", &mass);
+      if(mass == 1.) {ionspec=0;} // main ion species mass assumed to be 1. main ion species indexed 0.
+      else {ionspec = ispec; ispec++;}
+      species[ionspec].mass = mass;
+      fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species[ionspec].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species[ionspec].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species[ionspec].tprim); //6.9
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species[ionspec].fprim); //2.2
+      if(fnr_get_float(&namelist_struct, namelist, "uprim", &species[ionspec].uprim)) species[ionspec].uprim=0;
 
 
-     // if(strcmp(collisions,"none") == 0) species[ION].nu_ss = 0;
+     // if(strcmp(collisions,"none") == 0) species[ionspec].nu_ss = 0;
      // else {
-        fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ION].nu_ss);
+        fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ionspec].nu_ss);
      // }     
 
-      strcpy(species[ION].type,"ion"); 
+      strcpy(species[ionspec].type,"ion"); 
 
     }
     if(strcmp(type,"electron") == 0) {
 
-      fnr_get_float(&namelist_struct, namelist, "z", &species[ELECTRON].z);
-      fnr_get_float(&namelist_struct, namelist, "mass", &species[ELECTRON].mass);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[ELECTRON].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[ELECTRON].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[ELECTRON].tprim);
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[ELECTRON].fprim);
-      fnr_get_float(&namelist_struct, namelist, "uprim", &species[ELECTRON].uprim);
+      // kinetic electrons will always be last indexed species
 
-      //if(strcmp(collisions,"none") == 0) species[ELECTRON].nu_ss = 0;
+      fnr_get_float(&namelist_struct, namelist, "z", &species[nSpecies].z);
+      fnr_get_float(&namelist_struct, namelist, "mass", &species[nSpecies].mass);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species[nSpecies].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species[nSpecies].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species[nSpecies].tprim);
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species[nSpecies].fprim);
+      fnr_get_float(&namelist_struct, namelist, "uprim", &species[nSpecies].uprim);
+
+      //if(strcmp(collisions,"none") == 0) species[nSpecies].nu_ss = 0;
       //else {
 
-        fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ELECTRON].nu_ss);
+      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[nSpecies].nu_ss);
 
       //}
 
-			strcpy(species[ELECTRON].type,"electron");
+      strcpy(species[nSpecies].type,"electron");
+
+      pars->adiabatic_electrons = false;
+   
     }   
 		//free(type);
 		fnr_free(&namelist_struct);
 		fnr_free(&namelist_defaults);
 
-		printf("Got here!!\n");
 
   }
 

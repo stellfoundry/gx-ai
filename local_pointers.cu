@@ -7,19 +7,21 @@
   /* Device arrays*/
     cuComplex * Phi = ev_hd->fields.phi;
     cuComplex * Phi1 = ev_hd->fields1.phi;
+    cuComplex * Apar = ev_hd->fields.apar;
+    cuComplex * Apar1 = ev_hd->fields1.apar;
 
     cuComplex ** Dens = ev_hd->fields.dens;
-    //cuComplex ** Upar = ev_hd->fields.upar;
+    cuComplex ** Upar = ev_hd->fields.upar;
     //cuComplex ** Tpar = ev_hd->fields.tpar;
     cuComplex ** Tprp = ev_hd->fields.tprp;
     //cuComplex ** Qpar = ev_hd->fields.qpar;
-    //cuComplex ** Qprp = ev_hd->fields.qprp;
+    cuComplex ** Qprp = ev_hd->fields.qprp;
     cuComplex ** Dens1 = ev_hd->fields1.dens;
-    //cuComplex ** Upar1 = ev_hd->fields1.upar;
+    cuComplex ** Upar1 = ev_hd->fields1.upar;
     //cuComplex ** Tpar1 = ev_hd->fields1.tpar;
     cuComplex ** Tprp1 = ev_hd->fields1.tprp;
     //cuComplex ** Qpar1 = ev_hd->fields1.qpar;
-    //cuComplex ** Qprp1 = ev_hd->fields1.qprp;
+    cuComplex ** Qprp1 = ev_hd->fields1.qprp;
 
     cuComplex * field_h = ev_h->fields.field;
     cuComplex * field = ev_hd->fields.field;
