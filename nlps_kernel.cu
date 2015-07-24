@@ -10,7 +10,7 @@ __global__ void NLPSderivX_abs(cuComplex* fdx, cuComplex* f, float* kx)
      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
      //df/dx
-    fdx[index] = -abs(kx[idx])*f[index];			
+    fdx[index] = abs(kx[idx])*f[index];			
    }
   } 
   else {
@@ -19,7 +19,7 @@ __global__ void NLPSderivX_abs(cuComplex* fdx, cuComplex* f, float* kx)
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
 
     //df/dx
-     fdx[index] = -abs(kx[idx])*f[index];
+     fdx[index] = abs(kx[idx])*f[index];
     }
    }
   } 
@@ -113,6 +113,65 @@ __global__ void NLPSderivY(cuComplex* fdy, cuComplex* f, float* ky)
   } 
 }  
 
+__global__ void NLPSderiv_isgnX_derivY(cuComplex* fdy, cuComplex* f, float* kx, float* ky)                        
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+     float sgn_kx = copysign(1., kx[idx]);
+
+     fdy[index] = sgn_kx*ky[idy]*f[index];
+
+   }
+  } 
+  else {
+   for(int i=0; i<nz/zthreads; i++) { 
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+     float sgn_kx = copysign(1., kx[idx]);
+
+     fdy[index] = sgn_kx*ky[idy]*f[index];
+    }
+   }
+  } 
+}  
+
+__global__ void NLPSderiv_isgnY_derivX(cuComplex* fdx, cuComplex* f, float* kx, float* ky)                        
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  
+  if(nz<=zthreads) {
+   if(idy<(ny/2+1) && idx<nx && idz<nz) {
+     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+     float sgn_ky = copysign(1., ky[idy]);
+
+     fdx[index] = sgn_ky*kx[idx]*f[index];
+
+   }
+  } 
+  else {
+   for(int i=0; i<nz/zthreads; i++) { 
+    if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+    unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+     float sgn_ky = copysign(1., ky[idy]);
+
+     fdx[index] = sgn_ky*kx[idx]*f[index];
+    }
+   }
+  } 
+}  
 __global__ void mask(cuComplex* f) 
 {
   unsigned int idy = get_idy();
@@ -282,6 +341,33 @@ __global__ void bracket(float* result, float* fdxgdy,
  
 }  
 
+__global__ void bracket_abs(float* result, float* fdxgdy,  
+                      float* fdy, float* gdx, float scaler)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny) && idx<nx && idz<nz ) {
+    unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+    
+    
+    result[index] = scaler*( fdxgdy[index] + (fdy[index])*(gdx[index]) );  
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny) && idx<nx && idz<zthreads ) {
+    unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*ny*zthreads*i;
+    
+    
+    result[index] = scaler*( fdxgdy[index] + (fdy[index])*(gdx[index]) );  
+    }
+   }
+  } 
+ 
+}  
 __global__ void reality(cuComplex* f) 
 {
   unsigned int idy = 0;

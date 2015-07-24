@@ -474,6 +474,7 @@ model_option = "const-curv"
   ostem_rname = .false.
   low_b_all = "off"
   new_nlpm = "off"
+  hammett_nlpm_interference = "off"
   iflr = 1
   higher_order_moments = "off"
   nlpm_zonal_only = "off"

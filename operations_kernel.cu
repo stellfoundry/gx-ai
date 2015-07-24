@@ -342,6 +342,29 @@ __global__ void add_scaled(cuComplex* result, cuComplex fscaler, cuComplex* f, c
   }
 } 
 
+__global__ void add_scaled(float* result, float fscaler, float* f, float gscaler, float* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+
+      result[index] = fscaler*f[index] + gscaler*g[index];      
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        result[index] = fscaler*f[index] + gscaler*g[index];
+      }
+    }
+  }
+} 
 __global__ void add_scaled(float* result, float fscaler, float* f, float gscaler, float* g,int nx, int ny, int nz)
 {
   unsigned int idy = get_idy();
@@ -2387,3 +2410,55 @@ __global__ void copy_ky(cuComplex* f, float* ky)
     }
   }
 } 
+
+__global__ void mult_abs1_2(float* result, float* f1, float* f2)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      result[index] = abs(f1[index])*f2[index];
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        result[index] = abs(f1[index])*f2[index];
+      }
+    }
+  }
+}
+
+__global__ void mult_1_sgn2_3(float* result, float* f1, float* f2, float* f3)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+
+      float sgn_f2 = copysign(1., f2[index]);      
+
+      result[index] = f1[index]*sgn_f2*f3[index];
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        float sgn_f2 = copysign(1., f2[index]);      
+
+        result[index] = f1[index]*sgn_f2*f3[index];
+      }
+    }
+  }
+}

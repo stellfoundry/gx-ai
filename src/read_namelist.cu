@@ -405,6 +405,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   pars->secondary_test= secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
   pars->nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
   pars->new_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_nlpm");
+  pars->hammett_nlpm_interference = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hammett_nlpm_interference");
   pars->low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
   pars->low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
   if(pars->low_b_all) pars->low_b = true;

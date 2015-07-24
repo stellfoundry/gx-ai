@@ -75,7 +75,7 @@ EXTERN_SWITCH float kperp4_max_Inv;
 
 //other global device arrays
 EXTERN_SWITCH cuComplex *deriv_nlps;
-EXTERN_SWITCH float *derivR1_nlps, *derivR2_nlps, *resultR_nlps;
+EXTERN_SWITCH float *derivR1_nlps, *derivR2_nlps, *derivR3_nlps, *resultR_nlps;
 EXTERN_SWITCH float* PhiAvgDenom;
 //EXTERN_SWITCH cuComplex** g_covering_d;
 

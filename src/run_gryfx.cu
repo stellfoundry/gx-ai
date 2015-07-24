@@ -69,6 +69,7 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
     cudaMalloc((void**) &deriv_nlps, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     cudaMalloc((void**) &derivR1_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &derivR2_nlps, sizeof(float)*Nx*Ny*Nz);
+    cudaMalloc((void**) &derivR3_nlps, sizeof(float)*Nx*Ny*Nz);
     cudaMalloc((void**) &resultR_nlps, sizeof(float)*Nx*Ny*Nz);
 
     cudaMalloc((void**) &kz_complex, sizeof(float)*(Nz/2+1));
@@ -726,6 +727,7 @@ POP_RANGE;
     cudaFree(deriv_nlps);
     cudaFree(derivR1_nlps);
     cudaFree(derivR2_nlps);
+    cudaFree(derivR3_nlps);
     cudaFree(resultR_nlps);
 
 
