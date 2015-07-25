@@ -2445,7 +2445,10 @@ __global__ void mult_1_sgn2_3(float* result, float* f1, float* f2, float* f3)
     if(idy<(ny) && idx<nx && idz<nz) {
       unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
 
-      float sgn_f2 = copysign(1., f2[index]);      
+      int sgn_f2 = 0;
+
+      if(f2[index]>0) sgn_f2=1;
+      if(f2[index]<0) sgn_f2=-1;
 
       result[index] = f1[index]*sgn_f2*f3[index];
     }
@@ -2455,7 +2458,10 @@ __global__ void mult_1_sgn2_3(float* result, float* f1, float* f2, float* f3)
       if(idy<(ny) && idx<nx && idz<zthreads) {
         unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
 	
-        float sgn_f2 = copysign(1., f2[index]);      
+      int sgn_f2 = 0;
+
+      if(f2[index]>0) sgn_f2=1;
+      if(f2[index]<0) sgn_f2=-1;
 
         result[index] = f1[index]*sgn_f2*f3[index];
       }

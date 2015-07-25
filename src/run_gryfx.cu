@@ -350,12 +350,6 @@ POP_RANGE;
 
       qneut(Phi1, Apar1, Dens1, Tprp1, Upar1, Qprp1, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta);
 
-      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
-        //ev_h->sfixed.S = 1.;
-        //ev_hd->sfixed.S = ev_h->sfixed.S;
-        copy_fixed_modes_into_fields( &ev_h->cdims, &ev_hd->fields1,
-            ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
-      }
     } //end of iproc if
 
 
@@ -399,6 +393,12 @@ POP_RANGE;
 
     tm->first_half_flag = 0;
     if(iproc==0) {
+      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
+        //ev_h->sfixed.S = 1.;
+        //ev_hd->sfixed.S = ev_h->sfixed.S;
+        copy_fixed_modes_into_fields( &ev_h->cdims, &ev_hd->fields1,
+            ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
+      }
 
 #ifdef PROFILE
 PUSH_RANGE("NLPM and hyper", 3);
@@ -497,10 +497,6 @@ POP_RANGE;
       if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
       else qneut(Phi1, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
 
-      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
-        copy_fixed_modes_into_fields(
-            &ev_h->cdims, &ev_hd->fields, ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
-      }
       //f = f(t+dt)
 
     } //end of iproc if
@@ -564,6 +560,10 @@ POP_RANGE;
 //#ifdef GS2_zonal
     if(iproc==0) {
 //#endif  
+      if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
+        copy_fixed_modes_into_fields(
+            &ev_h->cdims, &ev_hd->fields, ev_hd->fields1.phi, &ev_hd->sfixed, &ev_h->pars);
+      }
 
 #ifdef PROFILE
 PUSH_RANGE("NLPM and hyper", 3);

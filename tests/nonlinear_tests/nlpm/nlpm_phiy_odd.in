@@ -19,8 +19,8 @@
  nx = 4 ! The number of kx modes: the number of kx modes actually simulated (ntheta0) is equal to 2*(nx - 1)/3 + 1, due to the need to prevent aliasing.
  ny = 4 ! The number of ky modes: the number of ky modes actually simulated (naky) is equal to (ny - 1)/3 + 1, due to the need to prevent aliasing.
  !jtwist = -10 ! L_x = L_y  jtwist / (2 pi shat)
- y0 = 20.0 ! The length of the box in the y direction (measured in the Larmour radius of species 1)
- x0 = 20.0 ! The length of the box in the x direction (measured in the Larmour radius of species 1) if shat is 0 (ie 1e-6)
+ y0 = 3.16 ! The length of the box in the y direction (measured in the Larmour radius of species 1)
+ x0 = 3.16 ! The length of the box in the x direction (measured in the Larmour radius of species 1) if shat is 0 (ie 1e-6)
 /
 
 !==============================
@@ -84,8 +84,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = .01 ! Time step
- nstep = 650 ! Maximum number of timesteps
+ delt = .04 ! Time step
+ nstep = 500 ! Maximum number of timesteps
 /
 
 !==============================
@@ -116,7 +116,7 @@
 &nonlinear_terms_knobs
  nonlinear_mode = "on" ! Include nonlinear terms? ('on','off')
  flow_mode = "off" 
- cfl = 0.1 ! The maximum delt < cfl * min(Delta_perp/v_perp)
+ cfl = .05 ! The maximum delt < cfl * min(Delta_perp/v_perp)
 /
 
 !==============================
@@ -154,14 +154,17 @@
 !==============================
 &init_g_knobs
  chop_side = .false. ! Rarely needed. Forces asymmetry into initial condition.
- phiinit = -.7071067812e-5 ! Average amplitude of initial perturbation of each Fourier mode.
+ phiinit = -.3535534 ! Average amplitude of initial perturbation of each Fourier mode.
  restart_file = "secondary1.nc" ! Base of filenames with restart data.
- ginit_option = "noise" ! Sets the way that the distribution function is initialized.
+ ginit_option = "kz0" ! Sets the way that the distribution function is initialized.
  !restart_dir = "scan/secondary_test/nc" 
  zf_init = 1.
 
- den0 = 1.
- upar0 = 0.
+ refac = 1.
+ imfac = 0.
+
+ den0 = 0.
+ upar0 = 1.
  tpar0 = 0.
  tperp0 = 0.
 /
@@ -177,20 +180,20 @@
 !DIAGNOSTICS  
 !==============================
 &gs2_diagnostics_knobs
- write_ascii = .true.
+ write_ascii = .false.
  print_flux_line = .false. ! Instantaneous fluxes output to screen
  write_nl_flux = .false. ! Write nonlinear fluxes as a function of time.
  print_line = .false. ! Estimated frequencies and growth rates to the screen/stdout
  write_verr = .true. ! Write velocity space diagnostics to '.lpc' and '.verr' files
   ! write_g not specified --- Write the distribution function to the '.dist' (NetCDF?)
- write_line = .true. ! If (write_ascii = T) write estimated frequencies and growth rates to the output file
+ write_line = .false. ! If (write_ascii = T) write estimated frequencies and growth rates to the output file
   ! write_gyx not specified --- Write dist fn at a given physical spacial point to a file
  write_hrate = .false. ! Write heating rate, collisonal entropy generation etc to '.heat'
   ! write_final_epar not specified --- If (write_ascii = T) E_parallel(theta) written to runname.eigenfunc
  write_avg_moments = .F. ! Write flux surface averaged low-order moments of g to runname.out.nc and runname.moments (if write_ascii = T)
   ! write_lorentzian not specified --- Frequency Sweep Data
  write_omega = .false. ! If (write_ascii = T) instantaneous omega to output file. Very heavy output
- write_omavg = .true. ! If (write_ascii = T) time-averaged growth rate and frequency to the output file.
+ write_omavg = .false. ! If (write_ascii = T) time-averaged growth rate and frequency to the output file.
  write_eigenfunc = .false. ! If (write_ascii = T) Normalized phi written to runname.eigenfunc
  write_final_fields = .true. ! If (write_ascii = T) Phi(theta) written to '.fields'
  write_final_moments = .true. ! write final n, T
@@ -216,7 +219,7 @@
   ! exit_when_converged not specified --- 
   ! write_full_moments_notgc not specified --- 
   ! write_cross_phase not specified --- 
-  dump_check1 = .true. 
+  dump_check1 = .false. 
   ! dump_check2 not specified --- 
   ! dump_fields_periodically not specified --- 
   ! make_movie not specified --- 
@@ -234,7 +237,7 @@
 
 &gryfx_knobs
   write_netcdf = .false.
-  write_omega = "on"
+  write_omega = "off"
   write_phi = "off"
   restart = "on"   ! make sure this is set for the nonlinear part of secondary test
   no_zderiv_covering = "off"
@@ -244,21 +247,38 @@
   ivarenna = -1
   varenna_fsa = "off"
   nlpm = "off"
+  inlpm = 0
+  dnlpm = 1.
+  dnlpm_dens = 0
+  dnlpm_tprp = 0
+  dorland_nlpm = "off"
+  nlpm_nlps = "off"
   smagorinsky = "off"
-  init = "density"
+  init = "upar"
   phiext = -1.
-  init_amp = 1.e-20
+  init_amp = 1.
   debug = "off"
   igeo = 0
   scan_type = "default"
   scan_number = 1001
+  init_single = "on"
+  iky_single = 0
+  ikx_single = 1
+  low_b_all = "off"
+  new_nlpm = "on"
+  hammett_nlpm_interference = "on"
+  iflr = 0
 
 /
 
 &secondary_test_knobs
-  phi_test_real = 1.e3
-  phi_test_imag = 1.e-20
-  secondary_test = "on"
-  restartfile = "secondary_setup.restart.bin"    ! file that is read at beginning from which modes are fixed
+  phi_test_real = 4
+  phi_test_imag = 4
+  secondary_test = "off"
+  nlpm_test = "on"
+  restartfile = "nlpm_setup_phiy.restart.bin"    ! file that is read at beginning from which modes are fixed
+  iky_fixed = 1
+  ikx_fixed = 0
+  low_b = "off"
 /
 

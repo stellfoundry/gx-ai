@@ -19,8 +19,8 @@
  nx = 4 ! The number of kx modes: the number of kx modes actually simulated (ntheta0) is equal to 2*(nx - 1)/3 + 1, due to the need to prevent aliasing.
  ny = 4 ! The number of ky modes: the number of ky modes actually simulated (naky) is equal to (ny - 1)/3 + 1, due to the need to prevent aliasing.
  !jtwist = -10 ! L_x = L_y  jtwist / (2 pi shat)
- y0 = 20.0 ! The length of the box in the y direction (measured in the Larmour radius of species 1)
- x0 = 20.0 ! The length of the box in the x direction (measured in the Larmour radius of species 1) if shat is 0 (ie 1e-6)
+ y0 = 3.16 ! The length of the box in the y direction (measured in the Larmour radius of species 1)
+ x0 = 3.16 ! The length of the box in the x direction (measured in the Larmour radius of species 1) if shat is 0 (ie 1e-6)
 /
 
 !==============================
@@ -84,8 +84,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = .01 ! Time step
- nstep = 650 ! Maximum number of timesteps
+ delt = .02 ! Time step
+ nstep = 5000 ! Maximum number of timesteps
 /
 
 !==============================
@@ -116,7 +116,7 @@
 &nonlinear_terms_knobs
  nonlinear_mode = "on" ! Include nonlinear terms? ('on','off')
  flow_mode = "off" 
- cfl = 0.1 ! The maximum delt < cfl * min(Delta_perp/v_perp)
+ cfl = .05 ! The maximum delt < cfl * min(Delta_perp/v_perp)
 /
 
 !==============================
@@ -160,8 +160,8 @@
  !restart_dir = "scan/secondary_test/nc" 
  zf_init = 1.
 
- den0 = 1.
- upar0 = 0.
+ den0 = 0.
+ upar0 = 1.
  tpar0 = 0.
  tperp0 = 0.
 /
@@ -234,7 +234,7 @@
 
 &gryfx_knobs
   write_netcdf = .false.
-  write_omega = "on"
+  write_omega = "off"
   write_phi = "off"
   restart = "on"   ! make sure this is set for the nonlinear part of secondary test
   no_zderiv_covering = "off"
@@ -244,21 +244,35 @@
   ivarenna = -1
   varenna_fsa = "off"
   nlpm = "off"
+  inlpm = 0
+  dnlpm = 1.
+  dnlpm_dens = 0
+  dnlpm_tprp = 0
+  dorland_nlpm = "off"
+  nlpm_nlps = "off"
   smagorinsky = "off"
-  init = "density"
+  init = "upar"
   phiext = -1.
-  init_amp = 1.e-20
+  init_amp = 1.
   debug = "off"
   igeo = 0
   scan_type = "default"
   scan_number = 1001
-
+  init_single = "on"
+  iky_single = 1
+  ikx_single = 0
+  low_b_all = "off"
+  new_nlpm = "on"
 /
 
 &secondary_test_knobs
-  phi_test_real = 1.e3
-  phi_test_imag = 1.e-20
-  secondary_test = "on"
-  restartfile = "secondary_setup.restart.bin"    ! file that is read at beginning from which modes are fixed
+  phi_test_real = 4
+  phi_test_imag = 4
+  secondary_test = "off"
+  nlpm_test = "on"
+  restartfile = "../setup.restart.bin"    ! file that is read at beginning from which modes are fixed
+  iky_fixed = 0
+  ikx_fixed = 1
+  low_b = "off"
 /
 

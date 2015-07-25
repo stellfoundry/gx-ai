@@ -124,7 +124,9 @@ __global__ void NLPSderiv_isgnX_derivY(cuComplex* fdy, cuComplex* f, float* kx, 
    if(idy<(ny/2+1) && idx<nx && idz<nz) {
      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-     float sgn_kx = copysign(1., kx[idx]);
+     int sgn_kx=0;
+     if(kx[idx]>0) sgn_kx=1;
+     if(kx[idx]<0) sgn_kx=-1;
 
      fdy[index] = sgn_kx*ky[idy]*f[index];
 
@@ -135,7 +137,9 @@ __global__ void NLPSderiv_isgnX_derivY(cuComplex* fdy, cuComplex* f, float* kx, 
     if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
 
-     float sgn_kx = copysign(1., kx[idx]);
+     int sgn_kx=0;
+     if(kx[idx]>0) sgn_kx=1;
+     if(kx[idx]<0) sgn_kx=-1;
 
      fdy[index] = sgn_kx*ky[idy]*f[index];
     }
@@ -154,7 +158,9 @@ __global__ void NLPSderiv_isgnY_derivX(cuComplex* fdx, cuComplex* f, float* kx, 
    if(idy<(ny/2+1) && idx<nx && idz<nz) {
      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-     float sgn_ky = copysign(1., ky[idy]);
+     int sgn_ky=0;
+     if(ky[idy]>0) sgn_ky=1;
+     if(ky[idy]<0) sgn_ky=-1;
 
      fdx[index] = sgn_ky*kx[idx]*f[index];
 
@@ -165,7 +171,9 @@ __global__ void NLPSderiv_isgnY_derivX(cuComplex* fdx, cuComplex* f, float* kx, 
     if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
     unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
 
-     float sgn_ky = copysign(1., ky[idy]);
+     int sgn_ky=0;
+     if(ky[idy]>0) sgn_ky=1;
+     if(ky[idy]<0) sgn_ky=-1;
 
      fdx[index] = sgn_ky*kx[idx]*f[index];
     }
