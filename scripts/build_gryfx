@@ -64,6 +64,11 @@ function print_help {
   echo "To run a specific test:"
   echo " $ ./build_gryfx -c 'tests TESTS=<test>' -s <system> -g <path-to-gs2>"
   echo 
+  echo "By default, GryfX will build in hybrid mode,"
+  echo "which means the zonal flow modes will be evolved"
+  echo "by GS2. To build non-hybrid GryfX, clean and set the -z flag:"
+  echo " $ ./build_gryfx -o clean; ./build_gryfx -z off"
+  echo
   echo "For more specific commands you can use the "
   echo "-c flag:"
   echo " $ ./build_gryfx -c DEBUG=on"
