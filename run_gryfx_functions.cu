@@ -782,12 +782,12 @@ void copy_fixed_modes_into_fields(
     if(pars->nlpm_test) {
       cudaMemset(phi_d, 0, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
       replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, 0.);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, iky, ikx, 0.);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, iky, ikx, 0.);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, iky, ikx, 0.);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, iky, ikx, 0.);
-        replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->upar[ION], sfixed->upar, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tpar[ION], sfixed->tpar, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->tprp[ION], sfixed->tprp, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qpar[ION], sfixed->qpar, iky, ikx, 0.);
+      //  replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->qprp[ION], sfixed->qprp, iky, ikx, 0.);
     } else {
         replace_fixed_mode<<<dimGrid,dimBlock>>>(phi_d, sfixed->phi, iky, ikx, sfixed->S);
         replace_fixed_mode<<<dimGrid,dimBlock>>>(fields_d->dens[ION], sfixed->dens, iky, ikx, sfixed->S);

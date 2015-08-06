@@ -2054,6 +2054,22 @@ __global__ void replace_fixed_mode(cuComplex* f, cuComplex* fixed, int iky, int 
 
 }
 
+__global__ void iso_fixed_mode(cuComplex* f, cuComplex* fixed, int iky, int ikx)
+{
+
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+
+  if(idy<(ny/2+1) && idx<nx && idz<nz) {
+    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+    if(!(idy==iky && idx==ikx)) {
+      f[index].x = 0.;
+      f[index].y = 0.;
+    }
+  }
+
+}
 __global__ void get_fixed_mode(cuComplex* fixed, cuComplex* f, int iky, int ikx)
 {
 

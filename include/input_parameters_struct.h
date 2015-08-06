@@ -356,6 +356,7 @@ typedef struct {
     bool nlpm_test;
     bool new_nlpm; 
     bool hammett_nlpm_interference; 
+    bool nlpm_abs_sgn;
     bool low_b;
     bool low_b_all;
     int iflr;

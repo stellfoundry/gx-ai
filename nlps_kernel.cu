@@ -428,3 +428,36 @@ __global__ void realityAll(cuComplex* f)
 }
 
 
+__global__ void interference_weight(float* result, float* vy, float* vx,   
+                      float* mdx, float* mdy)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+   if(idy<(ny) && idx<nx && idz<nz ) {
+    unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+    
+    float v_abs = sqrt( vx[index]*vx[index] + 0.*vy[index]*vy[index] );
+    float dm_abs = sqrt( mdx[index]*mdx[index] + 0.*mdy[index]*mdy[index] );
+ 
+    if(v_abs == 0. || dm_abs == 0.) result[index] = 0.;    
+    else result[index] = abs(0.*vy[index]*mdy[index] - vx[index]*mdx[index]) / ( v_abs*dm_abs );  
+   }
+  }
+  else {
+   for(int i=0; i<nz/zthreads; i++) {
+    if(idy<(ny) && idx<nx && idz<zthreads ) {
+    unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*ny*zthreads*i;
+    
+    float v_abs = sqrt( vx[index]*vx[index] + vy[index]*vy[index] );
+    float dm_abs = sqrt( mdx[index]*mdx[index] + mdy[index]*mdy[index] );
+    
+    result[index] = abs(vy[index]*mdy[index] - vx[index]*mdx[index]) / ( v_abs*dm_abs );  
+    
+    }
+   }
+  } 
+ 
+}  

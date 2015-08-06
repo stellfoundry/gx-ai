@@ -437,8 +437,8 @@ model_option = "const-curv"
   ivarenna = 1
   new_varenna = "off"
   new_catto = "off"
-  nlpm = "on"
-  inlpm = 2
+  nlpm = "off"
+  inlpm = 0
   dnlpm = 1.0
   dnlpm_dens = -0.4
   dnlpm_tprp = 1.6
@@ -473,12 +473,13 @@ model_option = "const-curv"
   !restartfile = "restart/linear.bin"  
   ostem_rname = .false.
   low_b_all = "off"
-  new_nlpm = "off"
+  new_nlpm = "on"
   hammett_nlpm_interference = "off"
   iflr = 1
   higher_order_moments = "off"
   nlpm_zonal_only = "off"
   nlpm_vol_avg = "off"
+  nlpm_abs_sgn = "on"
 /
 
 &new_varenna_knobs

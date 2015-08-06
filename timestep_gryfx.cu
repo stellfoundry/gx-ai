@@ -817,6 +817,7 @@ bool low_b = ev_h->pars.low_b;
 bool low_b_all = ev_h->pars.low_b_all;
 int iflr = ev_h->pars.iflr;
 bool hammett_nlpm_interference = ev_h->pars.hammett_nlpm_interference;
+bool nlpm_abs_sgn = ev_h->pars.nlpm_abs_sgn;
 
 float beta = ev_h->pars.beta;
 float fapar = ev_h->pars.fapar;
@@ -849,14 +850,21 @@ mu_nlpm3.x = dnlpm * .42;
 mu_nlpm3.y = dnlpm * -.53;
 }
 if(!low_b) {
-mu_nlpm1.x = dnlpm * 1.27;
-mu_nlpm1.y = dnlpm * -2.13;
-mu_nlpm2.x = dnlpm * -.6;
-mu_nlpm2.y = dnlpm * 1.96;
-mu_nlpm3.x = dnlpm * .44;
+float fac=1.;
+if(nlpm_abs_sgn) fac=1.6;
+mu_nlpm1.x = dnlpm * fac * 1.307;
+mu_nlpm1.y = dnlpm * -2.008;
+mu_nlpm2.x = dnlpm * fac * -.546;
+mu_nlpm2.y = dnlpm *  2.008;
+mu_nlpm3.x = dnlpm * fac * .44;
 mu_nlpm3.y = dnlpm * -.53;
+//mu_nlpm1.x = dnlpm * 1.27;
+//mu_nlpm1.y = dnlpm * -2.13;
+//mu_nlpm2.x = dnlpm * -.6;
+//mu_nlpm2.y = dnlpm * 1.96;
+//mu_nlpm3.x = dnlpm * .44;
+//mu_nlpm3.y = dnlpm * -.53;
 }
-
 
   //float kx2Phi_zf_rms;
   //if(nlpm_cutoff_avg) kx2Phi_zf_rms = kx2Phi_zf_rms_avg;
@@ -1026,7 +1034,7 @@ PUSH_RANGE("tpar",4);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, TparOld, mu_nlpm3.x); 
-      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference);
+      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference, nlpm_abs_sgn);
       accum<<<dimGrid,dimBlock>>> (tpar_field, nlps_tmp, 1);
       if(nlpm_vol_avg) {
         field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
@@ -1112,7 +1120,7 @@ PUSH_RANGE("tprp",5);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       add_scaled<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, mu_nlpm1.x+mu_nlpm2.x, DensOld, mu_nlpm1.x, TprpOld); 
-      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference);
+      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference, nlpm_abs_sgn);
       accum<<<dimGrid,dimBlock>>> (tprp_field, nlps_tmp, 1);
       if(nlpm_vol_avg) {
         field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
@@ -1187,7 +1195,7 @@ PUSH_RANGE("qpar",1);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
       scale<<<dimGrid,dimBlock>>>(ev_hd->tmp.CXYZ2, QparOld, mu_nlpm3.x); 
-      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference);
+      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference, nlpm_abs_sgn);
       accum<<<dimGrid,dimBlock>>> (qpar_field, nlps_tmp, 1);
       if(nlpm_vol_avg) {
         field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
@@ -1266,7 +1274,7 @@ PUSH_RANGE("qprp",2);
       if(low_b) phi_flr_low_b<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv,iflr);
       else phi_flr<<<dimGrid,dimBlock>>>(phi_tmp, Phi, s.rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
       if(nlpm_zonal_only) zonal_only<<<dimGrid,dimBlock>>>(phi_tmp);
-      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference);
+      NLPS_abs(nlps_tmp, phi_tmp, ev_hd->tmp.CXYZ2, kx, ky, hammett_nlpm_interference, nlpm_abs_sgn);
       accum<<<dimGrid,dimBlock>>> (qprp_field, nlps_tmp, 1);
       if(nlpm_vol_avg) {
         field_line_avg_xyz<<<dimGrid,dimBlock>>>(nlps_tmp, nlps_tmp, jacobian, 1./fluxDen);
