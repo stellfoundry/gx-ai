@@ -54,6 +54,10 @@ function print_help {
   echo "To see a list of available systems:"
   echo " $ ./build_gryfx -o ls"
   echo 
+  echo "GryfX requires running on a node with a GPU."
+  echo "To start an interactive session on Stampede, use"
+  echo " $ idev -p gpudev -t hh:mm:ss"
+  echo
   echo "To run the tests: "
   echo " $ ./build_gryfx -c 'tests' -s <system> -g <path-to-gs2>"
   echo 
