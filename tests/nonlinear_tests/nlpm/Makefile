@@ -16,11 +16,11 @@ all: nlpm
 	##$(call RUNCOMMAND,nlpm,nlpm_phix_tpar.in,)
 	##$(call RUNCOMMAND,nlpm,nlpm_phix_tprp.in,)
 	#$(call RUNCOMMAND,nlpm,nlpm_phix_odd.in,)
-	$(call RUNCOMMAND,../../../gryfx,nlpm_setup_phiy.in,)
-	$(call RUNCOMMAND,nlpm,nlpm_phiy_dens.in,)
+	#$(call RUNCOMMAND,../../../gryfx,nlpm_setup_phiy.in,)
+	#$(call RUNCOMMAND,nlpm,nlpm_phiy_dens.in,)
 	#$(call RUNCOMMAND,nlpm,nlpm_phiy_tpar.in,)
 	#$(call RUNCOMMAND,nlpm,nlpm_phiy_tprp.in,)
-	$(call RUNCOMMAND,nlpm,nlpm_phiy_odd.in,)
+	#$(call RUNCOMMAND,nlpm,nlpm_phiy_odd.in,)
 endif
 
 nlpm.o:  ${TEST_MODS} 

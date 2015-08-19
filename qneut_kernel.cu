@@ -301,7 +301,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* Num_tmp, cuComplex* 
 */            
 
   
-__global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
+__global__ void convert_guiding_center_to_particle_space(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
 		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
   unsigned int idy = get_idy(); 

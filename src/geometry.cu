@@ -252,7 +252,7 @@ void run_general_geometry_module(input_parameters_struct * pars, grids_struct * 
 }
 void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile) 
 {    
-  int nLines;
+  int nLines=0;
   fpos_t* lineStartPos;
   int ch;
 

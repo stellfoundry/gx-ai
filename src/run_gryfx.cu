@@ -620,12 +620,12 @@ POP_RANGE;
       if(tm->counter%nsave == 0) gryfx_finish_diagnostics(ev_h, ev_hd, false);
       if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
     }
-/*
+
     if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
       fclose(checkstop);
       ctrl->stopcount++;
     }     
-*/
+
 //#ifdef GS2_zonal
     if(iproc==0) {
 #ifdef GS2_zonal
