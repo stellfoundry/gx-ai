@@ -13,13 +13,13 @@ PUSH_RANGE("qneut", 0);
       add_scaled<<<dimGrid,dimBlock>>>(nbartot_field, 1., nbartot_field, 1., nbar_tmp);
     }
     if(iphi00==1) {
-      qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
+      qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
     }
     if(iphi00==2) {
       qneutAdiab_part1<<<dimGrid,dimBlock>>>(PhiAvgNum_tmp, nbartot_field, jacobian, species_d, 
-					     kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
+					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
       qneutAdiab_part2<<<dimGrid,dimBlock>>>(Phi, PhiAvgNum_tmp, nbartot_field, PhiAvgDenom, jacobian, species_d, 
-					     kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
+					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
     }
   } else {
     for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion densities
@@ -27,7 +27,7 @@ PUSH_RANGE("qneut", 0);
       add_scaled<<<dimGrid,dimBlock>>>(nbartot_field, 1., nbartot_field, 1., nbar_tmp);
     }
     qneut<<<dimGrid,dimBlock>>>(Phi, nbartot_field, Dens[nSpecies], species_d,
-					     kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
+					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
     if(fapar > 0.) {
       for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion velocities
         // for electromagnetic ions, the 'upar' and 'qprp' evolved by the code are actually 
@@ -52,7 +52,7 @@ PUSH_RANGE("qneut", 0);
         add_scaled<<<dimGrid,dimBlock>>>(Qprp[s], 1., Qprp[s], species[s].vt*species[s].zt, nbar_tmp);
       }
       ampere<<<dimGrid,dimBlock>>>(Apar, nbartot_field, Upar[nSpecies], beta,
-					     kx, ky, shat, gds2, gds21, gds22, bmagInv, tau);
+					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
     }
   }
 #ifdef PROFILE

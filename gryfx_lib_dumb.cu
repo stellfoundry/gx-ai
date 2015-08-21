@@ -65,7 +65,7 @@ float cfl;
 float maxdt= .02;  //.02;
 float g_exb;
 int jtwist;
-float tau;
+float ti_ov_te;
 int nSteps=100000;
 float fluxDen;
 
@@ -140,7 +140,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars){
     shat = .776;
     drhodpsi = 1;
     float shift = 0;    
-    tau = 1.;
+    ti_ov_te = 1.;
     *&Nz =32;
     float epsl = 1;
     

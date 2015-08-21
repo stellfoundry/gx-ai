@@ -1,4 +1,5 @@
 #define BOOL_TO_STR ?"true":"false"
+#include <stdio.h>
 #include "cufft.h"
 #include "float.h"
 #include "unit_tests.h"

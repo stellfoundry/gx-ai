@@ -738,7 +738,7 @@ inline void fluxes_kxky(float* flux_tmpXY, float *flux1_tmpXY,float *flux2_tmpXY
   add_scaled<<<dimGrid,dimBlock>>>(flux_tmpXY, s.dens*s.temp, flux1_tmpXY, 
   						s.dens*s.temp, flux2_tmpXY2, Nx, Ny, 1);
     
-  //wpfx[s+nSpecies*time] = (flux1+flux2) * n[s] * tau[s];
+  //wpfx[s+nSpecies*time] = (flux1+flux2) * n[s] * ti_ov_te[s];
 }
 
 

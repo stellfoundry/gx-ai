@@ -489,11 +489,11 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
 //      if(nSpecies!=1) { 
 //	qneut <<< dimGrid,dimBlock >>> (fields_hd->phi, fields_hd->dens[ELECTRON], fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d); 
 //      } else if(ELECTRON == 0) { 
-//	qneut <<< dimGrid,dimBlock >>> (fields_hd->phi, pars_h->tite, fields_hd->dens[ELECTRON], fields_hd->tprp[ELECTRON], pars_h->species[ELECTRON].rho, pars_d, grids_d, geo_d);
+//	qneut <<< dimGrid,dimBlock >>> (fields_hd->phi, pars_h->ti_ov_te, fields_hd->dens[ELECTRON], fields_hd->tprp[ELECTRON], pars_h->species[ELECTRON].rho, pars_d, grids_d, geo_d);
 //      } else if(ION == 0) {
-//	//qneut <<< dimGrid,dimBlock >>> (Phi, tau, Dens[ION], Tprp[ION], species[ION].rho, kx, ky,  gds2, gds21, gds22, bmagInv);
-//	qneutAdiab_part1 <<< dimGrid,dimBlock >>> (tmp->CXYZ, fields_hd->field, tau, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
-//	qneutAdiab_part2 <<< dimGrid,dimBlock >>> (fields_hd->phi, tmp->CXYZ, fields_hd->field, tau, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
+//	//qneut <<< dimGrid,dimBlock >>> (Phi, ti_ov_te, Dens[ION], Tprp[ION], species[ION].rho, kx, ky,  gds2, gds21, gds22, bmagInv);
+//	qneutAdiab_part1 <<< dimGrid,dimBlock >>> (tmp->CXYZ, fields_hd->field, ti_ov_te, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
+//	qneutAdiab_part2 <<< dimGrid,dimBlock >>> (fields_hd->phi, tmp->CXYZ, fields_hd->field, ti_ov_te, fields_hd->dens[ION], fields_hd->tprp[ION], pars_h->species[ION].rho, pars_d, grids_d, geo_d);
 //      }
 //    }
  
@@ -931,5 +931,5 @@ void initialize_phi_avg_denom(
 {
     cudaMalloc((void**) &PhiAvgDenom, sizeof(float)*grids_d->Nx);
     cudaMemset(PhiAvgDenom, 0, sizeof(float)*grids_d->Nx);
-    phiavgdenom<<<cdims->dimGrid,cdims->dimBlock>>>(PhiAvgDenom, tmpXZ, geo_d->jacobian, species_d, grids_d->kx, grids_d->ky, pars_h->shat, geo_d->gds2, geo_d->gds21, geo_d->gds22, geo_d->bmagInv, tau);  
+    phiavgdenom<<<cdims->dimGrid,cdims->dimBlock>>>(PhiAvgDenom, tmpXZ, geo_d->jacobian, species_d, grids_d->kx, grids_d->ky, pars_h->shat, geo_d->gds2, geo_d->gds21, geo_d->gds22, geo_d->bmagInv, ti_ov_te);  
 }

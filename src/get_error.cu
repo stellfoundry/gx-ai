@@ -1,4 +1,5 @@
 #include "cufft.h"
+#include <stdio.h>
 
 int getError() {
 	//printf("Getting error...\n");

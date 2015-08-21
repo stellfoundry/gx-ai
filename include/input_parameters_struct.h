@@ -18,7 +18,7 @@ EXTERN_SWITCH int nstop;
 EXTERN_SWITCH float cfl;
 EXTERN_SWITCH float g_exb;
 EXTERN_SWITCH int jtwist;
-EXTERN_SWITCH float tau;
+EXTERN_SWITCH float ti_ov_te;
 //
 //globals defined in eik.out
 EXTERN_SWITCH float drhodpsi, rmaj, shat, kxfac, qsf, gradpar, eps, aminor, epsl;
@@ -171,7 +171,7 @@ typedef struct {
    float kxfac;
 
   // Namelist: parameters
-   float tite;
+   float ti_ov_te;
    float beta;
  //  float zeff;
 
