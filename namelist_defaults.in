@@ -338,10 +338,6 @@ model_option = "const-curv"
  vnewk=  0.0
  type='ion'
 /
-&dist_fn_species_knobs_1
- fexpr= 0.45
- bakdif= 0.05
-/
 &species_parameters_2
  z=     -1.0
  mass=   2.7e-4
@@ -352,6 +348,21 @@ model_option = "const-curv"
  uprim=  0.0
  vnewk=  0.0
  type='electron'
+/
+&species_parameters_3
+ z=   1.0
+ mass=   1.0
+ dens=   1.0
+ temp=   1.0
+ tprim=  6.9
+ fprim=  2.2
+ uprim=  0.0
+ vnewk=  0.0
+ type='ion'
+/
+&dist_fn_species_knobs_1
+ fexpr= 0.45
+ bakdif= 0.05
 /
 &dist_fn_species_knobs_2
  fexpr= 0.45

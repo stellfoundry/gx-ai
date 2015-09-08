@@ -473,6 +473,10 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
 
   pars->adiabatic_electrons = true;
    
+    int ionspec = 0;   
+    int ispec = 1;
+    float mass;
+    bool main_ion_spec_found = false;
   for(int s=1; s<nSpecies+1; s++) {
 //		printf("s= %d\n", s);
 
@@ -482,13 +486,10 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
     char* type;
     fnr_get_string(&namelist_struct, namelist, "type", &type); 
   
-    int ionspec = 0;   
-    int ispec = 1;
-    float mass;
  
     if(strcmp(type,"ion") == 0) {
       fnr_get_float(&namelist_struct, namelist, "mass", &mass);
-      if(mass == 1.) {ionspec=0;} // main ion species mass assumed to be 1. main ion species indexed 0.
+      if(mass == 1. && !main_ion_spec_found) {ionspec=0; main_ion_spec_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
       else {ionspec = ispec; ispec++;}
       species[ionspec].mass = mass;
       fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);
@@ -531,12 +532,12 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
       pars->adiabatic_electrons = false;
    
     }   
-		//free(type);
-		fnr_free(&namelist_struct);
-		fnr_free(&namelist_defaults);
 
 
   }
+		//free(type);
+		fnr_free(&namelist_struct);
+		fnr_free(&namelist_defaults);
 
 
 }

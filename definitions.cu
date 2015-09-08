@@ -16,8 +16,6 @@ void definitions(everything_struct * ev)
   
   for(int s=0; s<ev->pars.nspec; s++) {
     species[s].vt = sqrt(species[s].temp/species[s].mass);
-    species[s].zstm = species[s].z/sqrt(species[s].temp*species[s].mass);
-    species[s].tz = species[s].temp/species[s].z;
     species[s].zt = species[s].z/species[s].temp;
     species[s].rho = sqrt(species[s].temp*species[s].mass)/species[s].z;
   }

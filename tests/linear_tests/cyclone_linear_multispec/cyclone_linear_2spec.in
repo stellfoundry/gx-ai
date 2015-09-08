@@ -144,7 +144,7 @@
 !EVOLVED SPECIES  
 !==============================
 &species_knobs
- nspec = 1 ! Number of kinetic species evolved.
+ nspec = 2 ! Number of kinetic species evolved.
 /
 
 !==============================
@@ -153,7 +153,18 @@
 &species_parameters_1
  z = 1. ! Charge
  mass = 1. ! Mass
- dens = 1. ! Density	
+ dens = .75 ! Density	
+ temp = 1. ! Temperature
+ tprim = 6.9 ! -1/T (dT/drho)
+ fprim = 2.2 ! -1/n (dn/drho)
+ uprim = 0.0 ! ?
+ vnewk = 0. ! collisionality parameter
+ type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
+/
+&species_parameters_2
+ z = 1. ! Charge
+ mass = 1. ! Mass
+ dens = .25 ! Density	
  temp = 1. ! Temperature
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
@@ -162,11 +173,11 @@
  type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
 /
 
-&species_parameters_2
+&species_parameters_3
  z = 1. ! Charge
  mass = 1. ! Mass
- dens = .5 ! Density	
- temp = .5 ! Temperature
+ dens = 0.00001 ! Density	
+ temp = 1. ! Temperature
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?
