@@ -34,15 +34,19 @@ void alloc_dealloc(void * pointer_to_array_pointer, int allocate_or_deallocate, 
 					//	break;
 					case TYPE_INT:
 						*void_ptrptr = (void *)malloc(sizeof(int)*size);
+                                                memset(*void_ptrptr, 0, sizeof(int)*size);
 						break;
 					case TYPE_FLOAT:
 						*void_ptrptr = (void *)malloc(sizeof(float)*size);
+                                                memset(*void_ptrptr, 0., sizeof(float)*size);
 						break;
 					case TYPE_CUCOMPLEX:
 						*void_ptrptr = (void *)malloc(sizeof(cuComplex)*size);
+                                                memset(*void_ptrptr, 0., sizeof(cuComplex)*size);
 						break;
 					case TYPE_CUCOMPLEX_PTR:
 						*void_ptrptr = (void *)malloc(sizeof(cuComplex *)*size);
+                                                //memset(*void_ptrptr, 0., sizeof(cuComplex*)*size);
 						break;
 					default:
 						printf("Unknown type %d in alloc_dealloc\n", type);
@@ -58,15 +62,19 @@ void alloc_dealloc(void * pointer_to_array_pointer, int allocate_or_deallocate, 
 				switch(type){
 					case TYPE_INT:
   					cudaMalloc(void_ptrptr, sizeof(int)*size);
+                                        cudaMemset(*void_ptrptr, 0, sizeof(int)*size);
 						break;
 					case TYPE_FLOAT:
   					cudaMalloc(void_ptrptr, sizeof(float)*size);
+                                        cudaMemset(*void_ptrptr, 0., sizeof(float)*size);
 						break;
 					case TYPE_CUCOMPLEX:
   					cudaMalloc(void_ptrptr, sizeof(cuComplex)*size);
+                                        cudaMemset(*void_ptrptr, 0., sizeof(cuComplex)*size);
 						break;
 					case TYPE_CUCOMPLEX_PTR:
   					cudaMalloc(void_ptrptr, sizeof(cuComplex *)*size);
+                                        //cudaMemset(*void_ptrptr, 0., sizeof(cuComplex*)*size);
 						break;
 					default:
 						printf("Unknown type %d in alloc_dealloc\n", type);
@@ -196,6 +204,7 @@ void allocate_fields(int aod, int ml, grids_struct * grids, fields_struct * fiel
 	allocate_field_species_array(&fields->qprp1, aod, ml, grids);
 
   fields1->phi = fields->phi1;
+  fields1->apar = fields->apar1;
   fields1->dens = fields->dens1;
   fields1->upar = fields->upar1;
   fields1->tpar = fields->tpar1;
