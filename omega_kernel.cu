@@ -39,7 +39,7 @@ __global__ void iOmegaStar(cuComplex* result, cuComplex* f, float* ky)
   }   
 }
 
-__device__ cuComplex iOmegaD(float rho, float vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
+__device__ cuComplex iOmegaD(float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
 {
   float shatInv;
   //if (abs(shat)>1.e-8) {
@@ -49,7 +49,7 @@ __device__ cuComplex iOmegaD(float rho, float vt, float kx, float ky, float shat
   //}
   cuComplex iomegad;
   iomegad.x = 0;
-  iomegad.y = rho*vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
+  iomegad.y = ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
  
   return iomegad;
 }
@@ -67,8 +67,8 @@ __global__ void iOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, fl
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       cuComplex tmp;
-      tmp.x = -omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].y;
-      tmp.y =  omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].x;
+      tmp.x = -omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].y;
+      tmp.y =  omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].x;
       result[index] = tmp;		 
     }
   }
@@ -80,8 +80,8 @@ __global__ void iOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, fl
 	unsigned int IDZ = idz + zthreads*i;
 	
         cuComplex tmp;
-	tmp.x = -omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].y;
-	tmp.y =  omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].x;
+	tmp.x = -omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].y;
+	tmp.y =  omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].x;
 	result[index] = tmp;
         
       }
@@ -101,8 +101,8 @@ __global__ void iOmegaD_ky0(cuComplex* result, cuComplex* f, float rho, float vt
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
       cuComplex tmp;
-      tmp.x = -omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].y;
-      tmp.y =  omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].x;
+      tmp.x = -omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].y;
+      tmp.y =  omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]) * f[index].x;
       result[index] = tmp;
       		 
     }
@@ -115,8 +115,8 @@ __global__ void iOmegaD_ky0(cuComplex* result, cuComplex* f, float rho, float vt
 	unsigned int IDZ = idz + zthreads*i;
 	
         cuComplex tmp;
-	tmp.x = -omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].y;
-	tmp.y =  omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].x;
+	tmp.x = -omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].y;
+	tmp.y =  omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]) * f[index].x;
 	result[index] = tmp;
         
       }
@@ -140,7 +140,7 @@ __global__ void absOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, 
 	result[index].y = 0;
       }
       else {
-        result[index] = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz])) * f[index];
+        result[index] = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz])) * f[index];
       }
       
     }
@@ -157,7 +157,7 @@ __global__ void absOmegaD(cuComplex* result, cuComplex* f, float rho, float vt, 
 	  result[index].y = 0;
 	}
 	else {
-	  result[index] = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ])) * f[index];
+	  result[index] = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ])) * f[index];
         }
         
       }

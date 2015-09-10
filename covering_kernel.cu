@@ -517,3 +517,91 @@ __global__ void reality_covering(cufftComplex* g)
  
 }  
       
+__global__ void zderiv_covering_invert(cufftComplex* f, int nLinks, int nChains, float* kz, int icovering)
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  if(nLinks*icovering <= zthreads) {
+    if(i<nz && p<icovering*nLinks && n<nChains) {
+      unsigned int index= i + p*nz + n*nz*nLinks*icovering;
+      unsigned int kidx= i + p*nz;
+
+      cuComplex i_kz;
+      i_kz.x = 0.;
+      i_kz.y = kz[kidx];
+
+      cuComplex tmp;
+      if(i_kz.y != 0.) tmp = f[index] / i_kz;
+      else {
+        tmp.x = 0; tmp.y = 0.;
+      }
+
+      f[index] = tmp;
+      
+    }
+  }
+  else {
+    for(int a=0; a<nLinks*icovering/zthreads; a++) {
+      if(i<nz && p<zthreads && n<nChains) { 
+        unsigned int P = p+a*zthreads;
+	unsigned int index = i + P*nz + n*nz*nLinks*icovering;
+	unsigned int kidx = i + P*nz;
+		
+        cuComplex i_kz;
+        i_kz.x = 0.;
+        i_kz.y = kz[kidx];
+
+        cuComplex tmp;
+        tmp = f[index] / i_kz;
+
+        f[index] = tmp;
+      }
+    }
+  }    	  
+}
+
+__global__ void zderiv_covering_invert_all(cuComplex** f, int* nLinks, int* nChains, float** kz, int icovering, int nClasses)
+{
+  unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
+  unsigned int n = __umul24(blockIdx.y,blockDim.y)+threadIdx.y;
+  unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;
+  
+  for(int c=0; c<nClasses; c++) {
+    if(nLinks[c]*icovering <= zthreads) {
+      if(i<nz && p<icovering*nLinks[c] && n<nChains[c]) {
+        unsigned int index= i + p*nz + n*nz*nLinks[c]*icovering;
+        unsigned int kidx= i + p*nz;
+        
+        cuComplex i_kz;
+        i_kz.x = 0.;
+        i_kz.y = kz[c][kidx];
+
+        cuComplex tmp;
+        tmp = f[c][index] / i_kz;
+
+        f[c][index] = tmp;
+        
+      }
+    }
+    else {
+      for(int a=0; a<nLinks[c]*icovering/zthreads; a++) {
+        if(i<nz && p<zthreads && n<nChains[c]) { 
+          unsigned int P = p+a*zthreads;
+          unsigned int index = i + P*nz + n*nz*nLinks[c]*icovering;
+          unsigned int kidx = i + P*nz;
+          	
+          cuComplex i_kz;
+          i_kz.x = 0.;
+          i_kz.y = kz[c][kidx];
+
+          cuComplex tmp;
+          tmp = f[c][index] / i_kz;
+
+          f[c][index] = tmp;
+        }
+      }
+    }    	  
+  }
+}

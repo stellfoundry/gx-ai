@@ -214,9 +214,10 @@ PUSH_RANGE("gryfx diagnostics", 5);
         mask<<<dimGrid,dimBlock>>>(Phi);
         //Copy Phi to host for writing
         // this is incredibly slow, should never be done in timestep loop.
-        //if(ev_h->pars.write_netcdf) cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
-  
-        
+        if(ev_h->pars.write_phi) {
+          cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
+          kxkyz0TimeWrite(files_h->phifile, ev_h->fields.phi, tm_h->runtime);
+        }
         //print growth rates to files   
         //omegaWrite(omegafile,gammafile,omegaAvg_h,runtime); 
         
@@ -332,7 +333,7 @@ POP_RANGE;
             omegaWrite(files_h->omegafile,files_h->gammafile,outs_h->omega_avg,tm_h->dtSum,tm_h->runtime); 
           }
           else {
-            cudaMemcpy(outs_h->omega_avg, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
+            cudaMemcpy(outs_h->omega_avg, outs_d->omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
             omegaWrite(files_h->omegafile,files_h->gammafile,outs_h->omega_avg,tm_h->runtime); 
           }             

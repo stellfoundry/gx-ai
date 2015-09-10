@@ -138,6 +138,14 @@ void linear_timestep(
   everything_struct * ev_d 
 );
 
+void linear_electron_timestep(
+  int is,
+  int first_half_step,
+  everything_struct * ev_h,
+  everything_struct * ev_hd,
+  everything_struct * ev_d 
+);
+
 //From nlpm.cu
 void filterNLPM(
   int is,
@@ -166,4 +174,6 @@ void filterHyper_iso(int is, fields_struct * fields_d,
 
 
 //From qneut.cu
-void qneut(cuComplex* Phi, cuComplex* Apar, cuComplex** Dens, cuComplex** Tprp, cuComplex** Upar, cuComplex** Qprp, cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, specie* species, specie* species_d, bool adiabatic, float fapar, float beta);
+void qneut(cuComplex* Phi, cuComplex* Apar, cuComplex** Dens, cuComplex** Tprp, cuComplex** Upar, cuComplex** Qprp, 
+  cuComplex* PhiAvgNum_tmp, cuComplex* nbar_tmp, cuComplex* nbartot_field, cuComplex* ubar_tmp, cuComplex* ubartot_field, 
+  specie* species, specie* species_d, input_parameters_struct* pars);// bool adiabatic, float fapar, float beta, bool snyder);

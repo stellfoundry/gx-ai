@@ -13,7 +13,7 @@ __global__ void growthRate(cuComplex *omega, cuComplex *phinew, cuComplex *phiol
   {
     unsigned int index = idy + (ny/2+1)*idx;
     
-    cuComplex ratio = phinew[index+nx*(ny/2+1)*((int)(.5*nz+1))] / phiold[index+nx*(ny/2+1)*((int)(.5*nz+1))];
+    cuComplex ratio = phinew[index+nx*(ny/2+1)*((int)(.5*nz))] / phiold[index+nx*(ny/2+1)*((int)(.5*nz))];
     
     cuComplex log;
     log.x = logf(cuCabsf(ratio));
@@ -80,6 +80,32 @@ __global__ void normalize_covering(cuComplex *f, cuComplex *fnorm, float norm, i
   
 }
 
+__global__ void prevent_overflow_by_mode(cuComplex* result,cuComplex* b, float lim, float scaler)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*(nx)*idz;
+      unsigned int idxyz0 = idy + (ny/2+1)*idx + (ny/2+1)*(nx)*(nz/2);
+    
+      if( abs(b[idxyz0].x) > lim || abs(b[idxyz0].y) > lim ) result[index] = scaler*b[index]; 
+    }
+  }
+    
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+        unsigned int idxyz0 = idy + (ny/2+1)*idx + (ny/2+1)*(nx)*(nz/2);
+	
+        if( abs(b[idxyz0].x) > lim || abs(b[idxyz0].y) > lim ) result[index] = scaler*b[index]; 
+      }
+    }
+  }    	
+} 
 
 __global__ void get_kperp(float* kperp, int z, float rho, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {

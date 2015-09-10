@@ -105,8 +105,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.02 ! Time step
- nstep = 2500 ! Maximum number of timesteps
+ delt = 0.01 ! Time step
+ nstep = 7500 ! Maximum number of timesteps
 /
 
 !==============================
@@ -144,17 +144,17 @@
 !EVOLVED SPECIES  
 !==============================
 &species_knobs
- nspec = 3 ! Number of kinetic species evolved.
+ nspec = 1 ! Number of kinetic species evolved.
 /
 
 !==============================
 !SPECIES PARAMETERS 1 
 !==============================
 &species_parameters_1
- z = .5 ! Charge
- mass = .5 ! Mass
+ z = -1. ! Charge
+ mass = 1. ! Mass
  dens = 1. ! Density	
- temp = .5 ! Temperature
+ temp = 1. ! Temperature
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?
@@ -162,10 +162,10 @@
  type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
 /
 &species_parameters_2
- z = .5 ! Charge
- mass = .5 ! Mass
- dens = 1. ! Density	
- temp = .5 ! Temperature
+ z =  .5 ! Charge
+ mass = 1. ! Mass
+ dens = .5 ! Density	
+ temp = 1. ! Temperature
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?

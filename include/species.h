@@ -1,5 +1,4 @@
 #define ION 0
-#define ELECTRON 1
 
 
 // Defines the species identifiers and the specie struct

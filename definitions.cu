@@ -16,10 +16,16 @@ void definitions(everything_struct * ev)
   
   for(int s=0; s<ev->pars.nspec; s++) {
     species[s].vt = sqrt(species[s].temp/species[s].mass);
+    //species[s].zstm = species[s].z/sqrt(species[s].temp*species[s].mass);
+    //species[s].tz = species[s].temp/species[s].z;
     species[s].zt = species[s].z/species[s].temp;
     species[s].rho = sqrt(species[s].temp*species[s].mass)/species[s].z;
   }
   
+  if(!ev->pars.adiabatic_electrons) {
+    ev->pars.ti_ov_te = species[0].temp / species[ev->pars.nspec-1].temp;
+    ev->pars.me_ov_mi = species[ev->pars.nspec-1].mass / species[0].mass;
+  }
   
   ev->damps.D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
   ev->damps.D_prp = sqrt(M_PI)/2.;

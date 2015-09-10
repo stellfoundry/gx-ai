@@ -65,8 +65,8 @@ void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grid
   if(pars->debug) printf("kperp4_max_Inv = %f\n", grids_h->kperp4_max_Inv);
 
 
-  zero <<< cdims->dimGrid,cdims->dimBlock >>> (grids->jump,1,grids->Ny,1);
-  zero <<< cdims->dimGrid,cdims->dimBlock >>> (grids->kx_shift,1,grids->Ny,1);
+  zero <<< cdims->dimGrid,cdims->dimBlock >>> (grids->jump,1,grids->Ny_complex,1);
+  zero <<< cdims->dimGrid,cdims->dimBlock >>> (grids->kx_shift,1,grids->Ny_complex,1);
   cudaMemcpy(grids_h->kx,grids->kx, sizeof(float)*grids->Nx, cudaMemcpyDeviceToHost);
   if(pars->debug) getError("after k memcpy 1");
   cudaMemcpy(grids_h->ky,grids->ky, sizeof(float)*grids->Ny_complex, cudaMemcpyDeviceToHost);
@@ -360,9 +360,9 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
   
   	      //loop over z here to get rid of randomness in z in initial condition
   	      for(int k=0; k<Nz; k++) {
-  	        int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  		  init_h[index].x = samp;//*cos(1*z_h[k]);
-  	          init_h[index].y = samp;//init_amp;//*cos(1*z_h[k]);
+  	          int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
+  		  init_h[index].x = samp*cos(pars_h->kpar_init*z_h[k]);//*cos(z_h[k]/(2.*Zp));
+  	          init_h[index].y = samp*cos(pars_h->kpar_init*z_h[k]);//*cos(z_h[k]/(2.*Zp));
   	      }
   	      
   	      
@@ -399,19 +399,21 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
     
     zeroC <<< dimGrid,dimBlock >>> (fields_hd->phi1);
     zeroC <<< dimGrid,dimBlock >>> (fields_hd->phi);
+    zeroC <<< dimGrid,dimBlock >>> (fields_hd->apar1);
+    zeroC <<< dimGrid,dimBlock >>> (fields_hd->apar);
     if(DEBUG) getError("run_gryfx.cu, after zero");
 
     if(pars_h->init == DENS) {
       if(pars_h->debug) getError("initializing density");    
       
-      cudaMemcpy(fields_hd->dens[ION], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
-      if(DEBUG) getError("after copy");    
+      for(int s=0; s<nSpecies; s++) {
+        cudaMemcpy(fields_hd->dens[s], init_h, sizeof(cuComplex)*NxNycNz, cudaMemcpyHostToDevice);
 
-      //enforce reality condition -- this is CRUCIAL when initializing in k-space
-      reality <<< dimGrid,dimBlock >>> (fields_hd->dens[ION]);
+        //enforce reality condition -- this is CRUCIAL when initializing in k-space
+        reality <<< dimGrid,dimBlock >>> (fields_hd->dens[s]);
       
-      mask<<< dimGrid, dimBlock >>>(fields_hd->dens[ION]);  
-
+        mask<<< dimGrid, dimBlock >>>(fields_hd->dens[s]);  
+      }
     }
     
     if(pars_h->init == UPAR) {
@@ -511,7 +513,8 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
   
         //EGH: Why do we only do an initial qneut for RH_equilibrium?
         qneut(fields_hd->phi, fields_hd->apar, fields_hd->dens, fields_hd->tprp, fields_hd->upar, fields_hd->qprp,
-          tmp->CXYZ, tmp->CXYZ, fields_hd->field, species, pars_d->species, pars_h->adiabatic_electrons, pars_h->fapar, pars_h->beta);
+          tmp->CXYZ, tmp->CXYZ, fields_hd->field, tmp->CXYZ, fields_hd->field, species, pars_d->species, pars_h);
+          //pars_h->adiabatic_electrons, pars_h->fapar, pars_h->beta, pars_h->snyder_electrons);
   
       }
       

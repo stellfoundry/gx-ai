@@ -474,6 +474,7 @@ model_option = "const-curv"
   init_single = "off"
   iky_single = 1
   ikx_single = 0
+  kpar_init = 0.
 
   igeo = 0
   shaping_ps = 1.6
@@ -491,6 +492,9 @@ model_option = "const-curv"
   nlpm_zonal_only = "off"
   nlpm_vol_avg = "off"
   nlpm_abs_sgn = "on"
+
+  snyder_electrons = "off"
+  stationary_ions = "off"
 /
 
 &new_varenna_knobs

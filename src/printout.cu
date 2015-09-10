@@ -43,10 +43,10 @@ void print_final_summary(everything_struct * ev, FILE * outfile){
     printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
     for(int s=0; s<nSpecies; s++) {
       printf("species %d parameters:\n",s+1);
-      printf("tprim=%f  fprim=%f  dens=%f  temp=%f  z=%f  mass=%f\n", species[s].tprim, species[s].fprim, species[s].dens, species[s].temp, species[s].z, species[s].mass); 
+      printf("tprim=%f  fprim=%f  dens=%f  temp=%f  z=%f  mass=%f\n", species[s].tprim, species[s].fprim, species[s].dens, species[s].temp, species[s].z, species[s].mass);
     }
     if(ev->pars.adiabatic_electrons) printf("[Adiabatic electrons]\n");
-    //if(ev->pars.snyder_electrons) printf("[Snyder electromagnetic passing electron model]\n");
+    if(ev->pars.snyder_electrons) printf("[Snyder electromagnetic passing electron model]\n");
     if(LINEAR) printf("[Linear]\t");
     else printf("[Nonlinear]\t");
     if(NO_ZDERIV) printf("[No zderiv]\t");

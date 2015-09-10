@@ -103,7 +103,7 @@ __device__ float wgt(float b) {
   return 1.-gam0;
 }
 
-__device__ float omegaD(float rho, float vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
+__device__ float omegaD(float rho_vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
 {
   float shatInv;
   //if (abs(shat)>1.e-8) {
@@ -113,7 +113,7 @@ __device__ float omegaD(float rho, float vt, float kx, float ky, float shat, flo
   //}
 
   
-  return rho*vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
+  return rho_vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
   
 }
 

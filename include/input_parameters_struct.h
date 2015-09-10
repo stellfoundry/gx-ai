@@ -262,6 +262,10 @@ typedef struct {
 
    
    bool adiabatic_electrons;
+   bool snyder_electrons;
+   bool stationary_ions;
+   float me_ov_mi;
+   float nu_ei;
 
 
   // Namelist: dist_fn_species_knobs_2
@@ -353,6 +357,7 @@ typedef struct {
     int ikx_single;
     int iky_fixed;
     int ikx_fixed;
+    float kpar_init;
     bool nlpm_test;
     bool new_nlpm; 
     bool hammett_nlpm_interference; 

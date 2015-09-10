@@ -26,15 +26,20 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
 NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledataio/lib -l simpledataio
+ifdef $(TACC_FFTW3_LIB)
 FFT_LIB = -L$(TACC_FFTW3_LIB) -lfftw3 -lfftw3f
+else
+FFT_LIB = 
+endif
 FFT_INC = -I$$TACC_FFTW3_INC
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
+NETCDF = -I ${TACC_NETCDF_INC} -L${TACC_NETCDF_LIB} -lnetcdf
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 
-FORTRAN_LIBS= -L/opt/apps/intel13/mvapich2/1.9/lib -lmpichf90 -lmpich
+FORTRAN_LIBS= -L ${MPICH_HOME}/lib -lmpichf90 -lmpich
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

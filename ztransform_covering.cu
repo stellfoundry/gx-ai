@@ -11,6 +11,8 @@ inline void ZTransformCovering(int nLinks, int nChains, int* ky, int* kx, cuComp
   
   if(abs=="abs") {
     zderiv_abs_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
+  } else if (abs=="invert") {
+    zderiv_covering_invert<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   } else {
     zderiv_covering<<<dimGridCovering, dimBlockCovering,0,stream>>> (g, nLinks, nChains, kz_covering, icovering);
   }

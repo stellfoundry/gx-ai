@@ -22,7 +22,7 @@ __global__ void density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuCo
       
       cuComplex phi_nd = phi[index] * ( zt * (2.*sgam0(bidx) + flr(bidx)) ); 
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
       dens_field[index] = iomegastar*phi_n - iomegad*(phi_nd + 2.*dens[index] + tpar[index] + tprp[index]); 
 
@@ -44,7 +44,7 @@ __global__ void density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuCo
         
         cuComplex phi_nd = phi[index] * ( zt * (2.*sgam0(bidx) + flr(bidx)) ); 
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
 
         dens_field[index] = iomegastar*phi_n - iomegad*(phi_nd + 2.*dens[index] + tpar[index] + tprp[index]); 
 
@@ -53,11 +53,11 @@ __global__ void density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuCo
   }
 }
 
-__global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuComplex* apar, cuComplex* dens, cuComplex* upar, 
+__global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuComplex* apar, cuComplex* aparNew, cuComplex* dens, cuComplex* upar, 
 		      cuComplex* tprp, cuComplex* qpar, cuComplex* qprp,
                       float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
-                      float* gb,float* gb0,float* cv, float* cv0, float fapar)
+                      float* gb,float* gb0,float* cv, float* cv0, float fapar, float dt)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -72,15 +72,16 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 
       cuComplex phi_flr = phi[index] * flr(bidx);
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
       upar_field[index] = vt*(dens[index] + tprp[index] + zt*phi_flr)*bgrad[idz] - iomegad*( 4.*upar[index] + qpar[index] + qprp[index]); 
 
       if(fapar>0.) {
         cuComplex iomegastar = iOmegaStar(ky[idy]);
         cuComplex apar_term = apar[index] * ( fprim*sgam0(bidx) + tprim *(sgam0(bidx)+flr(bidx)) );  
-     
-        upar_field[index] = upar_field[index] - vt*iomegastar*apar_term;
+        cuComplex dApardt_sgam0 = sgam0(bidx) * ( aparNew[index] - apar[index] ) / dt;    
+
+        upar_field[index] = upar_field[index] - vt*iomegastar*apar_term + vt*zt*dApardt_sgam0;
       }
     }
   }
@@ -96,15 +97,16 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
   
         cuComplex phi_flr = phi[index] * flr(bidx);
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
 
         upar_field[index] = vt*(dens[index] + tprp[index] + zt*phi_flr)*bgrad[IDZ] - iomegad*( 4.*upar[index] + qpar[index] + qprp[index]); 
 
         if(fapar>0.) {
           cuComplex iomegastar = iOmegaStar(ky[idy]);
           cuComplex apar_term = apar[index] * ( fprim*sgam0(bidx) + tprim *(sgam0(bidx)+flr(bidx)) );  
-     
-          upar_field[index] = upar_field[index] + vt*iomegastar*apar_term;
+          cuComplex dApardt_sgam0 = sgam0(bidx) * ( aparNew[index] - apar[index] ) / dt;    
+
+          upar_field[index] = upar_field[index] - vt*iomegastar*apar_term + vt*zt*dApardt_sgam0;
         }
 
       }
@@ -135,11 +137,11 @@ __global__ void tpar_linear_terms(cuComplex* tpar_field, cuComplex* phi, cuCompl
 
       cuComplex iomegastar = iOmegaStar(ky[idy]);
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
       cuComplex phi_tpard = phi[index] * ( zt * 2. * sgam0(bidx) );
  
-      float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
 
       cuComplex n1, n2;
 
@@ -178,11 +180,11 @@ __global__ void tpar_linear_terms(cuComplex* tpar_field, cuComplex* phi, cuCompl
 
         cuComplex iomegastar = iOmegaStar(ky[idy]);
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
 
         cuComplex phi_tpard = phi[index] * ( zt * 2. * sgam0(bidx) );
  
-        float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
+        float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
 
         cuComplex n1, n2;
 
@@ -226,11 +228,11 @@ __global__ void tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuCompl
 
       cuComplex iomegastar = iOmegaStar(ky[idy]);
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
       cuComplex phi_tperpd = phi[index] * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
  
-      float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
 
       cuComplex n3, n4;
 
@@ -270,11 +272,11 @@ __global__ void tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuCompl
 
         cuComplex iomegastar = iOmegaStar(ky[idy]);
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
 
         cuComplex phi_tperpd = phi[index] * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
  
-        float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
+        float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
 
         cuComplex n3, n4;
 
@@ -314,9 +316,9 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
 
       float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
-      float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
      
       cuComplex n5, n6, n7;
 
@@ -366,9 +368,9 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
 
         float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
   
-        float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
+        float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
        
         cuComplex n5, n6, n7;
   
@@ -398,13 +400,14 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
   }
 }
 
-__global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuComplex* apar, cuComplex* dens, cuComplex* upar, cuComplex* tpar, 
+__global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuComplex* apar, cuComplex* aparNew,
+                      cuComplex* dens, cuComplex* upar, cuComplex* tpar, 
                       cuComplex* tprp, cuComplex* qpar, cuComplex* qprp,
                       float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
                       float* gb,float* gb0,float* cv, float* cv0,
                       float nu_ss, cuComplex nu8, cuComplex nu9, cuComplex nu10, cuComplex mu8, cuComplex mu9, cuComplex mu10, bool varenna,
-		      cuComplex* r_terms, cuComplex* sparprp, cuComplex* sprpprp, bool higher_order_moments, float fapar)
+		      cuComplex* r_terms, cuComplex* sparprp, cuComplex* sprpprp, bool higher_order_moments, float fapar, float dt)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -419,9 +422,9 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
 
       cuComplex phi_qperpb = phi[index] * (flr2(bidx) - flr(bidx));
 
-      cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
-      float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
 
       cuComplex n8, n9, n10;
  
@@ -454,10 +457,10 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
       if(fapar>0.) {
         cuComplex iomegastar = iOmegaStar(ky[idy]);
         cuComplex apar_term1 = apar[index] * ( tprim*(sgam0(bidx)+flr2(bidx)) + (fprim + tprim)*flr(bidx) );  
-        
         cuComplex apar_term2 = apar[index] * ( flr(bidx) );
-     
-        qprp_field[index] = qprp_field[index] - vt*iomegastar*apar_term1 + vt*zt*iomegad*apar_term2;
+        cuComplex dApardt_flr = flr(bidx) * ( aparNew[index] - apar[index] ) / dt;    
+
+        qprp_field[index] = qprp_field[index] - vt*iomegastar*apar_term1 + vt*zt*iomegad*apar_term2 + vt*zt*dApardt_flr;
       }
 
     }
@@ -474,9 +477,9 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
   
         cuComplex phi_qperpb = phi[index] * (flr2(bidx) - flr(bidx));
 
-        cuComplex iomegad = iOmegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
 
-        float abs_omegad = abs(omegaD(rho,vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
+        float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
 
         cuComplex n8, n9, n10;
 
@@ -499,3 +502,293 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
     }
   }
 }
+
+__global__ void electron_density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuComplex* dens, cuComplex* tpar, cuComplex* tprp,
+                      float* kx, float* ky, float shat, float* gb,float* gb0,float* cv, float* cv0, float ti_ov_te, float fprim)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      cuComplex iomegastar_e = iOmegaStar(ky[idy]);
+      cuComplex iomegad_e = -1.*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+
+      dens_field[index] = fprim*iomegastar_e*phi[index] - iomegad_e*(-2.*phi[index] + 2.*dens[index]/ti_ov_te + tpar[index] + tprp[index]); 
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+
+        unsigned int IDZ = idz + zthreads*i;
+
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+
+        cuComplex iomegastar_e = iOmegaStar(ky[idy]);
+        cuComplex iomegad_e = -1.*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+
+        dens_field[index] = fprim*iomegastar_e*phi[index] - iomegad_e*(-2.*phi[index] + 2.*dens[index]/ti_ov_te + tpar[index] + tprp[index]); 
+
+      }
+    }
+  }
+}
+
+__global__ void electron_momentum_linear_terms(cuComplex* apar_field, cuComplex* apar, cuComplex* tpar, cuComplex* tprp,
+                      float* kx, float* ky, float shat, float fprim, float* bgrad,
+                      float *gds2, float *gds21, float *gds22, float *bmagInv,
+                      float* gb,float* gb0,float* cv, float* cv0, float ti_ov_te, float beta_e, float nu_ei)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+
+      float bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+
+      apar_field[index] = iomegastar_e*(fprim)*apar[index] - nu_ei*(-2.*bidx)*apar[index]/(ti_ov_te * beta_e);// + (tpar[index] - tprp[index])*bgrad[idz];
+      //NOTE: when using Snyder's Te closure, tpar = tprp, so mirror force term drops out
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+
+        unsigned int IDZ = idz + zthreads*i;
+
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+
+        cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+        
+        float bidx = b(1., kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]); // just kperp^2, not (kperp rho)^2
+
+        apar_field[index] = (tpar[index] - tprp[index])*bgrad[idz] + iomegastar_e*(fprim)*apar[index] - nu_ei*(-2.*bidx)*apar[index]/(ti_ov_te * beta_e);
+
+      }
+    }
+  }
+}
+
+__global__ void apar_semi_implicit_gradpar_term(cuComplex* result, cuComplex* phi, cuComplex* dens, cuComplex* densNew, 
+                      float* kx, float* ky, float shat, 
+                      float *gds2, float *gds21, float *gds22, float *bmagInv,
+                      float ti_ov_te, specie* s)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+//      float pfilter2 = 0.;    
+//      float bidx;
+//      
+//      for(int i=0; i<nspecies-1; i++) { // electron contribution to this sum is negligible.
+//        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+//      }
+//
+//      if(pfilter2!=0.) result[index] = -(1./pfilter2 + 1./ti_ov_te)*(dens[index] + densNew[index])/2. + dens[index]/pfilter2 + phi[index];
+//      else { result[index].x = 0.; result[index].y = 0.; }
+
+      result[index] = -1./ti_ov_te*(dens[index]+densNew[index])/2. + phi[index];
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+
+        unsigned int IDZ = idz + zthreads*i;
+
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+
+      float pfilter2 = 0.;    
+      float bidx;
+      
+      for(int i=0; i<nspecies-1; i++) {
+        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+      }
+
+      result[index] = -(1./pfilter2 + 1./ti_ov_te)*(dens[index] + densNew[index])/2. + dens[index]/pfilter2 + phi[index];
+
+      }
+    }
+  }
+}
+
+__global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar, float* ky, float tprim, float ti_ov_te)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+
+      result[index] = tprim*iomegastar_e*apar[index];
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+
+        unsigned int IDZ = idz + zthreads*i;
+
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+
+        cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+
+        result[index] = tprim*iomegastar_e*apar[index];
+
+      }
+    }
+  }
+}
+//__global__ void electron_tpar_linear_terms(cuComplex* tpar_field, cuComplex* phi, cuComplex* dens, cuComplex* upar, 
+//                      cuComplex* tpar, cuComplex* tprp, cuComplex* qprp,
+//                      float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
+//                      float *gds2, float *gds21, float *gds22, float *bmagInv,
+//                      float* gb,float* gb0,float* cv, float* cv0,
+//                      float nu_ss, cuComplex n1, cuComplex n2, cuComplex mu1, cuComplex mu2, bool varenna,
+//                      cuComplex* rparpar, cuComplex* rparprp, bool higher_order_moments)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//
+//    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//
+//      cuComplex phi_tpar = phi[index] * sgam0(bidx) * tprim;
+//
+//      cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+//
+//      cuComplex iomegad_e = (-1./ti_ov_te)*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+//
+//      cuComplex phi_tpard = phi[index] * ( zt * 2. * sgam0(bidx) );
+// 
+//      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+//
+//        tpar_field[index] = iomegastar_e*tprim*phi[index] 
+//			- iomegad_e*( -2.*phi[index] + (6.+2.*n1.y)*tpar[index] + 2.*dens[index]/ti_ov_te + 2.*n2.y*tprp[index])
+//                        + 2.*vt*(qprp[index] + upar[index])*bgrad[idz] + abs_omegad*(2.*n1.x*tpar[index] + 2.*n2.x*tprp[index])
+//                        + (2.*nu_ss/3.)*(tpar[index] - tprp[index]);
+//    }
+//}
+//
+//__global__ void electron_tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuComplex* dens, cuComplex* upar, cuComplex* tpar, cuComplex* tprp,
+//                      float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
+//                      float *gds2, float *gds21, float *gds22, float *bmagInv,
+//                      float* gb,float* gb0,float* cv, float* cv0,
+//                      float nu_ss, cuComplex nu3, cuComplex nu4, cuComplex mu3, cuComplex mu4, bool varenna,
+//		      cuComplex* rparprp, cuComplex* rprpprp, bool higher_order_moments)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//
+//  if(nz<=zthreads) {
+//    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//
+//      cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
+//
+//      cuComplex iomegastar = iOmegaStar(ky[idy]);
+//
+//      cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
+//
+//      cuComplex phi_tperpd = phi[index] * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
+// 
+//      float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]));
+//
+//      cuComplex n3, n4;
+//
+//      if(varenna && ky[idy]==0.) {
+//        n3 = mu3;
+//        n4 = mu4;
+//        abs_omegad = 0.;
+//      } else {
+//        n3 = nu3;
+//        n4 = nu4;
+//      }
+//
+//      if(higher_order_moments && ky[idy]==0. ) {
+//        tprp_field[index] = iomegastar*phi_tperp - iomegad*(phi_tperpd + rparprp[index] + rprpprp[index] 
+//			      - 2.*dens[index] - tpar[index] - tprp[index])
+//                            - vt*upar[index]*bgrad[idz] 
+//                            + (nu_ss/3.)*(tprp[index] - tpar[index]);
+//      } else {
+//        tprp_field[index] = iomegastar*phi_tperp - iomegad*(phi_tperpd + (4.+2.*n4.y)*tprp[index] + dens[index] + 2.*n3.y*tpar[index])
+//                        - vt*upar[index]*bgrad[idz] + abs_omegad*(2.*n3.x*tpar[index] + 2.*n4.x*tprp[index])
+//                        + (nu_ss/3.)*(tprp[index] - tpar[index]);
+//      }
+//
+//    }
+//  }
+//  else {
+//    for(int i=0; i<nz/zthreads; i++) {
+//      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+//
+//        unsigned int IDZ = idz + zthreads*i;
+//
+//        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
+//
+//        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+//  
+//        cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
+//
+//        cuComplex iomegastar = iOmegaStar(ky[idy]);
+//
+//        cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
+//
+//        cuComplex phi_tperpd = phi[index] * ( zt * ( sgam0(bidx) + 2.*flr(bidx) + flr2(bidx) ) );
+// 
+//        float abs_omegad = abs(omegaD(rho*vt,kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]));
+//
+//        cuComplex n3, n4;
+//
+//        if(varenna && ky[idy]==0.) {
+//          n3 = mu3;
+//          n4 = mu4;
+//          abs_omegad = 0.;
+//        } else {
+//          n3 = nu3;
+//          n4 = nu4;
+//        }
+//
+//        tprp_field[index] = iomegastar*phi_tperp - iomegad*(phi_tperpd + (4.+2.*n4.y)*tprp[index] + dens[index] + 2.*n3.y*tpar[index])
+//                          - vt*upar[index]*bgrad[IDZ] + abs_omegad*(2.*n3.x*tpar[index] + 2.*n4.x*tprp[index])
+//                          + (nu_ss/3.)*(tprp[index] - tpar[index]);
+//      }
+//    }
+//  }
+//}
+

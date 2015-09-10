@@ -71,6 +71,11 @@ ifeq ($(GS2_all),on)
   GS2_CUDA_FLAGS=${GS2}/libgs2.a
 endif
 
+#to turn off warnings...
+NVCCFLAGS += -w
+
+#TARGET = gryfx
+
 ##########################
 ## Suffix Build Rules
 #############################

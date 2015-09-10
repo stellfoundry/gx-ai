@@ -234,7 +234,8 @@ void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* o
 
     // Solve for initial phi
     // assumes the initial conditions have been moved to the device
-    if(init == DENS) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta);
+    if(init == DENS) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, tmp, field, species, species_d, &ev_h->pars);
+               //ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta, ev_h->pars.snyder_electrons);
     if((secondary_test || ev_h->pars.nlpm_test) && !LINEAR) {
       copy_fixed_modes_into_fields(
           &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed, &ev_h->pars);
@@ -332,23 +333,26 @@ POP_RANGE;
           // first_half_flag determines which half of RK2 we are doing
           // The new fields end up in dens1 etc
           //Moment1 = Moment1 + (tm->dt/2)*L(Moment)
-          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }         
       }
-      else { //if only linear
-        for(int s=0; s<nSpecies; s++) {
-          //calculate L(t) = L(Moment)
-          // first_half_flag determines which half of  RK2 we are doing
-          // The new fields end up in dens1 etc
-          //Moment1 = Moment + (tm->dt/2)*L(Moment)
+      
+      //LINEAR STEP
+      // when using snyder finite beta electron model, need to evolve electron equations before ion equations
+      if(ev_h->pars.snyder_electrons) {
+        linear_electron_timestep(nSpecies-1, tm->first_half_flag, ev_h, ev_hd, ev_d);
+        for(int s=0; s<nSpecies-1; s++) {
           linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
-
+        }
+      } else {
+        for(int s=0; s<nSpecies; s++) {
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }
       }
 
       //if(DEBUG && counter==0) getError("after linear step"); 
 
-      qneut(Phi1, Apar1, Dens1, Tprp1, Upar1, Qprp1, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta);
+      qneut(Phi1, Apar1, Dens1, Tprp1, Upar1, Qprp1, tmp, tmp, field, tmp, field, species, species_d, &ev_h->pars);
+            //ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta, ev_h->pars.snyder_electrons);
 
     } //end of iproc if
 
@@ -474,28 +478,32 @@ POP_RANGE;
 #endif
 
 #endif
-
-          // first_half_flag determines which half of 
-          // RK2 we are doing
-          // The new fields end up in dens etc
-          //calculate L(t+dt/2)=L(Moment1) 
-          //Moment = Moment + dt * L(Moment1)
-          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }         
       }
-      else { //if only linear
-        for(int s=0; s<nSpecies; s++) {
 
-          // first_half_flag determines which half of 
-          // RK2 we are doing
-          // The new fields end up in dens etc
+      //LINEAR STEP
+      // when using snyder finite beta electron model, need to evolve electron equations before ion equations
+      if(ev_h->pars.snyder_electrons) {
+        linear_electron_timestep(nSpecies-1, tm->first_half_flag, ev_h, ev_hd, ev_d);
+        for(int s=0; s<nSpecies-1; s++) {
+          linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
+        }
+      } else {
+        for(int s=0; s<nSpecies; s++) {
           linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }
       }
 
 
-      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't need to keep Phi=Phi(t) when running nonlinearly, overwrite with Phi=Phi(t+dt)
-      else qneut(Phi1, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, species, species_d, ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta); //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
+      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) {
+        qneut(Phi, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, tmp, field, species, species_d, &ev_h->pars);
+        //      ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta, ev_h->pars.snyder_electrons); 
+        //don't need to keep Phi=Phi(t) when we don't need growth rates, i.e. when running nonlinearly, so overwrite with Phi=Phi(t+dt)
+      } else { 
+        qneut(Phi1, Apar, Dens, Tprp, Upar, Qprp, tmp, tmp, field, tmp, field, species, species_d, &ev_h->pars);
+        //      ev_h->pars.adiabatic_electrons, ev_h->pars.fapar, ev_h->pars.beta, ev_h->pars.snyder_electrons); 
+        //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
+      }
 
       //f = f(t+dt)
 

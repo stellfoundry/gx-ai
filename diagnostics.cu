@@ -816,7 +816,79 @@ inline void omegaWrite(FILE* omegafile, FILE* gammafile, cuComplex* omegaSum, fl
   fprintf(omegafile, "\n");
   fprintf(gammafile, "\n");
 }
+inline void kxkyz0TimeWrite(FILE* file, cuComplex* f, float time)
+{
+  if(time==0) {  
+    fprintf(file, "#\ttime(s)\t");
+    int col = 2;
+    for(int i=0; i<((Nx-1)/3+1); i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {      
+        if(!(i==0 && j==0)) {
+          fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+          col++;
+        }
+      }
+    }
+    for(int i=2*Nx/3+1; i<Nx; i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {
+        fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+        col++;
+      }
+    } 
+    fprintf(file, "\n");
+  }
+  fprintf(file, "\t%f", time);
+  for(int i=0; i<((Nx-1)/3+1); i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
+      fprintf(file, "\t\t\t%e\t\t\t\t%e\t", f[index].x, f[index].y);
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
+      fprintf(file, "\t\t\t%e\t\t\t\t%e\t", f[index].x, f[index].y);
+    }
+  }
+  fprintf(file, "\n");
+}
 
+inline void kxkyz0TimeWrite(FILE* file, float* f, float time)
+{
+  if(time==0) {  
+    fprintf(file, "#\ttime(s)\t");
+    int col = 2;
+    for(int i=0; i<((Nx-1)/3+1); i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {      
+        if(!(i==0 && j==0)) {
+          fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+          col++;
+        }
+      }
+    }
+    for(int i=2*Nx/3+1; i<Nx; i++) {
+      for(int j=0; j<((Ny-1)/3+1); j++) {
+        fprintf(file, "\t\t\t%d:(ky=%.3g,kx=%.3g)", col, ky_h[j],kx_h[i]);
+        col++;
+      }
+    } 
+    fprintf(file, "\n");
+  }
+  fprintf(file, "\t%f", time);
+  for(int i=0; i<((Nx-1)/3+1); i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
+      fprintf(file, "\t\t\t%e\t", f[index]);
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<((Ny-1)/3+1); j++) {
+      int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
+      fprintf(file, "\t\t\t%e\t", f[index]);
+    }
+  }
+  fprintf(file, "\n");
+}
 inline void kxkyTimeWrite(FILE* file, float* f, float time)
 {
   if(time==0) {  
@@ -1300,7 +1372,7 @@ inline void fieldNormalize(cuComplex** Dens, cuComplex** Upar, cuComplex** Tpar,
       mask<<<dimGrid,dimBlock>>>(Qprp[s]);
       
     }
-    normalize<<<dimGrid,dimBlock>>>(Phi,Phi,norm);
+    //normalize<<<dimGrid,dimBlock>>>(Phi,Phi,norm);
     //scale<<<dimGrid,dimBlock>>>(Phi,Phi,norm);  
     mask<<<dimGrid,dimBlock>>>(Phi);
       
@@ -1589,6 +1661,7 @@ void gryfx_finish_diagnostics(
   char filename[200];  
 
     cuComplex * Phi = ev_hd->fields.phi;
+    cuComplex * Apar = ev_hd->fields.apar;
     cuComplex ** Dens = ev_hd->fields.dens;
     cuComplex ** Upar = ev_hd->fields.upar;
     cuComplex ** Tpar = ev_hd->fields.tpar;
@@ -1930,6 +2003,12 @@ void gryfx_finish_diagnostics(
     get_kperp<<<dimGrid,dimBlock>>>(tmpXY,0,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
     kxkyWrite(tmpXY, tmpXY_h, filename, "kperp.kxky");
     
+  }
+
+  if(LINEAR) {
+   prevent_overflow_by_mode<<<dimGrid,dimBlock>>>(Phi, Phi, 1., 1.e-5);
+   if(ev_h->pars.fapar>0.) normalize<<<dimGrid,dimBlock>>>(Apar, Phi, 1.e-5);
+   fieldNormalize(Dens, Upar, Tpar, Tprp, Qpar, Qprp, Phi, 1.e-5);
   }
 
 }

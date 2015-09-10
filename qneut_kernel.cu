@@ -15,12 +15,12 @@ __global__ void qneut(cuComplex* Phi, cuComplex* nbartot_field, cuComplex* n_e, 
       float pfilter2 = 0.;    
       float bidx;
       
-      for(int i=0; i<nspecies; i++) {
+      for(int i=0; i<nspecies-1; i++) {
         bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
         pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
       }
     
-      Phi[index] = ( nbartot_field[index] - n_e[index] ) / pfilter2;
+      Phi[index] = ( nbartot_field[index] - s[nspecies-1].dens*n_e[index] ) / pfilter2;
     }
   
 
@@ -353,8 +353,8 @@ __global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float*
 }
 
 
-__global__ void ampere(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+__global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -371,13 +371,35 @@ __global__ void ampere(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upa
       
       bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
 
-      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - upar_e[index] ) / ( 2. * bidx );
-      // DOES THIS NEED ADDITIONAL NORMALIZATIONS ??? also check ubartot
+      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - dens_e*upar_e[index] ) / ( 2. * bidx );
     
    }   
 
 }
 
+__global__ void solve_ampere_for_upar_e(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      unsigned int idxy = idy + (ny/2+1)*idx;
+        
+      float bidx;
+      
+      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+
+      upar_e[index] = ubartot_field[index] - 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e);
+    
+   }   
+
+}
 
 
 

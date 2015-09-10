@@ -42,6 +42,8 @@ PUSH_RANGE("zderiv_covering_all",4);
 
           if(abs=="abs") {
             zderiv_abs_covering_all<<<dimGridCovering_all, dimBlockCovering>>> (g_covering_d, nLinks_d, nChains_d, kz_covering_d, icovering, nClasses);
+          } else if(abs=="invert") {
+            zderiv_covering_invert_all<<<dimGridCovering_all, dimBlockCovering>>> (g_covering_d, nLinks_d, nChains_d, kz_covering_d, icovering, nClasses);
           } else {
             zderiv_covering_all<<<dimGridCovering_all, dimBlockCovering>>> (g_covering_d, nLinks_d, nChains_d, kz_covering_d, icovering, nClasses);
           }  
@@ -70,7 +72,8 @@ PUSH_RANGE("zderiv_covering loop",5);
 	      ZTransformCovering(nLinks[c], nChains[c], ky[c], kx[c],f,result,g_covering[c],kz_covering[c],abs, 
                      plan_covering[c], 0, dimGridCovering[c], dimBlockCovering);
 
-              //I think this isn't right. If using multiple streams, leave this commented, uncomment stuff about streams outside loop
+              //I think this stuff immediately below isn't right. If using multiple streams, leave this commented, uncomment stuff about streams outside loop
+
               ////Only need this stuff if using multiple streams...
 	      ////cudaEventRecord(end_of_zderiv[c], zstreams[c]);
               ////cudaStreamWaitEvent(0, end_of_zderiv[c], 0); //make sure linear stream waits until each zstream is finished before going on

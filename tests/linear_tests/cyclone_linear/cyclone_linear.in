@@ -21,7 +21,7 @@
 !GENERAL PARAMETERS  
 !==============================
 &parameters
- beta = 0.0 ! Ratio of particle to magnetic pressure (reference Beta, not total beta):  beta=n_0 T_0 /( B^2 / (8 pi))
+ beta = 0. ! Ratio of particle to magnetic pressure (reference Beta, not total beta):  beta=n_0 T_0 /( B^2 / (8 pi))
  zeff = 1.0 ! Effective ionic charge.
  TiTe = 1.0
 /
@@ -151,15 +151,26 @@
 !SPECIES PARAMETERS 1 
 !==============================
 &species_parameters_1
- z = 1. ! Charge
- mass = 1. ! Mass
+ z = 1.0 ! Charge
+ mass = 1.0 ! Mass
  dens = 1. ! Density	
- temp = 1. ! Temperature
+ temp = 1.0 ! Temperature
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?
  vnewk = 0. ! collisionality parameter
  type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
+/
+&species_parameters_2
+ z = -1.0 ! Charge
+ mass = 0. ! Mass
+ dens = 1. ! Density	
+ temp = 1.0 ! Temperature
+ tprim = 0. ! -1/T (dT/drho)
+ fprim = 0. ! -1/n (dn/drho)
+ uprim = 0.0 ! ?
+ vnewk = 0. ! collisionality parameter
+ type = "electron" ! Type of species, e.g. 'ion', 'electron', 'beam'
 /
 
 &species_parameters_2
@@ -261,7 +272,7 @@
 &gryfx_knobs
   write_netcdf = .false.
   write_omega = "on"
-  write_phi = "off"
+  write_phi = "on"
   restart = "off"
   no_zderiv_covering = "off"
   slab = "off"
