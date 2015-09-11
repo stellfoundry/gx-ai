@@ -8,7 +8,7 @@ __global__ void phi_n(cuComplex* res, cuComplex* phi, float tprim, float rho, fl
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -21,7 +21,7 @@ __global__ void phi_n(cuComplex* res, cuComplex* phi, float tprim, float rho, fl
 
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -42,7 +42,7 @@ __global__ void phi_u(cuComplex* res, cuComplex* Phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -55,7 +55,7 @@ __global__ void phi_u(cuComplex* res, cuComplex* Phi, float rho,
 
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -75,7 +75,7 @@ __global__ void phi_tperp_nlpm(cuComplex* res, cuComplex* Phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -90,7 +90,7 @@ __global__ void phi_tperp_nlpm(cuComplex* res, cuComplex* Phi, float rho,
 
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -111,7 +111,7 @@ __global__ void phi_u_low_b(cuComplex* res, cuComplex* Phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -126,7 +126,7 @@ __global__ void phi_u_low_b(cuComplex* res, cuComplex* Phi, float rho,
 
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -147,7 +147,7 @@ __global__ void phi_u_force(cuComplex* res, float phiext, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -168,7 +168,7 @@ __global__ void phi_u_force(cuComplex* res, float phiext, float rho,
 
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -194,7 +194,7 @@ __global__ void phi_tpar(cuComplex* res, cuComplex* phi, float tprim, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -206,7 +206,7 @@ __global__ void phi_tpar(cuComplex* res, cuComplex* phi, float tprim, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -226,7 +226,7 @@ __global__ void phi_tperp(cuComplex* res, cuComplex* phi, float tprim, float rho
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -238,7 +238,7 @@ __global__ void phi_tperp(cuComplex* res, cuComplex* phi, float tprim, float rho
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -259,7 +259,7 @@ __global__ void phi_flr(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -271,7 +271,7 @@ __global__ void phi_flr(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -291,7 +291,7 @@ __global__ void phi_flr(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -303,7 +303,7 @@ __global__ void phi_flr(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -322,7 +322,7 @@ __global__ void phi_flr_low_b(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -336,7 +336,7 @@ __global__ void phi_flr_low_b(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -355,7 +355,7 @@ __global__ void phi_flr_low_b_abs(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -371,7 +371,7 @@ __global__ void phi_flr_low_b_abs(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -390,7 +390,7 @@ __global__ void phi_flr_zonal_abs(cuComplex* res, float* phi_zf_abs, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -407,7 +407,7 @@ __global__ void phi_flr_zonal_abs(cuComplex* res, float* phi_zf_abs, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -432,7 +432,7 @@ __global__ void phi_flr_zonal_complex(cuComplex* res, cuComplex* phi_zf_complex,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -449,7 +449,7 @@ __global__ void phi_flr_zonal_complex(cuComplex* res, cuComplex* phi_zf_complex,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -474,7 +474,7 @@ __global__ void phi_flr_squared(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -486,7 +486,7 @@ __global__ void phi_flr_squared(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -506,7 +506,7 @@ __global__ void phi_flr_squared_zonal_abs(cuComplex* res, float* phi_zf_abs, flo
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -523,7 +523,7 @@ __global__ void phi_flr_squared_zonal_abs(cuComplex* res, float* phi_zf_abs, flo
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -547,7 +547,7 @@ __global__ void phi_flr_force(cuComplex* res, float phiext, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -567,7 +567,7 @@ __global__ void phi_flr_force(cuComplex* res, float phiext, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -594,7 +594,7 @@ __global__ void phi_flr2(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -606,7 +606,7 @@ __global__ void phi_flr2(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -626,7 +626,7 @@ __global__ void phi_flr2_flr(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -638,7 +638,7 @@ __global__ void phi_flr2_flr(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -657,7 +657,7 @@ __global__ void phi_flr2_low_b(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -671,7 +671,7 @@ __global__ void phi_flr2_low_b(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -690,7 +690,7 @@ __global__ void phi_nd(cuComplex* res, cuComplex* phi, float zt, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -702,7 +702,7 @@ __global__ void phi_nd(cuComplex* res, cuComplex* phi, float zt, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -722,7 +722,7 @@ __global__ void phi_nd_force(cuComplex* res, float phiext, float zt, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -742,7 +742,7 @@ __global__ void phi_nd_force(cuComplex* res, float phiext, float zt, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -769,7 +769,7 @@ __global__ void phi_tpard(cuComplex* res, cuComplex* phi, float zt, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -781,7 +781,7 @@ __global__ void phi_tpard(cuComplex* res, cuComplex* phi, float zt, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -801,7 +801,7 @@ __global__ void phi_tpard_force(cuComplex* res, float phiext, float zt, float rh
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -821,7 +821,7 @@ __global__ void phi_tpard_force(cuComplex* res, float phiext, float zt, float rh
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -848,7 +848,7 @@ __global__ void phi_tperpd_force(cuComplex* res, float phiext, float zt, float r
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -868,7 +868,7 @@ __global__ void phi_tperpd_force(cuComplex* res, float phiext, float zt, float r
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -894,7 +894,7 @@ __global__ void phi_tperpd(cuComplex* res, cuComplex* phi, float zt, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -906,7 +906,7 @@ __global__ void phi_tperpd(cuComplex* res, cuComplex* phi, float zt, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -926,7 +926,7 @@ __global__ void phi_qperpb(cuComplex* res, cuComplex* phi, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -938,7 +938,7 @@ __global__ void phi_qperpb(cuComplex* res, cuComplex* phi, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
@@ -958,7 +958,7 @@ __global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
   if(nz<=zthreads) {
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -978,7 +978,7 @@ __global__ void phi_qperpb_force(cuComplex* res, float phiext, float rho,
       if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
 	unsigned int IDZ = idz + zthreads*i;
 
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	

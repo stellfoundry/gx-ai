@@ -14,7 +14,7 @@ __global__ void density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuCo
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex phi_n = phi[index] * ( fprim*sgam0(bidx) + tprim * flr(bidx) );  
 
@@ -36,7 +36,7 @@ __global__ void density_linear_terms(cuComplex* dens_field, cuComplex* phi, cuCo
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
   
         cuComplex phi_n = phi[index] * ( fprim*sgam0(bidx) + tprim * flr(bidx) );  
 
@@ -68,7 +68,7 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex phi_flr = phi[index] * flr(bidx);
 
@@ -93,7 +93,7 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
   
         cuComplex phi_flr = phi[index] * flr(bidx);
 
@@ -131,7 +131,7 @@ __global__ void tpar_linear_terms(cuComplex* tpar_field, cuComplex* phi, cuCompl
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex phi_tpar = phi[index] * sgam0(bidx) * tprim;
 
@@ -174,7 +174,7 @@ __global__ void tpar_linear_terms(cuComplex* tpar_field, cuComplex* phi, cuCompl
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
   
         cuComplex phi_tpar = phi[index] * sgam0(bidx) * tprim;
 
@@ -222,7 +222,7 @@ __global__ void tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuCompl
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
 
@@ -266,7 +266,7 @@ __global__ void tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuCompl
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
   
         cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
 
@@ -314,7 +314,7 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[idz],gb0[idz],cv[idz],cv0[idz]);
 
@@ -366,7 +366,7 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 
         cuComplex iomegad = rho*vt*iOmegaD(kx[idx],ky[idy],shat,gb[IDZ],gb0[IDZ],cv[IDZ],cv0[IDZ]);
   
@@ -418,7 +418,7 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       cuComplex phi_qperpb = phi[index] * (flr2(bidx) - flr(bidx));
 
@@ -473,7 +473,7 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
 
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
   
         cuComplex phi_qperpb = phi[index] * (flr2(bidx) - flr(bidx));
 
@@ -556,7 +556,7 @@ __global__ void electron_momentum_linear_terms(cuComplex* apar_field, cuComplex*
 
       cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
 
-      float bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+      double bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
 
       apar_field[index] = iomegastar_e*(fprim)*apar[index] - nu_ei*(-2.*bidx)*apar[index]/(ti_ov_te * beta_e);// + (tpar[index] - tprp[index])*bgrad[idz];
       //NOTE: when using Snyder's Te closure, tpar = tprp, so mirror force term drops out
@@ -573,7 +573,7 @@ __global__ void electron_momentum_linear_terms(cuComplex* apar_field, cuComplex*
 
         cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
         
-        float bidx = b(1., kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]); // just kperp^2, not (kperp rho)^2
+        double bidx = b(1., kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]); // just kperp^2, not (kperp rho)^2
 
         apar_field[index] = (tpar[index] - tprp[index])*bgrad[idz] + iomegastar_e*(fprim)*apar[index] - nu_ei*(-2.*bidx)*apar[index]/(ti_ov_te * beta_e);
 
@@ -597,7 +597,7 @@ __global__ void apar_semi_implicit_gradpar_term(cuComplex* result, cuComplex* ph
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
 //      float pfilter2 = 0.;    
-//      float bidx;
+//      double bidx;
 //      
 //      for(int i=0; i<nspecies-1; i++) { // electron contribution to this sum is negligible.
 //        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
@@ -620,7 +620,7 @@ __global__ void apar_semi_implicit_gradpar_term(cuComplex* result, cuComplex* ph
         unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 
       float pfilter2 = 0.;    
-      float bidx;
+      double bidx;
       
       for(int i=0; i<nspecies-1; i++) {
         bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
@@ -682,7 +682,7 @@ __global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar,
 //
 //      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 //
-//      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 //
 //      cuComplex phi_tpar = phi[index] * sgam0(bidx) * tprim;
 //
@@ -717,7 +717,7 @@ __global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar,
 //
 //      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 //
-//      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 //
 //      cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
 //
@@ -761,7 +761,7 @@ __global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar,
 //
 //        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 //
-//        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+//        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 //  
 //        cuComplex phi_tperp = phi[index] * ( tprim*( sgam0(bidx) + flr2(bidx) ) + fprim*flr(bidx) );
 //

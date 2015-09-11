@@ -165,7 +165,7 @@ int main(int argc, char* argv[])
     fclose(outfile);
     fclose(correctfile);
 
-    printf("===========%s passed!=============\n", outfileName);
+    printf("===========%s passed!=============\n\n", outfileName);
   }
 
         MPI_Finalize();

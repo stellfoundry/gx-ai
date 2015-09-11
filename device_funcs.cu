@@ -16,7 +16,7 @@ __device__ int iget_idy(void) {return blockIdx.y*blockDim.y+threadIdx.y;}
 __device__ int iget_idz(void) {return blockIdx.z*blockDim.z+threadIdx.z;}
 */
 
-__device__ float g0(float b) {
+__device__ double g0(double b) {
 
   double tol = 1.e-7;
   double tk, b2, b2sq;
@@ -40,11 +40,12 @@ __device__ float g0(float b) {
     err = abs(tk/g);
   }
   
+  if(g<tol) g=tol; 
   return g;
 
 }
 
-__device__ float g1(float b) {
+__device__ double g1(double b) {
 
   double tol = 1.e-7;
   double tk, b2, b2sq;
@@ -69,25 +70,26 @@ __device__ float g1(float b) {
     err = abs(tk/g);
   }
   
+  if(g<tol) g=tol; 
   return g;
 
 }
 
-__device__ float sgam0 (float b) {return sqrt(g0(b));}
+__device__ double sgam0 (double b) {return sqrt(g0(b));}
 
-__device__ float flr(float b) {
-  float gam0 = g0(b);
-  float gam1 = g1(b);
-  float gam = sqrt(gam0);
-  float rg = gam1/gam0;
+__device__ double flr(double b) {
+  double gam0 = g0(b);
+  double gam1 = g1(b);
+  double gam = sqrt(gam0);
+  double rg = gam1/gam0;
   return -b/2. * (1.-rg) * gam;
 }
 
-__device__ float flr2(float b) {
-  float gam0 = g0(b);
-  float gam1 = g1(b);
-  float gam = sqrt(gam0);
-  float rg = gam1/gam0;
+__device__ double flr2(double b) {
+  double gam0 = g0(b);
+  double gam1 = g1(b);
+  double gam = sqrt(gam0);
+  double rg = gam1/gam0;
   return -(b/2.) * (1.+(1.-rg)*(1.-(b/2.)*(3.+rg))) * gam;
 }
 
@@ -117,7 +119,7 @@ __device__ float omegaD(float rho_vt, float kx, float ky, float shat, float gb,f
   
 }
 
-__device__ float b(float rho, float kx, float ky, float shat, float gds2, float gds21, float gds22, float bmagInv)
+__device__ double b(float rho, float kx, float ky, float shat, float gds2, float gds21, float gds22, float bmagInv)
 {
   float shatInv;
   //if (abs(shat)>1.e-8) {
@@ -126,7 +128,8 @@ __device__ float b(float rho, float kx, float ky, float shat, float gds2, float 
   //  shatInv = 1.;
   //}
 
-  return ( ky * (ky*gds2 + 2*kx*shatInv*gds21) + pow(kx*shatInv,2)*gds22 ) * pow(bmagInv,2) * pow(rho,2);
+  double b = ( ky * (ky*gds2 + 2*kx*shatInv*gds21) + pow(kx*shatInv,2)*gds22 ) * pow(bmagInv,2) * pow(rho,2);
+  return b;
 }
 
 __device__ float c(float kx, float gds22, float qsf, float eps, float bmagInv, float shat, float rho)

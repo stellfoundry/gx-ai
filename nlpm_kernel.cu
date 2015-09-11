@@ -16,7 +16,7 @@ __global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 
       unsigned int idxz = idx + nx*idz;
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
 
 
@@ -29,7 +29,7 @@ __global__ void nlpm_shear0(float* nu, float* Phi2ZF, float dnlpm, float* kx,
         unsigned int idxz = idx + nx*IDZ;
 
 
-        float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+        double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 
         nu[idxz] = kx[idx]*flr(bidx)*sqrt(Phi2ZF[idx_zonal]);
 
@@ -60,7 +60,7 @@ __global__ void nlpm_shear0(cuComplex* nu, cuComplex* PhiZF, float dnlpm, float*
       
       unsigned int idxz = idx + nx*idz;
       
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       nu[idxz] = kx[idx]*flr(bidx)*PhiZF[idx_zonal];
             
       
@@ -73,7 +73,7 @@ __global__ void nlpm_shear0(cuComplex* nu, cuComplex* PhiZF, float dnlpm, float*
 	unsigned int idxz = idx + nx*IDZ;
 
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         nu[idxz] = kx[idx]*flr(bidx)*PhiZF[idx_zonal];
 	
@@ -103,7 +103,7 @@ __global__ void nlpm_shear0_ifac(cuComplex* nu, cuComplex* PhiZF, float dnlpm, f
       
       unsigned int idxz = idx + nx*idz;
       
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       //need a factor of i
       nu[idxz].x = -kx[idx]*flr(bidx)*PhiZF[idx_zonal].y;
       nu[idxz].y = kx[idx]*flr(bidx)*PhiZF[idx_zonal].x;
@@ -118,7 +118,7 @@ __global__ void nlpm_shear0_ifac(cuComplex* nu, cuComplex* PhiZF, float dnlpm, f
 	unsigned int idxz = idx + nx*IDZ;
 
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         nu[idxz].x = -kx[idx]*flr(bidx)*PhiZF[idx_zonal].y;
         nu[idxz].y = kx[idx]*flr(bidx)*PhiZF[idx_zonal].x;
@@ -147,7 +147,7 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
       
       unsigned int idxz = idx + nx*idz;
       
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
       //nu[idxz] = flr(bidx);
       //nu[idxz] = abs(kx[idx])*sqrt(Phi2ZF[idx]);//*abs(flr(bidx))*sqrt(Phi2ZF[idx_zonal]);
@@ -162,7 +162,7 @@ __global__ void nlpm_shear1(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 	unsigned int idxz = idx + nx*IDZ;
 
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         nu[idxz] = abs(kx[idx])*abs(flr(bidx))*sqrt(Phi2ZF[idx]);
 	
@@ -191,7 +191,7 @@ __global__ void nlpm_shear2(float* nu, float* Phi2ZF, float dnlpm, float* kx,
       
       unsigned int idxz = idx + nx*idz;
       
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
       nu[idxz] = kx[idx]*kx[idx]*flr(bidx)*flr(bidx)*Phi2ZF[idx];
             
       
@@ -204,7 +204,7 @@ __global__ void nlpm_shear2(float* nu, float* Phi2ZF, float dnlpm, float* kx,
 	unsigned int idxz = idx + nx*IDZ;
 
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
         nu[idxz] = pow(kx[idx],2)*pow(flr(bidx),2)*Phi2ZF[idx];
 	
@@ -410,7 +410,7 @@ __global__ void nlpm_filter_kxdep(cuComplex* field, float* ky, float* kx, float 
     if(idy<(ny/2+1) && idx<nx && idz<nz) {
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-      float bidx = b(rho, kx[idx], ky[0], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); //only want ky=0 component of kperp**2
+      double bidx = b(rho, kx[idx], ky[0], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); //only want ky=0 component of kperp**2
  
       cuComplex nu_nlpm;
       nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;
@@ -426,7 +426,7 @@ __global__ void nlpm_filter_kxdep(cuComplex* field, float* ky, float* kx, float 
 	
 	unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*IDZ;
 	
-      float bidx = b(rho, kx[idx], ky[0], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+      double bidx = b(rho, kx[idx], ky[0], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
  
       cuComplex nu_nlpm;
       nu_nlpm.x = c_abs*abs(ky[idy])*abs(kx[idx])*abs(flr(bidx))*PhiZF_abs_X[idx] + c_complex*ky[idy]*kx[idx]*flr(bidx)*PhiZF_complex_X[idx].x;

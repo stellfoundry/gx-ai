@@ -406,7 +406,7 @@ POP_RANGE;
       if(!write_omega && tm_h->counter%nwrite==0) printf("%d: wpfx = %f, dt = %f, dt_cfl =  %f, Dnlpm = %f\n", gpuID, wpfx[0],tm_h->dt, dt_cfl, nlpm_h->D);
       
       // write flux to file
-      if(tm_h->counter%nsave==0) fflush(NULL);
+      if(tm_h->counter%nwrite==0) fflush(NULL);
                
       
       

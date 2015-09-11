@@ -841,13 +841,13 @@ inline void kxkyz0TimeWrite(FILE* file, cuComplex* f, float time)
   for(int i=0; i<((Nx-1)/3+1); i++) {
     for(int j=0; j<((Ny-1)/3+1); j++) {
       int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
-      fprintf(file, "\t\t\t%e\t\t\t\t%e\t", f[index].x, f[index].y);
+      fprintf(file, "\t\t\t%e\t", pow(f[index].x,2.)+pow(f[index].y,2.));
     }
   }
   for(int i=2*Nx/3+1; i<Nx; i++) {
     for(int j=0; j<((Ny-1)/3+1); j++) {
       int index = j+(Ny/2+1)*i+Nx*(Ny/2+1)*(Nz/2);
-      fprintf(file, "\t\t\t%e\t\t\t\t%e\t", f[index].x, f[index].y);
+      fprintf(file, "\t\t\t%e\t", pow(f[index].x,2.)+pow(f[index].y,2.));
     }
   }
   fprintf(file, "\n");

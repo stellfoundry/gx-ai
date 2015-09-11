@@ -1847,7 +1847,7 @@ __global__ void SmagorinskyDiffusion(cuComplex* result, cuComplex* field, float 
   if(nz<=zthreads) {
     if( idy<(ny/2+1) && idx<nx && idz<nz ) {
 
-      float bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+      double bidx = b(rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
       
@@ -1861,7 +1861,7 @@ __global__ void SmagorinskyDiffusion(cuComplex* result, cuComplex* field, float 
 	
 	unsigned int IDZ = idz + zthreads*i;
 	
-	float bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
+	double bidx = b(rho, kx[idx], ky[idy], shat, gds2[IDZ], gds21[IDZ], gds22[IDZ], bmagInv[IDZ]);
 	
 	result[index] = field[index] / (1. + D*bidx);
       }
