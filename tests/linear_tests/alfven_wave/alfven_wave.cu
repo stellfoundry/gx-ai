@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
   printf("input file is %s\n", argv[1]);
   printf("Run name is %s\n", run_name);
 
-  gryfx_main(argc_glob, argv_glob, mpcom_glob);
+  gryfx_main(argc_glob, argv_glob, MPI_COMM_WORLD);
 
   //if(proc==0) {
   //if (agrees_with_cuComplex_imag(omega_out_h, omega_out_h_correct, 5, 1.0e-2)==0){
@@ -105,7 +105,7 @@ int main(int argc, char* argv[])
     }
     if(debug) printf("%s has %d lines\nFinding position of beginning of each line...\n", outfileName, nLines_out);
     //find position of beginning of each line
-    lineStartPos_out = (fpos_t*) malloc(sizeof(fpos_t)*nLines_out);
+    lineStartPos_out = (fpos_t*) malloc(sizeof(fpos_t)*2*nLines_out);
     int i = 2;
     rewind(outfile);
     fgetpos(outfile, &lineStartPos_out[1]);
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
     }
     if(debug) printf("%s has %d lines\nFinding position of beginning of each line...\n", correctName, nLines_correct);
     //find position of beginning of each line
-    lineStartPos_correct = (fpos_t*) malloc(sizeof(fpos_t)*nLines_correct);
+    lineStartPos_correct = (fpos_t*) malloc(sizeof(fpos_t)*nLines_correct*2);
     i = 2;
     rewind(correctfile);
     fgetpos(correctfile, &lineStartPos_correct[1]);
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
     float out[7];
     float correct[7];
 
-    if(debug) printf("comparing data files %s & %s\n", outfileName, correctName);
+    printf("comparing data files %s & %s\n", outfileName, correctName);
     int ncheck = 20;  // number of lines to compare between the files
     for(int j=1; j<ncheck; j++) {
       int iline = j*(nLines_out/ncheck);
@@ -165,11 +165,11 @@ int main(int argc, char* argv[])
     fclose(outfile);
     fclose(correctfile);
 
-    printf("===========%s passed!=============\n\n", outfileName);
+    printf("\n===========%s passed!=============\n\n", outfileName);
   }
 
         MPI_Finalize();
    
-	return 0;
+	//return 0;
 
 }

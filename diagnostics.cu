@@ -1384,6 +1384,7 @@ void restartWrite(everything_struct * ev_h,
   everything_struct * ev_hd)
 {
     cuComplex * Phi = ev_hd->fields.phi;
+    cuComplex * Apar = ev_hd->fields.apar;
     cuComplex ** Dens = ev_hd->fields.dens;
     cuComplex ** Upar = ev_hd->fields.upar;
     cuComplex ** Tpar = ev_hd->fields.tpar;
@@ -1414,6 +1415,7 @@ void restartWrite(everything_struct * ev_h,
   cuComplex *Qpar_h[nSpecies];
   cuComplex *Qprp_h[nSpecies];
   cuComplex *Phi_h;
+  cuComplex *Apar_h;
   float* Phi2_kxky_sum_h;
   float* Phi2_zonal_sum_h;
   float* zCorr_sum_h;
@@ -1439,6 +1441,9 @@ void restartWrite(everything_struct * ev_h,
   }  
   Phi_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   cudaMemcpy(Phi_h, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
+
+  Apar_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  cudaMemcpy(Apar_h, Apar, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
   
   Phi2_kxky_sum_h = (float*) malloc(sizeof(float)*Nx*(Ny/2+1));
   cudaMemcpy(Phi2_kxky_sum_h, Phi2_kxky_sum, sizeof(float)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);
@@ -1470,6 +1475,7 @@ void restartWrite(everything_struct * ev_h,
     fwrite(Qprp_h[s],sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, 1, restart);
   }
   fwrite(Phi_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
+  fwrite(Apar_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
   
   fwrite(zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz,1,restart);
   fwrite(Phi2_zonal_sum_h, sizeof(float)*Nx,1,restart);
@@ -1487,6 +1493,7 @@ void restartWrite(everything_struct * ev_h,
     free(Qprp_h[s]);
   }
   free(Phi_h);
+  free(Apar_h);
   free(Phi2_kxky_sum_h);
   free(Phi2_zonal_sum_h);
   
@@ -1507,6 +1514,7 @@ void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
   cuComplex *Qpar_h[nSpecies];
   cuComplex *Qprp_h[nSpecies];
   cuComplex *Phi_h;
+  cuComplex *Apar_h;
   float *Phi2_kxky_sum_h;
   float *Phi2_zonal_sum_h;
   float *zCorr_sum_h;
@@ -1520,6 +1528,7 @@ void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
     Qprp_h[s] = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);    
   }  
   Phi_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
+  Apar_h = (cuComplex*) malloc(sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   
   Phi2_kxky_sum_h = (float*) malloc(sizeof(float)*Nx*(Ny/2+1));
   Phi2_zonal_sum_h = (float*) malloc(sizeof(float)*Nx);
@@ -1564,6 +1573,9 @@ void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
   fread(Phi_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
   cudaMemcpy(ev_hd->fields.phi, Phi_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
   
+  fread(Apar_h,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,1,restart);
+  cudaMemcpy(ev_hd->fields.apar, Apar_h, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);
+
   fread(zCorr_sum_h,sizeof(float)*(Ny/2+1)*Nz,1,restart);
   cudaMemcpy(ev_hd->outs.par_corr_kydz_movav, zCorr_sum_h, sizeof(float)*(Ny/2+1)*Nz, cudaMemcpyHostToDevice);  
   
@@ -1583,6 +1595,7 @@ void restartRead(everything_struct * ev_h, everything_struct * ev_hd){
     free(Qprp_h[s]);
   }
   free(Phi_h);
+  free(Apar_h);
   free(Phi2_kxky_sum_h);
   free(Phi2_zonal_sum_h);
   free(zCorr_sum_h);
@@ -1734,6 +1747,30 @@ void gryfx_finish_diagnostics(
   omegakykxWrite(omegaAvg_h, filename, "omega.kykx", 1., (float) 1./dtSum);
   omegakxkyWrite(omegaAvg_h, filename, "omega.kxky");
   
+  //write fields
+    //normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);
+    fieldWrite(Dens[ION], field_h, "dens.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Upar[ION],Phi,1);
+    fieldWrite(Upar[ION], field_h, "upar.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Qpar[ION],Phi,1);
+    fieldWrite(Qpar[ION], field_h, "qpar.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Qprp[ION],Phi,1);
+    fieldWrite(Qprp[ION], field_h, "qprp.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Tpar[ION],Phi,1);
+    fieldWrite(Tpar[ION], field_h, "tpar.field", filename);
+
+    //normalize<<<dimGrid,dimBlock>>>(Tprp[ION],Phi,1);
+    fieldWrite(Tprp[ION], field_h, "tprp.field", filename);
+            
+    mask<<<dimGrid,dimBlock>>>(Phi);
+    fieldWrite(Phi, field_h, "phi.field", filename);
+
+    if(ev_h->pars.fapar>0) fieldWrite(Apar, field_h, "apar.field", filename);
+
   //calculate and write wpfx(ky)
   if(end) {
     fluxes_k(wpfx_ky_tmpY, tmpY, tmpY2, tmpXY, tmpXY, kphi2_tmpXY2,
@@ -1943,28 +1980,6 @@ void gryfx_finish_diagnostics(
       fieldWrite(tmp, field_h, "tprp_ps.field", filename);
     }
       
-    //normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);
-    fieldWrite(Dens[ION], field_h, "dens.field", filename);
-
-    //normalize<<<dimGrid,dimBlock>>>(Upar[ION],Phi,1);
-    fieldWrite(Upar[ION], field_h, "upar.field", filename);
-
-    //normalize<<<dimGrid,dimBlock>>>(Qpar[ION],Phi,1);
-    fieldWrite(Qpar[ION], field_h, "qpar.field", filename);
-
-    //normalize<<<dimGrid,dimBlock>>>(Qprp[ION],Phi,1);
-    fieldWrite(Qprp[ION], field_h, "qprp.field", filename);
-
-    //normalize<<<dimGrid,dimBlock>>>(Tpar[ION],Phi,1);
-    fieldWrite(Tpar[ION], field_h, "tpar.field", filename);
-
-    //normalize<<<dimGrid,dimBlock>>>(Tprp[ION],Phi,1);
-    fieldWrite(Tprp[ION], field_h, "tprp.field", filename);
-            
-    
-    
-    mask<<<dimGrid,dimBlock>>>(Phi);
-    fieldWrite(Phi, field_h, "phi.field", filename);
 
     //normalizeCovering(Phi,kxCover,kyCover,kxCover_h,kyCover_h);   //<- need to write
     fieldWriteCovering(Phi,filename,kxCover,kyCover,kxCover_h,kyCover_h);
@@ -2003,13 +2018,36 @@ void gryfx_finish_diagnostics(
     get_kperp<<<dimGrid,dimBlock>>>(tmpXY,0,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
     kxkyWrite(tmpXY, tmpXY_h, filename, "kperp.kxky");
     
+  //write fields
+    normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);
+    fieldWrite(Dens[ION], field_h, "dens.field.norm", filename);
+
+    normalize<<<dimGrid,dimBlock>>>(Upar[ION],Phi,1);
+    fieldWrite(Upar[ION], field_h, "upar.field.norm", filename);
+
+    normalize<<<dimGrid,dimBlock>>>(Qpar[ION],Phi,1);
+    fieldWrite(Qpar[ION], field_h, "qpar.field.norm", filename);
+
+    normalize<<<dimGrid,dimBlock>>>(Qprp[ION],Phi,1);
+    fieldWrite(Qprp[ION], field_h, "qprp.field.norm", filename);
+
+    normalize<<<dimGrid,dimBlock>>>(Tpar[ION],Phi,1);
+    fieldWrite(Tpar[ION], field_h, "tpar.field.norm", filename);
+
+    normalize<<<dimGrid,dimBlock>>>(Tprp[ION],Phi,1);
+    fieldWrite(Tprp[ION], field_h, "tprp.field.norm", filename);
+
+    if(ev_h->pars.fapar>0) {
+      normalize<<<dimGrid,dimBlock>>>(Apar,Phi,1);
+      fieldWrite(Apar, field_h, "apar.field.norm", filename);
+    }      
+      
+    mask<<<dimGrid,dimBlock>>>(Phi);
+    normalize<<<dimGrid,dimBlock>>>(Phi,Phi,1);
+    fieldWrite(Phi, field_h, "phi.field.norm", filename);
+
   }
 
-  if(LINEAR) {
-   prevent_overflow_by_mode<<<dimGrid,dimBlock>>>(Phi, Phi, 1., 1.e-5);
-   if(ev_h->pars.fapar>0.) normalize<<<dimGrid,dimBlock>>>(Apar, Phi, 1.e-5);
-   fieldNormalize(Dens, Upar, Tpar, Tprp, Qpar, Qprp, Phi, 1.e-5);
-  }
 
 }
 

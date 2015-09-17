@@ -361,8 +361,8 @@ void set_initial_conditions_no_restart(input_parameters_struct * pars_h, input_p
   	      //loop over z here to get rid of randomness in z in initial condition
   	      for(int k=0; k<Nz; k++) {
   	          int index = i + (Ny/2+1)*j + (Ny/2+1)*Nx*k;
-  		  init_h[index].x = samp*cos(pars_h->kpar_init*z_h[k]);//*cos(z_h[k]/(2.*Zp));
-  	          init_h[index].y = samp*cos(pars_h->kpar_init*z_h[k]);//*cos(z_h[k]/(2.*Zp));
+  		  init_h[index].x = samp*cos(pars_h->kpar_init*z_h[k]/Zp);
+  	          init_h[index].y = samp*cos(pars_h->kpar_init*z_h[k]/Zp);
   	      }
   	      
   	      
@@ -827,6 +827,7 @@ void write_initial_fields(
     fieldWrite(fields_d->qpar[ION], field_h, "qpar0.field", filename); 
     fieldWrite(fields_d->qprp[ION], field_h, "qprp0.field", filename); 
     fieldWrite(fields_d->phi, field_h, "phi0.field", filename); 
+    fieldWrite(fields_d->apar, field_h, "apar0.field", filename); 
 
   volflux(fields_d->phi,fields_d->phi,tmp_d->CXYZ,tmp_d->XY);
   sumY_neq_0<<<cdims->dimGrid,cdims->dimBlock>>>(tmp_d->X, tmp_d->XY);

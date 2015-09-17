@@ -40,9 +40,12 @@ void print_cuda_properties(everything_struct * ev){
 void print_final_summary(everything_struct * ev, FILE * outfile){
     printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
     printf("jtwist=%d   nSpecies=%d   cfl=%f\n", jtwist,nSpecies,cfl);
-    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  g_exb=%g\n", shat, eps, qsf, rmaj, g_exb);
+    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  shift=%g  g_exb=%g\n", shat, eps, qsf, rmaj, shift, g_exb);
     for(int s=0; s<nSpecies; s++) {
-      printf("species %d parameters:\n",s+1);
+      printf("species %d parameters, ",s+1);
+      if(s==0) printf("Main ion:\n");
+      else if(s==nSpecies-1) printf("Non-adiabatic electron:\n");
+      else printf("Impurity ion:\n");
       printf("tprim=%f  fprim=%f  dens=%f  temp=%f  z=%f  mass=%f\n", species[s].tprim, species[s].fprim, species[s].dens, species[s].temp, species[s].z, species[s].mass);
     }
     if(ev->pars.adiabatic_electrons) printf("[Adiabatic electrons]\n");

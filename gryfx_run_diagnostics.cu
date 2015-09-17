@@ -333,7 +333,8 @@ POP_RANGE;
             omegaWrite(files_h->omegafile,files_h->gammafile,outs_h->omega_avg,tm_h->dtSum,tm_h->runtime); 
           }
           else {
-            cudaMemcpy(outs_h->omega_avg, outs_d->omega_avg, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
+            tm_h->dtSum = 1.;
+            cudaMemcpy(outs_h->omega_avg, outs_d->omega, sizeof(cuComplex)*Nx*(Ny/2+1), cudaMemcpyDeviceToHost);      
             //print growth rates to files   
             omegaWrite(files_h->omegafile,files_h->gammafile,outs_h->omega_avg,tm_h->runtime); 
           }             

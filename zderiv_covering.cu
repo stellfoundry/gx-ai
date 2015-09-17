@@ -86,8 +86,11 @@ POP_RANGE;
 	      //cudaEventRecord(end_of_zderiv[0], 0);
               //cudaEventSynchronize(end_of_zderiv[0]);
 
-	  scale<<<dimGrid,dimBlock>>>(result, result, gradpar);
-	  
+          if(abs=="invert") {
+	    scale<<<dimGrid,dimBlock>>>(result, result, 1./gradpar);
+	  } else {
+	    scale<<<dimGrid,dimBlock>>>(result, result, gradpar);
+          }
           mask<<<dimGrid,dimBlock>>>(result);
 	  reality<<<dimGrid,dimBlock>>>(result); 	   
   }

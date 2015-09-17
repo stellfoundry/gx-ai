@@ -54,6 +54,18 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
     geo->gradpar = (float) 1./(pars->qsf*pars->rmaj);
     
     pars->drhodpsi = 1.; 
+
+    float qsf = pars->qsf;
+    float beta_e = pars->beta;
+    float rmaj = pars->rmaj;
+    specie* species = pars->species;
+
+    if(pars->shift < 0.) {
+      pars->shift = 0.;
+      for(int s=0; s<pars->nspec; s++) { 
+        pars->shift += qsf*qsf*rmaj*beta_e*(species[s].temp/species[pars->nspec-1].temp)*(species[s].tprim + species[s].fprim);
+      }
+    }
     
     for(int k=0; k<grids->Nz; k++) {
       z_h[k] = 2*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
@@ -83,6 +95,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
         geo->bgrad[k] = 0.;
         //bmag=const:
         geo->bmag[k] = 1.;
+        //geo->gradpar = 1.;
       }
     }  
   }

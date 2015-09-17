@@ -596,9 +596,9 @@ __global__ void apar_semi_implicit_gradpar_term(cuComplex* result, cuComplex* ph
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-//      float pfilter2 = 0.;    
-//      double bidx;
-//      
+      float pfilter2 = 0.;    
+      double bidx;
+      
 //      for(int i=0; i<nspecies-1; i++) { // electron contribution to this sum is negligible.
 //        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 //        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );

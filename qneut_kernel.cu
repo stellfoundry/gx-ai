@@ -302,7 +302,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* Num_tmp, cuComplex* 
 */            
 
   
-__global__ void convert_guiding_center_to_particle_space(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
+__global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
 		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
 {
   unsigned int idy = get_idy(); 
@@ -317,6 +317,25 @@ __global__ void convert_guiding_center_to_particle_space(cuComplex* nbar, cuComp
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
       nbar[index] = (Dens[index]/(1.+bidx/2.) - bidx*Tprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z;
+      
+    }
+}    
+
+__global__ void ubar(cuComplex* ubar, cuComplex* Upar, cuComplex* Qprp, 
+		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+{
+  unsigned int idy = get_idy(); 
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz(); 
+  
+  
+    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
+
+      double bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      ubar[index] = (Upar[index]/(1.+bidx/2.) - bidx*Qprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z*s.vt;
       
     }
 }    
@@ -355,7 +374,7 @@ __global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float*
 
 
 __global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e, float vt_e)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -372,7 +391,7 @@ __global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field,
       
       bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
 
-      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - dens_e*upar_e[index] ) / ( 2. * bidx );
+      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - dens_e*vt_e*upar_e[index] ) / ( 2. * bidx );
     
    }   
 

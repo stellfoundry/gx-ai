@@ -153,6 +153,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   
   fnr_get_float(&namelist_struct, "parameters", "tite", &(pars->ti_ov_te));
   ti_ov_te=pars->ti_ov_te;
+  // ti_ov_te is overwritten for non-adiabatic electrons
 
   fnr_get_float(&namelist_struct, "parameters", "beta", &(pars->beta));
   

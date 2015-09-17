@@ -1503,10 +1503,12 @@ POP_RANGE;
 
   if(ev_h->pars.snyder_electrons) {
     //Ttot closure
-    // Tpar = Tprp = tprim/ev_h->pars.ti_ov_te omega_star Apar / ( k_par )
+    // Te = Tpar + Tprp = 2 Tpar = 2 Tprp = tprim/ev_h->pars.ti_ov_te omega_star Apar / ( k_par )
     
     electron_temperature_closure<<<dimGrid,dimBlock>>>(gradpar_tmp, AparOld, ky, s.tprim, ev_h->pars.ti_ov_te);
     ZDerivCovering(TparOld, gradpar_tmp, &ev_h->grids,&ev_hd->grids,&ev_d->grids, "invert",plan_covering);
+    // above gives Te, so Tpar = Tprp = .5 Te
+    scale<<<dimGrid,dimBlock>>>(TparOld, TparOld, .5);
     cudaMemcpy(TprpOld, TparOld, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
   }
 
