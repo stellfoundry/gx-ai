@@ -64,6 +64,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
 
   fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(grids->Nz));
 
+  if(grids->Nz!=1) {
   //The GS2 grid, which includes the periodic point, runs from
   // -ntgrid:ntgrid and is thus 2*ntgrid+1 in size, where ntgrid
   // is the same as what is calculated here. This little step
@@ -73,7 +74,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   //grids->Nz=2*(2*nperiod-1)*grids->Nz + 1
  
 	Nz = grids->Nz = 2*ntgrid;
-
+  }
   
   if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &pars->Zp)==FNR_USED_DEFAULT){
    pars->Zp = 2*nperiod - 1; 
@@ -495,7 +496,7 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
  
     if(strcmp(type,"ion") == 0) {
       fnr_get_float(&namelist_struct, namelist, "mass", &mass);
-      if(mass == 1. && !main_ion_species_found) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
+      if((mass == 1. && !main_ion_species_found) || nSpecies==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
       else {ionspec = ispec; ispec++;}
       species[ionspec].mass = mass;
       fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);

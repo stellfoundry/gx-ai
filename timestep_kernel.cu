@@ -57,7 +57,7 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 		      cuComplex* tprp, cuComplex* qpar, cuComplex* qprp,
                       float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
-                      float* gb,float* gb0,float* cv, float* cv0, float fapar, float dt)
+                      float* gb,float* gb0,float* cv, float* cv0, float beta, float dt, int is)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -76,12 +76,14 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 
       upar_field[index] = vt*(dens[index] + tprp[index] + zt*phi_flr)*bgrad[idz] - iomegad*( 4.*upar[index] + qpar[index] + qprp[index]); 
 
-      if(fapar>0.) {
+      if(beta>0.) {
         cuComplex iomegastar = iOmegaStar(ky[idy]);
         cuComplex apar_term = apar[index] * ( fprim*sgam0(bidx) + tprim *(sgam0(bidx)+flr(bidx)) );  
         cuComplex dApardt_sgam0 = sgam0(bidx) * ( aparNew[index] - apar[index] ) / dt;    
 
-        upar_field[index] = upar_field[index] - vt*iomegastar*apar_term + vt*zt*dApardt_sgam0;
+        upar_field[index] = upar_field[index] - vt*iomegastar*apar_term;
+        if(is!=nspecies-1) upar_field[index] = upar_field[index] + vt*zt*dApardt_sgam0;  // for ions, add in dApar/dt term
+        // for electrons, we are dropping dUpar/dt term, so upar equation becomes apar equation, and we don't need dApar/dt here
       }
     }
   }
@@ -101,7 +103,7 @@ __global__ void upar_linear_terms(cuComplex* upar_field, cuComplex* phi, cuCompl
 
         upar_field[index] = vt*(dens[index] + tprp[index] + zt*phi_flr)*bgrad[IDZ] - iomegad*( 4.*upar[index] + qpar[index] + qprp[index]); 
 
-        if(fapar>0.) {
+        if(beta>0.) {
           cuComplex iomegastar = iOmegaStar(ky[idy]);
           cuComplex apar_term = apar[index] * ( fprim*sgam0(bidx) + tprim *(sgam0(bidx)+flr(bidx)) );  
           cuComplex dApardt_sgam0 = sgam0(bidx) * ( aparNew[index] - apar[index] ) / dt;    
@@ -303,7 +305,7 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
                       float* gb,float* gb0,float* cv, float* cv0,
                       float nu_ss, cuComplex nu5, cuComplex nu6, cuComplex nu7, cuComplex mu5, cuComplex mu6, cuComplex mu7, bool varenna,
-		      cuComplex* r_terms, cuComplex* sparpar, cuComplex* sparprp, bool higher_order_moments, float fapar)
+		      cuComplex* r_terms, cuComplex* sparpar, cuComplex* sparprp, bool higher_order_moments, float beta)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -348,7 +350,7 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
 			+ nu_ss * qpar[index];
       }
       
-      if(fapar>0.) {
+      if(beta>0.) {
         cuComplex iomegastar = iOmegaStar(ky[idy]);
         cuComplex apar_term = apar[index] * ( 3.*tprim*sgam0(bidx) );  
      
@@ -388,7 +390,7 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
         qpar_field[index] = -iomegad*( (-3.+n6.y)*qpar[index] + (-3.+n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
   	                  + abs_omegad*( n5.x*upar[index] + n6.x*qpar[index] + n7.x*qprp[index] )
   		          + nu_ss * qpar[index];
-        if(fapar>0.) {
+        if(beta>0.) {
           cuComplex iomegastar = iOmegaStar(ky[idy]);
           cuComplex apar_term = apar[index] * ( 3.*tprim*sgam0(bidx) );  
      
@@ -407,7 +409,7 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
                       float* gb,float* gb0,float* cv, float* cv0,
                       float nu_ss, cuComplex nu8, cuComplex nu9, cuComplex nu10, cuComplex mu8, cuComplex mu9, cuComplex mu10, bool varenna,
-		      cuComplex* r_terms, cuComplex* sparprp, cuComplex* sprpprp, bool higher_order_moments, float fapar, float dt)
+		      cuComplex* r_terms, cuComplex* sparprp, cuComplex* sprpprp, bool higher_order_moments, float beta, float dt)
 {
   unsigned int idy = get_idy();
   unsigned int idx = get_idx();
@@ -454,13 +456,15 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
                         + nu_ss*qprp[index];
       }
 
-      if(fapar>0.) {
+      if(beta>0.) {
         cuComplex iomegastar = iOmegaStar(ky[idy]);
         cuComplex apar_term1 = apar[index] * ( tprim*(sgam0(bidx)+flr2(bidx)) + (fprim + tprim)*flr(bidx) );  
         cuComplex apar_term2 = apar[index] * ( flr(bidx) );
         cuComplex dApardt_flr = flr(bidx) * ( aparNew[index] - apar[index] ) / dt;    
 
         qprp_field[index] = qprp_field[index] - vt*iomegastar*apar_term1 + vt*zt*iomegad*apar_term2 + vt*zt*dApardt_flr;
+        // double check sign of iomegad term. - is consistent with gryffin code. + seems to be consistent with snyder thesis. 
+        // gryffin also leaves off the vt*zt factors
       }
 
     }
@@ -645,9 +649,13 @@ __global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar,
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
-      cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+//      cuComplex iomegastar_e = iOmegaStar(ky[idy])/ti_ov_te;
+//
+//      result[index] = tprim*iomegastar_e*apar[index];
 
-      result[index] = tprim*iomegastar_e*apar[index];
+      float omegastar_e = ky[idy]/ti_ov_te;
+
+      result[index] = tprim*omegastar_e*apar[index];
     }
   }
   else {

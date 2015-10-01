@@ -455,7 +455,7 @@ __global__ void mask_Z_covering(cufftComplex* f, int nLinks, int nChains)
 }    
 
 
-__global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, int icovering)
+__global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, int icovering, float qsf, float shat)
 {
   unsigned int i = __umul24(blockIdx.x,blockDim.x)+threadIdx.x;
   unsigned int p = __umul24(blockIdx.z,blockDim.z)+threadIdx.z;  
@@ -470,6 +470,8 @@ __global__ void kzInitCovering(float* kz, int nLinks, bool NO_ZDERIV_COVERING, i
         kz[index] = (float) (index-nz*nLinks*icovering)/(Zp_d*nLinks*icovering);
 	
       if(NO_ZDERIV_COVERING) kz[index] = 0;	
+      if(qsf<0.) kz[index] = shat;
+      
     }	
     
     
@@ -533,7 +535,8 @@ __global__ void zderiv_covering_invert(cufftComplex* f, int nLinks, int nChains,
       i_kz.y = kz[kidx];
 
       cuComplex tmp;
-      if(i_kz.y != 0.) tmp = f[index] / i_kz;
+      //if(i_kz.y != 0.) tmp = f[index] / i_kz;
+      if(kz[kidx] != 0.) tmp = f[index] / kz[kidx];
       else {
         tmp.x = 0; tmp.y = 0.;
       }

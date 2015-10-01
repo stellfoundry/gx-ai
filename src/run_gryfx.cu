@@ -19,6 +19,7 @@ extern "C" void broadcast_integer(int* a);
 void run_gryfx(everything_struct * ev_h, double * pflux, double * qflux, FILE* outfile)//, FILE* omegafile,FILE* gammafile, FILE* energyfile, FILE* fluxfile, FILE* phikyfile, FILE* phikxfile, FILE* phifile)
 {
 
+printf("hi\n");
   set_globals_after_gryfx_lib(ev_h);
   if (iproc==0) set_cuda_constants();
 

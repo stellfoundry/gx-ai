@@ -1,27 +1,30 @@
 void qneut(cuComplex* Phi, cuComplex* Apar, cuComplex** Dens, cuComplex** Tprp, cuComplex** Upar, cuComplex** Qprp, cuComplex* PhiAvgNum_tmp, 
            cuComplex* nbar_tmp, cuComplex* nbartot_field, cuComplex* ubar_tmp, cuComplex* ubartot_field, 
-           specie* species, specie* species_d, input_parameters_struct* pars) // bool adiabatic, float fapar, float beta, bool snyder_electrons)
+           specie* species, specie* species_d, input_parameters_struct* pars)
 {
 #ifdef PROFILE
 PUSH_RANGE("qneut", 0);
 #endif
 
   bool adiabatic = pars->adiabatic_electrons;
-  float fapar = pars->fapar;
   float beta = pars->beta;
   bool snyder_electrons = pars->snyder_electrons;
   bool stationary_ions = pars->stationary_ions;
 
   //calculate the real-space ion density (summed over species)
-  cudaMemset(nbartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   cudaMemset(nbar_tmp, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
   if(adiabatic) {
+    cudaMemset(nbartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     for(int s=0; s<nSpecies; s++) {
       nbar<<<dimGrid,dimBlock>>>(nbar_tmp, Dens[s], Tprp[s], species[s], kx, ky, shat, gds2, gds21, gds22, bmagInv);
       add_scaled<<<dimGrid,dimBlock>>>(nbartot_field, 1., nbartot_field, 1., nbar_tmp);
     }
     if(iphi00==1) {
-      qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species, kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
+      qneutETG<<<dimGrid,dimBlock>>>(Phi, nbartot_field, species_d, kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
+      if(beta > 0.) {
+        solve_ampere_for_upar_e_ETG<<<dimGrid,dimBlock>>>(Apar, Upar[nSpecies-1], beta,
+                                           kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te, species[nSpecies-1].dens);
+      }
     }
     if(iphi00==2) {
       qneutAdiab_part1<<<dimGrid,dimBlock>>>(PhiAvgNum_tmp, nbartot_field, jacobian, species_d, 
@@ -30,6 +33,7 @@ PUSH_RANGE("qneut", 0);
 					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
     }
   } else {
+    cudaMemset(nbartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
     if(!stationary_ions) {
       for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion densities
         nbar<<<dimGrid,dimBlock>>>(nbar_tmp, Dens[s], Tprp[s], species[s], kx, ky, shat, gds2, gds21, gds22, bmagInv);
@@ -40,46 +44,24 @@ PUSH_RANGE("qneut", 0);
 					     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te);
 
     cudaMemset(ubartot_field, 0., sizeof(cuComplex)*Nx*(Ny/2+1)*Nz);
-    if(fapar > 0.) {
-          // for electromagnetic ions, the 'upar' and 'qprp' evolved by the code are actually 
-          // 'upar' = upar + vt*zt*apar_u
-          // 'qprp' = qprp + vt*zt*apar_flr
-          // here we subtract off the apar parts
-          // we will add them back later
-        //for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion velocities
-        //  phi_u <<<dimGrid, dimBlock>>> (ubar_tmp, Apar, species[s].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        //  add_scaled<<<dimGrid,dimBlock>>>(Upar[s], 1., Upar[s], -species[s].vt*species[s].zt, ubar_tmp);
-        //  
-        //  phi_flr <<<dimGrid, dimBlock>>> (ubar_tmp, Apar, species[s].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        //  add_scaled<<<dimGrid,dimBlock>>>(Qprp[s], 1., Qprp[s], -species[s].vt*species[s].zt, ubar_tmp);
-        //}
+    if(beta > 0.) {
       if(!stationary_ions) {
         for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion velocities
-
           ubar<<<dimGrid,dimBlock>>>(ubar_tmp, Upar[s], Qprp[s], species[s], kx, ky, shat, gds2, gds21, gds22, bmagInv);
           add_scaled<<<dimGrid,dimBlock>>>(ubartot_field, 1., ubartot_field, 1., ubar_tmp);
           // ^ this is a running sum for the loop over ion species
           // each ubar_s is weighted by n_s and Z_s
-
         }
       }
 
-      if(snyder_electrons) {
+      //if(snyder_electrons || stationary_ions) {
         solve_ampere_for_upar_e<<<dimGrid,dimBlock>>>(Apar, ubartot_field, Upar[nSpecies-1], beta,
                                            kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te, species[nSpecies-1].dens);
-      } else {
-        solve_ampere_for_apar<<<dimGrid,dimBlock>>>(Apar, ubartot_field, Upar[nSpecies-1], beta,
-                                           kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te, species[nSpecies-1].dens, species[nSpecies-1].vt);
-      }
+      //} else {
+      //  solve_ampere_for_apar<<<dimGrid,dimBlock>>>(Apar, ubartot_field, Upar[nSpecies-1], beta,
+      //                                     kx, ky, shat, gds2, gds21, gds22, bmagInv, ti_ov_te, species[nSpecies-1].dens, species[nSpecies-1].vt);
+      //}
 
-        //for(int s=0; s<nSpecies-1; s++) { // electrons are last species, so don't include them in this sum of ion velocities
-        //  // here we add the apar parts back 
-        //  phi_u <<<dimGrid, dimBlock>>> (ubar_tmp, Apar, species[s].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        //  add_scaled<<<dimGrid,dimBlock>>>(Upar[s], 1., Upar[s], species[s].vt*species[s].zt, ubar_tmp);
-        //  
-        //  phi_flr <<<dimGrid, dimBlock>>> (ubar_tmp, Apar, species[s].rho, kx, ky, shat, gds2, gds21, gds22, bmagInv);
-        //  add_scaled<<<dimGrid,dimBlock>>>(Qprp[s], 1., Qprp[s], species[s].vt*species[s].zt, ubar_tmp);
-        //}
     }
   }
 #ifdef PROFILE

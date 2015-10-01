@@ -776,6 +776,35 @@ __global__ void scale(cuComplex* result,cuComplex* b, float scaler, int nx, int 
   }    	
 } 
 
+__global__ void scaleI(cuComplex* result,cuComplex* b, float scaler)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*(nx)*idz;
+ 
+      cuComplex I;
+      I.x = 0.;
+      I.y = 1.;   
+
+      result[index] = I*scaler*b[index];
+    }
+  }
+    
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+	
+	result[index] = scaler*b[index];
+      }
+    }
+  }    	
+} 
+
 //scaler * B(z)
 __global__ void scaleRealZ(float* result, float* B, double scaler) 
 {

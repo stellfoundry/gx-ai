@@ -1,4 +1,4 @@
-__global__ void kInit(float* kx, float* ky, float* kz, float* kx_abs, bool NO_ZDERIV) 
+__global__ void kInit(float* kx, float* ky, float* kz, float* kx_abs, bool NO_ZDERIV, float qsf, float shat) 
 {
   unsigned int idy = get_idy();
   int idx = iget_idx();
@@ -26,8 +26,9 @@ __global__ void kInit(float* kx, float* ky, float* kz, float* kx_abs, bool NO_ZD
         kz[idz] = (float) idz/Zp_d;
       else
         kz[idz] = (float) (idz - nz)/Zp_d;
+      if(qsf<0.) kz[idz] = shat;
+      if(NO_ZDERIV) kz[idz] = 0;
     }	
-    if(NO_ZDERIV) kz[idz] = 0;
   }
   else {
     for(int i=0; i<nz/zthreads; i++) {
@@ -37,13 +38,12 @@ __global__ void kInit(float* kx, float* ky, float* kz, float* kx_abs, bool NO_ZD
 	  kz[IDZ] = (float) IDZ/Zp_d;
 	else
 	  kz[IDZ] = (float) (IDZ - nz)/Zp_d;
-	
+        if(qsf<0.) kz[idz] = shat;
 	if(NO_ZDERIV) kz[IDZ] = 0;  
       }
     }
    
   }  	    
-
 }     
 
 

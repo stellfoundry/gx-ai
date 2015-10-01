@@ -52,7 +52,7 @@ void calculate_additional_geo_arrays(
 void initialize_grids(input_parameters_struct * pars, grids_struct * grids, grids_struct * grids_h, cuda_dimensions_struct * cdims){
 	cudaMemcpy(grids->z, grids_h->z, sizeof(float)*grids->Nz, cudaMemcpyHostToDevice);
 
-  kInit  <<< cdims->dimGrid, cdims->dimBlock >>> (grids->kx, grids->ky, grids->kz, grids->kx_abs, NO_ZDERIV);
+  kInit  <<< cdims->dimGrid, cdims->dimBlock >>> (grids->kx, grids->ky, grids->kz, grids->kx_abs, NO_ZDERIV, pars->qsf, pars->shat);
 
   grids_h->kx_max = (float) ((int)((grids_h->Nx-1)/3))/pars->x0;
   grids_h->ky_max = (float) ((int)((grids_h->Ny-1)/3))/pars->y0;
@@ -292,7 +292,7 @@ void initialize_z_covering(int iproc, grids_struct * grids_hd, grids_struct * gr
     cudaMemcpy(grids_hd->kxCover[c], grids_h->kxCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);
     cudaMemcpy(grids_hd->kyCover[c], grids_h->kyCover[c], sizeof(int)*nlinks[c]*nchains[c], cudaMemcpyHostToDevice);    
 
-    kzInitCovering<<<cdims->dimGridCovering[c],cdims->dimBlockCovering>>>(grids_hd->kz_covering[c], nlinks[c],NO_ZDERIV_COVERING,icovering);
+    kzInitCovering<<<cdims->dimGridCovering[c],cdims->dimBlockCovering>>>(grids_hd->kz_covering[c], nlinks[c],NO_ZDERIV_COVERING,icovering, qsf, shat);
   }    
   cdims->dimGridCovering_all.x = max_x;
   cdims->dimGridCovering_all.y = max_y;

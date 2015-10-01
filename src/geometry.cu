@@ -51,7 +51,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
     z_h = grids->z;
          
     
-    geo->gradpar = (float) 1./(pars->qsf*pars->rmaj);
+    geo->gradpar = (float) abs(1./(pars->qsf*pars->rmaj));
     
     pars->drhodpsi = 1.; 
 
@@ -69,6 +69,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
     
     for(int k=0; k<grids->Nz; k++) {
       z_h[k] = 2*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
+      if(qsf<0) {z_h[k] = 0.;}
       geo->bmag[k] = 1./(1+pars->eps*cos(z_h[k]));
       geo->bgrad[k] = geo->gradpar*pars->eps*sin(z_h[k])*geo->bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       geo->gds2[k] = 1. + pow((pars->shat*z_h[k]-pars->shift*sin(z_h[k])),2);
@@ -97,6 +98,7 @@ void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry
         geo->bmag[k] = 1.;
         //geo->gradpar = 1.;
       }
+      if(qsf<0) z_h[k] = 2*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
     }  
   }
   else if ( pars->igeo == 1) // read geometry from file 

@@ -48,6 +48,27 @@ void definitions(everything_struct * ev)
   cuComplex * nu = ev->damps.nu;
   cuComplex * mu = ev->damps.mu;
 
+    nu[1].x=0.;
+    nu[1].y=0.;
+    nu[2].x=0.;
+    nu[2].y=0.;
+    nu[3].x=0.;
+    nu[3].y=0.;
+    nu[4].x=0.;
+    nu[4].y=0.;
+    nu[5].x=0.;
+    nu[5].y=0.;
+    nu[6].x=0.;
+    nu[6].y=0.;
+    nu[7].x=0.;
+    nu[7].y=0.;
+    nu[8].x=0.;
+    nu[8].y=0.;
+    nu[9].x=0.;
+    nu[9].y=0.;
+    nu[10].x=0.;
+    nu[10].y=0.;
+
   if(default_nu) {
     nu[1].x=2.019;
     nu[1].y=-1.620;

@@ -177,7 +177,6 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
         PhiAvg.x = 0.; PhiAvg.y = 0.;
       }
       
-      //Phi[index] = nbartot_field[idxy+27*nx*(ny/2+1)];
       Phi[index].x = ( nbartot_field[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
       Phi[index].y = ( nbartot_field[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
 
@@ -421,6 +420,30 @@ __global__ void solve_ampere_for_upar_e(cuComplex* Apar, cuComplex* ubartot_fiel
 
 }
 
+
+__global__ void solve_ampere_for_upar_e_ETG(cuComplex* Apar, cuComplex* upar_e, float beta_e,
+		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+
+
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+
+      unsigned int idxy = idy + (ny/2+1)*idx;
+        
+      double bidx;
+      
+      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+
+      upar_e[index] = 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e)*(1+bidx/2.);
+    
+   }   
+
+}
 
 
 

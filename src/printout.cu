@@ -40,7 +40,7 @@ void print_cuda_properties(everything_struct * ev){
 void print_final_summary(everything_struct * ev, FILE * outfile){
     printf("\nNx=%d  Ny=%d  Nz=%d  X0=%g  Y0=%g  Zp=%d\n", Nx, Ny, Nz, X0, Y0,Zp);
     printf("jtwist=%d   nSpecies=%d   cfl=%f\n", jtwist,nSpecies,cfl);
-    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  shift=%g  g_exb=%g\n", shat, eps, qsf, rmaj, shift, g_exb);
+    printf("shat=%g  eps=%g  qsf=%g  rmaj=%g  shift=%g  gradpar=%g  g_exb=%g\n", shat, eps, qsf, rmaj, shift, gradpar, g_exb);
     for(int s=0; s<nSpecies; s++) {
       printf("species %d parameters, ",s+1);
       if(s==0) printf("Main ion:\n");
