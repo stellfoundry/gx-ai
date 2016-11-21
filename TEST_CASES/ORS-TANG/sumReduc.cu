@@ -1,1 +1,0 @@
-../../GRFX/sumReduc.cu

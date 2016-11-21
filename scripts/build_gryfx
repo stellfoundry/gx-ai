@@ -1,0 +1,244 @@
+#! /bin/bash
+# A script for building GRYFX. This is free software, released
+# under the MIT licence.
+# Written by:
+#            Edmund Highcock (edmundhighcock@users.sourceforge.net)
+# Modified by:
+#            D Dickinson (ddickinson@users.sourceforge.net)
+
+function short_help(){
+    cat <<EOF
+usage: ./$(basename $0) Options
+
+OPTIONS:
+   -h          Show this message and long help
+   -c <VAL>    Pass <VAL> as extra commands to make
+   -s <VAL>    Specify the system name, used to determine which configuration to use
+   -t <VAL>    Run a particular test (automatically implies -o tests)
+   -v <VAL>    Set the verbosity for tests (0-5)
+   -g <VAL>    Set the location of gs2 to VAL
+   -d          Build with DEBUG=on
+   -o <VAL>    Specify operation to perform, can be one of:
+                     ls              : List the supported systems 
+                     help            : Prints the long help
+                     man             : Pipes the long help to less
+                     config          : Creates the configuration file
+                     print_config    : Creates and prints the configuration file
+                     build           : Runs make to compile code (no target specfied) <DEFAULT>
+                     gryfx             : Runs make to compile gryfx executable
+                     tests           : Uses make to run unit_tests and linear_tests
+                     unit_tests      : Run unit_tests
+                     linear_tests    : Run linear_tests
+                     nonlinear_tests : Run nonlinear_tests
+                     update          : Updates this script <NOT IMPLEMENTED>
+                     depend          : Builds the dependency file
+                     clean           : Runs make clean
+                     distclean       : Runs make distclean
+EOF
+
+}
+function print_help {
+  echo ""
+  echo " GRYFX Build Script"
+  echo
+  echo "This script is a utility for building GRYFX."
+  echo "To build gryfx, execute:" 
+  echo " $ ./build_gryfx -s <system> -g <path-to-gs2>"
+  echo 
+  echo "If you set the GK_SYSTEM environment variable, you can neglect the -s"
+  echo "option."
+  echo 
+  echo "If you set the GS2 environment variable, you can neglect the -g"
+  echo "option."
+  echo 
+  echo "To see a list of available systems:"
+  echo " $ ./build_gryfx -o ls"
+  echo 
+  echo "GryfX requires running on a node with a GPU."
+  echo "To start an interactive session on Stampede, use"
+  echo " $ idev -p gpudev -t hh:mm:ss"
+  echo
+  echo "To run the tests: "
+  echo " $ ./build_gryfx -c 'tests' -s <system> -g <path-to-gs2>"
+  echo 
+  echo "To run a specific test:"
+  echo " $ ./build_gryfx -c 'tests TESTS=<test>' -s <system> -g <path-to-gs2>"
+  echo 
+  echo "By default, GryfX will build in hybrid mode,"
+  echo "which means the zonal flow modes will be evolved"
+  echo "by GS2. To build non-hybrid GryfX, clean and set the -z flag:"
+  echo " $ ./build_gryfx -o clean; ./build_gryfx -z off"
+  echo
+  echo "For more specific commands you can use the "
+  echo "-c flag:"
+  echo " $ ./build_gryfx -c DEBUG=on"
+  echo " $ ./build_gryfx -c 'DEBUG=on USE_FFT=fftw3'"
+  echo "The -c flag passes an arbitrary string to the"
+  echo "make command."
+  echo 
+  echo "To print the configuration for a given system:"
+  echo " $ ./build_gryfx -s <system> -o print_config "
+  echo 
+  echo "You can use this to configure your system"
+  echo "without building GRYFX like this:"
+  echo " $ ./build_gryfx -s <system> -o config "
+  echo " $ source system_config"
+  echo
+  echo "It uses a standard set of choices about"
+  echo "configuration based on the value of -s. These"
+  echo "choices may need to be maintained as software is upgraded."
+  echo "If this script is being run from within a release of GRYFX,"
+  echo "rather than from the development repository, it can be updated"
+  echo "to the latest development version using: "
+  echo " $ ./build_gryfx -o update"
+  echo
+}
+
+function check_system_set {
+if [ "$GK_SYSTEM" == "" ] 
+then
+  echo "ERROR: Please set the -s option or set the GK_SYSTEM environment variable."
+  exit 1
+fi
+}
+
+function check_gs2_set {
+if [ "$GS2" == "" ] 
+then
+  echo "ERROR: Please set the -g option or set the GS2 environment variable."
+  exit 1
+fi
+}
+
+function build_gs2 {
+cd $GS2 && ./build_gs2 -c 'libgs2.a geometry_c_interface.o' $GS2DBGFLAG && cd $OLDPWD
+}
+
+
+function run_configuration {
+make system_config GK_SYSTEM=$GK_SYSTEM -I Makefiles || exit 1
+}
+
+function setup_build {
+check_system_set
+check_gs2_set
+build_gs2
+run_configuration
+source system_config
+if [ "$GS2_zonal" != "on" ] 
+then
+  TESTEXEC=
+fi
+}
+
+
+#Defaults
+MAKE_OPTIONAL_COMMAND=""
+COMMAND="build"
+GS2_zonal="on"
+PROFILE="off"
+
+#Parse arguments
+while getopts "hds:c:p:o:t:v:g:z:" OPTIONS
+do
+  case ${OPTIONS} in
+    h)
+      short_help
+      exit 0
+      ;;
+    s)
+      GK_SYSTEM=${OPTARG}
+      ;;
+    c)
+      MAKE_OPTIONAL_COMMAND=${OPTARG}
+      ;;
+    d)
+      DBGFLAG=debug=on
+      GS2DBGFLAG=-d
+      ;;
+    g)
+      GS2=${OPTARG}
+      ;;
+    o)
+      COMMAND=${OPTARG}
+      ;;
+    p)
+      PROFILE=${OPTARG}
+      ;;
+    t)
+      COMMAND=tests
+      TESTS=$OPTARG
+      TESTSET=$OPTARG
+      ;;
+    v)
+      COMMAND=tests
+      GK_VERBOSITY=$OPTARG
+      VERBSET=$OPTARG
+      ;;
+    z)
+      GS2_zonal=${OPTARG}
+      ;;
+
+    *)
+      short_help
+      exit 1
+      ;;
+  esac
+done
+
+# Define combined make flags
+MAKEFLAGSALL="$MAKEFLAGS $DBGFLAG $VERBSET GK_SYSTEM=$GK_SYSTEM $MAKE_OPTIONAL_COMMAND GS2=$GS2 GS2_zonal=$GS2_zonal PROFILE=$PROFILE" 
+
+#Now perform operation
+case $COMMAND in 
+  man)
+    print_help | less
+    exit 0
+    ;;
+  help)
+    print_help
+    ;;
+  config)
+    check_system_set
+    run_configuration
+    ;;
+  print_config)
+    check_system_set
+    run_configuration
+    echo
+    echo "Configuration for system $GK_SYSTEM:"
+    cat system_config
+    ;;
+  ls)
+    find Makefiles -type f -exec grep -q STANDARD_SYSTEM_CONFIGURATION {} \; -print | grep -v svn | grep -Ev '~$|swp$|orig$' | sed 's|Makefiles/Makefile\.||g' | sort #| xargs echo
+    ;;
+  build)
+    setup_build
+    make $MAKEFLAGSALL
+    ;;
+  tests|unit_tests|linear_tests|nonlinear_tests|depend|gryfx)
+    setup_build
+    make $COMMAND $MAKEFLAGSALL
+    ;;
+  update)
+    echo "update function not implemented yet!"
+    exit 1
+    ;;
+  clean)
+    setup_build
+    make clean
+    ;;
+  distclean)
+    setup_build
+    make distclean
+    ;;
+  *)
+    echo "ERROR: Unknown command $COMMAND. Run" 
+    echo " $ ./build_gryfx -h" 
+    echo "for usage."
+    echo " $ ./build_gryfx -o man"
+    echo "for more details."
+    ;;
+esac
+
+exit 0

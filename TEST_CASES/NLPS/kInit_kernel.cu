@@ -1,1 +1,0 @@
-../../GRFX/kInit_kernel.cu

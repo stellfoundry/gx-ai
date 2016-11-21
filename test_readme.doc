@@ -1,8 +1,0 @@
-1) Check out sources from svn://gk.umd.edu/noah
-2) Go to noah/trunk/TEST_CASES
-To run both NLPS and ORS-TANG:
-3) Execute "./TESTscript"
-For NLPS only:
-4) Execute "./TESTscript -NLPS"
-For ORS-TANG only:
-5) Execute "./TESTscript -ORSTANG"

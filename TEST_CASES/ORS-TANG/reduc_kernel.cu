@@ -1,1 +1,0 @@
-../../GRFX/reduc_kernel.cu

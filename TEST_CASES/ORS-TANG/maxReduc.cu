@@ -1,1 +1,0 @@
-../../GRFX/maxReduc.cu

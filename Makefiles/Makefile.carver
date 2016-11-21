@@ -1,0 +1,120 @@
+##################################################
+#           Makefile of gryfx for CUDA           #
+#                                                #
+#  NOTE: environmental variables                 #
+#     CUDAARCH, SDKDIR                           #
+#  need to be properly defined                   #
+##################################################
+TARGET    = gryfx
+CU_DEPS := \
+      device_funcs.cu \
+      operations_kernel.cu \
+      diagnostics_kernel.cu \
+      exb_kernel.cu \
+      nlps_kernel.cu \
+      zderiv_kernel.cu \
+      covering_kernel.cu \
+      reduc_kernel.cu \
+      cudaReduc_kernel.cu \
+      init_kernel.cu \
+      omega_kernel.cu \
+      phi_kernel.cu \
+      getfcn.cu \
+      c_fortran_namelist3.c \
+      read_namelist.cu \
+      read_input.cu \
+      definitions.cu \
+      diagnostics.cu \
+      coveringSetup.cu \
+      exb.cu \
+      ztransform_covering.cu \
+      zderiv.cu \
+      zderivB.cu \
+      zderiv_covering.cu \
+      nlps.cu \
+      sumReduc.cu \
+      energy.cu \
+      timestep_gryfx.cu \
+      run_gryfx.cu \
+      courant.cu \
+      maxReduc.cu \
+      nlpm.cu \
+      nlpm_kernel.cu \
+      gryfx_lib.h \
+      read_geo.cu \
+      global_vars.h \
+      write_data.cu \
+      qneut.cu \
+      qneut_kernel.cu
+
+
+FILES     = *.cu *.c *.cpp Makefile
+VER       = `date +%y%m%d`
+
+NVCC      = nvcc
+NVCCFLAGS =  -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math  -I ${GS2} ${NETCDF} 
+NVCCINCS  = $(CUDA_INCLUDE) -I ${SIMPLEDATAIO}/include
+NVCCLIBS  = $(NVIDIA_DRIVER_LIB) $(CUDA_LIB64) -lcufft #-L ${SIMPLEDATAIO}/lib -l simpledataio
+
+FORTRAN_LIBS= -L/usr/common/usg/pgi/12.9/linux86-64/12.9/lib -lpgf90 -lpgf90rtl -lpgftnrtl -lpghpf -lpghpf_mpi -lpghpf_rpm -lpghpf_smp  -lpgc  -lpghpf2 -L/usr/common/usg/openmpi/1.4.5/pgi/lib -lmpi_f90 -lmpi -lmpi_f77
+
+GEO_LIBS=${GS2}/geo/geometry_c_interface.o ${GS2}/geo.a  ${GS2}/utils.a
+
+
+ifeq ($(debug),on)
+  NVCCFLAGS += -g -G -O3
+else
+  NVCCFLAGS += -O3
+endif
+
+.SUFFIXES:
+.SUFFIXES: .cu .o
+.DEFAULT_GOAL := $(TARGET)
+
+
+.cu.o:
+	$(NVCC) -c $(NVCCFLAGS) $(NVCCINCS) $< #${GS2}/geo/geo_c.a
+
+gryfx_lib.a: gryfx_lib.o 
+	ar cr gryfx_lib.a gryfx_lib.o
+	ranlib gryfx_lib.a
+
+gryfx_lib.o: gryfx_lib.h $(CU_DEPS)
+
+gryfx_lib_dumb.o: gryfx_lib.h
+
+gryfx_lib_dumb.a: gryfx_lib_dumb.o
+	ar cr $@ $<
+	ranlib $@
+
+
+# main program
+$(TARGET): gryfx.o gryfx_lib.a
+	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCINCS) $(NVCCLIBS) $< gryfx_lib.a #${GEO_LIBS} ${FORTRAN_LIBS} 
+
+gryfx_dumb: gryfx.o gryfx_lib_dumb.a
+	$(NVCC)  -o $@ $(NVCCFLAGS) $(NVCCLIBS) $< gryfx_lib_dumb.a ${GEO_LIBS} ${FORTRAN_LIBS} 
+
+gryfx.o: gryfx_lib.h
+
+test_make:
+	@echo TARGET=    $(TARGET)
+	@echo SDKDIR=    $(SDKDIR)
+	@echo NVCC=      $(NVCC)
+	@echo NVCCFLAGS= $(NVCCFLAGS)
+	@echo NVCCINCS=  $(NVCCINCS)
+	@echo NVCCLIBS=  $(NVCCLIBS)
+
+clean:
+	rm -rf *.o *~ \#*
+
+distclean: clean
+	rm -rf $(TARGET)
+
+tar:
+	@echo $(TARGET)-$(VER) > .package
+	@-rm -fr `cat .package`
+	@mkdir `cat .package`
+	@ln $(FILES) `cat .package`
+	tar cvf - `cat .package` | bzip2 -9 > `cat .package`.tar.bz2
+	@-rm -fr `cat .package` .package
