@@ -40,14 +40,16 @@ void setup_info(char * input_file, input_parameters_struct * pars, info_struct *
  
   if(pars->restart) {
     // check if restart file exists
-    if( FILE* restartFile = fopen(restartfileName, "r") ) {
-      printf("restart file %s found. restarting...\n", restartfileName);
-    }
-    else{
-      printf("cannot restart because cannot find restart file %s. changing to no restart\n", restartfileName);
-      // EGH Perhaps we should abort at this point?
-      pars->restart = false;
-      abort();
+    if (!pars->netcdf_restart) {
+      if( FILE* restartFile = fopen(restartfileName, "r") ) {
+        printf("restart file %s found. restarting...\n", restartfileName);
+      }
+      else{
+        printf("cannot restart because cannot find restart file %s. changing to no restart\n", restartfileName);
+        // EGH Perhaps we should abort at this point?
+        pars->restart = false;
+        abort();
+      }
     }
   }			
   

@@ -1448,9 +1448,11 @@ __global__ void abs_sgn(float* res, float* f, float* g_sgn)
       unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
       
       int sgn = 0;
-
-      if(g_sgn[index]>0) sgn=1;
-      if(g_sgn[index]<0) sgn=-1;
+  
+      if(abs(g_sgn[index])>1.e-5) {
+        if(g_sgn[index]>0) sgn=1;
+        if(g_sgn[index]<0) sgn=-1;
+      }
 
       res[index] = abs(f[index]) * sgn;
     }
@@ -1505,6 +1507,75 @@ __global__ void abs_sgn(cuComplex* res, cuComplex* f, cuComplex* g)
   }
 }      
 
+__global__ void sgn(cuComplex* res, cuComplex* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny/2+1) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      
+      //float fac=sqrt(2.);
+      float fac=1.;
+
+      if(cuCabsf(g[index]) > 0.) {
+        res[index] = fac*g[index] / cuCabsf(g[index]);
+      } else {
+        res[index].x = 0.;
+        res[index].y = 0.;
+      }
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+        if(cuCabsf(g[index]) != 0) {
+          res[index] = g[index] / cuCabsf(g[index]);
+        } else {
+          res[index].x = 0.;
+          res[index].y = 0.;
+        }
+      }
+    }
+  }
+}      
+
+__global__ void sgn(float* res, float* g)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<ny && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+     
+      int sgn = 0;
+      if(g[index]>0.) sgn = 1;
+      if(g[index]<0.) sgn = -1;
+ 
+      res[index] = sgn;      
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny/2+1) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz + nx*(ny/2+1)*zthreads*i;
+
+      int sgn = 0;
+      if(g[index]>0.) sgn = 1;
+      if(g[index]<0.) sgn = -1;
+ 
+      res[index] = sgn;      
+      }
+    }
+  }
+}      
 __global__ void mult_sgn(cuComplex* res, cuComplex* f, cuComplex* g)
 {
   unsigned int idy = get_idy();
@@ -1570,6 +1641,33 @@ __global__ void mult_sgn(float* res, float* f, float* g)
     }
   }
 }      
+
+__global__ void norm(float* res, float* fx, float* fy)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+      
+      res[index] = sqrt(fx[index]*fx[index] + fy[index]*fy[index]);
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+        res[index] = sqrt(fx[index]*fx[index] + fy[index]*fy[index]);
+      }
+    }
+  }
+}      
+
+
+
 __global__ void mult_I(cuComplex* f)
 {
   unsigned int idy = get_idy();
@@ -2263,6 +2361,20 @@ __global__ void set_fixed_amplitude(cuComplex* phi_fixed, cuComplex* dens_fixed,
   }
 }
 
+__global__ void scale_ky0(cuComplex* f, float scaler) 
+{
+
+  unsigned int idx = get_idx();
+  unsigned int idy = get_idy();
+  unsigned int idz = get_idz();
+
+  if(idx<nx && idy==0 && idz<nz) {
+    unsigned int index = idy + (ny/2+1)*idx + (ny/2+1)*nx*idz;
+    f[index] = f[index]*scaler;
+  }
+
+}
+
 __global__ void scale_ky_neq_0(cuComplex* result, cuComplex* f, float scaler) 
 {
 
@@ -2513,3 +2625,36 @@ __global__ void mult_1_sgn2_3(float* result, float* f1, float* f2, float* f3)
     }
   }
 }
+
+
+__global__ void hilbert_v(float* result, float* vx, float* vy)
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+  
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+
+      float x = 2.*M_PI*X0_d*(idx)/nx;
+      float y = 2.*M_PI*Y0_d*(idy)/ny;
+
+      float v_abs = sqrt( vx[index]*vx[index] + vy[index]*vy[index] );
+      float v_dot_x = vx[index]*x + vy[index]*y;
+
+      if( v_abs < 1.e-7 || index%2==0 ) result[index]=0.; 
+      else result[index] = -1./tan(v_dot_x/v_abs);
+
+    }
+  }
+  else {
+    for(int i=0; i<nz/zthreads; i++) {
+      if(idy<(ny) && idx<nx && idz<zthreads) {
+        unsigned int index = idy + (ny)*idx + nx*(ny)*idz + nx*(ny)*zthreads*i;
+	
+      }
+    }
+  }
+}
+

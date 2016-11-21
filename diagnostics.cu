@@ -183,7 +183,7 @@ void fieldWrite_nopad_h(cuComplex* f_nopad_h, char* ext, char* filename, int Nx,
 
 inline void fieldWriteXY(float* f_d, char* fieldname, float dt)
 {
-  char filename[200];  
+  char filename[2000];  
   sprintf(filename, "fields/%s/%s%g",fieldname,fieldname,dt);
   FILE* out = fopen(filename,"w+");
   float *f_h;
@@ -279,7 +279,7 @@ inline void fieldWriteCovering(cuComplex* f_d, char* filename,int** kxCover,int*
 inline void fieldWriteCovering(cuComplex* f_d, char* fieldname, float dt,int** kxCover,int** kyCover, int** kxCover_h, int** kyCover_h, int C)
 { 
   for(int c=C; c<C+1; c++) {
-    char filename[200];  
+    char filename[2000];  
     sprintf(filename, "fields/%s_covering/%s_covering%g_c%d",fieldname,fieldname,dt,c);
     FILE* out = fopen(filename,"w+"); 
     cuComplex *g_h;
@@ -1321,7 +1321,7 @@ bool stabilityCheck(int* Stable, int stableMax)
 
 inline void stabilityWrite(cuComplex* stability, int* Stable, int stableMax)
 {
-  char filename[200];
+  char filename[2000];
   sprintf(filename,"./scan/outputs/stability%g_f%g_t%g", dt, species[0].fprim, species[0].tprim);
   FILE* ofile = fopen(filename,"w+");
   fprintf(ofile, "Nx = %d  Ny = %d  Nz = %d  Boxsize = 2pi*(%g,%g,%g)\n\n", Nx, Ny, Nz, X0, Y0, Zp); 
@@ -1671,7 +1671,7 @@ void gryfx_finish_diagnostics(
 
 )
 {
-  char filename[200];  
+  char filename[2000];  
 
     cuComplex * Phi = ev_hd->fields.phi;
     cuComplex * Apar = ev_hd->fields.apar;
@@ -1746,6 +1746,8 @@ void gryfx_finish_diagnostics(
   //write final growth rates, with ky or kx as the fast index
   omegakykxWrite(omegaAvg_h, filename, "omega.kykx", 1., (float) 1./dtSum);
   omegakxkyWrite(omegaAvg_h, filename, "omega.kxky");
+
+  if (ev_h->pars.debug) getError("Starting gryfx_finish_diagnostics");
   
   //write fields
     //normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);
@@ -1770,6 +1772,8 @@ void gryfx_finish_diagnostics(
     fieldWrite(Phi, field_h, "phi.field", filename);
 
     if(ev_h->pars.fapar>0) fieldWrite(Apar, field_h, "apar.field", filename);
+    
+  if (ev_h->pars.debug) getError("Finished writing fields");
 
   //calculate and write wpfx(ky)
   if(end) {
@@ -1793,6 +1797,8 @@ void gryfx_finish_diagnostics(
 
   //write zonal flow component of phi**2(kx)
   kxWrite(phi2zonal_tmpX2, tmpX_h, filename, "phi2_zonal.kx");
+
+  if (ev_h->pars.debug) getError("Finished writing zonal component of phi**2");
   
   //calculate and write non zonal component of phi**2(kx)
   /*
@@ -1818,7 +1824,9 @@ void gryfx_finish_diagnostics(
     //float dkperp = 1./X0;
     //E_kperp<<<dimGrid,dimBlock>>>(tmpY, phi2avg_tmpXY,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
   }
+  if (ev_h->pars.debug) getError("Finished writing wpfs/phi**2");
   
+  //OK up to here
   //expectation value of ky and kx
   *expectation_ky = expectation_ky_sum/dtSum;
   *expectation_kx = expectation_kx_sum/dtSum;
@@ -1850,6 +1858,9 @@ void gryfx_finish_diagnostics(
   multdiv<<<dimGrid,dimBlock>>>(tmpY, phi_corr_norm_tmpY2, phi_corr_z0_tmpY, 1, Ny, 1, -1);
   scaleReal<<<dimGrid,dimBlock>>>(tmpY, tmpY, (float) 1./fluxDen, 1, Ny/2+1, 1);
   kyWrite(tmpY, tmpY_h, filename, "corr_length_3.ky"); 
+
+  if (ev_h->pars.debug) getError("Finished corr_length_3");
+
   if(end) 
   {
     corr_length_1<<<dimGrid,dimBlock>>>(tmpY, phi_corr_J_tmpYZ, phi_corr_norm_tmpY2, z);
@@ -1857,6 +1868,9 @@ void gryfx_finish_diagnostics(
     corr_length_4<<<dimGrid,dimBlock>>>(tmpY, phi_corr_J_tmpYZ, phi_corr_norm_tmpY2, z);
     kyWrite(tmpY, tmpY_h, filename, "corr_length_4.ky");  
   }
+  //OK Up to here
+
+  if (ev_h->pars.debug) getError("Finished corr_length_4");
 
   if(end) {  
     //write fields(kx,ky) vs z
@@ -1980,9 +1994,13 @@ void gryfx_finish_diagnostics(
       fieldWrite(tmp, field_h, "tprp_ps.field", filename);
     }
       
+    //OK up  to here
 
     //normalizeCovering(Phi,kxCover,kyCover,kxCover_h,kyCover_h);   //<- need to write
-    fieldWriteCovering(Phi,filename,kxCover,kyCover,kxCover_h,kyCover_h);
+    //fieldWriteCovering(Phi,filename,kxCover,kyCover,kxCover_h,kyCover_h);
+
+    //Not OK here
+    //return;
 
     squareComplex<<<dimGrid,dimBlock>>>(tmp, Phi);
     sumZ<<<dimGrid,dimBlock>>>(tmpXY4, tmp);
@@ -2011,6 +2029,7 @@ void gryfx_finish_diagnostics(
     multdiv<<<dimGrid,dimBlock>>>(tmpXY, tmpXY, tmpXY4, Nx, Ny, 1, -1);
     kxkyWrite(tmpXY, tmpXY_h, filename, "qprp_norm.kxky");
 
+    if (ev_h->pars.debug) getError("Finished writing moments");
 
     //write out geometry arrays vs z (like gbd, bmag, etc)
     geoWrite("geo.z", filename);
@@ -2018,6 +2037,7 @@ void gryfx_finish_diagnostics(
     get_kperp<<<dimGrid,dimBlock>>>(tmpXY,0,species[ION].rho,kx,ky,shat,gds2,gds21,gds22,bmagInv);
     kxkyWrite(tmpXY, tmpXY_h, filename, "kperp.kxky");
     
+    //Not OK
   //write fields
     normalize<<<dimGrid,dimBlock>>>(Dens[ION],Phi,1);
     fieldWrite(Dens[ION], field_h, "dens.field.norm", filename);
@@ -2045,6 +2065,8 @@ void gryfx_finish_diagnostics(
     mask<<<dimGrid,dimBlock>>>(Phi);
     normalize<<<dimGrid,dimBlock>>>(Phi,Phi,1);
     fieldWrite(Phi, field_h, "phi.field.norm", filename);
+
+    if (ev_h->pars.debug) getError("Finished gryfx_finish_diagnostics");
 
   }
 

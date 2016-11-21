@@ -4,9 +4,17 @@
 #include <float.h>
 #include <time.h>
 /* These must be in the same order that they appear in
- * fluxes.fpp in trinity*/
+ * gs2_gryfx_zonal.f90*/
 struct gryfx_parameters_struct {
    int mpirank;
+   int restart;
+   int nstep;
+   int navg;
+   double end_time;
+   int job_id;
+   int trinity_timestep;
+   int trinity_iteration;
+   int trinity_conv_count;
 	 /* Name of gryfx/gryffin input file*/
 	/*char input_file[1000];*/
 	/*Base geometry parameters - not currently set by trinity 
@@ -65,6 +73,7 @@ extern "C"
 void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * namelistFile, int mpcom);
 extern "C"
 void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
+
 
 void gryfx_main(int argc, char* argv[], int mpcom);
 

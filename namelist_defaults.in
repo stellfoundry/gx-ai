@@ -441,6 +441,8 @@ model_option = "const-curv"
   write_omega = "off"
   write_phi = "off"
   restart = "off"
+  netcdf_restart = .true.
+  append_old = .true.
   no_omegad = .false.
   const_curv = "off"
   varenna = "off"
@@ -449,7 +451,7 @@ model_option = "const-curv"
   new_varenna = "off"
   new_catto = "off"
   nlpm = "off"
-  inlpm = 0
+  inlpm = 25
   dnlpm = 1.0
   dnlpm_dens = -0.4
   dnlpm_tprp = 1.6
@@ -487,14 +489,19 @@ model_option = "const-curv"
   low_b_all = "off"
   new_nlpm = "on"
   hammett_nlpm_interference = "off"
-  iflr = 1
+  iflr = 0
   higher_order_moments = "off"
   nlpm_zonal_only = "off"
   nlpm_vol_avg = "off"
-  nlpm_abs_sgn = "on"
+  nlpm_abs_sgn = "off"
 
   snyder_electrons = "off"
   stationary_ions = "off"
+  zero_order_nonlin_flr_only = .false.
+  no_nonlin_cross_terms = .false.
+  no_nonlin_dens_cross_term = .false.
+  dorland_qneut = "off"
+  no_zonal_nlpm = .false.
 /
 
 &new_varenna_knobs

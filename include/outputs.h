@@ -11,9 +11,22 @@ typedef struct{
     float flux1_sum, flux2_sum, Dens_sum, Tpar_sum, Tprp_sum;
 } phases_struct;
 
-typedef struct {
+typedef struct{
 	// The simpledataio object containing the netcdf output file
 	struct sdatio_file sdatfile;
+  // Whether to create write or read variables to/from the netcdf file
+  bool create;
+  bool write;
+  bool read;
+
+  // Do we need to transpose (and possibly mask) the variables?
+  bool trans;
+} diagnostics_file_struct;
+
+
+
+typedef struct {
+  diagnostics_file_struct gnostics;
 
   float mu_avg;
   float alpha_avg;

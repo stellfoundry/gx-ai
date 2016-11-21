@@ -161,6 +161,20 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "cfl", &(pars->cfl));
   cfl=pars->cfl;
   
+  //pars->no_nonlin_flr= get_bool(&namelist_struct, "nonlinear_terms_knobs", "no_j0");
+  pars->zero_order_nonlin_flr_only= get_bool(&namelist_struct, "gryfx_knobs", "zero_order_nonlin_flr_only");
+  if(pars->zero_order_nonlin_flr_only) pars->no_nonlin_flr = true;
+
+  pars->no_nonlin_cross_terms= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_cross_terms");
+  pars->no_nonlin_dens_cross_term= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_dens_cross_term");
+  if(pars->no_nonlin_cross_terms || pars->no_nonlin_dens_cross_term) {
+    pars->new_nlpm = false;
+    pars->zero_order_nonlin_flr_only = false;
+    pars->no_nonlin_flr = false;
+  }
+
+  pars->no_zonal_nlpm= get_bool(&namelist_struct, "gryfx_knobs", "no_zonal_nlpm");
+
   fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nwrite", &(pars->nwrite));
   nwrite=pars->nwrite;
   
@@ -180,6 +194,9 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   nSteps=pars->nstep;
   
   fnr_get_float(&namelist_struct, "knobs", "fapar", &(pars->fapar));
+
+  fnr_get_float(&namelist_struct, "knobs", "avail_cpu_time", &(pars->avail_cpu_time));
+  fnr_get_float(&namelist_struct, "knobs", "margin_cpu_time", &(pars->margin_cpu_time));
   //maxdt?
   
   fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(pars->nspec));
@@ -202,6 +219,11 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
   else if( strcmp(restart,"off") == 0) {
     pars->restart = RESTART = false;
   }
+
+  pars->netcdf_restart = get_bool(&namelist_struct, "gryfx_knobs", "netcdf_restart"); 
+
+  // If a netcdf file with the right run name already exists, open it and append to it
+  pars->append_old = get_bool(&namelist_struct, "gryfx_knobs", "append_old"); 
   
   //pars->zero_restart_avg = zero_restart_avg = get_bool(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
   pars->zero_restart_avg = zero_restart_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
@@ -316,7 +338,8 @@ void read_namelist(input_parameters_struct * pars, grids_struct * grids, char* f
 
   pars->hyper= HYPER = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hyper");
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "D_hyper", &pars->D_hyper);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "d_hyper", &pars->D_hyper);
+  printf("Read d_hyper: %f\n", pars->D_hyper);
   D_hyper=pars->D_hyper;
   
   fnr_get_int(&namelist_struct, "gryfx_knobs", "p_hyper", &pars->p_hyper);

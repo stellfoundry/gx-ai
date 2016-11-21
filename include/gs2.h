@@ -8,3 +8,6 @@ void gryfx_get_gs2_moments(hybrid_zonal_arrays_struct * hybrid_h);
 double gs2_time();
 double gs2_dt();
 void  set_gs2_dt_cfl(double dt_cfl);
+
+extern "C" void init_gs2_file_utils(int* strlength, char* namelistFile);//Needed for the geometry module
+extern "C" void finish_gs2_file_utils();//Needed for the geometry module

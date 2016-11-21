@@ -8,6 +8,7 @@
 #include "gs2.h"
 #include "profile.h"
 #include "printout.h"
+#include "time.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
@@ -23,14 +24,17 @@ printf("hi\n");
   set_globals_after_gryfx_lib(ev_h);
   if (iproc==0) set_cuda_constants();
 
-  char filename[200];
+  char filename[2000];
   //device variables; main device arrays will be capitalized
-  if(DEBUG) getError("run_gryfx.cu, before device alloc");
+  if(DEBUG) getError(&ev_h->info,"run_gryfx.cu, before device alloc");
   specie* species_d;
 
 #ifdef GS2_zonal
   if(iproc==0) printf("At the beginning of run_gryfx, gs2 time is %f\n", gs2_time()/sqrt(2.0));
 #endif
+
+  if (iproc==0 && ev_h->info.job_id!=-1)  //This usually means we are running inside Trinity
+    printf("Job %d is running on GPU %d\n", ev_h->info.job_id, ev_h->info.gpuID); 
 
   /* ev_hd is on the host but the pointers point to memory on the device*/
   everything_struct * ev_hd;
@@ -81,7 +85,7 @@ printf("hi\n");
     /* Temporary hack */
     ev_hd->pars.species = species_d;
 
-    if(DEBUG) getError("run_gryfx.cu, after device alloc");
+    if(DEBUG) getError(&ev_h->info,"run_gryfx.cu, after device alloc");
 
     copy_geo_arrays_to_device(&ev_hd->geo, &ev_h->geo, &ev_h->pars, ev_h->grids.Nz); 
     //set up plans for NLPS, ZDeriv, and ZDerivB
@@ -93,7 +97,7 @@ printf("hi\n");
         &ev_h->pars, &ev_h->cdims, &ev_hd->geo, &ev_h->geo);
     //PhiAvg denominator for qneut
     initialize_phi_avg_denom(&ev_h->cdims, &ev_h->pars, &ev_hd->grids, &ev_hd->geo, species_d, ev_hd->tmp.XZ);
-    if(DEBUG) getError("run_gryfx.cu, after init"); 
+    if(ev_h->pars.debug) getError(&ev_h->info,"run_gryfx.cu, after init"); 
 
   } // if iproc
 
@@ -115,7 +119,13 @@ printf("hi\n");
     ////////////////////////////////////////////////
 
     setup_files(&ev_h->files, &ev_h->pars, &ev_h->grids, ev_h->info.run_name);
-    if (ev_h->pars.write_netcdf) writedat_beginning(ev_h);
+    if (ev_h->pars.write_netcdf){
+      writedat_beginning(ev_h);
+      //This first call to writedat_each creates the variables only.
+      writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
+      ev_h->outs.gnostics.create = false;
+      ev_h->outs.gnostics.write = true;
+    }
     ////////////////////////////////////////////
 
 
@@ -124,7 +134,7 @@ printf("hi\n");
     //////////////////////////////
 
 
-    if(DEBUG) getError("run_gryfx.cu, before initial condition"); 
+    if(DEBUG) getError(&ev_h->info,"run_gryfx.cu, before initial condition"); 
 
     //if running nonlinear part of secondary test or nlpm_test
     if( (secondary_test && !LINEAR && RESTART) || (ev_h->pars.nlpm_test && !LINEAR && RESTART) ) { 
@@ -138,7 +148,8 @@ printf("hi\n");
       ev_hd->sfixed.iky_fixed = ev_h->sfixed.iky_fixed = ev_h->pars.iky_fixed;
       ev_hd->sfixed.ikx_fixed = ev_h->sfixed.ikx_fixed = ev_h->pars.ikx_fixed;
 
-      restartRead(ev_h, ev_hd);
+      //restartRead(ev_h, ev_hd);
+      writedat_read_restart(ev_h, ev_hd);
       //Check restart was successful
       fieldWrite(ev_hd->fields.phi, field_h, "phi_restarted.field", filename);
       //Here we copy the fields from the restart file into the 
@@ -170,6 +181,9 @@ printf("hi\n");
           &ev_h->cdims, &ev_d->geo, &ev_hd->fields, &ev_hd->tmp);
       zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
 
+      tm->runtime=0.;
+      tm->timer=0.;
+
       outs->phases.flux1_sum = 0.;
       outs->phases.flux2_sum = 0.;
       outs->phases.Dens_sum = 0.;
@@ -178,7 +192,12 @@ printf("hi\n");
       //zeroC<<<dimGrid,dimBlock>>>(Phi_sum);
     } 
     else {
-      restartRead(ev_h, ev_hd);
+      //set_initial_conditions_no_restart(
+        //  &ev_h->pars, &ev_d->pars, &ev_h->grids, &ev_d->grids, 
+          //&ev_h->cdims, &ev_d->geo, &ev_hd->fields, &ev_hd->tmp);
+      //restartRead(ev_h, ev_hd);
+      writedat_read_restart(ev_h, ev_hd);
+      dt = ev_h->time.dt;
       if(zero_restart_avg) {
         zero_moving_averages(&ev_h->grids, &ev_h->cdims, &ev_hd->outs, &ev_h->outs, tm);
       }
@@ -187,11 +206,9 @@ printf("hi\n");
     create_cuda_events_and_streams(events, &ev_h->streams, ev_h->grids.nClasses);
 
   } //end of iproc if    
-  tm->runtime=0.;
   tm->counter=0;
   tm->gs2_counter=1;
   tm->totaltimer=0.;
-  tm->timer=0.;
   //GS2timer=0.;
   ctrl->stopcount = 0;
   ctrl->nstop = 10;
@@ -241,7 +258,7 @@ printf("hi\n");
       copy_fixed_modes_into_fields(
           &ev_h->cdims, &ev_hd->fields, ev_hd->fields.phi, &ev_hd->sfixed, &ev_h->pars);
     }
-    if(DEBUG) getError("about to start timestep loop");
+    if(DEBUG) getError(&ev_h->info,"about to start timestep loop");
 
 
     write_initial_fields(
@@ -271,17 +288,44 @@ printf("hi\n");
       if(ev_h->pars.nlpm_test) gryfx_run_diagnostics(ev_h, ev_hd);
   }
 
+  //Broadcast nstep just in case it was changed by Trinity
+  MPI_Bcast(&ev_h->pars.nstep, 1, MPI_INT, 0, ev_h->mpi.mpcom);
+  nSteps = ev_h->pars.nstep;
+
+  MPI_Bcast(&tm->end_time, 1, MPI_DOUBLE, 0, ev_h->mpi.mpcom); // make sure all procs know the end time
+
+  if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu, about to start timestep loop"); 
+
+
   while(tm->counter<nSteps && ctrl->stopcount<ctrl->nstop)
   {
+    double epoch_seconds= (double)time(NULL);
+    MPI_Bcast(&epoch_seconds, 1, MPI_DOUBLE, 0, ev_h->mpi.mpcom); // make sure we all agree what the time is!
+    if (tm->end_time < epoch_seconds){
+      if (iproc==0) printf("Available time exceeded; quitting timestep loop\n");
+      break; 
+    }
+    else
+    {
+      if (ev_h->pars.debug&&iproc==0) 
+        printf("Time is %e, end time is %e, difference %e, avail_cpu_time is %e and margin_cpu_time is %e\n",
+            epoch_seconds, tm->end_time, tm->end_time-epoch_seconds, ev_h->pars.avail_cpu_time, ev_h->pars.margin_cpu_time);
+    }
+
     if(iproc==0) {
 #ifdef GS2_zonal
-      if(gs2_time()/sqrt(2.) - tm->runtime > .0001) printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time()/sqrt(2.), tm->runtime); 
+      if(gs2_time()/sqrt(2.) - tm->runtime > .0001){
+        printf("\n\nRuntime mismatch! GS2 time is %f, GryfX time is %f\n\n", gs2_time()/sqrt(2.), tm->runtime); 
+        abort();
+      }
 #endif
       //EXBshear bug fixed, need to check if correct
       //ExBshear(Phi,Dens,Upar,Tpar,Tprp,Qpar,Qprp,kx_shift,jump,avgdt);  
 
       //if(DEBUG) getError("after exb");
     } //end of iproc if
+    
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"Starting timestep \n", tm->counter);
 
     /////////////////////////////////
     //FIRST HALF OF GRYFX TIMESTEP
@@ -335,6 +379,7 @@ POP_RANGE;
           // The new fields end up in dens1 etc
           //Moment1 = Moment1 + (tm->dt/2)*L(Moment)
         }         
+        if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu completed nonlin 1st half"); 
       }
       
       //LINEAR STEP
@@ -349,6 +394,8 @@ POP_RANGE;
           linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }
       }
+
+      if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu completed lin 1st half"); 
 
       //if(DEBUG && counter==0) getError("after linear step"); 
 
@@ -441,6 +488,7 @@ PUSH_RANGE("NLPM and hyper", 3);
 POP_RANGE;
 #endif
 
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"Starting 2nd half of timestep %d\n", tm->counter);
       /////////////////////////////////
       //SECOND HALF OF GRYFX TIMESTEP
       /////////////////////////////////
@@ -450,6 +498,7 @@ POP_RANGE;
           // RK2 we are doing
           //calculate NL(t+tm->dt/2) = NL(Moment1)
           nonlinear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
+
 
           //Moment = Moment + dt * NL(Moment1)
 
@@ -480,6 +529,7 @@ POP_RANGE;
 
 #endif
         }         
+        if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu completed nonlin 2nd half"); 
       }
 
       //LINEAR STEP
@@ -494,6 +544,7 @@ POP_RANGE;
           linear_timestep(s, tm->first_half_flag, ev_h, ev_hd, ev_d);
         }
       }
+      if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu completed lin 2nd half"); 
 
 
       if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && !write_omega) {
@@ -506,6 +557,7 @@ POP_RANGE;
         //don't overwrite Phi=Phi(t), use Phi1=Phi(t+dt); for growth rate calculation
       }
 
+      if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu completed quasineutrality 2nd half"); 
       //f = f(t+dt)
 
     } //end of iproc if
@@ -517,6 +569,9 @@ POP_RANGE;
     if(!LINEAR) {
       if(iproc==0) cudaEventSynchronize(events->D2H); //wait for NL(t+dt/2) to be copied D2H before advancing GS2 if running nonlinearly
     }
+
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"run_gryfx.cu copied nonlinearity to hybrid 2nd half"); 
+
     //advance GS2 t+dt/2 -> t+dt
     gryfx_advance_gs2(&ev_h->hybrid, tm);
     // proc0 will not advance past this point until gryfx_advance_gs2 is complete.
@@ -558,12 +613,13 @@ POP_RANGE;
 #ifdef PROFILE
 POP_RANGE;
 #endif
-    }  
+    } // if iproc  
 
     //////nvtxRangePop();
 
 #endif
 
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"Finished 2nd half of timestep\n");
     //////nvtxRangePushA("Diagnostics");
 
 //#ifdef GS2_zonal
@@ -623,6 +679,8 @@ POP_RANGE;
     tm->counter++;       
     //checkstop
 
+    wpfx[ION]=0.0;
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"Running diagnostics\n");
     if(iproc==0) {
       //DIAGNOSTICS
       gryfx_run_diagnostics(ev_h, ev_hd);
@@ -630,10 +688,13 @@ POP_RANGE;
       if (tm->counter%nwrite==0 && tm->counter!=0 && ev_h->pars.write_netcdf) writedat_each(&ev_h->grids, &ev_h->outs, &ev_h->fields, &ev_h->time);
     }
 
-    if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
-      fclose(checkstop);
-      ctrl->stopcount++;
-    }     
+    if (iproc==0){
+      if(FILE* checkstop = fopen(ev_h->files.stopfileName, "r") ) {
+        fclose(checkstop);
+        ctrl->stopcount++;
+      }     
+    }
+    if(iproc==0&&DEBUG) getError(&ev_h->info,"Checked for stop file\n");
 
 //#ifdef GS2_zonal
     if(iproc==0) {
@@ -650,13 +711,14 @@ POP_RANGE;
 
 
       //check for problems with run
-      if(!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100 || wpfx[ION] > 100000) ) {
+      if(tm->counter%nwrite==0&&tm->counter>0&&!LINEAR && !secondary_test && !ev_h->pars.nlpm_test && (isnan(wpfx[ION]) || isinf(wpfx[ION]) || wpfx[ION] < -100000.0 || wpfx[ION] > 100000.0) ) {
+        printf("wpfx: %f, hflux1 %f, hflux2 %f\n", wpfx[ION], ev_h->outs.hflux_tot, ev_h->outs.hflux_by_species[0]);
         printf("\n-------------\n--RUN ERROR--\n-------------\n\n");
 
-        ctrl->stopcount=100;
+        //ctrl->stopcount=100;
 #ifdef GS2_zonal
-        abort();
-        broadcast_integer(&ctrl->stopcount);
+        //abort();
+        //broadcast_integer(&ctrl->stopcount);
 #endif
       }
 
@@ -667,6 +729,7 @@ POP_RANGE;
         tm->totaltimer+=tm->timer;
         cudaEventRecord(events->start,0);
         restartWrite(ev_h, ev_hd);
+        writedat_write_restart(ev_h, ev_hd);
       }
 
 
@@ -687,7 +750,7 @@ POP_RANGE;
 
   if(iproc==0) {
 
-    if(DEBUG) getError("just finished timestep loop");
+    if(DEBUG) getError(&ev_h->info,"just finished timestep loop");
 
     //cudaProfilerStop();
     cudaEventRecord(events->stop,0);
@@ -705,16 +768,18 @@ POP_RANGE;
 
     ////////////////////////////////////////////////////////////
 
-    if(DEBUG) getError("before restartWrite");  
+    if(DEBUG) getError(&ev_h->info,"before restartWrite");  
 
     // save for restart run
     restartWrite(ev_h, ev_hd);
+    writedat_write_restart(ev_h, ev_hd);
 
-    if(DEBUG) getError("after restartWrite");
+    if(DEBUG) getError(&ev_h->info,"after restartWrite");
 
 
     gryfx_finish_diagnostics(ev_h, ev_hd, true);
 
+    if(ev_h->pars.debug) getError(&ev_h->info,"after gryfx_finish_diagnostics");
     //Timing       
     printf("Total steps: %d\n", tm->counter);
     printf("Total time (min): %f\n",tm->totaltimer/60000.);    //convert ms to minutes
@@ -762,7 +827,7 @@ POP_RANGE;
     //cudaFree(g_covering_d);
 
     close_files(&ev_h->files);
-    if (ev_h->pars.write_netcdf) writedat_end(ev_h->outs);
+    if (ev_h->pars.write_netcdf) writedat_end(&ev_h->outs);
 
     allocate_or_deallocate_everything(DEALLOCATE, ev_hd);
     allocate_or_deallocate_everything(DEALLOCATE, ev_h);

@@ -212,12 +212,6 @@ PUSH_RANGE("gryfx diagnostics", 5);
         cudaMemcpy(Phi, Phi1, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToDevice);
         mask<<<dimGrid,dimBlock>>>(Phi1);
         mask<<<dimGrid,dimBlock>>>(Phi);
-        //Copy Phi to host for writing
-        // this is incredibly slow, should never be done in timestep loop.
-        if(ev_h->pars.write_phi) {
-          cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
-          kxkyz0TimeWrite(files_h->phifile, ev_h->fields.phi, tm_h->runtime);
-        }
         //print growth rates to files   
         //omegaWrite(omegafile,gammafile,omegaAvg_h,runtime); 
         
@@ -229,6 +223,12 @@ PUSH_RANGE("gryfx diagnostics", 5);
       }
       
   
+      //Copy Phi to host for writing
+      // this is incredibly slow, should never be done in timestep loop.
+      if(ev_h->pars.write_phi) {
+        cudaMemcpy(ev_h->fields.phi, Phi, sizeof(cuComplex)*Nx*(Ny/2+1)*Nz, cudaMemcpyDeviceToHost);
+        //kxkyz0TimeWrite(files_h->phifile, ev_h->fields.phi, tm_h->runtime);
+      }
   
   //DIAGNOSTICS
   
@@ -358,9 +358,12 @@ POP_RANGE;
         outs_h->phi2_zf_rms_avg = outs_h->phi2_zf_rms_sum/tm_h->dtSum;
         //nlpm->kx2Phi_zf_rms_avg = kx2Phi_zf_rms_sum/dtSum;
         }
-  
+ 
         for(int s=0; s<nSpecies; s++) {
-          wpfxAvg[s] = muav*wpfxAvg[s] + (1.-muav)*wpfx[s] + (muav - (1.-muav)/alphav)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
+          if (ev_h->time.counter == 1 && ev_h->pars.zero_restart_avg) wpfxAvg[s] = wpfx[s];  
+          //wpfxAvg[s] = muav*wpfxAvg[s] + (1.-muav)*wpfx[s] + (muav - (1.-muav)/alphav)*(wpfx[s] - outs_h->hflux_by_species_old[s]);
+          wpfxAvg[s] = muav*wpfxAvg[s] + (1.-muav)*wpfx[s];
+          //wpfxAvg[s] = (1.0-muav)*wpfxAvg[s] + muav*wpfx[s];
           pflxAvg[s] = muav*pflxAvg[s] + (1-muav)*outs_h->pflux_by_species[s] + (muav - (1-muav)/alphav)*(outs_h->pflux_by_species[s] - outs_h->pflux_by_species_old[s]);
         }
   

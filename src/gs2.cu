@@ -41,10 +41,10 @@ void gryfx_initialize_gs2(grids_struct * grids, struct gryfx_parameters_struct *
   if(iproc!=0) grids->z = (float*)malloc(sizeof(float)*grids->Nz);
   //Local pointer for convenience
   float * z_h = grids->z;
-  printf("z_h (1) is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+  //printf("z_h (1) is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
   MPI_Bcast(&z_h[0], grids->Nz, MPI_FLOAT, 0, mpcom);
 
-  printf("z_h is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+  //printf("z_h is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
 
   //gs2_main_mp_init_gs2_(namelistFile, &length);
   int length = strlen(namelistFile);
@@ -52,7 +52,7 @@ void gryfx_initialize_gs2(grids_struct * grids, struct gryfx_parameters_struct *
   init_gs2(&length, namelistFile, &mpcom, &grids->Nz, z_h, gryfxpars);
   MPI_Barrier(mpcom);
 
-  printf("z_h after is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
+  //printf("z_h after is %f %f %f\n", z_h[0], z_h[1], z_h[2]);
 }
 
 void gryfx_finish_gs2(){

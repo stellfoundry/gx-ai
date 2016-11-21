@@ -153,8 +153,7 @@ do
       MAKE_OPTIONAL_COMMAND=${OPTARG}
       ;;
     d)
-      DBGFLAG=on
-      debug=on
+      DBGFLAG=debug=on
       GS2DBGFLAG=-d
       ;;
     g)

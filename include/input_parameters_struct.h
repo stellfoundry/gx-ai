@@ -251,9 +251,11 @@ typedef struct {
     float fapar;
  //  float faperp;
  //    float delt;
-    float dt;
-    float maxdt;
-    int nstep;
+    float dt; //Initial and maximum timestep
+    float maxdt; //Obsolete
+    int nstep; //Number of timesteps
+    float avail_cpu_time; //Available wall clock time in s
+    float margin_cpu_time; //Start finishing up when only margin_cpu_time remains
 
   // Namelist: species_knobs
    int nspec;
@@ -264,6 +266,7 @@ typedef struct {
    bool adiabatic_electrons;
    bool snyder_electrons;
    bool stationary_ions;
+   bool dorland_qneut;
    float me_ov_mi;
    float nu_ei;
 
@@ -326,6 +329,10 @@ typedef struct {
     bool write_omega;
     bool write_phi;
     bool restart;
+    //If restart, use the netcdf restart file
+    bool netcdf_restart;
+    // If a netcdf file with the right run name already exists, open it and append to it
+    bool append_old;
     bool check_for_restart;
     bool no_omegad;
     bool const_curv;
@@ -362,12 +369,18 @@ typedef struct {
     bool new_nlpm; 
     bool hammett_nlpm_interference; 
     bool nlpm_abs_sgn;
+    bool nlpm_hilbert;
     bool low_b;
     bool low_b_all;
     int iflr;
     bool higher_order_moments;
     bool nlpm_zonal_only;
     bool nlpm_vol_avg;
+    bool no_nonlin_flr;
+    bool no_nonlin_cross_terms;
+    bool no_nonlin_dens_cross_term;
+    bool zero_order_nonlin_flr_only;
+    bool no_zonal_nlpm;
 
     int igeo;
     float shaping_ps;

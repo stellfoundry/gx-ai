@@ -9,6 +9,7 @@
 #include "printout.h"
 #include "gs2.h"
 #include "get_error.h"
+#include "time.h"
 
 #include "definitions.cu"
 
@@ -27,16 +28,16 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 
 //#ifdef GS2_zonal
 
+  printf("Communicator is %d\n", mpcom);
   
   MPI_Comm_rank(mpcom, &iproc);
-  //printf("I am proc %d\n", iproc);
 
   char serial_full[100];
   char serial[100];
   FILE *fp;
 
 
-  if(iproc==0) {
+  //if(iproc==0) {
     fp = popen("nvidia-smi -q | grep Serial", "r");
     while(fgets(serial_full, sizeof(serial_full)-1,fp) != NULL) {
       printf("%s\n", serial_full);
@@ -45,9 +46,10 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
     for(int i=0; i<8; i++) {
      serial[i] = serial_full[strlen(serial_full) - (9-i)];
     }
+    serial[8] = NULL;
     ev->info.gpuID = atoi(serial);
     printf("SN: %d\n", ev->info.gpuID);
-  }
+  //}
 #ifdef GS2_zonal
   if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
 #endif
@@ -81,7 +83,7 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
 	set_grid_masks_and_unaliased_sizes(&(ev->grids));
   //allocate_or_deallocate_everything(ALLOCATE, ev);
 
-  //char out_dir_path[200];
+  //char out_dir_path[2000];
   //if(SCAN) {
     //default: out_stem taken from name of namelist given in argument
       //strncpy(out_stem, namelistFile, strlen(namelistFile)-2);
@@ -91,13 +93,25 @@ void gryfx_get_default_parameters_(struct gryfx_parameters_struct * gryfxpars, c
   // copy elements of input_parameters struct ev->pars into gryfx_parameters_struct gryfxpars
   if (iproc==0) set_gryfxpars(gryfxpars, ev);
 
+  int nprocs;
+
+  MPI_Comm_size(mpcom, &nprocs);
+
+  printf("About to broadcast gryfxpars %d %d\n", nprocs, iproc);
+
+
   // EGH: this is a nasty way to broadcast gryfxpars... we should
   // really define a custom MPI datatype. However it should continue
   // to work as long as all MPI processes are running on the same
   // architecture. 
-  MPI_Bcast(&*gryfxpars, sizeof(gryfxpars), MPI_BYTE, 0, mpcom);
+  int ret;
+  ret = MPI_Bcast(&*gryfxpars, sizeof(gryfx_parameters_struct), MPI_BYTE, 0, mpcom);
+  printf("Broadcasted gryfxpars (%d) %d %d\n", ret, nprocs, iproc);
   // This has to be set after the broadcast
 	gryfxpars->everything_struct_address = (void *)ev;
+  gryfxpars->job_id = ev->info.gpuID;
+  printf("Finished gryfx_get_default_parameters_\n");
+
 
 }
   
@@ -116,8 +130,15 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 	 ev = (everything_struct *)gryfxpars->everything_struct_address;
    ev->mpi.iproc = iproc;
    ev->mpi.mpcom = mpcom;
+
+   //This only important for Trinity.
+   ev->info.job_id = gryfxpars->job_id;
   
   
+  // Copy the name of the namelist file to ev->info.run_name
+  // Check if we should and can restart and set the file name
+  setup_info(namelistFile, &ev->pars, &ev->info);
+
   if(iproc==0) {
     //Only proc0 needs to import paramters to gryfx
     // copy elements of gryfx_parameters_struct gryfxpars into input_parameters struct ev->pars.
@@ -126,7 +147,10 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
     // ev->pars then needs to be updated since ev->pars is what is used in run_gryfx.
     import_gryfxpars(gryfxpars, ev);
     printf("%d: Initializing geometry...\n\n", ev->info.gpuID);
+    int len = strlen(namelistFile);
+    init_gs2_file_utils(&len, namelistFile);
     set_geometry(&ev->pars, &ev->grids, &ev->geo, gryfxpars);
+    finish_gs2_file_utils();
     //Note the printout module still uses globals which may no 
     //longer be in sync with ev at this point. Need to remove globals
     //from printout.cu
@@ -139,16 +163,13 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
   if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
 #endif
  
-  // Copy the name of the namelist file to ev->info.run_name
-  // Check if we should and can restart and set the file name
-  setup_info(namelistFile, &ev->pars, &ev->info);
 
 
   
   //make an input file of form outstem.in if doesn't already exist
   FILE* input;
   FILE* namelist;
-  char inputFile[200];
+  char inputFile[2000];
   strcpy(inputFile, ev->info.run_name);
   strcat(inputFile, ".in");
 
@@ -168,7 +189,7 @@ void gryfx_get_fluxes_(struct gryfx_parameters_struct *  gryfxpars,
 
     initialize_cuda_parallelization(ev); 
     definitions(ev);
-    char outfileName[200];
+    char outfileName[2000];
     strcpy(outfileName, ev->info.run_name);
     strcat(outfileName, ".out_gryfx");
     outfile = fopen(outfileName, "w+");
@@ -207,6 +228,11 @@ void gryfx_main(int argc, char* argv[], int mpcom) {
 	}
 	gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
 	gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
+  //while(true) {
+  // gryfx_get_default_parameters_(&gryfxpars, namelistFile, mpcom);
+  //  gryfxpars.restart = 1;
+  //  gryfx_get_fluxes_(&gryfxpars, &gryfxouts, namelistFile, mpcom);
+  //}
 }
 
 void initialize_cuda_parallelization(everything_struct * ev){
@@ -278,6 +304,20 @@ void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct
     /*char eqfile[800];*/
     input_parameters_struct * pars = &ev->pars;
 
+    //Defaults if we are not using Trinity
+    gryfxpars->trinity_timestep = -1;
+    gryfxpars->trinity_iteration = -1;
+    gryfxpars->trinity_conv_count = -1;
+
+
+    if (ev->pars.restart) gryfxpars->restart  = 1;
+    else gryfxpars->restart = 0;
+
+    gryfxpars->nstep = pars->nstep;
+    gryfxpars->navg = pars->navg;
+    // We increase the margin_cpu_time to make it stricter than gs2
+    gryfxpars->end_time = time(NULL) + ev->pars.avail_cpu_time - ev->pars.margin_cpu_time*1.2;
+
     gryfxpars->irho = pars->irho;
     gryfxpars->rhoc = pars->rhoc;
     gryfxpars->eps = pars->eps;
@@ -329,6 +369,23 @@ void set_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct
 void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_struct * ev){
    input_parameters_struct * pars = &ev->pars;
    pars->equilibrium_type = gryfxpars->equilibrium_type ;
+   if (gryfxpars->restart==1) ev->pars.restart  = true;
+   else if (gryfxpars->restart==2){
+     ev->pars.restart  = true;
+     ev->pars.zero_restart_avg = true;
+   }
+   else ev->pars.restart = false;
+
+   if (gryfxpars->nstep > pars->nstep) {
+     printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file");
+     abort();
+   }
+   ev->time.trinity_timestep = gryfxpars->trinity_timestep;
+   ev->time.trinity_iteration = gryfxpars->trinity_iteration;
+   ev->time.trinity_conv_count = gryfxpars->trinity_conv_count;
+   pars->nstep = gryfxpars->nstep;
+   pars->navg = gryfxpars->navg;
+   ev->time.end_time = gryfxpars->end_time;
   /*char eqfile[800];*/
    pars->irho = gryfxpars->irho ;
    pars->rhoc = gryfxpars->rhoc ;
@@ -342,7 +399,7 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
 
  /* Miller parameters*/
    pars->rmaj = gryfxpars->rgeo_local ;
-   //r_geo = gryfxpars->rgeo_lcfs ;
+   pars->r_geo = gryfxpars->rgeo_lcfs ;
    pars->akappa  = gryfxpars->akappa ;
    pars->akappri = gryfxpars->akappri ;
    pars->tri = gryfxpars->tri ;
@@ -386,10 +443,11 @@ void import_gryfxpars(struct gryfx_parameters_struct * gryfxpars, everything_str
     int jtwist_square, jtwist;
     // determine value of jtwist needed to make X0~Y0
     jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
+    if (jtwist_square == 0) jtwist_square = 1;
     // as currently implemented, there is no way to manually set jtwist from input file
     // there could be some switch here where we choose whether to use
     // jtwist_in or jtwist_square
-    jtwist = jtwist_square;
+    jtwist = jtwist_square*2;
     //else use what is set in input file 
     pars->jtwist = jtwist;
   }

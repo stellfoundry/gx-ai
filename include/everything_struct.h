@@ -26,12 +26,22 @@ typedef struct {
 	// Step runtime in minutes
 	float timer;
 
+  double end_time; // The time at which the simulation must end in seconds since the epoch
+  double start_time; // The start time of the first gryfx call in this program execution in seconds since the epoch
+  //time_t this_start_time; // The start time of this gryfx call 
+
   int first_half_flag;
 
   double dt;
 
   float cflx;
   float cfly;
+
+  // For use with trinity; allows certain netcdf variables 
+  // to be written as a function of trinity call.
+  int trinity_timestep;
+  int trinity_iteration;
+  int trinity_conv_count;
 } time_struct;
 
 typedef struct {

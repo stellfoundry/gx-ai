@@ -301,7 +301,7 @@ __global__ void tprp_linear_terms(cuComplex* tprp_field, cuComplex* phi, cuCompl
 
 __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComplex* dens, cuComplex* upar, cuComplex* tpar, 
 		      cuComplex* tprp, cuComplex* qpar, cuComplex* qprp,
-                      float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad,
+                      float* kx, float* ky, float shat, float rho, float vt, float tprim, float fprim, float zt, float* bgrad, float Beta_par,
                       float *gds2, float *gds21, float *gds22, float *bmagInv,
                       float* gb,float* gb0,float* cv, float* cv0,
                       float nu_ss, cuComplex nu5, cuComplex nu6, cuComplex nu7, cuComplex mu5, cuComplex mu6, cuComplex mu7, bool varenna,
@@ -344,8 +344,10 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
                            - 3.*qpar[index] - 3.*qprp[index] + 6.*upar[index])
 			+ nu_ss * qpar[index];
       } else {
-        qpar_field[index] = vt*fac*(tpar[index]-tprp[index])*bgrad[idz] 
-		        - iomegad*( (-3.+n6.y)*qpar[index] + (-3.+n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
+        qpar_field[index] = //vt*(Beta_par*tpar[index])*bgrad[idz] 
+                        //+ vt*fac*(tpar[index]-tprp[index])*bgrad[idz] 
+		        //- iomegad*( (-3.+n6.y)*qpar[index] + (-3.+n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
+		        - iomegad*( (8.+n6.y)*qpar[index] + (n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
 	                + abs_omegad*( n5.x*upar[index] + n6.x*qpar[index] + n7.x*qprp[index] )
 			+ nu_ss * qpar[index];
       }
@@ -387,7 +389,8 @@ __global__ void qpar_linear_terms(cuComplex* qpar_field, cuComplex* apar, cuComp
           n7 = nu7;
         }
   
-        qpar_field[index] = -iomegad*( (-3.+n6.y)*qpar[index] + (-3.+n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
+        qpar_field[index] = //-iomegad*( (-3.+n6.y)*qpar[index] + (-3.+n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
+		          - iomegad*( (8.+n6.y)*qpar[index] + (n7.y)*qprp[index] + (6.+n5.y)*upar[index] )
   	                  + abs_omegad*( n5.x*upar[index] + n6.x*qpar[index] + n7.x*qprp[index] )
   		          + nu_ss * qpar[index];
         if(beta>0.) {
@@ -451,7 +454,8 @@ __global__ void qprp_linear_terms(cuComplex* qprp_field, cuComplex* phi, cuCompl
                         + nu_ss*qprp[index];
       } else { 
         qprp_field[index] = vt*( zt*phi_qperpb + tprp[index] - fac*tpar[index] )*bgrad[idz] 
-                        - iomegad*( (-1.+n9.y)*qpar[index] + (-1.+n10.y)*qprp[index] + (1.+n8.y)*upar[index] )
+                        //- iomegad*( (-1.+n9.y)*qpar[index] + (-1.+n10.y)*qprp[index] + (1.+n8.y)*upar[index] )
+                        - iomegad*( (n9.y)*qpar[index] + (6.+n10.y)*qprp[index] + (1.+n8.y)*upar[index] )
                         + abs_omegad*( n8.x*upar[index] + n9.x*qpar[index] + n10.x*qprp[index]  )
                         + nu_ss*qprp[index];
       }
@@ -800,3 +804,36 @@ __global__ void electron_temperature_closure(cuComplex* result, cuComplex* apar,
 //  }
 //}
 
+__global__ void implicit_step_par(float* fNew, float* f, float par_fac, float* nu, float dt) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+     
+      fNew[index] = f[index] / (1. + dt*par_fac*nu[index]);
+    }
+  }
+
+}
+
+__global__ void implicit_step_prp(float* fNew, float* f_impl, float prp_fac_expl, float* f_expl, float prp_fac_impl, float* nu, float dt) 
+{
+  unsigned int idy = get_idy();
+  unsigned int idx = get_idx();
+  unsigned int idz = get_idz();
+
+  if(nz<=zthreads) {
+    if(idy<(ny) && idx<nx && idz<nz) {
+
+      unsigned int index = idy + (ny)*idx + nx*(ny)*idz;
+     
+      fNew[index] = (f_impl[index]-dt*prp_fac_expl*nu[index]*f_expl[index]) / (1. + dt*prp_fac_impl*nu[index]);
+    }
+  }
+
+}

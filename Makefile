@@ -54,7 +54,7 @@ LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
-CFLAGS= $(NVCCFLAGS) $(NVCCINCS)  ${FFT_INC} ${NETCDF_INC} -I $(PWD)/include -I$(PWD) -I$(GS2)/diagnostics/simpledataio/include
+CFLAGS= $(NVCCFLAGS) $(NVCCINCS)  ${FFT_INC} ${NETCDF_INC} -I $(PWD)/include -I$(PWD) -I$(GS2)/diagnostics/simpledataio/include --compiler-options '-fPIC'
 LDFLAGS=$(NVCCLIBS) ${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} ${GS2_CUDA_FLAGS}
 
 VPATH=.:src

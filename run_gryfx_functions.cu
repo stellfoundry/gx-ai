@@ -727,7 +727,7 @@ void replace_zonal_fields_with_hybrid(
 #ifdef PROFILE
 PUSH_RANGE("replace zonal fields", 3);
 #endif
-    char filename[200];
+    char filename[2000];
     dim3 dimGrid = cdims->dimGrid;
     dim3 dimBlock = cdims->dimBlock;
 
@@ -819,7 +819,7 @@ void write_initial_fields(
   float * tmpX_h
 )
 {
-    char filename[200];
+    char filename[2000];
     fieldWrite(fields_d->dens[ION], field_h, "dens0.field", filename); 
     fieldWrite(fields_d->upar[ION], field_h, "upar0.field", filename); 
     fieldWrite(fields_d->tpar[ION], field_h, "tpar0.field", filename); 

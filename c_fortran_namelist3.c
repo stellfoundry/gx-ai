@@ -63,6 +63,11 @@ void fnr_read_file(char * fname, char ** text_ptr)
   	FILE * fp=fopen(fname, "r");
 	
 	if (FNR_DEBUG) printf("Opened file\n");
+
+  if (fp==NULL){
+    printf("Could not open file %s\n\n", fname);
+    exit(1);
+  }
 	  
 			int sz = fnr_file_size(fp); /* File size*/
 
