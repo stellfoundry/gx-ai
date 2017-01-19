@@ -244,9 +244,9 @@ void run_general_geometry_module(input_parameters_struct * pars, grids_struct * 
 	  geo->Rplot[k] = coefficients[k].Rplot_eqarc; 
 	  geo->Zplot[k] = coefficients[k].Zplot_eqarc; 
 	  geo->aplot[k] = coefficients[k].aplot_eqarc; 
-	  geo->Rprime[k] = coefficients[k].Rplot_eqarc; 
-	  geo->Zprime[k] = coefficients[k].Zplot_eqarc; 
-	  geo->aprime[k] = coefficients[k].aplot_eqarc; 
+	  geo->Rprime[k] = coefficients[k].Rprime_eqarc; 
+	  geo->Zprime[k] = coefficients[k].Zprime_eqarc; 
+	  geo->aprime[k] = coefficients[k].aprime_eqarc; 
    
 	}
  
