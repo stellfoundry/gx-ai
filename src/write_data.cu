@@ -284,7 +284,7 @@ void writedat_beginning(everything_struct * ev)
   writedat_create_write_read(gnostics, grids, SDATIO_FLOAT, 
       "kx", "kx", "kx grid", "1/rho_i", &*grids->kx);
   writedat_create_write_read(gnostics, grids, SDATIO_FLOAT, 
-      "ky", "ky", "ky grid", "1/rho_i", &*grids->kx);
+      "ky", "ky", "ky grid", "1/rho_i", &*grids->ky);
   writedat_create_write_read(gnostics, grids, SDATIO_FLOAT,
       "theta", "theta", "theta grid (parallel coordinate, referred to as z within gryfx)", "radians", &*grids->z);
 
