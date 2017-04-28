@@ -1,0 +1,6 @@
+*.o
+*.swp
+*.a
+namelist_defaults.cu
+system_config
+gryfx
