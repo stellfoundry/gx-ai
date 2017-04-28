@@ -167,6 +167,14 @@ model_option = "const-curv"
  vcut= 2.5
 /
 
+&hl_grids_knobs
+ nhermite = 4
+ nlaguerre = 2
+ grid_option = "box"
+ !grid_option = "poly_order"
+ max_poly_order = 3
+/
+
 &dist_fn_knobs
  adiabatic_option="iphi00=2"
  gridfac=   1.0

@@ -480,8 +480,8 @@ int fnr_get_string_no_test(struct fnr_struct * namelist_struct, const char * nam
 			if (FNR_DEBUG) printf("Found variable_downcase %s\n", variable_downcase);
 			char * v = namelist_struct->variable_values[i][j];
 			if (FNR_DEBUG) printf("Found value %s\n", v);
-			char * dq = "\"";
-			char * sq = "'";
+			const char * dq = "\"";
+			const char * sq = "'";
 			if (v[0] == dq[0] || v[0] == sq[0])
 			{
 				if (FNR_DEBUG) printf("Value was a string \n");
@@ -660,7 +660,7 @@ void fnr_check_namelist_against_template(struct fnr_struct * namelist_struct, st
 }
 
 
-char * FNR_TEMPLATE_STRING =  "\n\
+const char * FNR_TEMPLATE_STRING =  "\n\
 \n\
 &my_namelist\n\
 	beta = \"This is some help for beta\"\n\

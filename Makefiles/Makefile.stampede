@@ -11,6 +11,7 @@
 
 define STANDARD_SYSTEM_CONFIGURATION
 module reset ;\
+module load intel/15.0.3  mvapich2/2.1 ;\
 module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
@@ -27,17 +28,16 @@ FILES     = *.cu *.c *.cpp Makefile
 VER       = `date +%y%m%d`
 
 NVCC      = nvcc
-NVCCINCS  = -I ${TACC_CUDA_INC} #-I ${SIMPLEDATAIO}/include
-NVCCLIBS  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledataio/lib -l simpledataio
+CUDA_INC  = -I ${TACC_CUDA_INC}
+CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt #-L ${GS2_edmund}/simpledataio/lib -l simpledataio
 FFT_LIB = -L$(TACC_FFTW3_LIB) -lfftw3 -lfftw3f
 FFT_INC = -I$$TACC_FFTW3_INC
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
-NETCDF = -I ${TACC_NETCDF_INC} -L${TACC_NETCDF_LIB} -lnetcdf
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true -I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
+MPI_INC = -I ${MPICH_HOME}/include
+MPI_LIB= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true ${CUDA_INC} #-I ${GS2} ${NETCDF} -I ${MPICH_HOME}/include
 
-#FORTRAN_LIBS= -L ${MPICH_HOME}/lib -lmpichf90 -lmpifort -lmpich -lmpi -limf -lintlc -lirc
-FORTRAN_LIBS= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

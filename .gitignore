@@ -1,6 +1,6 @@
 *.o
 *.swp
 *.a
-namelist_defaults.cu
+namelist_defaults.c
 system_config
 gryfx

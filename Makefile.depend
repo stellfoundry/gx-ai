@@ -14,12 +14,11 @@ MODULES = allocations.o\
 			write_data.o\
       read_namelist.o
 
-read_namelist.o: namelist_defaults.cu c_fortran_namelist3.c
+obj/inputs.o: namelist_defaults.c
 
 run_gryfx.o: local_pointers.cu 
 
 gryfx_lib.o: definitions.cu
-
 
 CU_DEPS := \
       device_funcs.cu \
