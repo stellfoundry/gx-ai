@@ -3,9 +3,13 @@
 #include <string.h>
 #include <float.h>
 #include <time.h>
+
+#ifndef GRYFX_LIB_H
+#define GRYFX_LIB_H
+
 /* These must be in the same order that they appear in
  * gs2_gryfx_zonal.f90*/
-struct gryfx_parameters_struct {
+struct external_parameters_struct {
    int mpirank;
    int restart;
    int nstep;
@@ -58,7 +62,7 @@ struct gryfx_parameters_struct {
 	 double tprim[20];
 	 double nu[20];
 
-   void * everything_struct_address;
+   void * inputs_address;
 };
 
 struct gryfx_outputs_struct {
@@ -70,10 +74,11 @@ struct gryfx_outputs_struct {
 };
 
 extern "C"
-void gryfx_get_default_parameters_(struct gryfx_parameters_struct *, char * namelistFile, int mpcom);
+void gryfx_get_default_parameters_(struct external_parameters_struct *, char * namelistFile, int mpcom);
 extern "C"
-void gryfx_get_fluxes_(struct gryfx_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
+void gryfx_get_fluxes_(struct external_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
 
 
 void gryfx_main(int argc, char* argv[], int mpcom);
 
+#endif

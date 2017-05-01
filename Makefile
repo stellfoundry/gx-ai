@@ -34,7 +34,7 @@ include Makefile.depend
 ## Setup Compiler Flags
 ###########################
 
-CC = g++
+#CC = g++
 LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o  # ${GS2}/utils.a #${GS2}/geo.a
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
@@ -110,7 +110,7 @@ everything_else.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 
 # main program
-$(TARGET): obj/main.o obj/gryfx_lib.o obj/inputs.o #libgryfx.a $(GS2)/libgs2.a 
+$(TARGET): obj/main.o obj/gryfx_lib.o obj/inputs.o obj/geometry.o #libgryfx.a $(GS2)/libgs2.a 
 	$(NVCC)  -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 

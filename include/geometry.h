@@ -1,60 +1,72 @@
+#ifndef GEO_H
+#define GEO_H
 
-#ifndef NO_GLOBALS
-//global host arrays from eik.out
-EXTERN_SWITCH float *gbdrift_h, *grho_h, *z_h, *z_regular_h; 
-EXTERN_SWITCH float *cvdrift_h, *gds2_h, *bmag_h, *bgrad_h;
-EXTERN_SWITCH float *gds21_h, *gds22_h, *cvdrift0_h, *gbdrift0_h, *jacobian_h;
-EXTERN_SWITCH float *Rplot_h, *Zplot_h, *aplot_h;
-EXTERN_SWITCH float *Rprime_h, *Zprime_h, *aprime_h;
-EXTERN_SWITCH float *Xplot_h, *Yplot_h, *deltaFL_h, *gradpar_arr_h;
+#include "cufft.h"
 
-
-//global device arrays from eik.out
-EXTERN_SWITCH float *gbdrift, *grho, *z, *cvdrift, *gds2, *bmag, *bgrad;
-EXTERN_SWITCH float *gds21, *gds22, *cvdrift0, *gbdrift0;
-
-EXTERN_SWITCH float *bmagInv;
-EXTERN_SWITCH cuComplex *bmag_complex;
-EXTERN_SWITCH float* jacobian;
-
-//EXTERN_SWITCH int ntgrid;
-#endif
-
-typedef struct {
-	float *gradpar_arr;
-	float *gbdrift;
+struct geometry_coefficents_struct{
+  float *gradpar_arr;
+  float *gbdrift;
   float *grho;
   float *cvdrift;
   float *bmag;
   float *bgrad;
   float *gds2;
-	float *gds21;
+  float *gds21;
   float *gds22;
   float *cvdrift0;
   float *gbdrift0;
   float *jacobian;
-	float * Rplot;
-	float * Zplot;
-	float * aplot;
-	float * Xplot;
-	float * Yplot;
-	float * Rprime;
-	float * Zprime;
-	float * aprime;
-	float * deltaFL;
+  float * Rplot;
+  float * Zplot;
+  float * aplot;
+  float * Xplot;
+  float * Yplot;
+  float * Rprime;
+  float * Zprime;
+  float * aprime;
+  float * deltaFL;
 
-	//float drhodpsi;
-	float gradpar;
+  //float drhodpsi;
+  float gradpar;
   float bi;
   float aminor;
 
 
-	float fluxDen;
+  float fluxDen;
+  
+  cuComplex * bmag_complex;
+  float * bmagInv;
+};
 
-	cuComplex * bmag_complex;
-	float * bmagInv;
-} geometry_coefficents_struct;
+class Geometry {
+ public:
+  virtual ~Geometry() {}
+  geometry_coefficents_struct* get_geo_coeffs() {
+    return geo_;
+  }
 
-void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+ private:
+  geometry_coefficents_struct *geo_;
+};
 
-void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz);
+class S_alpha_geo : public Geometry {
+ public:
+  S_alpha_geo(int Nz);
+};
+
+class Eik_geo : public Geometry {
+ public:
+  Eik_geo();
+};
+
+class Gs2_geo : public Geometry {
+ public:
+  Gs2_geo();
+};
+
+//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+//
+//void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz);
+
+
+#endif

@@ -2,6 +2,7 @@
 #define INPUTS_H_
 
 #include "species.h"
+#include "gryfx_lib.h"
 
 #define PHI 0                                                                            
 #define DENS 1
@@ -12,7 +13,7 @@
 #define TPAR 6
 #define ODD 7
 
-typedef struct {
+struct input_parameters_struct {
 	//input parameters for geometry
   // Namelist: collisions_knobs
    char * collision_model;
@@ -288,7 +289,13 @@ typedef struct {
     bool qpar0_switch ;
     bool qprp0_switch ;
 
-} input_parameters_struct;
+    // formerly part of time struct
+    int trinity_timestep;
+    int trinity_iteration;
+    int trinity_conv_count;
+    int end_time;
+
+};
 
 class Inputs {
 
@@ -297,6 +304,9 @@ class Inputs {
     ~Inputs(void);
     int read_namelist(char* file);
     input_parameters_struct* getpars(void);
+
+    int set_externalpars(external_parameters_struct* externalpars);
+    int import_externalpars(external_parameters_struct* externalpars);
 
   private:
     input_parameters_struct *pars_;

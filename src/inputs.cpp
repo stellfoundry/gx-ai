@@ -1,5 +1,4 @@
 #include "cufft.h"
-#define EXTERN_SWITCH extern
 #include "species.h"
 #include "inputs.h"
 #include "c_fortran_namelist3.c"
@@ -474,6 +473,158 @@ int Inputs::read_namelist(char* filename)
 
   return 0;
 }
+
+// this function copies elements of input_parameters struct into external_parameters_struct externalpars
+int Inputs::set_externalpars(external_parameters_struct* externalpars) {
+    externalpars->equilibrium_type = pars_->equilibrium_type;
+
+    //Defaults if we are not using Trinity
+    externalpars->trinity_timestep = -1;
+    externalpars->trinity_iteration = -1;
+    externalpars->trinity_conv_count = -1;
+
+    if (pars_->restart) externalpars->restart  = 1;
+    else externalpars->restart = 0;
+
+    externalpars->nstep = pars_->nstep;
+    externalpars->navg = pars_->navg;
+    // We increase the margin_cpu_time to make it stricter than gs2
+    externalpars->end_time = time(NULL) + pars_->avail_cpu_time - pars_->margin_cpu_time*1.2;
+
+    externalpars->irho = pars_->irho;
+    externalpars->rhoc = pars_->rhoc;
+    externalpars->eps = pars_->eps;
+    externalpars->bishop = pars_->bishop;
+    externalpars->nperiod = pars_->nperiod;
+    externalpars->ntheta = pars_->Nz;
+    printf("Nz is %d\n", externalpars->ntheta);
+  
+   /* Miller parameters*/
+    externalpars->rgeo_local = pars_->rmaj;
+    externalpars->rgeo_lcfs = pars_->rmaj;
+    externalpars->akappa = pars_->akappa;
+    externalpars->akappri = pars_->akappri;
+    externalpars->tri = pars_->tri;
+    externalpars->tripri = pars_->tripri;
+    externalpars->shift = pars_->shift;
+    externalpars->qinp = pars_->qsf;
+    externalpars->shat = pars_->shat;
+    // EGH These appear to be redundant
+    //externalpars->asym = pars_->asym;
+    //externalpars->asympri = pars_->asympri;
+  
+    /* Other geometry parameters - Bishop/Greene & Chance*/
+    externalpars->beta_prime_input = pars_->beta_prime_input;
+    externalpars->s_hat_input = pars_->s_hat_input;
+  
+    /*Flow shear*/
+    externalpars->g_exb = pars_->g_exb;
+  
+    /* Species parameters... I think allowing 20 species should be enough!*/
+  
+    externalpars->ntspec = pars_->nspec;
+  
+    for (int i=0;i<pars_->nspec;i++){
+  	  externalpars->dens[i] = pars_->species[i].dens;
+  	  externalpars->temp[i] = pars_->species[i].temp;
+  	  externalpars->fprim[i] = pars_->species[i].fprim;
+  	  externalpars->tprim[i] = pars_->species[i].tprim;
+  	  externalpars->nu[i] = pars_->species[i].nu_ss;
+    }
+  return 0;
+}
+
+// this function copies elements of external_parameters_struct externalpars into input_parameters struct
+int Inputs::import_externalpars(external_parameters_struct* externalpars) {
+   pars_->equilibrium_type = externalpars->equilibrium_type ;
+   if (externalpars->restart==1) pars_->restart  = true;
+   else if (externalpars->restart==2){
+     pars_->restart  = true;
+     pars_->zero_restart_avg = true;
+   }
+   else pars_->restart = false;
+
+   if (externalpars->nstep > pars_->nstep) {
+     printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file");
+     abort();
+   }
+   pars_->trinity_timestep = externalpars->trinity_timestep;
+   pars_->trinity_iteration = externalpars->trinity_iteration;
+   pars_->trinity_conv_count = externalpars->trinity_conv_count;
+   pars_->nstep = externalpars->nstep;
+   pars_->navg = externalpars->navg;
+   pars_->end_time = externalpars->end_time;
+  /*char eqfile[800];*/
+   pars_->irho = externalpars->irho ;
+   pars_->rhoc = externalpars->rhoc ;
+   pars_->eps = externalpars->eps;
+   // NB NEED TO SET EPS IN TRINITY!!!
+   //eps = rhoc/rmaj;
+   pars_->bishop = externalpars->bishop ;
+   pars_->nperiod = externalpars->nperiod ;
+    printf("nperiod2 is %d\n", pars_->nperiod);
+   pars_->Nz = externalpars->ntheta ;
+
+ /* Miller parameters*/
+   pars_->rmaj = externalpars->rgeo_local ;
+   pars_->r_geo = externalpars->rgeo_lcfs ;
+   pars_->akappa  = externalpars->akappa ;
+   pars_->akappri = externalpars->akappri ;
+   pars_->tri = externalpars->tri ;
+   pars_->tripri = externalpars->tripri ;
+   pars_->shift = externalpars->shift ;
+   pars_->qsf = externalpars->qinp ;
+   pars_->shat = externalpars->shat ;
+    // EGH These appear to be redundant
+   //asym = externalpars->asym ;
+   //asympri = externalpars->asympri ;
+
+  /* Other geometry parameters - Bishop/Greene & Chance*/
+   pars_->beta_prime_input = externalpars->beta_prime_input ;
+   pars_->s_hat_input = externalpars->s_hat_input ;
+
+  /*Flow shear*/
+   pars_->g_exb = externalpars->g_exb ;
+
+  /* Species parameters... I think allowing 20 species should be enough!*/
+  int oldnSpecies = pars_->nspec;
+   pars_->nspec = externalpars->ntspec ;
+
+  if (pars_->nspec!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, pars_->nspec);
+	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
+	  exit(1);
+  }
+	 if (pars_->debug) printf("nSpecies was set to %d\n", pars_->nspec);
+  for (int i=0;i<pars_->nspec;i++){
+	   pars_->species[i].dens = externalpars->dens[i] ;
+	   pars_->species[i].temp = externalpars->temp[i] ;
+	   pars_->species[i].fprim = externalpars->fprim[i] ;
+	   pars_->species[i].tprim = externalpars->tprim[i] ;
+	   pars_->species[i].nu_ss = externalpars->nu[i] ;
+  }
+
+  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
+  // this triggers the use of jtwist_square... i.e. jtwist is 
+  // set to what it needs to make the box square at the outboard midplane
+  if (pars_->jtwist < 0) {
+    int jtwist_square, jtwist;
+    // determine value of jtwist needed to make X0~Y0
+    jtwist_square = (int) round(2*M_PI*abs(pars_->shat)*pars_->Zp);
+    if (jtwist_square == 0) jtwist_square = 1;
+    // as currently implemented, there is no way to manually set jtwist from input file
+    // there could be some switch here where we choose whether to use
+    // jtwist_in or jtwist_square
+    jtwist = jtwist_square*2;
+    //else use what is set in input file 
+    pars_->jtwist = jtwist;
+  }
+  if(pars_->jtwist!=0 && abs(pars_->shat)>1.e-6) pars_->x0 = pars_->y0*pars_->jtwist/(2*M_PI*pars_->Zp*abs(pars_->shat));  
+  //if(abs(pars_->shat)<1.e-6) pars_->x0 = pars_->y0;
+  
+  return 0;
+}
+
 
 
 
