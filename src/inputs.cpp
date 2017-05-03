@@ -34,18 +34,6 @@ bool get_bool(struct fnr_struct * namelist_struct, const char * namelist, const 
   return return_value;
 }
 
-Inputs::Inputs(void) {
-  pars_ = new input_parameters_struct;
-}
-
-Inputs::~Inputs(void) {
-  delete pars_;
-}
-
-input_parameters_struct* Inputs::getpars(void) {
-  return pars_;
-}
-
 int Inputs::read_namelist(char* filename)
 {
 	fnr_abort_on_error = 1;
@@ -55,239 +43,222 @@ int Inputs::read_namelist(char* filename)
   struct fnr_struct namelist_defaults = fnr_read_namelist_string(default_namelist_string);  
 	fnr_check_namelist_against_template(&namelist_struct, &namelist_defaults);
 	fnr_set_defaults(&namelist_struct, &namelist_defaults);
-  fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &pars_->nperiod);
+  fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod);
 
-  fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(pars_->Nz));
+  fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(Nz));
 
-  if(pars_->Nz!=1) {
+  if(Nz!=1) {
     //The GS2 grid, which includes the periodic point, runs from
     // -ntgrid:ntgrid and is thus 2*ntgrid+1 in size, where ntgrid
     // is the same as what is calculated here. This little step
     // thus ensures that the Gryfx grid corresponds to the GS2 grid
     // (without the periodic) point.
-      int ntgrid = pars_->Nz/2 + (pars_->nperiod-1)*pars_->Nz;
+      int ntgrid = Nz/2 + (nperiod-1)*Nz;
  
-      pars_->Nz = 2*ntgrid;
+      Nz = 2*ntgrid;
   }
   
-  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &pars_->Zp)==FNR_USED_DEFAULT){
-   pars_->Zp = 2*pars_->nperiod - 1; 
+  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &Zp)==FNR_USED_DEFAULT){
+   Zp = 2*nperiod - 1; 
   }
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "eps", &(pars_->eps));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "eps", &(eps));
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "shat", &(pars_->shat));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "shat", &(shat));
 
-  fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "beta_prime_input", &pars_->beta_prime_input);
+  fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "beta_prime_input", &beta_prime_input);
 
-  fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "s_hat_input", &pars_->s_hat_input);
+  fnr_get_float(&namelist_struct, "theta_grid_eik_knobs", "s_hat_input", &s_hat_input);
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "qinp", &(pars_->qsf));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "qinp", &(qsf));
 
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappa", &pars_->akappa);
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappa", &akappa);
 
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappri", &pars_->akappri);
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "akappri", &akappri);
 
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "tri", &pars_->tri);
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "tri", &tri);
 
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "tripri", &pars_->tripri);
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "tripri", &tripri);
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "Rmaj", &(pars_->rmaj));
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "rhoc", &(pars_->rhoc));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "Rmaj", &(rmaj));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "rhoc", &(rhoc));
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "shift", &(pars_->shift));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "shift", &(shift));
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "drhodpsi", &(pars_->drhodpsi));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "drhodpsi", &(drhodpsi));
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "epsl", &(pars_->epsl));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "epsl", &(epsl));
   
-  fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &(pars_->kxfac));
+  fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &(kxfac));
 
-  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &(pars_->nx));
+  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &(nx));
     
-  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &(pars_->ny));
+  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &(ny));
   
-  fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "y0", &(pars_->y0));
+  fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "y0", &(y0));
   
   //before, jtwist_old assumed Zp=1
   //now, redefining jtwist = jtwist_old*Zp
-  if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &(pars_->jtwist)) == FNR_USED_DEFAULT) {
+  if(fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "jtwist", &(jtwist)) == FNR_USED_DEFAULT) {
     //set default jtwist to 2pi*shat so that X0~Y0
-    pars_->jtwist = (int) round(2*M_PI*pars_->shat*pars_->Zp);
+    jtwist = (int) round(2*M_PI*shat*Zp);
   }  
 
-  fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &(pars_->x0));
+  fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &(x0));
   //X0 will get overwritten if shat!=0
 
   // set up for HL moments "grid"
-  char* opt;
-  int nlaguerre, vN;
-  fnr_get_string(&namelist_struct, "hl_grids_knobs", "grid_option", &opt);
-  if(strcmp(opt, "box")) {
-    fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(pars_->nhermite));
+    fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nhermite));
     fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nlaguerre);
-    pars_->nmoms = pars_->nhermite * nlaguerre;
-    pars_->nlaguerre = (int*) malloc(sizeof(int)*pars_->nhermite);
-    for (int l=0; l<pars_->nhermite; l++) {
-      pars_->nlaguerre[l] = nlaguerre;
-    }
-  } else if (strcmp(opt, "poly_order")) {
-    fnr_get_int(&namelist_struct, "hl_grids_knobs", "max_poly_order", &vN);
-    pars_->nhermite = vN+1;
-    pars_->nmoms = ( 1 + vN/2 ) * ( 1 + vN - vN/2 );
-    pars_->nlaguerre = (int*) malloc(sizeof(int)*pars_->nhermite);
-    for (int l=0; l<pars_->nhermite; l++) {
-      pars_->nlaguerre[l] = (vN-l)/2;
-    }
-  }
+    nmoms = nhermite * nlaguerre;
   
-  fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(pars_->g_exb));
+  fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
   
-  fnr_get_float(&namelist_struct, "parameters", "tite", &(pars_->ti_ov_te));
+  fnr_get_float(&namelist_struct, "parameters", "tite", &(ti_ov_te));
   // ti_ov_te is overwritten for non-adiabatic electrons
 
-  fnr_get_float(&namelist_struct, "parameters", "beta", &(pars_->beta));
+  fnr_get_float(&namelist_struct, "parameters", "beta", &(beta));
   
-  fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "cfl", &(pars_->cfl));
+  fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "cfl", &(cfl));
   
-  pars_->zero_order_nonlin_flr_only= get_bool(&namelist_struct, "gryfx_knobs", "zero_order_nonlin_flr_only");
-  if(pars_->zero_order_nonlin_flr_only) pars_->no_nonlin_flr = true;
+  zero_order_nonlin_flr_only= get_bool(&namelist_struct, "gryfx_knobs", "zero_order_nonlin_flr_only");
+  if(zero_order_nonlin_flr_only) no_nonlin_flr = true;
 
-  pars_->no_nonlin_cross_terms= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_cross_terms");
-  pars_->no_nonlin_dens_cross_term= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_dens_cross_term");
-  if(pars_->no_nonlin_cross_terms || pars_->no_nonlin_dens_cross_term) {
-    pars_->new_nlpm = false;
-    pars_->zero_order_nonlin_flr_only = false;
-    pars_->no_nonlin_flr = false;
+  no_nonlin_cross_terms= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_cross_terms");
+  no_nonlin_dens_cross_term= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_dens_cross_term");
+  if(no_nonlin_cross_terms || no_nonlin_dens_cross_term) {
+    new_nlpm = false;
+    zero_order_nonlin_flr_only = false;
+    no_nonlin_flr = false;
   }
 
-  pars_->no_zonal_nlpm= get_bool(&namelist_struct, "gryfx_knobs", "no_zonal_nlpm");
+  no_zonal_nlpm= get_bool(&namelist_struct, "gryfx_knobs", "no_zonal_nlpm");
 
-  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nwrite", &(pars_->nwrite));
+  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nwrite", &(nwrite));
   
-  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nsave", &(pars_->nsave));
+  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nsave", &(nsave));
   
-  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "navg", &(pars_->navg));
+  fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "navg", &(navg));
   
-  fnr_get_float(&namelist_struct, "knobs", "delt", &(pars_->dt));
+  fnr_get_float(&namelist_struct, "knobs", "delt", &(dt));
   
-  //fnr_get_float(&namelist_struct, "knobs", "maxdt", &(pars_->maxdt));
-  //maxdt=pars_->maxdt;
+  //fnr_get_float(&namelist_struct, "knobs", "maxdt", &(maxdt));
+  //maxdt=maxdt;
   
-  fnr_get_int(&namelist_struct, "knobs", "nstep", &(pars_->nstep));
+  fnr_get_int(&namelist_struct, "knobs", "nstep", &(nstep));
   
-  fnr_get_float(&namelist_struct, "knobs", "fapar", &(pars_->fapar));
+  fnr_get_float(&namelist_struct, "knobs", "fapar", &(fapar));
 
-  fnr_get_float(&namelist_struct, "knobs", "avail_cpu_time", &(pars_->avail_cpu_time));
-  fnr_get_float(&namelist_struct, "knobs", "margin_cpu_time", &(pars_->margin_cpu_time));
+  fnr_get_float(&namelist_struct, "knobs", "avail_cpu_time", &(avail_cpu_time));
+  fnr_get_float(&namelist_struct, "knobs", "margin_cpu_time", &(margin_cpu_time));
   //maxdt?
   
-  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(pars_->nspec));
+  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec));
   
-  pars_->linear = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
+  linear = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
   
 
-  pars_->check_for_restart = false;
-  char* restart;
-  fnr_get_string(&namelist_struct, "gryfx_knobs", "restart", &restart);
-  if( strcmp(restart,"on") == 0) {
-    pars_->restart = true;
+  check_for_restart = false;
+  char* restart_str;
+  fnr_get_string(&namelist_struct, "gryfx_knobs", "restart", &restart_str);
+  if( strcmp(restart_str,"on") == 0) {
+    restart = true;
   }
-  else if( strcmp(restart,"exist") == 0) {
+  else if( strcmp(restart_str,"exist") == 0) {
     //check if restart file exists
-    pars_->check_for_restart = true;
+    check_for_restart = true;
   }
-  else if( strcmp(restart,"off") == 0) {
-    pars_->restart = false;
+  else if( strcmp(restart_str,"off") == 0) {
+    restart = false;
   }
 
-  pars_->netcdf_restart = get_bool(&namelist_struct, "gryfx_knobs", "netcdf_restart"); 
+  netcdf_restart = get_bool(&namelist_struct, "gryfx_knobs", "netcdf_restart"); 
 
   // If a netcdf file with the right run name already exists, open it and append to it
-  pars_->append_old = get_bool(&namelist_struct, "gryfx_knobs", "append_old"); 
+  append_old = get_bool(&namelist_struct, "gryfx_knobs", "append_old"); 
   
-  //pars_->zero_restart_avg = zero_restart_avg = get_bool(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
-  pars_->zero_restart_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
+  //zero_restart_avg = zero_restart_avg = get_bool(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
+  zero_restart_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
 
-  pars_->no_zderiv_covering = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv_covering");
+  no_zderiv_covering = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv_covering");
 
-  pars_->no_zderiv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv");
+  no_zderiv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv");
 
-  pars_->zderiv_loop = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zderiv_loop");
+  zderiv_loop = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zderiv_loop");
 
-  pars_->no_landau_damping = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_landau_damping");
+  no_landau_damping = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_landau_damping");
 
-  pars_->turn_off_gradients_test = get_bool_on_off(&namelist_struct, "gryfx_knobs", "turn_off_gradients_test");
+  turn_off_gradients_test = get_bool_on_off(&namelist_struct, "gryfx_knobs", "turn_off_gradients_test");
 
-  pars_->slab = get_bool_on_off(&namelist_struct, "gryfx_knobs", "slab");
+  slab = get_bool_on_off(&namelist_struct, "gryfx_knobs", "slab");
 
-  pars_->const_curv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "const_curv");
+  const_curv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "const_curv");
 
-  pars_->varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna");
+  varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna");
 
-  pars_->new_catto = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_catto");
+  new_catto = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_catto");
   
  //////////////////////////
  // new varenna knobs
 
-  pars_->new_varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_varenna");
+  new_varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_varenna");
   
-  pars_->new_varenna_fsa = get_bool_on_off(&namelist_struct, "new_varenna_knobs", "new_varenna_fsa");
+  new_varenna_fsa = get_bool_on_off(&namelist_struct, "new_varenna_knobs", "new_varenna_fsa");
 
   /////////////////////////
 
-  pars_->nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm");
+  nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm");
 
-  pars_->dorland_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm");
+  dorland_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm");
 
-  pars_->dorland_nlpm_phase = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm_phase");
+  dorland_nlpm_phase = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm_phase");
 
-  pars_->dorland_phase_complex = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_phase_complex");
+  dorland_phase_complex = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_phase_complex");
 
-  pars_->nlpm_kxdep = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_kxdep");
+  nlpm_kxdep = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_kxdep");
 
-  if(pars_->nlpm_kxdep) pars_->dorland_phase_complex = true;  
+  if(nlpm_kxdep) dorland_phase_complex = true;  
 
-  pars_->nlpm_nlps = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_nlps");
+  nlpm_nlps = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_nlps");
 
-  if(pars_->nlpm_nlps) pars_->nlpm = false; //turn off normal filter-style NLPM
+  if(nlpm_nlps) nlpm = false; //turn off normal filter-style NLPM
 
-  pars_->nlpm_cutoff_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_cutoff_avg");
+  nlpm_cutoff_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_cutoff_avg");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &pars_->dorland_phase_ifac);
-  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &pars_->nlpm_option);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &dorland_phase_ifac);
+  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &pars_->inlpm);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &pars_->dnlpm);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_dens", &pars_->dnlpm_dens);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_tprp", &pars_->dnlpm_tprp);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_dens", &dnlpm_dens);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_tprp", &dnlpm_tprp);
 
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &pars_->dnlpm_max);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "tau_nlpm", &pars_->tau_nlpm);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &dnlpm_max);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "tau_nlpm", &tau_nlpm);
 
-  pars_->nlpm_zonal_kx1_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_kx1_only");
+  nlpm_zonal_kx1_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_kx1_only");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &pars_->ivarenna);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna);
 
-  pars_->varenna_fsa = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna_fsa");
+  varenna_fsa = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna_fsa");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &pars_->icovering);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &icovering);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iphi00", &pars_->iphi00);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "iphi00", &iphi00);
 
-  pars_->smagorinsky = get_bool_on_off(&namelist_struct, "gryfx_knobs", "smagorinsky");
+  smagorinsky = get_bool_on_off(&namelist_struct, "gryfx_knobs", "smagorinsky");
 
-  pars_->hyper = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hyper");
+  hyper = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hyper");
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "d_hyper", &pars_->D_hyper);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "d_hyper", &D_hyper);
   
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "p_hyper", &pars_->p_hyper);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "p_hyper", &p_hyper);
 
-  pars_->iso_shear = get_bool_on_off(&namelist_struct, "gryfx_knobs", "iso_shear");
+  iso_shear = get_bool_on_off(&namelist_struct, "gryfx_knobs", "iso_shear");
 
-  pars_->debug = get_bool_on_off(&namelist_struct, "gryfx_knobs", "debug");
+  debug = get_bool_on_off(&namelist_struct, "gryfx_knobs", "debug");
   
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &pars_->igeo);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo);
 
   char* initfield;
   int init;
@@ -316,100 +287,99 @@ int Inputs::read_namelist(char* filename)
   }
   else if (strcmp(initfield,"RH_eq") == 0) {
     init = RH_equilibrium;
-    pars_->new_varenna = true;
+    new_varenna = true;
   } 
-  pars_->init = init;
+  init = init;
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &(pars_->init_amp));
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &pars_->phiext);
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &(init_amp));
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &phiext);
 
-  pars_->init_single = get_bool_on_off(&namelist_struct, "gryfx_knobs", "init_single");
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iky_single", &(pars_->iky_single));
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "ikx_single", &(pars_->ikx_single));
+  init_single = get_bool_on_off(&namelist_struct, "gryfx_knobs", "init_single");
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "iky_single", &(iky_single));
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "ikx_single", &(ikx_single));
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "kpar_init", &(pars_->kpar_init));
+  fnr_get_float(&namelist_struct, "gryfx_knobs", "kpar_init", &(kpar_init));
   
-  pars_->write_netcdf= get_bool(&namelist_struct, "gryfx_knobs", "write_netcdf");
+  write_netcdf= get_bool(&namelist_struct, "gryfx_knobs", "write_netcdf");
 
-  pars_->write_omega = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_omega");
+  write_omega = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_omega");
 
-  pars_->write_phi = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_phi");
+  write_phi = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_phi");
 
-  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "scan_type", &pars_->scan_type);
+  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "scan_type", &scan_type);
   
-  pars_->higher_order_moments = get_bool_on_off(&namelist_struct, "gryfx_knobs", "higher_order_moments");
+  higher_order_moments = get_bool_on_off(&namelist_struct, "gryfx_knobs", "higher_order_moments");
   
-  pars_->secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
-  pars_->nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
-  pars_->new_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_nlpm");
-  pars_->nlpm_abs_sgn = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_abs_sgn");
-  pars_->hammett_nlpm_interference = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hammett_nlpm_interference");
-  pars_->low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
-  pars_->low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
-  if(pars_->low_b_all) pars_->low_b = true;
-  pars_->nlpm_zonal_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_only");
-  pars_->nlpm_vol_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_vol_avg");
+  secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
+  nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
+  new_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_nlpm");
+  nlpm_abs_sgn = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_abs_sgn");
+  hammett_nlpm_interference = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hammett_nlpm_interference");
+  low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
+  low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
+  if(low_b_all) low_b = true;
+  nlpm_zonal_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_only");
+  nlpm_vol_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_vol_avg");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(pars_->iflr));
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(iflr));
 
   cuComplex phi_test;
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_real", &phi_test.x);
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_imag", &phi_test.y);
 
-  fnr_get_int(&namelist_struct, "secondary_test_knobs", "iky_fixed", &(pars_->iky_fixed));
-  fnr_get_int(&namelist_struct, "secondary_test_knobs", "ikx_fixed", &(pars_->ikx_fixed));
+  fnr_get_int(&namelist_struct, "secondary_test_knobs", "iky_fixed", &(iky_fixed));
+  fnr_get_int(&namelist_struct, "secondary_test_knobs", "ikx_fixed", &(ikx_fixed));
 
-  if(pars_->secondary_test && pars_->linear && phi_test.x > phi_test.y) pars_->init_amp = phi_test.x;
-  if(pars_->secondary_test && pars_->linear && phi_test.x < phi_test.y) pars_->init_amp = phi_test.y;
-  pars_->phi_test = phi_test;
+  if(secondary_test && linear && phi_test.x > phi_test.y) init_amp = phi_test.x;
+  if(secondary_test && linear && phi_test.x < phi_test.y) init_amp = phi_test.y;
+  phi_test = phi_test;
 
-  if(pars_->nlpm_test) { 
+  if(nlpm_test) { 
     float fac;
-    if(pars_->iky_fixed==0) fac = .5;
+    if(iky_fixed==0) fac = .5;
     else fac = 1.;
-    if(phi_test.x > 0.) phi_test.x = pars_->x0*pars_->y0*fac; 
+    if(phi_test.x > 0.) phi_test.x = x0*y0*fac; 
     else phi_test.x = 0.;
-    if(phi_test.y > 0.) phi_test.y = pars_->x0*pars_->y0*fac; 
+    if(phi_test.y > 0.) phi_test.y = x0*y0*fac; 
     else phi_test.y = 0.;
     //if(phi_test.x > 0. && phi_test.y > 0.) {phi_test.x = phi_test.x/sqrt(2.); phi_test.y = phi_test.y/sqrt(2.);}
   }
 
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "densfac", &pars_->NLdensfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "uparfac", &pars_->NLuparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tparfac", &pars_->NLtparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tprpfac", &pars_->NLtprpfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qparfac", &pars_->NLqparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qprpfac", &pars_->NLqprpfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "densfac", &NLdensfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "uparfac", &NLuparfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tparfac", &NLtparfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tprpfac", &NLtprpfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qparfac", &NLqparfac);
+  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qprpfac", &NLqprpfac);
 
-  if(pars_->NLdensfac!=0) pars_->NLdensfac = 1.;
-  if(pars_->NLuparfac!=0) pars_->NLuparfac = 1.;
-  if(pars_->NLtparfac!=0) pars_->NLtparfac = 1.;
-  if(pars_->NLtprpfac!=0) pars_->NLtprpfac = 1.;
-  if(pars_->NLqparfac!=0) pars_->NLqparfac = 1.;
-  if(pars_->NLqprpfac!=0) pars_->NLqprpfac = 1.;
+  if(NLdensfac!=0) NLdensfac = 1.;
+  if(NLuparfac!=0) NLuparfac = 1.;
+  if(NLtparfac!=0) NLtparfac = 1.;
+  if(NLtprpfac!=0) NLtprpfac = 1.;
+  if(NLqparfac!=0) NLqparfac = 1.;
+  if(NLqprpfac!=0) NLqprpfac = 1.;
    
 
-  fnr_get_string_no_test(&namelist_struct, "secondary_test_knobs", "restartfile", &pars_->secondary_test_restartfileName);
+  fnr_get_string_no_test(&namelist_struct, "secondary_test_knobs", "restartfile", &secondary_test_restartfileName);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "scan_number", &pars_->scan_number);
+  fnr_get_int(&namelist_struct, "gryfx_knobs", "scan_number", &scan_number);
     
   //char* collisions;
-  fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(pars_->collision_model));
-  //collisions=pars_->collision_model;
+  fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
+  //collisions=collision_model;
   
-  specie* species;
-  pars_->species = species = (specie*) malloc(sizeof(specie)*pars_->nspec);
+  species = (specie*) malloc(sizeof(specie)*nspec);
 
-  pars_->adiabatic_electrons = true;
+  adiabatic_electrons = true;
 
-  pars_->snyder_electrons = get_bool_on_off(&namelist_struct, "gryfx_knobs", "snyder_electrons");
-  pars_->stationary_ions = get_bool_on_off(&namelist_struct, "gryfx_knobs", "stationary_ions");
+  snyder_electrons = get_bool_on_off(&namelist_struct, "gryfx_knobs", "snyder_electrons");
+  stationary_ions = get_bool_on_off(&namelist_struct, "gryfx_knobs", "stationary_ions");
    
     int ionspec = 0;   
     int ispec = 1;
     float mass;
     bool main_ion_species_found = false;
-  for(int s=1; s<pars_->nspec+1; s++) {
+  for(int s=1; s<nspec+1; s++) {
 //		printf("s= %d\n", s);
 
 
@@ -421,7 +391,7 @@ int Inputs::read_namelist(char* filename)
  
     if(strcmp(type,"ion") == 0) {
       fnr_get_float(&namelist_struct, namelist, "mass", &mass);
-      if((mass == 1. && !main_ion_species_found) || pars_->nspec==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
+      if((mass == 1. && !main_ion_species_found) || nspec==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
       else {ionspec = ispec; ispec++;}
       species[ionspec].mass = mass;
       fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);
@@ -444,24 +414,24 @@ int Inputs::read_namelist(char* filename)
 
       // kinetic electrons will always be last indexed species
 
-      fnr_get_float(&namelist_struct, namelist, "z", &species[pars_->nspec-1].z);
-      fnr_get_float(&namelist_struct, namelist, "mass", &species[pars_->nspec-1].mass);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[pars_->nspec-1].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[pars_->nspec-1].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[pars_->nspec-1].tprim);
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[pars_->nspec-1].fprim);
-      fnr_get_float(&namelist_struct, namelist, "uprim", &species[pars_->nspec-1].uprim);
+      fnr_get_float(&namelist_struct, namelist, "z", &species[nspec-1].z);
+      fnr_get_float(&namelist_struct, namelist, "mass", &species[nspec-1].mass);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species[nspec-1].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species[nspec-1].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species[nspec-1].tprim);
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species[nspec-1].fprim);
+      fnr_get_float(&namelist_struct, namelist, "uprim", &species[nspec-1].uprim);
 
-      //if(strcmp(collisions,"none") == 0) species[pars_->nspec-1].nu_ss = 0;
+      //if(strcmp(collisions,"none") == 0) species[nspec-1].nu_ss = 0;
       //else {
 
-      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[pars_->nspec-1].nu_ss);
+      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[nspec-1].nu_ss);
 
       //}
 
-      strcpy(species[pars_->nspec-1].type,"electron");
+      strcpy(species[nspec-1].type,"electron");
 
-      pars_->adiabatic_electrons = false;
+      adiabatic_electrons = false;
    
     }   
 
@@ -476,151 +446,151 @@ int Inputs::read_namelist(char* filename)
 
 // this function copies elements of input_parameters struct into external_parameters_struct externalpars
 int Inputs::set_externalpars(external_parameters_struct* externalpars) {
-    externalpars->equilibrium_type = pars_->equilibrium_type;
+    externalpars->equilibrium_type = equilibrium_type;
 
     //Defaults if we are not using Trinity
     externalpars->trinity_timestep = -1;
     externalpars->trinity_iteration = -1;
     externalpars->trinity_conv_count = -1;
 
-    if (pars_->restart) externalpars->restart  = 1;
+    if (restart) externalpars->restart  = 1;
     else externalpars->restart = 0;
 
-    externalpars->nstep = pars_->nstep;
-    externalpars->navg = pars_->navg;
+    externalpars->nstep = nstep;
+    externalpars->navg = navg;
     // We increase the margin_cpu_time to make it stricter than gs2
-    externalpars->end_time = time(NULL) + pars_->avail_cpu_time - pars_->margin_cpu_time*1.2;
+    externalpars->end_time = time(NULL) + avail_cpu_time - margin_cpu_time*1.2;
 
-    externalpars->irho = pars_->irho;
-    externalpars->rhoc = pars_->rhoc;
-    externalpars->eps = pars_->eps;
-    externalpars->bishop = pars_->bishop;
-    externalpars->nperiod = pars_->nperiod;
-    externalpars->ntheta = pars_->Nz;
+    externalpars->irho = irho;
+    externalpars->rhoc = rhoc;
+    externalpars->eps = eps;
+    externalpars->bishop = bishop;
+    externalpars->nperiod = nperiod;
+    externalpars->ntheta = Nz;
     printf("Nz is %d\n", externalpars->ntheta);
   
    /* Miller parameters*/
-    externalpars->rgeo_local = pars_->rmaj;
-    externalpars->rgeo_lcfs = pars_->rmaj;
-    externalpars->akappa = pars_->akappa;
-    externalpars->akappri = pars_->akappri;
-    externalpars->tri = pars_->tri;
-    externalpars->tripri = pars_->tripri;
-    externalpars->shift = pars_->shift;
-    externalpars->qinp = pars_->qsf;
-    externalpars->shat = pars_->shat;
+    externalpars->rgeo_local = rmaj;
+    externalpars->rgeo_lcfs = rmaj;
+    externalpars->akappa = akappa;
+    externalpars->akappri = akappri;
+    externalpars->tri = tri;
+    externalpars->tripri = tripri;
+    externalpars->shift = shift;
+    externalpars->qinp = qsf;
+    externalpars->shat = shat;
     // EGH These appear to be redundant
-    //externalpars->asym = pars_->asym;
-    //externalpars->asympri = pars_->asympri;
+    //externalpars->asym = asym;
+    //externalpars->asympri = asympri;
   
     /* Other geometry parameters - Bishop/Greene & Chance*/
-    externalpars->beta_prime_input = pars_->beta_prime_input;
-    externalpars->s_hat_input = pars_->s_hat_input;
+    externalpars->beta_prime_input = beta_prime_input;
+    externalpars->s_hat_input = s_hat_input;
   
     /*Flow shear*/
-    externalpars->g_exb = pars_->g_exb;
+    externalpars->g_exb = g_exb;
   
     /* Species parameters... I think allowing 20 species should be enough!*/
   
-    externalpars->ntspec = pars_->nspec;
+    externalpars->ntspec = nspec;
   
-    for (int i=0;i<pars_->nspec;i++){
-  	  externalpars->dens[i] = pars_->species[i].dens;
-  	  externalpars->temp[i] = pars_->species[i].temp;
-  	  externalpars->fprim[i] = pars_->species[i].fprim;
-  	  externalpars->tprim[i] = pars_->species[i].tprim;
-  	  externalpars->nu[i] = pars_->species[i].nu_ss;
+    for (int i=0;i<nspec;i++){
+  	  externalpars->dens[i] = species[i].dens;
+  	  externalpars->temp[i] = species[i].temp;
+  	  externalpars->fprim[i] = species[i].fprim;
+  	  externalpars->tprim[i] = species[i].tprim;
+  	  externalpars->nu[i] = species[i].nu_ss;
     }
   return 0;
 }
 
 // this function copies elements of external_parameters_struct externalpars into input_parameters struct
 int Inputs::import_externalpars(external_parameters_struct* externalpars) {
-   pars_->equilibrium_type = externalpars->equilibrium_type ;
-   if (externalpars->restart==1) pars_->restart  = true;
+   equilibrium_type = externalpars->equilibrium_type ;
+   if (externalpars->restart==1) restart  = true;
    else if (externalpars->restart==2){
-     pars_->restart  = true;
-     pars_->zero_restart_avg = true;
+     restart  = true;
+     zero_restart_avg = true;
    }
-   else pars_->restart = false;
+   else restart = false;
 
-   if (externalpars->nstep > pars_->nstep) {
+   if (externalpars->nstep > nstep) {
      printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file");
      abort();
    }
-   pars_->trinity_timestep = externalpars->trinity_timestep;
-   pars_->trinity_iteration = externalpars->trinity_iteration;
-   pars_->trinity_conv_count = externalpars->trinity_conv_count;
-   pars_->nstep = externalpars->nstep;
-   pars_->navg = externalpars->navg;
-   pars_->end_time = externalpars->end_time;
+   trinity_timestep = externalpars->trinity_timestep;
+   trinity_iteration = externalpars->trinity_iteration;
+   trinity_conv_count = externalpars->trinity_conv_count;
+   nstep = externalpars->nstep;
+   navg = externalpars->navg;
+   end_time = externalpars->end_time;
   /*char eqfile[800];*/
-   pars_->irho = externalpars->irho ;
-   pars_->rhoc = externalpars->rhoc ;
-   pars_->eps = externalpars->eps;
+   irho = externalpars->irho ;
+   rhoc = externalpars->rhoc ;
+   eps = externalpars->eps;
    // NB NEED TO SET EPS IN TRINITY!!!
    //eps = rhoc/rmaj;
-   pars_->bishop = externalpars->bishop ;
-   pars_->nperiod = externalpars->nperiod ;
-    printf("nperiod2 is %d\n", pars_->nperiod);
-   pars_->Nz = externalpars->ntheta ;
+   bishop = externalpars->bishop ;
+   nperiod = externalpars->nperiod ;
+    printf("nperiod2 is %d\n", nperiod);
+   Nz = externalpars->ntheta ;
 
  /* Miller parameters*/
-   pars_->rmaj = externalpars->rgeo_local ;
-   pars_->r_geo = externalpars->rgeo_lcfs ;
-   pars_->akappa  = externalpars->akappa ;
-   pars_->akappri = externalpars->akappri ;
-   pars_->tri = externalpars->tri ;
-   pars_->tripri = externalpars->tripri ;
-   pars_->shift = externalpars->shift ;
-   pars_->qsf = externalpars->qinp ;
-   pars_->shat = externalpars->shat ;
+   rmaj = externalpars->rgeo_local ;
+   r_geo = externalpars->rgeo_lcfs ;
+   akappa  = externalpars->akappa ;
+   akappri = externalpars->akappri ;
+   tri = externalpars->tri ;
+   tripri = externalpars->tripri ;
+   shift = externalpars->shift ;
+   qsf = externalpars->qinp ;
+   shat = externalpars->shat ;
     // EGH These appear to be redundant
    //asym = externalpars->asym ;
    //asympri = externalpars->asympri ;
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
-   pars_->beta_prime_input = externalpars->beta_prime_input ;
-   pars_->s_hat_input = externalpars->s_hat_input ;
+   beta_prime_input = externalpars->beta_prime_input ;
+   s_hat_input = externalpars->s_hat_input ;
 
   /*Flow shear*/
-   pars_->g_exb = externalpars->g_exb ;
+   g_exb = externalpars->g_exb ;
 
   /* Species parameters... I think allowing 20 species should be enough!*/
-  int oldnSpecies = pars_->nspec;
-   pars_->nspec = externalpars->ntspec ;
+  int oldnSpecies = nspec;
+   nspec = externalpars->ntspec ;
 
-  if (pars_->nspec!=oldnSpecies){
-	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, pars_->nspec);
+  if (nspec!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec);
 	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
 	  exit(1);
   }
-	 if (pars_->debug) printf("nSpecies was set to %d\n", pars_->nspec);
-  for (int i=0;i<pars_->nspec;i++){
-	   pars_->species[i].dens = externalpars->dens[i] ;
-	   pars_->species[i].temp = externalpars->temp[i] ;
-	   pars_->species[i].fprim = externalpars->fprim[i] ;
-	   pars_->species[i].tprim = externalpars->tprim[i] ;
-	   pars_->species[i].nu_ss = externalpars->nu[i] ;
+	 if (debug) printf("nSpecies was set to %d\n", nspec);
+  for (int i=0;i<nspec;i++){
+	   species[i].dens = externalpars->dens[i] ;
+	   species[i].temp = externalpars->temp[i] ;
+	   species[i].fprim = externalpars->fprim[i] ;
+	   species[i].tprim = externalpars->tprim[i] ;
+	   species[i].nu_ss = externalpars->nu[i] ;
   }
 
   //jtwist should never be < 0. If we set jtwist < 0 in the input file,
   // this triggers the use of jtwist_square... i.e. jtwist is 
   // set to what it needs to make the box square at the outboard midplane
-  if (pars_->jtwist < 0) {
+  if (jtwist < 0) {
     int jtwist_square, jtwist;
     // determine value of jtwist needed to make X0~Y0
-    jtwist_square = (int) round(2*M_PI*abs(pars_->shat)*pars_->Zp);
+    jtwist_square = (int) round(2*M_PI*abs(shat)*Zp);
     if (jtwist_square == 0) jtwist_square = 1;
     // as currently implemented, there is no way to manually set jtwist from input file
     // there could be some switch here where we choose whether to use
     // jtwist_in or jtwist_square
     jtwist = jtwist_square*2;
     //else use what is set in input file 
-    pars_->jtwist = jtwist;
+    jtwist = jtwist;
   }
-  if(pars_->jtwist!=0 && abs(pars_->shat)>1.e-6) pars_->x0 = pars_->y0*pars_->jtwist/(2*M_PI*pars_->Zp*abs(pars_->shat));  
-  //if(abs(pars_->shat)<1.e-6) pars_->x0 = pars_->y0;
+  if(jtwist!=0 && abs(shat)>1.e-6) x0 = y0*jtwist/(2*M_PI*Zp*abs(shat));  
+  //if(abs(shat)<1.e-6) x0 = y0;
   
   return 0;
 }

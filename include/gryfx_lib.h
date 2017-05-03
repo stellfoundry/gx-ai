@@ -4,8 +4,7 @@
 #include <float.h>
 #include <time.h>
 
-#ifndef GRYFX_LIB_H
-#define GRYFX_LIB_H
+#pragma once
 
 /* These must be in the same order that they appear in
  * gs2_gryfx_zonal.f90*/
@@ -81,4 +80,4 @@ void gryfx_get_fluxes_(struct external_parameters_struct *, struct gryfx_outputs
 
 void gryfx_main(int argc, char* argv[], int mpcom);
 
-#endif
+

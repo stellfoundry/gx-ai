@@ -2,8 +2,13 @@
 #define GEO_H
 
 #include "cufft.h"
+#include "inputs.h"
 
-struct geometry_coefficents_struct{
+class Geometry {
+ public:
+  virtual ~Geometry() {};
+  
+  float *z;
   float *gradpar_arr;
   float *gbdrift;
   float *grho;
@@ -31,27 +36,15 @@ struct geometry_coefficents_struct{
   float bi;
   float aminor;
 
-
   float fluxDen;
   
   cuComplex * bmag_complex;
   float * bmagInv;
 };
 
-class Geometry {
- public:
-  virtual ~Geometry() {}
-  geometry_coefficents_struct* get_geo_coeffs() {
-    return geo_;
-  }
-
- private:
-  geometry_coefficents_struct *geo_;
-};
-
 class S_alpha_geo : public Geometry {
  public:
-  S_alpha_geo(int Nz);
+  S_alpha_geo(Inputs* inputs);
 };
 
 class Eik_geo : public Geometry {

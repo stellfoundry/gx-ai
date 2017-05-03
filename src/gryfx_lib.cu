@@ -3,9 +3,31 @@
 #include "cufft.h"
 #include "inputs.h"
 #include "geometry.h"
+#include <assert.h>
+
+// Convenience function for checking CUDA runtime API results
+// can be wrapped around any runtime API call. No-op in release builds.
+inline
+cudaError_t checkCuda(cudaError_t result)
+{
+  if (result != cudaSuccess) {
+    fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
+    assert(result == cudaSuccess);
+  } else {
+    //fprintf(stderr, "Success?\n");
+  }
+  return result;
+}
+
+__global__ void print() {
+  printf("A\n");
+}
+__global__ void test(float* z) {
+  printf("Device: %f\n", z[0]);
+}
 
 //Defined at the bottom of this file
-void set_externalpars(struct external_parameters_struct * externalpars, input_parameters_struct * pars);
+//void set_externalpars(struct external_parameters_struct * externalpars, Inputs *inputs);
 //void import_externalpars(struct external_parameters_struct * externalpars, everything_struct * everything_ptr);
 //void initialize_cuda_parallelization(everything_struct * ev);
 
@@ -82,7 +104,6 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
 {
 
-	 //everything_struct * ev;
    FILE* outfile;
 
    int iproc;
@@ -91,7 +112,6 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
    MPI_Comm_rank(mpcom, &iproc);
 
    Inputs* inputs = (Inputs *)externalpars->inputs_address;
-   //input_parameters_struct* pars = inputs->getpars();
 
    
 /*
@@ -109,7 +129,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
   int gpuID = externalpars->job_id;
 
-  Geometry* geo;
+  Geometry *geo;
 
   if(iproc==0) {
     //Only proc0 needs to import paramters to gryfx
@@ -120,33 +140,35 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
     inputs->import_externalpars(externalpars);
 
+    int igeo = inputs->igeo;
+
     printf("%d: Initializing geometry...\n\n", gpuID);
 
-    input_parameters_struct* pars = inputs->getpars();
-    int igeo = pars->igeo;
-
     if(igeo==0) {
-      geo = new S_alpha_geo(pars->Nz);
+      geo = new S_alpha_geo(inputs);
     } else if(igeo==1) {
-      geo = new Eik_geo();
+      printf("igeo = 1 not yet implemented!\n");
+      exit(1);
+      //geo = new Eik_geo();
     } else if(igeo==2) {
-      geo = new Gs2_geo();
+      printf("igeo = 2 not yet implemented!\n");
+      exit(1);
+      //geo = new Gs2_geo();
     }
-
-    //init_gs2_file_utils(&len, namelistFile);
-    //set_geometry(&ev->pars, &ev->grids, &ev->geo, externalpars);
-    //finish_gs2_file_utils();
-    ////Note the printout module still uses globals which may no 
-    ////longer be in sync with ev at this point. Need to remove globals
-    ////from printout.cu
-    //if(ev->pars.debug) print_cuda_properties(ev);
   }
 
-#ifdef GS2_zonal
-  if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
-  gryfx_initialize_gs2(&ev->grids, externalpars, namelistFile, mpcom);
-  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
-#endif
+  printf("Host: %f\n", geo->z[0]);
+  test<<<1,1>>>(geo->z);
+  cudaDeviceSynchronize();
+  printf("Host: %f\n", geo->z[0]);
+  checkCuda(cudaGetLastError());
+  
+
+//#ifdef GS2_zonal
+//  if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
+//  gryfx_initialize_gs2(&ev->grids, externalpars, namelistFile, mpcom);
+//  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
+//#endif
  
 
 /*
