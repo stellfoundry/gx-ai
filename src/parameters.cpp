@@ -89,7 +89,7 @@ int Parameters::read_namelist(char* filename)
   
   fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &(kxfac));
 
-  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "", &(nx_in));
+  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &(nx_in));
     
   fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &(ny_in));
   
@@ -365,7 +365,7 @@ int Parameters::read_namelist(char* filename)
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
   //collisions=collision_model;
   
-  species = (specie*) malloc(sizeof(specie)*nspec);
+  species = (specie*) malloc(sizeof(specie)*nspec_in);
 
   adiabatic_electrons = true;
 
@@ -376,7 +376,7 @@ int Parameters::read_namelist(char* filename)
     int ispec = 1;
     float mass;
     bool main_ion_species_found = false;
-  for(int s=1; s<nspec+1; s++) {
+  for(int s=1; s<nspec_in+1; s++) {
 //		printf("s= %d\n", s);
 
 
@@ -388,7 +388,7 @@ int Parameters::read_namelist(char* filename)
  
     if(strcmp(type,"ion") == 0) {
       fnr_get_float(&namelist_struct, namelist, "mass", &mass);
-      if((mass == 1. && !main_ion_species_found) || nspec==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
+      if((mass == 1. && !main_ion_species_found) || nspec_in==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
       else {ionspec = ispec; ispec++;}
       species[ionspec].mass = mass;
       fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);
@@ -411,22 +411,22 @@ int Parameters::read_namelist(char* filename)
 
       // kinetic electrons will always be last indexed species
 
-      fnr_get_float(&namelist_struct, namelist, "z", &species[nspec-1].z);
-      fnr_get_float(&namelist_struct, namelist, "mass", &species[nspec-1].mass);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[nspec-1].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[nspec-1].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[nspec-1].tprim);
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[nspec-1].fprim);
-      fnr_get_float(&namelist_struct, namelist, "uprim", &species[nspec-1].uprim);
+      fnr_get_float(&namelist_struct, namelist, "z", &species[nspec_in-1].z);
+      fnr_get_float(&namelist_struct, namelist, "mass", &species[nspec_in-1].mass);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species[nspec_in-1].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species[nspec_in-1].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species[nspec_in-1].tprim);
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species[nspec_in-1].fprim);
+      fnr_get_float(&namelist_struct, namelist, "uprim", &species[nspec_in-1].uprim);
 
-      //if(strcmp(collisions,"none") == 0) species[nspec-1].nu_ss = 0;
+      //if(strcmp(collisions,"none") == 0) species[nspec_in-1].nu_ss = 0;
       //else {
 
-      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[nspec-1].nu_ss);
+      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[nspec_in-1].nu_ss);
 
       //}
 
-      strcpy(species[nspec-1].type,"electron");
+      strcpy(species[nspec_in-1].type,"electron");
 
       adiabatic_electrons = false;
    
@@ -489,9 +489,9 @@ int Parameters::set_externalpars(external_parameters_struct* externalpars) {
   
     /* Species parameters... I think allowing 20 species should be enough!*/
   
-    externalpars->ntspec = nspec;
+    externalpars->ntspec = nspec_in;
   
-    for (int i=0;i<nspec;i++){
+    for (int i=0;i<nspec_in;i++){
   	  externalpars->dens[i] = species[i].dens;
   	  externalpars->temp[i] = species[i].temp;
   	  externalpars->fprim[i] = species[i].fprim;
@@ -554,16 +554,16 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
    g_exb = externalpars->g_exb ;
 
   /* Species parameters... I think allowing 20 species should be enough!*/
-  int oldnSpecies = nspec;
-   nspec = externalpars->ntspec ;
+  int oldnSpecies = nspec_in;
+   nspec_in = externalpars->ntspec ;
 
-  if (nspec!=oldnSpecies){
-	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec);
+  if (nspec_in!=oldnSpecies){
+	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec_in);
 	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
 	  exit(1);
   }
-	 if (debug) printf("nSpecies was set to %d\n", nspec);
-  for (int i=0;i<nspec;i++){
+	 if (debug) printf("nSpecies was set to %d\n", nspec_in);
+  for (int i=0;i<nspec_in;i++){
 	   species[i].dens = externalpars->dens[i] ;
 	   species[i].temp = externalpars->temp[i] ;
 	   species[i].fprim = externalpars->fprim[i] ;

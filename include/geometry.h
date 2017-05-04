@@ -6,7 +6,7 @@
 
 class Geometry {
  public:
-  virtual Geometry() {};
+  Geometry() {};
   ~Geometry();
   
   float *z;

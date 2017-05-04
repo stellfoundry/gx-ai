@@ -61,7 +61,7 @@ struct external_parameters_struct {
 	 double tprim[20];
 	 double nu[20];
 
-   void * inputs_address;
+   void * pars_address;
 };
 
 struct gryfx_outputs_struct {

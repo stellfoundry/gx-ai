@@ -82,8 +82,8 @@ S_alpha_geo::S_alpha_geo(Parameters *parameters)
 
     if(parameters->shift < 0.) {
       parameters->shift = 0.;
-      for(int s=0; s<parameters->nspec; s++) { 
-        parameters->shift += qsf*qsf*rmaj*beta_e*(species[s].temp/species[parameters->nspec-1].temp)*(species[s].tprim + species[s].fprim);
+      for(int s=0; s<parameters->nspec_in; s++) { 
+        parameters->shift += qsf*qsf*rmaj*beta_e*(species[s].temp/species[parameters->nspec_in-1].temp)*(species[s].tprim + species[s].fprim);
       }
     }
     

@@ -110,7 +110,7 @@ everything_else.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 
 # main program
-$(TARGET): obj/main.o obj/gryfx_lib.o obj/inputs.o obj/geometry.o #libgryfx.a $(GS2)/libgs2.a 
+$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o
 	$(NVCC)  -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 

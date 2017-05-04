@@ -23,6 +23,8 @@ class Parameters {
     int set_externalpars(external_parameters_struct* externalpars);
     int import_externalpars(external_parameters_struct* externalpars);
 
+    int iproc;
+
     // Namelist: collisions_knobs
      char * collision_model;
   

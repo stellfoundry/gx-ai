@@ -1,5 +1,5 @@
 #include "mpi.h"
-#include "standard_headers.h"
+//#include "standard_headers.h"
 //#include "allocations.h"
 //#include "everything_else.h"
 //#include "global_variables.h"
@@ -9,9 +9,10 @@
 //#include "profile.h"
 //#include "printout.h"
 //#include "time.h"
+#include "geometry.h"
 #include "parameters.h"
 #include "grids.h"
-#include "fields.h"
+//#include "fields.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
@@ -19,6 +20,8 @@ extern "C" void broadcast_integer(int* a);
 
 void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
 {
+  int iproc = pars->iproc;  
+
   // geometry coefficient arrays
   Geometry* geo;
   if(iproc == 0) {
@@ -43,11 +46,11 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   Grids* grids = new Grids(pars);
   grids->initialize();
 
-  Fields* fields = new Fields(pars);
-  fields->initialize(pars);
+//  Fields* fields = new Fields(pars);
+//  fields->initialize(pars);
   
   // cufft plans
-  Ffts* ffts = new Ffts();
+//  Ffts* ffts = new Ffts();
 
 
 //  set_globals_after_gryfx_lib(ev_h);

@@ -29,7 +29,7 @@ __global__ void test(float* z) {
 //void import_externalpars(struct external_parameters_struct * externalpars, everything_struct * everything_ptr);
 //void initialize_cuda_parallelization(everything_struct * ev);
 
-void gryfx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistFile, int mpcom) {  
+void gryfx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, int mpcom) {  
   
   int iproc;
 
@@ -52,11 +52,11 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
 //  iproc=0;
 //#endif
 
-  if(iproc==0) printf("Initializing GryfX...\tNamelist is %s\n", namelistFile);
+  if(iproc==0) printf("Initializing GryfX...\tNamelist is %s\n", namelistfileName);
 
   // read input parameters from namelist
   Parameters *pars = new Parameters;
-  pars->read_namelist(namelistFile);
+  pars->read_namelist(namelistfileName);
 // To be moved...
 //	set_grid_masks_and_unaliased_sizes(&(ev->grids));
 
@@ -99,7 +99,7 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
 }
   
 void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars, 
-			struct gryfx_outputs_struct * gryfxouts, char* namelistFile, int mpcom)
+			struct gryfx_outputs_struct * gryfxouts, char* namelistfileName, int mpcom)
 {
 
    FILE* outfile;
@@ -111,6 +111,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
    Parameters* pars = (Parameters *)externalpars->pars_address;
 
+   pars->iproc = iproc;
    
 /*
    ev->mpi.iproc = iproc;
@@ -122,7 +123,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
   
   // Copy the name of the namelist file to ev->info.run_name
   // Check if we should and can restart and set the file name
-  setup_info(namelistFile, &ev->pars, &ev->info);
+  setup_info(namelistfileName, &ev->pars, &ev->info);
 */
 
 //  int gpuID = externalpars->job_id;
@@ -139,7 +140,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
 //#ifdef GS2_zonal
 //  if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
-//  gryfx_initialize_gs2(&ev->grids, externalpars, namelistFile, mpcom);
+//  gryfx_initialize_gs2(&ev->grids, externalpars, namelistfileName, mpcom);
 //  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
 //#endif
  
@@ -155,7 +156,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 //  if(!(input = fopen(inputFile, "r"))) {
 //    char ch;
 //    input = fopen(inputFile, "w");
-//    namelist = fopen(namelistFile, "r");
+//    namelist = fopen(namelistfileName, "r");
 //    while( (ch = fgetc(namelist))  != EOF)
 //      fputc(ch, input);
 //    fclose(input);
@@ -166,7 +167,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 //      initialize_cuda_parallelization(ev); 
 //      definitions(ev);
       char outfileName[2000];
-      strcpy(outfileName, ev->info.run_name);
+      strncpy(outfileName, namelistfileName, strlen(namelistfileName)-3);
       strcat(outfileName, ".out_gryfx");
       outfile = fopen(outfileName, "w+");
     } //end of iproc if
@@ -192,17 +193,17 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 void gryfx_main(int argc, char* argv[], int mpcom) {
   struct external_parameters_struct externalpars;
   struct gryfx_outputs_struct gryfxouts;
-  char* namelistFile;
+  char* namelistfileName;
   if(argc == 2) {
-    namelistFile = argv[1];
-    //printf("namelist = %s\n", namelistFile);
+    namelistfileName = argv[1];
+    //printf("namelist = %s\n", namelistfileName);
   }
   else {
     fprintf(stderr, "The correct usage is:\n./gryfx <inputfile>\n");
     exit(1);
   }
-  gryfx_get_default_parameters_(&externalpars, namelistFile, mpcom);
-  gryfx_get_fluxes_(&externalpars, &gryfxouts, namelistFile, mpcom);
+  gryfx_get_default_parameters_(&externalpars, namelistfileName, mpcom);
+  gryfx_get_fluxes_(&externalpars, &gryfxouts, namelistfileName, mpcom);
 
 }
 
