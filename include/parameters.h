@@ -1,8 +1,8 @@
-#ifndef INPUTS_H_
-#define INPUTS_H_
+#pragma once
 
 #include "species.h"
 #include "gryfx_lib.h"
+#include "cufft.h"
 
 #define PHI 0                                                                            
 #define DENS 1
@@ -13,11 +13,11 @@
 #define TPAR 6
 #define ODD 7
 
-class Inputs {
+class Parameters {
 
   public:
-    Inputs(void) {};
-    ~Inputs(void) {};
+    Parameters(void) {};
+    ~Parameters(void) {};
     int read_namelist(char* file);
 
     int set_externalpars(external_parameters_struct* externalpars);
@@ -36,8 +36,7 @@ class Inputs {
   
     // Namelist: theta_grid_parameters
   
-     int ntheta;
-     int Nz;
+     int nz_in;
      int nperiod;
      int Zp;
   
@@ -117,9 +116,9 @@ class Inputs {
   
     // Namelist: kt_grids_box_parameters
    // naky = (ny-1)/3 + 1
-     int ny;
+     int ny_in;
    // nakx = 2*(nx-1)/3 + 1
-     int nx;
+     int nx_in;
    // ky_min = 1/y0
      float y0;
      float x0;
@@ -133,9 +132,8 @@ class Inputs {
    
    // Namelist: 
       // new for HL 
-      int nmoms;  
-      int nhermite;
-      int nlaguerre;  // nlaguerre will be an array 
+      int nhermite_in;
+      int nlaguerre_in;  // nlaguerre will be an array 
   
   
     // Namelist: knobs
@@ -150,7 +148,7 @@ class Inputs {
       float margin_cpu_time; //Start finishing up when only margin_cpu_time remains
   
     // Namelist: species_knobs
-     int nspec;
+     int nspec_in;
   
   	 specie * species;
   
@@ -305,4 +303,3 @@ class Inputs {
 
 };
 
-#endif

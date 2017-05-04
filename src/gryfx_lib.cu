@@ -1,7 +1,8 @@
 #include "gryfx_lib.h"
 #include "mpi.h"
 #include "cufft.h"
-#include "inputs.h"
+#include "parameters.h"
+#include "run_gryfx.h"
 #include "geometry.h"
 #include <assert.h>
 
@@ -19,9 +20,6 @@ cudaError_t checkCuda(cudaError_t result)
   return result;
 }
 
-__global__ void print() {
-  printf("A\n");
-}
 __global__ void test(float* z) {
   printf("Device: %f\n", z[0]);
 }
@@ -57,13 +55,13 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
   if(iproc==0) printf("Initializing GryfX...\tNamelist is %s\n", namelistFile);
 
   // read input parameters from namelist
-  Inputs *inputs = new Inputs;
-  inputs->read_namelist(namelistFile);
+  Parameters *pars = new Parameters;
+  pars->read_namelist(namelistFile);
 // To be moved...
 //	set_grid_masks_and_unaliased_sizes(&(ev->grids));
 
   // copy elements of input_parameters_struct into external_parameters_struct externalpars
-  if (iproc==0) inputs->set_externalpars(externalpars);
+  if (iproc==0) pars->set_externalpars(externalpars);
 
   int nprocs;
 
@@ -95,7 +93,7 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
   ret = MPI_Bcast(&*externalpars, sizeof(external_parameters_struct), MPI_BYTE, 0, mpcom);
   printf("Broadcasted externalpars (%d) %d %d\n", ret, nprocs, iproc);
   // This has to be set after the broadcast
-  externalpars->inputs_address = (void *)inputs; 
+  externalpars->pars_address = (void *)pars; 
   printf("Finished gryfx_get_default_parameters_\n");
 
 }
@@ -111,7 +109,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
    // gryfx_get_default_parameters_
    MPI_Comm_rank(mpcom, &iproc);
 
-   Inputs* inputs = (Inputs *)externalpars->inputs_address;
+   Parameters* pars = (Parameters *)externalpars->pars_address;
 
    
 /*
@@ -127,41 +125,16 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
   setup_info(namelistFile, &ev->pars, &ev->info);
 */
 
-  int gpuID = externalpars->job_id;
+//  int gpuID = externalpars->job_id;
 
-  Geometry *geo;
-
+  //Only proc0 needs to import paramters to gryfx
+  // copy elements of external_parameters_struct externalpars into pars
+  // this is done because externalpars may have been changed externally (i.e. by Trinity) 
+  // between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
+  // pars then needs to be updated since pars is what is used in run_gryfx.
   if(iproc==0) {
-    //Only proc0 needs to import paramters to gryfx
-    // copy elements of external_parameters_struct externalpars into inputs
-    // this is done because externalpars may have been changed externally (i.e. by Trinity) 
-    // between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
-    // inputs then needs to be updated since inputs is what is used in run_gryfx.
-
-    inputs->import_externalpars(externalpars);
-
-    int igeo = inputs->igeo;
-
-    printf("%d: Initializing geometry...\n\n", gpuID);
-
-    if(igeo==0) {
-      geo = new S_alpha_geo(inputs);
-    } else if(igeo==1) {
-      printf("igeo = 1 not yet implemented!\n");
-      exit(1);
-      //geo = new Eik_geo();
-    } else if(igeo==2) {
-      printf("igeo = 2 not yet implemented!\n");
-      exit(1);
-      //geo = new Gs2_geo();
-    }
+    pars->import_externalpars(externalpars);
   }
-
-  printf("Host: %f\n", geo->z[0]);
-  test<<<1,1>>>(geo->z);
-  cudaDeviceSynchronize();
-  printf("Host: %f\n", geo->z[0]);
-  checkCuda(cudaGetLastError());
   
 
 //#ifdef GS2_zonal
@@ -170,55 +143,49 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 //  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
 //#endif
  
-
-/*
-
-  
-  //make an input file of form outstem.in if doesn't already exist
-  FILE* input;
-  FILE* namelist;
-  char inputFile[2000];
-  strcpy(inputFile, ev->info.run_name);
-  strcat(inputFile, ".in");
-
-  // EGH to Noah... can we get rid of this?
-  // do you ever use the old input file format any more?
-  if(!(input = fopen(inputFile, "r"))) {
-    char ch;
-    input = fopen(inputFile, "w");
-    namelist = fopen(namelistFile, "r");
-    while( (ch = fgetc(namelist))  != EOF)
-      fputc(ch, input);
-    fclose(input);
-    fclose(namelist);
-  }
-
-	if(iproc==0) {
-
-    initialize_cuda_parallelization(ev); 
-    definitions(ev);
-    char outfileName[2000];
-    strcpy(outfileName, ev->info.run_name);
-    strcat(outfileName, ".out_gryfx");
-    outfile = fopen(outfileName, "w+");
-
-	} //end of iproc if
+//  //make an input file of form outstem.in if doesn't already exist
+//  FILE* input;
+//  FILE* namelist;
+//  char inputFile[2000];
+//  strcpy(inputFile, ev->info.run_name);
+//  strcat(inputFile, ".in");
+//
+//  // EGH to Noah... can we get rid of this?
+//  // do you ever use the old input file format any more?
+//  if(!(input = fopen(inputFile, "r"))) {
+//    char ch;
+//    input = fopen(inputFile, "w");
+//    namelist = fopen(namelistFile, "r");
+//    while( (ch = fgetc(namelist))  != EOF)
+//      fputc(ch, input);
+//    fclose(input);
+//    fclose(namelist);
+//  }
+//
+    if(iproc==0) {
+//      initialize_cuda_parallelization(ev); 
+//      definitions(ev);
+      char outfileName[2000];
+      strcpy(outfileName, ev->info.run_name);
+      strcat(outfileName, ".out_gryfx");
+      outfile = fopen(outfileName, "w+");
+    } //end of iproc if
 
 
   /////////////////////////
   // This is the main call
   ////////////////////////
-  run_gryfx(ev, gryfxouts->pflux, gryfxouts->qflux, outfile);
+  run_gryfx(pars, gryfxouts->pflux, gryfxouts->qflux, outfile);
 
-	if(iproc==0) {  
-    print_final_summary(ev, outfile);
-    fclose(outfile);
-  } //end of iproc if
-  free(ev);
-#ifdef GS2_zonal
-  gryfx_finish_gs2();
-#endif
-*/
+//	if(iproc==0) {  
+//    print_final_summary(ev, outfile);
+//    fclose(outfile);
+//  } //end of iproc if
+//  free(ev);
+//#ifdef GS2_zonal
+//  gryfx_finish_gs2();
+//#endif
+  delete pars;
 
 }  	
 

@@ -1,42 +1,37 @@
-//Globals... to be deleted!!
-#ifndef NO_GLOBALS
-EXTERN_SWITCH int Nx, Ny, Nz;
-EXTERN_SWITCH float *kx, *ky, *kz, *kz_complex, *kx_abs;
-EXTERN_SWITCH float *kx_h, *ky_h, *kz_h;
-#endif
+#pragma once
 
-typedef struct {
-	float * ky;
-	float * kx;
-	float * kx_abs;
-	float * z;
-	float * kz;
-	int Nx;
-	int Ny;
-	int Nz;
-	int Nspecies; /* set equal to pars.nspec */
+//#include "cufft.h"
+#include "parameters.h"
 
-  int naky;
-  int ntheta0;
+class Grids {
 
-	int NxNyc;
-	int NxNy;
-	int NxNycNz;
-	int NxNz;
-	int NycNz;
+ public:
+  Grids(Parameters* pars);
+  ~Grids();
+  void initialize();
 
-	/* The number of evolved modes, as opposed to the number used
-	 * in dealiasing */
-	int Naky;
-	int Nakx;
+  const int Nx;
+  const int Ny;
+  const int Nz;
+  const int Nspecies; 
+  const int Nhermite;
+  const int Nlaguerre;
+  const int Nyc;
+  const int Naky;
+  const int Nakx;
+  const int NxNyc;
+  const int NxNy;
+  const int NxNycNz;
+  const int NxNz;
+  const int NycNz;
+  const int Nmoms;
+  
+  float * ky;
+  float * kx;
+  float * kx_abs;
+  float * z;
+  float * kz;
 
-	/* The number of evolved complex modes, which for real fields
-	 * is approx half the number of real gridpoints*/
-	int Ny_complex;
-	int Nz_complex;
-
-  int Ny_unmasked;
-  int Nx_unmasked;
 
 	/* A grid the size of kx, true if in the dealiased zone*/
 	bool * kx_mask;
@@ -56,27 +51,18 @@ typedef struct {
 	int * nChains;
 	int ** kxCover;
 	int ** kyCover;
-	cuComplex ** g_covering;
+	//cuComplex ** g_covering;
 	float ** kz_covering;
 
 	int ** kxCover_d;
 	int ** kyCover_d;
-	cuComplex ** g_covering_d;
+	//cuComplex ** g_covering_d;
 	float ** kz_covering_d;
 	//int * nLinks_d;
 	//int * nChains_d;
 	
         float * covering_scaler;
 
-  float kx_max;
-  float ky_max;
-  float kperp2_max;
-  float kx4_max;
-  float ky4_max;
-  float ky_max_Inv;
-  float kx4_max_Inv;
-  float kperp4_max_Inv;
 
-} grids_struct;
+};
 
-void set_grid_masks_and_unaliased_sizes(grids_struct * grids);

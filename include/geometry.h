@@ -2,11 +2,12 @@
 #define GEO_H
 
 #include "cufft.h"
-#include "inputs.h"
+#include "parameters.h"
 
 class Geometry {
  public:
-  virtual ~Geometry() {};
+  virtual Geometry() {};
+  ~Geometry();
   
   float *z;
   float *gradpar_arr;
@@ -44,7 +45,7 @@ class Geometry {
 
 class S_alpha_geo : public Geometry {
  public:
-  S_alpha_geo(Inputs* inputs);
+  S_alpha_geo(Parameters* parameters);
 };
 
 class Eik_geo : public Geometry {

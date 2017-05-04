@@ -1,6 +1,4 @@
-#include "cufft.h"
-#include "species.h"
-#include "inputs.h"
+#include "parameters.h"
 #include "c_fortran_namelist3.c"
 #include "namelist_defaults.c"
 
@@ -34,7 +32,7 @@ bool get_bool(struct fnr_struct * namelist_struct, const char * namelist, const 
   return return_value;
 }
 
-int Inputs::read_namelist(char* filename)
+int Parameters::read_namelist(char* filename)
 {
 	fnr_abort_on_error = 1;
 	fnr_abort_if_missing = 0;
@@ -45,17 +43,17 @@ int Inputs::read_namelist(char* filename)
 	fnr_set_defaults(&namelist_struct, &namelist_defaults);
   fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod);
 
-  fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(Nz));
+  fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(nz_in));
 
-  if(Nz!=1) {
+  if(nz_in!=1) {
     //The GS2 grid, which includes the periodic point, runs from
     // -ntgrid:ntgrid and is thus 2*ntgrid+1 in size, where ntgrid
     // is the same as what is calculated here. This little step
     // thus ensures that the Gryfx grid corresponds to the GS2 grid
     // (without the periodic) point.
-      int ntgrid = Nz/2 + (nperiod-1)*Nz;
+      int ntgrid = nz_in/2 + (nperiod-1)*nz_in;
  
-      Nz = 2*ntgrid;
+      nz_in = 2*ntgrid;
   }
   
   if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &Zp)==FNR_USED_DEFAULT){
@@ -91,9 +89,9 @@ int Inputs::read_namelist(char* filename)
   
   fnr_get_float(&namelist_struct, "theta_grid_parameters", "kxfac", &(kxfac));
 
-  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "nx", &(nx));
+  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "", &(nx_in));
     
-  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &(ny));
+  fnr_get_int(&namelist_struct, "kt_grids_box_parameters", "ny", &(ny_in));
   
   fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "y0", &(y0));
   
@@ -108,9 +106,8 @@ int Inputs::read_namelist(char* filename)
   //X0 will get overwritten if shat!=0
 
   // set up for HL moments "grid"
-    fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nhermite));
-    fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nlaguerre);
-    nmoms = nhermite * nlaguerre;
+  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nhermite_in));
+  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nlaguerre_in);
   
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
   
@@ -153,7 +150,7 @@ int Inputs::read_namelist(char* filename)
   fnr_get_float(&namelist_struct, "knobs", "margin_cpu_time", &(margin_cpu_time));
   //maxdt?
   
-  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec));
+  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec_in));
   
   linear = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
   
@@ -445,7 +442,7 @@ int Inputs::read_namelist(char* filename)
 }
 
 // this function copies elements of input_parameters struct into external_parameters_struct externalpars
-int Inputs::set_externalpars(external_parameters_struct* externalpars) {
+int Parameters::set_externalpars(external_parameters_struct* externalpars) {
     externalpars->equilibrium_type = equilibrium_type;
 
     //Defaults if we are not using Trinity
@@ -466,8 +463,8 @@ int Inputs::set_externalpars(external_parameters_struct* externalpars) {
     externalpars->eps = eps;
     externalpars->bishop = bishop;
     externalpars->nperiod = nperiod;
-    externalpars->ntheta = Nz;
-    printf("Nz is %d\n", externalpars->ntheta);
+    externalpars->ntheta = nz_in;
+    printf("nz_in is %d\n", externalpars->ntheta);
   
    /* Miller parameters*/
     externalpars->rgeo_local = rmaj;
@@ -505,7 +502,7 @@ int Inputs::set_externalpars(external_parameters_struct* externalpars) {
 }
 
 // this function copies elements of external_parameters_struct externalpars into input_parameters struct
-int Inputs::import_externalpars(external_parameters_struct* externalpars) {
+int Parameters::import_externalpars(external_parameters_struct* externalpars) {
    equilibrium_type = externalpars->equilibrium_type ;
    if (externalpars->restart==1) restart  = true;
    else if (externalpars->restart==2){
@@ -533,7 +530,7 @@ int Inputs::import_externalpars(external_parameters_struct* externalpars) {
    bishop = externalpars->bishop ;
    nperiod = externalpars->nperiod ;
     printf("nperiod2 is %d\n", nperiod);
-   Nz = externalpars->ntheta ;
+   nz_in = externalpars->ntheta ;
 
  /* Miller parameters*/
    rmaj = externalpars->rgeo_local ;
