@@ -1,20 +1,26 @@
-__device__ unsigned int get_idx(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
-__device__ unsigned int get_idy(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
-__device__ unsigned int get_idz(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
+#include "geometry.h"
+#include "cuda_constants.h"
+#include "cufft.h"
 
-__device__ int iget_idx(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
-__device__ int iget_idy(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
-__device__ int iget_idz(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
+__device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
+__device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
+__device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
 
-/*
-__device__ unsigned int get_idx(void) {return blockIdx.x*blockDim.x+threadIdx.x;}
-__device__ unsigned int get_idy(void) {return blockIdx.y*blockDim.y+threadIdx.y;}
-__device__ unsigned int get_idz(void) {return blockIdx.z*blockDim.z+threadIdx.z;}
+__device__ double kperp2(Geometry::kperp2_struct* kp2, int ix, int iy, int iz, int is) {
+  float shatInv = 1./kp2->shat;
 
-__device__ int iget_idx(void) {return blockIdx.x*blockDim.x+threadIdx.x;}
-__device__ int iget_idy(void) {return blockIdx.y*blockDim.y+threadIdx.y;}
-__device__ int iget_idz(void) {return blockIdx.z*blockDim.z+threadIdx.z;}
-*/
+  return ( kp2->ky[iy] * (kp2->ky[iy]*kp2->gds2[iz] + 2.*kp2->kx[ix]*shatInv*kp2->gds21[iz]) + pow(kp2->kx[ix]*shatInv,2)*kp2->gds22[iz] )
+                     * pow(kp2->bmagInv[iz],2) * pow(kp2->species[is].rho,2);
+}
+
+__device__ unsigned long long factorial(int m) {
+  if(m<2) return (unsigned long long) 1;
+  return (unsigned long long) m*factorial(m-1);
+}
+
+__device__ double Jflr(int m, double b) {
+  return 1./factorial(m)*pow(-b/2.,m)*expf(-b/2.);
+}
 
 __device__ float g0(float b) {
 

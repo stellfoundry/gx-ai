@@ -8,7 +8,6 @@ class Grids {
  public:
   Grids(Parameters* pars);
   ~Grids();
-  void init();
 
   const int Nx;
   const int Ny;

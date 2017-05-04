@@ -71,6 +71,4 @@ Grids::~Grids() {
   cudaFree(kz);
 }
 
-void Grids::init() {
-}
 

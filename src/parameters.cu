@@ -258,7 +258,6 @@ int Parameters::read_namelist(char* filename)
   fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo);
 
   char* initfield;
-  int init;
   //initfield = (char*) malloc(sizeof(char)*10);
   fnr_get_string(&namelist_struct, "gryfx_knobs", "init", &initfield);
   if( strcmp(initfield,"density") == 0) {
@@ -286,7 +285,6 @@ int Parameters::read_namelist(char* filename)
     init = RH_equilibrium;
     new_varenna = true;
   } 
-  init = init;
   
   fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &(init_amp));
   fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &phiext);

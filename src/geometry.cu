@@ -59,6 +59,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
 {
     cudaMallocManaged((void**) &z, sizeof(float)*pars->nz_in);
     cudaMallocManaged((void**) &bmag, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &bmagInv, sizeof(float)*pars->nz_in);
     cudaMallocManaged((void**) &bgrad, sizeof(float)*pars->nz_in);
     cudaMallocManaged((void**) &gds2, sizeof(float)*pars->nz_in);
     cudaMallocManaged((void**) &gds21, sizeof(float)*pars->nz_in);
@@ -91,6 +92,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
       if(qsf<0) {z[k] = 0.;}
       bmag[k] = 1./(1+pars->eps*cos(z[k]));
+      bmagInv[k] = 1./bmag[k];
       bgrad[k] = gradpar*pars->eps*sin(z[k])*bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       gds2[k] = 1. + pow((pars->shat*z[k]-pars->shift*sin(z[k])),2);
       gds21[k] = -pars->shat*(pars->shat*z[k]-pars->shift*sin(z[k]));
@@ -100,6 +102,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
       gbdrift0[k] = -1./(2.*pars->rmaj)*pars->shat*sin(z[k]);
       cvdrift0[k] = gbdrift0[k];
       grho[k] = 1;
+      jacobian[k] = 1. / abs(pars->drhodpsi*gradpar*bmag[k]);
       if(pars->const_curv) {
         cvdrift[k] = 1./(2.*pars->rmaj);
         gbdrift[k] = 1./(2.*pars->rmaj);
@@ -129,6 +132,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
   if (result) {
     cudaMemPrefetchAsync(z, sizeof(float)*pars->nz_in, dev);
     cudaMemPrefetchAsync(bmag, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(bmagInv, sizeof(float)*pars->nz_in, dev);
     cudaMemPrefetchAsync(bgrad, sizeof(float)*pars->nz_in, dev);
     cudaMemPrefetchAsync(gds2, sizeof(float)*pars->nz_in, dev);
     cudaMemPrefetchAsync(gds21, sizeof(float)*pars->nz_in, dev);
@@ -150,6 +154,39 @@ Eik_geo::Eik_geo() {
 
 Gs2_geo::Gs2_geo() {
 
+}
+
+void Geometry::initialize_operator_ptr_structs(Grids* grids, Parameters* pars) {
+  cudaDeviceSynchronize();
+  // set up kperp2 struct
+  kperp2_struct *kperp2_h = new kperp2_struct;
+  // assign pointers to arrays needed for kperp2
+  kperp2_h->kx = grids->kx;
+  kperp2_h->ky = grids->ky;
+  kperp2_h->gds2 = gds2;
+  kperp2_h->gds21 = gds21;
+  kperp2_h->gds22 = gds22;
+  kperp2_h->bmagInv = bmagInv;
+  kperp2_h->species = pars->species;
+  kperp2_h->shat = pars->shat;
+  cudaMalloc((void**) &kperp2_t, sizeof(kperp2_struct));
+  cudaMemcpy(kperp2_t, kperp2_h, sizeof(kperp2_struct), cudaMemcpyHostToDevice);
+  delete kperp2_h;
+
+  // set up omegad struct
+  omegad_struct *omegad_h = new omegad_struct;
+  // assign pointers to arrays needed for omegad
+  omegad_h->kx = grids->kx;
+  omegad_h->ky = grids->ky;
+  omegad_h->gb = gbdrift;
+  omegad_h->cv = cvdrift;
+  omegad_h->gb0 = gbdrift0;
+  omegad_h->cv0 = cvdrift0;
+  omegad_h->species = pars->species;
+  omegad_h->shat = pars->shat;
+  cudaMalloc((void**) &omegad_t, sizeof(omegad_struct));
+  cudaMemcpy(omegad_t, omegad_h, sizeof(omegad_struct), cudaMemcpyHostToDevice);
+  delete omegad_h;
 }
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){

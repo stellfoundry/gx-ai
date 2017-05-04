@@ -6,3 +6,7 @@ Fields::Fields(Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz) {
   cudaMemset(phi, 0., size_);
 
 }
+
+Fields::~Fields() {
+  cudaFree(phi);
+}

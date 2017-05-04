@@ -24,6 +24,10 @@ __global__ void check(specie* species, float* kx) {
   printf("run_gryfx: %f, %f, %d\n", kx[1], species[0].tprim, nx);
 }
 
+__global__ void check(Geometry::kperp2_struct* kp2) {
+  printf("kx = %f, gds2 = %f, tprim = %f, shat = %f\n", kp2->kx[1], kp2->gds2[0], kp2->species[0].tprim, kp2->shat);
+} 
+
 void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
 {
   int iproc = pars->iproc;  
@@ -55,6 +59,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("Initializing grids...\n");
     grids = new Grids(pars);
 
+    geo->initialize_operator_ptr_structs(grids, pars);
+
     printf("Initializing fields...\n");
     fields = new Fields(grids);
     fields1 = new Fields(grids);
@@ -62,7 +68,9 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("Initializing moments...\n");
     moms = new Moments(grids);
     moms1 = new Moments(grids);
-//    moms->initialize(pars);
+    moms->initialConditions(fields, pars, geo);
+
+    moms->fieldSolve(fields, pars, geo->kperp2_t);
 //    
 //    diagnostics = new Diagnostics();
   }
