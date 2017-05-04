@@ -55,58 +55,58 @@ Geometry::~Geometry() {
   cudaFree(bmag_complex);	
 }
 
-S_alpha_geo::S_alpha_geo(Parameters *parameters) 
+S_alpha_geo::S_alpha_geo(Parameters *pars) 
 {
-    cudaMallocManaged((void**) &z, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &bmag, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &bgrad, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &gds2, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &gds21, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &gds22, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &gbdrift, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &gbdrift0, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &cvdrift, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &cvdrift0, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &grho, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &jacobian, sizeof(float)*parameters->nz_in);
-    cudaMallocManaged((void**) &bmag_complex, sizeof(cuComplex)*(parameters->nz_in/2+1));
+    cudaMallocManaged((void**) &z, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &bmag, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &bgrad, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &gds2, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &gds21, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &gds22, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &gbdrift, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &gbdrift0, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &cvdrift, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &cvdrift0, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &grho, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &jacobian, sizeof(float)*pars->nz_in);
+    cudaMallocManaged((void**) &bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1));
     
-    gradpar = (float) abs(1./(parameters->qsf*parameters->rmaj));
+    gradpar = (float) abs(1./(pars->qsf*pars->rmaj));
     
-    parameters->drhodpsi = 1.; 
+    pars->drhodpsi = 1.; 
 
-    float qsf = parameters->qsf;
-    float beta_e = parameters->beta;
-    float rmaj = parameters->rmaj;
-    specie* species = parameters->species;
+    float qsf = pars->qsf;
+    float beta_e = pars->beta;
+    float rmaj = pars->rmaj;
+    specie* species = pars->species;
 
-    if(parameters->shift < 0.) {
-      parameters->shift = 0.;
-      for(int s=0; s<parameters->nspec_in; s++) { 
-        parameters->shift += qsf*qsf*rmaj*beta_e*(species[s].temp/species[parameters->nspec_in-1].temp)*(species[s].tprim + species[s].fprim);
+    if(pars->shift < 0.) {
+      pars->shift = 0.;
+      for(int s=0; s<pars->nspec_in; s++) { 
+        pars->shift += qsf*qsf*rmaj*beta_e*(species[s].temp/species[pars->nspec_in-1].temp)*(species[s].tprim + species[s].fprim);
       }
     }
     
-  for(int k=0; k<parameters->nz_in; k++) {
-    z[k] = 2*M_PI*parameters->Zp*(k-parameters->nz_in/2)/parameters->nz_in;
+  for(int k=0; k<pars->nz_in; k++) {
+    z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
       if(qsf<0) {z[k] = 0.;}
-      bmag[k] = 1./(1+parameters->eps*cos(z[k]));
-      bgrad[k] = gradpar*parameters->eps*sin(z[k])*bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-      gds2[k] = 1. + pow((parameters->shat*z[k]-parameters->shift*sin(z[k])),2);
-      gds21[k] = -parameters->shat*(parameters->shat*z[k]-parameters->shift*sin(z[k]));
-      gds22[k] = pow(parameters->shat,2);
-      gbdrift[k] = 1./(2.*parameters->rmaj)*( cos(z[k]) + (parameters->shat*z[k]-parameters->shift*sin(z[k]))*sin(z[k]) );
+      bmag[k] = 1./(1+pars->eps*cos(z[k]));
+      bgrad[k] = gradpar*pars->eps*sin(z[k])*bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+      gds2[k] = 1. + pow((pars->shat*z[k]-pars->shift*sin(z[k])),2);
+      gds21[k] = -pars->shat*(pars->shat*z[k]-pars->shift*sin(z[k]));
+      gds22[k] = pow(pars->shat,2);
+      gbdrift[k] = 1./(2.*pars->rmaj)*( cos(z[k]) + (pars->shat*z[k]-pars->shift*sin(z[k]))*sin(z[k]) );
       cvdrift[k] = gbdrift[k];
-      gbdrift0[k] = -1./(2.*parameters->rmaj)*parameters->shat*sin(z[k]);
+      gbdrift0[k] = -1./(2.*pars->rmaj)*pars->shat*sin(z[k]);
       cvdrift0[k] = gbdrift0[k];
       grho[k] = 1;
-      if(parameters->const_curv) {
-        cvdrift[k] = 1./(2.*parameters->rmaj);
-        gbdrift[k] = 1./(2.*parameters->rmaj);
+      if(pars->const_curv) {
+        cvdrift[k] = 1./(2.*pars->rmaj);
+        gbdrift[k] = 1./(2.*pars->rmaj);
         cvdrift0[k] = 0.;
         gbdrift0[k] = 0.;
       }
-      if(parameters->slab) {
+      if(pars->slab) {
         //omegad=0:
         cvdrift[k] = 0.;
         gbdrift[k] = 0.;       
@@ -118,7 +118,7 @@ S_alpha_geo::S_alpha_geo(Parameters *parameters)
         bmag[k] = 1.;
         //gradpar = 1.;
       }
-      if(qsf<0) z[k] = 2*M_PI*parameters->Zp*(k-parameters->nz_in/2)/parameters->nz_in;
+      if(qsf<0) z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
     }  
 
   // if supported, prefetch memory from host to device
@@ -127,19 +127,19 @@ S_alpha_geo::S_alpha_geo(Parameters *parameters)
   cudaGetDevice(&dev);
   cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, dev);
   if (result) {
-    cudaMemPrefetchAsync(z, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(bmag, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(bgrad, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(gds2, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(gds21, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(gds22, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(gbdrift, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(gbdrift0, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(cvdrift, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(cvdrift0, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(grho, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(jacobian, sizeof(float)*parameters->nz_in, dev);
-    cudaMemPrefetchAsync(bmag_complex, sizeof(cuComplex)*(parameters->nz_in/2+1), dev);
+    cudaMemPrefetchAsync(z, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(bmag, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(bgrad, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(gds2, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(gds21, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(gds22, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(gbdrift, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(gbdrift0, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(cvdrift, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(cvdrift0, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(grho, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(jacobian, sizeof(float)*pars->nz_in, dev);
+    cudaMemPrefetchAsync(bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1), dev);
   } 
 
 }

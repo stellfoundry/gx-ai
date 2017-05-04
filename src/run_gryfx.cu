@@ -12,22 +12,33 @@
 #include "geometry.h"
 #include "parameters.h"
 #include "grids.h"
-//#include "fields.h"
+#include "fields.h"
+#include "moments.h"
+#include "cuda_constants.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
 #endif
 
+__global__ void check(specie* species, float* kx) {
+  printf("run_gryfx: %f, %f, %d\n", kx[1], species[0].tprim, nx);
+}
+
 void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
 {
   int iproc = pars->iproc;  
 
-  // geometry coefficient arrays
-  Geometry* geo;
+  
+  Geometry* geo;  // geometry coefficient arrays
+  Grids* grids;   // grids (e.g. kx, ky, z)
+  Fields *fields, *fields1;
+  Moments *moms, *moms1;
+//  Diagnostics* diagnostics;
+
   if(iproc == 0) {
     int igeo = pars->igeo;
 
-    printf("Initializing geometry...\n\n");
+    printf("Initializing geometry...\n");
 
     if(igeo==0) {
       geo = new S_alpha_geo(pars);
@@ -40,17 +51,49 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
       exit(1);
       //geo = new Gs2_geo();
     }
+
+    printf("Initializing grids...\n");
+    grids = new Grids(pars);
+
+    printf("Initializing fields...\n");
+    fields = new Fields(grids);
+    fields1 = new Fields(grids);
+
+    printf("Initializing moments...\n");
+    moms = new Moments(grids);
+    moms1 = new Moments(grids);
+//    moms->initialize(pars);
+//    
+//    diagnostics = new Diagnostics();
   }
 
-  // grids (e.g. kx)
-  Grids* grids = new Grids(pars);
-  grids->initialize();
-
-//  Fields* fields = new Fields(pars);
-//  fields->initialize(pars);
   
   // cufft plans
 //  Ffts* ffts = new Ffts();
+
+  // TIMESTEP LOOP
+//  int counter = 0;
+//  float dt = pars->dt;
+//
+//  while(counter<pars->nSteps) {
+//    if(iproc==0) {
+//      // first half of RK2
+//      moms1->advance_linear(moms, dt/2., moms, fields);
+//      fields1->solve_quasineutrality(moms1); 
+//      
+//      // second half of RK2
+//      moms->advance_linear(moms, dt, moms1, fields1);
+//      if(pars->linear && pars->write_growth_rates) {
+//        fields1->solve_quasineutrality(moms);
+//        diagnostics->calculate_and_write_growth_rates(fields->phi, fields1->phi);
+//        fields->copy(fields1);
+//      } else {
+//        solve_quasineutrality(moms, fields);
+//      }
+//    }
+//    counter++;
+//  }
+  
 
 
 //  set_globals_after_gryfx_lib(ev_h);

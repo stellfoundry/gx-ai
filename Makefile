@@ -75,7 +75,7 @@ HEADERS=$(wildcard include/*.h)
 	$(NVCC) -c $(CFLAGS) $(NVCCFLAGS) $< 
 
 obj/%.o: %.cu $(HEADERS)
-	$(NVCC) -c -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include
+	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include
 
 obj/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
@@ -110,8 +110,8 @@ everything_else.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 
 # main program
-$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o
-	$(NVCC)  -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o obj/moments.o obj/fields.o
+	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 
 

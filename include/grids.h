@@ -8,7 +8,7 @@ class Grids {
  public:
   Grids(Parameters* pars);
   ~Grids();
-  void initialize();
+  void init();
 
   const int Nx;
   const int Ny;
@@ -63,6 +63,8 @@ class Grids {
 	
         float * covering_scaler;
 
+  private:
+   const Parameters* pars_; //local Parameters object for convenience
 
 };
 

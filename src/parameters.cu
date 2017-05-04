@@ -365,7 +365,7 @@ int Parameters::read_namelist(char* filename)
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
   //collisions=collision_model;
   
-  species = (specie*) malloc(sizeof(specie)*nspec_in);
+  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
 
   adiabatic_electrons = true;
 
