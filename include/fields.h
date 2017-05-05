@@ -11,6 +11,10 @@ class Fields {
     cuComplex* phi;
     cuComplex* apar; // for electromagnetic only
 
+    inline void copyFrom(Fields* source) {
+      cudaMemcpyAsync(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
+    }
+
   private:
     const size_t size_;
 	

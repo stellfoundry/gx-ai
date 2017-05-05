@@ -1,16 +1,17 @@
 #include "moments.h"
-#include "cuda_constants.h"
-#include "device_funcs.cu"
+#include "device_funcs.h"
+#include "get_error.h"
 
 Moments::Moments(Grids* grids) : 
   grids_(grids), 
-  HLsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms), 
+  HLsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
   Momsize_(sizeof(cuComplex)*grids->NxNycNz)
 {
   int Nxyz = grids_->NxNycNz;
   int Nhermite = grids_->Nhermite;
   int Nlaguerre = grids_->Nlaguerre;
-  ghl = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
+  int Nmoms = grids_->Nmoms;
+  checkCuda(cudaMalloc((void**) &ghl, HLsize_));
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   tpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
@@ -18,41 +19,42 @@ Moments::Moments(Grids* grids) :
   qpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   qprp_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
 
-  for(int s=0; s<grids->Nspecies; s++) {
-    // allocate ghl array on device only
-    cudaMalloc((void**) &ghl[s], HLsize_);
-    cudaMemset(ghl[s], 0., HLsize_);
+  cudaMemset(ghl, 0., HLsize_);
 
-    // set up pointers for named moments that point to parts of ghl
-    int l,m;
-    l = 0, m = 0; // density
-    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
-    
-    l = 1, m = 0; // u_parallel
-    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
-    
-    l = 2, m = 0; // T_parallel / sqrt(2)
-    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
-    
-    l = 3, m = 0; // q_parallel / sqrt(6)
-    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
+//  for(int s=0; s<grids->Nspecies; s++) {
+//    // allocate ghl array on device only
+//    checkCuda(cudaMalloc((void**) &ghl[s], HLsize_));
+//
+//    // set up pointers for named moments that point to parts of ghl
+//    int l,m;
+//    l = 0, m = 0; // density
+//    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//    
+//    l = 1, m = 0; // u_parallel
+//    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//    
+//    l = 2, m = 0; // T_parallel / sqrt(2)
+//    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//    
+//    l = 3, m = 0; // q_parallel / sqrt(6)
+//    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//
+//    l = 0, m = 1; // T_perp 
+//    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//    
+//    l = 1, m = 1; // q_perp
+//    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+//  }
 
-    l = 0, m = 1; // T_perp 
-    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
-    
-    l = 1, m = 1; // q_perp
-    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = &ghl[s][Nxyz*m + Nxyz*Nlaguerre*l];
-  }
-
-  cudaMalloc((void**) &nbar, Momsize_);
+  dimBlock = dim3(32, max(4, Nlaguerre), max(4, Nhermite));
+  dimGrid = dim3(grids_->NxNycNz/dimBlock.x, 1, 1);
 }
 
 Moments::~Moments() {
-  for(int s=0; s<grids_->Nspecies; s++) {
-    cudaFree(ghl[s]);
-  }
-  cudaFree(nbar);
-  free(ghl);
+  //for(int s=0; s<grids_->Nspecies; s++) {
+  //  cudaFree(ghl[s]);
+  //}
+  cudaFree(ghl);
   free(dens_ptr);
   free(upar_ptr);
   free(tpar_ptr);
@@ -80,7 +82,6 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
     }
   }
   else {
-    printf("init_amp = %e\n", pars->init_amp);
     srand(22);
     float samp;
     for(int j=0; j<grids_->Nx; j++) {
@@ -116,41 +117,22 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   return cudaGetLastError();
 }
 
-__global__ void real_space_density(cuComplex* nbar, const cuComplex** __restrict__ ghl, Geometry::kperp2_struct* __restrict__ kp2_t) 
+__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
-  unsigned int idx = idxyz % (nx*nyc) % nx;
-  unsigned int idy = idxyz % (nx*nyc) / nx;
-  unsigned int idz = idxyz / (nx*nyc);
-
   if(idxyz<nx*nyc*nz) {
-    #pragma unroll
-    for(int is=0; is<nspecies; is++) {
-      double b = kperp2(kp2_t, idx, idy, idz, is);
-      #pragma unroll
-      for(int m=0; m<nlaguerre; m++) {
-        nbar[idxyz] = nbar[idxyz] + Jflr(m,b)*ghl[is][idxyz + m*nx*nyc*nz];
+    for(int s = 0; s < nspecies; s++) {
+      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
+        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
+          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
+          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx];
+        }
       }
     }
   }
 }
 
-//__global__ void qneutAdiab(cuComplex* phi, const __restrict__ cuComplex* nbar, const __restrict__ Geometry::kperp2_struct* kp2_t)
-//{
-//   
-//}
-
-int Moments::fieldSolve(Fields* fields, Parameters* pars, Geometry::kperp2_struct* kp2_t)
-{
-  if(pars->adiabatic_electrons) {
-    cudaMemset(nbar, 0., Momsize_);
-    real_space_density<<<1, grids_->NxNycNz>>>(nbar, (const cuComplex**) ghl, kp2_t);
-    if(pars->iphi00==2) {
-      dim3 dimBlock = dim3(32, 1, grids_->Nz);
-      dim3 dimGrid = dim3(grids_->Nyc/dimBlock.x, grids_->Nx, 1);
-      //qneutAdiab<<<>>>(fields->phi, nbar, kp2_t, geo->jacobian);
-    }
-  }
+int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {
+  add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl);
   return 0;
 }
-

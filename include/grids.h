@@ -27,8 +27,6 @@ class Grids {
   
   float * ky;
   float * kx;
-  float * kx_abs;
-  float * z;
   float * kz;
 
 

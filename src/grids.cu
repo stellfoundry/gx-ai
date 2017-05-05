@@ -1,11 +1,12 @@
 #include "grids.h"
 #include "cuda_constants.h"
 
+
 __global__ void kInit(float* kx, float* ky, float* kz, 
                       float X0, float Y0, int Zp, 
                       float qsf, float shat, bool no_zderiv) 
 {
-  unsigned int id = threadIdx.x + blockIdx.x*blockDim.x;
+  int id = threadIdx.x + blockIdx.x*blockDim.x;
 
   if(id<nyc) {
     ky[id] = (float) id/Y0;
@@ -16,12 +17,14 @@ __global__ void kInit(float* kx, float* ky, float* kz,
     kx[id] = (float) (id - nx)/X0;
   }
   if(id<nz) {
-    if(id<(nz/2+1))
+    if(id<(nz/2+1)) {
       kz[id] = (float) id/Zp;
-    else
+    }
+    else if(id<nz) {
       kz[id] = (float) (id - nz)/Zp;
-    if(qsf<0.) kz[id] = shat; // local limit
-    if(no_zderiv) kz[id] = 0; 
+    }
+    //if(qsf<0.) kz[id] = shat; // local limit
+    //if(no_zderiv) kz[id] = 0; 
   }	
 }
 
@@ -53,12 +56,14 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nyc, &Nyc, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nz, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nhermite, &Nhermite, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nlaguerre, &Nlaguerre, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
 
+
+  // initialize k arrays
   int Nmax = max(max(Nx, Nyc),Nz);
   kInit<<<1, Nmax>>>(kx, ky, kz,
                      pars_->x0, pars_->y0, pars_->Zp,

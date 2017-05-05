@@ -1,147 +1,165 @@
-__global__ void qneut(cuComplex* Phi, cuComplex* nbartot_field, cuComplex* n_e, specie* s,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+#pragma once
+#include "device_funcs.h"
+#include "geometry.h"
+
+__global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, Geometry::kperp2_struct* kp2_t) 
 {
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+  unsigned int idxyz = get_id1();
+  unsigned int idx = idxyz % (nx*nyc) % nx;
+  unsigned int idy = idxyz % (nx*nyc) / nx;
+  unsigned int idz = idxyz / (nx*nyc);
 
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
-        
-      float pfilter2 = 0.;    
-      double bidx;
-      
-      for(int i=0; i<nspecies-1; i++) {
-        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+  if(idxyz<nx*nyc*nz) {
+    //#pragma unroll
+    for(int is=0; is<nspecies; is++) {
+      double b = kperp2(kp2_t, idx, idy, idz, is);
+      //#pragma unroll
+      for(int m=0; m<nlaguerre; m++) {
+        nbar[idxyz] = nbar[idxyz] + Jflr(m,b)*ghl[idxyz + m*nx*nyc*nz + is*nx*nyc*nz*nhermite*nlaguerre];
       }
-    
-      Phi[index] = ( nbartot_field[index] - s[nspecies-1].dens*n_e[index] ) / pfilter2;
     }
-  
-
-}
-
-__global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
-{  
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-  if(nz<=zthreads) {
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-        
-      float pfilter2 = 0.;    
-      double bidx;
-    
-      for(int i=0; i<nspecies; i++) {
-        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
-      }
-
-      
-      Phi[index] = ( nbartot_field[index] ) / (ti_ov_te + pfilter2);
-
-     }
   }
-      
 }
 
-__global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* PhiAvgDenom, float* jacobian, specie* s, 
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
-{  
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//__global__ void qneut(cuComplex* Phi, cuComplex* nbartot_field, cuComplex* n_e, specie* s,
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      unsigned int idxy = idy + (ny/2+1)*idx;
+//        
+//      float pfilter2 = 0.;    
+//      double bidx;
+//      
+//      for(int i=0; i<nspecies-1; i++) {
+//        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+//      }
+//    
+//      Phi[index] = ( nbartot_field[index] - s[nspecies-1].dens*n_e[index] ) / pfilter2;
+//    }
+//  
+//
+//}
+//
+//__global__ void qneutETG(cuComplex* Phi, cuComplex* nbartot_field, specie* s, 
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+//{  
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//  if(nz<=zthreads) {
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//        
+//      float pfilter2 = 0.;    
+//      double bidx;
+//    
+//      for(int i=0; i<nspecies; i++) {
+//        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+//      }
+//
+//      
+//      Phi[index] = ( nbartot_field[index] ) / (ti_ov_te + pfilter2);
+//
+//     }
+//  }
+//      
+//}
+//
+//__global__ void qneutAdiab(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* PhiAvgDenom, float* jacobian, specie* s, 
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+//{  
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      unsigned int idxy = idy + (ny/2+1)*idx;
+//        
+//      float pfilter2 = 0.;    
+//      double bidx;
+//      
+//      for(int i=0; i<nspecies; i++) {
+//        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+//      }
+//
+//      PhiAvgNum_tmp[index] = ( nbartot_field[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+//
+//      //since nz<= dimBlock.z, we can sync and sum over z without having to call a new kernel
+//      __syncthreads();
+//
+//      cuDoubleComplex PhiAvgNum_zSum;
+//      PhiAvgNum_zSum.x = (double) 0.;
+//      PhiAvgNum_zSum.y = (double) 0.;
+//
+//      for(int i=0; i<nz; i++) {
+//        PhiAvgNum_zSum.x = (double) PhiAvgNum_zSum.x + PhiAvgNum_tmp[idxy + i*nx*(ny/2+1)].x;
+//        PhiAvgNum_zSum.y = (double) PhiAvgNum_zSum.y + PhiAvgNum_tmp[idxy + i*nx*(ny/2+1)].y;
+//      }
+//
+//      cuDoubleComplex PhiAvg;
+//      if(idy == 0 && idx!=0) { 
+//        PhiAvg.x = PhiAvgNum_zSum.x/( (double)PhiAvgDenom[idx] ); 
+//        PhiAvg.y = PhiAvgNum_zSum.y/( (double)PhiAvgDenom[idx] ); 
+//      }
+//      else {
+//        PhiAvg.x = 0.; PhiAvg.y = 0.;
+//      }
+//      
+//      //Phi[index] = nbartot_field[index];
+//      Phi[index].x = ( nbartot_field[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
+//      Phi[index].y = ( nbartot_field[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
+//
+//     }
+//      
+//}
 
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
-        
-      float pfilter2 = 0.;    
-      double bidx;
-      
-      for(int i=0; i<nspecies; i++) {
-        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
-      }
-
-      PhiAvgNum_tmp[index] = ( nbartot_field[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
-
-      //since nz<= dimBlock.z, we can sync and sum over z without having to call a new kernel
-      __syncthreads();
-
-      cuDoubleComplex PhiAvgNum_zSum;
-      PhiAvgNum_zSum.x = (double) 0.;
-      PhiAvgNum_zSum.y = (double) 0.;
-
-      for(int i=0; i<nz; i++) {
-        PhiAvgNum_zSum.x = (double) PhiAvgNum_zSum.x + PhiAvgNum_tmp[idxy + i*nx*(ny/2+1)].x;
-        PhiAvgNum_zSum.y = (double) PhiAvgNum_zSum.y + PhiAvgNum_tmp[idxy + i*nx*(ny/2+1)].y;
-      }
-
-      cuDoubleComplex PhiAvg;
-      if(idy == 0 && idx!=0) { 
-        PhiAvg.x = PhiAvgNum_zSum.x/( (double)PhiAvgDenom[idx] ); 
-        PhiAvg.y = PhiAvgNum_zSum.y/( (double)PhiAvgDenom[idx] ); 
-      }
-      else {
-        PhiAvg.x = 0.; PhiAvg.y = 0.;
-      }
-      
-      //Phi[index] = nbartot_field[index];
-      Phi[index].x = ( nbartot_field[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
-      Phi[index].y = ( nbartot_field[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
-
-     }
-      
-}
-
-__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* jacobian, specie* s,
-                      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
 {
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
 
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
 
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      //unsigned int idxy = idy + (ny/2+1)*idx;
 
       float pfilter2 = 0.;
-      double bidx;
+      double b;
 
-      for(int i=0; i<nspecies; i++) {
-        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+      for(int is=0; is<nspecies; is++) {
+        b = kperp2(kp2_t, idx, idy, idz, is);
+        pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
       }
-      pfilter2 = 0.;
 
-      PhiAvgNum_tmp[index] = ( nbartot_field[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+      PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
     
     }
 }
 
-__global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbartot_field, float* PhiAvgDenom, float* jacobian, specie* s,
-                      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te)
+__global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* PhiAvgDenom, float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
 {
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
   
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
@@ -150,14 +168,13 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
 
       unsigned int idxy = idy + (ny/2+1)*idx;
         
-      float pfilter2 = 0.;    
-      double bidx;
-      
-      for(int i=0; i<nspecies; i++) {
-        bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-        pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+      float pfilter2 = 0.;
+      double b;
+
+      for(int is=0; is<nspecies; is++) {
+        b = kperp2(kp2_t, idx, idy, idz, is);
+        pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
       }
-  
 
       cuDoubleComplex PhiAvgNum_zSum;
       PhiAvgNum_zSum.x = (double) 0.;
@@ -177,8 +194,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
         PhiAvg.x = 0.; PhiAvg.y = 0.;
       }
       
-      Phi[index].x = ( nbartot_field[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
-      Phi[index].y = ( nbartot_field[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
+      Phi[index].x = ( nbar[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
+      Phi[index].y = ( nbar[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
 
     }
 }
@@ -301,60 +318,62 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* Num_tmp, cuComplex* 
 */            
 
   
-__global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
-		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
-{
-  unsigned int idy = get_idy(); 
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz(); 
-  
-  
-    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
+//__global__ void nbar(cuComplex* nbar, cuComplex* Dens, cuComplex* Tprp, 
+//		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+//{
+//  unsigned int idy = get_idy(); 
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz(); 
+//  
+//  
+//    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//      double bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      nbar[index] = (Dens[index]/(1.+bidx/2.) - bidx*Tprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z;
+//      
+//    }
+//}    
+//
+//__global__ void ubar(cuComplex* ubar, cuComplex* Upar, cuComplex* Qprp, 
+//		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
+//{
+//  unsigned int idy = get_idy(); 
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz(); 
+//  
+//  
+//    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//      double bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      ubar[index] = (Upar[index]/(1.+bidx/2.) - bidx*Qprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z*s.vt;
+//      
+//    }
+//}    
 
-      double bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
 
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      nbar[index] = (Dens[index]/(1.+bidx/2.) - bidx*Tprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z;
-      
-    }
-}    
-
-__global__ void ubar(cuComplex* ubar, cuComplex* Upar, cuComplex* Qprp, 
-		      specie s, float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv)
-{
-  unsigned int idy = get_idy(); 
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz(); 
-  
-  
-    if( idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-      double bidx = b(s.rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      ubar[index] = (Upar[index]/(1.+bidx/2.) - bidx*Qprp[index]/(2.*pow(1.+bidx/2.,2.)))*s.dens*s.z*s.vt;
-      
-    }
-}    
-
-__global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float* jacobian, specie* s, float* kx, float* ky, float shat, float* gds2, float* gds21, float* gds22, float* bmagInv,float ti_ov_te)
+__global__ void calc_phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, 
+                float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
 {   
   unsigned int idy = 0;
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
 
   if( idy==0 && idx!=0 && idx<nx && idz<nz ) {
  
   unsigned int idxz = idx + nx*idz;
   
   float pfilter2 = 0.;
-  double bidx;
+  double b;
     
-    for(int i=0; i<nspecies; i++) {
-      bidx = b(s[i].rho, kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]);
-      pfilter2 = pfilter2 + s[i].dens*s[i].z*s[i].zt*( 1. - g0(bidx) );
+    for(int is=0; is<nspecies; is++) {
+      b = kperp2(kp2_t, idx, idy, idz, is);
+      pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
     }
    
     PhiAvgDenom_tmpXZ[idxz] = pfilter2*jacobian[idz]/( ti_ov_te + pfilter2 );
@@ -366,84 +385,82 @@ __global__ void phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, float*
     for(int i=0; i<nz; i++) {
       PhiAvgDenom[idx] = PhiAvgDenom[idx] + PhiAvgDenom_tmpXZ[idx + nx*i];
     }
-    
   }
-
 }
 
 
-__global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e, float vt_e)
-{
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
-        
-      double bidx;
-      
-      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
-
-      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - dens_e*vt_e*upar_e[index] ) / ( 2. * bidx );
-    
-   }   
-
-}
-
-__global__ void solve_ampere_for_upar_e(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
-{
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
-        
-      double bidx;
-      
-      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
-
-      upar_e[index] = ubartot_field[index] - 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e);
-    
-   }   
-
-}
-
-
-__global__ void solve_ampere_for_upar_e_ETG(cuComplex* Apar, cuComplex* upar_e, float beta_e,
-		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
-{
-  unsigned int idy = get_idy();
-  unsigned int idx = get_idx();
-  unsigned int idz = get_idz();
-  
-    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
-
-
-      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
-        
-      double bidx;
-      
-      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
-
-      upar_e[index] = 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e)*(1+bidx/2.);
-    
-   }   
-
-}
+//__global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e, float vt_e)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      unsigned int idxy = idy + (ny/2+1)*idx;
+//        
+//      double bidx;
+//      
+//      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+//
+//      Apar[index] = ti_ov_te*beta_e*( ubartot_field[index] - dens_e*vt_e*upar_e[index] ) / ( 2. * bidx );
+//    
+//   }   
+//
+//}
+//
+//__global__ void solve_ampere_for_upar_e(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      unsigned int idxy = idy + (ny/2+1)*idx;
+//        
+//      double bidx;
+//      
+//      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+//
+//      upar_e[index] = ubartot_field[index] - 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e);
+//    
+//   }   
+//
+//}
+//
+//
+//__global__ void solve_ampere_for_upar_e_ETG(cuComplex* Apar, cuComplex* upar_e, float beta_e,
+//		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e)
+//{
+//  unsigned int idy = get_idy();
+//  unsigned int idx = get_idx();
+//  unsigned int idz = get_idz();
+//  
+//    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+//
+//
+//      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+//
+//      unsigned int idxy = idy + (ny/2+1)*idx;
+//        
+//      double bidx;
+//      
+//      bidx = b(1., kx[idx], ky[idy], shat, gds2[idz], gds21[idz], gds22[idz], bmagInv[idz]); // just kperp^2, not (kperp rho)^2
+//
+//      upar_e[index] = 2.*bidx*Apar[index]/(ti_ov_te * beta_e * dens_e)*(1+bidx/2.);
+//    
+//   }   
+//
+//}
 
 
 

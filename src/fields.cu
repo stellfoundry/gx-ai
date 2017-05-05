@@ -1,8 +1,9 @@
 #include "fields.h"
+#include "get_error.h"
 
 Fields::Fields(Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz) {
 
-  cudaMalloc((void**) &phi, size_);
+  checkCuda(cudaMalloc((void**) &phi, size_));
   cudaMemset(phi, 0., size_);
 
 }
@@ -10,3 +11,4 @@ Fields::Fields(Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz) {
 Fields::~Fields() {
   cudaFree(phi);
 }
+

@@ -14,11 +14,16 @@
 #include "grids.h"
 #include "fields.h"
 #include "moments.h"
+#include "solver.h"
+#include "timestepper.h"
+#include "diagnostics.h"
 #include "cuda_constants.h"
+#include "get_error.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
 #endif
+
 
 __global__ void check(specie* species, float* kx) {
   printf("run_gryfx: %f, %f, %d\n", kx[1], species[0].tprim, nx);
@@ -35,15 +40,17 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   
   Geometry* geo;  // geometry coefficient arrays
   Grids* grids;   // grids (e.g. kx, ky, z)
-  Fields *fields, *fields1;
-  Moments *moms, *moms1;
-//  Diagnostics* diagnostics;
+  Fields *fields;
+  Moments *moms;
+  Solver *solver;
+  Model* model;
+  Timestepper *stepper;
+  Diagnostics* diagnostics;
 
   if(iproc == 0) {
     int igeo = pars->igeo;
 
     printf("Initializing geometry...\n");
-
     if(igeo==0) {
       geo = new S_alpha_geo(pars);
     } else if(igeo==1) {
@@ -55,24 +62,46 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
       exit(1);
       //geo = new Gs2_geo();
     }
+    checkCuda(cudaGetLastError());
 
     printf("Initializing grids...\n");
     grids = new Grids(pars);
-
+    checkCuda(cudaGetLastError());
+    printf("Geo structs\n");
     geo->initialize_operator_ptr_structs(grids, pars);
+    checkCuda(cudaGetLastError());
 
     printf("Initializing fields...\n");
     fields = new Fields(grids);
-    fields1 = new Fields(grids);
+    checkCuda(cudaGetLastError());
 
     printf("Initializing moments...\n");
     moms = new Moments(grids);
-    moms1 = new Moments(grids);
+    checkCuda(cudaGetLastError());
+    printf("Setting initial conditions...\n");
     moms->initialConditions(fields, pars, geo);
+    checkCuda(cudaGetLastError());
 
-    moms->fieldSolve(fields, pars, geo->kperp2_t);
-//    
-//    diagnostics = new Diagnostics();
+    printf("Initializing field solver...\n");
+    solver = new Solver(pars, grids, geo);
+    checkCuda(cudaGetLastError());
+
+    // initialize fields using field solve
+    printf("Solving for initial fields...\n");
+    solver->fieldSolve(moms, fields);
+    checkCuda(cudaGetLastError());
+
+    printf("Initializing equations...\n");
+    model = new Model(pars, grids, geo);
+    checkCuda(cudaGetLastError());
+
+    printf("Initializing timestepper...\n");
+    stepper = new RungeKutta2(model, solver, grids, pars->dt);
+    checkCuda(cudaGetLastError());
+    
+    printf("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics();
+    checkCuda(cudaGetLastError());
   }
 
   
@@ -80,29 +109,29 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
 //  Ffts* ffts = new Ffts();
 
   // TIMESTEP LOOP
-//  int counter = 0;
-//  float dt = pars->dt;
-//
-//  while(counter<pars->nSteps) {
-//    if(iproc==0) {
-//      // first half of RK2
-//      moms1->advance_linear(moms, dt/2., moms, fields);
-//      fields1->solve_quasineutrality(moms1); 
-//      
-//      // second half of RK2
-//      moms->advance_linear(moms, dt, moms1, fields1);
-//      if(pars->linear && pars->write_growth_rates) {
-//        fields1->solve_quasineutrality(moms);
-//        diagnostics->calculate_and_write_growth_rates(fields->phi, fields1->phi);
-//        fields->copy(fields1);
-//      } else {
-//        solve_quasineutrality(moms, fields);
-//      }
-//    }
-//    counter++;
-//  }
-  
+  int counter = 0;
+  double t = 0;
 
+  printf("Running %d timesteps.......\n", pars->nstep);
+  while(counter<pars->nstep) {
+    if(iproc==0) {
+      printf("Step %d\n", counter);
+      stepper->advance(t, moms, fields);
+      //if(counter%nwrite) diagnostics->loop_diagnostics(moms, fields);
+    }
+    counter++;
+  }
+  printf("Finished timestep loop\n");
+
+  printf("Cleaning up...\n");
+  delete geo;  // geometry coefficient arrays
+  delete grids;   // grids (e.g. kx, ky, z)
+  delete fields;
+  delete moms;
+  delete solver;
+  delete model;
+  delete stepper;
+  delete diagnostics;
 
 //  set_globals_after_gryfx_lib(ev_h);
 //  if (iproc==0) set_cuda_constants();

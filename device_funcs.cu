@@ -1,6 +1,4 @@
-#include "geometry.h"
-#include "cuda_constants.h"
-#include "cufft.h"
+#include "device_funcs.h"
 
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
@@ -22,11 +20,11 @@ __device__ double Jflr(int m, double b) {
   return 1./factorial(m)*pow(-b/2.,m)*expf(-b/2.);
 }
 
-__device__ float g0(float b) {
+__device__ double g0(double b) {
 
-  float tol = 1.e-7;
-  float tk, b2, b2sq;
-  float g, x, xi, err;
+  double tol = 1.e-7;
+  double tk, b2, b2sq;
+  double g, x, xi, err;
 
   if (b < tol) {return 1.0;}
 
@@ -51,11 +49,11 @@ __device__ float g0(float b) {
 
 }
 
-__device__ float g1(float b) {
+__device__ double g1(double b) {
 
-  float tol = 1.e-7;
-  float tk, b2, b2sq;
-  float g, x, xi, xp1i, err;
+  double tol = 1.e-7;
+  double tk, b2, b2sq;
+  double g, x, xi, xp1i, err;
 
   if (b < tol) {return 0.0;}
 
@@ -81,13 +79,13 @@ __device__ float g1(float b) {
 
 }
 
-__device__ float sgam0 (float b) {return sqrt(g0(b));}
+__device__ double sgam0 (double b) {return sqrt(g0(b));}
 
-__device__ float flr(float b) {
-  float gam0 = g0(b);
-  float gam1 = g1(b);
-  float gam = sqrt(gam0);
-  float rg = gam1/gam0;
+__device__ double flr(double b) {
+  double gam0 = g0(b);
+  double gam1 = g1(b);
+  double gam = sqrt(gam0);
+  double rg = gam1/gam0;
   return -b/2. * (1.-rg) * gam;
 }
 

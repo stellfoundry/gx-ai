@@ -42,6 +42,9 @@ GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a
 CFLAGS= ${CUDA_INC} ${MPI_INC} #${FFT_INC} ${NETCDF_INC} -I $(PWD)/include -I$(PWD) -I$(GS2)/diagnostics/simpledataio/include --compiler-options '-fPIC'
 LDFLAGS=$(CUDA_LIB) ${MPI_LIB} #${GEO_LIBS} ${FFT_LIB} ${NETCDF_LIB} ${FORTRAN_LIBS} ${GS2_CUDA_FLAGS}
 
+DEBUG_FLAGS = -g -G
+#CFLAGS += ${DEBUG_FLAGS}
+
 VPATH=.:src:..
 
 ifeq ($(GS2_zonal),on)
@@ -110,7 +113,7 @@ everything_else.o: $(CU_DEPS) $(GS2)/geo/geometry_c_interface.h $(HEADERS)
 
 
 # main program
-$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o obj/moments.o obj/fields.o
+$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o obj/moments.o obj/fields.o obj/solver.o obj/model.o obj/timestepper.o obj/diagnostics.o obj/device_funcs.o
 	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 
