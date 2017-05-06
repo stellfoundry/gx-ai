@@ -21,6 +21,8 @@ Moments::Moments(Grids* grids) :
 
   cudaMemset(ghl, 0., HLsize_);
 
+  printf("Allocated a ghl array of size %.2f MB\n", HLsize_/1024./1024.);
+
   for(int s=0; s<grids->Nspecies; s++) {
     // set up pointers for named moments that point to parts of ghl
     int l,m;
@@ -48,9 +50,6 @@ Moments::Moments(Grids* grids) :
 }
 
 Moments::~Moments() {
-  //for(int s=0; s<grids_->Nspecies; s++) {
-  //  cudaFree(ghl[s]);
-  //}
   cudaFree(ghl);
   free(dens_ptr);
   free(upar_ptr);

@@ -16,6 +16,7 @@
 #include "moments.h"
 #include "solver.h"
 #include "timestepper.h"
+#include "linear.h"
 #include "diagnostics.h"
 #include "cuda_constants.h"
 #include "get_error.h"
@@ -24,14 +25,25 @@
 extern "C" void broadcast_integer(int* a);
 #endif
 
-
-__global__ void check(specie* species, float* kx) {
-  printf("run_gryfx: %f, %f, %d\n", kx[1], species[0].tprim, nx);
+void getDeviceMemoryUsage() {
+  cudaDeviceSynchronize();
+  // show memory usage of GPU
+  size_t free_byte ;
+  size_t total_byte ;
+  cudaError_t cuda_status = cudaMemGetInfo( &free_byte, &total_byte ) ;
+  if ( cudaSuccess != cuda_status ){
+      printf("Error: cudaMemGetInfo fails, %s \n", cudaGetErrorString(cuda_status) );
+      exit(1);
+  }
+  // for some reason, total_byte returned by above call is not correct. 
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDeviceProperties(&prop, 0) );
+  double free_db = (double) free_byte;
+  double total_db = (double) prop.totalGlobalMem;
+  double used_db = total_db - free_db ;
+  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%), total = %f MB\n",
+      used_db/1024.0/1024.0, used_db/total_db*100., free_db/1024.0/1024.0, free_db/total_db*100., total_db/1024.0/1024.0);
 }
-
-__global__ void check(Geometry::kperp2_struct* kp2) {
-  printf("kx = %f, gds2 = %f, tprim = %f, shat = %f\n", kp2->kx[1], kp2->gds2[0], kp2->species[0].tprim, kp2->shat);
-} 
 
 void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
 {
@@ -43,7 +55,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   Fields *fields;
   Moments *moms;
   Solver *solver;
-  Model* model;
+  Linear* linear;
   Timestepper *stepper;
   Diagnostics* diagnostics;
 
@@ -67,9 +79,10 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("Initializing grids...\n");
     grids = new Grids(pars);
     checkCuda(cudaGetLastError());
-    printf("Geo structs\n");
     geo->initialize_operator_ptr_structs(grids, pars);
     checkCuda(cudaGetLastError());
+    printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nhermite=%d, Nlaguerre=%d, Nspecies=%d\n", 
+       grids->Nx, grids->Ny, grids->Nz, grids->Nhermite, grids->Nlaguerre, grids->Nspecies);
 
     printf("Initializing fields...\n");
     fields = new Fields(grids);
@@ -92,37 +105,41 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     checkCuda(cudaGetLastError());
 
     printf("Initializing equations...\n");
-    model = new Model(pars, grids, geo);
+    linear = new Linear(pars, grids, geo);
     checkCuda(cudaGetLastError());
 
     printf("Initializing timestepper...\n");
-    stepper = new RungeKutta2(model, solver, grids, pars->dt);
+    stepper = new RungeKutta2(linear, solver, grids, pars->dt);
     checkCuda(cudaGetLastError());
     
     printf("Initializing diagnostics...\n");
     diagnostics = new Diagnostics();
     checkCuda(cudaGetLastError());
+
+    printf("After initialization:\n");
+    getDeviceMemoryUsage();
   }
 
-  
-  // cufft plans
-//  Ffts* ffts = new Ffts();
-
   // TIMESTEP LOOP
+ if(iproc==0) {
   int counter = 0;
   double t = 0;
 
   printf("Running %d timesteps.......\n", pars->nstep);
   while(counter<pars->nstep) {
     if(iproc==0) {
-      printf("Step %d\n", counter);
       stepper->advance(t, moms, fields);
-      //if(counter%nwrite) diagnostics->loop_diagnostics(moms, fields);
+      if(counter%pars->nwrite==0) {
+        printf("Step %d\n", counter);
+      //  diagnostics->loop_diagnostics(moms, fields);
+      }
     }
     counter++;
   }
+  printf("Step %d\n", counter);
   printf("Finished timestep loop\n");
   checkCuda(cudaGetLastError());
+ }
 
   printf("Cleaning up...\n");
 
@@ -131,9 +148,10 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   delete fields;
   delete moms;
   delete solver;
-  delete model;
+  delete linear;
   delete stepper;
   delete diagnostics;
+
 
 //  set_globals_after_gryfx_lib(ev_h);
 //  if (iproc==0) set_cuda_constants();

@@ -1,8 +1,8 @@
 #include "timestepper.h"
 #include "get_error.h"
 
-RungeKutta2::RungeKutta2(Model *model, Solver *solver, Grids *grids, const double dt_in) :
-  model_(model), solver_(solver), grids_(grids)
+RungeKutta2::RungeKutta2(Linear *linear, Solver *solver, Grids *grids, const double dt_in) :
+  linear_(linear), solver_(solver), grids_(grids)
 {
   // new objects for temporaries
   mStar = new Moments(grids);
@@ -17,12 +17,12 @@ RungeKutta2::~RungeKutta2()
 }
 
 int RungeKutta2::advance(double t, Moments* m, Fields* f) {
-  model_->rhs(m, f, mRhs);
-  //if(model_->nonlinear) dt_ = model_->cfl();
+  linear_->rhs(m, f, mRhs);
+  //if(linear_->nonlinear) dt_ = linear_->cfl();
   mStar->add_scaled(1., m, dt_/2., mRhs);
   solver_->fieldSolve(mStar, f);
 
-  model_->rhs(mStar, f, mRhs);
+  linear_->rhs(mStar, f, mRhs);
   mStar->add_scaled(1., m, dt_, mRhs);
   m->copyFrom(mStar);
   solver_->fieldSolve(m, f);

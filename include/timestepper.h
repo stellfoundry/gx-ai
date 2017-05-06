@@ -3,7 +3,7 @@
 #include "moments.h"
 #include "fields.h"
 #include "grids.h"
-#include "model.h"
+#include "linear.h"
 #include "solver.h"
 
 class Timestepper {
@@ -14,13 +14,13 @@ class Timestepper {
 
 class RungeKutta2 : public Timestepper {
  public:
-  RungeKutta2(Model *model, Solver *solver, Grids *grids, const double dt_in);
+  RungeKutta2(Linear *linear, Solver *solver, Grids *grids, const double dt_in);
   ~RungeKutta2();
   int advance(double t, Moments* moms, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
-  Model  *model_;
+  Linear  *linear_;
   Solver *solver_;
   Grids  *grids_;
 

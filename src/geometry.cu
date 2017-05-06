@@ -42,6 +42,7 @@
 Geometry::~Geometry() {
   cudaFree(z);
   cudaFree(bmag);
+  cudaFree(bmagInv);
   cudaFree(bgrad);
   cudaFree(gds2);	
   cudaFree(gds21);	

@@ -32,6 +32,13 @@ bool get_bool(struct fnr_struct * namelist_struct, const char * namelist, const 
   return return_value;
 }
 
+Parameters::Parameters() {
+}
+
+Parameters::~Parameters() {
+  cudaFree(species);
+}
+
 int Parameters::read_namelist(char* filename)
 {
 	fnr_abort_on_error = 1;
@@ -151,6 +158,7 @@ int Parameters::read_namelist(char* filename)
   //maxdt?
   
   fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec_in));
+  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
   
   linear = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
   
@@ -363,7 +371,6 @@ int Parameters::read_namelist(char* filename)
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
   //collisions=collision_model;
   
-  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
 
   adiabatic_electrons = true;
 

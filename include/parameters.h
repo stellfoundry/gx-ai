@@ -16,8 +16,8 @@
 class Parameters {
 
   public:
-    Parameters(void) {};
-    ~Parameters(void) {};
+    Parameters(void);
+    ~Parameters(void);
     int read_namelist(char* file);
 
     int set_externalpars(external_parameters_struct* externalpars);
