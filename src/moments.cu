@@ -21,32 +21,29 @@ Moments::Moments(Grids* grids) :
 
   cudaMemset(ghl, 0., HLsize_);
 
-//  for(int s=0; s<grids->Nspecies; s++) {
-//    // allocate ghl array on device only
-//    checkCuda(cudaMalloc((void**) &ghl[s], HLsize_));
-//
-//    // set up pointers for named moments that point to parts of ghl
-//    int l,m;
-//    l = 0, m = 0; // density
-//    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//    
-//    l = 1, m = 0; // u_parallel
-//    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//    
-//    l = 2, m = 0; // T_parallel / sqrt(2)
-//    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//    
-//    l = 3, m = 0; // q_parallel / sqrt(6)
-//    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//
-//    l = 0, m = 1; // T_perp 
-//    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//    
-//    l = 1, m = 1; // q_perp
-//    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
-//  }
+  for(int s=0; s<grids->Nspecies; s++) {
+    // set up pointers for named moments that point to parts of ghl
+    int l,m;
+    l = 0, m = 0; // density
+    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    
+    l = 1, m = 0; // u_parallel
+    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    
+    l = 2, m = 0; // T_parallel / sqrt(2)
+    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    
+    l = 3, m = 0; // q_parallel / sqrt(6)
+    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
 
-  dimBlock = dim3(32, max(4, Nlaguerre), max(4, Nhermite));
+    l = 0, m = 1; // T_perp 
+    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    
+    l = 1, m = 1; // q_perp
+    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+  }
+
+  dimBlock = dim3(32, min(4, Nlaguerre), min(4, Nhermite));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x, 1, 1);
 }
 
@@ -113,6 +110,9 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   }
 
   free(init_h);
+
+  cudaDeviceSynchronize();
+  checkCuda(cudaGetLastError());
 
   return cudaGetLastError();
 }

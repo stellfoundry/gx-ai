@@ -122,10 +122,12 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     counter++;
   }
   printf("Finished timestep loop\n");
+  checkCuda(cudaGetLastError());
 
   printf("Cleaning up...\n");
-  delete geo;  // geometry coefficient arrays
-  delete grids;   // grids (e.g. kx, ky, z)
+
+  delete geo;  
+  delete grids;
   delete fields;
   delete moms;
   delete solver;
