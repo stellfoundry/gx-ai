@@ -18,4 +18,6 @@ class Linear {
   Geometry* geo_;
 
   Moments* mRhs_par;
+  cufftHandle ZDerivplanHL;
+  cufftHandle ZDerivplanMom;
 };

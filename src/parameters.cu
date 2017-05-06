@@ -63,9 +63,9 @@ int Parameters::read_namelist(char* filename)
       nz_in = 2*ntgrid;
   }
   
-  if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &Zp)==FNR_USED_DEFAULT){
+  //if(fnr_get_int(&namelist_struct, "theta_grid_parameters", "zp", &Zp)==FNR_USED_DEFAULT){
    Zp = 2*nperiod - 1; 
-  }
+  //}
   
   fnr_get_float(&namelist_struct, "theta_grid_parameters", "eps", &(eps));
   

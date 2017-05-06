@@ -1,22 +1,58 @@
 #include "linear.h"
 #include "device_funcs.h"
 #include "cufft.h"
+#include "cufftXt.h"
+#include "get_error.h"
 
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* rhs_par, cuComplex* rhs);
+
+__device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz = (float*) kzData;
+  unsigned int idz = offset % (nx*nyc);
+  cuComplex Ikz = {0., kz[idz]};
+  ((cuComplex*)dataOut)[offset] = Ikz*element;
+}
+
+__managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   mRhs_par = new Moments(grids);
 
+  // set up z fft
+  int n = grids_->Nz;
+  int inembed = grids_->NxNycNz*grids_->Nmoms;
+  int onembed = grids_->NxNycNz*grids_->Nmoms;
+  size_t workSize;
+  // (ky, kx, z) <-> (ky, kx, kz)
+  cufftCreate(&ZDerivplanHL);
+  cufftMakePlanMany(ZDerivplanHL, 1,   &n, &inembed, grids_->NxNyc, 1,
+                              //             dim,  n,  isize,   istride,       idist,
+                                &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc*grids_->Nmoms, &workSize);
+                              // osize,   ostride,       odist, type,      batchsize
+  // isize = size of input data
+  // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
+  // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
+  cudaDeviceSynchronize();
+  checkCuda(cudaGetLastError());
+
+  // set up callback functions
+  cufftXtSetCallback(ZDerivplanHL, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cudaDeviceSynchronize();
+  checkCuda(cudaGetLastError());
+
   dimBlock = dim3(32, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x, 1, 1);
   sharedSize = 32*(grids_->Nlaguerre+2)*(grids_->Nhermite+4)*sizeof(cuComplex);
-  printf("sharedSize = %f KB\n", sharedSize/1024.);
+  printf("For linear RHS: sharedSize = %f KB\n", sharedSize/1024.);
 }
 
 Linear::~Linear()
 {
+  cufftDestroy(ZDerivplanHL);
+
   delete mRhs_par;
 }
 
@@ -25,9 +61,14 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>(m->ghl, f->phi, mRhs_par->ghl, mRhs->ghl);
 
   // FFT and derivative on parallel term
+  // i*kz*ghl calculated via callback, defined as part of ZDerivplanHL
+  cufftExecC2C(ZDerivplanHL, mRhs_par->ghl, mRhs_par->ghl, CUFFT_FORWARD);
+  cufftExecC2C(ZDerivplanHL, mRhs_par->ghl, mRhs_par->ghl, CUFFT_INVERSE);
 
   // combine
-  mRhs->add_scaled(1., mRhs, 1., mRhs_par);
+  mRhs->add_scaled(1., mRhs, geo_->gradpar/grids_->Nz, mRhs_par);
+
+  // closures
   return 0;
 }
 

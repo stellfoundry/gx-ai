@@ -29,7 +29,7 @@ VER       = `date +%y%m%d`
 
 NVCC      = nvcc
 CUDA_INC  = -I ${TACC_CUDA_INC}
-CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft -lnvToolsExt 
+CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft_static -lculibos -lnvToolsExt 
 FFT_LIB = -L${TACC_FFTW3_LIB} -lfftw3 -lfftw3f
 FFT_INC = -I${TACC_FFTW3_INC}
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
