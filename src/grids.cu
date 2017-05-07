@@ -1,7 +1,6 @@
 #include "grids.h"
 #include "cuda_constants.h"
 
-
 __global__ void kInit(float* kx, float* ky, float* kz, 
                       float X0, float Y0, int Zp, 
                       float qsf, float shat, bool no_zderiv) 
@@ -16,16 +15,14 @@ __global__ void kInit(float* kx, float* ky, float* kz,
   } else if (id<nx) {
     kx[id] = (float) (id - nx)/X0;
   }
-  if(id<nz) {
-    if(id<(nz/2+1)) {
-      kz[id] = (float) id/Zp;
-    }
-    else if(id<nz) {
-      kz[id] = (float) (id - nz)/Zp;
-    }
+  if(id<(nz/2+1)) {
+    kz[id] = (float) id/Zp;
+  }
+  else if(id<nz) {
+    kz[id] = (float) (id - nz)/Zp;
+  }
     //if(qsf<0.) kz[id] = shat; // local limit
     //if(no_zderiv) kz[id] = 0; 
-  }	
 }
 
 Grids::Grids(Parameters* pars) :
@@ -48,9 +45,12 @@ Grids::Grids(Parameters* pars) :
   Nmoms(Nhermite*Nlaguerre),
   pars_(pars)
 {
-  cudaMallocManaged((void**) &kx, sizeof(float)*Nx);
-  cudaMallocManaged((void**) &ky, sizeof(float)*Nyc);
-  cudaMallocManaged((void**) &kz, sizeof(float)*Nz);
+  cudaMallocHost((void**) &kx_h, sizeof(float)*Nx);
+  cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
+
+  cudaMalloc((void**) &kx, sizeof(float)*Nx);
+  cudaMalloc((void**) &ky, sizeof(float)*Nyc);
+  cudaMalloc((void**) &kz, sizeof(float)*Nz);
 
   // copy some parameters to device constant memory 
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
@@ -68,12 +68,18 @@ Grids::Grids(Parameters* pars) :
   kInit<<<1, Nmax>>>(kx, ky, kz,
                      pars_->x0, pars_->y0, pars_->Zp,
                      pars_->qsf, pars_->shat, pars_->no_zderiv);
+
+  cudaMemcpy(kx_h, kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
+  cudaMemcpy(ky_h, ky, sizeof(float)*Nyc, cudaMemcpyDeviceToHost);
 }
 
 Grids::~Grids() {
   cudaFree(kx);
   cudaFree(ky);
   cudaFree(kz);
+  
+  cudaFreeHost(kx_h);
+  cudaFreeHost(ky_h);
 }
 
 

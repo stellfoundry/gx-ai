@@ -15,7 +15,7 @@ class Moments {
   int add_scaled(double c1, Moments* m1, double c2, Moments* m2);
   
   inline void copyFrom(Moments* source) {
-    cudaMemcpyAsync(ghl, source->ghl, HLsize_, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(ghl, source->ghl, HLsize_, cudaMemcpyDeviceToDevice);
   }
  
   cuComplex* ghl;

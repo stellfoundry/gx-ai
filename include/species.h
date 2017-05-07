@@ -1,5 +1,4 @@
-#ifndef SPECIES_H_
-#define SPECIES_H_
+#pragma once
 #define ION 0
 
 // Defines the species identifiers and the specie struct
@@ -18,6 +17,5 @@ typedef struct {
   float nu_ss;
   float rho;           
   float vt;    
-  char type[100];        
+  // char type[100];        
 } specie;
-#endif

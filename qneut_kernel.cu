@@ -1,21 +1,20 @@
 #pragma once
 #include "device_funcs.h"
 #include "geometry.h"
+#include "species.h"
 
-__global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, Geometry::kperp2_struct* kp2_t) 
+__global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, float *b, specie *species) 
 {
   unsigned int idxyz = get_id1();
-  unsigned int idx = idxyz % (nx*nyc) % nx;
-  unsigned int idy = idxyz % (nx*nyc) / nx;
-  unsigned int idz = idxyz / (nx*nyc);
 
   if(idxyz<nx*nyc*nz) {
+    float b_ = b[idxyz];
     //#pragma unroll
     for(int is=0; is<nspecies; is++) {
-      double b = kperp2(kp2_t, idx, idy, idz, is);
+      specie s = species[is];
       //#pragma unroll
       for(int m=0; m<nlaguerre; m++) {
-        nbar[idxyz] = nbar[idxyz] + Jflr(m,b)*ghl[idxyz + m*nx*nyc*nz + is*nx*nyc*nz*nhermite*nlaguerre];
+        nbar[idxyz] = nbar[idxyz] + Jflr(m,b_*s.rho*s.rho)*ghl[idxyz + m*nx*nyc*nz + is*nx*nyc*nz*nhermite*nlaguerre];
       }
     }
   }
@@ -131,7 +130,7 @@ __global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, Geometry::kp
 //      
 //}
 
-__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
+__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* b, float* jacobian, specie* species, float ti_ov_te)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -143,11 +142,11 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
       float pfilter2 = 0.;
-      double b;
+      float b_ = b[index];
 
       for(int is=0; is<nspecies; is++) {
-        b = kperp2(kp2_t, idx, idy, idz, is);
-        pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
+        specie s = species[is];
+        pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
       }
 
       PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
@@ -155,7 +154,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
     }
 }
 
-__global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* PhiAvgDenom, float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
+__global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* PhiAvgDenom, float* b, float* jacobian, specie* species, float ti_ov_te)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -169,11 +168,11 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
       unsigned int idxy = idy + (ny/2+1)*idx;
         
       float pfilter2 = 0.;
-      double b;
+      float b_ = b[index];
 
       for(int is=0; is<nspecies; is++) {
-        b = kperp2(kp2_t, idx, idy, idz, is);
-        pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
+        specie s = species[is];
+        pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
       }
 
       cuDoubleComplex PhiAvgNum_zSum;
@@ -358,23 +357,24 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* Num_tmp, cuComplex* 
 
 
 __global__ void calc_phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ, 
-                float* jacobian, float ti_ov_te, Geometry::kperp2_struct* kp2_t)
+                                 float* b, float* jacobian, specie* species, float ti_ov_te)
 {   
   unsigned int idy = 0;
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  unsigned int idx = get_id1();
+  unsigned int idz = get_id2();
 
   if( idy==0 && idx!=0 && idx<nx && idz<nz ) {
  
   unsigned int idxz = idx + nx*idz;
   
   float pfilter2 = 0.;
-  double b;
     
-    for(int is=0; is<nspecies; is++) {
-      b = kperp2(kp2_t, idx, idy, idz, is);
-      pfilter2 += kp2_t->species[is].dens*kp2_t->species[is].z*kp2_t->species[is].zt*( 1. - g0(b) );
-    }
+  float b_ = b[nyc*idxz];
+
+  for(int is=0; is<nspecies; is++) {
+    specie s = species[is];
+    pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+  }
    
     PhiAvgDenom_tmpXZ[idxz] = pfilter2*jacobian[idz]/( ti_ov_te + pfilter2 );
  

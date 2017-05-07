@@ -151,8 +151,8 @@ class Parameters {
   
     // Namelist: species_knobs
      int nspec_in;
-  
-  	 specie * species;
+
+     specie * species;
   
      
      bool adiabatic_electrons;

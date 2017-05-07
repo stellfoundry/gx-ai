@@ -1,43 +1,9 @@
 #include "geometry.h"
 #include "parameters.h"
-//#define NO_GLOBALS true
-//#include "standard_headers.h"
-///* Defines structs that are used by geometry_c_interface*/
-//#include "geo/geometry_c_interface.h"
-//#include "gryfx_lib.h"
-//#include "allocations.h"
-//#include "get_error.h"
-//#include "math.h"
-/*#include "/global/u2/n/nmandell/noah/branches/GS2/trunk/geo/geometry_c_interface.h"*/
-/*#include "/global/homes/h/highcock/Code_Carver/gs2/trunk/geo/geometry_c_interface.h"*/
+#include "device_funcs.h"
 
-/* Routines for configuring the geometry module*/
-//extern "C" void geometry_set_inputs_c(int * equilibrium_type,
-//		 											 char * eqfile,
-//													 int * irho,
-//		 											 double * rhoc, 
-//													 int * bishop,
-//													 int * nperiod,
-//													 int * ntheta_out);
-//extern "C" void geometry_vary_s_alpha_c(double * d, double*e);
-//
-//
-///*Routine for running the geometry module*/
-//extern "C" void geometry_calculate_coefficients_c(int * grid_size_out);
-//
-///*Routine for getting the coefficients calculated by the geometry module*/
-//extern "C" void geometry_get_coefficients_c(int * grid_size_in, struct coefficients_struct * coefficients_out);
-//
-//extern "C" void geometry_get_miller_parameters_c(struct miller_parameters_struct * miller_parameters_out);
-//extern "C" void geometry_set_miller_parameters_c(struct miller_parameters_struct * miller_parameters_in);
-//
-//extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficients_struct * constant_coefficients_out);
-//
-//extern "C" void geometry_mp_finish_geometry_(void);
-//
-////Defined at the bottom
-//void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
-//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+__global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) ;
+__global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) ;
 
 Geometry::~Geometry() {
   cudaFree(z);
@@ -54,6 +20,9 @@ Geometry::~Geometry() {
   cudaFree(grho);	
   cudaFree(jacobian);	
   cudaFree(bmag_complex);	
+
+  cudaFree(kperp2);
+  cudaFree(omegad);
 }
 
 S_alpha_geo::S_alpha_geo(Parameters *pars) 
@@ -74,6 +43,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     cudaMallocManaged((void**) &bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1));
     
     gradpar = (float) abs(1./(pars->qsf*pars->rmaj));
+
+    shat = pars->shat;
     
     pars->drhodpsi = 1.; 
 
@@ -126,26 +97,26 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     }  
 
   // if supported, prefetch memory from host to device
-  int result = 0;
-  int dev;
-  cudaGetDevice(&dev);
-  cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, dev);
-  if (result) {
-    cudaMemPrefetchAsync(z, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(bmag, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(bmagInv, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(bgrad, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(gds2, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(gds21, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(gds22, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(gbdrift, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(gbdrift0, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(cvdrift, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(cvdrift0, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(grho, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(jacobian, sizeof(float)*pars->nz_in, dev);
-    cudaMemPrefetchAsync(bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1), dev);
-  } 
+//  int result = 0;
+//  int dev;
+//  cudaGetDevice(&dev);
+//  cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, dev);
+//  if (result) {
+//    cudaMemPrefetchAsync(z, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(bmag, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(bmagInv, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(bgrad, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(gds2, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(gds21, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(gds22, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(gbdrift, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(gbdrift0, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(cvdrift, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(cvdrift0, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(grho, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(jacobian, sizeof(float)*pars->nz_in, dev);
+//    cudaMemPrefetchAsync(bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1), dev);
+//  } 
 
 }
 
@@ -157,38 +128,78 @@ Gs2_geo::Gs2_geo() {
 
 }
 
-void Geometry::initialize_operator_ptr_structs(Grids* grids, Parameters* pars) {
-  cudaDeviceSynchronize();
-  // set up kperp2 struct
-  kperp2_struct *kperp2_h = new kperp2_struct;
-  // assign pointers to arrays needed for kperp2
-  kperp2_h->kx = grids->kx;
-  kperp2_h->ky = grids->ky;
-  kperp2_h->gds2 = gds2;
-  kperp2_h->gds21 = gds21;
-  kperp2_h->gds22 = gds22;
-  kperp2_h->bmagInv = bmagInv;
-  kperp2_h->species = pars->species;
-  kperp2_h->shat = pars->shat;
-  cudaMalloc((void**) &kperp2_t, sizeof(kperp2_struct));
-  cudaMemcpy(kperp2_t, kperp2_h, sizeof(kperp2_struct), cudaMemcpyHostToDevice);
-  delete kperp2_h;
+void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
 
-  // set up omegad struct
-  omegad_struct *omegad_h = new omegad_struct;
-  // assign pointers to arrays needed for omegad
-  omegad_h->kx = grids->kx;
-  omegad_h->ky = grids->ky;
-  omegad_h->gb = gbdrift;
-  omegad_h->cv = cvdrift;
-  omegad_h->gb0 = gbdrift0;
-  omegad_h->cv0 = cvdrift0;
-  omegad_h->species = pars->species;
-  omegad_h->shat = pars->shat;
-  cudaMalloc((void**) &omegad_t, sizeof(omegad_struct));
-  cudaMemcpy(omegad_t, omegad_h, sizeof(omegad_struct), cudaMemcpyHostToDevice);
-  delete omegad_h;
+  cudaMalloc((void**) &kperp2, sizeof(float)*grids->NxNycNz);
+  cudaMalloc((void**) &omegad, sizeof(float)*grids->NxNycNz);
+
+  dim3 dimBlock(32, 4, 4);
+  dim3 dimGrid(grids->Nyc/dimBlock.x+1, grids->Nx/dimBlock.y+1, grids->Nz/dimBlock.z+1);
+
+  init_kperp2<<<dimGrid, dimBlock>>>(kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
+
+  init_omegad<<<dimGrid, dimBlock>>>(omegad, grids->kx, grids->ky, gbdrift, cvdrift, gbdrift0, cvdrift0, shat);
 }
+
+__global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) 
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  float shatInv = 1./shat;
+
+  if(idy<nyc && idx<nx && idz<nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    kperp2[idxyz] = ( ky[idy] * (ky[idy]*gds2[idz] 
+                      + 2.*kx[idx]*shatInv*gds21[idz]) 
+                      + pow(kx[idx]*shatInv,2)*gds22[idz] ) 
+                      * pow(bmagInv[idz],2); 
+  }
+}
+
+__global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) 
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  float shatInv = 1./shat;
+
+  if(idy<nyc && idx<nx && idz<nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    omegad[idxyz] = ky[idy] * (gb[idz] + cv[idz]) 
+                  + kx[idx] * shatInv * (gb0[idz] + cv0[idz]) ; 
+  }
+}
+
+/* Routines for configuring the geometry module*/
+//extern "C" void geometry_set_inputs_c(int * equilibrium_type,
+//		 											 char * eqfile,
+//													 int * irho,
+//		 											 double * rhoc, 
+//													 int * bishop,
+//													 int * nperiod,
+//													 int * ntheta_out);
+//extern "C" void geometry_vary_s_alpha_c(double * d, double*e);
+//
+//
+///*Routine for running the geometry module*/
+//extern "C" void geometry_calculate_coefficients_c(int * grid_size_out);
+//
+///*Routine for getting the coefficients calculated by the geometry module*/
+//extern "C" void geometry_get_coefficients_c(int * grid_size_in, struct coefficients_struct * coefficients_out);
+//
+//extern "C" void geometry_get_miller_parameters_c(struct miller_parameters_struct * miller_parameters_out);
+//extern "C" void geometry_set_miller_parameters_c(struct miller_parameters_struct * miller_parameters_in);
+//
+//extern "C" void geometry_get_constant_coefficients_c(struct constant_coefficients_struct * constant_coefficients_out);
+//
+//extern "C" void geometry_mp_finish_geometry_(void);
+//
+////Defined at the bottom
+//void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
+//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
 //

@@ -33,41 +33,22 @@ class Geometry {
   float * aprime;
   float * deltaFL;
 
-  //float drhodpsi;
+  float drhodpsi;
   float gradpar;
   float bi;
   float aminor;
+  float shat;
 
   float fluxDen;
   
   cuComplex * bmag_complex;
   float * bmagInv;
 
-  struct kperp2_struct {
-    float *kx;
-    float *ky;
-    float *gds2;
-    float *gds21;
-    float *gds22;
-    float *bmagInv;
-    specie* species;
-    float shat;
-  };
-  kperp2_struct *kperp2_t;
+  // operator arrays
+  float * kperp2;
+  float * omegad;
 
-  struct omegad_struct {
-    float *kx;
-    float *ky;
-    float *gb;
-    float *cv;
-    float *gb0;
-    float *cv0;
-    specie* species;
-    float shat;
-  };
-  omegad_struct *omegad_t;
-
-  void initialize_operator_ptr_structs(Grids* grids, Parameters* pars);
+  void initializeOperatorArrays(Parameters* pars, Grids* grids);
 };
 
 class S_alpha_geo : public Geometry {

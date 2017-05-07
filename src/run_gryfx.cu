@@ -79,7 +79,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("Initializing grids...\n");
     grids = new Grids(pars);
     checkCuda(cudaGetLastError());
-    geo->initialize_operator_ptr_structs(grids, pars);
+
+    geo->initializeOperatorArrays(pars, grids);
     checkCuda(cudaGetLastError());
     printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nhermite=%d, Nlaguerre=%d, Nspecies=%d\n", 
        grids->Nx, grids->Ny, grids->Nz, grids->Nhermite, grids->Nlaguerre, grids->Nspecies);
@@ -111,28 +112,29 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("Initializing timestepper...\n");
     stepper = new RungeKutta2(linear, solver, grids, pars->dt);
     checkCuda(cudaGetLastError());
-    
+
     printf("Initializing diagnostics...\n");
-    diagnostics = new Diagnostics();
+    diagnostics = new Diagnostics(pars, grids);
     checkCuda(cudaGetLastError());
 
     printf("After initialization:\n");
     getDeviceMemoryUsage();
+  
+    diagnostics->printMomOrField(moms->dens_ptr[0], "dens0.out");
+    diagnostics->printMomOrField(fields->phi, "phi0.out");
   }
 
   // TIMESTEP LOOP
  if(iproc==0) {
   int counter = 0;
-  double t = 0;
+  double time = 0;
 
   printf("Running %d timesteps.......\n", pars->nstep);
+  printf("dt = %f\n", stepper->get_dt());
   while(counter<pars->nstep) {
     if(iproc==0) {
-      stepper->advance(t, moms, fields);
-      if(counter%pars->nwrite==0) {
-        printf("Step %d\n", counter);
-      //  diagnostics->loop_diagnostics(moms, fields);
-      }
+      stepper->advance(&time, moms, fields);
+      diagnostics->loop_diagnostics(moms, fields, stepper->get_dt(), counter, time);
     }
     counter++;
   }
@@ -141,6 +143,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   checkCuda(cudaGetLastError());
  }
 
+  diagnostics->printMomOrField(moms->dens_ptr[0], "dens.out");
+  diagnostics->printMomOrField(fields->phi, "phi.out");
   printf("Cleaning up...\n");
 
   delete geo;  

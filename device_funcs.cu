@@ -4,21 +4,15 @@ __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+th
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
 
-__device__ float kperp2(Geometry::kperp2_struct* kp2, int ix, int iy, int iz, int is) {
-  float shatInv = 1./kp2->shat;
-
-  return ( kp2->ky[iy] * (kp2->ky[iy]*kp2->gds2[iz] + 2.*kp2->kx[ix]*shatInv*kp2->gds21[iz]) + pow(kp2->kx[ix]*shatInv,2)*kp2->gds22[iz] )
-                     * pow(kp2->bmagInv[iz],2) * pow(kp2->species[is].rho,2);
-}
 
 // use stirling's approximation
 __device__ float factorial(int m) {
   if(m<2) return 1.;
-  return sqrtf(2*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
+  else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
 __device__ float Jflr(int m, float b) {
-  return 1./factorial(m)*powf(-b/2.,m)*expf(-b/2.);
+  return 1./factorial(m)*pow(-0.5*b, m)*expf(-b/2.);
 }
 
 __device__ float g0(float b) {

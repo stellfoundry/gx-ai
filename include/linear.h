@@ -9,6 +9,8 @@ class Linear {
 
   int rhs(Moments* m, Fields* f, Moments* mRhs);
 
+  int zderiv(Moments *m);
+
   dim3 dimGrid, dimBlock;
   int sharedSize;
 
@@ -19,5 +21,7 @@ class Linear {
 
   Moments* mRhs_par;
   cufftHandle ZDerivplanHL;
+  cufftHandle ZDerivplanHL_forward;
+  cufftHandle ZDerivplanHL_inverse;
   cufftHandle ZDerivplanMom;
 };

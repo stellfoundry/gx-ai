@@ -8,8 +8,6 @@ __device__ unsigned int get_id1(void);
 __device__ unsigned int get_id2(void);
 __device__ unsigned int get_id3(void);
 
-__device__ float kperp2(Geometry::kperp2_struct* kp2, int ix, int iy, int iz, int is);
-
 __device__ float factorial(int m);
 __device__ float Jflr(int m, float b);
 

@@ -13,8 +13,8 @@ class Solver {
   
   int fieldSolve(Moments* moms, Fields* fields);
   
- private:
   cuComplex* nbar;
+ private:
   float* phiavgdenom; 
   cuComplex* tmp;
 

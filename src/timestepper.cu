@@ -16,7 +16,7 @@ RungeKutta2::~RungeKutta2()
   delete mRhs;
 }
 
-int RungeKutta2::advance(double t, Moments* m, Fields* f) {
+int RungeKutta2::advance(double *t, Moments* m, Fields* f) {
   linear_->rhs(m, f, mRhs);
   //if(linear_->nonlinear) dt_ = linear_->cfl();
   mStar->add_scaled(1., m, dt_/2., mRhs);
@@ -26,6 +26,6 @@ int RungeKutta2::advance(double t, Moments* m, Fields* f) {
   mStar->add_scaled(1., m, dt_, mRhs);
   m->copyFrom(mStar);
   solver_->fieldSolve(m, f);
-  t+=dt_;
+  *t+=dt_;
   return 0;
 }

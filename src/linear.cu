@@ -3,14 +3,16 @@
 #include "cufft.h"
 #include "cufftXt.h"
 #include "get_error.h"
+#include "species.h"
 
-__global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* rhs_par, cuComplex* rhs);
+__global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* iomegad, float* bgrad, float* ky, specie* s,
+                           cuComplex* rhs_par, cuComplex* rhs);
 
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
-  unsigned int idz = offset % (nx*nyc);
-  cuComplex Ikz = {0., kz[idz]};
+  unsigned int idz = offset / (nx*nyc);
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
   ((cuComplex*)dataOut)[offset] = Ikz*element;
 }
 
@@ -23,14 +25,19 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 
   // set up z fft
   int n = grids_->Nz;
-  int inembed = grids_->NxNycNz*grids_->Nmoms;
-  int onembed = grids_->NxNycNz*grids_->Nmoms;
+  int inembed = grids_->NxNycNz;
+  int onembed = grids_->NxNycNz;
   size_t workSize;
   // (ky, kx, z) <-> (ky, kx, kz)
-  cufftCreate(&ZDerivplanHL);
-  cufftMakePlanMany(ZDerivplanHL, 1,   &n, &inembed, grids_->NxNyc, 1,
-                              //             dim,  n,  isize,   istride,       idist,
-                                &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc*grids_->Nmoms, &workSize);
+  cufftCreate(&ZDerivplanHL_forward);
+  cufftCreate(&ZDerivplanHL_inverse);
+  cufftMakePlanMany(ZDerivplanHL_forward, 1,   &n, &inembed, grids_->NxNyc, 1,
+                              //  dim,  n,  isize,   istride,       idist,
+                                &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
+                              // osize,   ostride,       odist, type,      batchsize
+  cufftMakePlanMany(ZDerivplanHL_inverse, 1,   &n, &inembed, grids_->NxNyc, 1,
+                              //  dim,  n,  isize,   istride,       idist,
+                                &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
                               // osize,   ostride,       odist, type,      batchsize
   // isize = size of input data
   // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
@@ -39,7 +46,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaGetLastError());
 
   // set up callback functions
-  cufftXtSetCallback(ZDerivplanHL, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cufftXtSetCallback(ZDerivplanHL_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 
@@ -56,25 +63,43 @@ Linear::~Linear()
   delete mRhs_par;
 }
 
+int Linear::zderiv(Moments* m)
+{
+  // FFT and derivative on parallel term
+  // i*kz*ghl calculated via callback, defined as part of ZDerivplanHL_forward
+  for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
+    cufftExecC2C(ZDerivplanHL_forward, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
+    cufftExecC2C(ZDerivplanHL_inverse, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
+  }
+}
+
 int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
   // calculate RHS
-  rhs_linear<<<dimGrid, dimBlock, sharedSize>>>(m->ghl, f->phi, mRhs_par->ghl, mRhs->ghl);
+  rhs_linear<<<dimGrid, dimBlock, sharedSize>>>(m->ghl, f->phi, geo_->kperp2, geo_->omegad, geo_->bgrad, grids_->ky, pars_->species,
+                                                mRhs_par->ghl, mRhs->ghl);
 
   // FFT and derivative on parallel term
-  // i*kz*ghl calculated via callback, defined as part of ZDerivplanHL
-  cufftExecC2C(ZDerivplanHL, mRhs_par->ghl, mRhs_par->ghl, CUFFT_FORWARD);
-  cufftExecC2C(ZDerivplanHL, mRhs_par->ghl, mRhs_par->ghl, CUFFT_INVERSE);
+  // i*kz*ghl calculated via callback, defined as part of ZDerivplanHL_forward
+  // for now, loop over all l and m because cannot batch 
+  // eventually will optimize by first transposing so that z is fastest index
+  for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
+    cufftExecC2C(ZDerivplanHL_forward, &mRhs_par->ghl[grids_->NxNycNz*i], &mRhs_par->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
+    cufftExecC2C(ZDerivplanHL_inverse, &mRhs_par->ghl[grids_->NxNycNz*i], &mRhs_par->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
+  }
 
   // combine
-  mRhs->add_scaled(1., mRhs, geo_->gradpar/grids_->Nz, mRhs_par);
+  mRhs->add_scaled(1., mRhs, (float) geo_->gradpar/grids_->Nz, mRhs_par);
+
+  // slab only, no drive
+  //mRhs->add_scaled(0., mRhs_par, (float) geo_->gradpar/grids_->Nz, mRhs_par);
 
   // closures
   return 0;
 }
 
 // main kernel function for calculating RHS
-# define S_G(L, M) s_g[sidxyz + sDimx*L + sDimx*sDimy*M]
-__global__ void rhs_linear(cuComplex *g, cuComplex* phi, 
+# define S_G(L, M) s_g[sidxyz + sDimx*(L) + sDimx*sDimy*(M)]
+__global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad, float* bgrad, float* ky, specie* species,
                            cuComplex* rhs_par, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[];
@@ -82,7 +107,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
   unsigned int sidxyz = threadIdx.x;
   // these modulo operations are expensive... better way to get these indices?
-  unsigned int idy = idxyz % (nx*nyc) % nx; 
+  unsigned int idy = idxyz % (nx*nyc) % nyc; 
   unsigned int idz = idxyz / (nx*nyc);
 
   int sDimx = 32;
@@ -93,25 +118,27 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   // read these values into (hopefully) register memory. 
   // local to each thread (i.e. each idxyz).
   // since idxyz is linear, these accesses are coalesced.
-  const cuComplex phi_ = phi[idxyz];
-  const float b_ = 0.;//b[idxyz];
-  const cuComplex iomegad_ = make_cuFloatComplex(0., 0.);//omegad[idxyz]};
+  cuComplex phi_ = phi[idxyz];
+  float b_ = b[idxyz];
+  cuComplex iomegad_ = make_cuComplex(0., omegad[idxyz]);
 
   // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
   // if bgrad was in shared memory, would have bank conflicts.
   // no bank conflicts for reading from global memory though. 
-  const float bgrad_ = 0.;// bgrad[idz];  
+  float bgrad_ = bgrad[idz];  
 
   // this is coalesced?
-  const cuComplex iomegastar_ = make_cuFloatComplex(0., 0.);// ky[idy]}; 
+  cuComplex iomegastar_ = make_cuComplex(0., ky[idy]); 
 
- #pragma unroll
+ //#pragma unroll
  for(int is=0; is<nspecies; is++) { // might be a better way to handle species loop here...
+  specie s = species[is];
 
   // species-specific constants
-  const float nu_ = 0.; //species[is].nu;
-  const float tprim_ = 0.;// species[is].tprim;
-  const float fprim_ = 0.;//species[is].fprim;
+  float nu_ = s.nu_ss; 
+  float tprim_ = s.tprim;
+  float fprim_ = s.fprim;
+  //const float rho_ = s.rho;
 
   // read tile of g into shared mem
   // each thread in the block reads in multiple values of l and m
@@ -132,23 +159,23 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     int sl = threadIdx.z + 2;
     if(sl < 4) {
       // set ghost to zero at low l
-      S_G(sl-2, sm) = make_cuFloatComplex(0., 0.);
+      S_G(sl-2, sm) = make_cuComplex(0., 0.);
 
       // set ghost with closures at high l
-      S_G(sl+nhermite, sm) = make_cuFloatComplex(0., 0.);
+      S_G(sl+nhermite, sm) = make_cuComplex(0., 0.);
     }
   }
 
   // set up ghost cells in m (for all l's)
-  for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-    int sl = l + 2;
+  for (int l = threadIdx.z; l < nhermite+2; l += blockDim.z) {
+    int sl = l + 1; // this takes care of corners...
     int sm = threadIdx.y + 1;
     if(sm < 2) {
       // set ghost to zero at low m
-      S_G(sl, sm-1) = make_cuFloatComplex(0., 0.);
+      S_G(sl, sm-1) = make_cuComplex(0., 0.);
 
       // set ghost with closures at high m
-      S_G(sl, sm+nlaguerre) = make_cuFloatComplex(0., 0.);
+      S_G(sl, sm+nlaguerre) = make_cuComplex(0., 0.);
     }
   }
 
@@ -172,7 +199,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
 
         - iomegad_ * ( sqrtf((l+1)*(l+2))*S_G(sl+2,sm) + sqrtf(l*(l-1))*S_G(sl-2,sm)
 
-                      + (m+1)*S_G(sl,sm+1) + m*S_G(sl,sm-1) + 2.*(l+m+1)*S_G(sl,sm) )
+                      + (m+1)*S_G(sl,sm+1) + m*S_G(sl,sm-1) + 2.*(l+m+1)*S_G(sl,sm) );
 
          - nu_ * ( b_ + l + 2*m ) * ( S_G(sl,sm) + Jflr(m, b_)*phi_ );
 

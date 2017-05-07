@@ -6,11 +6,17 @@
 inline
 cudaError_t checkCuda(cudaError_t result)
 {
+  cudaDeviceSynchronize();
   if (result != cudaSuccess) {
     fprintf(stderr, "CUDA Runtime Error: %s\n", cudaGetErrorString(result));
     assert(result == cudaSuccess);
   } 
   return result;
+}
+
+inline cudaError_t print_cudims(dim3 dimGrid, dim3 dimBlock) {
+  printf("dimBlock: %d %d %d dimGrid: %d %d %d\n", dimBlock.x, dimBlock.y, dimBlock.z, dimGrid.x, dimGrid.y, dimGrid.z);
+  return checkCuda(cudaGetLastError());
 }
 
 //int getError();

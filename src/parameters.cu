@@ -409,7 +409,7 @@ int Parameters::read_namelist(char* filename)
         fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ionspec].nu_ss);
      // }     
 
-      strcpy(species[ionspec].type,"ion"); 
+      //strcpy(species[ionspec].type,"ion"); 
 
     }
     if(strcmp(type,"electron") == 0) {
@@ -431,7 +431,7 @@ int Parameters::read_namelist(char* filename)
 
       //}
 
-      strcpy(species[nspec_in-1].type,"electron");
+      //strcpy(species[nspec_in-1].type,"electron");
 
       adiabatic_electrons = false;
    

@@ -46,7 +46,7 @@ Moments::Moments(Grids* grids) :
   }
 
   dimBlock = dim3(32, min(4, Nlaguerre), min(4, Nhermite));
-  dimGrid = dim3(grids_->NxNycNz/dimBlock.x, 1, 1);
+  dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
 }
 
 Moments::~Moments() {
@@ -80,8 +80,8 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   else {
     srand(22);
     float samp;
-    for(int j=0; j<grids_->Nx; j++) {
-      for(int i=0; i<grids_->Nyc; i++) {
+    for(int i=0; i<grids_->Nyc; i++) {
+      for(int j=0; j<grids_->Nx; j++) {
     	samp = pars->init_amp;
   
           float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
@@ -96,10 +96,21 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
       }
     }
   }
+ 
+  // reality condition
+//  for(int j=0; j<grids_->Nx/2+1; j++) {
+//    for(int k=0; k<grids_->Nz; k++) {
+//        int index = 0 + (grids_->Ny/2+1)*j + grids_->Nx*(grids_->Ny/2+1)*k;
+//	int index2 = 0 + (grids_->Ny/2+1)*(grids_->Nx-j) + grids_->Nx*(grids_->Ny/2+1)*k;
+//	init_h[index2].x = init_h[index].x;
+//	init_h[index2].y = -init_h[index].y;
+//    }
+//  }
 
   // copy initial condition into device memory
   if(pars->init == DENS) {
     cudaMemcpy(dens_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
+    cudaMemcpy(upar_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
 
     // reality condition
     //operations_->reality(ghl);

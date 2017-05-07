@@ -78,6 +78,12 @@
  negrid = 16 ! Total number of energy grid points
 /
 
+&hl_grids_knobs
+ nhermite = 6
+ nlaguerre = 6
+/
+
+
 !==============================
 !BOUNDARY CONDITIONS  
 !==============================
@@ -105,8 +111,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.02 ! Time step
- nstep = 2500 ! Maximum number of timesteps
+ delt = 0.002 ! Time step
+ nstep = 10000 ! Maximum number of timesteps
 /
 
 !==============================
@@ -233,7 +239,7 @@
  write_final_moments = .true. ! write final n, T
   ! write_parity not specified --- Writes parities in dist fn and particle fluxes
  nsave = 10000 ! Write restart files every nsave timesteps
- nwrite = 10000 ! Output diagnostic data every nwrite
+ nwrite = 10 ! Output diagnostic data every nwrite
  navg = 500 ! Any time averages performed over navg
  omegatol = -0.001 ! The convergence has to be better than one part in 1/omegatol
  omegatinst = 500.0 ! Recommended value: 500.
@@ -270,6 +276,7 @@
 /
 
 &gryfx_knobs
+  kpar_init = 1.
   write_netcdf = .false.
   write_omega = "on"
   write_phi = "on"

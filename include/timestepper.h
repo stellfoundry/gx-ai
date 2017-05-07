@@ -9,14 +9,15 @@
 class Timestepper {
  public:
   virtual ~Timestepper() {};
-  virtual int advance(double t, Moments* moms, Fields* fields) = 0;
+  virtual int advance(double* t, Moments* moms, Fields* fields) = 0;
+  virtual double get_dt() = 0;
 };
 
 class RungeKutta2 : public Timestepper {
  public:
   RungeKutta2(Linear *linear, Solver *solver, Grids *grids, const double dt_in);
   ~RungeKutta2();
-  int advance(double t, Moments* moms, Fields* fields);
+  int advance(double* t, Moments* moms, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
