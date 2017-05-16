@@ -20,8 +20,8 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuCompl
 }
 
 
-Diagnostics::Diagnostics(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids)
+Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
+  pars_(pars), grids_(grids), geo_(geo)
 {
   fields_old = new Fields(grids_);
 
@@ -104,8 +104,8 @@ void Diagnostics::printMomOrField(cuComplex* m, char* filename) {
       for(int k=0; k<=Nz; k++) {
         int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
 	//if(index!=0){
-	  if(k==Nz) fprintf(out, "\t%d\t\t%f\t\t%f\t\t%e\t\t%e\t\n", k, grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
-	  else fprintf(out, "\t%d\t\t%f\t\t%f\t\t%e\t\t%e\t\n", k, grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
+	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
         //}
       }     
     }
@@ -116,8 +116,8 @@ void Diagnostics::printMomOrField(cuComplex* m, char* filename) {
       blockid++;
       for(int k=0; k<=Nz; k++) {
         int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
-	if(k==Nz) fprintf(out, "\t%d\t\t%f\t\t%f\t\t%e\t\t%e\t\n", k, grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
-	else fprintf(out, "\t%d\t\t%f\t\t%f\t\t%e\t\t%e\t\n", k, grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
+	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
       }    
     }
   }

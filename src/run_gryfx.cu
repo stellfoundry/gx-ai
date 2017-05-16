@@ -110,11 +110,15 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     checkCuda(cudaGetLastError());
 
     printf("Initializing timestepper...\n");
-    stepper = new RungeKutta2(linear, solver, grids, pars->dt);
+    if(pars->scheme == RK4) {
+      stepper = new RungeKutta4(linear, solver, grids, pars->dt);
+    } else {
+      stepper = new RungeKutta2(linear, solver, grids, pars->dt);
+    }
     checkCuda(cudaGetLastError());
 
     printf("Initializing diagnostics...\n");
-    diagnostics = new Diagnostics(pars, grids);
+    diagnostics = new Diagnostics(pars, grids, geo);
     checkCuda(cudaGetLastError());
 
     printf("After initialization:\n");
@@ -125,9 +129,15 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   }
 
   // TIMESTEP LOOP
- if(iproc==0) {
   int counter = 0;
   double time = 0;
+
+  cudaEvent_t start, stop;
+  cudaEventCreate(&start);
+  cudaEventCreate(&stop);
+  float timer = 0;
+ if(iproc==0) {
+  cudaEventRecord(start,0);
 
   printf("Running %d timesteps.......\n", pars->nstep);
   printf("dt = %f\n", stepper->get_dt());
@@ -141,7 +151,12 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   printf("Step %d\n", counter);
   printf("Finished timestep loop\n");
   checkCuda(cudaGetLastError());
+
+  cudaEventRecord(stop,0);
+  cudaEventSynchronize(stop);
+  cudaEventElapsedTime(&timer,start,stop);
  }
+  printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
   diagnostics->printMomOrField(moms->dens_ptr[0], "dens.out");
   diagnostics->printMomOrField(fields->phi, "phi.out");

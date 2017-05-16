@@ -326,6 +326,14 @@ int Parameters::read_namelist(char* filename)
 
   fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(iflr));
 
+  char* scheme_str;
+  fnr_get_string(&namelist_struct, "gryfx_knobs", "scheme", &scheme_str);
+  if( strcmp(scheme_str,"rk4") == 0) {
+    scheme = RK4;
+  } else {
+    scheme = RK2;
+  }
+
   cuComplex phi_test;
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_real", &phi_test.x);
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_imag", &phi_test.y);

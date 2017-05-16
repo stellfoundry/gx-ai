@@ -7,7 +7,7 @@
 
 class Diagnostics {
  public:
-  Diagnostics(Parameters *pars, Grids *grids);
+  Diagnostics(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics();
 
   void loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
@@ -24,6 +24,7 @@ class Diagnostics {
 
   Parameters* pars_;
   Grids* grids_;
+  Geometry* geo_;
 
   int maxThreadsPerBlock_;
   dim3 dimGrid_xy, dimBlock_xy;

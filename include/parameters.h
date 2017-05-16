@@ -12,6 +12,8 @@
 #define UPAR 5
 #define TPAR 6
 #define ODD 7
+#define RK2 0
+#define RK4 1
 
 class Parameters {
 
@@ -303,5 +305,6 @@ class Parameters {
       int trinity_conv_count;
       int end_time;
 
+      int scheme;
 };
 

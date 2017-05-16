@@ -29,3 +29,23 @@ class RungeKutta2 : public Timestepper {
   Moments* mRhs;
   double dt_;
 };
+
+class RungeKutta4 : public Timestepper {
+ public:
+  RungeKutta4(Linear *linear, Solver *solver, Grids *grids, const double dt_in);
+  ~RungeKutta4();
+  int advance(double* t, Moments* moms, Fields* fields);
+  double get_dt() {return dt_;};
+
+ private:
+  Linear  *linear_;
+  Solver *solver_;
+  Grids  *grids_;
+
+  Moments* mStar;
+  Moments* mRhs1;
+  Moments* mRhs2;
+  Moments* mRhs3;
+  Moments* mRhs4;
+  double dt_;
+};

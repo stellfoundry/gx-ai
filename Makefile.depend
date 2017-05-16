@@ -14,7 +14,7 @@ MODULES = allocations.o\
 			write_data.o\
       read_namelist.o
 
-obj/inputs.o: namelist_defaults.c
+obj/parameters.o: namelist_defaults.c
 
 run_gryfx.o: local_pointers.cu 
 

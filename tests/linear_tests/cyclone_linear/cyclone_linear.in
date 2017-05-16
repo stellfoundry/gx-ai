@@ -35,7 +35,7 @@
 !==============================
 &kt_grids_box_parameters
  nx = 1 ! The number of kx modes: the number of kx modes actually simulated (ntheta0) is equal to 2*(nx - 1)/3 + 1, due to the need to prevent aliasing.
- ny = 20 ! The number of ky modes: the number of ky modes actually simulated (naky) is equal to (ny - 1)/3 + 1, due to the need to prevent aliasing.
+ ny = 40 ! The number of ky modes: the number of ky modes actually simulated (naky) is equal to (ny - 1)/3 + 1, due to the need to prevent aliasing.
  !jtwist = 5 ! L_x = L_y  jtwist / (2 pi shat)
  y0 = 10.0 ! The length of the box in the y direction (measured in the Larmour radius of species 1)
 ! x0 = 5.0 ! The length of the box in the x direction (measured in the Larmour radius of species 1) if shat is 0 (ie 1e-6)
@@ -79,8 +79,8 @@
 /
 
 &hl_grids_knobs
- nhermite = 6
- nlaguerre = 6
+ nhermite = 8
+ nlaguerre = 8
 /
 
 
@@ -111,8 +111,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.002 ! Time step
- nstep = 10000 ! Maximum number of timesteps
+ delt = 0.001 ! Time step
+ nstep = 30000 ! Maximum number of timesteps
 /
 
 !==============================
@@ -164,7 +164,7 @@
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?
- vnewk = 0. ! collisionality parameter
+ vnewk = 0.1 ! collisionality parameter
  type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
 /
 &species_parameters_2
@@ -297,5 +297,6 @@
   scan_type = "default"
   scan_number = 1001
 
+  scheme = "rk2"
 /
 

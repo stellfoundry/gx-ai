@@ -71,6 +71,8 @@ int Linear::zderiv(Moments* m)
     cufftExecC2C(ZDerivplanHL_forward, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
     cufftExecC2C(ZDerivplanHL_inverse, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
   }
+
+  return 0;
 }
 
 int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
@@ -90,10 +92,8 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
   // combine
   mRhs->add_scaled(1., mRhs, (float) geo_->gradpar/grids_->Nz, mRhs_par);
 
-  // slab only, no drive
-  //mRhs->add_scaled(0., mRhs_par, (float) geo_->gradpar/grids_->Nz, mRhs_par);
+  // closures... TO DO!
 
-  // closures
   return 0;
 }
 

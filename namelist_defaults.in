@@ -510,6 +510,8 @@ model_option = "const-curv"
   no_nonlin_dens_cross_term = .false.
   dorland_qneut = "off"
   no_zonal_nlpm = .false.
+
+  scheme = rk2
 /
 
 &new_varenna_knobs

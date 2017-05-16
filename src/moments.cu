@@ -142,7 +142,37 @@ __global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, doub
   }
 }
 
+__global__ void add_scaled_kernel(cuComplex* res, 
+                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
+                 double c3, cuComplex* m3, double c4, cuComplex* m4,
+                 double c5, cuComplex* m5)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
+        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
+          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
+          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx] 
+                         + c3*m3[globalIdx] + c4*m4[globalIdx] 
+                         + c5*m5[globalIdx];
+        }
+      }
+    }
+  }
+}
+
 int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {
   add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl);
   return 0;
+}
+
+int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2, 
+                 double c3, Moments* m3, double c4, Moments* m4,
+                 double c5, Moments* m5)
+{
+  add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl,
+                                     c3, m3->ghl, c4, m4->ghl, c5, m5->ghl);
+  return 0;
+  
 }
