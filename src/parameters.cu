@@ -1,6 +1,6 @@
 #include "parameters.h"
 #include "c_fortran_namelist3.c"
-#include "namelist_defaults.c"
+#include "inputs/namelist_defaults.c"
 
 bool get_bool_on_off(struct fnr_struct * namelist_struct, const char * namelist, const char * variable)
 {
