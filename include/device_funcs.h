@@ -1,7 +1,7 @@
 #pragma once
 
-#include "geometry.h"
-#include "cuda_constants.h"
+//#include "geometry.h"
+//#include "cuda_constants.h"
 #include "cufft.h"
 
 __device__ unsigned int get_id1(void);

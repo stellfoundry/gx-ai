@@ -4,6 +4,7 @@
 #include "cufftXt.h"
 #include "get_error.h"
 #include "species.h"
+#include "cuda_constants.h"
 
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* iomegad, float* bgrad, float* ky, specie* s,
                            cuComplex* rhs_par, cuComplex* rhs);

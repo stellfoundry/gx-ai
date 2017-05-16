@@ -2,6 +2,7 @@
 #include "device_funcs.h"
 #include "geometry.h"
 #include "species.h"
+#include "cuda_constants.h"
 
 __global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, float *b, specie *species) 
 {

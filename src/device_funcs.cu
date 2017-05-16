@@ -1,4 +1,5 @@
 #include "device_funcs.h"
+#include "cuda_constants.h"
 
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}

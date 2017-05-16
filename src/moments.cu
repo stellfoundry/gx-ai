@@ -1,6 +1,7 @@
 #include "moments.h"
 #include "device_funcs.h"
 #include "get_error.h"
+#include "cuda_constants.h"
 
 Moments::Moments(Grids* grids) : 
   grids_(grids), 

@@ -1,6 +1,7 @@
 #include "solver.h"
 #include "qneut_kernel.cu"
 #include "get_error.h"
+#include "cuda_constants.h"
 
 Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)

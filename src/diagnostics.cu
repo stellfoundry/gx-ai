@@ -1,5 +1,6 @@
 #include "diagnostics.h"
 #include "device_funcs.h"
+#include "cuda_constants.h"
 
 __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuComplex *omega)
 {

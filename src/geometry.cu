@@ -1,6 +1,7 @@
 #include "geometry.h"
 #include "parameters.h"
 #include "device_funcs.h"
+#include "cuda_constants.h"
 
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) ;
 __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) ;
