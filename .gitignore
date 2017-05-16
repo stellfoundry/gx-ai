@@ -4,4 +4,5 @@
 namelist_defaults.c
 system_config
 gryfx
+gryfx++
 *.out*

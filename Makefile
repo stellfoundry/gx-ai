@@ -11,7 +11,7 @@
 #
 #######################################
 
-TARGET    = gryfx
+TARGET    = gryfx++
 
 #######################################
 # Include system-dependent make variables
@@ -60,7 +60,7 @@ system_config:
 	$(error "STANDARD_SYSTEM_CONFIGURATION is not defined for this system")
 endif
 
-VPATH=.:src:..
+VPATH=.:src
 
 ##########################
 ## Suffix Build Rules
