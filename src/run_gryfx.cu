@@ -1,14 +1,4 @@
 #include "mpi.h"
-//#include "standard_headers.h"
-//#include "allocations.h"
-//#include "everything_else.h"
-//#include "global_variables.h"
-//#include "get_error.h"
-//#include "write_data.h"
-//#include "gs2.h"
-//#include "profile.h"
-//#include "printout.h"
-//#include "time.h"
 #include "geometry.h"
 #include "parameters.h"
 #include "grids.h"
@@ -171,6 +161,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
   delete stepper;
   delete diagnostics;
 
+// below is old gryfx stuff... to be removed...
 
 //  set_globals_after_gryfx_lib(ev_h);
 //  if (iproc==0) set_cuda_constants();

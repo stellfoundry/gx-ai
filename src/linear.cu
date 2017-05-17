@@ -24,7 +24,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 {
   mRhs_par = new Moments(grids);
 
-  // set up z fft
+  // set up z fft.. make this stuff a separate class?
   int n = grids_->Nz;
   int inembed = grids_->NxNycNz;
   int onembed = grids_->NxNycNz;
@@ -51,10 +51,17 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 
+  // set up CUDA grids for main linear kernel
   dimBlock = dim3(32, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
-  dimGrid = dim3(grids_->NxNycNz/dimBlock.x, 1, 1);
+  dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
   sharedSize = 32*(grids_->Nlaguerre+2)*(grids_->Nhermite+4)*sizeof(cuComplex);
-  printf("For linear RHS: sharedSize = %f KB\n", sharedSize/1024.);
+  printf("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
+  if(sharedSize/1024.>48.) {
+    printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
+    printf("size of shared memory block must be less than 48 KB, so make sure (nhermite+4)*(nlaaguerre+2)<192.\n");
+    exit(1);
+  }
+  
 }
 
 Linear::~Linear()
@@ -103,7 +110,7 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad, float* bgrad, float* ky, specie* species,
                            cuComplex* rhs_par, cuComplex* rhs)
 {
-  extern __shared__ cuComplex s_g[];
+  extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
 
   unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
   unsigned int sidxyz = threadIdx.x;
@@ -111,10 +118,9 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
   unsigned int idy = idxyz % (nx*nyc) % nyc; 
   unsigned int idz = idxyz / (nx*nyc);
 
+  // shared memory blocks of size 32 * (nlaguerre+2) * (nhermite+4)
   int sDimx = 32;
   int sDimy = nlaguerre+2;
-  //int sDimz = nhermite+4;
-  //int sDims_g = sDimx*sDimy*sDimz;
 
   // read these values into (hopefully) register memory. 
   // local to each thread (i.e. each idxyz).
@@ -204,7 +210,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
 
          - nu_ * ( b_ + l + 2*m ) * ( S_G(sl,sm) + Jflr(m, b_)*phi_ );
 
-    // add drive and conservation terms
+    // add drive and conservation terms in low hermite moments
     if(l==0) {
       rhs[globalIdx] = rhs[globalIdx] + phi_*(
                 Jflr(m-1,b_)*( -m*iomegad_ + m*tprim_*iomegastar_ ) 
@@ -218,9 +224,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
     if(l==2) {
       rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_);
     }
-   }
-
-  }
+   } // m loop
+  } // l loop
 
  } // species loop
 }
