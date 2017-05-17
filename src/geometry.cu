@@ -22,8 +22,10 @@ Geometry::~Geometry() {
   cudaFree(jacobian);	
   cudaFree(bmag_complex);	
 
-  cudaFree(kperp2);
-  cudaFree(omegad);
+  if(operator_arrays_allocated_) {
+    cudaFree(kperp2);
+    cudaFree(omegad);
+  }
 }
 
 S_alpha_geo::S_alpha_geo(Parameters *pars) 
@@ -62,9 +64,9 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     }
     
   for(int k=0; k<pars->nz_in; k++) {
-    z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+    z[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
       if(qsf<0) {z[k] = 0.;}
-      bmag[k] = 1./(1+pars->eps*cos(z[k]));
+      bmag[k] = 1./(1.+pars->eps*cos(z[k]));
       bmagInv[k] = 1./bmag[k];
       bgrad[k] = gradpar*pars->eps*sin(z[k])*bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       gds2[k] = 1. + pow((pars->shat*z[k]-pars->shift*sin(z[k])),2);
@@ -130,6 +132,9 @@ Gs2_geo::Gs2_geo() {
 }
 
 void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
+
+  // set this flag so we know to deallocate
+  operator_arrays_allocated_ = true;
 
   cudaMalloc((void**) &kperp2, sizeof(float)*grids->NxNycNz);
   cudaMalloc((void**) &omegad, sizeof(float)*grids->NxNycNz);

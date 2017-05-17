@@ -4,6 +4,7 @@
 #include "species.h"
 #include "cuda_constants.h"
 
+# define G(XYZ, L, M, S) ghl[(XYZ) + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L) + nx*nyc*nz*nlaguerre*nhermite*(S)]
 __global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, float *b, specie *species) 
 {
   unsigned int idxyz = get_id1();
@@ -11,11 +12,13 @@ __global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, float *b, sp
   if(idxyz<nx*nyc*nz) {
     float b_ = b[idxyz];
     //#pragma unroll
+    nbar[idxyz] = make_cuComplex(0., 0.);
     for(int is=0; is<nspecies; is++) {
       specie s = species[is];
       //#pragma unroll
       for(int m=0; m<nlaguerre; m++) {
-        nbar[idxyz] = nbar[idxyz] + Jflr(m,b_*s.rho*s.rho)*ghl[idxyz + m*nx*nyc*nz + is*nx*nyc*nz*nhermite*nlaguerre];
+        // sum over m for l=0
+        nbar[idxyz] = nbar[idxyz] + Jflr(m,b_*s.rho*s.rho)*G(idxyz, 0, m, is);
       }
     }
   }

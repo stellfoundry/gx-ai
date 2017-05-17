@@ -22,6 +22,10 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   calc_phiavgdenom<<<dimGrid,dimBlock>>>(phiavgdenom, tmpXZ, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te); 
   print_cudims(dimGrid, dimBlock);
   cudaFree(tmpXZ);
+
+  // cuda dims for qneut calculation
+  dimBlock_qneut = dim3(32, 8, 4);
+  dimGrid_qneut = dim3(grids_->Nyc/dimBlock.x+1, grids_->Nx/dimBlock.y+1, grids_->Nz/dimBlock.z+1);
 }
 
 Solver::~Solver() 
@@ -34,18 +38,13 @@ Solver::~Solver()
 int Solver::fieldSolve(Moments* moms, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
-    cudaMemset(nbar, 0., sizeof(cuComplex)*grids_->NxNycNz);
-    //nbar = moms->dens_ptr[0];
-    real_space_density<<<grids_->NxNycNz/dimBlock.x+1, maxThreadsPerBlock_>>>(nbar, moms->ghl, geo_->kperp2, pars_->species);
-    checkCuda(cudaGetLastError());
+    real_space_density<<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>(nbar, moms->ghl, geo_->kperp2, pars_->species);
     
     if(pars_->iphi00==2) {
-      dimBlock = dim3(32, 8, 4);
-      dimGrid = dim3(grids_->Nyc/dimBlock.x+1, grids_->Nx/dimBlock.y+1, grids_->Nz/dimBlock.z+1);
-      qneutAdiab_part1<<<dimGrid, dimBlock>>>(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
-      qneutAdiab_part2<<<dimGrid, dimBlock>>>(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
+      qneutAdiab_part1<<<dimGrid_qneut, dimBlock_qneut>>>(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
+      qneutAdiab_part2<<<dimGrid_qneut, dimBlock_qneut>>>(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
     }
- }
+  }
   return 0;
 }
 

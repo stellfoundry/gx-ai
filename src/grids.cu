@@ -17,8 +17,7 @@ __global__ void kInit(float* kx, float* ky, float* kz,
   }
   if(id<(nz/2+1)) {
     kz[id] = (float) id/Zp;
-  }
-  else if(id<nz) {
+  } else if(id<nz) {
     kz[id] = (float) (id - nz)/Zp;
   }
     //if(qsf<0.) kz[id] = shat; // local limit
@@ -61,7 +60,6 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nhermite, &Nhermite, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nlaguerre, &Nlaguerre, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
-
 
   // initialize k arrays
   int Nmax = max(max(Nx, Nyc),Nz);

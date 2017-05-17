@@ -7,7 +7,7 @@
 
 class Geometry {
  public:
-  Geometry() {};
+  Geometry() {operator_arrays_allocated_=false;};
   ~Geometry();
   
   float *z;
@@ -49,6 +49,9 @@ class Geometry {
   float * omegad;
 
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
+
+ private:
+  bool operator_arrays_allocated_;
 };
 
 class S_alpha_geo : public Geometry {
