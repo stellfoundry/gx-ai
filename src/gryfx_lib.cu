@@ -44,8 +44,6 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
   // read input parameters from namelist
   Parameters *pars = new Parameters;
   pars->read_namelist(namelistfileName);
-// To be moved...
-//	set_grid_masks_and_unaliased_sizes(&(ev->grids));
 
   // copy elements of input_parameters_struct into external_parameters_struct externalpars
   if (iproc==0) pars->set_externalpars(externalpars);
@@ -88,9 +86,6 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
 void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars, 
 			struct gryfx_outputs_struct * gryfxouts, char* namelistfileName, int mpcom)
 {
-
-   FILE* outfile;
-
    int iproc;
    // iproc doesn't necessarily have to be the same as it was in 
    // gryfx_get_default_parameters_
@@ -130,49 +125,12 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 //  gryfx_initialize_gs2(&ev->grids, externalpars, namelistfileName, mpcom);
 //  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
 //#endif
- 
-//  //make an input file of form outstem.in if doesn't already exist
-//  FILE* input;
-//  FILE* namelist;
-//  char inputFile[2000];
-//  strcpy(inputFile, ev->info.run_name);
-//  strcat(inputFile, ".in");
-//
-//  // EGH to Noah... can we get rid of this?
-//  // do you ever use the old input file format any more?
-//  if(!(input = fopen(inputFile, "r"))) {
-//    char ch;
-//    input = fopen(inputFile, "w");
-//    namelist = fopen(namelistfileName, "r");
-//    while( (ch = fgetc(namelist))  != EOF)
-//      fputc(ch, input);
-//    fclose(input);
-//    fclose(namelist);
-//  }
-//
-    if(iproc==0) {
-//      initialize_cuda_parallelization(ev); 
-//      definitions(ev);
-      char outfileName[2000];
-      strncpy(outfileName, namelistfileName, strlen(namelistfileName)-3);
-      strcat(outfileName, ".out_gryfx");
-      outfile = fopen(outfileName, "w+");
-    } //end of iproc if
-
 
   /////////////////////////
   // This is the main call
   ////////////////////////
-  run_gryfx(pars, gryfxouts->pflux, gryfxouts->qflux, outfile);
+  run_gryfx(pars, gryfxouts->pflux, gryfxouts->qflux);
 
-//	if(iproc==0) {  
-//    print_final_summary(ev, outfile);
-//    fclose(outfile);
-//  } //end of iproc if
-//  free(ev);
-//#ifdef GS2_zonal
-//  gryfx_finish_gs2();
-//#endif
   delete pars;
 
 }  	

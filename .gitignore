@@ -6,3 +6,4 @@ system_config
 gryfx
 gryfx++
 *.out*
+*.field

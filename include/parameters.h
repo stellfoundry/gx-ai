@@ -306,5 +306,6 @@ class Parameters {
       int end_time;
 
       int scheme;
+      char run_name[2000];
 };
 

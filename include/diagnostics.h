@@ -12,7 +12,7 @@ class Diagnostics {
 
   void loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
 
-  void printMomOrField(cuComplex* m, char* filename);
+  void printMomOrField(cuComplex* m, const char* filename);
   
 
  private:

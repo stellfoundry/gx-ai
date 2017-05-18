@@ -35,7 +35,7 @@ void getDeviceMemoryUsage() {
       used_db/1024.0/1024.0, used_db/total_db*100., free_db/1024.0/1024.0, free_db/total_db*100., total_db/1024.0/1024.0);
 }
 
-void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
+void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 {
   int iproc = pars->iproc;  
 
@@ -114,8 +114,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
     printf("After initialization:\n");
     getDeviceMemoryUsage();
   
-    diagnostics->printMomOrField(moms->dens_ptr[0], "dens0.out");
-    diagnostics->printMomOrField(fields->phi, "phi0.out");
+    diagnostics->printMomOrField(moms->dens_ptr[0], "dens0");
+    diagnostics->printMomOrField(fields->phi, "phi0");
   }
 
   // TIMESTEP LOOP
@@ -148,8 +148,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux, FILE* outfile)
  }
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
-  diagnostics->printMomOrField(moms->dens_ptr[0], "dens.out");
-  diagnostics->printMomOrField(fields->phi, "phi.out");
+  diagnostics->printMomOrField(moms->dens_ptr[0], "dens");
+  diagnostics->printMomOrField(fields->phi, "phi");
   printf("Cleaning up...\n");
 
   delete geo;  

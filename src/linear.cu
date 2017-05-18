@@ -43,13 +43,9 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   // isize = size of input data
   // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
   // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
-  cudaDeviceSynchronize();
-  checkCuda(cudaGetLastError());
 
   // set up callback functions
   cufftXtSetCallback(ZDerivplanHL_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
-  cudaDeviceSynchronize();
-  checkCuda(cudaGetLastError());
 
   // set up CUDA grids for main linear kernel
   dimBlock = dim3(32, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
@@ -114,38 +110,38 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
 
   unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
   if(idxyz<nx*nyc*nz) {
-    unsigned int sidxyz = threadIdx.x;
+    const unsigned int sidxyz = threadIdx.x;
     // these modulo operations are expensive... better way to get these indices?
-    unsigned int idy = idxyz % (nx*nyc) % nyc; 
-    unsigned int idz = idxyz / (nx*nyc);
+    const unsigned int idy = idxyz % (nx*nyc) % nyc; 
+    const unsigned int idz = idxyz / (nx*nyc);
   
     // shared memory blocks of size 32 * (nlaguerre+2) * (nhermite+4)
-    int sDimx = 32;
-    int sDimy = nlaguerre+2;
+    const int sDimx = 32;
+    const int sDimy = nlaguerre+2;
   
     // read these values into (hopefully) register memory. 
     // local to each thread (i.e. each idxyz).
     // since idxyz is linear, these accesses are coalesced.
-    cuComplex phi_ = phi[idxyz];
-    float b_ = b[idxyz];
-    cuComplex iomegad_ = make_cuComplex(0., omegad[idxyz]);
+    const cuComplex phi_ = phi[idxyz];
+    const float b_ = b[idxyz];
+    const cuComplex iomegad_ = make_cuComplex(0., omegad[idxyz]);
   
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad was in shared memory, would have bank conflicts.
     // no bank conflicts for reading from global memory though. 
-    float bgrad_ = bgrad[idz];  
+    const float bgrad_ = bgrad[idz];  
   
     // this is coalesced?
-    cuComplex iomegastar_ = make_cuComplex(0., ky[idy]); 
+    const cuComplex iomegastar_ = make_cuComplex(0., ky[idy]); 
   
    //#pragma unroll
    for(int is=0; is<nspecies; is++) { // might be a better way to handle species loop here...
     specie s = species[is];
   
     // species-specific constants
-    float nu_ = s.nu_ss; 
-    float tprim_ = s.tprim;
-    float fprim_ = s.fprim;
+    const float nu_ = s.nu_ss; 
+    const float tprim_ = s.tprim;
+    const float fprim_ = s.fprim;
     //const float rho_ = s.rho;
   
     // read tile of g into shared mem
@@ -193,8 +189,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
     for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
      for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
       int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
-      int sl = l + 2;
-      int sm = m + 1;
+      int sl = l + 2; // offset to get past ghosts
+      int sm = m + 1; // offset to get past ghosts
   
       // need to calculate parallel terms separately because need to take derivative via fft 
       rhs_par[globalIdx] = -( sqrtf(l+1)*S_G(sl+1,sm) + sqrtf(l)*S_G(sl-1,sm) );

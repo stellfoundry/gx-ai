@@ -41,6 +41,8 @@ Parameters::~Parameters() {
 
 int Parameters::read_namelist(char* filename)
 {
+  strncpy(run_name, filename, strlen(filename)-3);
+
 	fnr_abort_on_error = 1;
 	fnr_abort_if_missing = 0;
 	fnr_abort_if_no_default = 1;
