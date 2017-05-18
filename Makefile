@@ -93,9 +93,10 @@ inputs/namelist_defaults.c: inputs/namelist_defaults.in
 # Rules for building gryfx
 ####################################
 
+OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o
 
 # main program
-$(TARGET): obj/main.o obj/run_gryfx.o obj/gryfx_lib.o obj/parameters.o obj/geometry.o obj/grids.o obj/moments.o obj/fields.o obj/solver.o obj/linear.o obj/timestepper.o obj/diagnostics.o obj/device_funcs.o 
+$(TARGET): $(addprefix obj/, $(OBJS))
 	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 

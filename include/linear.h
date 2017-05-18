@@ -1,6 +1,7 @@
 #pragma once
 #include "fields.h"
 #include "moments.h"
+#include "grad_parallel.h"
 
 class Linear {
  public:
@@ -18,10 +19,7 @@ class Linear {
   Parameters* pars_;
   Grids* grids_;  
   Geometry* geo_;
+  GradParallel* grad_par;
 
   Moments* mRhs_par;
-  cufftHandle ZDerivplanHL;
-  cufftHandle ZDerivplanHL_forward;
-  cufftHandle ZDerivplanHL_inverse;
-  cufftHandle ZDerivplanMom;
 };
