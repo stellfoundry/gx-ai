@@ -170,9 +170,8 @@ model_option = "const-curv"
 &hl_grids_knobs
  nhermite = 4
  nlaguerre = 2
- grid_option = "box"
- !grid_option = "poly_order"
- max_poly_order = 3
+ #closure_model = 'beer4+2'
+ closure_model = 'none'
 /
 
 &dist_fn_knobs

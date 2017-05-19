@@ -38,8 +38,6 @@ class Geometry {
   float bi;
   float aminor;
   float shat;
-
-  float fluxDen;
   
   cuComplex * bmag_complex;
   float * bmagInv;

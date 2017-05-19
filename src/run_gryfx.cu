@@ -148,8 +148,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
  }
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
-  diagnostics->printMomOrField(moms->dens_ptr[0], "dens");
-  diagnostics->printMomOrField(fields->phi, "phi");
+  diagnostics->final_diagnostics(moms, fields);
+
   printf("Cleaning up...\n");
 
   delete geo;  

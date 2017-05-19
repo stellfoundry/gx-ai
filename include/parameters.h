@@ -14,6 +14,7 @@
 #define ODD 7
 #define RK2 0
 #define RK4 1
+#define BEER42 1
 
 class Parameters {
 
@@ -138,6 +139,7 @@ class Parameters {
       // new for HL 
       int nhermite_in;
       int nlaguerre_in;  // nlaguerre will be an array 
+      int closure_model;
   
   
     // Namelist: knobs

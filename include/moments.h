@@ -10,6 +10,11 @@ class Moments {
   Moments(Grids* grids);
   ~Moments();
 
+  // accessor function to get pointer to specific l,m,s of ghl array
+  cuComplex* gHL(int l, int m, int s=0) {
+    return &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l + grids_->NxNycNz*grids_->Nmoms*s];
+  }
+
   int initialConditions(Fields* fields, Parameters *pars, Geometry* geo);
 
   int add_scaled(double c1, Moments* m1, double c2, Moments* m2);

@@ -2,6 +2,7 @@
 #include "fields.h"
 #include "moments.h"
 #include "grad_parallel.h"
+#include "closures.h"
 
 class Linear {
  public:
@@ -16,10 +17,11 @@ class Linear {
   int sharedSize;
 
  private:
-  Parameters* pars_;
+  const Parameters* pars_;
   Grids* grids_;  
-  Geometry* geo_;
+  const Geometry* geo_;
   GradParallel* grad_par;
+  Closures* closures;
 
   Moments* mRhs_par;
 };

@@ -27,6 +27,8 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   fields_old = new Fields(grids_);
 
   cudaMalloc((void**) &growth_rates, sizeof(cuComplex)*grids_->NxNyc);
+  cudaMallocManaged((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
+  
   cudaMallocHost((void**) &growth_rates_h, sizeof(cuComplex)*grids_->NxNyc);
 
   cudaMallocHost((void**) &m_h, sizeof(cuComplex)*grids_->NxNycNz);
@@ -34,16 +36,26 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
   maxThreadsPerBlock_ = prop.maxThreadsPerBlock;
+
+  // for volume averaging
+  cudaDeviceSynchronize();
+  fluxDenom = 0.;
+  for(int i=0; i<grids_->Nz; i++) {
+    fluxDenom += geo_->jacobian[i]*geo_->grho[i];
+  }
+  
 }
 
 Diagnostics::~Diagnostics()
 {
   delete fields_old;
   cudaFree(growth_rates);
+  cudaFree(hlspectrum);
   cudaFreeHost(growth_rates_h);
 }
 
-// NOTE: needs to be called every step 
+// NOTE: needs to be called every step when calculating growth rates
+// does not write to file every step
 void Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) 
 {
   if(pars_->write_omega) {
@@ -59,6 +71,17 @@ void Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
     }
   } 
 }
+
+void Diagnostics::final_diagnostics(Moments* moms, Fields* fields) 
+{
+  // print final moments and fields
+  printMomOrField(moms->dens_ptr[0], "dens");
+  printMomOrField(fields->phi, "phi");
+
+  // print Hermite-Laguerre spectrum |G|**2(l,m)
+  printHLspectrum(moms->ghl);
+}
+
 
 void Diagnostics::print_growth_rates_to_screen()
 {
@@ -127,3 +150,54 @@ void Diagnostics::printMomOrField(cuComplex* m, const char* name) {
   fclose(out);
 }
 
+void Diagnostics::printHLspectrum(cuComplex* ghl)
+{
+  // calculate spectrum  
+  HLspectrum(ghl);
+  cudaDeviceSynchronize();
+
+  char ofilename[2000];
+  sprintf(ofilename, "%s.hlspectrum.out", pars_->run_name);
+  FILE* out = fopen(ofilename,"w+");
+  
+  for(int l=0; l<grids_->Nhermite; l++) {
+    for(int m=0; m<grids_->Nlaguerre; m++) {
+      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum[m+grids_->Nlaguerre*l]);
+    }
+    fprintf(out, "\n");
+  }
+  fclose(out); 
+}
+
+// sum over ky, kz, z with flux surface average
+__global__ void volume_average(float* res, cuComplex* f, float* jacobian, float fluxDenomInv) {
+  float sum = 0.;
+  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+    unsigned int idy = idxyz % (nx*nyc) % nyc; 
+    unsigned int idx = idxyz % (nx*nyc) / nyc; 
+    unsigned int idz = idxyz / (nx*nyc);
+    float fac;
+    if(idy==0) fac = 1.;
+    else fac = 0.5;
+    if(idy>0 || idx>0) sum += (f[idxyz].x*f[idxyz].x + f[idxyz].y*f[idxyz].y)*jacobian[idz]*fac*fluxDenomInv;
+  }
+  atomicAdd(res,sum);
+}
+
+void Diagnostics::HLspectrum(cuComplex* ghl)
+{
+  //float* out;
+  //cudaMallocManaged((void**) &out, sizeof(float));
+  int threads=256;
+  int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
+  cudaMemsetAsync(hlspectrum, 0., sizeof(float)*grids_->Nmoms);
+  for(int l=0; l<grids_->Nhermite; l++) {
+    for(int m=0; m<grids_->Nlaguerre; m++) {
+      volume_average<<<blocks,threads>>>(&hlspectrum[m+grids_->Nlaguerre*l], &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom);
+      //volume_average<<<blocks,threads>>>(out, &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom);
+      //cudaDeviceSynchronize();
+      //printf("%d\t%d\t%e\n", l, m, out[0]);
+      //out[0]=0.;
+    }
+  }
+}

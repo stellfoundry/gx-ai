@@ -12,10 +12,15 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* iomega
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
-  mRhs_par = new Moments(grids);
+  mRhs_par = new Moments(grids_);
 
   // set up parallel ffts
-  grad_par = new GradParallel(grids);
+  grad_par = new GradParallel(grids_);
+ 
+  if(pars_->closure_model==BEER42) {
+    printf("Initializing Beer 4+2 closures\n");
+    closures = new Beer42(grids_, geo_->omegad);
+  }
 
   // set up CUDA grids for main linear kernel
   dimBlock = dim3(32, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
@@ -34,20 +39,25 @@ Linear::~Linear()
 {
   delete grad_par;
   delete mRhs_par;
+  delete closures;
 }
 
 int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
   // calculate RHS
-  rhs_linear<<<dimGrid, dimBlock, sharedSize>>>(m->ghl, f->phi, geo_->kperp2, geo_->omegad, geo_->bgrad, grids_->ky, pars_->species,
-                                                mRhs_par->ghl, mRhs->ghl);
+  rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
+      (m->ghl, f->phi, geo_->kperp2, geo_->omegad, geo_->bgrad, 
+       grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
 
   // parallel gradient term
-  grad_par->ikpar(mRhs_par);
+  grad_par->eval(mRhs_par);
 
   // combine
   mRhs->add_scaled(1., mRhs, (float) geo_->gradpar, mRhs_par);
 
-  // closures... TO DO!
+  // closures
+  if(pars_->closure_model>0) {
+    closures->apply_closures(m, mRhs);
+  }
 
   return 0;
 }
@@ -154,7 +164,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
   
           - iomegad_ * ( sqrtf((l+1)*(l+2))*S_G(sl+2,sm) + sqrtf(l*(l-1))*S_G(sl-2,sm)
   
-                        + (m+1)*S_G(sl,sm+1) + m*S_G(sl,sm-1) + 2.*(l+m+1)*S_G(sl,sm) );
+                        + (m+1)*S_G(sl,sm+1) + m*S_G(sl,sm-1) + 2.*(l+m+1)*S_G(sl,sm) )
   
            - nu_ * ( b_ + l + 2*m ) * ( S_G(sl,sm) + Jflr(m, b_)*phi_ );
   
@@ -162,7 +172,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
       if(l==0) {
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
                   Jflr(m-1,b_)*( -m*iomegad_ + m*tprim_*iomegastar_ ) 
-                + Jflr(m,b_) * ( -2*(m+1)*iomegad_ + (fprim_ + tprim_*2*m)*iomegastar_ )
+                + Jflr(m,  b_)*( -2*(m+1)*iomegad_ + (fprim_ + tprim_*2*m)*iomegastar_ )
                 + Jflr(m+1,b_)*( -(m+1)*iomegad_ + (m+1)*tprim_*iomegastar_ ) );  
       }
       if(l==1) {

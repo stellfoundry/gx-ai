@@ -11,8 +11,10 @@ class Diagnostics {
   ~Diagnostics();
 
   void loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
+  void final_diagnostics(Moments* moms, Fields* fields);
 
   void printMomOrField(cuComplex* m, const char* filename);
+  void printHLspectrum(cuComplex* ghl);
   
 
  private:
@@ -30,4 +32,9 @@ class Diagnostics {
   dim3 dimGrid_xy, dimBlock_xy;
 
   void print_growth_rates_to_screen();
+
+  void HLspectrum(cuComplex* ghl);
+  float* hlspectrum;
+ 
+  float fluxDenom;
 };

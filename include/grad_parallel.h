@@ -5,10 +5,12 @@
 class GradParallel {
  public:
   
-  GradParallel(Grids* grids);
+  GradParallel(Grids* grids, bool abs=false);
   ~GradParallel();
 
-  void ikpar(Moments* m);
+  void eval(Moments* m);
+  void eval(cuComplex* m, cuComplex* res);
+  
  
  private:
   Grids* grids_;

@@ -231,3 +231,45 @@ __device__ int get_ikx(int idx) {
     return idx-nx;
 }
 
+__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
+        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
+          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
+          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
+                 double c3, cuComplex* m3, double c4, cuComplex* m4,
+                 double c5, cuComplex* m5)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
+        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
+          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
+          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx] 
+                         + c3*m3[globalIdx] + c4*m4[globalIdx] 
+                         + c5*m5[globalIdx];
+        }
+      }
+    }
+  }
+}

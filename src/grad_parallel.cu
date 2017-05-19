@@ -12,9 +12,17 @@ __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *k
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
-__managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
+__device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz = (float*) kzData;
+  unsigned int idz = offset / (nx*nyc);
+  ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element/nz;
+}
 
-GradParallel::GradParallel(Grids* grids) :
+__managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
+__managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
+
+GradParallel::GradParallel(Grids* grids, bool abs) :
   grids_(grids)
 {
   int n = grids_->Nz;
@@ -37,7 +45,11 @@ GradParallel::GradParallel(Grids* grids) :
   // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
 
   // set up callback functions
+  if(abs) {
+  cufftXtSetCallback(gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  } else {
   cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  }
 }
 
 GradParallel::~GradParallel() {
@@ -45,7 +57,8 @@ GradParallel::~GradParallel() {
   cufftDestroy(gradpar_plan_inverse);
 }
 
-void GradParallel::ikpar(Moments* m)
+// FFT and derivative for all moments
+void GradParallel::eval(Moments* m)
 {
   // FFT and derivative on parallel term
   // i*kz*ghl calculated via callback, defined as part of gradpar_plan_forward
@@ -55,4 +68,11 @@ void GradParallel::ikpar(Moments* m)
     cufftExecC2C(gradpar_plan_forward, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
     cufftExecC2C(gradpar_plan_inverse, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
   }
+}
+
+// FFT and derivative for a single moment
+void GradParallel::eval(cuComplex* m, cuComplex* res)
+{
+  cufftExecC2C(gradpar_plan_forward, m, res, CUFFT_FORWARD);
+  cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
 }

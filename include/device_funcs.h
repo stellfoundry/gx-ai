@@ -35,3 +35,11 @@ __host__ __device__ cuComplex operator/(cuComplex f, float scaler);
 __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) ;
 __device__ int get_ikx(int idx);
 
+__global__ void add_scaled_kernel(cuComplex* res, 
+                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
+                 double c3, cuComplex* m3, double c4, cuComplex* m4,
+                 double c5, cuComplex* m5);
+
+__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
+
+__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);

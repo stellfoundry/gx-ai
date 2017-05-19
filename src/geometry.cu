@@ -99,6 +99,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
       if(qsf<0) z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
     }  
 
+
   // if supported, prefetch memory from host to device
 //  int result = 0;
 //  int dev;

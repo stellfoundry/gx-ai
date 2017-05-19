@@ -8,10 +8,8 @@ Moments::Moments(Grids* grids) :
   HLsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
   Momsize_(sizeof(cuComplex)*grids->NxNycNz)
 {
-  int Nxyz = grids_->NxNycNz;
   int Nhermite = grids_->Nhermite;
   int Nlaguerre = grids_->Nlaguerre;
-  int Nmoms = grids_->Nmoms;
   checkCuda(cudaMalloc((void**) &ghl, HLsize_));
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
@@ -28,22 +26,22 @@ Moments::Moments(Grids* grids) :
     // set up pointers for named moments that point to parts of ghl
     int l,m;
     l = 0, m = 0; // density
-    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = gHL(l,m,s);
     
     l = 1, m = 0; // u_parallel
-    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = gHL(l,m,s);
     
     l = 2, m = 0; // T_parallel / sqrt(2)
-    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = gHL(l,m,s);
     
     l = 3, m = 0; // q_parallel / sqrt(6)
-    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = gHL(l,m,s);
 
     l = 0, m = 1; // T_perp 
-    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = gHL(l,m,s);
     
     l = 1, m = 1; // q_perp
-    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = &ghl[Nxyz*m + Nxyz*Nlaguerre*l + Nxyz*Nmoms*s];
+    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = gHL(l,m,s);
   }
 
   dimBlock = dim3(32, min(4, Nlaguerre), min(4, Nhermite));
@@ -59,7 +57,6 @@ Moments::~Moments() {
   free(qpar_ptr);
   free(qprp_ptr);
 }
-
 
 int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) {
  
@@ -126,41 +123,6 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   checkCuda(cudaGetLastError());
 
   return cudaGetLastError();
-}
-
-__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
-{
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
-          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx];
-        }
-      }
-    }
-  }
-}
-
-__global__ void add_scaled_kernel(cuComplex* res, 
-                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
-                 double c3, cuComplex* m3, double c4, cuComplex* m4,
-                 double c5, cuComplex* m5)
-{
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-        for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s; 
-          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx] 
-                         + c3*m3[globalIdx] + c4*m4[globalIdx] 
-                         + c5*m5[globalIdx];
-        }
-      }
-    }
-  }
 }
 
 int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {
