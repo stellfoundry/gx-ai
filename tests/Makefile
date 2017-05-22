@@ -45,14 +45,14 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 
 GRYFX_HEADERS = $(GRYFX_DIR)/include/*.h
 
-GRYFX_OBJS := $(wildcard $(GRYFX_DIR)/obj/*.o)
-GRYFX_OBJS := $(filter-out $(GRYFX_DIR)/obj/main.o, $(GRYFX_OBJS))
+GRYFX_OBJS := run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o
+GRYFX_OBJS := $(addprefix $(GRYFX_DIR)/obj/, $(GRYFX_OBJS))
 
 VPATH=.:src
 
 # House-keeping build targets.
 
-all : $(TESTS)
+all : test_all
 
 clean :
 	rm -f test_* obj/*.a obj/*.o
@@ -90,6 +90,11 @@ $(GRYFX_DIR)/obj/%.o:
 obj/test_%.o: test_%.cu
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I $(GRYFX_DIR)/include $(GTEST_FLAGS)
 
-test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS)
-	$(NVCC) $^ -o $@ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS) 
+	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
+test_all: $(addprefix obj/, $(TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS)
+	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+
+run_tests: test_all
+	./test_all;
