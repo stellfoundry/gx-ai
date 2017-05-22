@@ -20,7 +20,20 @@ Geometry::~Geometry() {
   cudaFree(cvdrift0);	
   cudaFree(grho);	
   cudaFree(jacobian);	
-  cudaFree(bmag_complex);	
+
+  cudaFreeHost(z);
+  cudaFreeHost(bmag);
+  cudaFreeHost(bmagInv);
+  cudaFreeHost(bgrad);
+  cudaFreeHost(gds2);	
+  cudaFreeHost(gds21);	
+  cudaFreeHost(gds22);	
+  cudaFreeHost(gbdrift);	
+  cudaFreeHost(gbdrift0);	
+  cudaFreeHost(cvdrift);	
+  cudaFreeHost(cvdrift0);	
+  cudaFreeHost(grho);	
+  cudaFreeHost(jacobian);	
 
   if(operator_arrays_allocated_) {
     cudaFree(kperp2);
@@ -30,20 +43,34 @@ Geometry::~Geometry() {
 
 S_alpha_geo::S_alpha_geo(Parameters *pars) 
 {
-    cudaMallocManaged((void**) &z, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &bmag, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &bmagInv, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &bgrad, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &gds2, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &gds21, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &gds22, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &gbdrift, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &gbdrift0, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &cvdrift, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &cvdrift0, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &grho, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &jacobian, sizeof(float)*pars->nz_in);
-    cudaMallocManaged((void**) &bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1));
+    size_t size = sizeof(float)*pars->nz_in;
+    cudaMallocHost((void**) &z_h, size);
+    cudaMallocHost((void**) &bmag_h, size);
+    cudaMallocHost((void**) &bmagInv_h, size);
+    cudaMallocHost((void**) &bgrad_h, size);
+    cudaMallocHost((void**) &gds2_h, size);
+    cudaMallocHost((void**) &gds21_h, size);
+    cudaMallocHost((void**) &gds22_h, size);
+    cudaMallocHost((void**) &gbdrift_h, size);
+    cudaMallocHost((void**) &gbdrift0_h, size);
+    cudaMallocHost((void**) &cvdrift_h, size);
+    cudaMallocHost((void**) &cvdrift0_h, size);
+    cudaMallocHost((void**) &grho_h, size);
+    cudaMallocHost((void**) &jacobian_h, size);
+
+    cudaMalloc((void**) &z, size);
+    cudaMalloc((void**) &bmag, size);
+    cudaMalloc((void**) &bmagInv, size);
+    cudaMalloc((void**) &bgrad, size);
+    cudaMalloc((void**) &gds2, size);
+    cudaMalloc((void**) &gds21, size);
+    cudaMalloc((void**) &gds22, size);
+    cudaMalloc((void**) &gbdrift, size);
+    cudaMalloc((void**) &gbdrift0, size);
+    cudaMalloc((void**) &cvdrift, size);
+    cudaMalloc((void**) &cvdrift0, size);
+    cudaMalloc((void**) &grho, size);
+    cudaMalloc((void**) &jacobian, size);
     
     gradpar = (float) abs(1./(pars->qsf*pars->rmaj));
 
@@ -64,63 +91,58 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     }
     
     for(int k=0; k<pars->nz_in; k++) {
-      z[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
-      if(qsf<0) {z[k] = 0.;}
-      bmag[k] = 1./(1.+pars->eps*cos(z[k]));
-      bmagInv[k] = 1./bmag[k];
-      bgrad[k] = gradpar*pars->eps*sin(z[k])*bmag[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-      gds2[k] = 1. + pow((pars->shat*z[k]-pars->shift*sin(z[k])),2);
-      gds21[k] = -pars->shat*(pars->shat*z[k]-pars->shift*sin(z[k]));
-      gds22[k] = pow(pars->shat,2);
-      gbdrift[k] = 1./(2.*pars->rmaj)*( cos(z[k]) + (pars->shat*z[k]-pars->shift*sin(z[k]))*sin(z[k]) );
-      cvdrift[k] = gbdrift[k];
-      gbdrift0[k] = -1./(2.*pars->rmaj)*pars->shat*sin(z[k]);
-      cvdrift0[k] = gbdrift0[k];
-      grho[k] = 1;
-      jacobian[k] = 1. / abs(pars->drhodpsi*gradpar*bmag[k]);
+      z_h[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+      if(qsf<0) {z_h[k] = 0.;}
+      bmag_h[k] = 1./(1.+pars->eps*cos(z_h[k]));
+      bgrad_h[k] = gradpar*pars->eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+      gds2_h[k] = 1. + pow((pars->shat*z_h[k]-pars->shift*sin(z_h[k])),2);
+      gds21_h[k] = -pars->shat*(pars->shat*z_h[k]-pars->shift*sin(z_h[k]));
+      gds22_h[k] = pow(pars->shat,2);
+      gbdrift_h[k] = 1./(2.*pars->rmaj)*( cos(z_h[k]) + (pars->shat*z_h[k]-pars->shift*sin(z_h[k]))*sin(z_h[k]) );
+      cvdrift_h[k] = gbdrift_h[k];
+      gbdrift0_h[k] = -1./(2.*pars->rmaj)*pars->shat*sin(z_h[k]);
+      cvdrift0_h[k] = gbdrift0_h[k];
+      grho_h[k] = 1;
       if(pars->const_curv) {
-        cvdrift[k] = 1./(2.*pars->rmaj);
-        gbdrift[k] = 1./(2.*pars->rmaj);
-        cvdrift0[k] = 0.;
-        gbdrift0[k] = 0.;
+        cvdrift_h[k] = 1./(2.*pars->rmaj);
+        gbdrift_h[k] = 1./(2.*pars->rmaj);
+        cvdrift0_h[k] = 0.;
+        gbdrift0_h[k] = 0.;
       }
       if(pars->slab) {
         //omegad=0:
-        cvdrift[k] = 0.;
-        gbdrift[k] = 0.;       
-        cvdrift0[k] = 0.;
-        gbdrift0[k] = 0.;
+        cvdrift_h[k] = 0.;
+        gbdrift_h[k] = 0.;       
+        cvdrift0_h[k] = 0.;
+        gbdrift0_h[k] = 0.;
         //bgrad=0:
-        bgrad[k] = 0.;
+        bgrad_h[k] = 0.;
         //bmag=const:
-        bmag[k] = 1.;
+        bmag_h[k] = 1.;
         //gradpar = 1.;
       }
-      if(qsf<0) z[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+      if(qsf<0) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+
+      // calculate these derived coefficients after slab overrides
+      bmagInv_h[k] = 1./bmag_h[k];
+      jacobian_h[k] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[k]);
     }  
 
+    cudaMemcpy(z       , z_h        , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gbdrift , gbdrift_h  , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(grho    , grho_h     , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(cvdrift , cvdrift_h  , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bmag    , bmag_h     , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bmagInv , bmagInv_h  , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bgrad   , bgrad_h    , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds2    , gds2_h     , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds21   , gds21_h    , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds22   , gds22_h    , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(cvdrift0, cvdrift0_h , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gbdrift0, gbdrift0_h , size, cudaMemcpyHostToDevice);
+    cudaMemcpy(jacobian, jacobian_h , size, cudaMemcpyHostToDevice);
 
-  // if supported, prefetch memory from host to device
-//  int result = 0;
-//  int dev;
-//  cudaGetDevice(&dev);
-//  cudaDeviceGetAttribute (&result, cudaDevAttrConcurrentManagedAccess, dev);
-//  if (result) {
-//    cudaMemPrefetchAsync(z, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(bmag, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(bmagInv, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(bgrad, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(gds2, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(gds21, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(gds22, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(gbdrift, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(gbdrift0, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(cvdrift, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(cvdrift0, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(grho, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(jacobian, sizeof(float)*pars->nz_in, dev);
-//    cudaMemPrefetchAsync(bmag_complex, sizeof(cuComplex)*(pars->nz_in/2+1), dev);
-//  } 
+    cudaDeviceSynchronize();
 
 }
 

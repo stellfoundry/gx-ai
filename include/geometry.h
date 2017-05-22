@@ -10,12 +10,26 @@ class Geometry {
   Geometry() {operator_arrays_allocated_=false;};
   ~Geometry();
   
+  float *z_h;
+  float *gbdrift_h;
+  float *grho_h;
+  float *cvdrift_h;
+  float *bmag_h;
+  float *bmagInv_h;
+  float *bgrad_h;
+  float *gds2_h;
+  float *gds21_h;
+  float *gds22_h;
+  float *cvdrift0_h;
+  float *gbdrift0_h;
+  float *jacobian_h;
+
   float *z;
-  float *gradpar_arr;
   float *gbdrift;
   float *grho;
   float *cvdrift;
   float *bmag;
+  float *bmagInv;
   float *bgrad;
   float *gds2;
   float *gds21;
@@ -23,6 +37,8 @@ class Geometry {
   float *cvdrift0;
   float *gbdrift0;
   float *jacobian;
+
+  float *gradpar_arr;
   float * Rplot;
   float * Zplot;
   float * aplot;
@@ -40,7 +56,6 @@ class Geometry {
   float shat;
   
   cuComplex * bmag_complex;
-  float * bmagInv;
 
   // operator arrays
   float * kperp2;

@@ -283,7 +283,7 @@
   write_phi = "on"
   restart = "off"
   no_zderiv_covering = "off"
-  slab = "on"
+  slab = "off"
   const_curv = "off"
   varenna = "off"
   ivarenna = -1

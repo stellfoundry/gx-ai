@@ -88,8 +88,8 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
           //loop over z here to get rid of randomness in z in initial condition
           for(int k=0; k<grids_->Nz; k++) {
               int index = i + grids_->Nyc*j + grids_->NxNyc*k;
-    	      init_h[index].x = samp*cos(pars->kpar_init*geo->z[k]/pars->Zp);
-              init_h[index].y = samp*cos(pars->kpar_init*geo->z[k]/pars->Zp);
+    	      init_h[index].x = samp*cos(pars->kpar_init*geo->z_h[k]/pars->Zp);
+              init_h[index].y = samp*cos(pars->kpar_init*geo->z_h[k]/pars->Zp);
           }
       }
     }

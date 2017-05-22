@@ -36,7 +36,7 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = test_parameters test_grids
+TESTS = test_parameters test_grids test_geometry
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -81,19 +81,22 @@ obj/gtest.a : obj/gtest-all.o
 obj/gtest_main.a : obj/gtest-all.o obj/gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(GRYFX_DIR)/obj/%.o: 
+$(GRYFX_DIR)/obj/%.o: $(GRYFX_DIR)/src/%.cu
 	cd $(GRYFX_DIR); \
 	make obj/$*.o; \
 	cd tests;
 
 # Build tests
-obj/test_%.o: test_%.cu
+obj/test_%.o: test_%.cu 
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I $(GRYFX_DIR)/include $(GTEST_FLAGS)
 
-test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS) 
+obj/device_test.o: device_test.cu
+	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) $(GTEST_FLAGS)
+
+test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-test_all: $(addprefix obj/, $(TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS)
+test_all: $(addprefix obj/, $(TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 run_tests: test_all
