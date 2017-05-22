@@ -36,7 +36,7 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = test_parameters
+TESTS = test_parameters test_grids
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -45,11 +45,14 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 
 GRYFX_HEADERS = $(GRYFX_DIR)/include/*.h
 
+GRYFX_OBJS := $(wildcard $(GRYFX_DIR)/obj/*.o)
+GRYFX_OBJS := $(filter-out $(GRYFX_DIR)/obj/main.o, $(GRYFX_OBJS))
+
 VPATH=.:src
 
 # House-keeping build targets.
 
-all : test_parameters
+all : $(TESTS)
 
 clean :
 	rm -f test_* obj/*.a obj/*.o
@@ -87,6 +90,6 @@ $(GRYFX_DIR)/obj/%.o:
 obj/test_%.o: test_%.cu
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I $(GRYFX_DIR)/include $(GTEST_FLAGS)
 
-test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_DIR)/obj/%.o
+test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS)
 	$(NVCC) $^ -o $@ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
