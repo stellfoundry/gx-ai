@@ -63,8 +63,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
       }
     }
     
-  for(int k=0; k<pars->nz_in; k++) {
-    z[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+    for(int k=0; k<pars->nz_in; k++) {
+      z[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
       if(qsf<0) {z[k] = 0.;}
       bmag[k] = 1./(1.+pars->eps*cos(z[k]));
       bmagInv[k] = 1./bmag[k];

@@ -108,7 +108,6 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   // copy initial condition into device memory
   if(pars->init == DENS) {
     cudaMemcpy(dens_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
-    cudaMemcpy(upar_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
 
     // reality condition
     //operations_->reality(ghl);

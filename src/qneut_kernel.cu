@@ -18,7 +18,7 @@ __global__ void real_space_density(cuComplex* nbar, cuComplex* ghl, float *b, sp
       //#pragma unroll
       for(int m=0; m<nlaguerre; m++) {
         // sum over m for l=0
-        nbar[idxyz] = nbar[idxyz] + Jflr(m,b_*s.rho*s.rho)*G(idxyz, 0, m, is);
+        nbar[idxyz] = nbar[idxyz] + Jflr(m,b_)*G(idxyz, 0, m, is);
       }
     }
   }

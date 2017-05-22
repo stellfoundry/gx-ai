@@ -18,7 +18,7 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   float* tmpXZ;
   cudaMalloc((void**) &tmpXZ, sizeof(float)*grids_->Nx*grids_->Nz);
   dim3 dimBlock = dim3(maxThreadsPerBlock_/grids_->Nz, grids_->Nz, 1);
-  dim3 dimGrid = dim3(grids_->Nx/dimBlock.y+1, 1, 1);
+  dim3 dimGrid = dim3(grids_->Nx/dimBlock.x+1, 1, 1);
   calc_phiavgdenom<<<dimGrid,dimBlock>>>(phiavgdenom, tmpXZ, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te); 
   print_cudims(dimGrid, dimBlock);
   cudaFree(tmpXZ);

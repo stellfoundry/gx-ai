@@ -32,7 +32,6 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     printf("size of shared memory block must be less than 48 KB, so make sure (nhermite+4)*(nlaaguerre+2)<192.\n");
     exit(1);
   }
-  
 }
 
 Linear::~Linear()

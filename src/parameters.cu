@@ -43,13 +43,13 @@ int Parameters::read_namelist(char* filename)
 {
   strncpy(run_name, filename, strlen(filename)-3);
 
-	fnr_abort_on_error = 1;
-	fnr_abort_if_missing = 0;
-	fnr_abort_if_no_default = 1;
+  fnr_abort_on_error = 1;
+  fnr_abort_if_missing = 0;
+  fnr_abort_if_no_default = 1;
   struct fnr_struct namelist_struct = fnr_read_namelist_file(filename);  
   struct fnr_struct namelist_defaults = fnr_read_namelist_string(default_namelist_string);  
-	fnr_check_namelist_against_template(&namelist_struct, &namelist_defaults);
-	fnr_set_defaults(&namelist_struct, &namelist_defaults);
+  fnr_check_namelist_against_template(&namelist_struct, &namelist_defaults);
+  fnr_set_defaults(&namelist_struct, &namelist_defaults);
   fnr_get_int(&namelist_struct, "theta_grid_parameters", "nperiod", &nperiod);
 
   fnr_get_int(&namelist_struct, "theta_grid_parameters", "ntheta", &(nz_in));

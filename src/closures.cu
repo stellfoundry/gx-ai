@@ -16,7 +16,7 @@ Beer42::Beer42(Grids* grids, float* omegad):
 
   D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
   D_perp = sqrt(M_PI)/2.;
-  Beta_par = 2.*(32.-9.*M_PI)/(6.*M_PI-16.);
+  Beta_par = (32.-9.*M_PI)/(3.*M_PI-8.);
 
   cuComplex nu_h[11];
   nu_h[0].x = 0.; // dummy

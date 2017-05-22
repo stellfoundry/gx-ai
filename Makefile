@@ -73,7 +73,7 @@ VPATH=.:src
 HEADERS=$(wildcard include/*.h) 
 
 ## special dependencies
-obj/parameters.o: inputs/namelist_defaults.c 
+obj/parameters.o: inputs/namelist_defaults.c c_fortran_namelist3.c
 obj/solver.o: qneut_kernel.cu 
 
 obj/%.o: %.cu $(HEADERS)

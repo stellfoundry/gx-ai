@@ -7,3 +7,4 @@ gryfx
 gryfx++
 *.out*
 *.field
+tests/test_*
