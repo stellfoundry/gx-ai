@@ -150,7 +150,8 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
 
       for(int is=0; is<nspecies; is++) {
         specie s = species[is];
-        pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+        //pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+        pfilter2 += ( 1. - g0(b_) );
       }
 
       PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
@@ -176,7 +177,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
 
       for(int is=0; is<nspecies; is++) {
         specie s = species[is];
-        pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+        //pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+        pfilter2 += ( 1. - g0(b_) );
       }
 
       cuDoubleComplex PhiAvgNum_zSum;
@@ -377,7 +379,8 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ,
 
   for(int is=0; is<nspecies; is++) {
     specie s = species[is];
-    pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+    //pfilter2 += s.dens*s.z*s.zt*( 1. - g0(b_*s.rho*s.rho) );
+    pfilter2 += ( 1. - g0(b_) );
   }
    
     PhiAvgDenom_tmpXZ[idxz] = pfilter2*jacobian[idz]/( ti_ov_te + pfilter2 );

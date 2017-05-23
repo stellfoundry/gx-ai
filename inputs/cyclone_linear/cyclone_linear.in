@@ -165,7 +165,7 @@
  tprim = 6.9 ! -1/T (dT/drho)
  fprim = 2.2 ! -1/n (dn/drho)
  uprim = 0.0 ! ?
- vnewk = 0. ! collisionality parameter
+ vnewk = 0.1 ! collisionality parameter
  type = "ion" ! Type of species, e.g. 'ion', 'electron', 'beam'
 /
 &species_parameters_2

@@ -48,10 +48,13 @@ Beer42::Beer42(Grids* grids, const Geometry* geo):
   // 1d thread blocks over xyz
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
-  
 }
 
 Beer42::~Beer42() {
+  cudaFree(tmp);
+  cudaFree(nu);
+  delete grad_par;
+  delete abs_grad_par;
 }
 
 int Beer42::apply_closures(Moments* m, Moments* mRhs) 
