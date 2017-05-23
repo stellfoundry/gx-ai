@@ -8,8 +8,8 @@ __device__ unsigned int get_id1(void);
 __device__ unsigned int get_id2(void);
 __device__ unsigned int get_id3(void);
 
-__device__ float factorial(int m);
-__device__ float Jflr(int m, float b);
+__host__ __device__ float factorial(int m);
+__host__ __device__ float Jflr(int m, float b);
 
 __device__ float g0(float b);
 __device__ float g1(float b);

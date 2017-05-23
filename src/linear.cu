@@ -62,7 +62,7 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
 }
 
 // main kernel function for calculating RHS
-# define S_G(L, M) s_g[sidxyz + sDimx*(M) + sDimx*sDimy*(L)]
+# define S_G(L, M) s_g[sidxyz + (sDimx)*(M) + (sDimx)*(sDimy)*(L)]
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad, float* bgrad, float* ky, specie* species,
                            cuComplex* rhs_par, cuComplex* rhs)
 {
@@ -115,7 +115,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
      }
     }
   
-    __syncthreads();
+    // this syncthreads isnt necessary unless ghosts require information from interior cells
+    //__syncthreads();
   
     // set up ghost cells in l (for all m's)
     for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {

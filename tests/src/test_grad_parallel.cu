@@ -83,9 +83,11 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
   float* init_check = (float*) malloc(sizeof(float)*grids->Nz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->Nz);
 
+  srand(22);
+  float ra = (float) (pars->init_amp *(rand()-RAND_MAX/2)/RAND_MAX);
   for(int i=0; i<grids->Nz; i++) {
-    init_check[i] = pars->init_amp*cos(2.*geo->z_h[i]);
-    deriv_check[i] = -2.*pars->init_amp*sin(2.*geo->z_h[i]);
+    init_check[i] = ra*cos(2.*geo->z_h[i]);
+    deriv_check[i] = -2.*ra*sin(2.*geo->z_h[i]);
   }
 
   // check initial condition
@@ -132,12 +134,14 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
 
+  srand(22);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
+      float ra = (float) (pars->init_amp * (rand()-RAND_MAX/2) / RAND_MAX);
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        init_check[index] = pars->init_amp*cos(2.*geo->z_h[k]);
-        deriv_check[index] = -2.*pars->init_amp*sin(2.*geo->z_h[k]);
+        init_check[index] = ra*cos(2.*geo->z_h[k]);
+        deriv_check[index] = -2.*ra*sin(2.*geo->z_h[k]);
       }
     }
   }

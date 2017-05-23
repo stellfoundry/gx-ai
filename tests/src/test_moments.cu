@@ -49,11 +49,13 @@ TEST_F(TestMoments, InitConditions) {
 
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
 
+  srand(22);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
+      float ra = (float) (pars->init_amp * (rand()-RAND_MAX/2) / RAND_MAX);
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        init_check[index] = pars->init_amp*cos(2.*geo->z_h[k]);
+        init_check[index] = ra*cos(2.*geo->z_h[k]);
       }
     }
   }
@@ -98,11 +100,13 @@ TEST_F(TestMoments, AddMoments)
   pars->init_amp = .01;
   pars->kpar_init = 2.;
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
+  srand(22);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
+      float ra = (float) (pars->init_amp * (rand()-RAND_MAX/2) / RAND_MAX);
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        init_check[index] = pars->init_amp*cos(2.*geo->z_h[k]);
+        init_check[index] = ra*cos(2.*geo->z_h[k]);
       }
     }
   }
