@@ -36,7 +36,7 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = test_parameters test_grids test_geometry test_grad_parallel
+TESTS = test_parameters test_grids test_geometry test_grad_parallel test_moments
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.

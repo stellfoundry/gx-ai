@@ -21,19 +21,19 @@ Geometry::~Geometry() {
   cudaFree(grho);	
   cudaFree(jacobian);	
 
-  cudaFreeHost(z);
-  cudaFreeHost(bmag);
-  cudaFreeHost(bmagInv);
-  cudaFreeHost(bgrad);
-  cudaFreeHost(gds2);	
-  cudaFreeHost(gds21);	
-  cudaFreeHost(gds22);	
-  cudaFreeHost(gbdrift);	
-  cudaFreeHost(gbdrift0);	
-  cudaFreeHost(cvdrift);	
-  cudaFreeHost(cvdrift0);	
-  cudaFreeHost(grho);	
-  cudaFreeHost(jacobian);	
+  cudaFreeHost(z_h);
+  cudaFreeHost(bmag_h);
+  cudaFreeHost(bmagInv_h);
+  cudaFreeHost(bgrad_h);
+  cudaFreeHost(gds2_h);	
+  cudaFreeHost(gds21_h);	
+  cudaFreeHost(gds22_h);	
+  cudaFreeHost(gbdrift_h);	
+  cudaFreeHost(gbdrift0_h);	
+  cudaFreeHost(cvdrift_h);	
+  cudaFreeHost(cvdrift0_h);	
+  cudaFreeHost(grho_h);	
+  cudaFreeHost(jacobian_h);	
 
   if(operator_arrays_allocated_) {
     cudaFree(kperp2);
@@ -43,6 +43,7 @@ Geometry::~Geometry() {
 
 S_alpha_geo::S_alpha_geo(Parameters *pars) 
 {
+    operator_arrays_allocated_=false;
     size_t size = sizeof(float)*pars->nz_in;
     cudaMallocHost((void**) &z_h, size);
     cudaMallocHost((void**) &bmag_h, size);

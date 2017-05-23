@@ -49,13 +49,13 @@ Moments::Moments(Grids* grids) :
 }
 
 Moments::~Moments() {
-  cudaFree(ghl);
   free(dens_ptr);
   free(upar_ptr);
   free(tpar_ptr);
   free(tprp_ptr);
   free(qpar_ptr);
   free(qprp_ptr);
+  cudaFree(ghl);
 }
 
 int Moments::initialConditions(Parameters* pars, Geometry* geo) {
@@ -124,6 +124,16 @@ int Moments::initialConditions(Parameters* pars, Geometry* geo) {
   checkCuda(cudaGetLastError());
 
   return cudaGetLastError();
+}
+
+int Moments::zero() {
+  cudaMemset(ghl, 0., HLsize_);
+  return 0;
+}
+
+int Moments::zero(int l, int m, int s) {
+  cudaMemset(gHL(l,m,s), 0., Momsize_);
+  return 0;
 }
 
 int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {

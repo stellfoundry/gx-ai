@@ -309,5 +309,7 @@ class Parameters {
 
       int scheme;
       char run_name[2000];
+  private:
+    bool initialized;
 };
 

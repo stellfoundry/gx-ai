@@ -21,6 +21,9 @@ class Moments {
   int add_scaled(double c1, Moments* m1, double c2, Moments* m2, 
                  double c3, Moments* m3, double c4, Moments* m4,
                  double c5, Moments* m5);
+
+  int zero();
+  int zero(int l, int m, int s=0);
   
   inline void copyFrom(Moments* source) {
     cudaMemcpy(ghl, source->ghl, HLsize_, cudaMemcpyDeviceToDevice);

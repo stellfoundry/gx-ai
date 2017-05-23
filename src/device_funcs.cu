@@ -7,12 +7,12 @@ __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+th
 
 
 // use stirling's approximation
-__device__ float factorial(int m) {
+__host__ __device__ float factorial(int m) {
   if(m<2) return 1.;
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__device__ float Jflr(int m, float b) {
+__host__ __device__ float Jflr(int m, float b) {
   return 1./factorial(m)*pow(-0.5*b, m)*expf(-b/2.);
 }
 

@@ -63,7 +63,6 @@ class Geometry {
 
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
 
- private:
   bool operator_arrays_allocated_;
 };
 

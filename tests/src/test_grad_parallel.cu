@@ -29,6 +29,7 @@ protected:
   virtual void TearDown() {
     delete grids;
     delete grad_par;
+    delete pars;
   }
 
   Parameters* pars;
@@ -58,6 +59,7 @@ protected:
   virtual void TearDown() {
     delete grids;
     delete grad_par;
+    delete pars;
   }
 
   Parameters* pars;
@@ -103,6 +105,12 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
   for(int i=0; i<grids->Nz; i++) {
     EXPECT_FLOAT_EQ_D(&momsInit->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
   }
+
+  free(init_check);
+  free(deriv_check);
+  delete momsInit;
+  delete momsRes;
+  delete geo;
 }
 
 TEST_F(TestGradParallel3D, EvaluateDerivative) {
@@ -112,7 +120,7 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   //Diagnostics* diagnostics;
   //diagnostics = new Diagnostics(pars, grids, geo);
 
-  Moments* momsInit, *momsRes;
+  Moments *momsInit, *momsRes;
   momsInit = new Moments(grids);
   momsRes = new Moments(grids);
   pars->init_single = false;
@@ -166,4 +174,9 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
       }
     }
   }
+  free(init_check);
+  free(deriv_check);
+  delete momsInit;
+  delete momsRes;
+  delete geo;
 }

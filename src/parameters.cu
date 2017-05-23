@@ -33,10 +33,11 @@ bool get_bool(struct fnr_struct * namelist_struct, const char * namelist, const 
 }
 
 Parameters::Parameters() {
+  initialized = false;
 }
 
 Parameters::~Parameters() {
-  cudaFree(species);
+  if(initialized) cudaFree(species);
 }
 
 int Parameters::read_namelist(char* filename)
@@ -465,6 +466,7 @@ int Parameters::read_namelist(char* filename)
 		fnr_free(&namelist_struct);
 		fnr_free(&namelist_defaults);
 
+  initialized = true;
   return 0;
 }
 
