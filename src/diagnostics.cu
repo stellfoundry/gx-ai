@@ -80,6 +80,9 @@ void Diagnostics::final_diagnostics(Moments* moms, Fields* fields)
 
   // print Hermite-Laguerre spectrum |G|**2(l,m)
   printHLspectrum(moms->ghl);
+
+  // print geometry coefficient arrays
+  printGeo();
 }
 
 
@@ -130,7 +133,7 @@ void Diagnostics::printMomOrField(cuComplex* m, const char* name) {
       for(int k=0; k<=Nz; k++) {
         int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
 	//if(index!=0){
-	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
+	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
 	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
         //}
       }     
@@ -142,7 +145,7 @@ void Diagnostics::printMomOrField(cuComplex* m, const char* name) {
       blockid++;
       for(int k=0; k<=Nz; k++) {
         int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
-	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
+	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
 	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
       }    
     }
@@ -200,4 +203,19 @@ void Diagnostics::HLspectrum(cuComplex* ghl)
       //out[0]=0.;
     }
   }
+}
+
+void Diagnostics::printGeo() 
+{
+  char ofilename[2000];
+  sprintf(ofilename, "%s.geo.z", pars_->run_name);
+  FILE* out = fopen(ofilename,"w+");
+
+  fprintf(out, "#\tz:1\t\tbmag:2\t\tbgrad:3\t\tgbd:4\t\tgbd0:5\t\tcvd:6\t\tcvd0:7\t\tgds2:8\t\tgds21:9\t\tgds22:10\tgrho:11\t\tjacobian:12\n");
+  for(int i=0; i<grids_->Nz; i++) {
+    fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", geo_->z_h[i], geo_->bmag_h[i], geo_->bgrad_h[i], geo_->gbdrift_h[i], geo_->gbdrift0_h[i], geo_->cvdrift_h[i], geo_->cvdrift0_h[i], geo_->gds2_h[i], geo_->gds21_h[i], geo_->gds22_h[i], geo_->grho_h[i], geo_->jacobian_h[i]);
+  }
+  //periodic point
+  int i=0;
+  fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", -geo_->z_h[i], geo_->bmag_h[i], geo_->bgrad_h[i], geo_->gbdrift_h[i], geo_->gbdrift0_h[i], geo_->cvdrift_h[i], geo_->cvdrift0_h[i], geo_->gds2_h[i], geo_->gds21_h[i], geo_->gds22_h[i], geo_->grho_h[i], geo_->jacobian_h[i]);
 }

@@ -8,3 +8,4 @@ gryfx++
 *.out*
 *.field
 tests/test_*
+*.z

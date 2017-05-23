@@ -79,9 +79,9 @@
 /
 
 &hl_grids_knobs
- nhermite = 6
- nlaguerre = 6
- !closure_model = "beer4+2" ! setting this to a value other than "none" may override nhermite and nlaguerre
+ nhermite = 8
+ nlaguerre = 8
+ closure_model = "beer4+2" ! setting this to a value other than "none" may override nhermite and nlaguerre
 /
 
 
@@ -112,8 +112,8 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.002 ! Time step
- nstep = 10000 ! Maximum number of timesteps
+ delt = 0.02 ! Time step
+ nstep = 2500 ! Maximum number of timesteps
 /
 
 !==============================

@@ -5,8 +5,8 @@
 
 __global__ void toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
 
-Beer42::Beer42(Grids* grids, float* omegad):
-    grids_(grids), omegad_(omegad)
+Beer42::Beer42(Grids* grids, const Geometry* geo): 
+    grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
 {
   // set up parallel derivatives, including |kpar|
   grad_par = new GradParallel(grids_);
@@ -63,15 +63,15 @@ int Beer42::apply_closures(Moments* m, Moments* mRhs)
   // parallel terms (each must be done separately because of FFTs)
   grad_par->eval(m->gHL(2,0), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -Beta_par/sqrt(3.), tmp);
+      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -Beta_par/sqrt(3.)*gradpar_, tmp);
 
   abs_grad_par->eval(m->gHL(3,0), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -sqrt(2.)*D_par, tmp);
+      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -sqrt(2.)*D_par*gradpar_, tmp);
 
   abs_grad_par->eval(m->gHL(1,1), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(1,1), 1., mRhs->gHL(1,1), -sqrt(2.)*D_perp, tmp);
+      (mRhs->gHL(1,1), 1., mRhs->gHL(1,1), -sqrt(2.)*D_perp*gradpar_, tmp);
   
   // toroidal terms
   toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, nu);

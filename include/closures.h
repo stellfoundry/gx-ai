@@ -3,6 +3,7 @@
 #include "grids.h"
 #include "moments.h"
 #include "grad_parallel.h"
+#include "geometry.h"
 
 class Closures {
  public:
@@ -12,7 +13,7 @@ class Closures {
 
 class Beer42 : public Closures {
  public:
-  Beer42(Grids* grids, float* omegad);
+  Beer42(Grids* grids, const Geometry* geo);
   ~Beer42();
   int apply_closures(Moments* m, Moments* mRhs);
 
@@ -22,6 +23,7 @@ class Beer42 : public Closures {
   GradParallel* abs_grad_par;
 
   float* omegad_;
+  float gradpar_;
 
   cuComplex* tmp;
 

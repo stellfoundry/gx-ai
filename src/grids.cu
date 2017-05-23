@@ -2,8 +2,7 @@
 #include "cuda_constants.h"
 
 __global__ void kInit(float* kx, float* ky, float* kz, 
-                      float X0, float Y0, int Zp, 
-                      float qsf, float shat, bool no_zderiv) 
+                      float X0, float Y0, int Zp) 
 {
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -64,8 +63,7 @@ Grids::Grids(Parameters* pars) :
   // initialize k arrays
   int Nmax = max(max(Nx, Nyc),Nz);
   kInit<<<1, Nmax>>>(kx, ky, kz,
-                     pars_->x0, pars_->y0, pars_->Zp,
-                     pars_->qsf, pars_->shat, pars_->no_zderiv);
+                     pars_->x0, pars_->y0, pars_->Zp);
 
   cudaMemcpy(kx_h, kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
   cudaMemcpy(ky_h, ky, sizeof(float)*Nyc, cudaMemcpyDeviceToHost);

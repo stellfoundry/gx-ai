@@ -19,7 +19,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
  
   if(pars_->closure_model==BEER42) {
     printf("Initializing Beer 4+2 closures\n");
-    closures = new Beer42(grids_, geo_->omegad);
+    closures = new Beer42(grids_, geo_);
   }
 
   // set up CUDA grids for main linear kernel
@@ -179,7 +179,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
         rhs[globalIdx] = rhs[globalIdx] - phi_ * ( m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * bgrad_;
       }
       if(l==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_);
+        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2);
       }
      } // m loop
     } // l loop

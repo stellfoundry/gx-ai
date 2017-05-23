@@ -15,6 +15,7 @@ class Diagnostics {
 
   void printMomOrField(cuComplex* m, const char* filename);
   void printHLspectrum(cuComplex* ghl);
+  void printGeo();
   
 
  private:

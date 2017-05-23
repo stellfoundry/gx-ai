@@ -58,7 +58,7 @@ Moments::~Moments() {
   free(qprp_ptr);
 }
 
-int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) {
+int Moments::initialConditions(Parameters* pars, Geometry* geo) {
  
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
   cuComplex* init_h = (cuComplex*) malloc(Momsize_);
@@ -108,13 +108,15 @@ int Moments::initialConditions(Fields* fields, Parameters* pars, Geometry* geo) 
   // copy initial condition into device memory
   if(pars->init == DENS) {
     cudaMemcpy(dens_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
-
+  }
+  if(pars->init == UPAR) {
+    cudaMemcpy(upar_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
+  }
     // reality condition
     //operations_->reality(ghl);
 
     // mask
     //operations_->mask(ghl);
-  }
 
   free(init_h);
 

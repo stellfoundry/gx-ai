@@ -49,7 +49,6 @@ TEST_F(TestGeometry, GeoCoefficentArrays) {
 }
 
 TEST_F(TestGeometry, SlabGeoCoefficentArrays) {
-
   for(int k=0; k<pars->nz_in; k++) {
     EXPECT_FLOAT_EQ_D(&geo_slab->z[k], 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in);
     EXPECT_FLOAT_EQ_D(&geo_slab->bmag[k], 1.);

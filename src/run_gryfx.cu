@@ -83,7 +83,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     moms = new Moments(grids);
     checkCuda(cudaGetLastError());
     printf("Setting initial conditions...\n");
-    moms->initialConditions(fields, pars, geo);
+    moms->initialConditions(pars, geo);
     checkCuda(cudaGetLastError());
 
     printf("Initializing field solver...\n");
