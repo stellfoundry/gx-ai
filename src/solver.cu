@@ -24,7 +24,7 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaFree(tmpXZ);
 
   // cuda dims for qneut calculation
-  dimBlock_qneut = dim3(32, 8, 4);
+  dimBlock_qneut = dim3(32, 4, 4);
   dimGrid_qneut = dim3(grids_->Nyc/dimBlock.x+1, grids_->Nx/dimBlock.y+1, grids_->Nz/dimBlock.z+1);
 }
 

@@ -23,13 +23,15 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   // set up CUDA grids for main linear kernel
-  dimBlock = dim3(32, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
+  // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
+  // this allows use of 4x more HL resolution without changing shared memory layouts.
+  dimBlock = dim3(8, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
-  sharedSize = 32*(grids_->Nlaguerre+2)*(grids_->Nhermite+4)*sizeof(cuComplex);
+  sharedSize = dimBlock.x*(grids_->Nlaguerre+2)*(grids_->Nhermite+4)*sizeof(cuComplex);
   printf("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
   if(sharedSize/1024.>48.) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
-    printf("size of shared memory block must be less than 48 KB, so make sure (nhermite+4)*(nlaaguerre+2)<192.\n");
+    printf("size of shared memory block must be less than 48 KB, so make sure (nhermite+4)*(nlaaguerre+2)<%d.\n", 48*1024/8/dimBlock.x);
     exit(1);
   }
 }
@@ -38,7 +40,7 @@ Linear::~Linear()
 {
   delete grad_par;
   delete mRhs_par;
-  delete closures;
+  if(pars_->closure_model>0) delete closures;
 }
 
 int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
@@ -76,7 +78,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
     const unsigned int idz = idxyz / (nx*nyc);
   
     // shared memory blocks of size 32 * (nlaguerre+2) * (nhermite+4)
-    const int sDimx = 32;
+    const int sDimx = blockDim.x;
     const int sDimy = nlaguerre+2;
   
     // read these values into (hopefully) register memory. 

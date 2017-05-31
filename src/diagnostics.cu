@@ -75,14 +75,16 @@ void Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
 void Diagnostics::final_diagnostics(Moments* moms, Fields* fields) 
 {
   // print final moments and fields
-  printMomOrField(moms->dens_ptr[0], "dens");
-  printMomOrField(fields->phi, "phi");
+  writeMomOrField(moms->dens_ptr[0], "dens");
+  writeMomOrField(fields->phi, "phi");
 
-  // print Hermite-Laguerre spectrum |G|**2(l,m)
-  printHLspectrum(moms->ghl);
+  // write Hermite-Laguerre spectrum |G|**2(l,m)
+  writeHLspectrum(moms->ghl);
 
-  // print geometry coefficient arrays
-  printGeo();
+  // write geometry coefficient arrays
+  writeGeo();
+
+  if(pars_->write_omega) writeGrowthRates();
 }
 
 
@@ -114,7 +116,39 @@ void Diagnostics::print_growth_rates_to_screen()
   	}	
 }
 
-void Diagnostics::printMomOrField(cuComplex* m, const char* name) {
+void Diagnostics::writeGrowthRates()
+{
+  int Nx = grids_->Nx;
+  int Ny = grids_->Ny;
+
+  char ofilename[2000];
+  sprintf(ofilename, "%s.omega.kykx", pars_->run_name);
+  FILE* out = fopen(ofilename,"w+");
+
+  	fprintf(out, "ky\tkx\t\tomega\t\tgamma\t\tconverged?\n");
+  	//for(int i=0; i<1; i++) {
+        for(int i=0; i<((Nx-1)/3+1); i++) {
+  	  for(int j=0; j<((Ny-1)/3+1); j++) {
+  	    int index = j + (Ny/2+1)*i;
+  	    if(index!=0) {
+  	      fprintf(out, "%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
+  	      fprintf(out, "\n");
+  	    }
+  	  }
+  	  fprintf(out, "\n");
+  	}
+  	//for(int i=2*Nx/3+1; i<2*Nx/3+1; i++) {
+        for(int i=2*Nx/3+1; i<Nx; i++) {
+            for(int j=0; j<((Ny-1)/3+1); j++) {
+  	    int index = j + (Ny/2+1)*i;
+  	      fprintf(out, "%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
+  	      fprintf(out, "\n");
+  	  }
+  	  fprintf(out, "\n");
+  	}	
+}
+
+void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
   int Nx = grids_->Nx;
   int Ny = grids_->Ny;
   int Nz = grids_->Nz;
@@ -153,7 +187,7 @@ void Diagnostics::printMomOrField(cuComplex* m, const char* name) {
   fclose(out);
 }
 
-void Diagnostics::printHLspectrum(cuComplex* ghl)
+void Diagnostics::writeHLspectrum(cuComplex* ghl)
 {
   // calculate spectrum  
   HLspectrum(ghl);
@@ -205,7 +239,7 @@ void Diagnostics::HLspectrum(cuComplex* ghl)
   }
 }
 
-void Diagnostics::printGeo() 
+void Diagnostics::writeGeo() 
 {
   char ofilename[2000];
   sprintf(ofilename, "%s.geo.z", pars_->run_name);

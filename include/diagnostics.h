@@ -13,9 +13,10 @@ class Diagnostics {
   void loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
   void final_diagnostics(Moments* moms, Fields* fields);
 
-  void printMomOrField(cuComplex* m, const char* filename);
-  void printHLspectrum(cuComplex* ghl);
-  void printGeo();
+  void writeMomOrField(cuComplex* m, const char* filename);
+  void writeHLspectrum(cuComplex* ghl);
+  void writeGeo();
+  void writeGrowthRates();
   
 
  private:

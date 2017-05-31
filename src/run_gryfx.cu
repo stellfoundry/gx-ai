@@ -114,8 +114,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     printf("After initialization:\n");
     getDeviceMemoryUsage();
   
-    diagnostics->printMomOrField(moms->dens_ptr[0], "dens0");
-    diagnostics->printMomOrField(fields->phi, "phi0");
+    diagnostics->writeMomOrField(moms->dens_ptr[0], "dens0");
+    diagnostics->writeMomOrField(fields->phi, "phi0");
   }
 
   // TIMESTEP LOOP
@@ -138,13 +138,15 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     }
     counter++;
   }
-  printf("Step %d\n", counter);
-  printf("Finished timestep loop\n");
-  checkCuda(cudaGetLastError());
 
   cudaEventRecord(stop,0);
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&timer,start,stop);
+
+  printf("Step %d\n", counter);
+  printf("Finished timestep loop\n");
+  checkCuda(cudaGetLastError());
+
  }
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
