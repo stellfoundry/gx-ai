@@ -77,7 +77,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
     const unsigned int idy = idxyz % (nx*nyc) % nyc; 
     const unsigned int idz = idxyz / (nx*nyc);
   
-    // shared memory blocks of size 32 * (nlaguerre+2) * (nhermite+4)
+    // shared memory blocks of size blockDim.x * (nlaguerre+2) * (nhermite+4)
     const int sDimx = blockDim.x;
     const int sDimy = nlaguerre+2;
   

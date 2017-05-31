@@ -470,7 +470,7 @@ int Parameters::read_namelist(char* filename)
   return 0;
 }
 
-// this function copies elements of input_parameters struct into external_parameters_struct externalpars
+// this function copies elements of parameters object into external_parameters_struct externalpars
 int Parameters::set_externalpars(external_parameters_struct* externalpars) {
     externalpars->equilibrium_type = equilibrium_type;
 
@@ -530,7 +530,7 @@ int Parameters::set_externalpars(external_parameters_struct* externalpars) {
   return 0;
 }
 
-// this function copies elements of external_parameters_struct externalpars into input_parameters struct
+// this function copies elements of external_parameters_struct externalpars into parameters object
 int Parameters::import_externalpars(external_parameters_struct* externalpars) {
    equilibrium_type = externalpars->equilibrium_type ;
    if (externalpars->restart==1) restart  = true;

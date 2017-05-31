@@ -110,7 +110,7 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
 //  int gpuID = externalpars->job_id;
 
-  //Only proc0 needs to import paramters to gryfx
+  // Only proc0 needs to import paramters to gryfx
   // copy elements of external_parameters_struct externalpars into pars
   // this is done because externalpars may have been changed externally (i.e. by Trinity) 
   // between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
