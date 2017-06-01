@@ -309,6 +309,9 @@ class Parameters {
 
       int scheme;
       char run_name[2000];
+
+      cudaDeviceProp prop;
+      int maxThreadsPerBlock;
   private:
     bool initialized;
 };

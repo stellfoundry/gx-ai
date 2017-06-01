@@ -5,8 +5,9 @@
 #include "species.h"
 #include "cuda_constants.h"
 
-__global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* iomegad, float* bgrad, float* ky, specie* s,
-                           cuComplex* rhs_par, cuComplex* rhs);
+__global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
+			   float* b, float* iomegad, float* bgrad, float* ky, specie* s, cuComplex* rhs_par, cuComplex* rhs);
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species);
 
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
@@ -21,6 +22,15 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     printf("Initializing Beer 4+2 closures\n");
     closures = new Beer42(grids_, geo_);
   }
+
+  // allocate conservation terms for collision operator
+  int size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
+  cudaMalloc((void**) &upar_bar, size);
+  cudaMalloc((void**) &uperp_bar, size);
+  cudaMalloc((void**) &t_bar, size);
+  cudaMemset(upar_bar, 0., size);
+  cudaMemset(uperp_bar, 0., size);
+  cudaMemset(t_bar, 0., size);
 
   // set up CUDA grids for main linear kernel
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
@@ -44,10 +54,16 @@ Linear::~Linear()
 }
 
 int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
+
+  // calculate conservation terms for collision operator
+  conservation_terms<<<grids_->NxNycNz/pars_->maxThreadsPerBlock+1, pars_->maxThreadsPerBlock>>>
+	(upar_bar, uperp_bar, t_bar, m->ghl, f->phi, geo_->kperp2, pars_->species);
+
   // calculate RHS
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
-      (m->ghl, f->phi, geo_->kperp2, geo_->omegad, geo_->bgrad, 
-       grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
+      	(m->ghl, f->phi, upar_bar, uperp_bar, t_bar,
+	geo_->kperp2, geo_->omegad, geo_->bgrad, 
+       	grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
 
   // parallel gradient term
   grad_par->eval(mRhs_par);
@@ -65,8 +81,10 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
 
 // main kernel function for calculating RHS
 # define S_G(L, M) s_g[sidxyz + (sDimx)*(M) + (sDimx)*(sDimy)*(L)]
-__global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad, float* bgrad, float* ky, specie* species,
-                           cuComplex* rhs_par, cuComplex* rhs)
+__global__ void rhs_linear(cuComplex *g, cuComplex* phi, 
+	cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
+	float* b, float* omegad, float* bgrad, float* ky, specie* species,
+	cuComplex* rhs_par, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
 
@@ -105,6 +123,11 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
     const float tprim_ = s.tprim;
     const float fprim_ = s.fprim;
     //const float rho_ = s.rho;
+
+    // conservation terms (species-specific)
+    cuComplex upar_bar_ = upar_bar[idxyz + is*nx*nyc*nz];
+    cuComplex uperp_bar_ = uperp_bar[idxyz + is*nx*nyc*nz];
+    cuComplex t_bar_ = t_bar[idxyz + is*nx*nyc*nz];
   
     // read tile of g into shared mem
     // each thread in the block reads in multiple values of l and m
@@ -175,14 +198,18 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
                   Jflr(m-1,b_)*( -m*iomegad_ + m*tprim_*iomegastar_ ) 
                 + Jflr(m,  b_)*( -2*(m+1)*iomegad_ + (fprim_ + tprim_*2*m)*iomegastar_ )
-                + Jflr(m+1,b_)*( -(m+1)*iomegad_ + (m+1)*tprim_*iomegastar_ ) );  
+                + Jflr(m+1,b_)*( -(m+1)*iomegad_ + (m+1)*tprim_*iomegastar_ ) )
+		+ nu_ * sqrtf(b_) * ( Jflr(m, b_) + Jflr(m-1, b_) ) * uperp_bar_
+		+ nu_ * 2. * ( m*Jflr(m-1,b_) + 2.*m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * t_bar_;
       }
       if(l==1) {
         rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(m,b_)*phi_;
-        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * bgrad_;
+        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * bgrad_ 
+      		+ nu_ * Jflr(m,b_) * upar_bar_;
       }
       if(l==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2);
+        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2) 
+		+ nu_ * sqrtf(2) * Jflr(m,b_) * t_bar_;
       }
      } // m loop
     } // l loop
@@ -190,3 +217,30 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, float* b, float* omegad
    } // species loop
   } // idxyz < NxNycNz
 }
+
+# define H(XYZ, L, M, S) ghl[(XYZ) + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L) + nx*nyc*nz*nlaguerre*nhermite*(S)] + Jflr(M,b_)*phi_
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species)
+{
+  unsigned int idxyz = get_id1();
+
+  if(idxyz<nx*nyc*nz) {
+    float b_ = b[idxyz];
+    cuComplex phi_ = phi[idxyz];
+    for(int is=0; is<nspecies; is++) {
+      int index = idxyz + nx*nyc*nz*is;
+      upar_bar[index] = make_cuComplex(0., 0.);
+      uperp_bar[index] = make_cuComplex(0., 0.);
+      t_bar[index] = make_cuComplex(0., 0.);
+      // sum over m
+      for(int m=0; m<nlaguerre; m++) {
+        // H(...) is defined by macro above
+        upar_bar[index] = upar_bar[index] + Jflr(m,b_)*H(idxyz, 1, m, is);
+        uperp_bar[index] = uperp_bar[index] + (Jflr(m,b_) + Jflr(m-1,b_))*H(idxyz, 0, m, is);
+        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(m,b_)*H(idxyz, 2, m, is)
+		+ ( m*Jflr(m-1,b_) + 2.*m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) )*H(idxyz, 0, m, is);
+      }
+      uperp_bar[index] = uperp_bar[index]*sqrtf(b_);
+    }
+  }
+}
+

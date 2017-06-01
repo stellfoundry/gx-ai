@@ -34,6 +34,10 @@ bool get_bool(struct fnr_struct * namelist_struct, const char * namelist, const 
 
 Parameters::Parameters() {
   initialized = false;
+
+  // some cuda parameters (not from input file)
+  cudaGetDeviceProperties(&prop, 0);
+  maxThreadsPerBlock = prop.maxThreadsPerBlock;
 }
 
 Parameters::~Parameters() {

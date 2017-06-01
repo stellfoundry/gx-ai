@@ -24,4 +24,9 @@ class Linear {
   Closures* closures;
 
   Moments* mRhs_par;
+
+  // conservation terms
+  cuComplex* upar_bar;
+  cuComplex* uperp_bar;
+  cuComplex* t_bar;
 };
