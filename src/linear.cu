@@ -8,6 +8,7 @@
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
 			   float* b, float* iomegad, float* bgrad, float* ky, specie* s, cuComplex* rhs_par, cuComplex* rhs);
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species);
+__global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs);
 
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
@@ -64,6 +65,11 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
       	(m->ghl, f->phi, upar_bar, uperp_bar, t_bar,
 	geo_->kperp2, geo_->omegad, geo_->bgrad, 
        	grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
+
+  // hypercollisions
+  if(pars_->hypercollisions) {
+    hypercollisions<<<dimGrid,dimBlock>>>(m->ghl, pars_->nu_hyper_l, pars_->nu_hyper_m, pars_->p_hyper_l, pars_->p_hyper_m, mRhs->ghl);
+  }
 
   // parallel gradient term
   grad_par->eval(mRhs_par);
@@ -201,7 +207,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
                 + Jflr(m+1,b_)*( -(m+1)*iomegad_ + (m+1)*tprim_*iomegastar_ ) )
 		+ nu_ * sqrtf(b_) * ( Jflr(m, b_) + Jflr(m-1, b_) ) * uperp_bar_
 		+ nu_ * 2. * ( m*Jflr(m-1,b_) + 2.*m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * t_bar_;
-      }
+      } 
       if(l==1) {
         rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(m,b_)*phi_;
         rhs[globalIdx] = rhs[globalIdx] - phi_ * ( m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * bgrad_ 
@@ -210,7 +216,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
       if(l==2) {
         rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2) 
 		+ nu_ * sqrtf(2) * Jflr(m,b_) * t_bar_;
-      }
+      }  
      } // m loop
     } // l loop
   
@@ -244,3 +250,18 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
   }
 }
 
+__global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs) {
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+   for(int is=0; is<nspecies; is++) { 
+    for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
+     for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
+      int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
+      if(l>2) {
+        rhs[globalIdx] = rhs[globalIdx] - (nu_hyper_l*pow((float) l/nhermite, p_hyper_l)+nu_hyper_m*pow((float)m/nlaguerre, p_hyper_m))*g[globalIdx];
+      }
+     }
+    }
+   }
+  }
+}

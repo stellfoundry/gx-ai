@@ -38,6 +38,11 @@ class Parameters {
    // isotropic_shear = .false.
    //   float D_hypervisc;
    ///
+
+    // Namelist: hypercollisions_knobs
+    bool hypercollisions;
+    float nu_hyper_l, nu_hyper_m;
+    int p_hyper_l, p_hyper_m;
   
     // Namelist: theta_grid_parameters
   

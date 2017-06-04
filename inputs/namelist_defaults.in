@@ -16,6 +16,14 @@
  D_hypervisc = 0.1
 /
 
+&hypercollisions_knobs
+ hypercollisions = .false.
+ nu_hyper_l = 1
+ nu_hyper_m = 1
+ p_hyper_l = 6
+ p_hyper_m = 6
+/
+
 &theta_grid_parameters
 
  ntheta = 32

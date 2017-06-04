@@ -397,6 +397,12 @@ int Parameters::read_namelist(char* filename)
   //char* collisions;
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
   //collisions=collision_model;
+
+  fnr_get_bool(&namelist_struct, "hypercollisions_knobs", "hypercollisions", &hypercollisions);
+  fnr_get_float(&namelist_struct, "hypercollisions_knobs", "nu_hyper_l", &nu_hyper_l);
+  fnr_get_float(&namelist_struct, "hypercollisions_knobs", "nu_hyper_m", &nu_hyper_m);
+  fnr_get_int(&namelist_struct, "hypercollisions_knobs", "p_hyper_l", &p_hyper_l);
+  fnr_get_int(&namelist_struct, "hypercollisions_knobs", "p_hyper_m", &p_hyper_m);
   
 
   adiabatic_electrons = true;
