@@ -31,7 +31,7 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
 MPI_INC = -I ${MPICH_HOME}/include
 MPI_LIB= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
-NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true ${CUDA_INC}
+NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true 
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

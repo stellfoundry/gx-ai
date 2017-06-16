@@ -122,9 +122,11 @@ test_make:
 	@echo TARGET=    $(TARGET)
 	@echo SDKDIR=    $(SDKDIR)
 	@echo NVCC=      $(NVCC)
+	@echo CFLAGS= 	 $(CFLAGS)
+	@echo LDFLAGS= 	 $(LDFLAGS)
 	@echo NVCCFLAGS= $(NVCCFLAGS)
 	@echo CUDA_INC=  $(CUDA_INC)
-	@echo CUDA_LIBS=  $(CUDA_LIBS)
+	@echo CUDA_LIB=  $(CUDA_LIB)
 
 
 
