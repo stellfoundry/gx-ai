@@ -73,6 +73,8 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
       	(m->ghl, f->phi, upar_bar, uperp_bar, t_bar,
 	geo_->kperp2, geo_->omegad, geo_->bgrad, 
        	grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
+  // mRhs_par = sqrt(l+1) G_l+1,m + sqrt(l) G_l-1,m
+  // mRhs = ...
 
   // hypercollisions
   if(pars_->hypercollisions) {

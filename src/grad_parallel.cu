@@ -65,7 +65,10 @@ void GradParallel::eval(Moments* m)
   // for now, loop over all l and m because cannot batch 
   // eventually will optimize by first transposing so that z is fastest index
   for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
+    // forward FFT (z -> kz) & multiply by i kz (via callback)
     cufftExecC2C(gradpar_plan_forward, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
+
+    // backward FFT (kz -> z)
     cufftExecC2C(gradpar_plan_inverse, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
   }
 }

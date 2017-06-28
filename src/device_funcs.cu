@@ -241,6 +241,14 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex
   }
 }
 
+__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2, double c3, cuComplex* m3)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz] + c3*m3[idxyz];
+  }
+}
+
 __global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
 {
   unsigned int idxyz = get_id1();

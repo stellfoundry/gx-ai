@@ -9,11 +9,14 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
 Beer42::Beer42(Grids* grids, const Geometry* geo): 
     grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
 {
+  // -----------------------
   // set up parallel derivatives, including |kpar|
   grad_par = new GradParallel(grids_);
   abs_grad_par = new GradParallel(grids_, true);
 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
+  //cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
+  // ----------------------
 
   D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
   D_perp = sqrt(M_PI)/2.;
@@ -46,9 +49,11 @@ Beer42::Beer42(Grids* grids, const Geometry* geo):
   cudaMalloc((void**) &nu, sizeof(cuComplex)*11);
   cudaMemcpy(nu, nu_h, sizeof(cuComplex)*11, cudaMemcpyHostToDevice);
 
+  // ----------------------------
   // 1d thread blocks over xyz
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
+  // ---------------------------
 }
 
 Beer42::~Beer42() {
@@ -116,6 +121,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     grids_(grids), omegad_(geo->omegad), q_(q)
 {
   cuComplex Aclos_h[q_];
+  // closuressss(blah, Aclos_h)
 
   // hard code these cases for now...
   if(grids_->Nlaguerre==4 && q_==3) {
@@ -157,8 +163,10 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     exit(1);
   }
 
+  // ------------------------
   cudaMalloc((void**) &Aclos_, sizeof(cuComplex)*q_);
   cudaMemcpy(Aclos_, Aclos_h, sizeof(cuComplex)*q_, cudaMemcpyHostToDevice);
+  // ------------------------
 
   // 1d thread blocks over xyz
   dimBlock = 512;
@@ -202,3 +210,12 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
   }
 
 }
+
+//int apply_closures()
+//      for(int l=L; m>=nhermite-q; m--) {
+//        grad_par->eval(m->gHL(l,m), tmp);
+//        abs_grad_par->eval(m->gHL(l,m), tmp_abs);
+//        add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, Aclos[M-m].y, tmp_abs, Aclos[M-m].x, tmp);
+//        //clos = clos + (Aclos[M-m].y*tmp_abs + Aclos[M-m].x*tmp);
+//      }
+//      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(m->gHL(L,m), 1., m->gHL(L,m), -sqrt(L+1), clos);

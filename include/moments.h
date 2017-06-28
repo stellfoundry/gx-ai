@@ -13,7 +13,10 @@ class Moments {
   // accessor function to get pointer to specific l,m,s of ghl array
   cuComplex* gHL(int l, int m, int s=0) {
     return &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l + grids_->NxNycNz*grids_->Nmoms*s];
+    // glm[ky, kx, z]
   }
+  // ghl[ky, kx, z, m, l, s]
+  // ghl[ky + nyc*kx + nx*nyc*z + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*s]
 
   int initialConditions(Parameters *pars, Geometry* geo);
 
