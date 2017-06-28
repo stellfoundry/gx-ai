@@ -131,8 +131,10 @@ int Parameters::read_namelist(char* filename)
     nlaguerre_in = 2;
     closure_model = BEER42;
   }
-  else {
-    closure_model = 0;
+  else if (strcmp(clos_str, "smith_perp")==0) {
+    closure_model = SMITHPERP;
+    // hard code this for now
+    fnr_get_int(&namelist_struct, "hl_grids_knobs", "smith_perp_q", &smith_perp_q);
   } 
   
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
@@ -398,7 +400,8 @@ int Parameters::read_namelist(char* filename)
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
   //collisions=collision_model;
 
-  fnr_get_bool(&namelist_struct, "hypercollisions_knobs", "hypercollisions", &hypercollisions);
+  hypercollisions = get_bool(&namelist_struct, "hypercollisions_knobs", "hypercollisions");
+  if(hypercollisions) printf("Using hypercollisions.\n");
   fnr_get_float(&namelist_struct, "hypercollisions_knobs", "nu_hyper_l", &nu_hyper_l);
   fnr_get_float(&namelist_struct, "hypercollisions_knobs", "nu_hyper_m", &nu_hyper_m);
   fnr_get_int(&namelist_struct, "hypercollisions_knobs", "p_hyper_l", &p_hyper_l);

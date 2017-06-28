@@ -10,7 +10,7 @@ class Diagnostics {
   Diagnostics(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics();
 
-  void loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
+  bool loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
   void final_diagnostics(Moments* moms, Fields* fields);
 
   void writeMomOrField(cuComplex* m, const char* filename);
@@ -36,7 +36,12 @@ class Diagnostics {
   void print_growth_rates_to_screen();
 
   void HLspectrum(cuComplex* ghl);
+
+  bool checkstop();
+ 
   float* hlspectrum;
  
   float fluxDenom;
+
+  char stopfilename_[2000];
 };

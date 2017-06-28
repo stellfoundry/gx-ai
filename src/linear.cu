@@ -17,12 +17,20 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   mRhs_par = new Moments(grids_);
 
   // set up parallel ffts
-  grad_par = new GradParallel(grids_);
+//  if(pars_->boundary_option_linked) {
+//    grad_par = new GradParallelLinked(grids_);
+//  }
+//  else {
+      grad_par = new GradParallel(grids_);
+//  }
  
   if(pars_->closure_model==BEER42) {
     printf("Initializing Beer 4+2 closures\n");
     closures = new Beer42(grids_, geo_);
-  }
+  } else if (pars_->closure_model==SMITHPERP) {
+    printf("Initializing Smith perpendicular toroidal closures\n");
+    closures = new SmithPerp(grids_, geo_, pars_->smith_perp_q, pars_->smith_perp_w0);
+  } 
 
   // allocate conservation terms for collision operator
   int size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
@@ -258,7 +266,7 @@ __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m
      for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
       int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
       if(l>2) {
-        rhs[globalIdx] = rhs[globalIdx] - (nu_hyper_l*pow((float) l/nhermite, p_hyper_l)+nu_hyper_m*pow((float)m/nlaguerre, p_hyper_m))*g[globalIdx];
+        rhs[globalIdx] = rhs[globalIdx] - (nu_hyper_l*pow((float) l/nhermite, (float) p_hyper_l)+nu_hyper_m*pow((float)m/nlaguerre, p_hyper_m))*g[globalIdx];
       }
      }
     }

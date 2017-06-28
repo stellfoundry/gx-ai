@@ -36,3 +36,21 @@ class Beer42 : public Closures {
 
   dim3 dimGrid, dimBlock;
 };
+
+class SmithPerp : public Closures {
+ public: 
+  SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0);
+  ~SmithPerp();
+  int apply_closures(Moments* m, Moments* mRhs);
+
+ private:
+  Grids* grids_;
+  float* omegad_;
+  
+  // closure coefficent array, to be allocated
+  cuComplex* Aclos_;
+  const int q_;
+
+  dim3 dimGrid, dimBlock;
+ 
+};

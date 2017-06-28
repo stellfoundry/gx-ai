@@ -1,6 +1,7 @@
 #include "diagnostics.h"
 #include "device_funcs.h"
 #include "cuda_constants.h"
+#include <sys/stat.h>
 
 __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuComplex *omega)
 {
@@ -44,6 +45,8 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     fluxDenom += geo_->jacobian_h[i]*geo_->grho_h[i];
   }
   
+  // set up stop file
+  sprintf(stopfilename_, "%s.stop", pars_->run_name);
 }
 
 Diagnostics::~Diagnostics()
@@ -56,8 +59,9 @@ Diagnostics::~Diagnostics()
 
 // NOTE: needs to be called every step when calculating growth rates
 // does not write to file every step
-void Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) 
+bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) 
 {
+  bool stop = false;
   if(pars_->write_omega) {
     growthRates<<<grids_->NxNyc/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
              (fields->phi, fields_old->phi, dt, growth_rates);
@@ -70,6 +74,10 @@ void Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
       print_growth_rates_to_screen();
     }
   } 
+  if(counter%pars_->nwrite==0) {
+    stop = checkstop();
+  }
+  return stop;
 }
 
 void Diagnostics::final_diagnostics(Moments* moms, Fields* fields) 
@@ -146,6 +154,7 @@ void Diagnostics::writeGrowthRates()
   	  }
   	  fprintf(out, "\n");
   	}	
+  fclose(out);
 }
 
 void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
@@ -252,4 +261,14 @@ void Diagnostics::writeGeo()
   //periodic point
   int i=0;
   fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", -geo_->z_h[i], geo_->bmag_h[i], geo_->bgrad_h[i], geo_->gbdrift_h[i], geo_->gbdrift0_h[i], geo_->cvdrift_h[i], geo_->cvdrift0_h[i], geo_->gds2_h[i], geo_->gds21_h[i], geo_->gds22_h[i], geo_->grho_h[i], geo_->jacobian_h[i]);
+}
+
+bool Diagnostics::checkstop() 
+{
+  struct stat buffer;   
+  // check if stopfile exists
+  bool stop = (stat (stopfilename_, &buffer) == 0);   
+  // remove it if it does exist
+  if(stop) remove(stopfilename_);
+  return stop;
 }

@@ -126,15 +126,17 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   cudaEventCreate(&start);
   cudaEventCreate(&stop);
   float timer = 0;
- if(iproc==0) {
   cudaEventRecord(start,0);
 
+  bool checkstop = false;
   printf("Running %d timesteps.......\n", pars->nstep);
   printf("dt = %f\n", stepper->get_dt());
   while(counter<pars->nstep) {
     if(iproc==0) {
       stepper->advance(&time, moms, fields);
-      diagnostics->loop_diagnostics(moms, fields, stepper->get_dt(), counter, time);
+      checkstop = diagnostics->loop_diagnostics(moms, fields, stepper->get_dt(), counter, time);
+      if(checkstop) break;
+      if(counter%(pars->nwrite*100)==0) diagnostics->final_diagnostics(moms, fields);
     }
     counter++;
   }
@@ -147,7 +149,6 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   printf("Finished timestep loop\n");
   checkCuda(cudaGetLastError());
 
- }
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
   diagnostics->final_diagnostics(moms, fields);

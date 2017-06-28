@@ -3,7 +3,8 @@
 #include "cuda_constants.h"
 #include "get_error.h"
 
-__global__ void toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
+__global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
+__global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q);
 
 Beer42::Beer42(Grids* grids, const Geometry* geo): 
     grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
@@ -77,13 +78,13 @@ int Beer42::apply_closures(Moments* m, Moments* mRhs)
       (mRhs->gHL(1,1), 1., mRhs->gHL(1,1), -sqrt(2.)*D_perp*gradpar_, tmp);
   
   // toroidal terms
-  toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, nu);
+  beer_toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, nu);
 
   return 0;
 }
 
 # define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L)
-__global__ void toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu)
+__global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu)
 {
   unsigned int idxyz = get_id1();
 
@@ -107,6 +108,97 @@ __global__ void toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, 
     gRhs[LM(1,1)] = gRhs[LM(1,1)]
       - abs_omegad*( nu[8].x*g[LM(1,0)] + nu[9].x*sqrtf(6)*g[LM(3,0)] + nu[10].x*g[LM(1,1)] )
       -  iomegad * ( nu[8].y*g[LM(1,0)] + nu[9].y*sqrtf(6)*g[LM(3,0)] + nu[10].y*g[LM(1,1)] );
+  }
+
+}
+
+SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0): 
+    grids_(grids), omegad_(geo->omegad), q_(q)
+{
+  cuComplex Aclos_h[q_];
+
+  // hard code these cases for now...
+  if(grids_->Nlaguerre==4 && q_==3) {
+    Aclos_h[0].x = -2.10807;
+    Aclos_h[0].y = 0.574549;
+    Aclos_h[1].x = -1.25931;
+    Aclos_h[1].y = 0.80951;
+    Aclos_h[2].x = -0.181713;
+    Aclos_h[2].y = 0.249684;
+  }
+  else if(grids_->Nlaguerre==5 && q_==3) {
+    Aclos_h[0].x = -2.24233;
+    Aclos_h[0].y = 0.551885;
+    Aclos_h[1].x = -1.49324;
+    Aclos_h[1].y = 0.836156;
+    Aclos_h[2].x = -0.272805;
+    Aclos_h[2].y = 0.292545;
+  }
+  else if(grids_->Nlaguerre==6 && q_==3) {
+    Aclos_h[0].x = -2.33763;
+    Aclos_h[0].y = 0.527272;
+    Aclos_h[1].x = -1.66731;
+    Aclos_h[1].y = 0.835661;
+    Aclos_h[2].x = -0.346277;
+    Aclos_h[2].y = 0.313484;
+  }
+  else if(grids_->Nlaguerre==8 && q_==4) {
+    Aclos_h[0].x = -3.17353;
+    Aclos_h[0].y = 0.616513;
+    Aclos_h[1].x = -3.54865;
+    Aclos_h[1].y = 1.48678;
+    Aclos_h[2].x = -1.62127;
+    Aclos_h[2].y = 1.15187;
+    Aclos_h[3].x = -0.244346;
+    Aclos_h[3].y = 0.283442;
+  }
+  else {
+    printf("ERROR: specified Smith closure not yet implemented\n");
+    exit(1);
+  }
+
+  cudaMalloc((void**) &Aclos_, sizeof(cuComplex)*q_);
+  cudaMemcpy(Aclos_, Aclos_h, sizeof(cuComplex)*q_, cudaMemcpyHostToDevice);
+
+  // 1d thread blocks over xyz
+  dimBlock = 512;
+  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+}
+
+SmithPerp::~SmithPerp() {
+  cudaFree(Aclos_);
+}
+
+int SmithPerp::apply_closures(Moments* m, Moments* mRhs) 
+{
+  // perp closure terms are only toroidal
+  smith_perp_toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, Aclos_, q_);
+
+  return 0;
+}
+
+# define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L)
+__global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q)
+{
+  unsigned int idxyz = get_id1();
+
+  if(idxyz<nx*nyc*nz) {
+
+    const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
+    const cuComplex abs_omegad = make_cuComplex(abs(omegad[idxyz]),0.);
+
+    int M = nlaguerre - 1;
+
+    // apply closure to Mth laguerre equation for all hermite moments
+    for(int l=0; l<nhermite; l++) {
+      // calculate closure expression as sum of lower laguerre moments
+      cuComplex clos = make_cuComplex(0.,0.);
+      for(int m=M; m>=nlaguerre-q; m--) {
+        clos = clos + (abs_omegad*Aclos[M-m].y + iomegad*Aclos[M-m].x)*g[LM(l,m)];
+      }
+
+      gRhs[LM(l,M)] = gRhs[LM(l,M)] - (M+1)*clos;
+    }
   }
 
 }

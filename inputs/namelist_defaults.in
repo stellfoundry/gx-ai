@@ -180,6 +180,7 @@ model_option = "const-curv"
  nlaguerre = 2
  #closure_model = 'beer4+2'
  closure_model = 'none'
+ smith_perp_q = 3
 /
 
 &dist_fn_knobs

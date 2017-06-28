@@ -15,6 +15,7 @@
 #define RK2 0
 #define RK4 1
 #define BEER42 1
+#define SMITHPERP 2
 
 class Parameters {
 
@@ -145,6 +146,8 @@ class Parameters {
       int nhermite_in;
       int nlaguerre_in;  // nlaguerre will be an array 
       int closure_model;
+      int smith_perp_q;
+      cuComplex smith_perp_w0;
   
   
     // Namelist: knobs
