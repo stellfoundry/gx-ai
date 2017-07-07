@@ -16,6 +16,7 @@
 #define RK4 1
 #define BEER42 1
 #define SMITHPERP 2
+#define SMITHPAR 3
 
 class Parameters {
 
@@ -147,6 +148,7 @@ class Parameters {
       int nlaguerre_in;  // nlaguerre will be an array 
       int closure_model;
       int smith_perp_q;
+      int smith_par_q;
       cuComplex smith_perp_w0;
   
   

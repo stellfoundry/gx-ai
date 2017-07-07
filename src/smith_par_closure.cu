@@ -1,0 +1,393 @@
+/* Code to find q number of coefficients for nth Hermite moment closure as described in Smith's thesis
+ *
+ * Notes:
+ * - Debug printing can be turned on/off by changing DEBUG_MODE to 1 or 0
+ * */
+
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <complex.h>
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
+#include <cusolverDn.h>
+#include <cuComplex.h>
+
+#define M_PI 3.14159265358979323846
+#define DEBUG_MODE 0
+
+void smith_par_getAs(int n, int q, cuComplex *x_answer);
+void get_power_series(double complex *power_series, int q);
+void fill_r_matrix(double complex *power_series, double complex **rMatrix, int q);
+void get_normalized_hermite_coefficients(double complex **matrix, int n, double complex scaling, char type);
+int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acopy, int lda, const cuDoubleComplex *b, cuDoubleComplex *x); 
+__global__ void castDoubleToFloat(cuDoubleComplex *array_d, cuComplex *array_f, int size); 
+
+/* 
+int main() {	
+    int n,q;
+
+	//Request number of A's to find
+	printf("q (# of A terms): ");
+	scanf("%d", &q);
+	
+	//Request a degree for the normalized hermite polynomial
+	printf("n (degree of Hermite moment being closed): ");
+	scanf("%d", &n);
+    printf("\n");
+
+    cuComplex *x_answer;
+    cudaMalloc(&x_answer, q*sizeof(cuComplex));
+	      
+    smith_par_getAs(n,q, x_answer);
+
+    cudaFree(x_answer);
+
+    return 0;
+} */
+
+/* Pade Approximant to find A coefficients
+ * Calculation can be found on pg. 37-38 of Smith's thesis
+ * n is the degree of the Hermite moment being closed
+ * q is the number of coefficients used for the nth moment closure
+ * x_answer stores the final result */
+void smith_par_getAs(int n, int q, cuComplex *x_answer) {
+    int i, j, k;
+
+	// Create matrices for r, P coefficients, Q coefficients, P, Q, and the final LHS matrix
+    double complex **rMatrix = (double complex **) malloc(q*sizeof(double complex *));
+    double complex **PCoefficients = (double complex **) malloc((n+1)*sizeof(double complex *));
+    double complex **QCoefficients = (double complex **) malloc((n+1)*sizeof(double complex *));
+	double complex **PMatrix = (double complex **) malloc(q*sizeof(double complex *));
+	double complex **QMatrix = (double complex **) malloc(q*sizeof(double complex *));
+	double complex **lhsMatrix = (double complex **) malloc(q*sizeof(double complex *));
+
+    for (i = 0; i < q; i++) {
+        rMatrix[i] = (double complex *) calloc(q, sizeof(double complex));
+        PCoefficients[i] = (double complex *) calloc(i+1, sizeof(double complex));
+        QCoefficients[i] = (double complex *) calloc(i+1, sizeof(double complex));
+        PMatrix[i] = (double complex *) calloc(q, sizeof(double complex));
+        QMatrix[i] = (double complex *) calloc(q, sizeof(double complex));
+        lhsMatrix[i] = (double complex *) calloc(q, sizeof(double complex)); 
+    }
+
+    for (i = q; i <= n; i++) {
+        PCoefficients[i] = (double complex *) calloc(i+1, sizeof(double complex));
+        QCoefficients[i] = (double complex *) calloc(i+1, sizeof(double complex)); 
+    }
+
+    // Create Pn and Qn vectors
+	double complex *Pn = (double complex *) calloc(q, sizeof(double complex));
+	double complex *Qn = (double complex *) calloc(q, sizeof(double complex));
+	
+    // Create lhsVector and rhsVector (lhsVector is the final LHS matrix as a single vector;
+    // rhsVector is the b vector in Ax = b)
+    double complex *lhsVector = (double complex *) calloc(q*q, sizeof(double complex));
+    double complex *rhsVector = (double complex *) calloc(q, sizeof(double complex));
+
+    //Create power_series array
+    double complex *power_series = (double complex *) calloc(q, sizeof(double complex));
+
+    // Fill power_series array and rMatrix
+    get_power_series(power_series, q);
+    fill_r_matrix(power_series, rMatrix, q);
+
+    // Get P and Q coefficients
+    get_normalized_hermite_coefficients(PCoefficients, n, 1/sqrt(2), 'P');
+    get_normalized_hermite_coefficients(QCoefficients, n, 1/sqrt(2), 'Q');
+		
+	//Fill P and Q matrices and vectors
+	
+    int col = 0; // column of P and Q matrix filled
+	int d; // degree of polynomial filling each column
+
+    for(d = n; d >= n - q; d--){	
+        if (d != n) {
+            for (i = 0; i < q; i++) {
+                
+                // Only filling indices where the degree of the term is less than
+                // or equal to the degree of the corresponding polynomial
+                if (i <= d) {
+                    PMatrix[i][col] = PCoefficients[d][i];
+                    QMatrix[i][col] = QCoefficients[d][i];
+                }
+            }
+            col++;
+        }
+        else {
+            for (i = 0; i < q; i++) {
+                Pn[i] = PCoefficients[n][i];
+                Qn[i] = QCoefficients[n][i];
+            }
+        }
+	}
+
+    // Freeing PCoefficients and QCoefficients
+    for (i = 0; i <= n; i++) {
+        free(PCoefficients[i]);
+        free(QCoefficients[i]);
+    }
+
+    free(PCoefficients);
+    free(QCoefficients);
+
+	// Get LHS matrix
+	double complex sum;
+	for(i = 0; i < q; i++){
+		for(j = 0; j < q; j++){
+			sum = 0;
+			for(k = 0; k < q; k++){
+				sum += rMatrix[i][k]*PMatrix[k][j];
+			}
+			lhsMatrix[i][j] = sum-I*QMatrix[i][j];
+		}		
+	}
+
+    //Transpose of lhsMatrix and putting into one vector for cuSolver/cuBlas call below
+	for(i = 0; i < q; i++){
+		for(j = 0; j < q; j++){
+            lhsVector[j + q*i] = lhsMatrix[j][i];
+        }
+    }
+    
+    // Get RHS vector	
+    for(j = 0; j < q; j++){
+		sum = 0;
+		for(k = 0; k < q; k++){
+			sum += rMatrix[j][k]*Pn[k];
+		}
+		
+        rhsVector[j] = sum-I*Qn[j];
+	}
+    
+    // Creating CUDA array copy of lhsVector
+    cuDoubleComplex *lhsVectorCuda;
+    cudaMalloc(&lhsVectorCuda, q*q*sizeof(cuDoubleComplex));
+    cudaMemcpy(lhsVectorCuda, (cuDoubleComplex*) lhsVector,
+                q*q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice); 
+	
+	// Creating CUDA array copy of rhsVector
+    cuDoubleComplex *rhsVectorCuda;
+    cudaMalloc(&rhsVectorCuda, q*sizeof(cuDoubleComplex));
+    cudaMemcpy(rhsVectorCuda, (cuDoubleComplex*) rhsVector,
+                q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+
+    // Setting up CUDA handlers and stream
+    cusolverDnHandle_t handle = NULL;
+    cublasHandle_t cublasHandle = NULL;
+    cudaStream_t stream = NULL;
+
+    cusolverDnCreate(&handle);
+    cublasCreate(&cublasHandle);
+    cudaStreamCreate(&stream);
+    cusolverDnSetStream(handle, stream);
+    cublasSetStream(cublasHandle, stream);
+    
+    // Calling cuSolver and cuBLAS libraries to solve Ax = b 
+    linearSolverLU(handle, q, lhsVectorCuda, q, rhsVectorCuda, rhsVectorCuda);
+ 
+    // Converting cuDoubleComplex answer to cuComplex and storing it in x_answer
+    castDoubleToFloat<<<1,1>>>(rhsVectorCuda, x_answer, q);
+
+    // Print only if DEBUG_MODE is on
+    if (DEBUG_MODE) {
+
+        // Print r values
+        printf("r coefficients\n");
+        for (i = 0; i < q; i++) {
+            printf("r_%d: %f + i%f\n", i, creal(power_series[i]),cimag(power_series[i]));
+        }
+
+        // Print r matrix
+        printf("\nMatrix r\n");
+        for (i = 0; i < q; i++) {
+            for (j = 0; j < q; j++) {
+                printf("%2.2f + %2.2fi ",creal(rMatrix[i][j]),cimag(rMatrix[i][j]));
+            }
+            printf("\n");
+        }
+
+        printf("\n");
+
+        // Print P matrix
+        printf("Matrix P\n");
+        for (i = 0; i < q; i++) {
+            for (j = 0; j < q; j++) {
+                printf("%2.4f  ",creal(PMatrix[i][j]));
+            }
+            printf("\n");
+        }
+
+        printf("\n");
+
+        // Print Q Matrix
+        printf("Matrix Q\n");
+        for (i = 0; i < q; i++) {
+            for (j = 0; j < q; j++) {
+                printf("%2.4f  ",creal(QMatrix[i][j]));
+            }
+            printf("\n");
+        }
+
+        printf("\n");
+
+        // Print final LHS matrix and RHS vector for Ax = b
+        printf("Before\n");
+
+        printf("LHS Matrix\n");
+        for (i = 0; i < q; i++) {
+            for (j = 0; j < q; j++) {
+                printf("%2.2f + %2.2fi ",creal(lhsMatrix[i][j]),cimag(lhsMatrix[i][j]));
+            }
+            printf("\n");
+        }
+
+        printf("\nRHS Vector\n");
+        for (i = 0; i < q; i++) {
+            printf("%2.4f + %2.4fi\n",creal(rhsVector[i]),cimag(rhsVector[i]));
+        }
+
+        printf("\nAfter\n");
+        
+        float complex *a_coefficients = (float complex *) calloc(q, sizeof(cuComplex));
+        cudaMemcpy(a_coefficients, (float complex *) x_answer, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
+        
+        for (int i = 0; i < q; i++) {
+            printf("A_n-%d: %f + %fi\n", i+1, creal(a_coefficients[i]),cimag(a_coefficients[i]));
+        }
+
+        free(a_coefficients);
+    }
+
+    // Freeing dynamically allocated arrays and matrices
+
+    for (i = 0; i < q; i++) {
+        free(rMatrix[i]);
+        free(PMatrix[i]);
+        free(QMatrix[i]);
+        free(lhsMatrix[i]);
+    }
+
+    free(power_series);
+    free(rMatrix);
+    free(PMatrix);
+    free(QMatrix);
+    free(lhsMatrix);
+    free(Pn);
+    free(Qn);
+    free(lhsVector);
+    
+    cudaFree(rhsVectorCuda);
+    cudaFree(lhsVectorCuda);
+}
+
+/* This function finds the coefficients of the Taylor series expansion of
+ * R00, which is (-1/sqrt(2))*Z(w/sqrt(2)). */
+void get_power_series(double complex *power_series, int q) {
+    int j;
+    for (j = 0; j < q; j++) {
+        // Below definition comes from Smith's thesis on pg. 13
+        /*power_series[j] =
+            cpow(2*I, j)*(tgamma((double)(j+1)/2)/tgamma(j+1))/pow(sqrt(2), j+1);*/
+
+        // Alternate definition of above formula, works better for large number of coefficients
+        power_series[j] = (cpow(2*I,j)/pow(sqrt(2), j+1))*sqrt(M_PI)*pow(2, -j)/tgamma(j/2.0 +1);
+    }
+}
+
+/* This function fills the rMatrix with the power series coefficients found in get_power_series */
+void fill_r_matrix(double complex *power_series, double complex **rMatrix, int q) {
+    int i,j;
+
+    for (j = 0; j < q; j++) {
+        for (i = j; i < q; i++) {
+            rMatrix[i][j] = power_series[i-j];
+        }
+    }
+}
+
+/* Fills matrix with coefficients of the first n Hermite polynomial with specified scaling
+ * and type (P for regular normalized Hermite, Q for conjugate polynomials)
+ * Generates physicists' Hermite polynomials from 0 to n of form: 1\sqrt(j!2^j)H_j(scaling*x) */
+void get_normalized_hermite_coefficients(double complex **matrix, int n, double complex  scaling,
+        char type) {
+    int i,j;
+
+    if (type == 'P') {
+        matrix[0][0] = 1;
+        matrix[1][0] = 0;
+        matrix[1][1] = sqrt(2)*scaling;
+    } else if (type == 'Q') {
+        matrix[0][0] = 0;
+        matrix[1][0] = sqrt(2)*scaling;
+        matrix[1][1] = 0;
+    }
+
+    /* Calculation standard recurrence relation of normalized Hermite polynomials:
+     * h_n(x) = sqrt(2/n)*x*h_(n-1)(x) - sqrt((n-1)/n)*h_(n-2)(x) */
+    for (i = 2; i <= n; i++) {
+        for (j = 0; j <= i; j++){
+            double di = (double) i;
+            if (j == 0) {
+                matrix[i][0] = -sqrt((di -1)/di)*matrix[i-2][0];
+            } else {
+                if (i-2 >= j) {
+                    matrix[i][j] += -sqrt((di -1)/di)*matrix[i-2][j];
+                }
+                if (i-1 >= j-1) {
+                    matrix[i][j] += sqrt(2/di)*scaling*matrix[i-1][j-1];
+                }
+            }
+        }
+    }
+}
+
+
+/* Solve Ax = b by LU decomposition with partial pivoting */
+int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acopy, int lda, const cuDoubleComplex *b, cuDoubleComplex *x) {
+    int bufferSize = 0;
+    int *info = NULL;
+    cuDoubleComplex *buffer = NULL;
+    cuDoubleComplex *A = NULL;
+    int *ipiv = NULL; // pivoting sequence
+    int h_info = 0;
+
+    cusolverDnZgetrf_bufferSize(handle, n, n, (cuDoubleComplex*)Acopy, lda, &bufferSize);
+
+    cudaMalloc(&info, sizeof(int));
+    cudaMalloc(&buffer, sizeof(cuDoubleComplex)*bufferSize);
+    cudaMalloc(&A, sizeof(cuDoubleComplex)*lda*n);
+    cudaMalloc(&ipiv, sizeof(int)*n);
+
+
+    // Prepare a copy of A because getrf will overwrite A with L
+    cudaMemcpy(A, Acopy, sizeof(cuDoubleComplex)*lda*n, cudaMemcpyDeviceToDevice);
+    cudaMemset(info, 0, sizeof(int));
+
+    cusolverDnZgetrf(handle, n, n, A, lda, buffer, ipiv, info);
+    cudaMemcpy(&h_info, info, sizeof(int), cudaMemcpyDeviceToHost);
+
+    if ( 0 != h_info ){
+        fprintf(stderr, "Error: LU factorization failed\n");
+    }
+
+    cudaMemcpy(x, b, sizeof(cuDoubleComplex)*n, cudaMemcpyDeviceToDevice);
+    cusolverDnZgetrs(handle, CUBLAS_OP_N, n, 1, A, lda, ipiv, x, n, info);
+    cudaDeviceSynchronize();
+
+    if (info  ) { cudaFree(info  ); }
+    if (buffer) { cudaFree(buffer); }
+    if (A     ) { cudaFree(A); }
+    if (ipiv  ) { cudaFree(ipiv);}
+
+    return 0;
+}
+
+/* Kernel to cast cuDoubleComplex array to a cuComplex array (calculation is done with double precision
+ and then converted to single precision for use in the simulation */
+__global__ void castDoubleToFloat(cuDoubleComplex *array_d, cuComplex *array_f, int size) {
+    for (int i = 0; i < size; i++) {
+        array_f[i] = cuComplexDoubleToFloat(array_d[i]);
+    }
+}
+

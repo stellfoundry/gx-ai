@@ -2,6 +2,7 @@
 #include "device_funcs.h"
 #include "cuda_constants.h"
 #include "get_error.h"
+#include "smith_par_closure.h"
 
 __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q);
@@ -211,11 +212,56 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
 
 }
 
-//int apply_closures()
-//      for(int l=L; m>=nhermite-q; m--) {
-//        grad_par->eval(m->gHL(l,m), tmp);
-//        abs_grad_par->eval(m->gHL(l,m), tmp_abs);
-//        add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, Aclos[M-m].y, tmp_abs, Aclos[M-m].x, tmp);
-//        //clos = clos + (Aclos[M-m].y*tmp_abs + Aclos[M-m].x*tmp);
-//      }
-//      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(m->gHL(L,m), 1., m->gHL(L,m), -sqrt(L+1), clos);
+////////////////////
+
+SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q): 
+    grids_(grids), q_(q)
+{ 
+  // set up parallel derivatives, including |kpar|
+  grad_par = new GradParallel(grids_);
+  abs_grad_par = new GradParallel(grids_, true);
+
+  cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
+  
+  // allocate closure array
+  cudaMalloc(&clos, grids_->NxNycNz*sizeof(cuComplex));
+
+  // calculate closure coefficients 
+  cudaMalloc((void**) &a_coefficients_, sizeof(cuComplex)*q_);
+  smith_par_getAs(grids->Nhermite, q, a_coefficients_);
+
+  // 1d thread blocks over xyz
+  dimBlock = 512;
+  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+}
+
+SmithPar::~SmithPar() {
+  cudaFree(a_coefficients_);
+  cudaFree(clos);
+  cudaFree(tmp);
+  cudaFree(tmp_abs);
+}
+
+int SmithPar::apply_closures(Moments* m, Moments* mRhs) 
+{
+    int L = grids_->Nhermite - 1;
+
+    // apply closure to lth hermite equation for all laguerre moments
+    for(int m_ = 0; m_ < grids_->Nlaguerre; m_++) {
+      
+      // reset closure array every time step
+      cudaMemset(clos, 0, grids_->NxNycNz*sizeof(cuComplex));
+
+      // write l+1 moment as a sum of lower order moments
+      for (int l = L; l >= grids_->Nhermite - q_; l--) {
+          grad_par->eval((m->gHL(l,m_)), tmp);
+          abs_grad_par->eval(m->gHL(l,m_), tmp_abs);
+          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[L - l].y, tmp_abs, a_coefficients_[L - l].x, tmp);
+      }
+
+      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(mRhs->gHL(L,m_), 1., mRhs->gHL(L,m_), -sqrt(L+1), clos);
+    }
+    
+    return 0;
+}

@@ -30,7 +30,11 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   } else if (pars_->closure_model==SMITHPERP) {
     printf("Initializing Smith perpendicular toroidal closures\n");
     closures = new SmithPerp(grids_, geo_, pars_->smith_perp_q, pars_->smith_perp_w0);
-  } 
+  } else if (pars_->closure_model == SMITHPAR) {
+    printf("Initializing Smith parallel closures\n");
+    closures = new SmithPar(grids_, geo_, pars_->smith_par_q);
+  }
+
 
   // allocate conservation terms for collision operator
   int size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;

@@ -54,3 +54,27 @@ class SmithPerp : public Closures {
   dim3 dimGrid, dimBlock;
  
 };
+
+class SmithPar : public Closures {
+ public: 
+  SmithPar(Grids* grids, const Geometry* geo, int q);
+  ~SmithPar();
+  int apply_closures(Moments* m, Moments* mRhs);
+
+ private:
+  Grids *grids_;
+  GradParallel *grad_par, *abs_grad_par;
+  
+  cuComplex *tmp, *tmp_abs;
+
+  // closure coefficent array
+  cuComplex *a_coefficients_;
+
+  // closure array
+  cuComplex *clos;
+
+  const int q_;
+
+  dim3 dimGrid, dimBlock;
+ 
+};

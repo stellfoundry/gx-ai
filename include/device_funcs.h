@@ -43,3 +43,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 __global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
+
+
+__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2, double c3, cuComplex* m3);
+

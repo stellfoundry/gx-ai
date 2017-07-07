@@ -135,7 +135,11 @@ int Parameters::read_namelist(char* filename)
     closure_model = SMITHPERP;
     // hard code this for now
     fnr_get_int(&namelist_struct, "hl_grids_knobs", "smith_perp_q", &smith_perp_q);
-  } 
+  } else if (strcmp(clos_str, "smith_par")==0) {
+      closure_model = SMITHPAR;
+      fnr_get_int(&namelist_struct, "hl_grids_knobs", "smith_par_q", &smith_par_q);
+  }
+
   
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
   
