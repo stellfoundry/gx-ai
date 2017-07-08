@@ -26,16 +26,27 @@ $(warning use GK_SYSTEM instead)
 $(error GK_SYSTEM is not set)
 	endif
 endif
-include Makefile.$(GK_SYSTEM)
+#include Makefile.$(GK_SYSTEM)
 
 ############################
 ## Setup Compiler Flags
 ###########################
 
+export MAKEFLAGS=' -I Makefiles'
+export CUDAARCH=35
+
+NVCC=nvcc
+
 CC = $(NVCC)
 LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o 
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
+
+MPI_INC = -I /usr/local/include -I include -I.
+MPI_LIB= -L /usr/local/lib  -lmpich 
+CUDA_INC = -I /usr/local/cuda/include
+CUDA_LIB = -L /usr/local/cuda/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver
+NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true 
 
 CFLAGS= ${CUDA_INC} ${MPI_INC} 
 LDFLAGS=$(CUDA_LIB) ${MPI_LIB} 
@@ -77,7 +88,7 @@ obj/parameters.o: inputs/namelist_defaults.c c_fortran_namelist3.c
 obj/solver.o: qneut_kernel.cu 
 
 obj/%.o: %.cu $(HEADERS)
-	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include
+	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS)
 
 obj/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
@@ -97,7 +108,7 @@ OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o 
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS))
-	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) -I include
 
 
 ########################
@@ -122,11 +133,9 @@ test_make:
 	@echo TARGET=    $(TARGET)
 	@echo SDKDIR=    $(SDKDIR)
 	@echo NVCC=      $(NVCC)
-	@echo CFLAGS= 	 $(CFLAGS)
-	@echo LDFLAGS= 	 $(LDFLAGS)
 	@echo NVCCFLAGS= $(NVCCFLAGS)
 	@echo CUDA_INC=  $(CUDA_INC)
-	@echo CUDA_LIB=  $(CUDA_LIB)
+	@echo CUDA_LIBS=  $(CUDA_LIBS)
 
 
 
