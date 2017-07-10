@@ -81,6 +81,11 @@ class Gs2_geo : public Geometry {
   Gs2_geo();
 };
 
+// MFM
+class File_geo : public Geometry {
+ public:
+  File_geo(Parameters* parameters);
+};
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
 //

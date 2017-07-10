@@ -51,16 +51,18 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 
   if(iproc == 0) {
     int igeo = pars->igeo;
-
     printf("Initializing geometry...\n");
     if(igeo==0) {
       geo = new S_alpha_geo(pars);
     } else if(igeo==1) {
-      printf("igeo = 1 not yet implemented!\n");
-      exit(1);
-      //geo = new Eik_geo();
+      // MFM
+      geo = new File_geo(pars);
     } else if(igeo==2) {
       printf("igeo = 2 not yet implemented!\n");
+      exit(1);
+      //geo = new Eik_geo();
+    } else if(igeo==3) {
+      printf("igeo = 3 not yet implemented!\n");
       exit(1);
       //geo = new Gs2_geo();
     }

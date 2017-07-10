@@ -290,6 +290,9 @@ int Parameters::read_namelist(char* filename)
   
   fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo);
 
+  // mfm
+  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geofilename);
+
   char* initfield;
   //initfield = (char*) malloc(sizeof(char)*10);
   fnr_get_string(&namelist_struct, "gryfx_knobs", "init", &initfield);

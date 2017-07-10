@@ -324,7 +324,6 @@ struct fnr_struct fnr_read_namelist_string(char * file_string)
 
 
 	free(namelist_texts);
-
 	return namelist_struct;
 };
 struct fnr_struct fnr_read_namelist_file(char * file_name)
@@ -336,6 +335,7 @@ struct fnr_struct fnr_read_namelist_file(char * file_name)
 	fnr_read_file(file_name, &file_string);
 	if (FNR_DEBUG) printf("The string read was: \n%s\n", file_string);
 	struct fnr_struct namelist_struct = fnr_read_namelist_string(file_string);
+
 	return namelist_struct;
 }
 

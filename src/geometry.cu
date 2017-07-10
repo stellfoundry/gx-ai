@@ -6,6 +6,7 @@
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) ;
 __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) ;
 
+
 Geometry::~Geometry() {
   cudaFree(z);
   cudaFree(bmag);
@@ -153,6 +154,153 @@ Eik_geo::Eik_geo() {
 
 Gs2_geo::Gs2_geo() {
 
+}
+
+// MFM - 07/09/17
+File_geo::File_geo(Parameters *pars)
+{
+
+  operator_arrays_allocated_=false; // allocating for geo parameters, but once kperp2/omegad are set they aren't needed anymore
+  size_t size = sizeof(float)*pars->nz_in; 
+  cudaMallocHost((void**) &z_h, size);
+  cudaMallocHost((void**) &bmag_h, size);
+  cudaMallocHost((void**) &bmagInv_h, size);
+  cudaMallocHost((void**) &bgrad_h, size); // why?
+  cudaMallocHost((void**) &gds2_h, size);
+  cudaMallocHost((void**) &gds21_h, size);
+  cudaMallocHost((void**) &gds22_h, size);
+  cudaMallocHost((void**) &gbdrift_h, size);
+  cudaMallocHost((void**) &gbdrift0_h, size);
+  cudaMallocHost((void**) &cvdrift_h, size);
+  cudaMallocHost((void**) &cvdrift0_h, size);
+  cudaMallocHost((void**) &grho_h, size);
+  cudaMallocHost((void**) &jacobian_h, size);
+
+  cudaMalloc((void**) &z, size);
+  cudaMalloc((void**) &bmag, size);
+  cudaMalloc((void**) &bmagInv, size);
+  cudaMalloc((void**) &bgrad, size);
+  cudaMalloc((void**) &gds2, size);
+  cudaMalloc((void**) &gds21, size);
+  cudaMalloc((void**) &gds22, size);
+  cudaMalloc((void**) &gbdrift, size);
+  cudaMalloc((void**) &gbdrift0, size);
+  cudaMalloc((void**) &cvdrift, size);
+  cudaMalloc((void**) &cvdrift0, size);
+  cudaMalloc((void**) &grho, size);
+  cudaMalloc((void**) &jacobian, size);
+
+  FILE * geoFile = fopen(pars->geofilename, "r");
+
+  int nlines=0;
+  fpos_t* lineStartPos;
+  int ch;
+
+  int ntgrid;
+  int oldNz, oldnperiod;
+
+  rewind(geoFile);
+  nlines=0;
+
+  // Find number of lines
+  while( (ch = fgetc(geoFile)) != EOF)
+    {
+      if(ch == '\n') {
+	nlines++;
+      }
+    }
+  printf("Counted %d lines in geofile.\n",nlines);
+
+  lineStartPos = (fpos_t*) malloc(sizeof(fpos_t)*nlines);
+  int i=2;
+  rewind(geoFile);
+  fgetpos(geoFile, &lineStartPos[1]);
+  while( (ch = fgetc(geoFile)) != EOF)
+    {
+      if(ch == '\n') {
+	fgetpos(geoFile, &lineStartPos[i]);
+	i++;
+      }
+    }
+
+  oldNz = pars->nz_in;
+  oldnperiod = pars->nperiod;
+  //lineStartPos[1] is the first line, not i=0
+  fsetpos(geoFile, &lineStartPos[2]);
+  fscanf(geoFile, "%d %d %d %f %f %f %f %f", &ntgrid, &pars->nperiod, &pars->nz_in, &pars->drhodpsi, &pars->rmaj, &pars->shat, &pars->kxfac, &pars->qsf);
+  if(pars->debug) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, nz_in = %d, rmaj = %f\n\n\n", ntgrid, pars->nperiod, pars->nz_in, pars->rmaj);
+
+  if(oldNz != pars->nz_in) {
+    printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
+    abort();
+  }
+  if(oldnperiod != pars->nperiod) {
+    printf("You must set nperiod in the namelist equal to nperiod in the geofile. Exiting...\n");
+    abort();
+  }
+
+  // Local copy to simplify loops
+  int nz_in = pars->nz_in;
+
+  //first block
+  for(int i=0; i<nz_in; i++) {
+    fsetpos(geoFile, &lineStartPos[i+4]);
+    fscanf(geoFile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
+    gbdrift_h[i] = (1./4.)*gbdrift_h[i];
+  }
+  //printf("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[nz_in-1]);
+  //printf("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[nz_in-1]);
+
+  //second block
+  for(int i=0; i<nz_in; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 1*(nz_in+2)]);
+    fscanf(geoFile, "%f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i]);
+    cvdrift_h[i] = (1./4.)*cvdrift_h[i];
+    bmagInv_h[i] = 1./bmag_h[i];
+    jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
+    grho_h[i] = 1.;
+    // Is bgrad necessary??
+    bgrad_h[i] = gradpar*pars->eps*sin(z_h[i])*bmag_h[i];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+  }
+  //printf("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[nz_in-1]);
+  //printf("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[nz_in-1]);
+  //printf("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[nz_in-1]);
+
+  //third block
+  for(int i=0; i<nz_in; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 2*(nz_in+2)]);
+    fscanf(geoFile, "%f %f", &gds21_h[i], &gds22_h[i]);
+  }
+  //printf("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[nz_in-1]);
+  //printf("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[nz_in-1]);
+
+  //fourth block
+  for(int i=0; i<nz_in; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 3*(nz_in+2)]);
+    fscanf(geoFile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
+    cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
+    gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
+  }
+  printf("All geometry information read successfully\n");
+  //printf("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[nz_in-1]);
+  //printf("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[nz_in-1]);
+
+  //copy host variables to device variables
+    cudaMemcpy(z, z_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gbdrift, gbdrift_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(grho, grho_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(cvdrift, cvdrift_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bmag, bmag_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bmagInv, bmagInv_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(bgrad, bgrad_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds2, gds2_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds21, gds21_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gds22, gds22_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(cvdrift0, cvdrift0_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(gbdrift0, gbdrift0_h, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(jacobian, jacobian_h, size, cudaMemcpyHostToDevice);
+
+    cudaDeviceSynchronize();
 }
 
 void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
