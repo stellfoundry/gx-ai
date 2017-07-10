@@ -190,7 +190,7 @@ int SmithPerp::apply_closures(Moments* m, Moments* mRhs)
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q)
 {
   unsigned int idxyz = get_id1();
-
+  
   if(idxyz<nx*nyc*nz) {
 
     const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
@@ -225,19 +225,19 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q):
   cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
   
   // allocate closure array
-  cudaMalloc(&clos, grids_->NxNycNz*sizeof(cuComplex));
+  cudaMalloc((void**) &clos, grids_->NxNycNz*sizeof(cuComplex));
 
   // calculate closure coefficients 
-  cudaMalloc((void**) &a_coefficients_, sizeof(cuComplex)*q_);
-  smith_par_getAs(grids->Nhermite, q, a_coefficients_);
-
+  a_coefficients_ = (cuComplex*) malloc(q_*sizeof(cuComplex));
+  smith_par_getAs(grids->Nhermite, q_, a_coefficients_);
+   
   // 1d thread blocks over xyz
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
 }
 
 SmithPar::~SmithPar() {
-  cudaFree(a_coefficients_);
+  free(a_coefficients_);
   cudaFree(clos);
   cudaFree(tmp);
   cudaFree(tmp_abs);

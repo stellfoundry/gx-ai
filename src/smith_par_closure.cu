@@ -23,9 +23,10 @@ void get_normalized_hermite_coefficients(double complex **matrix, int n, double 
 int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acopy, int lda, const cuDoubleComplex *b, cuDoubleComplex *x); 
 __global__ void castDoubleToFloat(cuDoubleComplex *array_d, cuComplex *array_f, int size); 
 
-/* 
+/*
 int main() {	
-    int n,q;
+  
+  int n,q;
 
 	//Request number of A's to find
 	printf("q (# of A terms): ");
@@ -34,16 +35,19 @@ int main() {
 	//Request a degree for the normalized hermite polynomial
 	printf("n (degree of Hermite moment being closed): ");
 	scanf("%d", &n);
-    printf("\n");
-
-    cuComplex *x_answer;
-    cudaMalloc(&x_answer, q*sizeof(cuComplex));
-	      
-    smith_par_getAs(n,q, x_answer);
-
-    cudaFree(x_answer);
-
-    return 0;
+  printf("\n");
+  
+  cuComplex *x_answer = (cuComplex*) malloc(q*sizeof(cuComplex));
+  
+  smith_par_getAs(n,q, x_answer);
+  
+  for (int i = 0; i < q; i++) {
+    printf("A_n-%d: %f + %fi\n", i+1, cuCrealf(x_answer[i]),cuCimagf(x_answer[i]));
+  }
+  
+  free(x_answer);
+  
+  return 0;
 } */
 
 /* Pade Approximant to find A coefficients
@@ -187,7 +191,12 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
     linearSolverLU(handle, q, lhsVectorCuda, q, rhsVectorCuda, rhsVectorCuda);
  
     // Converting cuDoubleComplex answer to cuComplex and storing it in x_answer
-    castDoubleToFloat<<<1,1>>>(rhsVectorCuda, x_answer, q);
+    cuComplex *rhsVectorCuda_float;
+    cudaMalloc(&rhsVectorCuda_float, q*q*sizeof(cuComplex));
+
+    castDoubleToFloat<<<1,1>>>(rhsVectorCuda, rhsVectorCuda_float, q);
+
+    cudaMemcpy(x_answer, rhsVectorCuda_float, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
 
     // Print only if DEBUG_MODE is on
     if (DEBUG_MODE) {
@@ -253,7 +262,7 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
         cudaMemcpy(a_coefficients, (float complex *) x_answer, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
         
         for (int i = 0; i < q; i++) {
-            printf("A_n-%d: %f + %fi\n", i+1, creal(a_coefficients[i]),cimag(a_coefficients[i]));
+            printf("A_n-%d: %f + %fi\n", i+1, cuCrealf(x_answer[i]),cuCimagf(x_answer[i]));
         }
 
         free(a_coefficients);
@@ -278,6 +287,7 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
     free(lhsVector);
     
     cudaFree(rhsVectorCuda);
+    cudaFree(rhsVectorCuda_float);
     cudaFree(lhsVectorCuda);
 }
 
