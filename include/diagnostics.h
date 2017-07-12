@@ -13,7 +13,7 @@ class Diagnostics {
   bool loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
   void final_diagnostics(Moments* moms, Fields* fields);
 
-  //void writeGridFile( ...... ) MFM
+  void writeGridFile(const char* filename); // MFM
   void writeMomOrField(cuComplex* m, const char* filename);
   void writeHLspectrum(cuComplex* ghl);
   void writeGeo();

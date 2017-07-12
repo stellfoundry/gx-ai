@@ -192,6 +192,11 @@ File_geo::File_geo(Parameters *pars)
 
   FILE * geoFile = fopen(pars->geofilename, "r");
 
+  if (geoFile == NULL) {
+    printf("Cannot open file %s \n", geoFile);
+    exit(0);
+      }
+
   int nlines=0;
   fpos_t* lineStartPos;
   int ch;

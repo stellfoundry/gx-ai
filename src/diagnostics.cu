@@ -196,6 +196,24 @@ void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
   fclose(out);
 }
 
+// MFM
+void Diagnostics::writeGridFile(const char* name) {
+
+  char ofilename[2000], c;
+  sprintf(ofilename, "%s.%s", pars_->run_name, name);
+  FILE* ifile = fopen(pars_->geofilename,"r");
+  FILE* ofile = fopen(ofilename,"w+");
+
+  c = fgetc(ifile);
+  while (c != EOF) {
+    fputc(c, ofile);
+    c = fgetc(ifile);
+  }
+  fclose(ifile);
+  fclose(ofile);
+}
+
+
 void Diagnostics::writeHLspectrum(cuComplex* ghl)
 {
   // calculate spectrum  

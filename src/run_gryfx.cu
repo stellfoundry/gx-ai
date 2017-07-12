@@ -118,6 +118,11 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   
     diagnostics->writeMomOrField(moms->dens_ptr[0], "dens0");
     diagnostics->writeMomOrField(fields->phi, "phi0");
+
+    // MFM
+    if (igeo == 1) {
+      diagnostics->writeGridFile("geofile");
+    }
   }
 
   // TIMESTEP LOOP
