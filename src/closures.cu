@@ -10,14 +10,11 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
 Beer42::Beer42(Grids* grids, const Geometry* geo): 
     grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
 {
-  // -----------------------
   // set up parallel derivatives, including |kpar|
   grad_par = new GradParallel(grids_);
   abs_grad_par = new GradParallel(grids_, true);
 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
-  //cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
-  // ----------------------
 
   D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
   D_perp = sqrt(M_PI)/2.;
@@ -50,11 +47,9 @@ Beer42::Beer42(Grids* grids, const Geometry* geo):
   cudaMalloc((void**) &nu, sizeof(cuComplex)*11);
   cudaMemcpy(nu, nu_h, sizeof(cuComplex)*11, cudaMemcpyHostToDevice);
 
-  // ----------------------------
   // 1d thread blocks over xyz
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
-  // ---------------------------
 }
 
 Beer42::~Beer42() {
@@ -122,7 +117,6 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     grids_(grids), omegad_(geo->omegad), q_(q)
 {
   cuComplex Aclos_h[q_];
-  // closuressss(blah, Aclos_h)
 
   // hard code these cases for now...
   if(grids_->Nlaguerre==4 && q_==3) {
@@ -141,6 +135,16 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].x = -0.272805;
     Aclos_h[2].y = 0.292545;
   }
+  else if(grids_->Nlaguerre==5 && q_==4) {
+    Aclos_h[0].x = -2.8197;
+    Aclos_h[0].y = 0.679165;
+    Aclos_h[1].x = -2.63724;
+    Aclos_h[1].y = 1.4362;
+    Aclos_h[2].x = -0.896854;
+    Aclos_h[2].y = 0.920214;
+    Aclos_h[3].x = -0.0731348;
+    Aclos_h[3].y = 0.167287;
+  }
   else if(grids_->Nlaguerre==6 && q_==3) {
     Aclos_h[0].x = -2.33763;
     Aclos_h[0].y = 0.527272;
@@ -148,6 +152,28 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[1].y = 0.835661;
     Aclos_h[2].x = -0.346277;
     Aclos_h[2].y = 0.313484;
+  }
+  else if(grids_->Nlaguerre==6 && q_==4) {
+    Aclos_h[0].x = -2.97138;
+    Aclos_h[0].y = 0.66065;
+    Aclos_h[1].x = -3.01477;
+    Aclos_h[1].y = 1.48449;
+    Aclos_h[2].x = -1.18109;
+    Aclos_h[2].y = 1.04256;
+    Aclos_h[3].x = -0.13387;
+    Aclos_h[3].y = 0.221786;
+  }
+  else if(grids_->Nlaguerre==6 && q_==5) {
+    Aclos_h[0].x = -3.53482;
+    Aclos_h[0].y = 0.771299;
+    Aclos_h[1].x = -4.52836;
+    Aclos_h[1].y = 2.17916;
+    Aclos_h[2].x = -2.50811;
+    Aclos_h[2].y = 2.14358;
+    Aclos_h[3].x = -0.537375;
+    Aclos_h[3].y = 0.839509;
+    Aclos_h[4].x = -0.0226971;
+    Aclos_h[4].y = 0.102349;
   }
   else if(grids_->Nlaguerre==8 && q_==4) {
     Aclos_h[0].x = -3.17353;
@@ -164,10 +190,8 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     exit(1);
   }
 
-  // ------------------------
   cudaMalloc((void**) &Aclos_, sizeof(cuComplex)*q_);
   cudaMemcpy(Aclos_, Aclos_h, sizeof(cuComplex)*q_, cudaMemcpyHostToDevice);
-  // ------------------------
 
   // 1d thread blocks over xyz
   dimBlock = 512;
@@ -211,8 +235,6 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
   }
 
 }
-
-////////////////////
 
 SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q): 
     grids_(grids), q_(q)

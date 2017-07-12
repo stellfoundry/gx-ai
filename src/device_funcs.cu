@@ -12,7 +12,7 @@ __host__ __device__ float factorial(int m) {
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__host__ __device__ float Jflr(int m, float b) {
+__device__ float Jflr(int m, float b) {
   if (m<0) return 0.;
   //else if (m>=nlaguerre) return 0;
   else return 1./factorial(m)*pow(-0.5*b, m)*expf(-b/2.);
