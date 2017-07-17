@@ -3,21 +3,21 @@
 #include "cuda_constants.h"
 #include <sys/stat.h>
 
-__global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuComplex *omega)
+__global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuDoubleComplex *omega)
 {
   unsigned int idxy = get_id1();
   
   //i_dt = i/dt
-  cuComplex i_dt = {0., 1./dt};
+  cuDoubleComplex i_dt = make_cuDoubleComplex(0., (double) 1./dt);
   
   if(idxy<nx*nyc)
   {
-    cuComplex ratio = phi[idxy+nx*nyc*((int)(.5*nz))] / phiOld[idxy+nx*nyc*((int)(.5*nz))];
+    cuDoubleComplex ratio = cuComplexFloatToDouble(phi[idxy+nx*nyc*((int)(.5*nz))]) / cuComplexFloatToDouble(phiOld[idxy+nx*nyc*((int)(.5*nz))]);
     
-    cuComplex log;
-    log.x = logf(cuCabsf(ratio));
-    log.y = atan2f(ratio.y,ratio.x);
-    omega[idxy] = log*i_dt;
+    cuDoubleComplex logr;
+    logr.x = log(cuCabs(ratio));
+    logr.y = atan2(ratio.y,ratio.x);
+    omega[idxy] = logr*i_dt;
   }
 }
 
@@ -27,10 +27,10 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 {
   fields_old = new Fields(grids_);
 
-  cudaMalloc((void**) &growth_rates, sizeof(cuComplex)*grids_->NxNyc);
+  cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
   cudaMallocManaged((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
   
-  cudaMallocHost((void**) &growth_rates_h, sizeof(cuComplex)*grids_->NxNyc);
+  cudaMallocHost((void**) &growth_rates_h, sizeof(cuDoubleComplex)*grids_->NxNyc);
 
   cudaMallocHost((void**) &m_h, sizeof(cuComplex)*grids_->NxNycNz);
 
@@ -70,7 +70,7 @@ bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
 
     if(counter%pars_->nwrite==0) {
         printf("Step %d: Time = %f\n", counter, time);
-      cudaMemcpyAsync(growth_rates_h, growth_rates, sizeof(cuComplex)*grids_->NxNyc, cudaMemcpyDeviceToHost);
+      cudaMemcpyAsync(growth_rates_h, growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc, cudaMemcpyDeviceToHost);
       print_growth_rates_to_screen();
     }
   } 

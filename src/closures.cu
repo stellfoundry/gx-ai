@@ -7,12 +7,17 @@
 __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q);
 
-Beer42::Beer42(Grids* grids, const Geometry* geo): 
+Beer42::Beer42(Grids* grids, const Geometry* geo, bool local): 
     grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
 {
   // set up parallel derivatives, including |kpar|
-  grad_par = new GradParallel(grids_);
-  abs_grad_par = new GradParallel(grids_, true);
+  if (local) {
+    grad_par = new GradParallelLocal(grids_);
+    abs_grad_par = new GradParallelLocal(grids_, true);
+  } else {
+    grad_par = new GradParallel(grids_);
+    abs_grad_par = new GradParallel(grids_, true);
+  }
 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
 
@@ -184,6 +189,13 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].y = 1.15187;
     Aclos_h[3].x = -0.244346;
     Aclos_h[3].y = 0.283442;
+  } else if(grids_->Nlaguerre==8 && q_==3) {
+    Aclos_h[0].x = -2.46437;
+    Aclos_h[0].y = 0.482544;
+    Aclos_h[1].x = -1.90784;
+    Aclos_h[1].y = 0.806717;
+    Aclos_h[2].x = -0.454126;
+    Aclos_h[2].y = 0.32645;
   }
   else {
     printf("ERROR: specified Smith closure not yet implemented\n");

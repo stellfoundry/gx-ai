@@ -17,16 +17,20 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   mRhs_par = new Moments(grids_);
 
   // set up parallel ffts
-//  if(pars_->boundary_option_linked) {
+  if(pars_->local_limit) {
+    printf("Using local limit for grad parallel.\n");
+    grad_par = new GradParallelLocal(grids_);
+  }
+//  else if(pars_->boundary_option_linked) {
 //    grad_par = new GradParallelLinked(grids_);
 //  }
-//  else {
-      grad_par = new GradParallel(grids_);
-//  }
+  else {
+    grad_par = new GradParallel(grids_);
+  }
  
   if(pars_->closure_model==BEER42) {
     printf("Initializing Beer 4+2 closures\n");
-    closures = new Beer42(grids_, geo_);
+    closures = new Beer42(grids_, geo_, pars_->local_limit);
   } else if (pars_->closure_model==SMITHPERP) {
     printf("Initializing Smith perpendicular toroidal closures\n");
     closures = new SmithPerp(grids_, geo_, pars_->smith_perp_q, pars_->smith_perp_w0);

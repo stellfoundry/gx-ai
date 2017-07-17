@@ -79,3 +79,27 @@ void GradParallel::eval(cuComplex* m, cuComplex* res)
   cufftExecC2C(gradpar_plan_forward, m, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
 }
+
+GradParallelLocal::GradParallelLocal(Grids* grids, bool abs) :
+  grids_(grids), abs_(abs)
+{
+  dimBlock = 512;
+  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+}
+
+void GradParallelLocal::eval(Moments *m)
+{
+  if(!abs_) {
+    m->scale(make_cuComplex(0.,1.));
+  }
+}
+
+// single moment
+void GradParallelLocal::eval(cuComplex* m, cuComplex* res) 
+{
+  if(!abs_) {
+    scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, m, make_cuComplex(0.,1.));
+  } else {
+    scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, m, make_cuComplex(1.,0.));
+  }
+}

@@ -290,6 +290,9 @@ int Parameters::read_namelist(char* filename)
   
   fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo);
 
+  if(qsf<0 && nz_in==1) local_limit=true;
+  else local_limit = false;
+
   // mfm
   fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geofilename);
 
@@ -323,7 +326,6 @@ int Parameters::read_namelist(char* filename)
   } 
   
   fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &(init_amp));
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "phiext", &phiext);
 
   init_single = get_bool_on_off(&namelist_struct, "gryfx_knobs", "init_single");
   fnr_get_int(&namelist_struct, "gryfx_knobs", "iky_single", &(iky_single));
@@ -361,6 +363,13 @@ int Parameters::read_namelist(char* filename)
   } else {
     scheme = RK2;
   }
+
+  char* source_str;
+  fnr_get_string(&namelist_struct, "source_knobs", "source_option", &source_str);
+  if( strcmp(source_str,"phiext_full") ) {
+    source_option = PHIEXT;
+  }
+  fnr_get_float(&namelist_struct, "source_knobs", "phi_ext", &phiext);
 
   cuComplex phi_test;
   fnr_get_float(&namelist_struct, "secondary_test_knobs", "phi_test_real", &phi_test.x);

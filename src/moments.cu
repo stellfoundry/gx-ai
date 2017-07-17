@@ -136,6 +136,16 @@ int Moments::zero(int l, int m, int s) {
   return 0;
 }
 
+int Moments::scale(double scalar) {
+  scale_kernel<<<dimGrid,dimBlock>>>(ghl, ghl, scalar);
+  return 0;
+}
+
+int Moments::scale(cuComplex scalar) {
+  scale_kernel<<<dimGrid,dimBlock>>>(ghl, ghl, scalar);
+  return 0;
+}
+
 int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {
   add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl);
   return 0;

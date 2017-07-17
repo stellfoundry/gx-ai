@@ -23,7 +23,7 @@ class Diagnostics {
  private:
   Fields *fields_old;
 
-  cuComplex *growth_rates, *growth_rates_h;
+  cuDoubleComplex *growth_rates, *growth_rates_h;
 
   cuComplex *m_h;
 

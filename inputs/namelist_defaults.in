@@ -488,7 +488,6 @@ model_option = "const-curv"
   nlpm_zonal_kx1_only = "off"
   smagorinsky = "off"
   init = "density"
-  phiext = -1.0
   debug = "off"
   init_single = "off"
   iky_single = 1

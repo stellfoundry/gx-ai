@@ -17,6 +17,7 @@
 #define BEER42 1
 #define SMITHPERP 2
 #define SMITHPAR 3
+#define PHIEXT 1
 
 class Parameters {
 
@@ -66,6 +67,7 @@ class Parameters {
      float drhodpsi;
      float epsl;
      float kxfac;
+     bool local_limit;
   
     // Namelist: parameters
      float ti_ov_te;
@@ -200,6 +202,9 @@ class Parameters {
    // layout = 'lxyes'
    // local_field_solve = F
   
+   // Namelist: source_knobs
+      int source_option;
+      float phiext;
   
     // Namelist: gryfx_knobs
       int inlpm;
@@ -264,7 +269,6 @@ class Parameters {
       bool nlpm_zonal_kx1_only;
       bool smagorinsky;
       int init;
-      float phiext;
       bool debug;
       bool init_single;
       int iky_single;

@@ -13,7 +13,7 @@ class Closures {
 
 class Beer42 : public Closures {
  public:
-  Beer42(Grids* grids, const Geometry* geo);
+  Beer42(Grids* grids, const Geometry* geo, bool local);
   ~Beer42();
   int apply_closures(Moments* m, Moments* mRhs);
 

@@ -94,7 +94,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     
     for(int k=0; k<pars->nz_in; k++) {
       z_h[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
-      if(qsf<0) {z_h[k] = 0.;}
+      if(pars->local_limit) {z_h[k] = 0.;} // outboard-midplane
       bmag_h[k] = 1./(1.+pars->eps*cos(z_h[k]));
       bgrad_h[k] = gradpar*pars->eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       gds2_h[k] = 1. + pow((pars->shat*z_h[k]-pars->shift*sin(z_h[k])),2);
@@ -123,7 +123,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
         bmag_h[k] = 1.;
         //gradpar = 1.;
       }
-      if(qsf<0) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+      if(pars->local_limit) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
 
       // calculate these derived coefficients after slab overrides
       bmagInv_h[k] = 1./bmag_h[k];

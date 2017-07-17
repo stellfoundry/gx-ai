@@ -90,7 +90,7 @@
  hypercollisions = .true.
  nu_hyper_l = 50
  nu_hyper_m = 0
- p_hyper_l = 6
+ p_hyper_l = 10
  p_hyper_m = 0
 /
 
@@ -121,7 +121,7 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.00025 ! Time step
+ delt = 0.001 ! Time step
  nstep = 5000000 ! Maximum number of timesteps
 /
 
@@ -249,7 +249,7 @@
  write_final_moments = .true. ! write final n, T
   ! write_parity not specified --- Writes parities in dist fn and particle fluxes
  nsave = 10000 ! Write restart files every nsave timesteps
- nwrite = 10 ! Output diagnostic data every nwrite
+ nwrite = 1 ! Output diagnostic data every nwrite
  navg = 500 ! Any time averages performed over navg
  omegatol = -0.001 ! The convergence has to be better than one part in 1/omegatol
  omegatinst = 500.0 ! Recommended value: 500.
