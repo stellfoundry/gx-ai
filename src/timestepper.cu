@@ -67,6 +67,7 @@ int RungeKutta4::advance(double *t, Moments* m, Fields* f) {
 
   linear_->rhs(mStar, f, mRhs4);
   mStar->add_scaled(1., m, dt_/6., mRhs1, dt_/3., mRhs2, dt_/3., mRhs3, dt_/6., mRhs4);
+  //  mStar = kicked
   m->copyFrom(mStar);
   solver_->fieldSolve(m, f);
   *t+=dt_;

@@ -64,6 +64,7 @@ void GradParallel::eval(Moments* m)
   // i*kz*ghl calculated via callback, defined as part of gradpar_plan_forward
   // for now, loop over all l and m because cannot batch 
   // eventually will optimize by first transposing so that z is fastest index
+  m->reality();
   for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
     // forward FFT (z -> kz) & multiply by i kz (via callback)
     cufftExecC2C(gradpar_plan_forward, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_FORWARD);
@@ -77,9 +78,17 @@ void GradParallel::eval(Moments* m)
 // FFT and derivative for a single moment
 void GradParallel::eval(cuComplex* m, cuComplex* res)
 {
+  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
   cufftExecC2C(gradpar_plan_forward, m, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
   reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+}
+
+// FFT only for a single moment
+void GradParallel::fft_only(cuComplex* m, cuComplex* res)
+{
+  // use gradpar_plan_inverse since it does not multiply by i kz via callback 
+  cufftExecC2C(gradpar_plan_inverse, m, res, CUFFT_FORWARD);
 }
 
 GradParallelLocal::GradParallelLocal(Grids* grids, bool abs) :

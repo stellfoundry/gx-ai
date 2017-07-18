@@ -4,6 +4,7 @@
 #include "grids.h"
 #include "moments.h"
 #include "fields.h"
+#include "grad_parallel.h"
 
 class Diagnostics {
  public:
@@ -15,6 +16,7 @@ class Diagnostics {
 
   void writeGridFile(const char* filename); // MFM
   void writeMomOrField(cuComplex* m, const char* filename);
+  void writeMomOrFieldKpar(cuComplex* m, const char* filename);
   void writeHLspectrum(cuComplex* ghl);
   void writeGeo();
   void writeGrowthRates();
@@ -23,10 +25,12 @@ class Diagnostics {
 
  private:
   Fields *fields_old;
+  GradParallel* grad_parallel;
 
   cuDoubleComplex *growth_rates, *growth_rates_h;
 
   cuComplex *m_h;
+  cuComplex *res;
 
   Parameters* pars_;
   Grids* grids_;

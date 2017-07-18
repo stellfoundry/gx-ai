@@ -26,6 +26,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   fields_old = new Fields(grids_);
+  grad_parallel = new GradParallel(grids_);
 
   cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
   cudaMallocManaged((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
@@ -33,6 +34,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMallocHost((void**) &growth_rates_h, sizeof(cuDoubleComplex)*grids_->NxNyc);
 
   cudaMallocHost((void**) &m_h, sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMalloc((void**) &res, sizeof(cuComplex)*grids_->NxNycNz);
 
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
@@ -100,7 +102,12 @@ void Diagnostics::final_diagnostics(Moments* moms, Fields* fields)
 {
   // print final moments and fields
   writeMomOrField(moms->dens_ptr[0], "dens");
+  writeMomOrField(moms->upar_ptr[0], "upar");
   writeMomOrField(fields->phi, "phi");
+
+  writeMomOrFieldKpar(moms->dens_ptr[0], "dens");
+  writeMomOrFieldKpar(moms->upar_ptr[0], "upar");
+  writeMomOrFieldKpar(fields->phi, "phi");
 
   // write Hermite-Laguerre spectrum |G|**2(l,m)
   writeHLspectrum(moms->ghl);
@@ -172,6 +179,45 @@ void Diagnostics::writeGrowthRates()
   	  fprintf(out, "\n");
   	}	
   fclose(out);
+}
+
+void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
+  int Nx = grids_->Nx;
+  int Ny = grids_->Ny;
+  int Nz = grids_->Nz;
+
+  char ofilename[2000];
+  sprintf(ofilename, "%s.%s.kpar_field", pars_->run_name, name);
+  FILE* out = fopen(ofilename,"w+");
+  grad_parallel->fft_only(m, res);
+  cudaMemcpy(m_h,res,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  fprintf(out, "#\tkz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
+  fprintf(out, "\n");
+  int blockid = 0;
+  for(int i=0; i<(Nx-1)/3+1; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;      
+      for(int k=0; k<Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	//if(index!=0){
+	  fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+        //}
+      }     
+    }
+  }
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<(Ny-1)/3+1; j++) {
+      fprintf(out, "\n#%d\n\n", blockid);
+      blockid++;
+      for(int k=0; k<Nz; k++) {
+        int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
+	fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+      }    
+    }
+  }
+  fclose(out);
+
 }
 
 void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
@@ -267,18 +313,14 @@ __global__ void volume_average(float* res, cuComplex* f, float* jacobian, float 
 
 void Diagnostics::HLspectrum(cuComplex* ghl)
 {
-  //float* out;
-  //cudaMallocManaged((void**) &out, sizeof(float));
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
-  cudaMemsetAsync(hlspectrum, 0., sizeof(float)*grids_->Nmoms);
+  cudaMemset(hlspectrum, 0., sizeof(float)*grids_->Nmoms);
   for(int l=0; l<grids_->Nhermite; l++) {
     for(int m=0; m<grids_->Nlaguerre; m++) {
-      volume_average<<<blocks,threads>>>(&hlspectrum[m+grids_->Nlaguerre*l], &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom);
-      //volume_average<<<blocks,threads>>>(out, &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom);
-      //cudaDeviceSynchronize();
-      //printf("%d\t%d\t%e\n", l, m, out[0]);
-      //out[0]=0.;
+      volume_average<<<blocks,threads>>>
+	(&hlspectrum[m+grids_->Nlaguerre*l], 
+	 &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom);
     }
   }
 }

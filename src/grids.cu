@@ -45,6 +45,7 @@ Grids::Grids(Parameters* pars) :
 {
   cudaMallocHost((void**) &kx_h, sizeof(float)*Nx);
   cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
+  cudaMallocHost((void**) &kz_h, sizeof(float)*Nz);
 
   cudaMalloc((void**) &kx, sizeof(float)*Nx);
   cudaMalloc((void**) &ky, sizeof(float)*Nyc);
@@ -67,6 +68,7 @@ Grids::Grids(Parameters* pars) :
 
   cudaMemcpy(kx_h, kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
   cudaMemcpy(ky_h, ky, sizeof(float)*Nyc, cudaMemcpyDeviceToHost);
+  cudaMemcpy(kz_h, kz, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
 }
 
 Grids::~Grids() {

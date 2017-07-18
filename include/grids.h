@@ -31,6 +31,7 @@ class Grids {
 
   float * ky_h;
   float * kx_h;
+  float * kz_h;
 
 	/* A grid the size of kx, true if in the dealiased zone*/
 	bool * kx_mask;
