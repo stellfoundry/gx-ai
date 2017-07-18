@@ -113,7 +113,8 @@ int Moments::initialConditions(Parameters* pars, Geometry* geo) {
     cudaMemcpy(upar_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
   }
     // reality condition
-    //operations_->reality(ghl);
+  this->reality();
+  
 
     // mask
     //operations_->mask(ghl);
@@ -159,4 +160,10 @@ int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2,
                                      c3, m3->ghl, c4, m4->ghl, c5, m5->ghl);
   return 0;
   
+}
+
+int Moments::reality() 
+{
+  reality_kernel<<<dimGrid,dimBlock>>>(ghl);
+  return 0;
 }

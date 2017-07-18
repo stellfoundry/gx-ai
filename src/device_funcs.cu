@@ -331,3 +331,31 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, cuComplex
     res[idxyz] = scalar*mom[idxyz];
   }
 }
+
+__global__ void reality_kernel(cuComplex* g) 
+{
+  for(int s = 0; s < nspecies; s++) {
+    for (int idx = threadIdx.x; idx<nx/2+1; idx+=blockDim.x) {
+      for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
+        for (int lm = threadIdx.z; lm < nhermite*nlaguerre; lm += blockDim.z) {
+          int globalIdx = nyc*(idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nlaguerre*nhermite*s; 
+          int globalIdx2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nlaguerre*nhermite*s; 
+          g[globalIdx2].x = g[globalIdx].x;
+          g[globalIdx2].y = -g[globalIdx].y;
+        }
+      }
+    }
+  }
+}
+
+__global__ void reality_singlemom_kernel(cuComplex* mom) 
+{
+  for (int idx = threadIdx.x; idx<nx/2+1; idx+=blockDim.x) {
+    for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
+      unsigned int index = (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      unsigned int index2 = (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
+      mom[index2].x = mom[index].x;
+      mom[index2].y = -mom[index].y;
+    }
+  }
+}

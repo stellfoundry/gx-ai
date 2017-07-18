@@ -47,6 +47,13 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   
   // set up stop file
   sprintf(stopfilename_, "%s.stop", pars_->run_name);
+
+  if(pars_->source_option == PHIEXT) {
+    char ofilename[2000];
+    sprintf(ofilename, "%s.%s.time", pars_->run_name, "phi");
+    // open new file (i.e. overwrite an existing one)
+    timefile = fopen(ofilename,"w");
+  }
 }
 
 Diagnostics::~Diagnostics()
@@ -55,6 +62,9 @@ Diagnostics::~Diagnostics()
   cudaFree(growth_rates);
   cudaFree(hlspectrum);
   cudaFreeHost(growth_rates_h);
+  if(pars_->source_option == PHIEXT) {
+    fclose(timefile);
+  }
 }
 
 // NOTE: needs to be called every step when calculating growth rates
@@ -62,6 +72,7 @@ Diagnostics::~Diagnostics()
 bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) 
 {
   bool stop = false;
+  // write instantaneous growth rates
   if(pars_->write_omega) {
     growthRates<<<grids_->NxNyc/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
              (fields->phi, fields_old->phi, dt, growth_rates);
@@ -74,6 +85,11 @@ bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
       print_growth_rates_to_screen();
     }
   } 
+  // write time history of phi
+  if(pars_->source_option==PHIEXT) {
+    writeTimeHistory(fields->phi, time, 1, 0, grids_->Nz/2, timefile);
+  }
+  // check to see if we should stop simulation
   if(counter%pars_->nwrite==0) {
     stop = checkstop();
   }
@@ -93,6 +109,7 @@ void Diagnostics::final_diagnostics(Moments* moms, Fields* fields)
   writeGeo();
 
   if(pars_->write_omega) writeGrowthRates();
+  fflush(NULL);
 }
 
 
@@ -280,6 +297,14 @@ void Diagnostics::writeGeo()
   int i=0;
   fprintf(out, "\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\t\t%.4f\n", -geo_->z_h[i], geo_->bmag_h[i], geo_->bgrad_h[i], geo_->gbdrift_h[i], geo_->gbdrift0_h[i], geo_->cvdrift_h[i], geo_->cvdrift0_h[i], geo_->gds2_h[i], geo_->gds21_h[i], geo_->gds22_h[i], geo_->grho_h[i], geo_->jacobian_h[i]);
 }
+
+void Diagnostics::writeTimeHistory(cuComplex* f, float time, int ikx, int iky, int iz, FILE* out) 
+{
+  cuComplex val;
+  cudaMemcpy(&val, &f[iky + grids_->Nyc*ikx + grids_->NxNyc*iz], sizeof(cuComplex), cudaMemcpyDeviceToHost);
+  fprintf(out, "%.4f\t\t%.4f\t\t%.4f\n", time, val.x, val.y);
+}
+  
 
 bool Diagnostics::checkstop() 
 {

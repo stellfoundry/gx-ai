@@ -366,8 +366,9 @@ int Parameters::read_namelist(char* filename)
 
   char* source_str;
   fnr_get_string(&namelist_struct, "source_knobs", "source_option", &source_str);
-  if( strcmp(source_str,"phiext_full") ) {
+  if( strcmp(source_str,"phiext_full")==0 ) {
     source_option = PHIEXT;
+    printf("Running Rosenbluth-Hinton zonal flow calculation\n");
   }
   fnr_get_float(&namelist_struct, "source_knobs", "phi_ext", &phiext);
 

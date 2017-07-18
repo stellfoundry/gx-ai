@@ -71,6 +71,7 @@ void GradParallel::eval(Moments* m)
     // backward FFT (kz -> z)
     cufftExecC2C(gradpar_plan_inverse, &m->ghl[grids_->NxNycNz*i], &m->ghl[grids_->NxNycNz*i], CUFFT_INVERSE);
   }
+  m->reality();
 }
 
 // FFT and derivative for a single moment
@@ -78,6 +79,7 @@ void GradParallel::eval(cuComplex* m, cuComplex* res)
 {
   cufftExecC2C(gradpar_plan_forward, m, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
+  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 GradParallelLocal::GradParallelLocal(Grids* grids, bool abs) :

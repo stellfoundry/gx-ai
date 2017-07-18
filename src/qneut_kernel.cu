@@ -396,7 +396,17 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, float* PhiAvgDenom_tmpXZ,
   }
 }
 
-
+__global__ void add_source(cuComplex* f, float source)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  
+    if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
+      unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      f[index].x = f[index].x + source;
+    }
+}
 //__global__ void solve_ampere_for_apar(cuComplex* Apar, cuComplex* ubartot_field, cuComplex* upar_e, float beta_e,
 //		      float *kx, float *ky, float shat, float *gds2, float *gds21, float *gds22, float *bmagInv, float ti_ov_te, float dens_e, float vt_e)
 //{

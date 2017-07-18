@@ -307,12 +307,11 @@ model_option = "const-curv"
  restart_file = "nc/cyclone_miller_ke.nc"
  ginit_option= "noise"
 /
+
 &source_knobs
- ! These next 3 options are for the Rosenbluth-Hinton zonal flow tests.
- !
- source_option="default"    ! for zonal flows
- phi_ext=0.
- t0=-10.0
+ source_option = "default"
+ phi_ext = 0.
+ t0 = -10.0
 /
 
 &knobs
@@ -489,6 +488,7 @@ model_option = "const-curv"
   smagorinsky = "off"
   init = "density"
   debug = "off"
+  phiext = 0
   init_single = "off"
   iky_single = 1
   ikx_single = 0

@@ -30,6 +30,8 @@ class Moments {
 
   int scale(double scalar);
   int scale(cuComplex scalar);
+
+  int reality();
   
   inline void copyFrom(Moments* source) {
     cudaMemcpy(ghl, source->ghl, HLsize_, cudaMemcpyDeviceToDevice);

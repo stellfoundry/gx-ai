@@ -45,6 +45,9 @@ int Solver::fieldSolve(Moments* moms, Fields* fields)
       qneutAdiab_part2<<<dimGrid_qneut, dimBlock_qneut>>>(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
     }
   }
+  if(pars_->source_option==PHIEXT) {
+    add_source<<<dimGrid_qneut, dimBlock_qneut>>>(fields->phi, pars_->phiext);
+  }
   return 0;
 }
 

@@ -18,6 +18,7 @@ class Diagnostics {
   void writeHLspectrum(cuComplex* ghl);
   void writeGeo();
   void writeGrowthRates();
+  void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
   
 
  private:
@@ -45,4 +46,5 @@ class Diagnostics {
   float fluxDenom;
 
   char stopfilename_[2000];
+  FILE* timefile;
 };
