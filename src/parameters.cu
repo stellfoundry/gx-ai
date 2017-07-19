@@ -140,7 +140,13 @@ int Parameters::read_namelist(char* filename)
       fnr_get_int(&namelist_struct, "hl_grids_knobs", "smith_par_q", &smith_par_q);
   }
 
+  // set up for forcing variables
   
+  forcing_init = get_bool_on_off(&namelist_struct, "forcing_knobs", "forcing_init");
+  fnr_get_string(&namelist_struct, "forcing_knobs", "forcing_type", &forcing_type);
+  fnr_get_float(&namelist_struct, "forcing_knobs", "forcing_amp", &forcing_amp);
+
+
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
   
   fnr_get_float(&namelist_struct, "parameters", "tite", &(ti_ov_te));

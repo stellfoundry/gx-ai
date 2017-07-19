@@ -152,7 +152,11 @@ class Parameters {
       int smith_perp_q;
       int smith_par_q;
       cuComplex smith_perp_w0;
-  
+
+  // Namelist: forcing knobs
+     bool forcing_init;
+     char *forcing_type;
+     float forcing_amp;
   
     // Namelist: knobs
    //   float fphi;

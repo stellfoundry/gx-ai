@@ -5,6 +5,7 @@
 #include "fields.h"
 #include "moments.h"
 #include "solver.h"
+#include "forcing.h"
 #include "timestepper.h"
 #include "linear.h"
 #include "diagnostics.h"
@@ -39,14 +40,14 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 {
   int iproc = pars->iproc;  
 
-  
   Geometry* geo;  // geometry coefficient arrays
   Grids* grids;   // grids (e.g. kx, ky, z)
   Fields *fields;
   Moments *moms;
   Solver *solver;
   Linear* linear;
-  Timestepper *stepper;
+  Forcing *forcing;
+  Timestepper *stepper; 
   Diagnostics* diagnostics;
 
   if(iproc == 0) {
@@ -100,12 +101,23 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     printf("Initializing equations...\n");
     linear = new Linear(pars, grids, geo);
     checkCuda(cudaGetLastError());
+   
+    if (pars->forcing_init == true) {
+      printf("Initializing forcing...\n");
+      if (strcmp(pars->forcing_type, "Z") == 0) {
+        forcing = new ZForcing(pars, grids, geo);
+      } 
+    }
+    else {
+      forcing = NULL;
+    }
+    checkCuda(cudaGetLastError());
 
     printf("Initializing timestepper...\n");
     if(pars->scheme == RK4) {
-      stepper = new RungeKutta4(linear, solver, grids, pars->dt);
+      stepper = new RungeKutta4(linear, solver, grids, forcing, pars->dt);
     } else {
-      stepper = new RungeKutta2(linear, solver, grids, pars->dt);
+      stepper = new RungeKutta2(linear, solver, grids, forcing, pars->dt);
     }
     checkCuda(cudaGetLastError());
 
@@ -168,6 +180,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   delete moms;
   delete solver;
   delete linear;
+  delete forcing;
   delete stepper;
   delete diagnostics;
 

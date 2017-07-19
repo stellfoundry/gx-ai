@@ -5,6 +5,7 @@
 #include "grids.h"
 #include "linear.h"
 #include "solver.h"
+#include "forcing.h"
 
 class Timestepper {
  public:
@@ -15,7 +16,7 @@ class Timestepper {
 
 class RungeKutta2 : public Timestepper {
  public:
-  RungeKutta2(Linear *linear, Solver *solver, Grids *grids, const double dt_in);
+  RungeKutta2(Linear *linear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
   ~RungeKutta2();
   int advance(double* t, Moments* moms, Fields* fields);
   double get_dt() {return dt_;};
@@ -24,6 +25,7 @@ class RungeKutta2 : public Timestepper {
   Linear  *linear_;
   Solver *solver_;
   Grids  *grids_;
+  Forcing *forcing_;
 
   Moments* mStar;
   Moments* mRhs;
@@ -32,7 +34,7 @@ class RungeKutta2 : public Timestepper {
 
 class RungeKutta4 : public Timestepper {
  public:
-  RungeKutta4(Linear *linear, Solver *solver, Grids *grids, const double dt_in);
+  RungeKutta4(Linear *linear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
   ~RungeKutta4();
   int advance(double* t, Moments* moms, Fields* fields);
   double get_dt() {return dt_;};
@@ -41,6 +43,7 @@ class RungeKutta4 : public Timestepper {
   Linear  *linear_;
   Solver *solver_;
   Grids  *grids_;
+  Forcing *forcing_;
 
   Moments* mStar;
   Moments* mRhs1;

@@ -93,7 +93,7 @@ inputs/namelist_defaults.c: inputs/namelist_defaults.in
 # Rules for building gryfx
 ####################################
 
-OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o
+OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS))
