@@ -1,5 +1,6 @@
 #pragma once
 #include "moments.h"
+#include <cublas_v2.h>
 
 class LaguerreTransform {
  public:
@@ -7,14 +8,18 @@ class LaguerreTransform {
   LaguerreTransform(Grids* grids);
   ~LaguerreTransform();
   
+  int transformToGrid(Moments* m);
+  int transformToSpectral(Moments* m);
+
+ private:
   float* toGrid;
   float* toSpectral;
 
   int initTransforms(float* toGrid, float* toSpectral);
 
-  int transformToGrid(Moments* m);
-  int transformToSpectral(Moments* m);
-
+  int L, J;
+  cublasHandle_t handle;
+  
 };
 
 
