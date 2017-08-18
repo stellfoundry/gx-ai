@@ -1,6 +1,7 @@
 #include "laguerre_transform.h"
 
-Laguerre::Laguerre(Grids* grids) 
+Laguerre::Laguerre(Grids* grids) :
+  grids_(grids)
 {
   L = grids->Nlaguerre - 1;
   J = (3*L-1)/2;
@@ -28,17 +29,19 @@ Laguerre::~Laguerre()
 
 int initTransforms(float* toGrid, float* toSpectral)
 {
+  // toGrid = toGrid[l + (L+1)*j] = Psi^l(x_j)
+  // toSpectral = toSpectral[j + (J+1)*l] = w_j Psi_l(x_j)
   return 0;
 }
 
-int transformToGrid(Moments* m)
+int transformToGrid(RealMoments* m)
 {
-  int stride, stride2 = 0;
-  cublasCgemv(handle, CUBLAS_OP_N, J+1, L+1,
-              &make_cuComplex(1.,0.), toGrid, J+1, 
-              m->ghl, stride, &make_cuComplex(0.,0.),
-              m->ghl, stride2);
-  return 0;
+  return cublasCgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+     grids_->NxNyNz, J+1, L+1, 1.,
+     m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1),
+     toGrid, J+1, 0,
+     0., m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
+     grids_->Nhermite);
 }
 
 int transformToSpectral(Moments* m)

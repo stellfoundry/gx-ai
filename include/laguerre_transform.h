@@ -1,5 +1,6 @@
 #pragma once
 #include "moments.h"
+#include "grids.h"
 #include <cublas_v2.h>
 
 class LaguerreTransform {
@@ -12,6 +13,8 @@ class LaguerreTransform {
   int transformToSpectral(Moments* m);
 
  private:
+  Grids* grids_; 
+
   float* toGrid;
   float* toSpectral;
 
