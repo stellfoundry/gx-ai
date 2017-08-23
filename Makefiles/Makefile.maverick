@@ -11,17 +11,17 @@
 
 define STANDARD_SYSTEM_CONFIGURATION
 module reset ;\
-#module load TACC-paths  Linux  cluster-paths  cluster  TACC;\
+module load TACC-paths  Linux  cluster-paths  cluster  TACC;\
 module load intel/15.0.3 ;\
 module load mvapich2/2.1 ;\
-#module load xalt/1.6 ;\
-module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
+unset PYTHONPATH= ;\
+module load python ;\
 echo Module configuration complete ;\
 export MAKEFLAGS='-j -I Makefiles' ;\
 export CUDAARCH=35 ;\
-export TESTEXEC='ibrun -n 16 -o 0' ;\
+export PYTHONPATH=${PYTHONPATH}:${PWD}/src;\
 echo
 endef
 
@@ -34,6 +34,8 @@ NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
 MPI_INC = -I ${MPICH_HOME}/include
 MPI_LIB= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
+PYTHON_INC = -I ${TACC_PYTHON_INC}/python2.7
+PYTHON_LIB = -L ${TACC_PYTHON_LIB} -lpython2.7
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true 
 
 ifeq ($(debug),on)
