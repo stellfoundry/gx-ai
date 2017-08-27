@@ -335,7 +335,7 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, cuComplex
 __global__ void reality_kernel(cuComplex* g) 
 {
   for(int s = 0; s < nspecies; s++) {
-    for (int idx = threadIdx.x; idx<nx/2+1; idx+=blockDim.x) {
+    for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
       for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
         for (int lm = threadIdx.z; lm < nhermite*nlaguerre; lm += blockDim.z) {
           int globalIdx = nyc*(idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nlaguerre*nhermite*s; 
@@ -352,7 +352,7 @@ __global__ void reality_kernel(cuComplex* g)
 
 __global__ void reality_singlemom_kernel(cuComplex* mom) 
 {
-  for (int idx = threadIdx.x; idx<nx/2+1; idx+=blockDim.x) {
+  for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
     for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
       unsigned int index = (ny/2+1)*idx + nx*(ny/2+1)*idz;
       unsigned int index2 = (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
