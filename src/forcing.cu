@@ -22,7 +22,7 @@ ZForcing::~ZForcing()
 }
 
 // Langevin forcing done at the end of each timestep in timestepper's advance method
-void ZForcing::stir(Moments *m) {
+void ZForcing::stir(MomentsG *G) {
   // Box-Muller transform to generate random normal variables
   
   float ran_amp = ( (float) rand()) / ((float) RAND_MAX + 1.0 );
@@ -38,7 +38,7 @@ void ZForcing::stir(Moments *m) {
   fill_stirring_kernel<<<dimGrid, dimBlock>>>(random_force, geo_->z, pars_->kpar_init, pars_->Zp, random_real);
 
   // apply kick to density
-  add_scaled_singlemom_kernel<<<dimGrid, dimBlock>>>(m->gHL(0,0), 1., m->gHL(0,0), 1., random_force);
+  add_scaled_singlemom_kernel<<<dimGrid, dimBlock>>>(G->G(0,0), 1., G->G(0,0), 1., random_force);
 }
 
 // random_force is an array of size NxNycNz and is filled with a cos(kz) dependence perturbation (for one moment)

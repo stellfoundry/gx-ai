@@ -9,9 +9,9 @@ class Linear {
   Linear(Parameters* pars, Grids* grids, Geometry* geo); 
   ~Linear();
 
-  int rhs(Moments* m, Fields* f, Moments* mRhs);
+  int rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
 
-  int zderiv(Moments *m);
+  int zderiv(MomentsG *G);
 
   dim3 dimGrid, dimBlock;
   int sharedSize;
@@ -23,7 +23,7 @@ class Linear {
   GradParallel* grad_par;
   Closures* closures;
 
-  Moments* mRhs_par;
+  MomentsG* GRhs_par;
 
   // conservation terms
   cuComplex* upar_bar;

@@ -145,7 +145,7 @@ class Parameters {
    //ginit_option= "noise"
    
    // Namelist: 
-      // new for HL 
+      // new for LH 
       int nm_in;
       int nl_in;  // nl will be an array 
       int closure_model;

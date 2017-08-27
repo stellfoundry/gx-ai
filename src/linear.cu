@@ -7,14 +7,14 @@
 
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
 			   float* b, float* iomegad, float* bgrad, float* ky, specie* s, cuComplex* rhs_par, cuComplex* rhs);
-__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species);
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* G, cuComplex* phi, float *b, specie* species);
 __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs);
 
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
-  mRhs_par = new Moments(grids_);
+  GRhs_par = new MomentsG(grids_);
 
   // set up parallel ffts
   if(pars_->local_limit) {
@@ -51,7 +51,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 
   // set up CUDA grids for main linear kernel
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
-  // this allows use of 4x more HL resolution without changing shared memory layouts.
+  // this allows use of 4x more LH resolution without changing shared memory layouts.
   dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
   sharedSize = dimBlock.x*(grids_->Nl+2)*(grids_->Nm+4)*sizeof(cuComplex);
@@ -66,36 +66,36 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 Linear::~Linear()
 {
   delete grad_par;
-  delete mRhs_par;
+  delete GRhs_par;
   if(pars_->closure_model>0) delete closures;
 }
 
-int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
+int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // calculate conservation terms for collision operator
   conservation_terms<<<grids_->NxNycNz/pars_->maxThreadsPerBlock+1, pars_->maxThreadsPerBlock>>>
-	(upar_bar, uperp_bar, t_bar, m->ghl, f->phi, geo_->kperp2, pars_->species);
+	(upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
 
   // calculate RHS
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
-      	(m->ghl, f->phi, upar_bar, uperp_bar, t_bar,
+      	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
 	geo_->kperp2, geo_->omegad, geo_->bgrad, 
-       	grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
+       	grids_->ky, pars_->species, GRhs_par->G(), GRhs->G());
 
   // hypercollisions
   if(pars_->hypercollisions) {
-    hypercollisions<<<dimGrid,dimBlock>>>(m->ghl, pars_->nu_hyper_l, pars_->nu_hyper_m, pars_->p_hyper_l, pars_->p_hyper_m, mRhs->ghl);
+    hypercollisions<<<dimGrid,dimBlock>>>(G->G(), pars_->nu_hyper_l, pars_->nu_hyper_m, pars_->p_hyper_l, pars_->p_hyper_m, GRhs->G());
   }
 
   // parallel gradient term
-  grad_par->eval(mRhs_par);
+  grad_par->eval(GRhs_par);
 
   // combine
-  mRhs->add_scaled(1., mRhs, (float) geo_->gradpar, mRhs_par);
+  GRhs->add_scaled(1., GRhs, (float) geo_->gradpar, GRhs_par);
 
   // closures
   if(pars_->closure_model>0) {
-    closures->apply_closures(m, mRhs);
+    closures->apply_closures(G, GRhs);
   }
 
   return 0;
@@ -240,8 +240,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   } // idxyz < NxNycNz
 }
 
-# define H(XYZ, L, M, S) ghl[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_)*phi_
-__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species)
+# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_)*phi_
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *b, specie* species)
 {
   unsigned int idxyz = get_id1();
 
@@ -255,11 +255,11 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       t_bar[index] = make_cuComplex(0., 0.);
       // sum over l
       for(int l=0; l<nl; l++) {
-        // H(...) is defined by macro above
-        upar_bar[index] = upar_bar[index] + Jflr(l,b_)*H(idxyz, l, 1, is);
-        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_) + Jflr(l-1,b_))*H(idxyz, l, 0, is);
-        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_)*H(idxyz, l, 2, is)
-		+ ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) )*H(idxyz, l, 0, is);
+        // H_(...) is defined by macro above
+        upar_bar[index] = upar_bar[index] + Jflr(l,b_)*H_(idxyz, l, 1, is);
+        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_) + Jflr(l-1,b_))*H_(idxyz, l, 0, is);
+        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_)*H_(idxyz, l, 2, is)
+		+ ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) )*H_(idxyz, l, 0, is);
       }
       uperp_bar[index] = uperp_bar[index]*sqrtf(b_);
     }

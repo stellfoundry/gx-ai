@@ -8,14 +8,14 @@
 class Closures {
  public:
   virtual ~Closures() {};
-  virtual int apply_closures(Moments* m, Moments* mRhs) = 0;
+  virtual int apply_closures(MomentsG* G, MomentsG* GRhs) = 0;
 };
 
 class Beer42 : public Closures {
  public:
   Beer42(Grids* grids, const Geometry* geo, bool local);
   ~Beer42();
-  int apply_closures(Moments* m, Moments* mRhs);
+  int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids* grids_;
@@ -41,7 +41,7 @@ class SmithPerp : public Closures {
  public: 
   SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0);
   ~SmithPerp();
-  int apply_closures(Moments* m, Moments* mRhs);
+  int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids* grids_;
@@ -59,7 +59,7 @@ class SmithPar : public Closures {
  public: 
   SmithPar(Grids* grids, const Geometry* geo, int q);
   ~SmithPar();
-  int apply_closures(Moments* m, Moments* mRhs);
+  int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids *grids_;

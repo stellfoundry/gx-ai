@@ -119,7 +119,7 @@ int Parameters::read_namelist(char* filename)
   fnr_get_float(&namelist_struct, "kt_grids_box_parameters", "x0", &(x0));
   //X0 will get overwritten if shat!=0
 
-  // set up for HL moments "grid"
+  // set up for LH moments "grid"
   fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nm_in));
   fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nl_in);
 

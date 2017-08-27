@@ -35,10 +35,10 @@ Solver::~Solver()
   cudaFree(phiavgdenom);
 }
 
-int Solver::fieldSolve(Moments* moms, Fields* fields)
+int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
-    real_space_density<<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>(nbar, moms->ghl, geo_->kperp2, pars_->species);
+    real_space_density<<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>(nbar, G->G(), geo_->kperp2, pars_->species);
     
     if(pars_->iphi00==2) {
       qneutAdiab_part1<<<dimGrid_qneut, dimBlock_qneut>>>(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);

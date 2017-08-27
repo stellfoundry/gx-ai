@@ -73,14 +73,14 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
   Geometry* geo;
   geo = new S_alpha_geo(pars);
   
-  Moments* momsInit, *momsRes;
-  momsInit = new Moments(grids);
-  momsRes = new Moments(grids);
+  MomentsG* GInit, *GRes;
+  GInit = new MomentsG(grids);
+  GRes = new MomentsG(grids);
   pars->init_single = false;
   pars->init = DENS;
   pars->init_amp = .01;
   pars->kpar_init = 2.;
-  momsInit->initialConditions(pars, geo);
+  GInit->initialConditions(pars, geo);
 
   float* init_check = (float*) malloc(sizeof(float)*grids->Nz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->Nz);
@@ -94,26 +94,26 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
 
   // check initial condition
   for(int i=0; i<grids->Nz; i++) {
-    EXPECT_FLOAT_EQ_D(&momsInit->dens_ptr[0][i].x, init_check[i]);
+    EXPECT_FLOAT_EQ_D(&GInit->dens_ptr[0][i].x, init_check[i]);
   }
 
   // out-of-place, with only a single moment
-  grad_par->eval(momsInit->dens_ptr[0], momsRes->dens_ptr[0]);
+  grad_par->eval(GInit->dens_ptr[0], GRes->dens_ptr[0]);
   
   for(int i=0; i<grids->Nz; i++) {
-    EXPECT_FLOAT_EQ_D(&momsRes->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
+    EXPECT_FLOAT_EQ_D(&GRes->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
   }
 
   // in place, with entire HL moms array
-  grad_par->eval(momsInit);
+  grad_par->eval(GInit);
   for(int i=0; i<grids->Nz; i++) {
-    EXPECT_FLOAT_EQ_D(&momsInit->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
+    EXPECT_FLOAT_EQ_D(&GInit->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
   }
 
   free(init_check);
   free(deriv_check);
-  delete momsInit;
-  delete momsRes;
+  delete GInit;
+  delete GRes;
   delete geo;
 }
 
@@ -124,16 +124,16 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   //Diagnostics* diagnostics;
   //diagnostics = new Diagnostics(pars, grids, geo);
 
-  Moments *momsInit, *momsRes;
-  momsInit = new Moments(grids);
-  momsRes = new Moments(grids);
+  MomentsG *GInit, *GRes;
+  GInit = new MomentsG(grids);
+  GRes = new MomentsG(grids);
   pars->init_single = false;
   pars->init = UPAR;
   pars->init_amp = .01;
   pars->kpar_init = 2.;
   pars->linear = true;
   strncpy(pars->run_name, "gpar_test", strlen("gpar_test"));
-  momsInit->initialConditions(pars, geo);
+  GInit->initialConditions(pars, geo);
 
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
@@ -164,36 +164,36 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&momsInit->upar_ptr[0][index].x, init_check[index]);
+        EXPECT_FLOAT_EQ_D(&GInit->upar_ptr[0][index].x, init_check[index]);
       }
     }
   }
 
   // out-of-place, with only a single moment
-  grad_par->eval(momsInit->upar_ptr[0], momsRes->upar_ptr[0]);
+  grad_par->eval(GInit->upar_ptr[0], GRes->upar_ptr[0]);
 
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&momsRes->upar_ptr[0][index].x, deriv_check[index], 1.e-7);
+        EXPECT_FLOAT_EQ_D(&GRes->upar_ptr[0][index].x, deriv_check[index], 1.e-7);
       }
     }
   }
 
-  // in place, with entire HL moms array
-  grad_par->eval(momsInit);
+  // in place, with entire LH G array
+  grad_par->eval(GInit);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&momsInit->upar_ptr[0][index].x, deriv_check[index], 1.e-7);
+        EXPECT_FLOAT_EQ_D(&GInit->upar_ptr[0][index].x, deriv_check[index], 1.e-7);
       }
     }
   }
   free(init_check);
   free(deriv_check);
-  delete momsInit;
-  delete momsRes;
+  delete GInit;
+  delete GRes;
   delete geo;
 }

@@ -43,7 +43,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   Geometry* geo;  // geometry coefficient arrays
   Grids* grids;   // grids (e.g. kx, ky, z)
   Fields *fields;
-  Moments *moms;
+  MomentsG *momsG;
   Solver *solver;
   Linear* linear;
   Forcing *forcing;
@@ -83,10 +83,10 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     checkCuda(cudaGetLastError());
 
     printf("Initializing moments...\n");
-    moms = new Moments(grids);
+    momsG = new MomentsG(grids);
     checkCuda(cudaGetLastError());
     printf("Setting initial conditions...\n");
-    moms->initialConditions(pars, geo);
+    momsG->initialConditions(pars, geo);
     checkCuda(cudaGetLastError());
 
     printf("Initializing field solver...\n");
@@ -95,7 +95,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 
     // initialize fields using field solve
     printf("Solving for initial fields...\n");
-    solver->fieldSolve(moms, fields);
+    solver->fieldSolve(momsG, fields);
     checkCuda(cudaGetLastError());
 
     printf("Initializing equations...\n");
@@ -128,7 +128,7 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
     printf("After initialization:\n");
     getDeviceMemoryUsage();
   
-    diagnostics->writeMomOrField(moms->dens_ptr[0], "dens0");
+    diagnostics->writeMomOrField(momsG->dens_ptr[0], "dens0");
     diagnostics->writeMomOrField(fields->phi, "phi0");
 
     // MFM
@@ -152,10 +152,10 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   printf("dt = %f\n", stepper->get_dt());
   while(counter<pars->nstep) {
     if(iproc==0) {
-      stepper->advance(&time, moms, fields);
-      checkstop = diagnostics->loop_diagnostics(moms, fields, stepper->get_dt(), counter, time);
+      stepper->advance(&time, momsG, fields);
+      checkstop = diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
       if(checkstop) break;
-      if(counter%(pars->nwrite*100)==0) diagnostics->final_diagnostics(moms, fields);
+      if(counter%(pars->nwrite*100)==0) diagnostics->final_diagnostics(momsG, fields);
     }
     counter++;
   }
@@ -170,14 +170,14 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
-  diagnostics->final_diagnostics(moms, fields);
+  diagnostics->final_diagnostics(momsG, fields);
 
   printf("Cleaning up...\n");
 
   delete geo;  
   delete grids;
   delete fields;
-  delete moms;
+  delete momsG;
   delete solver;
   delete linear;
   delete forcing;

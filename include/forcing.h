@@ -8,14 +8,14 @@
 class Forcing {
   public:
    virtual ~Forcing() {};
-   virtual void stir(Moments *m) = 0;
+   virtual void stir(MomentsG *G) = 0;
 };
 
 class ZForcing : public Forcing {
  public:
   ZForcing(Parameters *pars, Grids *grids, Geometry *geo); 
   ~ZForcing();
-  void stir(Moments *m);
+  void stir(MomentsG *G);
  
  private:
   float forcing_amp_;

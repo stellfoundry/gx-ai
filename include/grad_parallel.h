@@ -9,7 +9,7 @@ class GradParallel {
   GradParallel(Grids* grids, bool abs=false);
   ~GradParallel();
 
-  virtual void eval(Moments* m);
+  virtual void eval(MomentsG* G);
   virtual void eval(cuComplex* m, cuComplex* res);
   virtual void fft_only(cuComplex* m, cuComplex* res, int dir);
  
@@ -25,7 +25,7 @@ class GradParallelLocal : public GradParallel {
   GradParallelLocal(Grids* grids, bool abs=false);
   ~GradParallelLocal() {};
 
-  void eval(Moments* m);
+  void eval(MomentsG* G);
   void eval(cuComplex* m, cuComplex* res);
  private:
   Grids* grids_;

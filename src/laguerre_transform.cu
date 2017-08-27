@@ -106,7 +106,7 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
     return 0;
 }
 
-int LaguerreTransform::transformToGrid(Moments* m)
+int LaguerreTransform::transformToGrid(MomentsG* m)
 {
 //  return cublasCgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
 //     grids_->NxNyNz, J+1, L+1, 1.,
@@ -117,7 +117,7 @@ int LaguerreTransform::transformToGrid(Moments* m)
   return 0;
 }
 
-int LaguerreTransform::transformToSpectral(Moments* m)
+int LaguerreTransform::transformToSpectral(MomentsG* m)
 {
   return 0;
 }

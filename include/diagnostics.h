@@ -11,13 +11,13 @@ class Diagnostics {
   Diagnostics(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics();
 
-  bool loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) ;
-  void final_diagnostics(Moments* moms, Fields* fields);
+  bool loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, float time) ;
+  void final_diagnostics(MomentsG* G, Fields* fields);
 
   void writeGridFile(const char* filename); // MFM
   void writeMomOrField(cuComplex* m, const char* filename);
   void writeMomOrFieldKpar(cuComplex* m, const char* filename);
-  void writeHLspectrum(cuComplex* ghl, int ikx=-100, int iky=-100);
+  void writeLHspectrum(MomentsG* G, int ikx=-100, int iky=-100);
   void writeGeo();
   void writeGrowthRates();
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
@@ -41,7 +41,7 @@ class Diagnostics {
 
   void print_growth_rates_to_screen();
 
-  void HLspectrum(cuComplex* ghl, int ikx=-100, int iky=-100);
+  void LHspectrum(MomentsG* G, int ikx=-100, int iky=-100);
 
   bool checkstop();
  

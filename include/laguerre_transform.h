@@ -9,8 +9,8 @@ class LaguerreTransform {
   LaguerreTransform(Grids* grids);
   ~LaguerreTransform();
   
-  int transformToGrid(Moments* m);
-  int transformToSpectral(Moments* m);
+  int transformToGrid(MomentsG* G);
+  int transformToSpectral(MomentsG* G);
 
   float* get_toGrid() {return toGrid;}
   float* get_toSpectral() {return toSpectral;}

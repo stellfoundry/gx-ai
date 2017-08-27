@@ -74,7 +74,7 @@ Diagnostics::~Diagnostics()
 
 // NOTE: needs to be called every step when calculating growth rates
 // does not write to file every step
-bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int counter, float time) 
+bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, float time) 
 {
   bool stop = false;
   // write instantaneous growth rates
@@ -101,22 +101,22 @@ bool Diagnostics::loop_diagnostics(Moments* moms, Fields* fields, float dt, int 
   return stop;
 }
 
-void Diagnostics::final_diagnostics(Moments* moms, Fields* fields) 
+void Diagnostics::final_diagnostics(MomentsG* G, Fields* fields) 
 {
   // print final moments and fields
-  writeMomOrField(moms->dens_ptr[0], "dens");
-  writeMomOrField(moms->upar_ptr[0], "upar");
+  writeMomOrField(G->dens_ptr[0], "dens");
+  writeMomOrField(G->upar_ptr[0], "upar");
   writeMomOrField(fields->phi, "phi");
 
-  writeMomOrFieldKpar(moms->dens_ptr[0], "dens");
-  writeMomOrFieldKpar(moms->upar_ptr[0], "upar");
+  writeMomOrFieldKpar(G->dens_ptr[0], "dens");
+  writeMomOrFieldKpar(G->upar_ptr[0], "upar");
   writeMomOrFieldKpar(fields->phi, "phi");
 
   // write Hermite-Laguerre spectrum |G|**2(l,m)
   if(pars_->source_option==PHIEXT) {
-    writeHLspectrum(moms->ghl, 1, 0);
+    writeLHspectrum(G, 1, 0);
   } else {
-    writeHLspectrum(moms->ghl);
+    writeLHspectrum(G);
   }
 
   // write geometry coefficient arrays
@@ -350,10 +350,10 @@ void Diagnostics::writeGridFile(const char* name) {
 }
 
 
-void Diagnostics::writeHLspectrum(cuComplex* ghl, int ikx, int iky)
+void Diagnostics::writeLHspectrum(MomentsG* G, int ikx, int iky)
 {
   // calculate spectrum  
-  HLspectrum(ghl, ikx, iky);
+  LHspectrum(G, ikx, iky);
   cudaDeviceSynchronize();
 
   char ofilename[2000];
@@ -390,7 +390,7 @@ __global__ void volume_average(float* res, cuComplex* f, float* jacobian, float 
   atomicAdd(res,sum);
 }
 
-void Diagnostics::HLspectrum(cuComplex* ghl, int ikx, int iky)
+void Diagnostics::LHspectrum(MomentsG* G, int ikx, int iky)
 {
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
@@ -399,7 +399,7 @@ void Diagnostics::HLspectrum(cuComplex* ghl, int ikx, int iky)
     for(int l=0; l<grids_->Nl; l++) {
       volume_average<<<blocks,threads>>>
 	(&hlspectrum[l+grids_->Nl*m], 
-	 &ghl[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m], geo_->jacobian, 1./fluxDenom, ikx, iky);
+	 G->G(l,m), geo_->jacobian, 1./fluxDenom, ikx, iky);
     }
   }
 }

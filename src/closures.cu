@@ -64,27 +64,27 @@ Beer42::~Beer42() {
   delete abs_grad_par;
 }
 
-int Beer42::apply_closures(Moments* m, Moments* mRhs) 
+int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   // mask unevolved moments
-  cudaMemset(mRhs->gHL(1,2), 0., sizeof(cuComplex)*grids_->NxNycNz);
-  cudaMemset(mRhs->gHL(1,3), 0., sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMemset(GRhs->G(1,2), 0., sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMemset(GRhs->G(1,3), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
   // parallel terms (each must be done separately because of FFTs)
-  grad_par->eval(m->gHL(0,2), tmp);
+  grad_par->eval(G->G(0,2), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(0,3), 1., mRhs->gHL(0,3), -Beta_par/sqrt(3.)*gradpar_, tmp);
+      (GRhs->G(0,3), 1., GRhs->G(0,3), -Beta_par/sqrt(3.)*gradpar_, tmp);
 
-  abs_grad_par->eval(m->gHL(0,3), tmp);
+  abs_grad_par->eval(G->G(0,3), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(0,3), 1., mRhs->gHL(0,3), -sqrt(2.)*D_par*gradpar_, tmp);
+      (GRhs->G(0,3), 1., GRhs->G(0,3), -sqrt(2.)*D_par*gradpar_, tmp);
 
-  abs_grad_par->eval(m->gHL(1,1), tmp);
+  abs_grad_par->eval(G->G(1,1), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(1,1), 1., mRhs->gHL(1,1), -sqrt(2.)*D_perp*gradpar_, tmp);
+      (GRhs->G(1,1), 1., GRhs->G(1,1), -sqrt(2.)*D_perp*gradpar_, tmp);
   
   // toroidal terms
-  beer_toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, nu);
+  beer_toroidal_closures<<<dimGrid,dimBlock>>>(G->G(), GRhs->G(), omegad_, nu);
 
   return 0;
 }
@@ -214,15 +214,14 @@ SmithPerp::~SmithPerp() {
   cudaFree(Aclos_);
 }
 
-int SmithPerp::apply_closures(Moments* m, Moments* mRhs) 
+int SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   // perp closure terms are only toroidal
-  smith_perp_toroidal_closures<<<dimGrid,dimBlock>>>(m->ghl, mRhs->ghl, omegad_, Aclos_, q_);
+  smith_perp_toroidal_closures<<<dimGrid,dimBlock>>>(G->G(), GRhs->G(), omegad_, Aclos_, q_);
 
   return 0;
 }
 
-# define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nl*(L)
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q)
 {
   unsigned int idxyz = get_id1();
@@ -277,7 +276,7 @@ SmithPar::~SmithPar() {
   cudaFree(tmp_abs);
 }
 
-int SmithPar::apply_closures(Moments* mom, Moments* mRhs) 
+int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
     int M = grids_->Nm - 1;
 
@@ -289,12 +288,12 @@ int SmithPar::apply_closures(Moments* mom, Moments* mRhs)
 
       // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
-          grad_par->eval((mom->gHL(l,m)), tmp);
-          abs_grad_par->eval(mom->gHL(l,m), tmp_abs);
+          grad_par->eval((G->G(l,m)), tmp);
+          abs_grad_par->eval(G->G(l,m), tmp_abs);
           add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - l].y, tmp_abs, a_coefficients_[M - l].x, tmp);
       }
 
-      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(mRhs->gHL(l,M), 1., mRhs->gHL(l,M), -sqrt(M+1), clos);
+      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1), clos);
     }
     
     return 0;

@@ -5,23 +5,24 @@
 #include "parameters.h"
 #include "geometry.h"
 
-class Moments {
+class MomentsG {
  public:
-  Moments(Grids* grids);
-  ~Moments();
+  MomentsG(Grids* grids);
+  ~MomentsG();
 
-  // accessor function to get pointer to specific l,m,s of ghl array
-  cuComplex* gHL(int l, int m, int s=0) {
-    return &ghl[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m + grids_->NxNycNz*grids_->Nmoms*s];
+  // accessor function to get pointer to specific l,m,s of G array
+  // calling with no arguments gives pointer to beginning of G_lm
+  cuComplex* G(int l=0, int m=0, int s=0) {
+    return &G_lm[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m + grids_->NxNycNz*grids_->Nmoms*s];
     // glm[ky, kx, z]
   }
 
   int initialConditions(Parameters *pars, Geometry* geo);
 
-  int add_scaled(double c1, Moments* m1, double c2, Moments* m2);
-  int add_scaled(double c1, Moments* m1, double c2, Moments* m2, 
-                 double c3, Moments* m3, double c4, Moments* m4,
-                 double c5, Moments* m5);
+  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
+  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, 
+                 double c3, MomentsG* G3, double c4, MomentsG* G4,
+                 double c5, MomentsG* G5);
 
   int zero();
   int zero(int l, int m, int s=0);
@@ -31,11 +32,10 @@ class Moments {
 
   int reality();
   
-  inline void copyFrom(Moments* source) {
-    cudaMemcpy(ghl, source->ghl, HLsize_, cudaMemcpyDeviceToDevice);
+  inline void copyFrom(MomentsG* source) {
+    cudaMemcpy(this->G(), source->G(), LHsize_, cudaMemcpyDeviceToDevice);
   }
  
-  cuComplex* ghl;
   cuComplex** dens_ptr;
   cuComplex** upar_ptr;
   cuComplex** tpar_ptr;
@@ -46,7 +46,8 @@ class Moments {
   dim3 dimGrid, dimBlock;
 
  private:
+  cuComplex* G_lm;
   const Grids* grids_;
-  const size_t HLsize_;
+  const size_t LHsize_;
   const size_t Momsize_;
 };
