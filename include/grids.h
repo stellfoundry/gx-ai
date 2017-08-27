@@ -13,8 +13,8 @@ class Grids {
   const int Ny;
   const int Nz;
   const int Nspecies; 
-  const int Nhermite;
-  const int Nlaguerre;
+  const int Nm;
+  const int Nl;
   const int Nyc;
   const int Naky;
   const int Nakx;

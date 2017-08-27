@@ -52,13 +52,13 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   // set up CUDA grids for main linear kernel
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more HL resolution without changing shared memory layouts.
-  dimBlock = dim3(8, min(4, grids_->Nlaguerre), min(4, grids_->Nhermite));
+  dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
-  sharedSize = dimBlock.x*(grids_->Nlaguerre+2)*(grids_->Nhermite+4)*sizeof(cuComplex);
+  sharedSize = dimBlock.x*(grids_->Nl+2)*(grids_->Nm+4)*sizeof(cuComplex);
   printf("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
   if(sharedSize/1024.>48.) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
-    printf("size of shared memory block must be less than 48 KB, so make sure (nhermite+4)*(nlaaguerre+2)<%d.\n", 48*1024/8/dimBlock.x);
+    printf("size of shared memory block must be less than 48 KB, so make sure (nm+4)*(nlaaguerre+2)<%d.\n", 48*1024/8/dimBlock.x);
     exit(1);
   }
 }
@@ -81,8 +81,6 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
       	(m->ghl, f->phi, upar_bar, uperp_bar, t_bar,
 	geo_->kperp2, geo_->omegad, geo_->bgrad, 
        	grids_->ky, pars_->species, mRhs_par->ghl, mRhs->ghl);
-  // mRhs_par = sqrt(l+1) G_l+1,m + sqrt(l) G_l-1,m
-  // mRhs = ...
 
   // hypercollisions
   if(pars_->hypercollisions) {
@@ -104,7 +102,7 @@ int Linear::rhs(Moments* m, Fields* f, Moments* mRhs) {
 }
 
 // main kernel function for calculating RHS
-# define S_G(L, M) s_g[sidxyz + (sDimx)*(M) + (sDimx)*(sDimy)*(L)]
+# define S_G(L, M) s_g[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, 
 	cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
 	float* b, float* omegad, float* bgrad, float* ky, specie* species,
@@ -119,9 +117,9 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     const unsigned int idy = idxyz % (nx*nyc) % nyc; 
     const unsigned int idz = idxyz / (nx*nyc);
   
-    // shared memory blocks of size blockDim.x * (nlaguerre+2) * (nhermite+4)
+    // shared memory blocks of size blockDim.x * (nl+2) * (nm+4)
     const int sDimx = blockDim.x;
-    const int sDimy = nlaguerre+2;
+    const int sDimy = nl+2;
   
     // read these values into (hopefully) register memory. 
     // local to each thread (i.e. each idxyz).
@@ -155,11 +153,11 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   
     // read tile of g into shared mem
     // each thread in the block reads in multiple values of l and m
-    for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-     for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
-      int sl = l + 2;
-      int sm = m + 1;
+    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+      int sl = l + 1;
+      int sm = m + 2;
       S_G(sl, sm) = g[globalIdx];
      }
     }
@@ -167,82 +165,82 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     // this syncthreads isnt necessary unless ghosts require information from interior cells
     //__syncthreads();
   
-    // set up ghost cells in l (for all m's)
-    for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-      int sm = m + 1;
-      int sl = threadIdx.z + 2;
-      if(sl < 4) {
-        // set ghost to zero at low l
-        S_G(sl-2, sm) = make_cuComplex(0., 0.);
+    // set up ghost cells in m (for all l's)
+    for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+      int sl = l + 1;
+      int sm = threadIdx.z + 2;
+      if(sm < 4) {
+        // set ghost to zero at low m
+        S_G(sl, sm-2) = make_cuComplex(0., 0.);
   
-        // set ghost with closures at high l
-        S_G(sl+nhermite, sm) = make_cuComplex(0., 0.);
+        // set ghost with closures at high m
+        S_G(sl, sm+nm) = make_cuComplex(0., 0.);
       }
     }
   
-    // set up ghost cells in m (for all l's)
-    for (int l = threadIdx.z; l < nhermite+2; l += blockDim.z) {
-      int sl = l + 1; // this takes care of corners...
-      int sm = threadIdx.y + 1;
-      if(sm < 2) {
-        // set ghost to zero at low m
-        S_G(sl, sm-1) = make_cuComplex(0., 0.);
+    // set up ghost cells in l (for all m's)
+    for (int m = threadIdx.z; m < nm+2; m += blockDim.z) {
+      int sm = m + 1; // this takes care of corners...
+      int sl = threadIdx.y + 1;
+      if(sl < 2) {
+        // set ghost to zero at low l
+        S_G(sl-1, sm) = make_cuComplex(0., 0.);
   
-        // set ghost with closures at high m
-        S_G(sl, sm+nlaguerre) = make_cuComplex(0., 0.);
+        // set ghost with closures at high l
+        S_G(sl+nl, sm) = make_cuComplex(0., 0.);
       }
     }
   
     __syncthreads();
   
     // stencil (on non-ghost cells)
-    for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-     for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
-      int sl = l + 2; // offset to get past ghosts
-      int sm = m + 1; // offset to get past ghosts
+    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+      int sl = l + 1; // offset to get past ghosts
+      int sm = m + 2; // offset to get past ghosts
   
       // need to calculate parallel terms separately because need to take derivative via fft 
-      rhs_par[globalIdx] = -( sqrtf(l+1)*S_G(sl+1,sm) + sqrtf(l)*S_G(sl-1,sm) );
+      rhs_par[globalIdx] = -( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
       // remaining terms
       rhs[globalIdx] = 
-       - bgrad_ * ( -sqrtf(l+1)*(m+1)*S_G(sl+1,sm) - sqrtf(l+1)*m*S_G(sl+1,sm-1)
+       - bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
   
-                    + sqrtf(l)*m*S_G(sl-1,sm) + sqrtf(l)*(m+1)*S_G(sl-1,sm+1) )
+                    + sqrtf(m)*l*S_G(sl,sm-1) + sqrtf(m)*(l+1)*S_G(sl+1,sm-1) )
   
-          - iomegad_ * ( sqrtf((l+1)*(l+2))*S_G(sl+2,sm) + sqrtf(l*(l-1))*S_G(sl-2,sm)
+          - iomegad_ * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + sqrtf(m*(m-1))*S_G(sl,sm-2)
   
-                        + (m+1)*S_G(sl,sm+1) + m*S_G(sl,sm-1) + 2.*(l+m+1)*S_G(sl,sm) )
+                        + (l+1)*S_G(sl+1,sm) + l*S_G(sl-1,sm) + 2.*(l+m+1)*S_G(sl,sm) )
   
-           - nu_ * ( b_ + l + 2*m ) * ( S_G(sl,sm) + Jflr(m, b_)*phi_ );
+           - nu_ * ( b_ + 2*l + m ) * ( S_G(sl,sm) + Jflr(l, b_)*phi_ );
   
       // add drive and conservation terms in low hermite moments
-      if(l==0) {
+      if(m==0) {
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
-                  Jflr(m-1,b_)*( -m*iomegad_ + m*tprim_*iomegastar_ ) 
-                + Jflr(m,  b_)*( -2*(m+1)*iomegad_ + (fprim_ + tprim_*2*m)*iomegastar_ )
-                + Jflr(m+1,b_)*( -(m+1)*iomegad_ + (m+1)*tprim_*iomegastar_ ) )
-		+ nu_ * sqrtf(b_) * ( Jflr(m, b_) + Jflr(m-1, b_) ) * uperp_bar_
-		+ nu_ * 2. * ( m*Jflr(m-1,b_) + 2.*m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * t_bar_;
+                  Jflr(l-1,b_)*( -l*iomegad_ + l*tprim_*iomegastar_ ) 
+                + Jflr(l,  b_)*( -2*(l+1)*iomegad_ + (fprim_ + tprim_*2*l)*iomegastar_ )
+                + Jflr(l+1,b_)*( -(l+1)*iomegad_ + (l+1)*tprim_*iomegastar_ ) )
+		+ nu_ * sqrtf(b_) * ( Jflr(l, b_) + Jflr(l-1, b_) ) * uperp_bar_
+		+ nu_ * 2. * ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) ) * t_bar_;
       } 
-      if(l==1) {
-        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(m,b_)*phi_;
-        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) ) * bgrad_ 
-      		+ nu_ * Jflr(m,b_) * upar_bar_;
+      if(m==1) {
+        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_)*phi_;
+        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) ) * bgrad_ 
+      		+ nu_ * Jflr(l,b_) * upar_bar_;
       }
-      if(l==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(m,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2) 
-		+ nu_ * sqrtf(2) * Jflr(m,b_) * t_bar_;
+      if(m==2) {
+        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(l,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2) 
+		+ nu_ * sqrtf(2) * Jflr(l,b_) * t_bar_;
       }  
-     } // m loop
-    } // l loop
+     } // l loop
+    } // m loop
   
    } // species loop
   } // idxyz < NxNycNz
 }
 
-# define H(XYZ, L, M, S) ghl[(XYZ) + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L) + nx*nyc*nz*nlaguerre*nhermite*(S)] + Jflr(M,b_)*phi_
+# define H(XYZ, L, M, S) ghl[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_)*phi_
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* ghl, cuComplex* phi, float *b, specie* species)
 {
   unsigned int idxyz = get_id1();
@@ -255,13 +253,13 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       upar_bar[index] = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);
       t_bar[index] = make_cuComplex(0., 0.);
-      // sum over m
-      for(int m=0; m<nlaguerre; m++) {
+      // sum over l
+      for(int l=0; l<nl; l++) {
         // H(...) is defined by macro above
-        upar_bar[index] = upar_bar[index] + Jflr(m,b_)*H(idxyz, 1, m, is);
-        uperp_bar[index] = uperp_bar[index] + (Jflr(m,b_) + Jflr(m-1,b_))*H(idxyz, 0, m, is);
-        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(m,b_)*H(idxyz, 2, m, is)
-		+ ( m*Jflr(m-1,b_) + 2.*m*Jflr(m,b_) + (m+1)*Jflr(m+1,b_) )*H(idxyz, 0, m, is);
+        upar_bar[index] = upar_bar[index] + Jflr(l,b_)*H(idxyz, l, 1, is);
+        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_) + Jflr(l-1,b_))*H(idxyz, l, 0, is);
+        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_)*H(idxyz, l, 2, is)
+		+ ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) )*H(idxyz, l, 0, is);
       }
       uperp_bar[index] = uperp_bar[index]*sqrtf(b_);
     }
@@ -272,11 +270,11 @@ __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) {
    for(int is=0; is<nspecies; is++) { 
-    for (int l = threadIdx.z; l < nhermite; l += blockDim.z) {
-     for (int m = threadIdx.y; m < nlaguerre; m += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*m + nx*nyc*nz*nlaguerre*l + nx*nyc*nz*nlaguerre*nhermite*is; 
-      if(l>2) {
-        rhs[globalIdx] = rhs[globalIdx] - (nu_hyper_l*pow((float) l/nhermite, (float) p_hyper_l)+nu_hyper_m*pow((float)m/nlaguerre, p_hyper_m))*g[globalIdx];
+    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+      if(m>2) {
+        rhs[globalIdx] = rhs[globalIdx] - (nu_hyper_l*pow((float) l/nl, (float) p_hyper_l)+nu_hyper_m*pow((float)m/nm, p_hyper_m))*g[globalIdx];
       }
      }
     }

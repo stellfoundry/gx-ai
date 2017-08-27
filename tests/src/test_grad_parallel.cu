@@ -18,8 +18,8 @@ protected:
     pars->nz_in = 32;
     pars->nperiod = 2;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 2;
+    pars->nm_in = 4;
+    pars->nl_in = 2;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
@@ -48,8 +48,8 @@ protected:
     pars->nz_in = 16;
     pars->nperiod = 1;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 2;
+    pars->nm_in = 4;
+    pars->nl_in = 2;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;

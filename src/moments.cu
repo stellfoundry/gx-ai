@@ -8,8 +8,8 @@ Moments::Moments(Grids* grids) :
   HLsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
   Momsize_(sizeof(cuComplex)*grids->NxNycNz)
 {
-  int Nhermite = grids_->Nhermite;
-  int Nlaguerre = grids_->Nlaguerre;
+  int Nm = grids_->Nm;
+  int Nl = grids_->Nl;
   checkCuda(cudaMalloc((void**) &ghl, HLsize_));
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
@@ -26,25 +26,25 @@ Moments::Moments(Grids* grids) :
     // set up pointers for named moments that point to parts of ghl
     int l,m;
     l = 0, m = 0; // density
-    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = gHL(l,m,s);
+    if(l<Nl && m<Nm) dens_ptr[s] = gHL(l,m,s);
     
-    l = 1, m = 0; // u_parallel
-    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 1; // u_parallel
+    if(l<Nl && m<Nm) upar_ptr[s] = gHL(l,m,s);
     
-    l = 2, m = 0; // T_parallel / sqrt(2)
-    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 2; // T_parallel / sqrt(2)
+    if(l<Nl && m<Nm) tpar_ptr[s] = gHL(l,m,s);
     
-    l = 3, m = 0; // q_parallel / sqrt(6)
-    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 3; // q_parallel / sqrt(6)
+    if(l<Nl && m<Nm) qpar_ptr[s] = gHL(l,m,s);
 
-    l = 0, m = 1; // T_perp 
-    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = gHL(l,m,s);
+    l = 1, m = 0; // T_perp 
+    if(l<Nl && m<Nm) tprp_ptr[s] = gHL(l,m,s);
     
     l = 1, m = 1; // q_perp
-    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = gHL(l,m,s);
+    if(l<Nl && m<Nm) qprp_ptr[s] = gHL(l,m,s);
   }
 
-  dimBlock = dim3(32, min(4, Nlaguerre), min(4, Nhermite));
+  dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
 }
 

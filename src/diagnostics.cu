@@ -360,9 +360,9 @@ void Diagnostics::writeHLspectrum(cuComplex* ghl, int ikx, int iky)
   sprintf(ofilename, "%s.hlspectrum.out", pars_->run_name);
   FILE* out = fopen(ofilename,"w+");
   
-  for(int l=0; l<grids_->Nhermite; l++) {
-    for(int m=0; m<grids_->Nlaguerre; m++) {
-      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum[m+grids_->Nlaguerre*l]);
+  for(int m=0; m<grids_->Nm; m++) {
+    for(int l=0; l<grids_->Nl; l++) {
+      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum[l+grids_->Nl*m]);
     }
     fprintf(out, "\n");
   }
@@ -395,11 +395,11 @@ void Diagnostics::HLspectrum(cuComplex* ghl, int ikx, int iky)
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
   cudaMemset(hlspectrum, 0., sizeof(float)*grids_->Nmoms);
-  for(int l=0; l<grids_->Nhermite; l++) {
-    for(int m=0; m<grids_->Nlaguerre; m++) {
+  for(int m=0; m<grids_->Nm; m++) {
+    for(int l=0; l<grids_->Nl; l++) {
       volume_average<<<blocks,threads>>>
-	(&hlspectrum[m+grids_->Nlaguerre*l], 
-	 &ghl[grids_->NxNycNz*m + grids_->NxNycNz*grids_->Nlaguerre*l], geo_->jacobian, 1./fluxDenom, ikx, iky);
+	(&hlspectrum[l+grids_->Nl*m], 
+	 &ghl[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m], geo_->jacobian, 1./fluxDenom, ikx, iky);
     }
   }
 }

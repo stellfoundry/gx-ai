@@ -67,17 +67,17 @@ Beer42::~Beer42() {
 int Beer42::apply_closures(Moments* m, Moments* mRhs) 
 {
   // mask unevolved moments
-  cudaMemset(mRhs->gHL(2,1), 0., sizeof(cuComplex)*grids_->NxNycNz);
-  cudaMemset(mRhs->gHL(3,1), 0., sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMemset(mRhs->gHL(1,2), 0., sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMemset(mRhs->gHL(1,3), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
   // parallel terms (each must be done separately because of FFTs)
-  grad_par->eval(m->gHL(2,0), tmp);
+  grad_par->eval(m->gHL(0,2), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -Beta_par/sqrt(3.)*gradpar_, tmp);
+      (mRhs->gHL(0,3), 1., mRhs->gHL(0,3), -Beta_par/sqrt(3.)*gradpar_, tmp);
 
-  abs_grad_par->eval(m->gHL(3,0), tmp);
+  abs_grad_par->eval(m->gHL(0,3), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (mRhs->gHL(3,0), 1., mRhs->gHL(3,0), -sqrt(2.)*D_par*gradpar_, tmp);
+      (mRhs->gHL(0,3), 1., mRhs->gHL(0,3), -sqrt(2.)*D_par*gradpar_, tmp);
 
   abs_grad_par->eval(m->gHL(1,1), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
@@ -89,7 +89,7 @@ int Beer42::apply_closures(Moments* m, Moments* mRhs)
   return 0;
 }
 
-# define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L)
+# define LM(L, M) idxyz + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)
 __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu)
 {
   unsigned int idxyz = get_id1();
@@ -99,21 +99,21 @@ __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* ome
     const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
     const float abs_omegad = abs(omegad[idxyz]);
 
-    gRhs[LM(2,0)] = gRhs[LM(2,0)]
-      - sqrtf(2)*abs_omegad*( nu[1].x*sqrtf(2)*g[LM(2,0)] + nu[2].x*g[LM(0,1)] )
-      - sqrtf(2)* iomegad * ( nu[1].y*sqrtf(2)*g[LM(2,0)] + nu[2].y*g[LM(0,1)] );
+    gRhs[LM(0,2)] = gRhs[LM(0,2)]
+      - sqrtf(2)*abs_omegad*( nu[1].x*sqrtf(2)*g[LM(0,2)] + nu[2].x*g[LM(1,0)] )
+      - sqrtf(2)* iomegad * ( nu[1].y*sqrtf(2)*g[LM(0,2)] + nu[2].y*g[LM(1,0)] );
 
-    gRhs[LM(0,1)] = gRhs[LM(0,1)]
-      - 2.*abs_omegad*( nu[3].x*sqrtf(2)*g[LM(2,0)] + nu[4].x*g[LM(0,1)] )
-      - 2.* iomegad * ( nu[3].y*sqrtf(2)*g[LM(2,0)] + nu[4].y*g[LM(0,1)] );
+    gRhs[LM(1,0)] = gRhs[LM(1,0)]
+      - 2.*abs_omegad*( nu[3].x*sqrtf(2)*g[LM(0,2)] + nu[4].x*g[LM(1,0)] )
+      - 2.* iomegad * ( nu[3].y*sqrtf(2)*g[LM(0,2)] + nu[4].y*g[LM(1,0)] );
 
-    gRhs[LM(3,0)] = gRhs[LM(3,0)]
-      - 1./sqrtf(6)*abs_omegad*( nu[5].x*g[LM(1,0)] + nu[6].x*sqrtf(6)*g[LM(3,0)] + nu[7].x*g[LM(1,1)] )
-      - 1./sqrtf(6)* iomegad * ( nu[5].y*g[LM(1,0)] + nu[6].y*sqrtf(6)*g[LM(3,0)] + nu[7].y*g[LM(1,1)] );
+    gRhs[LM(0,3)] = gRhs[LM(0,3)]
+      - 1./sqrtf(6)*abs_omegad*( nu[5].x*g[LM(0,1)] + nu[6].x*sqrtf(6)*g[LM(0,3)] + nu[7].x*g[LM(1,1)] )
+      - 1./sqrtf(6)* iomegad * ( nu[5].y*g[LM(0,1)] + nu[6].y*sqrtf(6)*g[LM(0,3)] + nu[7].y*g[LM(1,1)] );
 
     gRhs[LM(1,1)] = gRhs[LM(1,1)]
-      - abs_omegad*( nu[8].x*g[LM(1,0)] + nu[9].x*sqrtf(6)*g[LM(3,0)] + nu[10].x*g[LM(1,1)] )
-      -  iomegad * ( nu[8].y*g[LM(1,0)] + nu[9].y*sqrtf(6)*g[LM(3,0)] + nu[10].y*g[LM(1,1)] );
+      - abs_omegad*( nu[8].x*g[LM(0,1)] + nu[9].x*sqrtf(6)*g[LM(0,3)] + nu[10].x*g[LM(1,1)] )
+      -  iomegad * ( nu[8].y*g[LM(0,1)] + nu[9].y*sqrtf(6)*g[LM(0,3)] + nu[10].y*g[LM(1,1)] );
   }
 
 }
@@ -124,7 +124,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
   cuComplex Aclos_h[q_];
 
   // hard code these cases for now...
-  if(grids_->Nlaguerre==4 && q_==3) {
+  if(grids_->Nl==4 && q_==3) {
     Aclos_h[0].x = -2.10807;
     Aclos_h[0].y = 0.574549;
     Aclos_h[1].x = -1.25931;
@@ -132,7 +132,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].x = -0.181713;
     Aclos_h[2].y = 0.249684;
   }
-  else if(grids_->Nlaguerre==5 && q_==3) {
+  else if(grids_->Nl==5 && q_==3) {
     Aclos_h[0].x = -2.24233;
     Aclos_h[0].y = 0.551885;
     Aclos_h[1].x = -1.49324;
@@ -140,7 +140,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].x = -0.272805;
     Aclos_h[2].y = 0.292545;
   }
-  else if(grids_->Nlaguerre==5 && q_==4) {
+  else if(grids_->Nl==5 && q_==4) {
     Aclos_h[0].x = -2.8197;
     Aclos_h[0].y = 0.679165;
     Aclos_h[1].x = -2.63724;
@@ -150,7 +150,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[3].x = -0.0731348;
     Aclos_h[3].y = 0.167287;
   }
-  else if(grids_->Nlaguerre==6 && q_==3) {
+  else if(grids_->Nl==6 && q_==3) {
     Aclos_h[0].x = -2.33763;
     Aclos_h[0].y = 0.527272;
     Aclos_h[1].x = -1.66731;
@@ -158,7 +158,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].x = -0.346277;
     Aclos_h[2].y = 0.313484;
   }
-  else if(grids_->Nlaguerre==6 && q_==4) {
+  else if(grids_->Nl==6 && q_==4) {
     Aclos_h[0].x = -2.97138;
     Aclos_h[0].y = 0.66065;
     Aclos_h[1].x = -3.01477;
@@ -168,7 +168,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[3].x = -0.13387;
     Aclos_h[3].y = 0.221786;
   }
-  else if(grids_->Nlaguerre==6 && q_==5) {
+  else if(grids_->Nl==6 && q_==5) {
     Aclos_h[0].x = -3.53482;
     Aclos_h[0].y = 0.771299;
     Aclos_h[1].x = -4.52836;
@@ -180,7 +180,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[4].x = -0.0226971;
     Aclos_h[4].y = 0.102349;
   }
-  else if(grids_->Nlaguerre==8 && q_==4) {
+  else if(grids_->Nl==8 && q_==4) {
     Aclos_h[0].x = -3.17353;
     Aclos_h[0].y = 0.616513;
     Aclos_h[1].x = -3.54865;
@@ -189,7 +189,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
     Aclos_h[2].y = 1.15187;
     Aclos_h[3].x = -0.244346;
     Aclos_h[3].y = 0.283442;
-  } else if(grids_->Nlaguerre==8 && q_==3) {
+  } else if(grids_->Nl==8 && q_==3) {
     Aclos_h[0].x = -2.46437;
     Aclos_h[0].y = 0.482544;
     Aclos_h[1].x = -1.90784;
@@ -222,7 +222,7 @@ int SmithPerp::apply_closures(Moments* m, Moments* mRhs)
   return 0;
 }
 
-# define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nlaguerre*(L)
+# define LM(L, M) idxyz + nx*nyc*nz*(M) + nx*nyc*nz*nl*(L)
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q)
 {
   unsigned int idxyz = get_id1();
@@ -232,17 +232,17 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
     const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
     const cuComplex abs_omegad = make_cuComplex(abs(omegad[idxyz]),0.);
 
-    int M = nlaguerre - 1;
+    int L = nl - 1;
 
-    // apply closure to Mth laguerre equation for all hermite moments
-    for(int l=0; l<nhermite; l++) {
+    // apply closure to Lth laguerre equation for all hermite moments
+    for(int m=0; m<nm; m++) {
       // calculate closure expression as sum of lower laguerre moments
       cuComplex clos = make_cuComplex(0.,0.);
-      for(int m=M; m>=nlaguerre-q; m--) {
-        clos = clos + (abs_omegad*Aclos[M-m].y + iomegad*Aclos[M-m].x)*g[LM(l,m)];
+      for(int l=L; l>=nl-q; l--) {
+        clos = clos + (abs_omegad*Aclos[L-l].y + iomegad*Aclos[L-l].x)*g[LM(l,m)];
       }
 
-      gRhs[LM(l,M)] = gRhs[LM(l,M)] - (M+1)*clos;
+      gRhs[LM(L,m)] = gRhs[LM(L,m)] - (L+1)*clos;
     }
   }
 
@@ -263,7 +263,7 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q):
 
   // calculate closure coefficients 
   a_coefficients_ = (cuComplex*) malloc(q_*sizeof(cuComplex));
-  smith_par_getAs(grids->Nhermite, q_, a_coefficients_);
+  smith_par_getAs(grids->Nm, q_, a_coefficients_);
    
   // 1d thread blocks over xyz
   dimBlock = 512;
@@ -277,24 +277,24 @@ SmithPar::~SmithPar() {
   cudaFree(tmp_abs);
 }
 
-int SmithPar::apply_closures(Moments* m, Moments* mRhs) 
+int SmithPar::apply_closures(Moments* mom, Moments* mRhs) 
 {
-    int L = grids_->Nhermite - 1;
+    int M = grids_->Nm - 1;
 
-    // apply closure to lth hermite equation for all laguerre moments
-    for(int m_ = 0; m_ < grids_->Nlaguerre; m_++) {
+    // apply closure to mth hermite equation for all laguerre moments
+    for(int l = 0; l < grids_->Nl; l++) {
       
       // reset closure array every time step
       cudaMemset(clos, 0, grids_->NxNycNz*sizeof(cuComplex));
 
-      // write l+1 moment as a sum of lower order moments
-      for (int l = L; l >= grids_->Nhermite - q_; l--) {
-          grad_par->eval((m->gHL(l,m_)), tmp);
-          abs_grad_par->eval(m->gHL(l,m_), tmp_abs);
-          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[L - l].y, tmp_abs, a_coefficients_[L - l].x, tmp);
+      // write m+1 moment as a sum of lower order moments
+      for (int m = M; m >= grids_->Nm - q_; m--) {
+          grad_par->eval((mom->gHL(l,m)), tmp);
+          abs_grad_par->eval(mom->gHL(l,m), tmp_abs);
+          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - l].y, tmp_abs, a_coefficients_[M - l].x, tmp);
       }
 
-      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(mRhs->gHL(L,m_), 1., mRhs->gHL(L,m_), -sqrt(L+1), clos);
+      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(mRhs->gHL(l,M), 1., mRhs->gHL(l,M), -sqrt(M+1), clos);
     }
     
     return 0;

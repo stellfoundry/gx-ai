@@ -5,7 +5,7 @@
 LaguerreTransform::LaguerreTransform(Grids* grids) :
   grids_(grids)
 {
-  L = grids->Nlaguerre - 1;
+  L = grids->Nl - 1;
   J = (3*L-1)/2;
   float *toGrid_h, *toSpectral_h, *roots_h;
   cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
@@ -113,7 +113,7 @@ int LaguerreTransform::transformToGrid(Moments* m)
 //     m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1),
 //     toGrid, J+1, 0,
 //     0., m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
-//     grids_->Nhermite);
+//     grids_->Nm);
   return 0;
 }
 

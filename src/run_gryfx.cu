@@ -75,8 +75,8 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
 
     geo->initializeOperatorArrays(pars, grids);
     checkCuda(cudaGetLastError());
-    printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nhermite=%d, Nlaguerre=%d, Nspecies=%d\n", 
-       grids->Nx, grids->Ny, grids->Nz, grids->Nhermite, grids->Nlaguerre, grids->Nspecies);
+    printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nm=%d, Nl=%d, Nspecies=%d\n", 
+       grids->Nx, grids->Ny, grids->Nz, grids->Nm, grids->Nl, grids->Nspecies);
 
     printf("Initializing fields...\n");
     fields = new Fields(grids);

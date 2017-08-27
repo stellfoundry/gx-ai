@@ -146,8 +146,8 @@ class Parameters {
    
    // Namelist: 
       // new for HL 
-      int nhermite_in;
-      int nlaguerre_in;  // nlaguerre will be an array 
+      int nm_in;
+      int nl_in;  // nl will be an array 
       int closure_model;
       int smith_perp_q;
       int smith_par_q;

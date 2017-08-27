@@ -120,15 +120,15 @@ int Parameters::read_namelist(char* filename)
   //X0 will get overwritten if shat!=0
 
   // set up for HL moments "grid"
-  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nhermite_in));
-  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nlaguerre_in);
+  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nhermite", &(nm_in));
+  fnr_get_int(&namelist_struct, "hl_grids_knobs", "nlaguerre", &nl_in);
 
   char* clos_str;
   fnr_get_string(&namelist_struct, "hl_grids_knobs", "closure_model", &clos_str);
   if(strcmp(clos_str, "beer4+2")==0) {
-    printf("\nUsing Beer 4+2 closure model. Overriding nhermite=4, nlaguerre=2\n\n");
-    nhermite_in = 4;
-    nlaguerre_in = 2;
+    printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
+    nm_in = 4;
+    nl_in = 2;
     closure_model = BEER42;
   }
   else if (strcmp(clos_str, "smith_perp")==0) {

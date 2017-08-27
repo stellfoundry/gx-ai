@@ -13,15 +13,15 @@ protected:
     pars->ny_in = 48;
     pars->nz_in = 32;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 9; // leave this value
+    pars->nm_in = 4;
+    pars->nl_in = 9; // leave this value
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
 
     grids = new Grids(pars);
     laguerre = new LaguerreTransform(grids);
-    L = grids->Nlaguerre - 1;
+    L = grids->Nl - 1;
     J = (3*L-1)/2;
   }
 

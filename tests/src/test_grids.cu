@@ -12,8 +12,8 @@ protected:
     pars->ny_in = 48;
     pars->nz_in = 32;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 2;
+    pars->nm_in = 4;
+    pars->nl_in = 2;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;

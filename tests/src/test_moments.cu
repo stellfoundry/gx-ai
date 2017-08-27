@@ -17,8 +17,8 @@ protected:
     pars->nz_in = 32;
     pars->nperiod = 1;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 2;
+    pars->nm_in = 4;
+    pars->nl_in = 2;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
@@ -94,7 +94,7 @@ TEST_F(TestMoments, InitConditions) {
         EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&moms->gHL(0,3)[index].x, 0.);
       }
     }
   }
@@ -147,7 +147,7 @@ TEST_F(TestMoments, AddMoments)
         EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, 2.*init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&moms->gHL(0,3)[index].x, 0.);
       }
     }
   }
@@ -165,7 +165,7 @@ TEST_F(TestMoments, AddMoments)
         EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, 4.*init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, 3.*init_check[index]);
         EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,1)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&moms->gHL(1,3)[index].x, 0.);
       }
     }
   }
@@ -176,13 +176,13 @@ TEST_F(TestMoments, AddMoments)
   dim3 dimBlock = 512;
   dim3 dimGrid = grids->NxNycNz/dimBlock.x+1;
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (moms->gHL(3,0), 1., moms->gHL(1,0), 1., moms->gHL(0,0));
+      (moms->gHL(0,3), 1., moms->gHL(0,1), 1., moms->gHL(0,0));
   // qpar = 7*init(z)
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 7.*init_check[index]);
+        EXPECT_FLOAT_EQ_D(&moms->gHL(0,3)[index].x, 7.*init_check[index]);
       }
     }
   }
