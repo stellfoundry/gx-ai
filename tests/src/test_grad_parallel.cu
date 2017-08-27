@@ -6,6 +6,8 @@
 #include "moments.h"
 #include "diagnostics.h"
 #include "cuda_constants.h"
+#include "device_funcs.h"
+#include "diagnostics.h"
 
 class TestGradParallel1D : public ::testing::Test {
 protected:
@@ -41,9 +43,9 @@ class TestGradParallel3D : public ::testing::Test {
 protected:
   virtual void SetUp() {
     pars = new Parameters;
-    pars->nx_in = 32;
-    pars->ny_in = 32;
-    pars->nz_in = 32;
+    pars->nx_in = 16;
+    pars->ny_in = 16;
+    pars->nz_in = 16;
     pars->nperiod = 1;
     pars->nspec_in = 1;
     pars->nhermite_in = 4;
@@ -129,6 +131,8 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   pars->init = UPAR;
   pars->init_amp = .01;
   pars->kpar_init = 2.;
+  pars->linear = true;
+  strncpy(pars->run_name, "gpar_test", strlen("gpar_test"));
   momsInit->initialConditions(pars, geo);
 
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
@@ -145,6 +149,15 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
       }
     }
   }
+  // reality condition
+  for(int j=0; j<grids->Nx/2; j++) {
+    for(int k=0; k<grids->Nz; k++) {
+      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
+      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
+      if(j!=0) init_check[index2] = init_check[index];
+      if(j!=0) deriv_check[index2] = deriv_check[index];
+    }
+  }
 
   // check initial condition
   for(int i=0; i<grids->Nyc; i++) {
@@ -158,7 +171,7 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
 
   // out-of-place, with only a single moment
   grad_par->eval(momsInit->upar_ptr[0], momsRes->upar_ptr[0]);
-  
+
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {

@@ -59,6 +59,14 @@ TEST_F(TestMoments, InitConditions) {
       }
     }
   }
+  // reality condition
+  for(int j=0; j<grids->Nx/2; j++) {
+    for(int k=0; k<grids->Nz; k++) {
+      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
+      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
+      if(j!=0) init_check[index2] = init_check[index];
+    }
+  }
 
   // initialize upar
   pars->init = UPAR;
@@ -108,6 +116,14 @@ TEST_F(TestMoments, AddMoments)
         int index = i + grids->Nyc*j + grids->NxNyc*k;
         init_check[index] = ra*cos(2.*geo->z_h[k]);
       }
+    }
+  }
+  // reality condition
+  for(int j=0; j<grids->Nx/2; j++) {
+    for(int k=0; k<grids->Nz; k++) {
+      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
+      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
+      if(j!=0) init_check[index2] = init_check[index];
     }
   }
   // initialize upar
