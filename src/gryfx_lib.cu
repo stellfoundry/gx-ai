@@ -11,11 +11,6 @@ __global__ void test(float* z) {
   printf("Device: %f\n", z[0]);
 }
 
-//Defined at the bottom of this file
-//void set_externalpars(struct external_parameters_struct * externalpars, Inputs *inputs);
-//void import_externalpars(struct external_parameters_struct * externalpars, everything_struct * everything_ptr);
-//void initialize_cuda_parallelization(everything_struct * ev);
-
 void gryfx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, int mpcom) {  
   
   int iproc;
@@ -24,20 +19,11 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
   
   MPI_Comm_rank(mpcom, &iproc);
 
-
-#ifdef GS2_zonal
-  if(iproc==0) printf("\n\n========================================\nThis is a hybrid GryfX-GS2 calculation.\n========================================\n\n");
-#endif
-
   int numdev;
 
   cudaGetDeviceCount(&numdev);
 
   cudaGetDevice(&externalpars->mpirank);
-
-//#else
-//  iproc=0;
-//#endif
 
   if(iproc==0) printf("Initializing GryfX...\tNamelist is %s\n", namelistfileName);
 
@@ -118,13 +104,6 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
   if(iproc==0) {
     pars->import_externalpars(externalpars);
   }
-  
-
-//#ifdef GS2_zonal
-//  if(iproc==0) printf("%d: Initializing GS2...\n\n", ev->info.gpuID);
-//  gryfx_initialize_gs2(&ev->grids, externalpars, namelistfileName, mpcom);
-//  if(iproc==0) printf("%d: Finished initializing GS2.\n\n", ev->info.gpuID);
-//#endif
 
   /////////////////////////
   // This is the main call
@@ -151,69 +130,3 @@ void gryfx_main(int argc, char* argv[], int mpcom) {
   gryfx_get_fluxes_(&externalpars, &gryfxouts, namelistfileName, mpcom);
 
 }
-
-/*
-void initialize_cuda_parallelization(everything_struct * ev){
-
-  ///////////////////////////////////////////////////
-  // set up parallelization 
-  // calculate dimBlock and dimGrid
-  ///////////////////////////////////////////////////
-
-  int dev;
-  struct cudaDeviceProp prop;
-
-  //Local duplicates for convenience
-  cuda_dimensions_struct * cdims = &ev->cdims;
-  int totalThreads, zBlockThreads;
-  int Nx = ev->grids.Nx;
-  int Ny = ev->grids.Ny;
-  int Nz = ev->grids.Nz;
-	dim3 dimBlock;
-  dim3 dimGrid;
-
-
-  cudaGetDevice(&dev);
-
-  cudaGetDeviceProperties(&prop,dev);
-
-  zBlockThreads = cdims->zBlockThreads = prop.maxThreadsDim[2];
-
-  cdims->zThreads = cdims->zBlockThreads*prop.maxGridSize[2];
-
-  //printf("\nzThreads = %d\n", zThreads);
-
-  totalThreads = cdims->totalThreads = prop.maxThreadsPerBlock;     
-
-
-  if(Nz>zBlockThreads) dimBlock.z = zBlockThreads;
-  else dimBlock.z = Nz;
-  float otherThreads = totalThreads/dimBlock.z;
-  int xy = floorf(otherThreads);
-  if( (xy%2) != 0 ) xy = xy - 1; // make sure xy is even and less than totalThreads/dimBlock.z
-  //find middle factors of xy
-  int fx, fy;
-  for(int f1 = 1; f1<xy; ++f1) {
-    float f2 = (float) xy/f1;
-    if(f2 == floorf(f2)) {
-      fy = f1; fx = f2;
-    }
-    if(f2<=f1) break;
-  }
-  dimBlock.x = fx; 
-  dimBlock.y = fy;
-    
-  dimGrid.x = (Nx+dimBlock.x-1)/dimBlock.x;
-  dimGrid.y = (Ny+dimBlock.y-1)/dimBlock.y;
-  if(prop.maxGridSize[2] == 1) dimGrid.z = 1;    
-  else dimGrid.z = (Nz+dimBlock.z-1)/dimBlock.z;
-
-  cdims->dimGrid = dimGrid;
-  cdims->dimBlock = dimBlock;
-
-  
-  //if (DEBUG) 
-  printf("dimGrid = (%d, %d, %d)     dimBlock = (%d, %d, %d)\n", dimGrid.x,dimGrid.y,dimGrid.z,dimBlock.x,dimBlock.y,dimBlock.z);
-}
-*/
-

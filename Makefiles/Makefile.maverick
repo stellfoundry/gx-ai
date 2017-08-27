@@ -33,7 +33,7 @@ FFT_INC = -I${TACC_FFTW3_INC}
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
 MPI_INC = -I ${MPICH_HOME}/include
-MPI_LIB= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
+MPI_LIB= -L ${MPICH_HOME}/lib -lmpich 
 PYTHON_INC = -I ${TACC_PYTHON_INC}/python2.7
 PYTHON_LIB = -L ${TACC_PYTHON_LIB} -lpython2.7
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true 
