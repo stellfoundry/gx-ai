@@ -21,6 +21,8 @@ class Diagnostics {
   void writeGeo();
   void writeGrowthRates();
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
+
+  double pflux[20], qflux[20];
   
 
  private:

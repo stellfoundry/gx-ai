@@ -36,47 +36,18 @@ void getDeviceMemoryUsage() {
       used_db/1024.0/1024.0, used_db/total_db*100., free_db/1024.0/1024.0, free_db/total_db*100., total_db/1024.0/1024.0);
 }
 
-void run_gx(Parameters *pars, double * pflux, double * qflux)
+void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnostics)
 {
   int iproc = pars->iproc;  
 
-  Geometry* geo;  // geometry coefficient arrays
-  Grids* grids;   // grids (e.g. kx, ky, z)
   Fields *fields;
   MomentsG *momsG;
   Solver *solver;
   Linear* linear;
   Forcing *forcing;
   Timestepper *stepper; 
-  Diagnostics* diagnostics;
 
   if(iproc == 0) {
-    int igeo = pars->igeo;
-    printf("Initializing geometry...\n");
-    if(igeo==0) {
-      geo = new S_alpha_geo(pars);
-    } else if(igeo==1) {
-      // MFM
-      geo = new File_geo(pars);
-    } else if(igeo==2) {
-      printf("igeo = 2 not yet implemented!\n");
-      exit(1);
-      //geo = new Eik_geo();
-    } else if(igeo==3) {
-      printf("igeo = 3 not yet implemented!\n");
-      exit(1);
-      //geo = new Gs2_geo();
-    }
-    checkCuda(cudaGetLastError());
-
-    printf("Initializing grids...\n");
-    grids = new Grids(pars);
-    checkCuda(cudaGetLastError());
-
-    geo->initializeOperatorArrays(pars, grids);
-    checkCuda(cudaGetLastError());
-    printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nm=%d, Nl=%d, Nspecies=%d\n", 
-       grids->Nx, grids->Ny, grids->Nz, grids->Nm, grids->Nl, grids->Nspecies);
 
     printf("Initializing fields...\n");
     fields = new Fields(grids);
@@ -121,10 +92,6 @@ void run_gx(Parameters *pars, double * pflux, double * qflux)
     }
     checkCuda(cudaGetLastError());
 
-    printf("Initializing diagnostics...\n");
-    diagnostics = new Diagnostics(pars, grids, geo);
-    checkCuda(cudaGetLastError());
-
     printf("After initialization:\n");
     getDeviceMemoryUsage();
   
@@ -132,7 +99,7 @@ void run_gx(Parameters *pars, double * pflux, double * qflux)
     diagnostics->writeMomOrField(fields->phi, "phi0");
 
     // MFM
-    if (igeo == 1) {
+    if (pars->igeo == 1) {
       diagnostics->writeGridFile("geofile");
     }
   }
@@ -174,15 +141,12 @@ void run_gx(Parameters *pars, double * pflux, double * qflux)
 
   printf("Cleaning up...\n");
 
-  delete geo;  
-  delete grids;
   delete fields;
   delete momsG;
   delete solver;
   delete linear;
   delete forcing;
   delete stepper;
-  delete diagnostics;
 
 }    
 

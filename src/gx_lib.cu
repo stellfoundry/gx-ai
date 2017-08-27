@@ -4,6 +4,7 @@
 #include "parameters.h"
 #include "run_gx.h"
 #include "geometry.h"
+#include "get_error.h"
 #include <assert.h>
 
 
@@ -81,19 +82,6 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
    pars->iproc = iproc;
    
-/*
-   ev->mpi.iproc = iproc;
-   ev->mpi.mpcom = mpcom;
-
-   //This only important for Trinity.
-   ev->info.job_id = externalpars->job_id;
-  
-  
-  // Copy the name of the namelist file to ev->info.run_name
-  // Check if we should and can restart and set the file name
-  setup_info(namelistfileName, &ev->pars, &ev->info);
-*/
-
 //  int gpuID = externalpars->job_id;
 
   // Only proc0 needs to import paramters to gx
@@ -105,13 +93,55 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     pars->import_externalpars(externalpars);
   }
 
+  Geometry* geo;  // geometry coefficient arrays
+  Grids* grids;   // grids (e.g. kx, ky, z)
+  Diagnostics* diagnostics;
+
+  if(iproc==0) {
+    int igeo = pars->igeo;
+    printf("Initializing geometry...\n");
+    if(igeo==0) {
+      geo = new S_alpha_geo(pars);
+    } else if(igeo==1) {
+      // MFM
+      geo = new File_geo(pars);
+    } else if(igeo==2) {
+      printf("igeo = 2 not yet implemented!\n");
+      exit(1);
+      //geo = new Eik_geo();
+    } else if(igeo==3) {
+      printf("igeo = 3 not yet implemented!\n");
+      exit(1);
+      //geo = new Gs2_geo();
+    }
+    checkCuda(cudaGetLastError());
+
+    printf("Initializing grids...\n");
+    grids = new Grids(pars);
+    checkCuda(cudaGetLastError());
+    printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n", 
+       grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
+
+    geo->initializeOperatorArrays(pars, grids);
+    checkCuda(cudaGetLastError());
+
+    printf("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics(pars, grids, geo);
+    checkCuda(cudaGetLastError());
+  }
+
   /////////////////////////
   // This is the main call
   ////////////////////////
-  run_gx(pars, gxouts->pflux, gxouts->qflux);
+  run_gx(pars, grids, geo, diagnostics);
+
+  memcpy(gxouts->qflux, diagnostics->qflux, sizeof(double)*grids->Nspecies);
+  memcpy(gxouts->pflux, diagnostics->pflux, sizeof(double)*grids->Nspecies);
 
   delete pars;
-
+  delete grids;
+  delete geo;
+  delete diagnostics;
 }  	
 
 void gx_main(int argc, char* argv[], int mpcom) {
