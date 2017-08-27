@@ -21,7 +21,7 @@ LaguerreTransform::LaguerreTransform(Grids* grids) :
   cudaMemcpy(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
   cudaMemcpy(roots, roots_h, sizeof(float)*(J+1), cudaMemcpyHostToDevice);
 
-  cublasCreate(&handle);
+  //cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
   cudaFreeHost(toSpectral_h);
   cudaFreeHost(roots_h);
@@ -31,6 +31,7 @@ LaguerreTransform::~LaguerreTransform()
 {
   cudaFree(toGrid);
   cudaFree(toSpectral);
+  cudaFree(roots);
 }
 
 // toGrid = toGrid[l + (L+1)*j] = Psi^l(x_j)
@@ -84,6 +85,8 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
                 fprintf(stderr,"Call failed\n");
                 return 1;
             }
+            // this causes segfaults...
+            //Py_DECREF(pReturn);
         }
         else {
             if (PyErr_Occurred())
@@ -98,7 +101,8 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
         fprintf(stderr, "Failed to load \"%s\"\n", filename);
         return 1;
     }
-    Py_Finalize();
+    // also causes segfaults...
+    //Py_Finalize();
     return 0;
 }
 

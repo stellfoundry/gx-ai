@@ -9,3 +9,4 @@ gryfx++
 *.field
 tests/test_*
 *.z
+*.pyc

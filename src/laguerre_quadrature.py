@@ -32,6 +32,7 @@ def laguerre_quadrature(L, printout=False):
 
   toGrid = toGrid.astype(np.float32)
   toSpectral = toSpectral.astype(np.float32)
+  roots = roots.astype(np.float32)
 
   return toGrid, toSpectral, roots
 
