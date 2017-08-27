@@ -1,7 +1,7 @@
 #pragma once
 
 #include "species.h"
-#include "gryfx_lib.h"
+#include "gx_lib.h"
 #include "cufft.h"
 
 #define PHI 0                                                                            
@@ -210,7 +210,7 @@ class Parameters {
       int source_option;
       float phiext;
   
-    // Namelist: gryfx_knobs
+    // Namelist: gx_knobs
       int inlpm;
       float dnlpm;
       float dnlpm_dens;

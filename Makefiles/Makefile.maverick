@@ -1,14 +1,3 @@
-##################################################
-#           Makefile of gryfx for CUDA           #
-#                                                #
-#  NOTE: environmental variables                 #
-#     CUDAARCH, SDKDIR                           #
-#  need to be properly defined                   #
-##################################################
-
-
-#module load TACC-paths  Linux  cluster-paths  intel/14.0.1.106  mvapich2/1.9a2  xalt/0.4.6  cluster  TACC ;\
-
 define STANDARD_SYSTEM_CONFIGURATION
 module reset ;\
 module load TACC-paths  Linux  cluster-paths  cluster  TACC;\

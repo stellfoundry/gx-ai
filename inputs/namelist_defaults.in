@@ -432,7 +432,7 @@ model_option = "const-curv"
   ikx_fixed = 0
 /
 
-&gryfx_nonlinear_terms_knobs
+&gx_nonlinear_terms_knobs
    densfac = 1.
    uparfac = 1.
    tparfac = 1.
@@ -441,7 +441,7 @@ model_option = "const-curv"
    qprpfac = 1.
 /
 
-&gryfx_knobs
+&gx_knobs
   hyper = "off"
   nu_hyper = 1.0
   p_hyper = 2

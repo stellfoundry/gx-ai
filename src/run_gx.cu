@@ -36,7 +36,7 @@ void getDeviceMemoryUsage() {
       used_db/1024.0/1024.0, used_db/total_db*100., free_db/1024.0/1024.0, free_db/total_db*100., total_db/1024.0/1024.0);
 }
 
-void run_gryfx(Parameters *pars, double * pflux, double * qflux)
+void run_gx(Parameters *pars, double * pflux, double * qflux)
 {
   int iproc = pars->iproc;  
 

@@ -1,8 +1,8 @@
-#include "gryfx_lib.h"
+#include "gx_lib.h"
 #include "mpi.h"
 #include "cufft.h"
 #include "parameters.h"
-#include "run_gryfx.h"
+#include "run_gx.h"
 #include "geometry.h"
 #include <assert.h>
 
@@ -11,7 +11,7 @@ __global__ void test(float* z) {
   printf("Device: %f\n", z[0]);
 }
 
-void gryfx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, int mpcom) {  
+void gx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, int mpcom) {  
   
   int iproc;
 
@@ -65,16 +65,16 @@ void gryfx_get_default_parameters_(struct external_parameters_struct * externalp
   printf("Broadcasted externalpars (%d) %d %d\n", ret, nprocs, iproc);
   // This has to be set after the broadcast
   externalpars->pars_address = (void *)pars; 
-  printf("Finished gryfx_get_default_parameters_\n");
+  printf("Finished gx_get_default_parameters_\n");
 
 }
   
-void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars, 
-			struct gryfx_outputs_struct * gryfxouts, char* namelistfileName, int mpcom)
+void gx_get_fluxes_(struct external_parameters_struct *  externalpars, 
+			struct gx_outputs_struct * gxouts, char* namelistfileName, int mpcom)
 {
    int iproc;
    // iproc doesn't necessarily have to be the same as it was in 
-   // gryfx_get_default_parameters_
+   // gx_get_default_parameters_
    MPI_Comm_rank(mpcom, &iproc);
 
    Parameters* pars = (Parameters *)externalpars->pars_address;
@@ -96,11 +96,11 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
 
 //  int gpuID = externalpars->job_id;
 
-  // Only proc0 needs to import paramters to gryfx
+  // Only proc0 needs to import paramters to gx
   // copy elements of external_parameters_struct externalpars into pars
   // this is done because externalpars may have been changed externally (i.e. by Trinity) 
-  // between calls to gryfx_get_default_parameters and gryfx_get_fluxes.
-  // pars then needs to be updated since pars is what is used in run_gryfx.
+  // between calls to gx_get_default_parameters and gx_get_fluxes.
+  // pars then needs to be updated since pars is what is used in run_gx.
   if(iproc==0) {
     pars->import_externalpars(externalpars);
   }
@@ -108,25 +108,25 @@ void gryfx_get_fluxes_(struct external_parameters_struct *  externalpars,
   /////////////////////////
   // This is the main call
   ////////////////////////
-  run_gryfx(pars, gryfxouts->pflux, gryfxouts->qflux);
+  run_gx(pars, gxouts->pflux, gxouts->qflux);
 
   delete pars;
 
 }  	
 
-void gryfx_main(int argc, char* argv[], int mpcom) {
+void gx_main(int argc, char* argv[], int mpcom) {
   struct external_parameters_struct externalpars;
-  struct gryfx_outputs_struct gryfxouts;
+  struct gx_outputs_struct gxouts;
   char* namelistfileName;
   if(argc == 2) {
     namelistfileName = argv[1];
     //printf("namelist = %s\n", namelistfileName);
   }
   else {
-    fprintf(stderr, "The correct usage is:\n./gryfx <inputfile>\n");
+    fprintf(stderr, "The correct usage is:\n./gx <inputfile>\n");
     exit(1);
   }
-  gryfx_get_default_parameters_(&externalpars, namelistfileName, mpcom);
-  gryfx_get_fluxes_(&externalpars, &gryfxouts, namelistfileName, mpcom);
+  gx_get_default_parameters_(&externalpars, namelistfileName, mpcom);
+  gx_get_fluxes_(&externalpars, &gxouts, namelistfileName, mpcom);
 
 }

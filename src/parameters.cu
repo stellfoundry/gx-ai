@@ -156,18 +156,18 @@ int Parameters::read_namelist(char* filename)
   
   fnr_get_float(&namelist_struct, "nonlinear_terms_knobs", "cfl", &(cfl));
   
-  zero_order_nonlin_flr_only= get_bool(&namelist_struct, "gryfx_knobs", "zero_order_nonlin_flr_only");
+  zero_order_nonlin_flr_only= get_bool(&namelist_struct, "gx_knobs", "zero_order_nonlin_flr_only");
   if(zero_order_nonlin_flr_only) no_nonlin_flr = true;
 
-  no_nonlin_cross_terms= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_cross_terms");
-  no_nonlin_dens_cross_term= get_bool(&namelist_struct, "gryfx_knobs", "no_nonlin_dens_cross_term");
+  no_nonlin_cross_terms= get_bool(&namelist_struct, "gx_knobs", "no_nonlin_cross_terms");
+  no_nonlin_dens_cross_term= get_bool(&namelist_struct, "gx_knobs", "no_nonlin_dens_cross_term");
   if(no_nonlin_cross_terms || no_nonlin_dens_cross_term) {
     new_nlpm = false;
     zero_order_nonlin_flr_only = false;
     no_nonlin_flr = false;
   }
 
-  no_zonal_nlpm= get_bool(&namelist_struct, "gryfx_knobs", "no_zonal_nlpm");
+  no_zonal_nlpm= get_bool(&namelist_struct, "gx_knobs", "no_zonal_nlpm");
 
   fnr_get_int(&namelist_struct, "gs2_diagnostics_knobs", "nwrite", &(nwrite));
   
@@ -196,7 +196,7 @@ int Parameters::read_namelist(char* filename)
 
   check_for_restart = false;
   char* restart_str;
-  fnr_get_string(&namelist_struct, "gryfx_knobs", "restart", &restart_str);
+  fnr_get_string(&namelist_struct, "gx_knobs", "restart", &restart_str);
   if( strcmp(restart_str,"on") == 0) {
     restart = true;
   }
@@ -208,103 +208,103 @@ int Parameters::read_namelist(char* filename)
     restart = false;
   }
 
-  netcdf_restart = get_bool(&namelist_struct, "gryfx_knobs", "netcdf_restart"); 
+  netcdf_restart = get_bool(&namelist_struct, "gx_knobs", "netcdf_restart"); 
 
   // If a netcdf file with the right run name already exists, open it and append to it
-  append_old = get_bool(&namelist_struct, "gryfx_knobs", "append_old"); 
+  append_old = get_bool(&namelist_struct, "gx_knobs", "append_old"); 
   
-  //zero_restart_avg = zero_restart_avg = get_bool(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
-  zero_restart_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zero_restart_avg");
+  //zero_restart_avg = zero_restart_avg = get_bool(&namelist_struct, "gx_knobs", "zero_restart_avg");
+  zero_restart_avg = get_bool_on_off(&namelist_struct, "gx_knobs", "zero_restart_avg");
 
-  no_zderiv_covering = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv_covering");
+  no_zderiv_covering = get_bool_on_off(&namelist_struct, "gx_knobs", "no_zderiv_covering");
 
-  no_zderiv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_zderiv");
+  no_zderiv = get_bool_on_off(&namelist_struct, "gx_knobs", "no_zderiv");
 
-  zderiv_loop = get_bool_on_off(&namelist_struct, "gryfx_knobs", "zderiv_loop");
+  zderiv_loop = get_bool_on_off(&namelist_struct, "gx_knobs", "zderiv_loop");
 
-  no_landau_damping = get_bool_on_off(&namelist_struct, "gryfx_knobs", "no_landau_damping");
+  no_landau_damping = get_bool_on_off(&namelist_struct, "gx_knobs", "no_landau_damping");
 
-  turn_off_gradients_test = get_bool_on_off(&namelist_struct, "gryfx_knobs", "turn_off_gradients_test");
+  turn_off_gradients_test = get_bool_on_off(&namelist_struct, "gx_knobs", "turn_off_gradients_test");
 
-  slab = get_bool_on_off(&namelist_struct, "gryfx_knobs", "slab");
+  slab = get_bool_on_off(&namelist_struct, "gx_knobs", "slab");
 
-  const_curv = get_bool_on_off(&namelist_struct, "gryfx_knobs", "const_curv");
+  const_curv = get_bool_on_off(&namelist_struct, "gx_knobs", "const_curv");
 
-  varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna");
+  varenna = get_bool_on_off(&namelist_struct, "gx_knobs", "varenna");
 
-  new_catto = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_catto");
+  new_catto = get_bool_on_off(&namelist_struct, "gx_knobs", "new_catto");
   
  //////////////////////////
  // new varenna knobs
 
-  new_varenna = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_varenna");
+  new_varenna = get_bool_on_off(&namelist_struct, "gx_knobs", "new_varenna");
   
   new_varenna_fsa = get_bool_on_off(&namelist_struct, "new_varenna_knobs", "new_varenna_fsa");
 
   /////////////////////////
 
-  nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm");
+  nlpm = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm");
 
-  dorland_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm");
+  dorland_nlpm = get_bool_on_off(&namelist_struct, "gx_knobs", "dorland_nlpm");
 
-  dorland_nlpm_phase = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_nlpm_phase");
+  dorland_nlpm_phase = get_bool_on_off(&namelist_struct, "gx_knobs", "dorland_nlpm_phase");
 
-  dorland_phase_complex = get_bool_on_off(&namelist_struct, "gryfx_knobs", "dorland_phase_complex");
+  dorland_phase_complex = get_bool_on_off(&namelist_struct, "gx_knobs", "dorland_phase_complex");
 
-  nlpm_kxdep = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_kxdep");
+  nlpm_kxdep = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_kxdep");
 
   if(nlpm_kxdep) dorland_phase_complex = true;  
 
-  nlpm_nlps = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_nlps");
+  nlpm_nlps = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_nlps");
 
   if(nlpm_nlps) nlpm = false; //turn off normal filter-style NLPM
 
-  nlpm_cutoff_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_cutoff_avg");
+  nlpm_cutoff_avg = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_cutoff_avg");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "dorland_phase_ifac", &dorland_phase_ifac);
-  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "nlpm_option", &nlpm_option);
+  fnr_get_int(&namelist_struct, "gx_knobs", "dorland_phase_ifac", &dorland_phase_ifac);
+  fnr_get_string_no_test(&namelist_struct, "gx_knobs", "nlpm_option", &nlpm_option);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "inlpm", &inlpm);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm", &dnlpm);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_dens", &dnlpm_dens);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_tprp", &dnlpm_tprp);
+  fnr_get_int(&namelist_struct, "gx_knobs", "inlpm", &inlpm);
+  fnr_get_float(&namelist_struct, "gx_knobs", "dnlpm", &dnlpm);
+  fnr_get_float(&namelist_struct, "gx_knobs", "dnlpm_dens", &dnlpm_dens);
+  fnr_get_float(&namelist_struct, "gx_knobs", "dnlpm_tprp", &dnlpm_tprp);
 
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "dnlpm_max", &dnlpm_max);
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "tau_nlpm", &tau_nlpm);
+  fnr_get_float(&namelist_struct, "gx_knobs", "dnlpm_max", &dnlpm_max);
+  fnr_get_float(&namelist_struct, "gx_knobs", "tau_nlpm", &tau_nlpm);
 
-  nlpm_zonal_kx1_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_kx1_only");
+  nlpm_zonal_kx1_only = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_zonal_kx1_only");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "ivarenna", &ivarenna);
+  fnr_get_int(&namelist_struct, "gx_knobs", "ivarenna", &ivarenna);
 
-  varenna_fsa = get_bool_on_off(&namelist_struct, "gryfx_knobs", "varenna_fsa");
+  varenna_fsa = get_bool_on_off(&namelist_struct, "gx_knobs", "varenna_fsa");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "icovering", &icovering);
+  fnr_get_int(&namelist_struct, "gx_knobs", "icovering", &icovering);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iphi00", &iphi00);
+  fnr_get_int(&namelist_struct, "gx_knobs", "iphi00", &iphi00);
 
-  smagorinsky = get_bool_on_off(&namelist_struct, "gryfx_knobs", "smagorinsky");
+  smagorinsky = get_bool_on_off(&namelist_struct, "gx_knobs", "smagorinsky");
 
-  hyper = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hyper");
+  hyper = get_bool_on_off(&namelist_struct, "gx_knobs", "hyper");
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "d_hyper", &D_hyper);
+  fnr_get_float(&namelist_struct, "gx_knobs", "d_hyper", &D_hyper);
   
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "p_hyper", &p_hyper);
+  fnr_get_int(&namelist_struct, "gx_knobs", "p_hyper", &p_hyper);
 
-  iso_shear = get_bool_on_off(&namelist_struct, "gryfx_knobs", "iso_shear");
+  iso_shear = get_bool_on_off(&namelist_struct, "gx_knobs", "iso_shear");
 
-  debug = get_bool_on_off(&namelist_struct, "gryfx_knobs", "debug");
+  debug = get_bool_on_off(&namelist_struct, "gx_knobs", "debug");
   
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "igeo", &igeo);
+  fnr_get_int(&namelist_struct, "gx_knobs", "igeo", &igeo);
 
   if(qsf<0 && nz_in==1) local_limit=true;
   else local_limit = false;
 
   // mfm
-  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "geofile", &geofilename);
+  fnr_get_string_no_test(&namelist_struct, "gx_knobs", "geofile", &geofilename);
 
   char* initfield;
   //initfield = (char*) malloc(sizeof(char)*10);
-  fnr_get_string(&namelist_struct, "gryfx_knobs", "init", &initfield);
+  fnr_get_string(&namelist_struct, "gx_knobs", "init", &initfield);
   if( strcmp(initfield,"density") == 0) {
     init = DENS;
   }
@@ -331,39 +331,39 @@ int Parameters::read_namelist(char* filename)
     new_varenna = true;
   } 
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "init_amp", &(init_amp));
+  fnr_get_float(&namelist_struct, "gx_knobs", "init_amp", &(init_amp));
 
-  init_single = get_bool_on_off(&namelist_struct, "gryfx_knobs", "init_single");
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iky_single", &(iky_single));
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "ikx_single", &(ikx_single));
+  init_single = get_bool_on_off(&namelist_struct, "gx_knobs", "init_single");
+  fnr_get_int(&namelist_struct, "gx_knobs", "iky_single", &(iky_single));
+  fnr_get_int(&namelist_struct, "gx_knobs", "ikx_single", &(ikx_single));
   
-  fnr_get_float(&namelist_struct, "gryfx_knobs", "kpar_init", &(kpar_init));
+  fnr_get_float(&namelist_struct, "gx_knobs", "kpar_init", &(kpar_init));
   
-  write_netcdf= get_bool(&namelist_struct, "gryfx_knobs", "write_netcdf");
+  write_netcdf= get_bool(&namelist_struct, "gx_knobs", "write_netcdf");
 
-  write_omega = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_omega");
+  write_omega = get_bool_on_off(&namelist_struct, "gx_knobs", "write_omega");
 
-  write_phi = get_bool_on_off(&namelist_struct, "gryfx_knobs", "write_phi");
+  write_phi = get_bool_on_off(&namelist_struct, "gx_knobs", "write_phi");
 
-  fnr_get_string_no_test(&namelist_struct, "gryfx_knobs", "scan_type", &scan_type);
+  fnr_get_string_no_test(&namelist_struct, "gx_knobs", "scan_type", &scan_type);
   
-  higher_order_moments = get_bool_on_off(&namelist_struct, "gryfx_knobs", "higher_order_moments");
+  higher_order_moments = get_bool_on_off(&namelist_struct, "gx_knobs", "higher_order_moments");
   
   secondary_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "secondary_test");
   nlpm_test = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "nlpm_test");
-  new_nlpm = get_bool_on_off(&namelist_struct, "gryfx_knobs", "new_nlpm");
-  nlpm_abs_sgn = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_abs_sgn");
-  hammett_nlpm_interference = get_bool_on_off(&namelist_struct, "gryfx_knobs", "hammett_nlpm_interference");
+  new_nlpm = get_bool_on_off(&namelist_struct, "gx_knobs", "new_nlpm");
+  nlpm_abs_sgn = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_abs_sgn");
+  hammett_nlpm_interference = get_bool_on_off(&namelist_struct, "gx_knobs", "hammett_nlpm_interference");
   low_b = get_bool_on_off(&namelist_struct, "secondary_test_knobs", "low_b");
-  low_b_all = get_bool_on_off(&namelist_struct, "gryfx_knobs", "low_b_all");
+  low_b_all = get_bool_on_off(&namelist_struct, "gx_knobs", "low_b_all");
   if(low_b_all) low_b = true;
-  nlpm_zonal_only = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_zonal_only");
-  nlpm_vol_avg = get_bool_on_off(&namelist_struct, "gryfx_knobs", "nlpm_vol_avg");
+  nlpm_zonal_only = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_zonal_only");
+  nlpm_vol_avg = get_bool_on_off(&namelist_struct, "gx_knobs", "nlpm_vol_avg");
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "iflr", &(iflr));
+  fnr_get_int(&namelist_struct, "gx_knobs", "iflr", &(iflr));
 
   char* scheme_str;
-  fnr_get_string(&namelist_struct, "gryfx_knobs", "scheme", &scheme_str);
+  fnr_get_string(&namelist_struct, "gx_knobs", "scheme", &scheme_str);
   if( strcmp(scheme_str,"rk4") == 0) {
     scheme = RK4;
   } else {
@@ -400,12 +400,12 @@ int Parameters::read_namelist(char* filename)
     //if(phi_test.x > 0. && phi_test.y > 0.) {phi_test.x = phi_test.x/sqrt(2.); phi_test.y = phi_test.y/sqrt(2.);}
   }
 
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "densfac", &NLdensfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "uparfac", &NLuparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tparfac", &NLtparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "tprpfac", &NLtprpfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qparfac", &NLqparfac);
-  fnr_get_float(&namelist_struct, "gryfx_nonlinear_terms_knobs", "qprpfac", &NLqprpfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "densfac", &NLdensfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "uparfac", &NLuparfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "tparfac", &NLtparfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "tprpfac", &NLtprpfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "qparfac", &NLqparfac);
+  fnr_get_float(&namelist_struct, "gx_nonlinear_terms_knobs", "qprpfac", &NLqprpfac);
 
   if(NLdensfac!=0) NLdensfac = 1.;
   if(NLuparfac!=0) NLuparfac = 1.;
@@ -417,7 +417,7 @@ int Parameters::read_namelist(char* filename)
 
   fnr_get_string_no_test(&namelist_struct, "secondary_test_knobs", "restartfile", &secondary_test_restartfileName);
 
-  fnr_get_int(&namelist_struct, "gryfx_knobs", "scan_number", &scan_number);
+  fnr_get_int(&namelist_struct, "gx_knobs", "scan_number", &scan_number);
     
   //char* collisions;
   fnr_get_string(&namelist_struct, "collisions_knobs", "collision_model", &(collision_model));
@@ -433,8 +433,8 @@ int Parameters::read_namelist(char* filename)
 
   adiabatic_electrons = true;
 
-  snyder_electrons = get_bool_on_off(&namelist_struct, "gryfx_knobs", "snyder_electrons");
-  stationary_ions = get_bool_on_off(&namelist_struct, "gryfx_knobs", "stationary_ions");
+  snyder_electrons = get_bool_on_off(&namelist_struct, "gx_knobs", "snyder_electrons");
+  stationary_ions = get_bool_on_off(&namelist_struct, "gx_knobs", "stationary_ions");
    
     int ionspec = 0;   
     int ispec = 1;
@@ -624,7 +624,7 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
 
   if (nspec_in!=oldnSpecies){
 	  printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec_in);
-	  printf("Number of species set in get_fluxes must equal number of species in gryfx input file\n");
+	  printf("Number of species set in get_fluxes must equal number of species in gx input file\n");
 	  exit(1);
   }
 	 if (debug) printf("nSpecies was set to %d\n", nspec_in);

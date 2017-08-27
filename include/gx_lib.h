@@ -7,7 +7,7 @@
 #pragma once
 
 /* These must be in the same order that they appear in
- * gs2_gryfx_zonal.f90*/
+ * gs2_gx_zonal.f90*/
 struct external_parameters_struct {
    int mpirank;
    int restart;
@@ -18,7 +18,7 @@ struct external_parameters_struct {
    int trinity_timestep;
    int trinity_iteration;
    int trinity_conv_count;
-	 /* Name of gryfx/gryffin input file*/
+	 /* Name of gx/gryffin input file*/
 	/*char input_file[1000];*/
 	/*Base geometry parameters - not currently set by trinity 
 	!See geometry.f90*/
@@ -64,7 +64,7 @@ struct external_parameters_struct {
    void * pars_address;
 };
 
-struct gryfx_outputs_struct {
+struct gx_outputs_struct {
        double pflux[20];
        double qflux[20];
        double heat[20];
@@ -73,11 +73,11 @@ struct gryfx_outputs_struct {
 };
 
 extern "C"
-void gryfx_get_default_parameters_(struct external_parameters_struct *, char * namelistFile, int mpcom);
+void gx_get_default_parameters_(struct external_parameters_struct *, char * namelistFile, int mpcom);
 extern "C"
-void gryfx_get_fluxes_(struct external_parameters_struct *, struct gryfx_outputs_struct*, char * namelistFile, int mpcom);
+void gx_get_fluxes_(struct external_parameters_struct *, struct gx_outputs_struct*, char * namelistFile, int mpcom);
 
 
-void gryfx_main(int argc, char* argv[], int mpcom);
+void gx_main(int argc, char* argv[], int mpcom);
 
 

@@ -5,6 +5,7 @@ namelist_defaults.c
 system_config
 gryfx
 gryfx++
+gx
 *.out*
 *.field
 tests/test_*

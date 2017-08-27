@@ -87,7 +87,7 @@ class File_geo : public Geometry {
   File_geo(Parameters* parameters);
 };
 
-//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 //
 //void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz);
 

@@ -1,17 +1,8 @@
 #######################################
-#        Makefile for GRYFX
-#######################################
-#
-# To build GRYFX, use the build_gryfx
-# script which is included with this
-# distribution. It automatically loads
-# the required modules for a given
-# system and checks you have set the
-# right environment variables
-#
+#        Makefile for GX
 #######################################
 
-TARGET    = gryfx++
+TARGET    = gx
 
 #######################################
 # Include system-dependent make variables
@@ -92,10 +83,10 @@ inputs/namelist_defaults.c: inputs/namelist_defaults.in
 
 
 #######################################
-# Rules for building gryfx
+# Rules for building gx
 ####################################
 
-OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o
+OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS)) system_config
