@@ -7,21 +7,24 @@ LaguerreTransform::LaguerreTransform(Grids* grids) :
 {
   L = grids->Nlaguerre - 1;
   J = (3*L-1)/2;
-  float *toGrid_h = NULL, *toSpectral_h = NULL;
-  // don't need to allocate these since they are allocated in python
-  //cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
-  //cudaMallocHost((void**) &toSpectral_h, sizeof(float)*(L+1)*(J+1));
+  float *toGrid_h, *toSpectral_h, *roots_h;
+  cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
+  cudaMallocHost((void**) &toSpectral_h, sizeof(float)*(L+1)*(J+1));
+  cudaMallocHost((void**) &roots_h, sizeof(float)*(J+1));
 
   cudaMalloc((void**) &toGrid, sizeof(float)*(L+1)*(J+1));
   cudaMalloc((void**) &toSpectral, sizeof(float)*(L+1)*(J+1));
+  cudaMalloc((void**) &roots, sizeof(float)*(J+1));
 
-  initTransforms(toGrid_h, toSpectral_h);
+  initTransforms(toGrid_h, toSpectral_h, roots_h);
   cudaMemcpy(toGrid, toGrid_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
   cudaMemcpy(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
+  cudaMemcpy(roots, roots_h, sizeof(float)*(J+1), cudaMemcpyHostToDevice);
 
   cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
   cudaFreeHost(toSpectral_h);
+  cudaFreeHost(roots_h);
 }
 
 LaguerreTransform::~LaguerreTransform()
@@ -32,11 +35,11 @@ LaguerreTransform::~LaguerreTransform()
 
 // toGrid = toGrid[l + (L+1)*j] = Psi^l(x_j)
 // toSpectral = toSpectral[j + (J+1)*l] = w_j Psi_l(x_j)
-int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral)
+int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* roots)
 {
     PyObject *pName, *pModule, *pFunc;
     PyObject *pArgs, *pReturn;
-    PyObject *toGrid_py, *toSpectral_py;
+    PyObject *toGrid_py, *toSpectral_py, *roots_py;
 
     const char* filename = "laguerre_quadrature";
     const char* funcname = "laguerre_quadrature";
@@ -64,12 +67,15 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral)
 
 		toGrid_py = PyTuple_GetItem(pReturn, 0);
 		toSpectral_py = PyTuple_GetItem(pReturn, 1);
+                roots_py = PyTuple_GetItem(pReturn, 2);
 
-                toGrid = (float*) PyArray_DATA(toGrid_py);
-                toSpectral = (float*) PyArray_DATA(toSpectral_py);
+                memcpy(toGrid, (float*) PyArray_DATA(toGrid_py), sizeof(float)*(J+1)*(L+1));
+                memcpy(toSpectral, (float*) PyArray_DATA(toSpectral_py), sizeof(float)*(J+1)*(L+1));
+                memcpy(roots, (float*) PyArray_DATA(roots_py), sizeof(float)*(J+1));
 
                 Py_DECREF(toSpectral_py);
                 Py_DECREF(toGrid_py);
+                Py_DECREF(roots_py);
             }
             else {
                 Py_DECREF(pFunc);
