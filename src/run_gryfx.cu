@@ -10,6 +10,7 @@
 #include "diagnostics.h"
 #include "cuda_constants.h"
 #include "get_error.h"
+#include "grad_parallel.h"
 
 #ifdef GS2_zonal
 extern "C" void broadcast_integer(int* a);
@@ -48,28 +49,35 @@ void run_gryfx(Parameters *pars, double * pflux, double * qflux)
   Linear* linear;
   Timestepper *stepper;
   Diagnostics* diagnostics;
+  GradParallel* grad_par; // MFM
+
+  // MFM: Moved grids initialization to before geometry
+  printf("Initializing grids...\n");
+  grids = new Grids(pars);
+  checkCuda(cudaGetLastError());
 
   if(iproc == 0) {
     int igeo = pars->igeo;
     printf("Initializing geometry...\n");
     if(igeo==0) {
       geo = new S_alpha_geo(pars);
-    } else if(igeo==1) {
-      // MFM
+    }
+    else if(igeo==1) {
       geo = new File_geo(pars);
-    } else if(igeo==2) {
+      grad_par = new GradParallel(grids, false, true);
+      geo->calculate_bgrad(pars, grids, grad_par);
+      delete grad_par;
+    }
+    else if(igeo==2) {
       printf("igeo = 2 not yet implemented!\n");
       exit(1);
       //geo = new Eik_geo();
-    } else if(igeo==3) {
+    }
+    else if(igeo==3) {
       printf("igeo = 3 not yet implemented!\n");
       exit(1);
       //geo = new Gs2_geo();
     }
-    checkCuda(cudaGetLastError());
-
-    printf("Initializing grids...\n");
-    grids = new Grids(pars);
     checkCuda(cudaGetLastError());
 
     geo->initializeOperatorArrays(pars, grids);

@@ -5,6 +5,8 @@
 #include "parameters.h"
 #include "geometry.h"
 
+class Geometry; // Forward Declaration
+
 class Moments {
  public:
   Moments(Grids* grids);

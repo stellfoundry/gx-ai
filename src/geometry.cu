@@ -5,7 +5,7 @@
 
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) ;
 __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) ;
-
+__global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale);
 
 Geometry::~Geometry() {
   cudaFree(z);
@@ -160,12 +160,11 @@ Gs2_geo::Gs2_geo() {
 File_geo::File_geo(Parameters *pars)
 {
 
-  operator_arrays_allocated_=false; // allocating for geo parameters, but once kperp2/omegad are set they aren't needed anymore
+  operator_arrays_allocated_=false;
   size_t size = sizeof(float)*pars->nz_in; 
   cudaMallocHost((void**) &z_h, size);
   cudaMallocHost((void**) &bmag_h, size);
   cudaMallocHost((void**) &bmagInv_h, size);
-  cudaMallocHost((void**) &bgrad_h, size); // why?
   cudaMallocHost((void**) &gds2_h, size);
   cudaMallocHost((void**) &gds21_h, size);
   cudaMallocHost((void**) &gds22_h, size);
@@ -179,7 +178,6 @@ File_geo::File_geo(Parameters *pars)
   cudaMalloc((void**) &z, size);
   cudaMalloc((void**) &bmag, size);
   cudaMalloc((void**) &bmagInv, size);
-  cudaMalloc((void**) &bgrad, size);
   cudaMalloc((void**) &gds2, size);
   cudaMalloc((void**) &gds21, size);
   cudaMalloc((void**) &gds22, size);
@@ -264,8 +262,6 @@ File_geo::File_geo(Parameters *pars)
     bmagInv_h[i] = 1./bmag_h[i];
     jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
     grho_h[i] = 1.;
-    // Is bgrad necessary??
-    bgrad_h[i] = gradpar*pars->eps*sin(z_h[i])*bmag_h[i];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
   }
   //printf("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[nz_in-1]);
   //printf("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[nz_in-1]);
@@ -297,7 +293,6 @@ File_geo::File_geo(Parameters *pars)
     cudaMemcpy(cvdrift, cvdrift_h, size, cudaMemcpyHostToDevice);
     cudaMemcpy(bmag, bmag_h, size, cudaMemcpyHostToDevice);
     cudaMemcpy(bmagInv, bmagInv_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(bgrad, bgrad_h, size, cudaMemcpyHostToDevice);
     cudaMemcpy(gds2, gds2_h, size, cudaMemcpyHostToDevice);
     cudaMemcpy(gds21, gds21_h, size, cudaMemcpyHostToDevice);
     cudaMemcpy(gds22, gds22_h, size, cudaMemcpyHostToDevice);
@@ -322,6 +317,47 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   init_kperp2<<<dimGrid, dimBlock>>>(kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
 
   init_omegad<<<dimGrid, dimBlock>>>(omegad, grids->kx, grids->ky, gbdrift, cvdrift, gbdrift0, cvdrift0, shat);
+}
+
+// MFM - 07/25/17
+void Geometry::calculate_bgrad(Parameters* pars, Grids* grids, GradParallel* grad_par)
+{
+
+  operator_arrays_allocated_=false;
+  size_t size_c = sizeof(cuComplex)*pars->nz_in;
+  size_t size = sizeof(float)*pars->nz_in;
+ 
+  cudaMallocHost((void**) &bgrad_h, size);
+
+  cudaMalloc((void**) &bmag_complex, size_c);
+  cudaMalloc((void**) &bgrad, size);
+  cudaMalloc((void**) &bgrad_temp, size);
+
+  cudaMemset(bmag_complex, 0, size_c);
+  cudaMemcpy(bgrad_temp,bmag,size,cudaMemcpyDeviceToDevice);
+
+  //bgrad = d/dz ln(B(z)) = 1/B dB/dz
+  grad_par->eval_1d(bgrad_temp, bmag_complex); // FFT and k-space derivative
+  float scale = gradpar/pars->nz_in;
+  calc_bgrad<<<1,pars->nz_in>>>(bgrad,bgrad_temp,bmag,scale);
+
+  cudaMemcpy(bgrad_h, bgrad, size, cudaMemcpyDeviceToHost);
+  cudaFree(bgrad_temp);
+  for(int i=0; i<pars->nz_in; i++) {
+    printf("bgrad_h[%d]: %.4e\n",i,bgrad_h[i]);
+  }
+  cudaDeviceSynchronize();
+
+}
+
+__global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale)
+{
+  unsigned int idx = get_id1();
+
+  if (idx < nz) {
+    bgrad[idx] = ( bgrad_temp[idx] / bmag[idx] ) * scale;
+  }
+
 }
 
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) 

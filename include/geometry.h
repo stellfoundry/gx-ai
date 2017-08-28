@@ -4,6 +4,9 @@
 #include "cufft.h"
 #include "parameters.h"
 #include "grids.h"
+#include "grad_parallel.h" // MFM
+
+class GradParallel; // Forward Declaration
 
 class Geometry {
  public:
@@ -56,12 +59,14 @@ class Geometry {
   float shat;
   
   cuComplex * bmag_complex;
+  float * bgrad_temp;
 
   // operator arrays
   float * kperp2;
   float * omegad;
 
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
+  void calculate_bgrad(Parameters* pars, Grids* grids, GradParallel* grad_par_temp); // MFM
 
   bool operator_arrays_allocated_;
 };
