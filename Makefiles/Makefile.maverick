@@ -5,7 +5,7 @@ module load intel/15.0.3 ;\
 module load mvapich2/2.1 ;\
 module load netcdf ;\
 module load cuda ;\
-unset PYTHONPATH= ;\
+unset PYTHONPATH;\
 module load python ;\
 echo Module configuration complete ;\
 export MAKEFLAGS='-j -I Makefiles' ;\

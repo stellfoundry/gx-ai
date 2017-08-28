@@ -23,13 +23,13 @@ class Diagnostics {
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
 
   double pflux[20], qflux[20];
-  
+
+  cuDoubleComplex *growth_rates, *growth_rates_h;
 
  private:
   Fields *fields_old;
   GradParallel* grad_parallel;
 
-  cuDoubleComplex *growth_rates, *growth_rates_h;
 
   cuComplex *m_h;
   cuComplex *res;

@@ -9,5 +9,8 @@ gx
 *.out*
 *.field
 tests/test_*
+tests/*_tests
 *.z
 *.pyc
+*_field
+*omega.kykx

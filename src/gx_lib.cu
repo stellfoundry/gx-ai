@@ -122,9 +122,6 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n", 
        grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
-    geo->initializeOperatorArrays(pars, grids);
-    checkCuda(cudaGetLastError());
-
     printf("Initializing diagnostics...\n");
     diagnostics = new Diagnostics(pars, grids, geo);
     checkCuda(cudaGetLastError());

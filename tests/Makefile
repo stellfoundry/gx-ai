@@ -36,7 +36,9 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = test_parameters test_grids test_geometry test_grad_parallel test_moments test_laguerre_transform
+UNIT_TESTS = test_parameters test_grids test_geometry test_grad_parallel test_moments test_laguerre_transform
+REGRESSION_TESTS = test_cyclone_linear_beer
+TESTS = $(UNIT_TESTS) $(REGRESSION_TESTS)
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -52,7 +54,7 @@ VPATH=.:src
 
 # House-keeping build targets.
 
-all : test_all
+all : unit_tests
 
 clean :
 	rm -f test_* obj/*.a obj/*.o
@@ -96,10 +98,13 @@ obj/device_test.o: device_test.cu
 test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-test_all: $(addprefix obj/, $(TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
+unit_tests: $(addprefix obj/, $(UNIT_TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
+	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+
+regression_tests: $(addprefix obj/, $(REGRESSION_TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 test_each: $(TESTS)
 
-run_tests: test_all
-	./test_all;
+run_tests: unit_tests
+	./unit_tests;
