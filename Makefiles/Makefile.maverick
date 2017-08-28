@@ -6,15 +6,12 @@
 #  need to be properly defined                   #
 ##################################################
 
-
-#module load TACC-paths  Linux  cluster-paths  intel/14.0.1.106  mvapich2/1.9a2  xalt/0.4.6  cluster  TACC ;\
-
 define STANDARD_SYSTEM_CONFIGURATION
 module reset ;\
-#module load TACC-paths  Linux  cluster-paths  cluster  TACC;\
+module load TACC-paths  Linux  cluster-paths  cluster  TACC;\
 module load intel/15.0.3 ;\
 module load mvapich2/2.1 ;\
-#module load xalt/1.6 ;\
+module load xalt/1.6 ;\
 module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
@@ -27,7 +24,7 @@ endef
 
 NVCC      = nvcc
 CUDA_INC  = -I ${TACC_CUDA_INC}
-CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver  
+CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft_static -lculibos -lnvToolsExt -lcublas_static -lcusolver_static  
 FFT_LIB = -L${TACC_FFTW3_LIB} -lfftw3 -lfftw3f
 FFT_INC = -I${TACC_FFTW3_INC}
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
