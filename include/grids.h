@@ -13,8 +13,8 @@ class Grids {
   const int Ny;
   const int Nz;
   const int Nspecies; 
-  const int Nhermite;
-  const int Nlaguerre;
+  const int Nm;
+  const int Nl;
   const int Nyc;
   const int Naky;
   const int Nakx;
@@ -31,6 +31,7 @@ class Grids {
 
   float * ky_h;
   float * kx_h;
+  float * kz_h;
 
 	/* A grid the size of kx, true if in the dealiased zone*/
 	bool * kx_mask;

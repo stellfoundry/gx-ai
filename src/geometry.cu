@@ -94,7 +94,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     
     for(int k=0; k<pars->nz_in; k++) {
       z_h[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
-      if(qsf<0) {z_h[k] = 0.;}
+      if(pars->local_limit) {z_h[k] = 0.;} // outboard-midplane
       bmag_h[k] = 1./(1.+pars->eps*cos(z_h[k]));
       bgrad_h[k] = gradpar*pars->eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
       gds2_h[k] = 1. + pow((pars->shat*z_h[k]-pars->shift*sin(z_h[k])),2);
@@ -123,7 +123,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
         bmag_h[k] = 1.;
         //gradpar = 1.;
       }
-      if(qsf<0) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+      if(pars->local_limit) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
 
       // calculate these derived coefficients after slab overrides
       bmagInv_h[k] = 1./bmag_h[k];
@@ -418,9 +418,9 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //
 ////Defined at the bottom
 //void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
-//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars);
+//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 
-//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gryfx_parameters_struct * gryfxpars){
+//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars){
 //
 //
 //  //Local reference for convenience
@@ -440,7 +440,7 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //  {
 //    int len = strlen(namelistFile);
 //    init_gs2_file_utils(&len, namelistFile); // needed for general geometry module
-//    run_general_geometry_module(pars,grids,geo,gryfxpars);
+//    run_general_geometry_module(pars,grids,geo,gxpars);
 //    finish_gs2_file_utils(); // needed for general geometry module
 //   
 //    // We calculate eps so that it gets the right
@@ -460,7 +460,7 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //  
 //}
 //
-//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gryfx_parameters_struct * gryfxpars){
+//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gx_parameters_struct * gxpars){
 //	double s_hat_input_d, beta_prime_input_d;
 //  
 //  struct coefficients_struct * coefficients;
@@ -489,18 +489,18 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //
 //  printf("nperiod = %d\n", pars->nperiod);
 //
-//	geometry_set_inputs_c(&equilibrium_type, eqfile, &irho, &gryfxpars->rhoc, &pars->bishop, &gryfxpars->nperiod, &ntheta_out);
+//	geometry_set_inputs_c(&equilibrium_type, eqfile, &irho, &gxpars->rhoc, &pars->bishop, &gxpars->nperiod, &ntheta_out);
 //
 //  geometry_get_miller_parameters_c(&millerpars);
-//  millerpars.rmaj=gryfxpars->rgeo_lcfs;
-//  millerpars.R_geo=gryfxpars->rgeo_local;
-//  millerpars.akappa=gryfxpars->akappa;
-//  millerpars.akappri=gryfxpars->akappri;
-//  millerpars.tri=gryfxpars->tri;
-//  millerpars.tripri=gryfxpars->tripri;
-//  millerpars.shift=gryfxpars->shift;
-//  millerpars.qinp=gryfxpars->qinp;
-//  millerpars.shat=gryfxpars->shat;
+//  millerpars.rmaj=gxpars->rgeo_lcfs;
+//  millerpars.R_geo=gxpars->rgeo_local;
+//  millerpars.akappa=gxpars->akappa;
+//  millerpars.akappri=gxpars->akappri;
+//  millerpars.tri=gxpars->tri;
+//  millerpars.tripri=gxpars->tripri;
+//  millerpars.shift=gxpars->shift;
+//  millerpars.qinp=gxpars->qinp;
+//  millerpars.shat=gxpars->shat;
 //
 //  // The effect of this function depends on the value of bishop
 //  // E.g., bishop = 1 ---> this function has no effect
@@ -680,5 +680,5 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //  cudaMemcpy(geo->gds22, geo_h->gds22, sizeof(float)*Nz, cudaMemcpyHostToDevice);
 //  cudaMemcpy(geo->cvdrift0, geo_h->cvdrift0, sizeof(float)*Nz, cudaMemcpyHostToDevice);
 //  cudaMemcpy(geo->gbdrift0, geo_h->gbdrift0, sizeof(float)*Nz, cudaMemcpyHostToDevice);
-//  if(pars->debug) getError("run_gryfx.cu, after memcpy");
+//  if(pars->debug) getError("run_gx.cu, after memcpy");
 //}

@@ -276,7 +276,7 @@
   ! write_final_db not specified --- Write final delta B.
 /
 
-&gryfx_knobs
+&gx_knobs
   kpar_init = 1.
   write_netcdf = .false.
   write_omega = "on"

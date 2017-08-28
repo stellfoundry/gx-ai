@@ -11,7 +11,7 @@ class Solver {
   Solver(Parameters* pars, Grids* grids, Geometry* geo);
   ~Solver();
   
-  int fieldSolve(Moments* moms, Fields* fields);
+  int fieldSolve(MomentsG* G, Fields* fields);
   
   cuComplex* nbar;
  private:

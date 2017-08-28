@@ -3,14 +3,14 @@
 #include "get_error.h"
 #include "cuda_constants.h"
 
-Moments::Moments(Grids* grids) : 
+MomentsG::MomentsG(Grids* grids) : 
   grids_(grids), 
-  HLsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
+  LHsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
   Momsize_(sizeof(cuComplex)*grids->NxNycNz)
 {
-  int Nhermite = grids_->Nhermite;
-  int Nlaguerre = grids_->Nlaguerre;
-  checkCuda(cudaMalloc((void**) &ghl, HLsize_));
+  int Nm = grids_->Nm;
+  int Nl = grids_->Nl;
+  checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   tpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
@@ -18,47 +18,47 @@ Moments::Moments(Grids* grids) :
   qpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
   qprp_ptr = (cuComplex**) malloc(sizeof(cuComplex*)*grids_->Nspecies);
 
-  cudaMemset(ghl, 0., HLsize_);
+  cudaMemset(G_lm, 0., LHsize_);
 
-  printf("Allocated a ghl array of size %.2f MB\n", HLsize_/1024./1024.);
+  printf("Allocated a G_lm array of size %.2f MB\n", LHsize_/1024./1024.);
 
   for(int s=0; s<grids->Nspecies; s++) {
-    // set up pointers for named moments that point to parts of ghl
+    // set up pointers for named moments that point to parts of G_lm
     int l,m;
     l = 0, m = 0; // density
-    if(l<Nhermite && m<Nlaguerre) dens_ptr[s] = gHL(l,m,s);
+    if(l<Nl && m<Nm) dens_ptr[s] = G(l,m,s);
     
-    l = 1, m = 0; // u_parallel
-    if(l<Nhermite && m<Nlaguerre) upar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 1; // u_parallel
+    if(l<Nl && m<Nm) upar_ptr[s] = G(l,m,s);
     
-    l = 2, m = 0; // T_parallel / sqrt(2)
-    if(l<Nhermite && m<Nlaguerre) tpar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 2; // T_parallel / sqrt(2)
+    if(l<Nl && m<Nm) tpar_ptr[s] = G(l,m,s);
     
-    l = 3, m = 0; // q_parallel / sqrt(6)
-    if(l<Nhermite && m<Nlaguerre) qpar_ptr[s] = gHL(l,m,s);
+    l = 0, m = 3; // q_parallel / sqrt(6)
+    if(l<Nl && m<Nm) qpar_ptr[s] = G(l,m,s);
 
-    l = 0, m = 1; // T_perp 
-    if(l<Nhermite && m<Nlaguerre) tprp_ptr[s] = gHL(l,m,s);
+    l = 1, m = 0; // T_perp 
+    if(l<Nl && m<Nm) tprp_ptr[s] = G(l,m,s);
     
     l = 1, m = 1; // q_perp
-    if(l<Nhermite && m<Nlaguerre) qprp_ptr[s] = gHL(l,m,s);
+    if(l<Nl && m<Nm) qprp_ptr[s] = G(l,m,s);
   }
 
-  dimBlock = dim3(32, min(4, Nlaguerre), min(4, Nhermite));
+  dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
 }
 
-Moments::~Moments() {
+MomentsG::~MomentsG() {
   free(dens_ptr);
   free(upar_ptr);
   free(tpar_ptr);
   free(tprp_ptr);
   free(qpar_ptr);
   free(qprp_ptr);
-  cudaFree(ghl);
+  cudaFree(G_lm);
 }
 
-int Moments::initialConditions(Parameters* pars, Geometry* geo) {
+int MomentsG::initialConditions(Parameters* pars, Geometry* geo) {
  
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
   cuComplex* init_h = (cuComplex*) malloc(Momsize_);
@@ -113,10 +113,10 @@ int Moments::initialConditions(Parameters* pars, Geometry* geo) {
     cudaMemcpy(upar_ptr[0], init_h, Momsize_, cudaMemcpyHostToDevice);
   }
     // reality condition
-    //operations_->reality(ghl);
-
+  this->reality();
+  
     // mask
-    //operations_->mask(ghl);
+    //operations_->mask(G_lm);
 
   free(init_h);
 
@@ -126,27 +126,43 @@ int Moments::initialConditions(Parameters* pars, Geometry* geo) {
   return cudaGetLastError();
 }
 
-int Moments::zero() {
-  cudaMemset(ghl, 0., HLsize_);
+int MomentsG::zero() {
+  cudaMemset(G_lm, 0., LHsize_);
   return 0;
 }
 
-int Moments::zero(int l, int m, int s) {
-  cudaMemset(gHL(l,m,s), 0., Momsize_);
+int MomentsG::zero(int l, int m, int s) {
+  cudaMemset(G(l,m,s), 0., Momsize_);
   return 0;
 }
 
-int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2) {
-  add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl);
+int MomentsG::scale(double scalar) {
+  scale_kernel<<<dimGrid,dimBlock>>>(G_lm, G_lm, scalar);
   return 0;
 }
 
-int Moments::add_scaled(double c1, Moments* m1, double c2, Moments* m2, 
-                 double c3, Moments* m3, double c4, Moments* m4,
-                 double c5, Moments* m5)
+int MomentsG::scale(cuComplex scalar) {
+  scale_kernel<<<dimGrid,dimBlock>>>(G_lm, G_lm, scalar);
+  return 0;
+}
+
+int MomentsG::add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2) {
+  add_scaled_kernel<<<dimGrid,dimBlock>>>(G_lm, c1, G1->G_lm, c2, G2->G_lm);
+  return 0;
+}
+
+int MomentsG::add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, 
+                 double c3, MomentsG* G3, double c4, MomentsG* G4,
+                 double c5, MomentsG* G5)
 {
-  add_scaled_kernel<<<dimGrid,dimBlock>>>(ghl, c1, m1->ghl, c2, m2->ghl,
-                                     c3, m3->ghl, c4, m4->ghl, c5, m5->ghl);
+  add_scaled_kernel<<<dimGrid,dimBlock>>>(G_lm, c1, G1->G_lm, c2, G2->G_lm,
+                                     c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm);
   return 0;
   
+}
+
+int MomentsG::reality() 
+{
+  reality_kernel<<<dimGrid,dimBlock>>>(G_lm);
+  return 0;
 }

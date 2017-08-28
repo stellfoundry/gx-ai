@@ -9,7 +9,7 @@ __device__ unsigned int get_id2(void);
 __device__ unsigned int get_id3(void);
 
 __host__ __device__ float factorial(int m);
-__device__ float Jflr(int m, float b);
+__device__ float Jflr(int l, float b);
 
 __device__ float g0(float b);
 __device__ float g1(float b);
@@ -30,9 +30,11 @@ __host__ __device__ cuComplex operator*(float scaler, cuComplex f) ;
 __host__ __device__ cuComplex operator*(cuComplex f, float scaler); 
 
 __host__ __device__ cuComplex operator*(cuComplex f, cuComplex g);
+__host__ __device__ cuDoubleComplex operator*(cuDoubleComplex f, cuDoubleComplex g);
 
 __host__ __device__ cuComplex operator/(cuComplex f, float scaler);
 __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) ;
+__host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) ;
 __device__ int get_ikx(int idx);
 
 __global__ void add_scaled_kernel(cuComplex* res, 
@@ -42,8 +44,14 @@ __global__ void add_scaled_kernel(cuComplex* res,
 
 __global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
 
+__global__ void scale_kernel(cuComplex* res, cuComplex* m, double s);
+__global__ void scale_kernel(cuComplex* res, cuComplex* m, cuComplex s);
+__global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, cuComplex s);
+
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
 
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2, double c3, cuComplex* m3);
 
+__global__ void reality_kernel(cuComplex* g);
+__global__ void reality_singlemom_kernel(cuComplex* mom);

@@ -26,8 +26,8 @@ CC = $(NVCC)
 LD = $(NVCC)
 
 # Flags passed to nvcc compiler.
-CFLAGS= -g -G ${CUDA_INC} ${MPI_INC} 
-LDFLAGS=$(CUDA_LIB) ${MPI_LIB} 
+CFLAGS= -g -G ${CUDA_INC} ${MPI_INC} ${PYTHON_INC}
+LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${PYTHON_LIB}
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -36,7 +36,9 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-TESTS = test_parameters test_grids test_geometry test_grad_parallel test_moments
+UNIT_TESTS = test_parameters test_grids test_geometry test_grad_parallel test_moments test_laguerre_transform
+REGRESSION_TESTS = test_cyclone_linear_beer
+TESTS = $(UNIT_TESTS) $(REGRESSION_TESTS)
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -45,14 +47,14 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 
 GRYFX_HEADERS = $(GRYFX_DIR)/include/*.h
 
-GRYFX_OBJS := run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o
+GRYFX_OBJS := run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o
 GRYFX_OBJS := $(addprefix $(GRYFX_DIR)/obj/, $(GRYFX_OBJS))
 
 VPATH=.:src
 
 # House-keeping build targets.
 
-all : test_all
+all : unit_tests
 
 clean :
 	rm -f test_* obj/*.a obj/*.o
@@ -96,8 +98,13 @@ obj/device_test.o: device_test.cu
 test_%: obj/test_%.o obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-test_all: $(addprefix obj/, $(TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
+unit_tests: $(addprefix obj/, $(UNIT_TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-run_tests: test_all
-	./test_all;
+regression_tests: $(addprefix obj/, $(REGRESSION_TESTS:=.o)) obj/gtest_main.a $(GRYFX_OBJS) obj/device_test.o
+	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+
+test_each: $(TESTS)
+
+run_tests: unit_tests
+	./unit_tests;

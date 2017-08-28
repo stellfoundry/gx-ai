@@ -29,8 +29,8 @@ Grids::Grids(Parameters* pars) :
   Ny(pars->ny_in),
   Nz(pars->nz_in),
   Nspecies(pars->nspec_in),
-  Nhermite(pars->nhermite_in),
-  Nlaguerre(pars->nlaguerre_in),
+  Nm(pars->nm_in),
+  Nl(pars->nl_in),
   // some additional derived grid sizes
   Nyc(Ny/2+1),
   Naky((Ny-1)/3+1),
@@ -40,11 +40,12 @@ Grids::Grids(Parameters* pars) :
   NxNycNz(Nx * Nyc * Nz),
   NxNz(Nx * Nz),
   NycNz(Nyc * Nz),
-  Nmoms(Nhermite*Nlaguerre),
+  Nmoms(Nm*Nl),
   pars_(pars)
 {
   cudaMallocHost((void**) &kx_h, sizeof(float)*Nx);
   cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
+  cudaMallocHost((void**) &kz_h, sizeof(float)*Nz);
 
   cudaMalloc((void**) &kx, sizeof(float)*Nx);
   cudaMalloc((void**) &ky, sizeof(float)*Nyc);
@@ -56,8 +57,8 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nyc, &Nyc, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nhermite, &Nhermite, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nlaguerre, &Nlaguerre, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nm, &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nl, &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
 
   // initialize k arrays
@@ -67,6 +68,7 @@ Grids::Grids(Parameters* pars) :
 
   cudaMemcpy(kx_h, kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
   cudaMemcpy(ky_h, ky, sizeof(float)*Nyc, cudaMemcpyDeviceToHost);
+  cudaMemcpy(kz_h, kz, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
 }
 
 Grids::~Grids() {

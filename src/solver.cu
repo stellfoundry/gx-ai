@@ -35,15 +35,18 @@ Solver::~Solver()
   cudaFree(phiavgdenom);
 }
 
-int Solver::fieldSolve(Moments* moms, Fields* fields)
+int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
-    real_space_density<<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>(nbar, moms->ghl, geo_->kperp2, pars_->species);
+    real_space_density<<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>(nbar, G->G(), geo_->kperp2, pars_->species);
     
     if(pars_->iphi00==2) {
       qneutAdiab_part1<<<dimGrid_qneut, dimBlock_qneut>>>(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
       qneutAdiab_part2<<<dimGrid_qneut, dimBlock_qneut>>>(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
     }
+  }
+  if(pars_->source_option==PHIEXT) {
+    add_source<<<dimGrid_qneut, dimBlock_qneut>>>(fields->phi, pars_->phiext);
   }
   return 0;
 }

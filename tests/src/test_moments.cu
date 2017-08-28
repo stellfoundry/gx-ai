@@ -7,7 +7,7 @@
 #include "diagnostics.h"
 #include "cuda_constants.h"
 
-class TestMoments : public ::testing::Test {
+class TestMomentsG : public ::testing::Test {
 
 protected:
   virtual void SetUp() {
@@ -17,31 +17,31 @@ protected:
     pars->nz_in = 32;
     pars->nperiod = 1;
     pars->nspec_in = 1;
-    pars->nhermite_in = 4;
-    pars->nlaguerre_in = 2;
+    pars->nm_in = 4;
+    pars->nl_in = 2;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    moms = new Moments(grids);
+    G = new MomentsG(grids);
     geo = new S_alpha_geo(pars);
   }
 
   virtual void TearDown() {
     delete grids;
-    delete moms;
+    delete G;
     delete pars;
     delete geo;
   }
 
   Parameters* pars;
   Grids *grids;
-  Moments *moms;
+  MomentsG *G;
   Geometry* geo;
 };
 
-TEST_F(TestMoments, InitConditions) {
+TEST_F(TestMomentsG, InitConditions) {
 
   pars->init_single = false;
   pars->init_amp = .01;
@@ -59,34 +59,42 @@ TEST_F(TestMoments, InitConditions) {
       }
     }
   }
+  // reality condition
+  for(int j=0; j<grids->Nx/2; j++) {
+    for(int k=0; k<grids->Nz; k++) {
+      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
+      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
+      if(j!=0) init_check[index2] = init_check[index];
+    }
+  }
 
   // initialize upar
   pars->init = UPAR;
-  moms->initialConditions(pars, geo);
+  G->initialConditions(pars, geo);
 
   // check initial condition
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->upar_ptr[0][index].x, init_check[index]);
       }
     }
   }
 
   // initialize dens
   pars->init = DENS;
-  moms->initialConditions(pars, geo);
+  G->initialConditions(pars, geo);
 
   // check initial condition
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->dens_ptr[0][index].x, init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->upar_ptr[0][index].x, init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->tpar_ptr[0][index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->G(0,3)[index].x, 0.);
       }
     }
   }
@@ -94,7 +102,7 @@ TEST_F(TestMoments, InitConditions) {
   free(init_check);
 }
 
-TEST_F(TestMoments, AddMoments) 
+TEST_F(TestMomentsG, AddMomentsG) 
 {
   pars->init_single = false;
   pars->init_amp = .01;
@@ -110,46 +118,54 @@ TEST_F(TestMoments, AddMoments)
       }
     }
   }
+  // reality condition
+  for(int j=0; j<grids->Nx/2; j++) {
+    for(int k=0; k<grids->Nz; k++) {
+      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
+      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
+      if(j!=0) init_check[index2] = init_check[index];
+    }
+  }
   // initialize upar
   pars->init = UPAR;
-  moms->initialConditions(pars, geo);
-  // moms = init(z) * upar
+  G->initialConditions(pars, geo);
+  // G = init(z) * upar
 
-  Moments* moms2;
-  moms2 = new Moments(grids);
+  MomentsG* G2;
+  G2 = new MomentsG(grids);
   pars->init = DENS;
-  moms2->initialConditions(pars, geo);
-  // moms2 = init(z) * dens
+  G2->initialConditions(pars, geo);
+  // G2 = init(z) * dens
 
-  moms->add_scaled(1., moms, 2., moms2);
-  // moms = init(z) * ( 2*dens + upar )
+  G->add_scaled(1., G, 2., G2);
+  // G = init(z) * ( 2*dens + upar )
 
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, 2.*init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->dens_ptr[0][index].x, 2.*init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->upar_ptr[0][index].x, init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->tpar_ptr[0][index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->G(0,3)[index].x, 0.);
       }
     }
   }
   
   pars->init = UPAR;
-  moms2->initialConditions(pars, geo);
-  // moms2 = init(z) * ( dens + upar )
-  moms->add_scaled(1., moms, 2., moms2);
-  // moms = init(z) * ( 4*dens + 3*upar )
+  G2->initialConditions(pars, geo);
+  // G2 = init(z) * ( dens + upar )
+  G->add_scaled(1., G, 2., G2);
+  // G = init(z) * ( 4*dens + 3*upar )
 
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->dens_ptr[0][index].x, 4.*init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->upar_ptr[0][index].x, 3.*init_check[index]);
-        EXPECT_FLOAT_EQ_D(&moms->tpar_ptr[0][index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,1)[index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->dens_ptr[0][index].x, 4.*init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->upar_ptr[0][index].x, 3.*init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->tpar_ptr[0][index].x, 0.);
+        EXPECT_FLOAT_EQ_D(&G->G(1,3)[index].x, 0.);
       }
     }
   }
@@ -160,13 +176,13 @@ TEST_F(TestMoments, AddMoments)
   dim3 dimBlock = 512;
   dim3 dimGrid = grids->NxNycNz/dimBlock.x+1;
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (moms->gHL(3,0), 1., moms->gHL(1,0), 1., moms->gHL(0,0));
+      (G->G(0,3), 1., G->G(0,1), 1., G->G(0,0));
   // qpar = 7*init(z)
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&moms->gHL(3,0)[index].x, 7.*init_check[index]);
+        EXPECT_FLOAT_EQ_D(&G->G(0,3)[index].x, 7.*init_check[index]);
       }
     }
   }

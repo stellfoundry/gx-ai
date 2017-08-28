@@ -1,7 +1,7 @@
 #pragma once
 
 #include "species.h"
-#include "gryfx_lib.h"
+#include "gx_lib.h"
 #include "cufft.h"
 
 #define PHI 0                                                                            
@@ -17,6 +17,7 @@
 #define BEER42 1
 #define SMITHPERP 2
 #define SMITHPAR 3
+#define PHIEXT 1
 
 class Parameters {
 
@@ -66,6 +67,7 @@ class Parameters {
      float drhodpsi;
      float epsl;
      float kxfac;
+     bool local_limit;
   
     // Namelist: parameters
      float ti_ov_te;
@@ -143,14 +145,18 @@ class Parameters {
    //ginit_option= "noise"
    
    // Namelist: 
-      // new for HL 
-      int nhermite_in;
-      int nlaguerre_in;  // nlaguerre will be an array 
+      // new for LH 
+      int nm_in;
+      int nl_in;  // nl will be an array 
       int closure_model;
       int smith_perp_q;
       int smith_par_q;
       cuComplex smith_perp_w0;
-  
+
+  // Namelist: forcing knobs
+     bool forcing_init;
+     char *forcing_type;
+     float forcing_amp;
   
     // Namelist: knobs
    //   float fphi;
@@ -200,8 +206,11 @@ class Parameters {
    // layout = 'lxyes'
    // local_field_solve = F
   
+   // Namelist: source_knobs
+      int source_option;
+      float phiext;
   
-    // Namelist: gryfx_knobs
+    // Namelist: gx_knobs
       int inlpm;
       float dnlpm;
       float dnlpm_dens;
@@ -264,7 +273,6 @@ class Parameters {
       bool nlpm_zonal_kx1_only;
       bool smagorinsky;
       int init;
-      float phiext;
       bool debug;
       bool init_single;
       int iky_single;

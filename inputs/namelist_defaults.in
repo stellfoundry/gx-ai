@@ -184,6 +184,12 @@ model_option = "const-curv"
  smith_perp_q = 3
 /
 
+&forcing_knobs
+ forcing_init = "off"
+ forcing_type = "Z"
+ forcing_amp = 1
+/
+
 &dist_fn_knobs
  adiabatic_option="iphi00=2"
  gridfac=   1.0
@@ -307,12 +313,11 @@ model_option = "const-curv"
  restart_file = "nc/cyclone_miller_ke.nc"
  ginit_option= "noise"
 /
+
 &source_knobs
- ! These next 3 options are for the Rosenbluth-Hinton zonal flow tests.
- !
- source_option="default"    ! for zonal flows
- phi_ext=0.
- t0=-10.0
+ source_option = "default"
+ phi_ext = 0.
+ t0 = -10.0
 /
 
 &knobs
@@ -427,7 +432,7 @@ model_option = "const-curv"
   ikx_fixed = 0
 /
 
-&gryfx_nonlinear_terms_knobs
+&gx_nonlinear_terms_knobs
    densfac = 1.
    uparfac = 1.
    tparfac = 1.
@@ -436,7 +441,7 @@ model_option = "const-curv"
    qprpfac = 1.
 /
 
-&gryfx_knobs
+&gx_knobs
   hyper = "off"
   nu_hyper = 1.0
   p_hyper = 2
@@ -488,8 +493,8 @@ model_option = "const-curv"
   nlpm_zonal_kx1_only = "off"
   smagorinsky = "off"
   init = "density"
-  phiext = -1.0
   debug = "off"
+  phiext = 0
   init_single = "off"
   iky_single = 1
   ikx_single = 0

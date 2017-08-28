@@ -15,22 +15,26 @@ module load xalt/1.6 ;\
 module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
+unset PYTHONPATH;\
+module load python ;\
 echo Module configuration complete ;\
 export MAKEFLAGS='-j -I Makefiles' ;\
 export CUDAARCH=35 ;\
-export TESTEXEC='ibrun -n 16 -o 0' ;\
+export PYTHONPATH=${PYTHONPATH}:${PWD}/src;\
 echo
 endef
 
 NVCC      = nvcc
 CUDA_INC  = -I ${TACC_CUDA_INC}
-CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft_static -lculibos -lnvToolsExt -lcublas_static -lcusolver_static  
+CUDA_LIB  = -L ${TACC_CUDA_LIB} -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp
 FFT_LIB = -L${TACC_FFTW3_LIB} -lfftw3 -lfftw3f
 FFT_INC = -I${TACC_FFTW3_INC}
 NETCDF_LIB = -L${TACC_NETCDF_LIB} -lnetcdf -lnetcdff
 NETCDF_INC = -I${TACC_NETCDF_INC} 
 MPI_INC = -I ${MPICH_HOME}/include
-MPI_LIB= -L ${MPICH_HOME}/lib -lmpichf90  -lmpich 
+MPI_LIB= -L ${MPICH_HOME}/lib -lmpich 
+PYTHON_INC = -I ${TACC_PYTHON_INC}/python2.7
+PYTHON_LIB = -L ${TACC_PYTHON_LIB} -lpython2.7
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true 
 
 ifeq ($(debug),on)

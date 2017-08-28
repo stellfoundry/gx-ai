@@ -1,17 +1,8 @@
 #######################################
-#        Makefile for GRYFX
-#######################################
-#
-# To build GRYFX, use the build_gryfx
-# script which is included with this
-# distribution. It automatically loads
-# the required modules for a given
-# system and checks you have set the
-# right environment variables
-#
+#        Makefile for GX
 #######################################
 
-TARGET    = gryfx++
+TARGET    = gx
 
 #######################################
 # Include system-dependent make variables
@@ -37,8 +28,8 @@ LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o 
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
-CFLAGS= ${CUDA_INC} ${MPI_INC} 
-LDFLAGS=$(CUDA_LIB) ${MPI_LIB} 
+CFLAGS= ${CUDA_INC} ${MPI_INC} ${PYTHON_INC} 
+LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${PYTHON_LIB} 
 
 DEBUG_FLAGS = -g -G
 #CFLAGS += ${DEBUG_FLAGS}
@@ -53,7 +44,7 @@ system_config: Makefiles/Makefile.$(GK_SYSTEM) Makefile
 	@echo "#!/bin/bash " > system_config
 	@echo "$(STANDARD_SYSTEM_CONFIGURATION)" >> system_config
 	@sed -i 's/^ //' system_config
-
+	bash system_config
 else
 .PHONY: system_config
 system_config:
@@ -61,6 +52,8 @@ system_config:
 endif
 
 VPATH=.:src
+
+#IGNORE := $(shell bash system_config)
 
 ##########################
 ## Suffix Build Rules
@@ -76,7 +69,7 @@ HEADERS=$(wildcard include/*.h)
 obj/parameters.o: inputs/namelist_defaults.c c_fortran_namelist3.c
 obj/solver.o: qneut_kernel.cu 
 
-obj/%.o: %.cu $(HEADERS)
+obj/%.o: %.cu $(HEADERS) system_config
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include
 
 obj/%.o: %.cpp $(HEADERS)
@@ -90,14 +83,14 @@ inputs/namelist_defaults.c: inputs/namelist_defaults.in
 
 
 #######################################
-# Rules for building gryfx
+# Rules for building gx
 ####################################
 
-OBJS = main.o run_gryfx.o gryfx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o
+OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o
 
 # main program
-$(TARGET): $(addprefix obj/, $(OBJS))
-	$(NVCC) -o $@  $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
+$(TARGET): $(addprefix obj/, $(OBJS)) system_config
+	$(NVCC) -o $@ $(addprefix obj/, $(OBJS)) $(NVCCFLAGS) $(LDFLAGS) 
 
 
 ########################
