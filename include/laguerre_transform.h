@@ -9,12 +9,14 @@ class LaguerreTransform {
   LaguerreTransform(Grids* grids);
   ~LaguerreTransform();
   
-  int transformToGrid(MomentsG* G);
-  int transformToSpectral(MomentsG* G);
+  int transformToGrid(float* G_in, float* g_res);
+  int transformToSpectral(float* g_in, float* G_res);
 
   float* get_toGrid() {return toGrid;}
   float* get_toSpectral() {return toSpectral;}
   float* get_roots() {return roots;}
+  const int L;
+  const int J;
 
  private:
   Grids* grids_; 
@@ -25,7 +27,6 @@ class LaguerreTransform {
 
   int initTransforms(float* toGrid, float* toSpectral, float* roots);
 
-  int L, J;
   cublasHandle_t handle;
   
 };

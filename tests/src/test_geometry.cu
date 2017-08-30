@@ -11,24 +11,19 @@ protected:
     char f[200];
     sprintf(f, "inputs/test_parameters.in");
     pars->read_namelist(f);
-
-    geo = new S_alpha_geo(pars);
-
-    pars->slab = true;
-    geo_slab = new S_alpha_geo(pars);
   }
 
   virtual void TearDown() {
-    delete geo;
-    delete geo_slab;
     delete pars;
   }
 
-  Geometry *geo, *geo_slab;
   Parameters* pars;
 };
 
 TEST_F(TestGeometry, GeoCoefficentArrays) {
+
+  Geometry *geo;
+  geo = new S_alpha_geo(pars);
 
   for(int k=0; k<pars->nz_in; k++) {
     EXPECT_FLOAT_EQ_D(&geo->z[k], 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in);
@@ -45,10 +40,15 @@ TEST_F(TestGeometry, GeoCoefficentArrays) {
     EXPECT_FLOAT_EQ_D(&geo->grho[k], 1);
     EXPECT_FLOAT_EQ_D(&geo->jacobian[k], 1. / abs(pars->drhodpsi*geo->gradpar*geo->bmag_h[k]));
   }
+  delete geo;
   
 }
 
 TEST_F(TestGeometry, SlabGeoCoefficentArrays) {
+  pars->slab = true;
+  Geometry *geo_slab;
+  geo_slab = new S_alpha_geo(pars);
+
   for(int k=0; k<pars->nz_in; k++) {
     EXPECT_FLOAT_EQ_D(&geo_slab->z[k], 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in);
     EXPECT_FLOAT_EQ_D(&geo_slab->bmag[k], 1.);
@@ -64,5 +64,6 @@ TEST_F(TestGeometry, SlabGeoCoefficentArrays) {
     EXPECT_FLOAT_EQ_D(&geo_slab->grho[k], 1);
     EXPECT_FLOAT_EQ_D(&geo_slab->jacobian[k], 1. / abs(pars->drhodpsi*geo_slab->gradpar*geo_slab->bmag_h[k]));
   }
+  delete geo_slab;
 }
 

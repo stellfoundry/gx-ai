@@ -38,6 +38,7 @@ Grids::Grids(Parameters* pars) :
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
   NxNycNz(Nx * Nyc * Nz),
+  NxNyNz(Nx * Ny * Nz),
   NxNz(Nx * Nz),
   NycNz(Nyc * Nz),
   Nmoms(Nm*Nl),

@@ -3,10 +3,8 @@
 #include "laguerre_transform.h"
 
 LaguerreTransform::LaguerreTransform(Grids* grids) :
-  grids_(grids)
+  grids_(grids), L(grids_->Nl-1), J((3*L-1)/2)
 {
-  L = grids->Nl - 1;
-  J = (3*L-1)/2;
   float *toGrid_h, *toSpectral_h, *roots_h;
   cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
   cudaMallocHost((void**) &toSpectral_h, sizeof(float)*(L+1)*(J+1));
@@ -46,8 +44,6 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
     const char* funcname = "laguerre_quadrature";
 
     Py_Initialize();
-    //PyRun_SimpleString("import sys");
-    //PyRun_SimpleString("sys.path.append(\".\")");
     pName = PyString_FromString(filename);
 
     pModule = PyImport_Import(pName);
@@ -55,7 +51,6 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
 
     if (pModule != NULL) {
         pFunc = PyObject_GetAttrString(pModule, funcname);
-        /* pFunc is a new reference */
 
         if (pFunc && PyCallable_Check(pFunc)) {
             pArgs = PyTuple_New(1);
@@ -106,18 +101,26 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
     return 0;
 }
 
-int LaguerreTransform::transformToGrid(MomentsG* m)
+int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 {
-//  return cublasCgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-//     grids_->NxNyNz, J+1, L+1, 1.,
-//     m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1),
-//     toGrid, J+1, 0,
-//     0., m->ghl, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
-//     grids_->Nm);
-  return 0;
+  float alpha = 1.;
+  float beta = 0.;
+  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+     grids_->NxNyNz, J+1, L+1, &alpha,
+     G_in, grids_->NxNyNz, grids_->NxNyNz*(L+1),
+     toGrid, J+1, 0,
+     &beta, g_res, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
+     grids_->Nm);
 }
 
-int LaguerreTransform::transformToSpectral(MomentsG* m)
+int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
 {
-  return 0;
+  float alpha = 1.;
+  float beta = 0.;
+  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+     grids_->NxNyNz, L+1, J+1, &alpha,
+     g_in, grids_->NxNyNz, grids_->NxNyNz*(J+1),
+     toSpectral, L+1, 0,
+     &beta, G_res, grids_->NxNyNz, grids_->NxNyNz*(J+1), 
+     grids_->Nm);
 }

@@ -21,6 +21,7 @@ class Grids {
   const int NxNyc;
   const int NxNy;
   const int NxNycNz;
+  const int NxNyNz;
   const int NxNz;
   const int NycNz;
   const int Nmoms;
