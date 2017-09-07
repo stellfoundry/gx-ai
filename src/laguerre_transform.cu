@@ -2,8 +2,8 @@
 #include <numpy/arrayobject.h>
 #include "laguerre_transform.h"
 
-LaguerreTransform::LaguerreTransform(Grids* grids) :
-  grids_(grids), L(grids_->Nl-1), J((3*L-1)/2)
+LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
+  grids_(grids), L(grids_->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
   cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
@@ -110,7 +110,7 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
      G_in, grids_->NxNyNz, grids_->NxNyNz*(L+1),
      toGrid, J+1, 0,
      &beta, g_res, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
-     grids_->Nm);
+     batch_size_);
 }
 
 int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
@@ -122,5 +122,5 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
      g_in, grids_->NxNyNz, grids_->NxNyNz*(J+1),
      toSpectral, L+1, 0,
      &beta, G_res, grids_->NxNyNz, grids_->NxNyNz*(J+1), 
-     grids_->Nm);
+     batch_size_);
 }

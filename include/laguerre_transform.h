@@ -6,7 +6,7 @@
 class LaguerreTransform {
  public:
 
-  LaguerreTransform(Grids* grids);
+  LaguerreTransform(Grids* grids, int batch_size);
   ~LaguerreTransform();
   
   int transformToGrid(float* G_in, float* g_res);
@@ -28,6 +28,9 @@ class LaguerreTransform {
   int initTransforms(float* toGrid, float* toSpectral, float* roots);
 
   cublasHandle_t handle;
+
+  // batch_size = number of hermite moments to transform 
+  const int batch_size_;
   
 };
 

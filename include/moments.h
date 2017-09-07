@@ -19,6 +19,10 @@ class MomentsG {
     // glm[ky, kx, z]
   }
 
+  cuComplex* Gm(int m, int s=0) {
+    return G(0,m,s);
+  }
+
   int initialConditions(Parameters *pars, Geometry* geo);
 
   int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);

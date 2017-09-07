@@ -3,19 +3,30 @@
 #include "grids.h"
 #include "geometry.h"
 #include "laguerre_transform.h"
+#include "grad_perp.h"
+#include "moments.h"
+#include "fields.h"
 
 class Nonlinear {
  public:
   Nonlinear(Grids* grids, Geometry* geo);
   ~Nonlinear();
 
-  nlps5d();
+  void nlps5d(MomentsG* G, Fields* f, MomentsG* G_res);
 
  private:
 
   LaguerreTransform* laguerre;
   Grids* grids_;
   Geometry* geo_;
-  GradPerp* grad_perp;
+  GradPerp* grad_perp_G;
+  GradPerp* grad_perp_J0phi;
+
+  dim3 dimGrid, dimBlock;
+
+  float *dG, *dg_dx, *dg_dy;
+  cuComplex *J0phi;
+  float *dJ0phi_dx, *dJ0phi_dy;
+  float *g_res;
 
 };

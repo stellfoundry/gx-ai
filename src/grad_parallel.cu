@@ -37,7 +37,6 @@ __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 GradParallel::GradParallel(Grids* grids, bool abs, bool single) :
   grids_(grids)
 {
-
   // (ky, kx, theta) <-> (ky, kx, kpar)
   cufftCreate(&gradpar_plan_forward);
   cufftCreate(&gradpar_plan_inverse);
