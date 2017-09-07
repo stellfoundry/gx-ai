@@ -13,6 +13,7 @@ class Nonlinear {
   ~Nonlinear();
 
   void nlps5d(MomentsG* G, Fields* f, MomentsG* G_res);
+  double cfl(double dt_max);
 
  private:
 
@@ -29,4 +30,5 @@ class Nonlinear {
   float *dJ0phi_dx, *dJ0phi_dy;
   float *g_res;
 
+  double dt_cfl;
 };

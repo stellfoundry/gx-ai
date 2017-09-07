@@ -195,7 +195,7 @@ class Parameters {
   
     // Namelist: nonlinear_terms_knobs
     // nonlinear_mode='off'
-  	 bool linear;
+     bool linear;
      float cfl;
   
     // Namelist: reinit_knobs

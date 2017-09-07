@@ -2,13 +2,12 @@
 #include "get_error.h"
 
 // ======= RK2 =======
-RungeKutta2::RungeKutta2(Linear *linear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in) :
-  linear_(linear), solver_(solver), grids_(grids), forcing_(forcing)
+RungeKutta2::RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in) :
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), forcing_(forcing), dt_(dt_in), dt_max(dt_in)
 {
   // new objects for temporaries
   GStar = new MomentsG(grids);
   GRhs = new MomentsG(grids);
-  dt_ = dt_in;
 }
 
 RungeKutta2::~RungeKutta2()
@@ -18,18 +17,30 @@ RungeKutta2::~RungeKutta2()
 }
 
 int RungeKutta2::advance(double *t, MomentsG* G, Fields* f) {
-  linear_->rhs(G, f, GRhs);
-  GStar->add_scaled(1., G, dt_/2., GRhs);
+  if(nonlinear_ != NULL) {
+    nonlinear_->nlps5d(G, f, GRhs);
+    dt_ = nonlinear_->cfl(dt_max);
+    GStar->add_scaled(1., G, dt_/2., GRhs);
+    linear_->rhs(G, f, GRhs);
+    GStar->add_scaled(1., GStar, dt_/2., GRhs);
+  } else {
+    linear_->rhs(G, f, GRhs);
+    GStar->add_scaled(1., G, dt_/2., GRhs);
+  }
   solver_->fieldSolve(GStar, f);
 
-  linear_->rhs(GStar, f, GRhs);
-  GStar->add_scaled(1., G, dt_, GRhs);
-
-  if (forcing_ != NULL) {
-    forcing_->stir(GStar);
+  if(nonlinear_ != NULL) {
+    nonlinear_->nlps5d(GStar, f, GRhs);
+    G->add_scaled(1., G, dt_, GRhs);
   }
+  linear_->rhs(GStar, f, GRhs);
+  //GStar->add_scaled(1., G, dt_, GRhs);
+  G->add_scaled(1., G, dt_, GRhs);
 
-  G->copyFrom(GStar);
+  //G->copyFrom(GStar);
+  if (forcing_ != NULL) {
+    forcing_->stir(G);
+  }
   solver_->fieldSolve(G, f);
   *t+=dt_;
   return 0;

@@ -16,20 +16,22 @@ class Timestepper {
 
 class RungeKutta2 : public Timestepper {
  public:
-  RungeKutta2(Linear *linear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
+  RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
   ~RungeKutta2();
   int advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
   Linear  *linear_;
+  Nonlinear  *nonlinear_;
   Solver *solver_;
   Grids  *grids_;
   Forcing *forcing_;
+  double dt_;
+  const double dt_max;
 
   MomentsG* GStar;
   MomentsG* GRhs;
-  double dt_;
 };
 
 class RungeKutta4 : public Timestepper {

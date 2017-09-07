@@ -49,8 +49,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size)
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
   cufftMakePlanMany(gradperp_plan_R2C, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_, &workSize);
-  // need separate plans for dx and dy in order to use callbacks
-  // what is the memory cost?
+  // need separate plans for dx and dy in order to use callbacks... what is the memory cost?
   cufftMakePlanMany(gradperp_plan_dxC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_dyC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
 

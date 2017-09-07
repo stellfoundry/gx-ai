@@ -1,6 +1,7 @@
 #include "nonlinear.h"
 #include "cuda_constants.h"
 #include "device_funcs.h"
+#include "get_error.h"
 
 __global__ void J0phiToGrid(cuComplex* phi, float* b, float* muB, cuComplex* J0phi);
 __global__ void bracket(float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0Phi_dx, float* g_res);
@@ -12,23 +13,35 @@ Nonlinear::Nonlinear(Grids* grids, Geometry* geo) :
   grad_perp_G = new GradPerp(grids_, grids_->Nz*grids_->Nl);
   grad_perp_J0phi = new GradPerp(grids_, grids_->Nz*(laguerre->J+1));
 
-  cudaMalloc((void**) &dG, sizeof(float)*grids_->NxNyNz*grids_->Nl);
-  cudaMalloc((void**) &dg_dx, sizeof(float)*grids_->NxNyNz*(laguerre->J+1));
-  cudaMalloc((void**) &dg_dy, sizeof(float)*grids_->NxNyNz*(laguerre->J+1));
+  checkCuda(cudaMalloc((void**) &dG, sizeof(float)*grids_->NxNyNz*grids_->Nl));
+  checkCuda(cudaMalloc((void**) &dg_dx, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &dg_dy, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
 
-  cudaMalloc((void**) &J0phi, sizeof(cuComplex)*grids_->NxNycNz*(laguerre->J+1));
-  cudaMalloc((void**) &dJ0phi_dx, sizeof(float)*grids_->NxNyNz*(laguerre->J+1));
-  cudaMalloc((void**) &dJ0phi_dy, sizeof(float)*grids_->NxNyNz*(laguerre->J+1));
+  checkCuda(cudaMalloc((void**) &J0phi, sizeof(cuComplex)*grids_->NxNycNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &dJ0phi_dx, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &dJ0phi_dy, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
 
-  cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*(laguerre->J+1));
+  checkCuda(cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
 
   dimBlock = dim3(32, 4, 1);
   dimGrid = dim3(grids_->NxNyNz/dimBlock.x+1, 1, 1);
+
+  dt_cfl = 0.;
 }
 
 Nonlinear::~Nonlinear() 
 {
   delete laguerre;
+  delete grad_perp_G;
+  delete grad_perp_J0phi;
+
+  cudaFree(dG);
+  cudaFree(dg_dx);
+  cudaFree(dg_dy);
+  cudaFree(J0phi);
+  cudaFree(dJ0phi_dx);
+  cudaFree(dJ0phi_dy);
+  cudaFree(g_res);
 }
 
 void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
@@ -36,8 +49,6 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
   J0phiToGrid<<<dimGrid,dimBlock>>>(f->phi, geo_->kperp2, laguerre->get_roots(), J0phi);
   grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
   grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
-
-  // cfl condition
 
   // loop over m to save memory. also makes it easier to parallelize later...
   // no extra computation though, just no batching in m in FFTs and matrix multiplies
@@ -53,6 +64,16 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
     laguerre->transformToSpectral(g_res, dG);
     grad_perp_G->R2C(dG, G_res->Gm(m));
   }
+}
+
+// Note: should only be called after nlps5d, as it assumes 
+// dJ0phi_dx, dJ0phi_dy have been calculated.
+double Nonlinear::cfl(double dt_max)
+{
+  double vmax = 0.001; // DUMMY
+  dt_cfl = 1./vmax < dt_max ? 1./vmax : dt_max;
+  
+  return dt_cfl;
 }
 
 __global__ void J0phiToGrid(cuComplex* phi, float* b, float* muB, cuComplex* J0phi)

@@ -44,6 +44,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   MomentsG *momsG;
   Solver *solver;
   Linear* linear;
+  Nonlinear* nonlinear;
   Forcing *forcing;
   Timestepper *stepper; 
 
@@ -72,10 +73,17 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     checkCuda(cudaGetLastError());
 
     printf("Initializing equations...\n");
+    printf("\tLinear terms...\n");
     linear = new Linear(pars, grids, geo);
+    if(!pars->linear) {
+      printf("\tNonlinear terms...\n");
+      nonlinear = new Nonlinear(grids, geo);
+    } else {
+      nonlinear = NULL;
+    }
     checkCuda(cudaGetLastError());
    
-    if (pars->forcing_init == true) {
+    if (pars->forcing_init) {
       printf("Initializing forcing...\n");
       if (strcmp(pars->forcing_type, "Z") == 0) {
         forcing = new ZForcing(pars, grids, geo);
@@ -87,10 +95,14 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     checkCuda(cudaGetLastError());
 
     printf("Initializing timestepper...\n");
+    if(nonlinear!=NULL && pars->scheme != RK2) {
+      printf("Warning: nonlinearity not yet implemented in this scheme. Using RK2.\n");
+      pars->scheme = RK2;
+    }
     if(pars->scheme == RK4) {
       stepper = new RungeKutta4(linear, solver, grids, forcing, pars->dt);
     } else {
-      stepper = new RungeKutta2(linear, solver, grids, forcing, pars->dt);
+      stepper = new RungeKutta2(linear, nonlinear, solver, grids, forcing, pars->dt);
     }
     checkCuda(cudaGetLastError());
 
@@ -147,6 +159,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   delete momsG;
   delete solver;
   delete linear;
+  delete nonlinear;
   delete forcing;
   delete stepper;
 
