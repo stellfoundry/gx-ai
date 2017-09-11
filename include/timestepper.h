@@ -4,6 +4,7 @@
 #include "fields.h"
 #include "grids.h"
 #include "linear.h"
+#include "nonlinear.h"
 #include "solver.h"
 #include "forcing.h"
 

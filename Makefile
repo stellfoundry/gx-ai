@@ -44,7 +44,6 @@ system_config: Makefiles/Makefile.$(GK_SYSTEM) Makefile
 	@echo "#!/bin/bash " > system_config
 	@echo "$(STANDARD_SYSTEM_CONFIGURATION)" >> system_config
 	@sed -i 's/^ //' system_config
-	bash system_config
 else
 .PHONY: system_config
 system_config:
@@ -52,8 +51,6 @@ system_config:
 endif
 
 VPATH=.:src
-
-#IGNORE := $(shell bash system_config)
 
 ##########################
 ## Suffix Build Rules
@@ -69,7 +66,7 @@ HEADERS=$(wildcard include/*.h)
 obj/parameters.o: inputs/namelist_defaults.c c_fortran_namelist3.c
 obj/solver.o: qneut_kernel.cu 
 
-obj/%.o: %.cu $(HEADERS) system_config
+obj/%.o: %.cu $(HEADERS) 
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include
 
 obj/%.o: %.cpp $(HEADERS)
@@ -89,7 +86,7 @@ inputs/namelist_defaults.c: inputs/namelist_defaults.in
 OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o
 
 # main program
-$(TARGET): $(addprefix obj/, $(OBJS)) system_config
+$(TARGET): $(addprefix obj/, $(OBJS)) 
 	$(NVCC) -o $@ $(addprefix obj/, $(OBJS)) $(NVCCFLAGS) $(LDFLAGS) 
 
 
