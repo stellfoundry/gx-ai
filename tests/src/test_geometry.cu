@@ -11,19 +11,22 @@ protected:
     char f[200];
     sprintf(f, "inputs/test_parameters.in");
     pars->read_namelist(f);
+    grids = new Grids(pars);
   }
 
   virtual void TearDown() {
     delete pars;
+    delete grids;
   }
 
   Parameters* pars;
+  Grids* grids;
 };
 
 TEST_F(TestGeometry, GeoCoefficentArrays) {
 
   Geometry *geo;
-  geo = new S_alpha_geo(pars);
+  geo = new S_alpha_geo(pars,grids);
 
   for(int k=0; k<pars->nz_in; k++) {
     EXPECT_FLOAT_EQ_D(&geo->z[k], 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in);
@@ -47,7 +50,7 @@ TEST_F(TestGeometry, GeoCoefficentArrays) {
 TEST_F(TestGeometry, SlabGeoCoefficentArrays) {
   pars->slab = true;
   Geometry *geo_slab;
-  geo_slab = new S_alpha_geo(pars);
+  geo_slab = new S_alpha_geo(pars,grids);
 
   for(int k=0; k<pars->nz_in; k++) {
     EXPECT_FLOAT_EQ_D(&geo_slab->z[k], 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in);

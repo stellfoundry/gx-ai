@@ -96,7 +96,6 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   Geometry* geo;  // geometry coefficient arrays
   Grids* grids;   // grids (e.g. kx, ky, z)
   Diagnostics* diagnostics;
-  GradParallel* grad_par;
 
   printf("Initializing grids...\n");
   grids = new Grids(pars);
@@ -107,13 +106,10 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     int igeo = pars->igeo;
     printf("Initializing geometry...\n");
     if(igeo==0) {
-      geo = new S_alpha_geo(pars);
+      geo = new S_alpha_geo(pars, grids);
     }
     else if(igeo==1) {
-      geo = new File_geo(pars);
-      grad_par = new GradParallel(grids, false, true);
-      geo->calculate_bgrad(pars, grids, grad_par);
-      delete grad_par;
+      geo = new File_geo(pars, grids);
     } 
     else if(igeo==2) {
       printf("igeo = 2 not yet implemented!\n");

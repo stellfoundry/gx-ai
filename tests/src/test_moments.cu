@@ -25,7 +25,7 @@ protected:
 
     grids = new Grids(pars);
     G = new MomentsG(grids);
-    geo = new S_alpha_geo(pars);
+    geo = new S_alpha_geo(pars,grids);
   }
 
   virtual void TearDown() {

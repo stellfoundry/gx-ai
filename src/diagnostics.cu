@@ -1,6 +1,7 @@
 #include "diagnostics.h"
 #include "device_funcs.h"
 #include "cuda_constants.h"
+#include "get_error.h"
 #include <sys/stat.h>
 
 __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuDoubleComplex *omega)
@@ -26,10 +27,13 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   fields_old = new Fields(grids_);
-  grad_parallel = new GradParallel(grids_);
+  grad_parallel = new GradParallelPeriodic(grids_);
+  checkCuda(cudaGetLastError());
 
   cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
+  cudaDeviceSynchronize();
   cudaMallocManaged((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
+  cudaDeviceSynchronize();
   
   cudaMallocHost((void**) &growth_rates_h, sizeof(cuDoubleComplex)*grids_->NxNyc);
 
@@ -41,7 +45,6 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   maxThreadsPerBlock_ = prop.maxThreadsPerBlock;
 
   // for volume averaging
-  cudaDeviceSynchronize();
   fluxDenom = 0.;
   for(int i=0; i<grids_->Nz; i++) {
     fluxDenom += geo_->jacobian_h[i]*geo_->grho_h[i];

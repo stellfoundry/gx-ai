@@ -1,8 +1,8 @@
+#include "laguerre_transform.h"
 #include "gtest/gtest.h"
 #include "device_test.h"
 #include "parameters.h"
 #include "grids.h"
-#include "laguerre_transform.h"
 #include "cuda_constants.h"
 
 class TestLaguerreTransform : public ::testing::Test {
@@ -20,7 +20,7 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    laguerre = new LaguerreTransform(grids);
+    laguerre = new LaguerreTransform(grids,pars->nm_in);
     L = grids->Nl - 1;
     J = (3*L-1)/2;
   }

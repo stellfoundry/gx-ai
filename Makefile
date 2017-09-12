@@ -31,9 +31,6 @@ GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a
 CFLAGS= ${CUDA_INC} ${MPI_INC} ${PYTHON_INC} 
 LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${PYTHON_LIB} 
 
-DEBUG_FLAGS = -g -G
-#CFLAGS += ${DEBUG_FLAGS}
-
 #####################################
 # Rule for building the system_config
 # used by the build script

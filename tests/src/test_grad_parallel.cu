@@ -25,7 +25,7 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    grad_par = new GradParallel(grids);
+    grad_par = new GradParallelPeriodic(grids);
   }
 
   virtual void TearDown() {
@@ -55,7 +55,7 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    grad_par = new GradParallel(grids);
+    grad_par = new GradParallelPeriodic(grids);
   }
 
   virtual void TearDown() {
@@ -71,7 +71,7 @@ protected:
 
 TEST_F(TestGradParallel1D, EvaluateDerivative) {
   Geometry* geo;
-  geo = new S_alpha_geo(pars);
+  geo = new S_alpha_geo(pars, grids);
   
   MomentsG* GInit, *GRes;
   GInit = new MomentsG(grids);
@@ -119,7 +119,7 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
 
 TEST_F(TestGradParallel3D, EvaluateDerivative) {
   Geometry* geo;
-  geo = new S_alpha_geo(pars);
+  geo = new S_alpha_geo(pars, grids);
   //strncpy(pars->run_name, "test", strlen("test")-1);
   //Diagnostics* diagnostics;
   //diagnostics = new Diagnostics(pars, grids, geo);

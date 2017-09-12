@@ -2,6 +2,8 @@
 #include "parameters.h"
 #include "device_funcs.h"
 #include "cuda_constants.h"
+#include "grad_parallel.h"
+#include "get_error.h"
 
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky, float* gds2, float* gds21, float* gds22, float* bmagInv, float shat) ;
 __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, float* cv, float* gb0, float* cv0, float shat) ;
@@ -42,10 +44,10 @@ Geometry::~Geometry() {
   }
 }
 
-S_alpha_geo::S_alpha_geo(Parameters *pars) 
+S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids) 
 {
     operator_arrays_allocated_=false;
-    size_t size = sizeof(float)*pars->nz_in;
+    size_t size = sizeof(float)*grids->Nz;
     cudaMallocHost((void**) &z_h, size);
     cudaMallocHost((void**) &bmag_h, size);
     cudaMallocHost((void**) &bmagInv_h, size);
@@ -92,8 +94,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
       }
     }
     
-    for(int k=0; k<pars->nz_in; k++) {
-      z_h[k] = 2.*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+    for(int k=0; k<grids->Nz; k++) {
+      z_h[k] = 2.*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
       if(pars->local_limit) {z_h[k] = 0.;} // outboard-midplane
       bmag_h[k] = 1./(1.+pars->eps*cos(z_h[k]));
       bgrad_h[k] = gradpar*pars->eps*sin(z_h[k])*bmag_h[k];            //bgrad = d/dz ln(B(z)) = 1/B dB/dz
@@ -123,7 +125,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
         bmag_h[k] = 1.;
         //gradpar = 1.;
       }
-      if(pars->local_limit) z_h[k] = 2*M_PI*pars->Zp*(k-pars->nz_in/2)/pars->nz_in;
+      if(pars->local_limit) z_h[k] = 2*M_PI*pars->Zp*(k-grids->Nz/2)/grids->Nz;
 
       // calculate these derived coefficients after slab overrides
       bmagInv_h[k] = 1./bmag_h[k];
@@ -145,7 +147,9 @@ S_alpha_geo::S_alpha_geo(Parameters *pars)
     cudaMemcpy(jacobian, jacobian_h , size, cudaMemcpyHostToDevice);
 
     cudaDeviceSynchronize();
-
+    
+    // initialize omegad and kperp2
+    initializeOperatorArrays(grids);
 }
 
 Eik_geo::Eik_geo() {
@@ -157,11 +161,11 @@ Gs2_geo::Gs2_geo() {
 }
 
 // MFM - 07/09/17
-File_geo::File_geo(Parameters *pars)
+File_geo::File_geo(Parameters *pars, Grids *grids)
 {
 
   operator_arrays_allocated_=false;
-  size_t size = sizeof(float)*pars->nz_in; 
+  size_t size = sizeof(float)*grids->Nz; 
   cudaMallocHost((void**) &z_h, size);
   cudaMallocHost((void**) &bmag_h, size);
   cudaMallocHost((void**) &bmagInv_h, size);
@@ -226,14 +230,14 @@ File_geo::File_geo(Parameters *pars)
       }
     }
 
-  oldNz = pars->nz_in;
+  oldNz = grids->Nz;
   oldnperiod = pars->nperiod;
   //lineStartPos[1] is the first line, not i=0
   fsetpos(geoFile, &lineStartPos[2]);
-  fscanf(geoFile, "%d %d %d %f %f %f %f %f", &ntgrid, &pars->nperiod, &pars->nz_in, &pars->drhodpsi, &pars->rmaj, &pars->shat, &pars->kxfac, &pars->qsf);
-  if(pars->debug) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, nz_in = %d, rmaj = %f\n\n\n", ntgrid, pars->nperiod, pars->nz_in, pars->rmaj);
+  fscanf(geoFile, "%d %d %d %f %f %f %f %f", &ntgrid, &pars->nperiod, &grids->Nz, &pars->drhodpsi, &pars->rmaj, &pars->shat, &pars->kxfac, &pars->qsf);
+  if(pars->debug) printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n", ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
 
-  if(oldNz != pars->nz_in) {
+  if(oldNz != grids->Nz) {
     printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
     abort();
   }
@@ -243,89 +247,94 @@ File_geo::File_geo(Parameters *pars)
   }
 
   // Local copy to simplify loops
-  int nz_in = pars->nz_in;
+  int Nz = grids->Nz;
 
   //first block
-  for(int i=0; i<nz_in; i++) {
+  for(int i=0; i<Nz; i++) {
     fsetpos(geoFile, &lineStartPos[i+4]);
     fscanf(geoFile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
     gbdrift_h[i] = (1./4.)*gbdrift_h[i];
   }
-  //printf("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[nz_in-1]);
-  //printf("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[nz_in-1]);
+  //printf("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
+  //printf("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
 
   //second block
-  for(int i=0; i<nz_in; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 1*(nz_in+2)]);
+  for(int i=0; i<Nz; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 1*(Nz+2)]);
     fscanf(geoFile, "%f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i]);
     cvdrift_h[i] = (1./4.)*cvdrift_h[i];
     bmagInv_h[i] = 1./bmag_h[i];
     jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
     grho_h[i] = 1.;
   }
-  //printf("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[nz_in-1]);
-  //printf("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[nz_in-1]);
-  //printf("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[nz_in-1]);
+  //printf("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
+  //printf("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
+  //printf("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
   //third block
-  for(int i=0; i<nz_in; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 2*(nz_in+2)]);
+  for(int i=0; i<Nz; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 2*(Nz+2)]);
     fscanf(geoFile, "%f %f", &gds21_h[i], &gds22_h[i]);
   }
-  //printf("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[nz_in-1]);
-  //printf("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[nz_in-1]);
+  //printf("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
+  //printf("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
 
   //fourth block
-  for(int i=0; i<nz_in; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 3*(nz_in+2)]);
+  for(int i=0; i<Nz; i++) {
+    fsetpos(geoFile, &lineStartPos[(i+4) + 3*(Nz+2)]);
     fscanf(geoFile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
     cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
     gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
   }
   printf("All geometry information read successfully\n");
-  //printf("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[nz_in-1]);
-  //printf("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[nz_in-1]);
+  //printf("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[Nz-1]);
+  //printf("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[Nz-1]);
 
   //copy host variables to device variables
-    cudaMemcpy(z, z_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(gbdrift, gbdrift_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(grho, grho_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(cvdrift, cvdrift_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(bmag, bmag_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(bmagInv, bmagInv_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(gds2, gds2_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(gds21, gds21_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(gds22, gds22_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(cvdrift0, cvdrift0_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(gbdrift0, gbdrift0_h, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(jacobian, jacobian_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(z, z_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gbdrift, gbdrift_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(grho, grho_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(cvdrift, cvdrift_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(bmag, bmag_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(bmagInv, bmagInv_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gds2, gds2_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gds21, gds21_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gds22, gds22_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(cvdrift0, cvdrift0_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gbdrift0, gbdrift0_h, size, cudaMemcpyHostToDevice);
+  cudaMemcpy(jacobian, jacobian_h, size, cudaMemcpyHostToDevice);
 
-    cudaDeviceSynchronize();
+  cudaDeviceSynchronize();
+
+  // initialize omegad and kperp2
+  initializeOperatorArrays(grids);
+
+  // calculate bgrad
+  calculate_bgrad(grids);
 }
 
-void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
-
+void Geometry::initializeOperatorArrays(Grids* grids) {
   // set this flag so we know to deallocate
   operator_arrays_allocated_ = true;
 
+  checkCuda(cudaGetLastError());
   cudaMalloc((void**) &kperp2, sizeof(float)*grids->NxNycNz);
   cudaMalloc((void**) &omegad, sizeof(float)*grids->NxNycNz);
+  checkCuda(cudaGetLastError());
 
   dim3 dimBlock(32, 4, 4);
   dim3 dimGrid(grids->Nyc/dimBlock.x+1, grids->Nx/dimBlock.y+1, grids->Nz/dimBlock.z+1);
-
+ 
   init_kperp2<<<dimGrid, dimBlock>>>(kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
-
   init_omegad<<<dimGrid, dimBlock>>>(omegad, grids->kx, grids->ky, gbdrift, cvdrift, gbdrift0, cvdrift0, shat);
 }
 
 // MFM - 07/25/17
-void Geometry::calculate_bgrad(Parameters* pars, Grids* grids, GradParallel* grad_par)
+void Geometry::calculate_bgrad(Grids* grids)
 {
-
   operator_arrays_allocated_=false;
-  size_t size_c = sizeof(cuComplex)*pars->nz_in;
-  size_t size = sizeof(float)*pars->nz_in;
+  size_t size_c = sizeof(cuComplex)*grids->Nz;
+  size_t size = sizeof(float)*grids->Nz;
  
   cudaMallocHost((void**) &bgrad_h, size);
 
@@ -336,18 +345,21 @@ void Geometry::calculate_bgrad(Parameters* pars, Grids* grids, GradParallel* gra
   cudaMemset(bmag_complex, 0, size_c);
   cudaMemcpy(bgrad_temp,bmag,size,cudaMemcpyDeviceToDevice);
 
+  GradParallel1D* grad_par = new GradParallel1D(grids);
+
   //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-  grad_par->eval_1d(bgrad_temp, bmag_complex); // FFT and k-space derivative
-  float scale = gradpar/pars->nz_in;
-  calc_bgrad<<<1,pars->nz_in>>>(bgrad,bgrad_temp,bmag,scale);
+  grad_par->eval1D(bgrad_temp); // FFT and k-space derivative
+  float scale = gradpar;
+  calc_bgrad<<<1,grids->Nz>>>(bgrad,bgrad_temp,bmag,scale);
 
   cudaMemcpy(bgrad_h, bgrad, size, cudaMemcpyDeviceToHost);
   cudaFree(bgrad_temp);
-  for(int i=0; i<pars->nz_in; i++) {
-    printf("bgrad_h[%d]: %.4e\n",i,bgrad_h[i]);
-  }
-  cudaDeviceSynchronize();
+  delete grad_par;
 
+//  for(int i=0; i<grids->Nz; i++) {
+//    printf("bgrad_h[%d]: %.4e\n",i,bgrad_h[i]);
+//  }
+  cudaDeviceSynchronize();
 }
 
 __global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale)
@@ -417,10 +429,10 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //extern "C" void geometry_mp_finish_geometry_(void);
 //
 ////Defined at the bottom
-//void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
-//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
+//void read_geo_input(input_parameters_struct * pars, gridsstruct * grids, geometry_coefficents_struct * geo, FILE* ifile); 
+//void run_general_geometry_module(input_parameters_struct * pars, gridsstruct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 
-//void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars){
+//void set_geometry(input_parameters_struct * pars, gridsstruct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars){
 //
 //
 //  //Local reference for convenience
@@ -460,7 +472,7 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //  
 //}
 //
-//void run_general_geometry_module(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo,  struct gx_parameters_struct * gxpars){
+//void run_general_geometry_module(input_parameters_struct * pars, gridsstruct * grids, geometry_coefficents_struct * geo,  struct gx_parameters_struct * gxpars){
 //	double s_hat_input_d, beta_prime_input_d;
 //  
 //  struct coefficients_struct * coefficients;
@@ -596,7 +608,7 @@ __global__ void init_omegad(float* omegad, float* kx, float* ky, float* gb, floa
 //	/*free(coefficients);*/
 //
 //}
-//void read_geo_input(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, FILE* ifile) 
+//void read_geo_input(input_parameters_struct * pars, gridsstruct * grids, geometry_coefficents_struct * geo, FILE* ifile) 
 //{    
 //  int nLines=0;
 //  fpos_t* lineStartPos;

@@ -503,6 +503,7 @@ int Parameters::read_namelist(char* filename)
 		fnr_free(&namelist_defaults);
 
   initialized = true;
+  cudaDeviceSynchronize();
   return 0;
 }
 

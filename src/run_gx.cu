@@ -49,9 +49,6 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   Timestepper *stepper; 
 
   if(iproc == 0) {
-    geo->initializeOperatorArrays(pars, grids);
-    checkCuda(cudaGetLastError());
-
     printf("Initializing fields...\n");
     fields = new Fields(grids);
     checkCuda(cudaGetLastError());

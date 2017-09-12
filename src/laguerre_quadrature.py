@@ -4,6 +4,7 @@ import numpy as np
 
 def laguerre_quadrature(L, printout=False):
   J = (3*L-1)//2
+  roots = np.zeros((J+1))
   roots, weights = laguerre.laggauss(J+1)
   
   toGrid = np.zeros((J+1)*(L+1))

@@ -15,8 +15,8 @@ Beer42::Beer42(Grids* grids, const Geometry* geo, bool local):
     grad_par = new GradParallelLocal(grids_);
     abs_grad_par = new GradParallelLocal(grids_, true);
   } else {
-    grad_par = new GradParallel(grids_);
-    abs_grad_par = new GradParallel(grids_, true);
+    grad_par = new GradParallelPeriodic(grids_);
+    abs_grad_par = new GradParallelPeriodic(grids_, true);
   }
 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
@@ -251,8 +251,8 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q):
     grids_(grids), q_(q)
 { 
   // set up parallel derivatives, including |kpar|
-  grad_par = new GradParallel(grids_);
-  abs_grad_par = new GradParallel(grids_, true);
+  grad_par = new GradParallelPeriodic(grids_);
+  abs_grad_par = new GradParallelPeriodic(grids_, true);
 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
   cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);

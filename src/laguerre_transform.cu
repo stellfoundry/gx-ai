@@ -3,7 +3,7 @@
 #include "laguerre_transform.h"
 
 LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
-  grids_(grids), L(grids_->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
+  grids_(grids), L(grids->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
   cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
@@ -19,7 +19,7 @@ LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
   cudaMemcpy(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
   cudaMemcpy(roots, roots_h, sizeof(float)*(J+1), cudaMemcpyHostToDevice);
 
-  //cublasCreate(&handle);
+  cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
   cudaFreeHost(toSpectral_h);
   cudaFreeHost(roots_h);

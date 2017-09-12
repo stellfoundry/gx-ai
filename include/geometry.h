@@ -65,15 +65,16 @@ class Geometry {
   float * kperp2;
   float * omegad;
 
-  void initializeOperatorArrays(Parameters* pars, Grids* grids);
-  void calculate_bgrad(Parameters* pars, Grids* grids, GradParallel* grad_par_temp); // MFM
+  void initializeOperatorArrays(Grids* grids);
+  void calculate_bgrad(Grids* grids); // MFM
 
   bool operator_arrays_allocated_;
 };
 
 class S_alpha_geo : public Geometry {
  public:
-  S_alpha_geo(Parameters* parameters);
+  S_alpha_geo(Parameters* parameters, Grids* grids);
+
 };
 
 class Eik_geo : public Geometry {
@@ -89,7 +90,8 @@ class Gs2_geo : public Geometry {
 // MFM
 class File_geo : public Geometry {
  public:
-  File_geo(Parameters* parameters);
+  File_geo(Parameters* parameters, Grids* grids);
+
 };
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);

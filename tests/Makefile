@@ -26,7 +26,7 @@ CC = $(NVCC)
 LD = $(NVCC)
 
 # Flags passed to nvcc compiler.
-CFLAGS= -g -G ${CUDA_INC} ${MPI_INC} ${PYTHON_INC}
+CFLAGS= ${CUDA_INC} ${MPI_INC} ${PYTHON_INC}
 LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${PYTHON_LIB}
 
 # Flags passed to the preprocessor.
@@ -47,7 +47,7 @@ GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
 
 GRYFX_HEADERS = $(GRYFX_DIR)/include/*.h
 
-GRYFX_OBJS := run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o
+GRYFX_OBJS := run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o
 GRYFX_OBJS := $(addprefix $(GRYFX_DIR)/obj/, $(GRYFX_OBJS))
 
 VPATH=.:src

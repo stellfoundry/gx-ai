@@ -25,7 +25,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 //    grad_par = new GradParallelLinked(grids_);
 //  }
   else {
-    grad_par = new GradParallel(grids_);
+    grad_par = new GradParallelPeriodic(grids_);
   }
  
   if(pars_->closure_model==BEER42) {

@@ -15,12 +15,11 @@ module load xalt/1.6 ;\
 module load fftw3 ;\
 module load netcdf ;\
 module load cuda ;\
-unset PYTHONPATH;\
 module load python ;\
 echo Module configuration complete ;\
 export MAKEFLAGS='-j -I Makefiles' ;\
 export CUDAARCH=35 ;\
-export PYTHONPATH=${PYTHONPATH}:${PWD}/src;\
+export PYTHONPATH=${PWD}/src;\
 echo
 endef
 

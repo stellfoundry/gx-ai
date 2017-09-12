@@ -4,6 +4,7 @@
 #include "grids.h"
 #include "diagnostics.h"
 #include "run_gx.h"
+#include "get_error.h"
 
 
 TEST(TestParameters, CycloneLinearBeer) {
@@ -13,14 +14,18 @@ TEST(TestParameters, CycloneLinearBeer) {
   sprintf(f, "inputs/test_cyclone_linear_beer.in");
   pars->read_namelist(f);
   pars->iproc = 0;
-  printf("Initializing geometry...\n");
-  Geometry* geo = new S_alpha_geo(pars);
+  checkCuda(cudaGetLastError());
   printf("Initializing grids...\n");
   Grids* grids = new Grids(pars);
   printf("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n", 
      grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
+  checkCuda(cudaGetLastError());
+  printf("Initializing geometry...\n");
+  Geometry* geo = new S_alpha_geo(pars,grids);
+  checkCuda(cudaGetLastError());
   printf("Initializing diagnostics...\n");
   Diagnostics* diagnostics = new Diagnostics(pars, grids, geo);
+  checkCuda(cudaGetLastError());
   
   run_gx(pars, grids, geo, diagnostics);
 

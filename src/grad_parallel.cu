@@ -19,67 +19,57 @@ __device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void 
   ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element/nz;
 }
 
-__global__ void zderiv(cuComplex* res, cuComplex* f, float* kz)
+__device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
-  unsigned int idx = get_id1();
-
-  if (idx < nz) {
-    cuComplex tmp;
-    tmp.x = -kz[idx]*f[idx].y;
-    tmp.y = kz[idx]*f[idx].x;
-    res[idx] = tmp;
-  }
+  float *kz = (float*) kzData;
+  unsigned int idz = offset;
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
 __managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
+__managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 
-GradParallel::GradParallel(Grids* grids, bool abs, bool single) :
+GradParallelPeriodic::GradParallelPeriodic(Grids* grids, bool abs) :
   grids_(grids)
 {
   // (ky, kx, theta) <-> (ky, kx, kpar)
   cufftCreate(&gradpar_plan_forward);
   cufftCreate(&gradpar_plan_inverse);
 
-  // MFM: Plan for 1d FFT
-  if(single) {
-    cufftPlan1d(&gradpar_plan_forward, grids_->Nz, CUFFT_R2C, 1);
-    cufftPlan1d(&gradpar_plan_inverse, grids_->Nz, CUFFT_C2R, 1);
-  }  
-  else {
-    int n = grids_->Nz;
-    int inembed = grids_->NxNycNz;
-    int onembed = grids_->NxNycNz;
-    size_t workSize;
-    cufftMakePlanMany(gradpar_plan_forward, 1,   &n, &inembed, grids_->NxNyc, 1,
-		      //  dim,  n,  isize,   istride,       idist,
-		      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
-    // osize,   ostride,       odist, type,      batchsize
-    cufftMakePlanMany(gradpar_plan_inverse, 1,   &n, &inembed, grids_->NxNyc, 1,
-		      //  dim,  n,  isize,   istride,       idist,
-		      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
-    // osize,   ostride,       odist, type,      batchsize
-    // isize = size of input data
-    // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
-    // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
-  
+  int n = grids_->Nz;
+  int inembed = grids_->NxNycNz;
+  int onembed = grids_->NxNycNz;
+  size_t workSize;
+  cufftMakePlanMany(gradpar_plan_forward, 1,   &n, &inembed, grids_->NxNyc, 1,
+      	      //  dim,  n,  isize,   istride,       idist,
+      	      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
+  // osize,   ostride,       odist, type,      batchsize
+  cufftMakePlanMany(gradpar_plan_inverse, 1,   &n, &inembed, grids_->NxNyc, 1,
+      	      //  dim,  n,  isize,   istride,       idist,
+      	      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
+  // osize,   ostride,       odist, type,      batchsize
+  // isize = size of input data
+  // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
+  // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
 
-  // set up callback functions
-    if(abs) {
-      cufftXtSetCallback(gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
-    } else {
-      cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
-    }
+
+// set up callback functions
+  if(abs) {
+    cufftXtSetCallback(gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  } else {
+    cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   }
 }
 
-GradParallel::~GradParallel() {
+GradParallelPeriodic::~GradParallelPeriodic() {
   cufftDestroy(gradpar_plan_forward);
   cufftDestroy(gradpar_plan_inverse);
 }
 
 // FFT and derivative for all moments
-void GradParallel::eval(MomentsG* G)
+void GradParallelPeriodic::eval(MomentsG* G)
 {
   // FFT and derivative on parallel term
   // i*kz*G calculated via callback, defined as part of gradpar_plan_forward
@@ -97,7 +87,7 @@ void GradParallel::eval(MomentsG* G)
 }
 
 // FFT and derivative for a single moment
-void GradParallel::eval(cuComplex* mom, cuComplex* res)
+void GradParallelPeriodic::eval(cuComplex* mom, cuComplex* res)
 {
   reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
   cufftExecC2C(gradpar_plan_forward, mom, res, CUFFT_FORWARD);
@@ -106,7 +96,7 @@ void GradParallel::eval(cuComplex* mom, cuComplex* res)
 }
 
 // FFT only for a single moment
-void GradParallel::fft_only(cuComplex* mom, cuComplex* res, int dir)
+void GradParallelPeriodic::fft_only(cuComplex* mom, cuComplex* res, int dir)
 {
   // use gradpar_plan_inverse since it does not multiply by i kz via callback 
   cufftExecC2C(gradpar_plan_inverse, mom, res, dir);
@@ -136,9 +126,30 @@ void GradParallelLocal::eval(cuComplex* mom, cuComplex* res)
   }
 }
 
-void GradParallel::eval_1d(float* bmag_t, cuComplex* bmag_complex_t)
+GradParallel1D::GradParallel1D(Grids* grids)
 {
-  cufftExecR2C(gradpar_plan_forward, bmag_t, bmag_complex_t);
-  zderiv<<<1,grids_->Nz>>>(bmag_complex_t,bmag_complex_t, grids_->kz);
-  cufftExecC2R(gradpar_plan_inverse, bmag_complex_t, bmag_t);
+  // (theta) <-> (kpar)
+  cufftCreate(&gradpar_plan_forward);
+  cufftCreate(&gradpar_plan_inverse);
+
+  // MFM: Plan for 1d FFT
+  cufftPlan1d(&gradpar_plan_forward, grids_->Nz, CUFFT_R2C, 1);
+  cufftPlan1d(&gradpar_plan_inverse, grids_->Nz, CUFFT_C2R, 1);
+
+  cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_1d_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+
+  cudaMalloc((void**) &b_complex, sizeof(cuComplex)*(grids_->Nz/2+1));
 }
+
+GradParallel1D::~GradParallel1D() {
+  cufftDestroy(gradpar_plan_forward);
+  cufftDestroy(gradpar_plan_inverse);
+  cudaFree(b_complex);
+}
+
+void GradParallel1D::eval1D(float* b)
+{
+  cufftExecR2C(gradpar_plan_forward, b, b_complex);
+  cufftExecC2R(gradpar_plan_inverse, b_complex, b);
+}
+
