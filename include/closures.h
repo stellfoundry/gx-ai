@@ -13,17 +13,16 @@ class Closures {
 
 class Beer42 : public Closures {
  public:
-  Beer42(Grids* grids, const Geometry* geo, bool local);
+  Beer42(Grids* grids, const Geometry* geo, GradParallel* grad_par);
   ~Beer42();
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids* grids_;
   GradParallel* grad_par;
-  GradParallel* abs_grad_par;
 
   float* omegad_;
-  float gradpar_;
+  float gpar_;
 
   cuComplex* tmp;
 
@@ -57,13 +56,13 @@ class SmithPerp : public Closures {
 
 class SmithPar : public Closures {
  public: 
-  SmithPar(Grids* grids, const Geometry* geo, int q);
+  SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par, int q);
   ~SmithPar();
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids *grids_;
-  GradParallel *grad_par, *abs_grad_par;
+  GradParallel *grad_par;
   
   cuComplex *tmp, *tmp_abs;
 

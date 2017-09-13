@@ -348,7 +348,7 @@ void Geometry::calculate_bgrad(Grids* grids)
   GradParallel1D* grad_par = new GradParallel1D(grids);
 
   //bgrad = d/dz ln(B(z)) = 1/B dB/dz
-  grad_par->eval1D(bgrad_temp); // FFT and k-space derivative
+  grad_par->dz1D(bgrad_temp); // FFT and k-space derivative
   float scale = gradpar;
   calc_bgrad<<<1,grids->Nz>>>(bgrad,bgrad_temp,bmag,scale);
 

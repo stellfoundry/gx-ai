@@ -7,18 +7,9 @@
 __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu);
 __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q);
 
-Beer42::Beer42(Grids* grids, const Geometry* geo, bool local): 
-    grids_(grids), omegad_(geo->omegad), gradpar_(geo->gradpar)
+Beer42::Beer42(Grids* grids, const Geometry* geo, GradParallel* grad_par_in): 
+    grids_(grids), omegad_(geo->omegad), gpar_(geo->gradpar), grad_par(grad_par_in)
 {
-  // set up parallel derivatives, including |kpar|
-  if (local) {
-    grad_par = new GradParallelLocal(grids_);
-    abs_grad_par = new GradParallelLocal(grids_, true);
-  } else {
-    grad_par = new GradParallelPeriodic(grids_);
-    abs_grad_par = new GradParallelPeriodic(grids_, true);
-  }
-
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
 
   D_par = 2.*sqrt(M_PI)/(3.0*M_PI-8.0);
@@ -60,8 +51,6 @@ Beer42::Beer42(Grids* grids, const Geometry* geo, bool local):
 Beer42::~Beer42() {
   cudaFree(tmp);
   cudaFree(nu);
-  delete grad_par;
-  delete abs_grad_par;
 }
 
 int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs) 
@@ -71,17 +60,17 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
   cudaMemset(GRhs->G(1,3), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
   // parallel terms (each must be done separately because of FFTs)
-  grad_par->eval(G->G(0,2), tmp);
+  grad_par->dz(G->G(0,2), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (GRhs->G(0,3), 1., GRhs->G(0,3), -Beta_par/sqrt(3.)*gradpar_, tmp);
+      (GRhs->G(0,3), 1., GRhs->G(0,3), -Beta_par/sqrt(3.)*gpar_, tmp);
 
-  abs_grad_par->eval(G->G(0,3), tmp);
+  grad_par->abs_dz(G->G(0,3), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (GRhs->G(0,3), 1., GRhs->G(0,3), -sqrt(2.)*D_par*gradpar_, tmp);
+      (GRhs->G(0,3), 1., GRhs->G(0,3), -sqrt(2.)*D_par*gpar_, tmp);
 
-  abs_grad_par->eval(G->G(1,1), tmp);
+  grad_par->abs_dz(G->G(1,1), tmp);
   add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>
-      (GRhs->G(1,1), 1., GRhs->G(1,1), -sqrt(2.)*D_perp*gradpar_, tmp);
+      (GRhs->G(1,1), 1., GRhs->G(1,1), -sqrt(2.)*D_perp*gpar_, tmp);
   
   // toroidal terms
   beer_toroidal_closures<<<dimGrid,dimBlock>>>(G->G(), GRhs->G(), omegad_, nu);
@@ -247,13 +236,9 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
 
 }
 
-SmithPar::SmithPar(Grids* grids, const Geometry* geo, int q): 
-    grids_(grids), q_(q)
+SmithPar::SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par_in, int q): 
+    grids_(grids), grad_par(grad_par_in), q_(q)
 { 
-  // set up parallel derivatives, including |kpar|
-  grad_par = new GradParallelPeriodic(grids_);
-  abs_grad_par = new GradParallelPeriodic(grids_, true);
-
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
   cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
   
@@ -288,8 +273,8 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
 
       // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
-          grad_par->eval((G->G(l,m)), tmp);
-          abs_grad_par->eval(G->G(l,m), tmp_abs);
+          grad_par->dz((G->G(l,m)), tmp);
+          grad_par->abs_dz(G->G(l,m), tmp_abs);
           add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - l].y, tmp_abs, a_coefficients_[M - l].x, tmp);
       }
 

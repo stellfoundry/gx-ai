@@ -31,11 +31,12 @@ __managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
 __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 
-GradParallelPeriodic::GradParallelPeriodic(Grids* grids, bool abs) :
+GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   grids_(grids)
 {
   // (ky, kx, theta) <-> (ky, kx, kpar)
   cufftCreate(&gradpar_plan_forward);
+  cufftCreate(&abs_gradpar_plan_forward);
   cufftCreate(&gradpar_plan_inverse);
 
   int n = grids_->Nz; 			// size of FFT
@@ -53,24 +54,24 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids, bool abs) :
 
   cufftMakePlanMany(gradpar_plan_forward, dim, &n, &isize, istride, idist,
       	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany(abs_gradpar_plan_forward, dim, &n, &isize, istride, idist,
+      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
   cufftMakePlanMany(gradpar_plan_inverse, dim, &n, &isize, istride, idist,
       	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
 
 // set up callback functions
-  if(abs) {
-    cufftXtSetCallback(gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
-  } else {
-    cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
-  }
+  cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cufftXtSetCallback(abs_gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {
   cufftDestroy(gradpar_plan_forward);
+  cufftDestroy(abs_gradpar_plan_forward);
   cufftDestroy(gradpar_plan_inverse);
 }
 
 // FFT and derivative for all moments
-void GradParallelPeriodic::eval(MomentsG* G)
+void GradParallelPeriodic::dz(MomentsG* G)
 {
   // FFT and derivative on parallel term
   // i*kz*G calculated via callback, defined as part of gradpar_plan_forward
@@ -88,10 +89,19 @@ void GradParallelPeriodic::eval(MomentsG* G)
 }
 
 // FFT and derivative for a single moment
-void GradParallelPeriodic::eval(cuComplex* mom, cuComplex* res)
+void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
   reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
   cufftExecC2C(gradpar_plan_forward, mom, res, CUFFT_FORWARD);
+  cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
+  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+}
+
+// FFT and |kz| operator for a single moment
+void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
+{
+  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  cufftExecC2C(abs_gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
   reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
@@ -103,28 +113,28 @@ void GradParallelPeriodic::fft_only(cuComplex* mom, cuComplex* res, int dir)
   cufftExecC2C(gradpar_plan_inverse, mom, res, dir);
 }
 
-GradParallelLocal::GradParallelLocal(Grids* grids, bool abs) :
-  grids_(grids), abs_(abs)
+GradParallelLocal::GradParallelLocal(Grids* grids) :
+  grids_(grids)
 {
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
 }
 
-void GradParallelLocal::eval(MomentsG *G)
+void GradParallelLocal::dz(MomentsG *G)
 {
-  if(!abs_) {
-    G->scale(make_cuComplex(0.,1.));
-  }
+  G->scale(make_cuComplex(0.,1.));
 }
 
 // single moment
-void GradParallelLocal::eval(cuComplex* mom, cuComplex* res) 
+void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) 
 {
-  if(!abs_) {
-    scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, mom, make_cuComplex(0.,1.));
-  } else {
-    scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, mom, make_cuComplex(1.,0.));
-  }
+  scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, mom, make_cuComplex(0.,1.));
+}
+
+// single moment
+void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) 
+{
+  scale_singlemom_kernel<<<dimGrid,dimBlock>>>(res, mom, make_cuComplex(1.,0.));
 }
 
 GradParallel1D::GradParallel1D(Grids* grids)
@@ -148,7 +158,7 @@ GradParallel1D::~GradParallel1D() {
   cudaFree(b_complex);
 }
 
-void GradParallel1D::eval1D(float* b)
+void GradParallel1D::dz1D(float* b)
 {
   cufftExecR2C(gradpar_plan_forward, b, b_complex);
   cufftExecC2R(gradpar_plan_inverse, b_complex, b);

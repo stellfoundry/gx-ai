@@ -98,14 +98,14 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
   }
 
   // out-of-place, with only a single moment
-  grad_par->eval(GInit->dens_ptr[0], GRes->dens_ptr[0]);
+  grad_par->dz(GInit->dens_ptr[0], GRes->dens_ptr[0]);
   
   for(int i=0; i<grids->Nz; i++) {
     EXPECT_FLOAT_EQ_D(&GRes->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
   }
 
   // in place, with entire HL moms array
-  grad_par->eval(GInit);
+  grad_par->dz(GInit);
   for(int i=0; i<grids->Nz; i++) {
     EXPECT_FLOAT_EQ_D(&GInit->dens_ptr[0][i].x, deriv_check[i], 1.e-7);
   }
@@ -170,7 +170,7 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   }
 
   // out-of-place, with only a single moment
-  grad_par->eval(GInit->upar_ptr[0], GRes->upar_ptr[0]);
+  grad_par->dz(GInit->upar_ptr[0], GRes->upar_ptr[0]);
 
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
@@ -182,7 +182,7 @@ TEST_F(TestGradParallel3D, EvaluateDerivative) {
   }
 
   // in place, with entire LH G array
-  grad_par->eval(GInit);
+  grad_par->dz(GInit);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {

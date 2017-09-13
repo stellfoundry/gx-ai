@@ -22,7 +22,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     grad_par = new GradParallelLocal(grids_);
   }
 //  else if(pars_->boundary_option_linked) {
-//    grad_par = new GradParallelLinked(grids_);
+//    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
 //  }
   else {
     grad_par = new GradParallelPeriodic(grids_);
@@ -30,13 +30,13 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
  
   if(pars_->closure_model==BEER42) {
     printf("Initializing Beer 4+2 closures\n");
-    closures = new Beer42(grids_, geo_, pars_->local_limit);
+    closures = new Beer42(grids_, geo_, grad_par);
   } else if (pars_->closure_model==SMITHPERP) {
     printf("Initializing Smith perpendicular toroidal closures\n");
     closures = new SmithPerp(grids_, geo_, pars_->smith_perp_q, pars_->smith_perp_w0);
   } else if (pars_->closure_model == SMITHPAR) {
     printf("Initializing Smith parallel closures\n");
-    closures = new SmithPar(grids_, geo_, pars_->smith_par_q);
+    closures = new SmithPar(grids_, geo_, grad_par, pars_->smith_par_q);
   }
 
 
@@ -65,9 +65,9 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 
 Linear::~Linear()
 {
+  if(pars_->closure_model>0) delete closures;
   delete grad_par;
   delete GRhs_par;
-  if(pars_->closure_model>0) delete closures;
 }
 
 int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
@@ -88,7 +88,7 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   }
 
   // parallel gradient term
-  grad_par->eval(GRhs_par);
+  grad_par->dz(GRhs_par);
 
   // combine
   GRhs->add_scaled(1., GRhs, (float) geo_->gradpar, GRhs_par);
