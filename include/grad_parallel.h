@@ -12,7 +12,6 @@ class GradParallel {
   virtual void eval(MomentsG* G)=0;
   virtual void eval(cuComplex* m, cuComplex* res)=0;
   virtual void fft_only(cuComplex* m, cuComplex* res, int dir) {};
- private:
 };
 
 class GradParallelPeriodic : public GradParallel {
@@ -31,6 +30,36 @@ class GradParallelPeriodic : public GradParallel {
   cufftHandle gradpar_plan_inverse;
 };
 
+class GradParallelLinked : public GradParallel {
+ public:
+  GradParallelLinked(Grids* grids, int jtwist, bool abs=false);
+  ~GradParallelLinked();
+
+  void eval(MomentsG* G);
+  void eval(cuComplex* m, cuComplex* res);
+  void linkPrint();
+
+ private:
+  Grids *grids_;
+  
+  int get_nClasses(int *idxRight, int *idxLeft, int *linksR, int *linksL, int *n_k, int naky, int ntheta0, int jshift0);
+  void get_nLinks_nChains(int *nLinks, int *nChains, int *n_k, int nClasses, int naky, int ntheta0);
+  void kFill(int nClasses, int *nChains, int *nLinks, int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int naky, int ntheta0);
+  
+  int nClasses;
+  int *nLinks, *nChains;
+  int **ikxLinked_h, **ikyLinked_h;
+  int **ikxLinked, **ikyLinked;
+  float **kzLinked;
+  cuComplex **G_linked;
+
+  cufftHandle* gradpar_plan_forward;
+  cufftHandle* gradpar_plan_inverse;
+  cufftHandle* gradpar_plan_forward_singlemom;
+  cufftHandle* gradpar_plan_inverse_singlemom;
+  dim3 *dimGrid, *dimBlock;
+};
+
 class GradParallelLocal : public GradParallel {
  public:
   GradParallelLocal(Grids* grids, bool abs=false);
@@ -43,15 +72,6 @@ class GradParallelLocal : public GradParallel {
   const bool abs_;
 
   dim3 dimGrid, dimBlock;
-};
-
-class GradParallelLinked : public GradParallel {
- public:
-  GradParallelLinked(Grids* grids, bool abs=false);
-  ~GradParallelLinked();
-
- private:
-  
 };
 
 class GradParallel1D {

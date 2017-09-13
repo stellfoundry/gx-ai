@@ -34,10 +34,8 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f) {
     G->add_scaled(1., G, dt_, GRhs);
   }
   linear_->rhs(GStar, f, GRhs);
-  //GStar->add_scaled(1., G, dt_, GRhs);
   G->add_scaled(1., G, dt_, GRhs);
 
-  //G->copyFrom(GStar);
   if (forcing_ != NULL) {
     forcing_->stir(G);
   }

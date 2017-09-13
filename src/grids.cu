@@ -60,6 +60,7 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nm, &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nl, &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(zp, &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
 
   // initialize k arrays

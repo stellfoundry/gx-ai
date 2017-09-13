@@ -38,22 +38,23 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids, bool abs) :
   cufftCreate(&gradpar_plan_forward);
   cufftCreate(&gradpar_plan_inverse);
 
-  int n = grids_->Nz;
-  int inembed = grids_->NxNycNz;
-  int onembed = grids_->NxNycNz;
+  int n = grids_->Nz; 			// size of FFT
+  int isize = grids_->NxNycNz;		// size of input data
+  int osize = grids_->NxNycNz;		// size of output data
+  int dim = 1;				// 1 dimensional
+  int istride = grids_->NxNyc;		// distance between two elements in a batch 
+					// = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
+  int idist = 1;			// idist = distance between first element of consecutive batches 
+					// = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
+  int ostride = grids_->NxNyc;
+  int odist = 1;
+  int batchsize = grids_->NxNyc;	// number of consecutive transforms
   size_t workSize;
-  cufftMakePlanMany(gradpar_plan_forward, 1,   &n, &inembed, grids_->NxNyc, 1,
-      	      //  dim,  n,  isize,   istride,       idist,
-      	      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
-  // osize,   ostride,       odist, type,      batchsize
-  cufftMakePlanMany(gradpar_plan_inverse, 1,   &n, &inembed, grids_->NxNyc, 1,
-      	      //  dim,  n,  isize,   istride,       idist,
-      	      &onembed, grids_->NxNyc, 1,     CUFFT_C2C, grids_->NxNyc, &workSize);
-  // osize,   ostride,       odist, type,      batchsize
-  // isize = size of input data
-  // istride = distance between two elements in a batch = distance between (ky,kx,z=1) and (ky,kx,z=2) = Nx*(Ny/2+1)
-  // idist = distance between first element of consecutive batches = distance between (ky=1,kx=1,z=1) and (ky=2,kx=1,z=1) = 1
 
+  cufftMakePlanMany(gradpar_plan_forward, dim, &n, &isize, istride, idist,
+      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany(gradpar_plan_inverse, dim, &n, &isize, istride, idist,
+      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
 
 // set up callback functions
   if(abs) {
