@@ -3,6 +3,7 @@
 #include <string.h>
 #include <float.h>
 #include <time.h>
+#include "mpi.h"
 
 #pragma once
 
@@ -73,11 +74,11 @@ struct gx_outputs_struct {
 };
 
 extern "C"
-void gx_get_default_parameters_(struct external_parameters_struct *, char * namelistFile, int mpcom);
+void gx_get_default_parameters_(struct external_parameters_struct *, char * namelistFile, MPI_Comm mpcom);
 extern "C"
-void gx_get_fluxes_(struct external_parameters_struct *, struct gx_outputs_struct*, char * namelistFile, int mpcom);
+void gx_get_fluxes_(struct external_parameters_struct *, struct gx_outputs_struct*, char * namelistFile, MPI_Comm mpcom);
 
 
-void gx_main(int argc, char* argv[], int mpcom);
+void gx_main(int argc, char* argv[], MPI_Comm mpcom);
 
 

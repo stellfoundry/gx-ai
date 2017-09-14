@@ -21,9 +21,9 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     printf("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-//  else if(pars_->boundary_option_linked) {
-//    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
-//  }
+  else if(pars_->boundary_option_linked) {
+    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+  }
   else {
     grad_par = new GradParallelPeriodic(grids_);
   }

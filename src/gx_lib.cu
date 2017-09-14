@@ -12,7 +12,7 @@ __global__ void test(float* z) {
   printf("Device: %f\n", z[0]);
 }
 
-void gx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, int mpcom) {  
+void gx_get_default_parameters_(struct external_parameters_struct * externalpars, char * namelistfileName, MPI_Comm mpcom) {  
   
   int iproc;
 
@@ -71,7 +71,7 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
 }
   
 void gx_get_fluxes_(struct external_parameters_struct *  externalpars, 
-			struct gx_outputs_struct * gxouts, char* namelistfileName, int mpcom)
+			struct gx_outputs_struct * gxouts, char* namelistfileName, MPI_Comm mpcom)
 {
    int iproc;
    // iproc doesn't necessarily have to be the same as it was in 
@@ -142,7 +142,7 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   delete diagnostics;
 }  	
 
-void gx_main(int argc, char* argv[], int mpcom) {
+void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
   struct external_parameters_struct externalpars;
   struct gx_outputs_struct gxouts;
   char* namelistfileName;

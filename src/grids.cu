@@ -1,5 +1,6 @@
 #include "grids.h"
 #include "cuda_constants.h"
+#include "get_error.h"
 
 __global__ void kInit(float* kx, float* ky, float* kz, 
                       float X0, float Y0, int Zp) 
@@ -44,6 +45,7 @@ Grids::Grids(Parameters* pars) :
   Nmoms(Nm*Nl),
   pars_(pars)
 {
+  cudaDeviceSynchronize();
   cudaMallocHost((void**) &kx_h, sizeof(float)*Nx);
   cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
   cudaMallocHost((void**) &kz_h, sizeof(float)*Nz);
@@ -51,6 +53,7 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc((void**) &kx, sizeof(float)*Nx);
   cudaMalloc((void**) &ky, sizeof(float)*Nyc);
   cudaMalloc((void**) &kz, sizeof(float)*Nz);
+
 
   // copy some parameters to device constant memory 
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
