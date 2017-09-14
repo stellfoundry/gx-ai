@@ -35,7 +35,8 @@ Grids::Grids(Parameters* pars) :
   // some additional derived grid sizes
   Nyc(Ny/2+1),
   Naky((Ny-1)/3+1),
-  Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
+  //Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
+  Nakx(1 + 2*((Nx-1)/3)),
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
   NxNycNz(Nx * Nyc * Nz),

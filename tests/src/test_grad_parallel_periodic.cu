@@ -9,7 +9,7 @@
 #include "device_funcs.h"
 #include "diagnostics.h"
 
-class TestGradParallel1D : public ::testing::Test {
+class TestGradParallelPeriodic1D : public ::testing::Test {
 protected:
   virtual void SetUp() {
     pars = new Parameters;
@@ -39,7 +39,7 @@ protected:
   GradParallel *grad_par;
 };
 
-class TestGradParallel3D : public ::testing::Test {
+class TestGradParallelPeriodic3D : public ::testing::Test {
 protected:
   virtual void SetUp() {
     pars = new Parameters;
@@ -69,7 +69,7 @@ protected:
   GradParallel *grad_par;
 };
 
-TEST_F(TestGradParallel1D, EvaluateDerivative) {
+TEST_F(TestGradParallelPeriodic1D, EvaluateDerivative) {
   Geometry* geo;
   geo = new S_alpha_geo(pars, grids);
   
@@ -117,7 +117,7 @@ TEST_F(TestGradParallel1D, EvaluateDerivative) {
   delete geo;
 }
 
-TEST_F(TestGradParallel3D, EvaluateDerivative) {
+TEST_F(TestGradParallelPeriodic3D, EvaluateDerivative) {
   Geometry* geo;
   geo = new S_alpha_geo(pars, grids);
   //strncpy(pars->run_name, "test", strlen("test")-1);

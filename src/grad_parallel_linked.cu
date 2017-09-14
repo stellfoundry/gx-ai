@@ -4,6 +4,7 @@
 #include "cufftXt.h"
 #include "cufft.h"
 #include <stdlib.h>
+#include "get_error.h"
 
 __global__ void linkedCopy(cuComplex* G, cuComplex* G_linked, int nLinks, int nChains, int* ikx, int* iky, int nMoms);
 __global__ void linkedCopyBack(cuComplex* G_linked, cuComplex* G, int nLinks, int nChains, int* ikx, int* iky, int nMoms);
@@ -60,8 +61,8 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
   get_nLinks_nChains(nLinks, nChains, n_k, nClasses, naky, ntheta0);
 
-  ikxLinked_h = (int**) malloc(sizeof(int)*nClasses);
-  ikyLinked_h = (int**) malloc(sizeof(int)*nClasses);
+  ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses);
+  ikyLinked_h = (int**) malloc(sizeof(int*)*nClasses);
   for(int c=0; c<nClasses; c++) {
     ikxLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
     ikyLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
@@ -82,14 +83,17 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
   cudaMallocHost((void**) &ikyLinked, sizeof(int*)*nClasses);
   cudaMallocHost((void**) &G_linked, sizeof(cuComplex*)*nClasses);
   cudaMallocHost((void**) &kzLinked, sizeof(float*)*nClasses);
+
+  printf("nClasses = %d\n", nClasses);
   for(int c=0; c<nClasses; c++) {
+    printf("\tClass %d: nChains = %d, nLinks = %d\n", c, nChains[c], nLinks[c]);
     // allocate and copy into device memory
     cudaMalloc((void**) &ikxLinked[c], sizeof(int)*nLinks[c]*nChains[c]);
     cudaMalloc((void**) &ikyLinked[c], sizeof(int)*nLinks[c]*nChains[c]);
     cudaMemcpy(ikxLinked[c], ikxLinked_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
     cudaMemcpy(ikyLinked[c], ikyLinked_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
 
-    cudaMalloc((void**) &G_linked[c], sizeof(cuComplex)*grids_->Nz*nLinks[c]*nChains[c]*grids_->Nl*grids_->Nm);
+    checkCuda(cudaMalloc((void**) &G_linked[c], sizeof(cuComplex)*grids_->Nz*nLinks[c]*nChains[c]*grids_->Nl*grids_->Nm));
     cudaMemset(G_linked[c], 0., sizeof(cuComplex)*grids_->Nz*nLinks[c]*nChains[c]*grids_->Nl*grids_->Nm);
 
     cudaMalloc((void**) &kzLinked[c], sizeof(float)*grids_->Nz*nLinks[c]);
@@ -458,6 +462,8 @@ void GradParallelLinked::kFill(int nClasses, int *nChains, int *nLinks, int **ky
 }      	
 
 void GradParallelLinked::linkPrint() {
+  printf("Printing links...\n");
+
   for(int c=0; c<nClasses; c++) {
     for(int n=0; n<nChains[c]; n++) {
       for(int p=0; p<nLinks[c]; p++) {
