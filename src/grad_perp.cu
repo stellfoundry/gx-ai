@@ -4,20 +4,20 @@
 #include "grad_perp.h"
 #include "cuda_constants.h"
 
-__device__ void i_kx(void *dataOut, size_t offset, cufftComplex element, void *kxData, void *sharedPtr)
+__device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr)
 {
   float *kx = (float*) kxData;
   unsigned int idx = offset % (nx*nyc) / nyc; 
   cuComplex Ikx = make_cuComplex(0., kx[idx]);
-  ((cuComplex*)dataOut)[offset] = Ikx*element;
+  return Ikx*((cuComplex*)dataIn)[offset];
 }
 
-__device__ void i_ky(void *dataOut, size_t offset, cufftComplex element, void *kyData, void *sharedPtr)
+__device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr)
 {
   float *ky = (float*) kyData;
   unsigned int idy = offset % (nx*nyc) % nyc; 
   cuComplex Iky = make_cuComplex(0., ky[idy]);
-  ((cuComplex*)dataOut)[offset] = Iky*element;
+  return Iky*((cuComplex*)dataIn)[offset];
 }
 
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
@@ -35,8 +35,8 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   }
 }
 
-__managed__ cufftCallbackStoreC i_kx_callbackPtr = i_kx;
-__managed__ cufftCallbackStoreC i_ky_callbackPtr = i_ky;
+__managed__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
+__managed__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
 __managed__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
 
 GradPerp::GradPerp(Grids* grids, int batch_size)

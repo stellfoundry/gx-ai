@@ -42,6 +42,7 @@ class GradParallelLinked : public GradParallel {
   void dz(cuComplex* m, cuComplex* res);
   void abs_dz(cuComplex* m, cuComplex* res);
   void linkPrint();
+  void identity(MomentsG* G); // for testing
 
  private:
   Grids *grids_;
@@ -49,6 +50,8 @@ class GradParallelLinked : public GradParallel {
   int get_nClasses(int *idxRight, int *idxLeft, int *linksR, int *linksL, int *n_k, int naky, int ntheta0, int jshift0);
   void get_nLinks_nChains(int *nLinks, int *nChains, int *n_k, int nClasses, int naky, int ntheta0);
   void kFill(int nClasses, int *nChains, int *nLinks, int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int naky, int ntheta0);
+  void set_callbacks();
+  void clear_callbacks();
   
   int nClasses;
   int *nLinks, *nChains;

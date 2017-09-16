@@ -59,7 +59,13 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   cufftMakePlanMany(gradpar_plan_inverse, dim, &n, &isize, istride, idist,
       	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
 
-// set up callback functions
+  //cufftCallbackStoreC i_kz_callbackPtr_host;
+  //cufftCallbackStoreC abs_kz_callbackPtr_host;
+
+  //cudaMemcpyFromSymbol(&i_kz_callbackPtr_host, i_kz_callbackPtr, sizeof(i_kz_callbackPtr_host));
+  //cudaMemcpyFromSymbol(&abs_kz_callbackPtr_host, abs_kz_callbackPtr, sizeof(abs_kz_callbackPtr_host));
+
+  // set up callback functions
   cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(abs_gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
 }
@@ -91,7 +97,7 @@ void GradParallelPeriodic::dz(MomentsG* G)
 // FFT and derivative for a single moment
 void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
   reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);

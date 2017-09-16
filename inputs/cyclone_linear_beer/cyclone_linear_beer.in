@@ -112,7 +112,7 @@
  fphi = 1.0 ! Multiplies Phi (electrostatic potential).
  fapar = 0.0 ! Multiplies A_par. Use 1 for finite beta (electromagnetic), 0 otherwise (electrostatic)
  faperp = 0.0 ! Multiplies A_perp. Use 1 for high beta, 0 otherwise. Deprecated: use fbpar instead
- delt = 0.02 ! Time step
+ delt = 0.002 ! Time step
  nstep = 2500 ! Maximum number of timesteps
 /
 
