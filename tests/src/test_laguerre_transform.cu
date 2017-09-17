@@ -20,7 +20,7 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    laguerre = new LaguerreTransform(grids,pars->nm_in);
+    laguerre = new LaguerreTransform(grids,1);
     L = grids->Nl - 1;
     J = (3*L-1)/2;
   }
@@ -92,4 +92,35 @@ TEST_F(TestLaguerreTransform, roots) {
   }
 }
 
+TEST_F(TestLaguerreTransform, identity) {
+  
+  float *G, *g, *Gres, *init_h;
 
+  cudaMallocHost((void**) &init_h, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &G, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &Gres, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &g, sizeof(float)*grids->NxNyNz*(laguerre->J+1));
+
+  srand(22);
+  float samp = 1.;
+  for(int l=0; l<grids->Nl; l++) {
+    for(int i=0; i<grids->Ny; i++) {
+      for(int j=0; j<grids->Nx; j++) {
+          float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+          for(int k=0; k<grids->Nz; k++) {
+            int index = i + grids->Ny*j + grids->NxNy*k + grids->NxNyNz*l;
+    	    init_h[index] = ra*cos(1.*geo->z_h[k]/pars->Zp);
+          }
+      }
+    }
+  }
+  cudaMemcpy(G, init_h, sizeof(float)*grids->NxNyNz*grids->Nl);
+
+  laguerre->transformToGrid(G, g);
+  laguerre->transformToSpectral(g, Gres);
+  
+  for(int i=0; i<grids->NxNyNz*grids->Nl; i++) {
+    EXPECT_FLOAT_EQ_D(&Gres[i], init_h[i], 1.e-7);
+  }
+
+}
