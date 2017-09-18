@@ -103,24 +103,42 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
 
 int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 {
+  int m = grids_->NxNyNz;
+  int n = J+1;
+  int k = L+1;
   float alpha = 1.;
+  int lda = grids_->NxNyNz;
+  int strideA = grids_->NxNyNz*(L+1);
+  int ldb = L+1;
+  int strideB = 0;
   float beta = 0.;
+  int ldc = grids_->NxNyNz;
+  int strideC = grids_->NxNyNz*(J+1);
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-     grids_->NxNyNz, J+1, L+1, &alpha,
-     G_in, grids_->NxNyNz, grids_->NxNyNz*(L+1),
-     toGrid, J+1, 0,
-     &beta, g_res, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
+     m, n, k, &alpha,
+     G_in, lda, strideA,
+     toGrid, ldb, strideB,
+     &beta, g_res, ldc, strideC,
      batch_size_);
 }
 
 int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
 {
+  int m = grids_->NxNyNz;
+  int n = L+1;
+  int k = J+1;
   float alpha = 1.;
+  int lda = grids_->NxNyNz;
+  int strideA = grids_->NxNyNz*(J+1);
+  int ldb = J+1;
+  int strideB = 0;
   float beta = 0.;
+  int ldc = grids_->NxNyNz;
+  int strideC = grids_->NxNyNz*(L+1);
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-     grids_->NxNyNz, L+1, J+1, &alpha,
-     g_in, grids_->NxNyNz, grids_->NxNyNz*(J+1),
-     toSpectral, L+1, 0,
-     &beta, G_res, grids_->NxNyNz, grids_->NxNyNz*(J+1), 
+     m, n, k, &alpha,
+     g_in, lda, strideA,
+     toSpectral, ldb, strideB,
+     &beta, G_res, ldc, strideC,
      batch_size_);
 }
