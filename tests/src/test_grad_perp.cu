@@ -59,7 +59,7 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
   srand(22);
   for(int idz=0; idz<grids->Nz; idz++) {
     for(int idl=0; idl<grids->Nl; idl++) {
-      float ra = (float) (pars->init_amp *(rand()-RAND_MAX/2)/RAND_MAX);
+      float ra = (float) (rand()-RAND_MAX/2)/RAND_MAX;
       for(int idx=0; idx<grids->Nx; idx++) {
         for(int idy=0; idy<grids->Ny; idy++) {
           int globalIdx = idy + grids->Ny*idx + grids->Nx*grids->Ny*idz + grids->NxNyNz*idl;
@@ -78,13 +78,15 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
   grad_perp->dxC2R(comp, dx);
   grad_perp->dyC2R(comp, dy);
 
+  printf("Checking...\n");
+
   for(int idz=0; idz<grids->Nz; idz++) {
     for(int idl=0; idl<grids->Nl; idl++) {
       for(int idx=0; idx<grids->Nx; idx++) {
         for(int idy=0; idy<grids->Ny; idy++) {
           int globalIdx = idy + grids->Ny*idx + grids->Nx*grids->Ny*idz + grids->NxNyNz*idl;
-          EXPECT_FLOAT_EQ_D(&dx[globalIdx], dxcheck[globalIdx], 1.e-7);
-          EXPECT_FLOAT_EQ_D(&dy[globalIdx], dycheck[globalIdx], 1.e-7);
+          EXPECT_FLOAT_EQ_D(&dx[globalIdx], dxcheck[globalIdx], 1.e-6);
+          EXPECT_FLOAT_EQ_D(&dy[globalIdx], dycheck[globalIdx], 1.e-6);
         }
       }
     }
