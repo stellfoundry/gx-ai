@@ -55,3 +55,5 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex
 
 __global__ void reality_kernel(cuComplex* g);
 __global__ void reality_singlemom_kernel(cuComplex* mom);
+
+__device__ float atomicMaxFloat(float* address, float val);

@@ -66,11 +66,26 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
   }
 }
 
+__global__ void max_abs(float *f, float *res)
+{
+  float vmax = 0.;
+  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+    vmax = fmaxf(abs(f[idxyz]), vmax);
+  }
+  atomicMaxFloat(res, vmax);
+}
+
 // Note: should only be called after nlps5d, as it assumes 
 // dJ0phi_dx, dJ0phi_dy have been calculated.
 double Nonlinear::cfl(double dt_max)
 {
-  double vmax = 0.001; // DUMMY
+  float vmax = 1.e-10;
+  float vmax_x = 1.e-10, vmax_y = 1.e-10;
+  int threads=256;
+  int blocks=min((grids_->NxNyNz+threads-1)/threads,2048);
+  max_abs<<<blocks,threads>>>(dJ0phi_dx, &vmax_x);
+  max_abs<<<blocks,threads>>>(dJ0phi_dy, &vmax_y);
+  vmax = max(vmax_x, vmax_y);
   dt_cfl = 1./vmax < dt_max ? 1./vmax : dt_max;
   
   return dt_cfl;
