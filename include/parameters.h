@@ -122,6 +122,7 @@ class Parameters {
    //adiabatic_option="iphi00=2"
    //  float gridfac;
    //boundary_option="linked"
+     bool boundary_option_periodic;
      float g_exb;
   
   

@@ -148,6 +148,14 @@ int Parameters::read_namelist(char* filename)
 
 
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
+
+  char* boundary_opt_str;
+  fnr_get_string(&namelist_struct, "dist_fn_knobs", "boundary_option", &boundary_opt_str);
+  if( strcmp(boundary_opt_str,"periodic") == 0) {
+    boundary_option_periodic = true;
+  } else {
+    boundary_option_periodic = false;
+  }
   
   fnr_get_float(&namelist_struct, "parameters", "tite", &(ti_ov_te));
   // ti_ov_te is overwritten for non-adiabatic electrons
@@ -298,6 +306,8 @@ int Parameters::read_namelist(char* filename)
 
   if(qsf<0 && nz_in==1) local_limit=true;
   else local_limit = false;
+
+  
 
   // mfm
   fnr_get_string_no_test(&namelist_struct, "gx_knobs", "geofile", &geofilename);
