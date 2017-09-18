@@ -7,7 +7,6 @@
 ##################################################
 
 define STANDARD_SYSTEM_CONFIGURATION
-module reset ;\
 module load TACC-paths  Linux  cluster-paths  cluster  TACC;\
 module load intel/15.0.3 ;\
 module load mvapich2/2.1 ;\
