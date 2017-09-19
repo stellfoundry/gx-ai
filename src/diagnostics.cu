@@ -27,7 +27,9 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   fields_old = new Fields(grids_);
-  //grad_parallel = new GradParallelPeriodic(grids_);
+  cudaDeviceSynchronize();
+  grad_parallel = new GradParallelPeriodic(grids_);
+  cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 
   cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
@@ -231,7 +233,7 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
   char ofilename[2000];
   sprintf(ofilename, "%s.%s.kpar_field", pars_->run_name, name);
   FILE* out = fopen(ofilename,"w+");
-  //grad_parallel->fft_only(m, res, CUFFT_FORWARD);
+  grad_parallel->fft_only(m, res, CUFFT_FORWARD);
   cudaMemcpy(m_h,res,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tkz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
   fprintf(out, "\n");

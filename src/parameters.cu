@@ -41,7 +41,11 @@ Parameters::Parameters() {
 }
 
 Parameters::~Parameters() {
-  if(initialized) cudaFree(species);
+  cudaDeviceSynchronize();
+  if(initialized) {
+    cudaFree(species);
+    //cudaFreeHost(species_h);
+  }
 }
 
 int Parameters::read_namelist(char* filename)
@@ -196,8 +200,6 @@ int Parameters::read_namelist(char* filename)
   fnr_get_float(&namelist_struct, "knobs", "margin_cpu_time", &(margin_cpu_time));
   //maxdt?
   
-  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec_in));
-  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
   
   linear = !get_bool_on_off(&namelist_struct, "nonlinear_terms_knobs", "nonlinear_mode");
   
@@ -446,6 +448,10 @@ int Parameters::read_namelist(char* filename)
   snyder_electrons = get_bool_on_off(&namelist_struct, "gx_knobs", "snyder_electrons");
   stationary_ions = get_bool_on_off(&namelist_struct, "gx_knobs", "stationary_ions");
    
+  fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec_in));
+  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
+  //cudaMallocHost((void**) &species_h, sizeof(specie)*nspec_in);
+
     int ionspec = 0;   
     int ispec = 1;
     float mass;
@@ -508,6 +514,10 @@ int Parameters::read_namelist(char* filename)
 
 
   }
+  cudaDeviceSynchronize();
+  init_species(species);
+  //cudaMemcpy(species, species, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
+
 		//free(type);
 		fnr_free(&namelist_struct);
 		fnr_free(&namelist_defaults);
@@ -515,6 +525,18 @@ int Parameters::read_namelist(char* filename)
   initialized = true;
   cudaDeviceSynchronize();
   return 0;
+}
+
+void Parameters::init_species(specie* species)
+{
+  for(int s=0; s<nspec_in; s++) {
+    species[s].vt = sqrt(species[s].temp/species[s].mass);
+    species[s].zstm = species[s].z/sqrt(species[s].temp*species[s].mass);
+    species[s].tz = species[s].temp/species[s].z;
+    species[s].zt = species[s].z/species[s].temp;
+    species[s].rho = sqrt(species[s].temp*species[s].mass)/species[s].z;
+    species[s].rho2 = species[s].rho*species[s].rho;
+  }
 }
 
 // this function copies elements of parameters object into external_parameters_struct externalpars
@@ -646,6 +668,7 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
 	   species[i].tprim = externalpars->tprim[i] ;
 	   species[i].nu_ss = externalpars->nu[i] ;
   }
+  //cudaMemcpy(species, species, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
 
   //jtwist should never be < 0. If we set jtwist < 0 in the input file,
   // this triggers the use of jtwist_square... i.e. jtwist is 

@@ -28,6 +28,7 @@ class Parameters {
 
     int set_externalpars(external_parameters_struct* externalpars);
     int import_externalpars(external_parameters_struct* externalpars);
+    void init_species(specie* species);
 
     int iproc;
 
@@ -173,7 +174,7 @@ class Parameters {
     // Namelist: species_knobs
      int nspec_in;
 
-     specie * species;
+     specie *species, *species_h;
   
      
      bool adiabatic_electrons;
