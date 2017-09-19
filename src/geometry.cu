@@ -81,6 +81,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
     shat = pars->shat;
     
     pars->drhodpsi = 1.; 
+    pars->kxfac = 1.;
 
     float qsf = pars->qsf;
     float beta_e = pars->beta;

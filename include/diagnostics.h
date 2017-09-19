@@ -47,7 +47,7 @@ class Diagnostics {
 
   bool checkstop();
  
-  float* hlspectrum;
+  float *hlspectrum, *hlspectrum_h;
  
   float fluxDenom;
 

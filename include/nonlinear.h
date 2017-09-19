@@ -9,7 +9,7 @@
 
 class Nonlinear {
  public:
-  Nonlinear(Grids* grids, Geometry* geo);
+  Nonlinear(Parameters* pars, Grids* grids, Geometry* geo);
   ~Nonlinear();
 
   void nlps5d(MomentsG* G, Fields* f, MomentsG* G_res);
@@ -18,6 +18,7 @@ class Nonlinear {
  private:
 
   LaguerreTransform* laguerre;
+  Parameters* pars_;
   Grids* grids_;
   Geometry* geo_;
   GradPerp* grad_perp_G;

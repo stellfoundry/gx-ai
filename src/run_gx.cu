@@ -74,7 +74,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     linear = new Linear(pars, grids, geo);
     if(!pars->linear) {
       printf("\tNonlinear terms...\n");
-      nonlinear = new Nonlinear(grids, geo);
+      nonlinear = new Nonlinear(pars, grids, geo);
     } else {
       nonlinear = NULL;
     }

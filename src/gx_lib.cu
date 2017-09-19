@@ -128,6 +128,8 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     checkCuda(cudaGetLastError());
   }
 
+  cudaDeviceSynchronize();
+
   /////////////////////////
   // This is the main call
   ////////////////////////

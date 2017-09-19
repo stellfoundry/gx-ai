@@ -27,13 +27,12 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   fields_old = new Fields(grids_);
-  grad_parallel = new GradParallelPeriodic(grids_);
+  //grad_parallel = new GradParallelPeriodic(grids_);
   checkCuda(cudaGetLastError());
 
   cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
-  cudaDeviceSynchronize();
-  cudaMallocManaged((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
-  cudaDeviceSynchronize();
+  cudaMallocHost((void**) &hlspectrum_h, sizeof(float)*grids_->Nmoms);
+  cudaMalloc((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
   
   cudaMallocHost((void**) &growth_rates_h, sizeof(cuDoubleComplex)*grids_->NxNyc);
 
@@ -69,6 +68,7 @@ Diagnostics::~Diagnostics()
   delete fields_old;
   cudaFree(growth_rates);
   cudaFree(hlspectrum);
+  cudaFreeHost(hlspectrum_h);
   cudaFreeHost(growth_rates_h);
   if(pars_->source_option == PHIEXT) {
     fclose(timefile);
@@ -231,7 +231,7 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
   char ofilename[2000];
   sprintf(ofilename, "%s.%s.kpar_field", pars_->run_name, name);
   FILE* out = fopen(ofilename,"w+");
-  grad_parallel->fft_only(m, res, CUFFT_FORWARD);
+  //grad_parallel->fft_only(m, res, CUFFT_FORWARD);
   cudaMemcpy(m_h,res,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tkz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
   fprintf(out, "\n");
@@ -362,10 +362,12 @@ void Diagnostics::writeLHspectrum(MomentsG* G, int ikx, int iky)
   char ofilename[2000];
   sprintf(ofilename, "%s.hlspectrum.out", pars_->run_name);
   FILE* out = fopen(ofilename,"w+");
+
+  cudaMemcpy(hlspectrum_h, hlspectrum, sizeof(float)*grids_->Nmoms, cudaMemcpyDeviceToHost);
   
   for(int m=0; m<grids_->Nm; m++) {
     for(int l=0; l<grids_->Nl; l++) {
-      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum[l+grids_->Nl*m]);
+      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum_h[l+grids_->Nl*m]);
     }
     fprintf(out, "\n");
   }

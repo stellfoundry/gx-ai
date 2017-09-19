@@ -105,7 +105,7 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 # define S_G(L, M) s_g[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(cuComplex *g, cuComplex* phi, 
 	cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-	float* b, float* omegad, float* bgrad, float* ky, specie* species,
+	float* kperp2, float* omegad, float* bgrad, float* ky, specie* species,
 	cuComplex* rhs_par, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
@@ -125,8 +125,6 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     // local to each thread (i.e. each idxyz).
     // since idxyz is linear, these accesses are coalesced.
     const cuComplex phi_ = phi[idxyz];
-    const float b_ = b[idxyz];
-    const cuComplex iomegad_ = make_cuComplex(0., omegad[idxyz]);
   
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad was in shared memory, would have bank conflicts.
@@ -144,7 +142,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     const float nu_ = s.nu_ss; 
     const float tprim_ = s.tprim;
     const float fprim_ = s.fprim;
-    //const float rho_ = s.rho;
+    const float b_s = kperp2[idxyz] * s.rho2;
+    const cuComplex iomegad_s = s.tz * make_cuComplex(0., omegad[idxyz]);
 
     // conservation terms (species-specific)
     cuComplex upar_bar_ = upar_bar[idxyz + is*nx*nyc*nz];
@@ -201,37 +200,37 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
       int sm = m + 2; // offset to get past ghosts
   
       // need to calculate parallel terms separately because need to take derivative via fft 
-      rhs_par[globalIdx] = -( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
+      rhs_par[globalIdx] = -s.vt*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
       // remaining terms
       rhs[globalIdx] = 
-       - bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
+       - s.vt * bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
   
                     + sqrtf(m)*l*S_G(sl,sm-1) + sqrtf(m)*(l+1)*S_G(sl+1,sm-1) )
   
-          - iomegad_ * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + sqrtf(m*(m-1))*S_G(sl,sm-2)
+          - iomegad_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + sqrtf(m*(m-1))*S_G(sl,sm-2)
   
                         + (l+1)*S_G(sl+1,sm) + l*S_G(sl-1,sm) + 2.*(l+m+1)*S_G(sl,sm) )
   
-           - nu_ * ( b_ + 2*l + m ) * ( S_G(sl,sm) + Jflr(l, b_)*phi_ );
+           - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) + Jflr(l, b_s)*phi_ );
   
       // add drive and conservation terms in low hermite moments
       if(m==0) {
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
-                  Jflr(l-1,b_)*( -l*iomegad_ + l*tprim_*iomegastar_ ) 
-                + Jflr(l,  b_)*( -2*(l+1)*iomegad_ + (fprim_ + tprim_*2*l)*iomegastar_ )
-                + Jflr(l+1,b_)*( -(l+1)*iomegad_ + (l+1)*tprim_*iomegastar_ ) )
-		+ nu_ * sqrtf(b_) * ( Jflr(l, b_) + Jflr(l-1, b_) ) * uperp_bar_
-		+ nu_ * 2. * ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) ) * t_bar_;
+                  Jflr(l-1,b_s)*( -l*iomegad_s + l*tprim_*iomegastar_ ) 
+                + Jflr(l,  b_s)*( -2*(l+1)*iomegad_s + (fprim_ + tprim_*2*l)*iomegastar_ )
+                + Jflr(l+1,b_s)*( -(l+1)*iomegad_s + (l+1)*tprim_*iomegastar_ ) )
+		+ nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+		+ nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_;
       } 
       if(m==1) {
-        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_)*phi_;
-        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) ) * bgrad_ 
-      		+ nu_ * Jflr(l,b_) * upar_bar_;
+        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_;
+        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ 
+      		+ nu_ * Jflr(l,b_s) * upar_bar_;
       }
       if(m==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(l,b_) * (-2*iomegad_ + tprim_*iomegastar_)/sqrtf(2) 
-		+ nu_ * sqrtf(2) * Jflr(l,b_) * t_bar_;
+        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(l,b_s) * (-2*iomegad_s + tprim_*iomegastar_)/sqrtf(2) 
+		+ nu_ * sqrtf(2) * Jflr(l,b_s) * t_bar_;
       }  
      } // l loop
     } // m loop
@@ -240,28 +239,28 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   } // idxyz < NxNycNz
 }
 
-# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_)*phi_
-__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *b, specie* species)
+# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
 {
   unsigned int idxyz = get_id1();
 
   if(idxyz<nx*nyc*nz) {
-    float b_ = b[idxyz];
     cuComplex phi_ = phi[idxyz];
     for(int is=0; is<nspecies; is++) {
       int index = idxyz + nx*nyc*nz*is;
       upar_bar[index] = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);
       t_bar[index] = make_cuComplex(0., 0.);
+      float b_s = kperp2[idxyz]*species[is].rho2;
       // sum over l
       for(int l=0; l<nl; l++) {
         // H_(...) is defined by macro above
-        upar_bar[index] = upar_bar[index] + Jflr(l,b_)*H_(idxyz, l, 1, is);
-        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_) + Jflr(l-1,b_))*H_(idxyz, l, 0, is);
-        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_)*H_(idxyz, l, 2, is)
-		+ ( l*Jflr(l-1,b_) + 2.*l*Jflr(l,b_) + (l+1)*Jflr(l+1,b_) )*H_(idxyz, l, 0, is);
+        upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*H_(idxyz, l, 1, is);
+        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*H_(idxyz, l, 0, is);
+        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_s)*H_(idxyz, l, 2, is)
+		+ ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, is);
       }
-      uperp_bar[index] = uperp_bar[index]*sqrtf(b_);
+      uperp_bar[index] = uperp_bar[index]*sqrtf(b_s);
     }
   }
 }

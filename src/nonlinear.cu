@@ -2,12 +2,13 @@
 #include "cuda_constants.h"
 #include "device_funcs.h"
 #include "get_error.h"
+#include "species.h"
 
-__global__ void J0phiToGrid(cuComplex* phi, float* b, float* muB, cuComplex* J0phi);
-__global__ void bracket(float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0Phi_dx, float* g_res);
+__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* b, float* muB, specie s);
+__global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0Phi_dx, float kxfac);
 
-Nonlinear::Nonlinear(Grids* grids, Geometry* geo) :
-  grids_(grids), geo_(geo)
+Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
+  pars_(pars), grids_(grids), geo_(geo)
 {
   laguerre = new LaguerreTransform(grids_, 1);
   grad_perp_G = new GradPerp(grids_, grids_->Nz*grids_->Nl);
@@ -46,23 +47,24 @@ Nonlinear::~Nonlinear()
 
 void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 {
-  J0phiToGrid<<<dimGrid,dimBlock>>>(f->phi, geo_->kperp2, laguerre->get_roots(), J0phi);
-  grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
-  grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
-
   // loop over m to save memory. also makes it easier to parallelize later...
   // no extra computation though, just no batching in m in FFTs and matrix multiplies
-  for(int m=0; m<grids_->Nm; m++) {
-    grad_perp_G->dxC2R(G->Gm(m), dG);
-    laguerre->transformToGrid(dG, dg_dx);
-  
-    grad_perp_G->dyC2R(G->Gm(m), dG);
-    laguerre->transformToGrid(dG, dg_dy);
-  
-    bracket<<<dimGrid,dimBlock>>>(dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, g_res);
-  
-    laguerre->transformToSpectral(g_res, dG);
-    grad_perp_G->R2C(dG, G_res->Gm(m));
+  for(int s=0; s<grids_->Nspecies; s++) {
+    J0phiToGrid<<<dimGrid,dimBlock>>>(J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species[s]);
+    grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
+    grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
+    for(int m=0; m<grids_->Nm; m++) {
+      grad_perp_G->dxC2R(G->Gm(m,s), dG);
+      laguerre->transformToGrid(dG, dg_dx);
+    
+      grad_perp_G->dyC2R(G->Gm(m,s), dG);
+      laguerre->transformToGrid(dG, dg_dy);
+    
+      bracket<<<dimGrid,dimBlock>>>(g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+    
+      laguerre->transformToSpectral(g_res, dG);
+      grad_perp_G->R2C(dG, G_res->Gm(m,s));
+    }
   }
 }
 
@@ -91,19 +93,19 @@ double Nonlinear::cfl(double dt_max)
   return dt_cfl;
 }
 
-__global__ void J0phiToGrid(cuComplex* phi, float* b, float* muB, cuComplex* J0phi)
+__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2, float* muB, specie s)
 {
   unsigned int idxyz = get_id1();
   unsigned int J = (3*(nl-1)-1)/2;
 
   if(idxyz<nx*nyc*nz) {
     for (int j = threadIdx.y; j < J+1; j += blockDim.y) {
-      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2.*muB[j]*b[idxyz]))*phi[idxyz];
+      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2.*muB[j]*kperp2[idxyz]*s.rho2))*phi[idxyz];
     }
   }
 }
 
-__global__ void bracket(float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0phi_dx, float* g_res)
+__global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0phi_dx, float kxfac)
 {
   unsigned int idxyz = get_id1();
   unsigned int J = (3*(nl-1)-1)/2;
@@ -111,7 +113,7 @@ __global__ void bracket(float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0
   if(idxyz<nx*ny*nz) {
     for (int j = threadIdx.y; j < J+1; j += blockDim.y) {
       unsigned int globalIdx = idxyz + nx*ny*nz*j;
-      g_res[globalIdx] = dg_dx[globalIdx]*dJ0phi_dy[globalIdx] - dg_dy[globalIdx]*dJ0phi_dx[globalIdx];
+      g_res[globalIdx] = (dg_dx[globalIdx]*dJ0phi_dy[globalIdx] - dg_dy[globalIdx]*dJ0phi_dx[globalIdx])*kxfac;
     }
   }
 }

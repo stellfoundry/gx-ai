@@ -16,6 +16,7 @@ typedef struct {
   float zt;
   float nu_ss;
   float rho;           
+  float rho2;           
   float vt;    
   // char type[100];        
 } specie;
