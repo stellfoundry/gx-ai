@@ -63,6 +63,8 @@ class SmithPar : public Closures {
  private:
   Grids *grids_;
   GradParallel *grad_par;
+  float gpar_;
+  const int q_;
   
   cuComplex *tmp, *tmp_abs;
 
@@ -72,7 +74,6 @@ class SmithPar : public Closures {
   // closure array
   cuComplex *clos;
 
-  const int q_;
 
   dim3 dimGrid, dimBlock;
  
