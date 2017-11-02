@@ -12,9 +12,9 @@ __host__ __device__ float factorial(int m) {
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__device__ float Jflr(int l, float b) {
+__device__ float Jflr(int l, float b, bool enforce_JL_0=true) {
   if (l<0) return 0.;
-  //else if (l>=nl) return 0;
+  else if (l>=nl && enforce_JL_0) return 0;
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.);
 }
 

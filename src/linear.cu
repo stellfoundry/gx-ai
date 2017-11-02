@@ -219,7 +219,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
                   Jflr(l-1,b_s)*( -l*iomegad_s + l*tprim_*iomegastar_ ) 
                 + Jflr(l,  b_s)*( -2*(l+1)*iomegad_s + (fprim_ + tprim_*2*l)*iomegastar_ )
-                + Jflr(l+1,b_s)*( -(l+1)*iomegad_s + (l+1)*tprim_*iomegastar_ ) )
+                + Jflr(l+1,b_s)*( -(l+1)*iomegad_s ) + Jflr(l+1,b_s,false)*(l+1)*tprim_*iomegastar_ )
 		+ nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 		+ nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_;
       } 
