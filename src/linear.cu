@@ -257,8 +257,8 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
         // H_(...) is defined by macro above
         upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*H_(idxyz, l, 1, is);
         uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*H_(idxyz, l, 0, is);
-        t_bar[index] = t_bar[index] + sqrtf(2)*Jflr(l,b_s)*H_(idxyz, l, 2, is)
-		+ ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, is);
+        t_bar[index] = t_bar[index] + sqrtf(2.)/3.*Jflr(l,b_s)*H_(idxyz, l, 2, is)
+		+ 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, is);
       }
       uperp_bar[index] = uperp_bar[index]*sqrtf(b_s);
     }
