@@ -12,7 +12,7 @@ __host__ __device__ float factorial(int m) {
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__device__ float Jflr(int l, float b, bool enforce_JL_0=true) {
+__device__ float Jflr(int l, float b, bool enforce_JL_0) {
   if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.);
@@ -335,9 +335,9 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, cuComplex
 __global__ void reality_kernel(cuComplex* g) 
 {
   for(int s = 0; s < nspecies; s++) {
-    for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
+    for (int lm = threadIdx.z; lm < nm*nl; lm += blockDim.z) {
       for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
-        for (int lm = threadIdx.z; lm < nm*nl; lm += blockDim.z) {
+        for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
           int globalIdx = nyc*(idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
           int globalIdx2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
           if(idx!=0) {
@@ -352,8 +352,8 @@ __global__ void reality_kernel(cuComplex* g)
 
 __global__ void reality_singlemom_kernel(cuComplex* mom) 
 {
-  for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
-    for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
+  for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
+    for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
       unsigned int index = (ny/2+1)*idx + nx*(ny/2+1)*idz;
       unsigned int index2 = (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
       if(idx!=0) {

@@ -22,9 +22,11 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     grad_par = new GradParallelLocal(grids_);
   }
   else if(pars_->boundary_option_periodic) {
+    printf("Using periodic for grad parallel.\n");
     grad_par = new GradParallelPeriodic(grids_);
   }
   else {
+    printf("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
  
@@ -73,13 +75,13 @@ Linear::~Linear()
 int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // calculate conservation terms for collision operator
-  conservation_terms<<<grids_->NxNycNz/pars_->maxThreadsPerBlock+1, pars_->maxThreadsPerBlock>>>
+  conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
 	(upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
 
   // calculate RHS
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
-	geo_->kperp2, geo_->omegad, geo_->bgrad, 
+        geo_->kperp2, geo_->omegad, geo_->bgrad, 
        	grids_->ky, pars_->species, GRhs_par->G(), GRhs->G());
 
   // hypercollisions
