@@ -11,22 +11,19 @@ class Forcing {
    virtual void stir(MomentsG *G) = 0;
 };
 
-class ZForcing : public Forcing {
+class KzForcing : public Forcing {
  public:
-  ZForcing(Parameters *pars, Grids *grids, Geometry *geo); 
-  ~ZForcing();
+  KzForcing(Parameters *pars, Grids *grids, Geometry *geo); 
+  ~KzForcing();
   void stir(MomentsG *G);
- 
+
  private:
   float forcing_amp_;
-  
+  cuComplex random_force;
+
   Parameters *pars_;
   Grids *grids_;
   Geometry *geo_;
- 
-  cuComplex *random_force;
-  
-  dim3 dimBlock, dimGrid;
 };
 
 

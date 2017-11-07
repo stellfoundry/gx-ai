@@ -3,7 +3,7 @@
 #include "laguerre_transform.h"
 
 LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
-  grids_(grids), L(grids->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
+  grids_(grids), L(grids_->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
   cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
@@ -19,7 +19,7 @@ LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
   cudaMemcpy(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
   cudaMemcpy(roots, roots_h, sizeof(float)*(J+1), cudaMemcpyHostToDevice);
 
-  cublasCreate(&handle);
+  //cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
   cudaFreeHost(toSpectral_h);
   cudaFreeHost(roots_h);
@@ -103,42 +103,24 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
 
 int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 {
-  int m = grids_->NxNyNz;
-  int n = J+1;
-  int k = L+1;
   float alpha = 1.;
-  int lda = grids_->NxNyNz;
-  int strideA = grids_->NxNyNz*(L+1);
-  int ldb = L+1;
-  int strideB = 0;
   float beta = 0.;
-  int ldc = grids_->NxNyNz;
-  int strideC = grids_->NxNyNz*(J+1);
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-     m, n, k, &alpha,
-     G_in, lda, strideA,
-     toGrid, ldb, strideB,
-     &beta, g_res, ldc, strideC,
+     grids_->NxNyNz, J+1, L+1, &alpha,
+     G_in, grids_->NxNyNz, grids_->NxNyNz*(L+1),
+     toGrid, J+1, 0,
+     &beta, g_res, grids_->NxNyNz, grids_->NxNyNz*(L+1), 
      batch_size_);
 }
 
 int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
 {
-  int m = grids_->NxNyNz;
-  int n = L+1;
-  int k = J+1;
   float alpha = 1.;
-  int lda = grids_->NxNyNz;
-  int strideA = grids_->NxNyNz*(J+1);
-  int ldb = J+1;
-  int strideB = 0;
   float beta = 0.;
-  int ldc = grids_->NxNyNz;
-  int strideC = grids_->NxNyNz*(L+1);
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-     m, n, k, &alpha,
-     g_in, lda, strideA,
-     toSpectral, ldb, strideB,
-     &beta, G_res, ldc, strideC,
+     grids_->NxNyNz, L+1, J+1, &alpha,
+     g_in, grids_->NxNyNz, grids_->NxNyNz*(J+1),
+     toSpectral, L+1, 0,
+     &beta, G_res, grids_->NxNyNz, grids_->NxNyNz*(J+1), 
      batch_size_);
 }

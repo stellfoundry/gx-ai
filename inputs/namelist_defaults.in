@@ -186,7 +186,7 @@ model_option = "const-curv"
 
 &forcing_knobs
  forcing_init = "off"
- forcing_type = "Z"
+ forcing_type = "Kz"
  forcing_amp = 1
 /
 
@@ -524,6 +524,9 @@ model_option = "const-curv"
   no_nonlin_dens_cross_term = .false.
   dorland_qneut = "off"
   no_zonal_nlpm = .false.
+  
+  write_hermite_energy_spectrum = "off"
+  hermite_spectrum_avg_cutoff = 20
 
   scheme = rk2
 /

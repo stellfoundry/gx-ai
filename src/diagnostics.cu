@@ -22,6 +22,22 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuDoubl
   }
 }
 
+__global__ void computeHermiteEnergySpectrum(cuComplex *m, float *hermite_energy_spectrum, float *hermite_energy_spectrum_avg, int count, int num_writes, int cutoff) {
+  int i = threadIdx.x;
+  int id = nx*nyc*nz*nl*i;
+
+  // calculate |C_m| for each moment
+  float value = m[id+1].x*m[id+1].x + m[id+1].y*m[id+1].y;
+
+  hermite_energy_spectrum[i] = value;
+
+  // hermite_spectrum_avg_cutoff in gx_knobs determines the cutoff number of counts to use in the energy spectrum time averaging
+  // (starting from the end, i.e. a cutoff of 10 takes a time average of the last 10 counts/nwrite)
+  if (count >= num_writes - cutoff) {
+      int index = count - num_writes + cutoff;
+      hermite_energy_spectrum_avg[i] = (index*hermite_energy_spectrum_avg[i] + value)/(index + 1);
+  }
+}
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
@@ -63,6 +79,19 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 
   // skip over masked elements in x and y?
   mask = !pars_->linear;
+  
+  // for hermite energy spectrum diagnostic
+  if (pars_->write_hermite_energy_spectrum) {
+    cudaMalloc((void **) &hermite_energy_spectrum, sizeof(float)*pars_->nm_in);
+    cudaMalloc((void **) &hermite_energy_spectrum_avg, sizeof(float)*pars_->nm_in);
+    cudaMallocHost((void **) &hermite_energy_spectrum_h, sizeof(float)*pars_->nm_in);
+
+    cudaMemset(hermite_energy_spectrum, 0, pars_->nm_in*sizeof(float));
+    cudaMemset(hermite_energy_spectrum_avg, 0, pars_->nm_in*sizeof(float));
+
+    sprintf(history_buffer, "%s.HermiteEnergySpectrumHistory.out", pars_->run_name);
+    history_spectrum_file = fopen(history_buffer,"w+");
+  }
 }
 
 Diagnostics::~Diagnostics()
@@ -74,6 +103,13 @@ Diagnostics::~Diagnostics()
   cudaFreeHost(growth_rates_h);
   if(pars_->source_option == PHIEXT) {
     fclose(timefile);
+  }
+
+  if (pars_->write_hermite_energy_spectrum) {
+    cudaFree(hermite_energy_spectrum);
+    cudaFree(hermite_energy_spectrum_avg);
+    cudaFreeHost(hermite_energy_spectrum_h);
+    fclose(history_spectrum_file);
   }
 }
 
@@ -90,16 +126,23 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
     fields_old->copyFrom(fields);
 
     if(counter%pars_->nwrite==0) {
-        printf("Step %d: Time = %f\n", counter, time);
+      printf("Step %d: Time = %f\n", counter, time);
       cudaMemcpyAsync(growth_rates_h, growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc, cudaMemcpyDeviceToHost);
       print_growth_rates_to_screen();
+
+      if (pars_->write_hermite_energy_spectrum) {
+      HermiteEnergySpectrum(G, counter);
+      writeHermiteEnergySpectrumHistory();
+      }
     }
-  } 
+  }
+
   // write time history of phi
   if(pars_->source_option==PHIEXT) {
     writeTimeHistory(fields->phi, time, 1, 0, grids_->Nz/2, timefile);
   }
-  // check to see if we should stop simulation
+
+ // check to see if we should stop simulation
   if(counter%pars_->nwrite==0) {
     stop = checkstop();
   }
@@ -128,6 +171,11 @@ void Diagnostics::final_diagnostics(MomentsG* G, Fields* fields)
   writeGeo();
 
   if(pars_->write_omega) writeGrowthRates();
+
+  if (pars_->write_hermite_energy_spectrum) {
+      writeHermiteEnergySpectrum();
+  }
+
   fflush(NULL);
 }
 
@@ -438,8 +486,40 @@ bool Diagnostics::checkstop()
 {
   struct stat buffer;   
   // check if stopfile exists
-  bool stop = (stat (stopfilename_, &buffer) == 0);   
+  bool stop = (stat (stopfilename_, &buffer) == 0);
   // remove it if it does exist
   if(stop) remove(stopfilename_);
   return stop;
+}
+
+// set write_hermite_energy_spectrum to "on" in gx_knobs to calculate and write to file the Hermite energy spectrum
+void Diagnostics::HermiteEnergySpectrum(MomentsG *m, int count) {
+    computeHermiteEnergySpectrum<<<1, pars_->nm_in>>>(m->G(0,0,0), hermite_energy_spectrum, hermite_energy_spectrum_avg, count/pars_->nwrite, pars_->nstep/pars_->nwrite, pars_->hermite_spectrum_avg_cutoff);
+}
+
+void Diagnostics::writeHermiteEnergySpectrum() {
+  char ofilename[2000];
+  sprintf(ofilename, "%s.HermiteEnergySpectrum.out", pars_->run_name);
+  FILE *out = fopen(ofilename,"w+");
+
+  cudaMemcpy(hermite_energy_spectrum_h, hermite_energy_spectrum_avg, sizeof(float)*pars_->nm_in, cudaMemcpyDeviceToHost);
+
+  fprintf(out, "#\tm (1)\t\t\tC_m,k (2)\t\t\t\n");  
+
+  for (int i = 0; i < pars_->nm_in; i++) {
+    fprintf(out, "\t%d\t%e\n", i, hermite_energy_spectrum_h[i]);
+  }
+
+  fclose(out);
+}
+
+void Diagnostics::writeHermiteEnergySpectrumHistory() {
+  cudaMemcpy(hermite_energy_spectrum_h, hermite_energy_spectrum, sizeof(float)*pars_->nm_in, cudaMemcpyDeviceToHost);
+
+  fprintf(history_spectrum_file, "#\tm (1)\t\t\tC_m,k (2)\t\t\t\n");  
+
+  for (int i = 0; i < pars_->nm_in; i++) {
+    fprintf(history_spectrum_file, "\t%d\t%e\n", i, hermite_energy_spectrum_h[i]);
+  }
+  fprintf(history_spectrum_file, "\n");
 }

@@ -356,6 +356,10 @@ int Parameters::read_namelist(char* filename)
   write_omega = get_bool_on_off(&namelist_struct, "gx_knobs", "write_omega");
 
   write_phi = get_bool_on_off(&namelist_struct, "gx_knobs", "write_phi");
+  
+  write_hermite_energy_spectrum = get_bool_on_off(&namelist_struct, "gx_knobs", "write_hermite_energy_spectrum");
+
+  fnr_get_int(&namelist_struct, "gx_knobs", "hermite_spectrum_avg_cutoff", &(hermite_spectrum_avg_cutoff));
 
   fnr_get_string_no_test(&namelist_struct, "gx_knobs", "scan_type", &scan_type);
   

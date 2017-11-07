@@ -298,6 +298,9 @@ class Parameters {
       bool no_nonlin_dens_cross_term;
       bool zero_order_nonlin_flr_only;
       bool no_zonal_nlpm;
+
+      bool write_hermite_energy_spectrum;
+      int hermite_spectrum_avg_cutoff;
   
       int igeo;
       float shaping_ps;

@@ -82,8 +82,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
    
     if (pars->forcing_init) {
       printf("Initializing forcing...\n");
-      if (strcmp(pars->forcing_type, "Z") == 0) {
-        forcing = new ZForcing(pars, grids, geo);
+      if (strcmp(pars->forcing_type, "Kz") == 0) {
+        forcing = new KzForcing(pars, grids, geo);
       } 
     }
     else {

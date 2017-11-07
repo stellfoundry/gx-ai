@@ -21,6 +21,10 @@ class Diagnostics {
   void writeGeo();
   void writeGrowthRates();
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
+  void HermiteEnergySpectrum(MomentsG *m, int count);
+  void writeHermiteEnergySpectrum();
+  void writeHermiteEnergySpectrumHistory();
+
 
   double pflux[20], qflux[20];
 
@@ -55,4 +59,11 @@ class Diagnostics {
 
   char stopfilename_[2000];
   FILE* timefile;
+ 
+  float *hermite_energy_spectrum;
+  float *hermite_energy_spectrum_avg;
+  float *hermite_energy_spectrum_h;
+  char history_buffer[2000];
+  FILE *history_spectrum_file;
+
 };
