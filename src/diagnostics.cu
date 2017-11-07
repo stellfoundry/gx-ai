@@ -129,12 +129,13 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
       printf("Step %d: Time = %f\n", counter, time);
       cudaMemcpyAsync(growth_rates_h, growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc, cudaMemcpyDeviceToHost);
       print_growth_rates_to_screen();
+    }
+  }
 
-      if (pars_->write_hermite_energy_spectrum) {
+  // compute and write to file hermite energy spectrum
+  if(counter%pars_->nwrite == 0 && pars_->write_hermite_energy_spectrum) {
       HermiteEnergySpectrum(G, counter);
       writeHermiteEnergySpectrumHistory();
-      }
-    }
   }
 
   // write time history of phi
