@@ -62,6 +62,7 @@ class Diagnostics {
 
   char stopfilename_[2000];
   FILE* timefile;
+  FILE* fluxfile;
  
   float *hermite_energy_spectrum;
   float *hermite_energy_spectrum_avg;

@@ -128,14 +128,15 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   bool checkstop = false;
   printf("Running %d timesteps.......\n", pars->nstep);
   printf("dt = %f\n", stepper->get_dt());
+  checkstop = diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
   while(counter<pars->nstep) {
+    counter++;
     if(iproc==0) {
       stepper->advance(&time, momsG, fields);
       checkstop = diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
       if(checkstop) break;
       if(counter%(pars->nwrite*100)==0) diagnostics->final_diagnostics(momsG, fields);
     }
-    counter++;
   }
 
   cudaEventRecord(stop,0);

@@ -79,6 +79,13 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     timefile = fopen(ofilename,"w");
   }
 
+  // set up file for time history of flux(es)
+  if(!pars_->linear) {
+    char ofilename[2000];
+    sprintf(ofilename, "%s.%s.time", pars_->run_name, "flux");
+    fluxfile = fopen(ofilename,"w"); 
+  }
+
   // skip over masked elements in x and y?
   mask = !pars_->linear;
   
@@ -152,8 +159,9 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
   }
 
   if(!pars_->linear) {
-    // calculate heat flux
+    // calculate fluxes
     fluxes(G, fields);
+    fprintf(fluxfile, "%f\t%e\n", time, qflux[0]);
   }
   return stop;
 }
@@ -506,7 +514,7 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
         fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
         sum += fg.x;
       }
-    } else {
+    } else { // single mode specified by ikx, iky
       if(idy==iky && idx==ikx) {
         fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
         sum += fg.x;
@@ -592,3 +600,4 @@ void Diagnostics::writeHermiteEnergySpectrumHistory() {
   }
   fprintf(history_spectrum_file, "\n");
 }
+
