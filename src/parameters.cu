@@ -44,7 +44,7 @@ Parameters::~Parameters() {
   cudaDeviceSynchronize();
   if(initialized) {
     cudaFree(species);
-    //cudaFreeHost(species_h);
+    cudaFreeHost(species_h);
   }
 }
 
@@ -453,8 +453,9 @@ int Parameters::read_namelist(char* filename)
   stationary_ions = get_bool_on_off(&namelist_struct, "gx_knobs", "stationary_ions");
    
   fnr_get_int(&namelist_struct, "species_knobs", "nspec", &(nspec_in));
-  cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
-  //cudaMallocHost((void**) &species_h, sizeof(specie)*nspec_in);
+  //cudaMallocManaged((void**) &species, sizeof(specie)*nspec_in);
+  cudaMalloc((void**) &species, sizeof(specie)*nspec_in);
+  cudaMallocHost((void**) &species_h, sizeof(specie)*nspec_in);
 
     int ionspec = 0;   
     int ispec = 1;
@@ -474,43 +475,43 @@ int Parameters::read_namelist(char* filename)
       fnr_get_float(&namelist_struct, namelist, "mass", &mass);
       if((mass == 1. && !main_ion_species_found) || nspec_in==1) {ionspec=0; main_ion_species_found=true;} // main ion species mass assumed to be 1. main ion species indexed 0.
       else {ionspec = ispec; ispec++;}
-      species[ionspec].mass = mass;
-      fnr_get_float(&namelist_struct, namelist, "z", &species[ionspec].z);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[ionspec].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[ionspec].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[ionspec].tprim); //6.9
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[ionspec].fprim); //2.2
-      if(fnr_get_float(&namelist_struct, namelist, "uprim", &species[ionspec].uprim)) species[ionspec].uprim=0;
+      species_h[ionspec].mass = mass;
+      fnr_get_float(&namelist_struct, namelist, "z", &species_h[ionspec].z);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species_h[ionspec].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species_h[ionspec].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species_h[ionspec].tprim); //6.9
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species_h[ionspec].fprim); //2.2
+      if(fnr_get_float(&namelist_struct, namelist, "uprim", &species_h[ionspec].uprim)) species_h[ionspec].uprim=0;
 
 
-     // if(strcmp(collisions,"none") == 0) species[ionspec].nu_ss = 0;
+     // if(strcmp(collisions,"none") == 0) species_h[ionspec].nu_ss = 0;
      // else {
-        fnr_get_float(&namelist_struct, namelist, "vnewk", &species[ionspec].nu_ss);
+        fnr_get_float(&namelist_struct, namelist, "vnewk", &species_h[ionspec].nu_ss);
      // }     
 
-      //strcpy(species[ionspec].type,"ion"); 
+      //strcpy(species_h[ionspec].type,"ion"); 
 
     }
     if(strcmp(type,"electron") == 0) {
 
       // kinetic electrons will always be last indexed species
 
-      fnr_get_float(&namelist_struct, namelist, "z", &species[nspec_in-1].z);
-      fnr_get_float(&namelist_struct, namelist, "mass", &species[nspec_in-1].mass);
-      fnr_get_float(&namelist_struct, namelist, "dens", &species[nspec_in-1].dens);
-      fnr_get_float(&namelist_struct, namelist, "temp", &species[nspec_in-1].temp);
-      fnr_get_float(&namelist_struct, namelist, "tprim", &species[nspec_in-1].tprim);
-      fnr_get_float(&namelist_struct, namelist, "fprim", &species[nspec_in-1].fprim);
-      fnr_get_float(&namelist_struct, namelist, "uprim", &species[nspec_in-1].uprim);
+      fnr_get_float(&namelist_struct, namelist, "z", &species_h[nspec_in-1].z);
+      fnr_get_float(&namelist_struct, namelist, "mass", &species_h[nspec_in-1].mass);
+      fnr_get_float(&namelist_struct, namelist, "dens", &species_h[nspec_in-1].dens);
+      fnr_get_float(&namelist_struct, namelist, "temp", &species_h[nspec_in-1].temp);
+      fnr_get_float(&namelist_struct, namelist, "tprim", &species_h[nspec_in-1].tprim);
+      fnr_get_float(&namelist_struct, namelist, "fprim", &species_h[nspec_in-1].fprim);
+      fnr_get_float(&namelist_struct, namelist, "uprim", &species_h[nspec_in-1].uprim);
 
-      //if(strcmp(collisions,"none") == 0) species[nspec_in-1].nu_ss = 0;
+      //if(strcmp(collisions,"none") == 0) species_h[nspec_in-1].nu_ss = 0;
       //else {
 
-      fnr_get_float(&namelist_struct, namelist, "vnewk", &species[nspec_in-1].nu_ss);
+      fnr_get_float(&namelist_struct, namelist, "vnewk", &species_h[nspec_in-1].nu_ss);
 
       //}
 
-      //strcpy(species[nspec_in-1].type,"electron");
+      //strcpy(species_h[nspec_in-1].type,"electron");
 
       adiabatic_electrons = false;
    
@@ -519,8 +520,8 @@ int Parameters::read_namelist(char* filename)
 
   }
   cudaDeviceSynchronize();
-  init_species(species);
-  //cudaMemcpy(species, species, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
+  init_species(species_h);
+  cudaMemcpy(species, species_h, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
 
 		//free(type);
 		fnr_free(&namelist_struct);
@@ -594,11 +595,11 @@ int Parameters::set_externalpars(external_parameters_struct* externalpars) {
     externalpars->ntspec = nspec_in;
   
     for (int i=0;i<nspec_in;i++){
-  	  externalpars->dens[i] = species[i].dens;
-  	  externalpars->temp[i] = species[i].temp;
-  	  externalpars->fprim[i] = species[i].fprim;
-  	  externalpars->tprim[i] = species[i].tprim;
-  	  externalpars->nu[i] = species[i].nu_ss;
+  	  externalpars->dens[i] = species_h[i].dens;
+  	  externalpars->temp[i] = species_h[i].temp;
+  	  externalpars->fprim[i] = species_h[i].fprim;
+  	  externalpars->tprim[i] = species_h[i].tprim;
+  	  externalpars->nu[i] = species_h[i].nu_ss;
     }
   return 0;
 }
@@ -666,13 +667,13 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
   }
 	 if (debug) printf("nSpecies was set to %d\n", nspec_in);
   for (int i=0;i<nspec_in;i++){
-	   species[i].dens = externalpars->dens[i] ;
-	   species[i].temp = externalpars->temp[i] ;
-	   species[i].fprim = externalpars->fprim[i] ;
-	   species[i].tprim = externalpars->tprim[i] ;
-	   species[i].nu_ss = externalpars->nu[i] ;
+	   species_h[i].dens = externalpars->dens[i] ;
+	   species_h[i].temp = externalpars->temp[i] ;
+	   species_h[i].fprim = externalpars->fprim[i] ;
+	   species_h[i].tprim = externalpars->tprim[i] ;
+	   species_h[i].nu_ss = externalpars->nu[i] ;
   }
-  //cudaMemcpy(species, species, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
+  cudaMemcpy(species, species_h, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
 
   //jtwist should never be < 0. If we set jtwist < 0 in the input file,
   // this triggers the use of jtwist_square... i.e. jtwist is 
