@@ -53,6 +53,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size)
   cufftMakePlanMany(gradperp_plan_dxC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_dyC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
 
+  cudaDeviceSynchronize();
   cufftXtSetCallback(gradperp_plan_dxC2R, 
                      (void**) &i_kx_callbackPtr, 
                      CUFFT_CB_LD_COMPLEX, 
@@ -67,6 +68,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size)
                      (void**) &mask_and_scale_callbackPtr, 
                      CUFFT_CB_ST_COMPLEX, 
                      NULL);
+  cudaDeviceSynchronize();
 }
 
 GradPerp::~GradPerp()

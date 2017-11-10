@@ -66,8 +66,10 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   //cudaMemcpyFromSymbol(&abs_kz_callbackPtr_host, abs_kz_callbackPtr, sizeof(abs_kz_callbackPtr_host));
 
   // set up callback functions
+  cudaDeviceSynchronize();
   cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(abs_gradpar_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cudaDeviceSynchronize();
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {
@@ -97,19 +99,19 @@ void GradParallelPeriodic::dz(MomentsG* G)
 // FFT and derivative for a single moment
 void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 // FFT and |kz| operator for a single moment
 void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
 {
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(abs_gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 // FFT only for a single moment
@@ -153,7 +155,9 @@ GradParallel1D::GradParallel1D(Grids* grids)
   cufftPlan1d(&gradpar_plan_forward, grids_->Nz, CUFFT_R2C, 1);
   cufftPlan1d(&gradpar_plan_inverse, grids_->Nz, CUFFT_C2R, 1);
 
+  cudaDeviceSynchronize();
   cufftXtSetCallback(gradpar_plan_forward, (void**) &i_kz_1d_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cudaDeviceSynchronize();
 
   cudaMalloc((void**) &b_complex, sizeof(cuComplex)*(grids_->Nz/2+1));
 }

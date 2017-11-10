@@ -187,7 +187,7 @@ void GradParallelLinked::dz(MomentsG* G)
 void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
 {
   int nMoms=1;
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(m);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(m);
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
     linkedCopy<<<dimGrid[c],dimBlock[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
@@ -195,14 +195,14 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
     cufftExecC2C(gradpar_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dimGrid[c],dimBlock[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 // for a single moment m
 void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
 {
   int nMoms=1;
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(m);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(m);
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
     linkedCopy<<<dimGrid[c],dimBlock[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
@@ -210,7 +210,7 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
     cufftExecC2C(gradpar_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dimGrid[c],dimBlock[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
-  reality_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 __global__ void linkedCopy(cuComplex* G, cuComplex* G_linked, int nLinks, int nChains, int* ikx, int* iky, int nMoms)
@@ -499,8 +499,6 @@ void GradParallelLinked::identity(MomentsG* G)
   for(int c=0; c<nClasses; c++) {
     // each "class" has a different number of links in the chains, and a different number of chains.
     linkedCopy<<<dimGrid[c],dimBlock[c]>>>(G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-    //cufftExecC2C(gradpar_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
-    //cufftExecC2C(gradpar_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dimGrid[c],dimBlock[c]>>>(G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
   }
   G->reality();
