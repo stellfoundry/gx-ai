@@ -31,16 +31,16 @@ TEST(TestParameters, CycloneLinearBeer) {
 
   cuDoubleComplex growth_rates_correct[11] = {
 	0,		0,
-	0.052151,	0.038353,
-	0.154697,	0.100987,
-	0.278418,	0.159390,
-	0.437257,	0.191752,
-	0.604513,	0.224344,
-	0.775233,	0.222227,
-	0.944013,	0.205547,
-	1.105223,	0.161124,
-	1.258342,	0.099509,
-	1.398031,	0.021141
+	0.052153,	0.038351,
+	0.154689,	0.100977,
+	0.278426,	0.159365,
+	0.437399,	0.191831,
+	0.604324,	0.224568,
+	0.775701,	0.222670,
+	0.943826,	0.206715,
+	1.105725,	0.162845,
+	1.258766,	0.102780,
+	1.398853,	0.025864
   };
 
   for(int i=1; i<11; i++) {
@@ -48,8 +48,8 @@ TEST(TestParameters, CycloneLinearBeer) {
     EXPECT_NEAR(growth_rates_correct[i].y, diagnostics->growth_rates_h[i].y, 1e-4);
   }
 
-  delete pars;
   delete grids;
   delete geo;
   delete diagnostics;
+  delete pars;
 }
