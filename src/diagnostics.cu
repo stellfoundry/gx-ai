@@ -131,8 +131,7 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
   bool stop = false;
   if(counter%pars_->nwrite==0) {
     printf("Step %d: Time = %f\n", counter, time);
-    // check to see if we should stop simulation
-    stop = checkstop();
+    fflush(NULL);
   }
   // write instantaneous growth rates
   if(pars_->write_omega) {
@@ -162,7 +161,10 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
     // calculate fluxes
     fluxes(G, fields);
     fprintf(fluxfile, "%f\t%e\n", time, qflux[0]);
+    printf("\tqflux = %e\n", qflux[0]);
   }
+  // check to see if we should stop simulation
+  stop = checkstop();
   return stop;
 }
 

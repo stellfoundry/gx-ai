@@ -91,12 +91,10 @@ double Nonlinear::cfl(double dt_max)
   vmax_y[0] = 1.e-10;
   int threads=256;
   int blocks=min((grids_->NxNyNz+threads-1)/threads,2048);
-  //max_abs<<<blocks,threads>>>(dJ0phi_dx, vmax_x);
-  //max_abs<<<blocks,threads>>>(dJ0phi_dy, vmax_y);
   vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*grids_->Nl, dJ0phi_dx, dJ0phi_dx);
   vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*grids_->Nl, dJ0phi_dy, dJ0phi_dy);
   vmax = max(vmax_x[0], vmax_y[0]);
-  dt_cfl = 1./vmax < dt_max ? 1./vmax : dt_max;
+  dt_cfl = pars_->cfl/vmax < dt_max ? pars_->cfl/vmax : dt_max;
   
   return dt_cfl;
 }
