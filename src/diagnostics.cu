@@ -49,13 +49,15 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaGetLastError());
 
   cudaMalloc((void**) &growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc);
-  cudaMallocHost((void**) &hlspectrum_h, sizeof(float)*grids_->Nmoms);
-  cudaMalloc((void**) &hlspectrum, sizeof(float)*grids_->Nmoms);
-  
+  cudaMallocHost((void**) &lhspectrum_h, sizeof(float)*grids_->Nmoms);
+  cudaMalloc((void**) &lhspectrum, sizeof(float)*grids_->Nmoms);
   cudaMallocHost((void**) &growth_rates_h, sizeof(cuDoubleComplex)*grids_->NxNyc);
 
-  cudaMallocHost((void**) &m_h, sizeof(cuComplex)*grids_->NxNycNz);
-  cudaMalloc((void**) &res, sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMallocHost((void**) &amom_h, sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMalloc((void**) &amom, sizeof(cuComplex)*grids_->NxNycNz);
+
+  cudaMallocHost((void**) &pflux, sizeof(float)*grids_->Nspecies);
+  cudaMallocHost((void**) &qflux, sizeof(float)*grids_->Nspecies);
 
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
@@ -98,9 +100,11 @@ Diagnostics::~Diagnostics()
 {
   delete fields_old;
   cudaFree(growth_rates);
-  cudaFree(hlspectrum);
-  cudaFreeHost(hlspectrum_h);
-  cudaFreeHost(growth_rates_h);
+  cudaFree(lhspectrum);
+  cudaFreeHost(lhspectrum_h);
+  cudaFreeHost(growth_rates_h); 
+  cudaFreeHost(pflux);
+  cudaFreeHost(qflux);
   if(pars_->source_option == PHIEXT) {
     fclose(timefile);
   }
@@ -118,6 +122,11 @@ Diagnostics::~Diagnostics()
 bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, float time) 
 {
   bool stop = false;
+  if(counter%pars_->nwrite==0) {
+    printf("Step %d: Time = %f\n", counter, time);
+    // check to see if we should stop simulation
+    stop = checkstop();
+  }
   // write instantaneous growth rates
   if(pars_->write_omega) {
     growthRates<<<grids_->NxNyc/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
@@ -126,7 +135,6 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
     fields_old->copyFrom(fields);
 
     if(counter%pars_->nwrite==0) {
-      printf("Step %d: Time = %f\n", counter, time);
       cudaMemcpyAsync(growth_rates_h, growth_rates, sizeof(cuDoubleComplex)*grids_->NxNyc, cudaMemcpyDeviceToHost);
       print_growth_rates_to_screen();
     }
@@ -143,9 +151,9 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int co
     writeTimeHistory(fields->phi, time, 1, 0, grids_->Nz/2, timefile);
   }
 
- // check to see if we should stop simulation
-  if(counter%pars_->nwrite==0) {
-    stop = checkstop();
+  if(!pars_->linear) {
+    // calculate heat flux
+    fluxes(G, fields);
   }
   return stop;
 }
@@ -274,7 +282,7 @@ void Diagnostics::writeGrowthRates()
   fclose(out);
 }
 
-void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
+void Diagnostics::writeMomOrFieldKpar(cuComplex* mom, const char* name) {
   int Nx = grids_->Nx;
   int Ny = grids_->Ny;
   int Nz = grids_->Nz;
@@ -282,8 +290,8 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
   char ofilename[2000];
   sprintf(ofilename, "%s.%s.kpar_field", pars_->run_name, name);
   FILE* out = fopen(ofilename,"w+");
-  grad_parallel->fft_only(m, res, CUFFT_FORWARD);
-  cudaMemcpy(m_h,res,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  grad_parallel->fft_only(mom, amom, CUFFT_FORWARD);
+  cudaMemcpy(amom_h,amom,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tkz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
   fprintf(out, "\n");
   int blockid = 0;
@@ -295,7 +303,7 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
         for(int k=0; k<Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
           //if(index!=0){
-            fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+            fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
           //}
         }     
       }
@@ -306,7 +314,7 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
         blockid++;
         for(int k=0; k<Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
-          fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+          fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
         }    
       }
     }
@@ -318,7 +326,7 @@ void Diagnostics::writeMomOrFieldKpar(cuComplex* m, const char* name) {
         for(int k=0; k<Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
           //if(index!=0){
-            fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+            fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", grids_->kz_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
           //}
         }     
       }
@@ -337,7 +345,7 @@ void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
   char ofilename[2000];
   sprintf(ofilename, "%s.%s.field", pars_->run_name, name);
   FILE* out = fopen(ofilename,"w+");
-  cudaMemcpy(m_h,m,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
+  cudaMemcpy(amom_h,m,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToHost);
   fprintf(out, "#\tz (1)\t\t\tky (2)\t\t\tkx (3)\t\t\tRe (4)\t\t\tIm (5)\t\t\t");  
   fprintf(out, "\n");
   int blockid = 0;
@@ -349,8 +357,8 @@ void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
         for(int k=0; k<=Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
   	//if(index!=0){
-  	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
-  	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+  	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], amom_h[j+(Ny/2+1)*i].x, amom_h[j+(Ny/2+1)*i].y); 
+  	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
           //}
         }     
       }
@@ -361,8 +369,8 @@ void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
         blockid++;
         for(int k=0; k<=Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
-  	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
-  	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+  	if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], amom_h[j+(Ny/2+1)*i].x, amom_h[j+(Ny/2+1)*i].y); 
+  	else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
         }    
       }
     }
@@ -375,8 +383,8 @@ void Diagnostics::writeMomOrField(cuComplex* m, const char* name) {
         for(int k=0; k<=Nz; k++) {
           int index = j+(Ny/2+1)*i+(Ny/2+1)*Nx*k;
   	//if(index!=0){
-  	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], m_h[j+(Ny/2+1)*i].x, m_h[j+(Ny/2+1)*i].y); 
-  	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], m_h[index].x, m_h[index].y);    	  
+  	  if(k==Nz) fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", -geo_->z_h[0], grids_->ky_h[j], grids_->kx_h[i], amom_h[j+(Ny/2+1)*i].x, amom_h[j+(Ny/2+1)*i].y); 
+  	  else fprintf(out, "\t%f\t\t%f\t\t%f\t\t%e\t\t%e\t\n", geo_->z_h[k], grids_->ky_h[j], grids_->kx_h[i], amom_h[index].x, amom_h[index].y);    	  
           //}
         }     
       }
@@ -408,17 +416,17 @@ void Diagnostics::writeLHspectrum(MomentsG* G, int ikx, int iky)
 {
   // calculate spectrum  
   LHspectrum(G, ikx, iky);
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
 
   char ofilename[2000];
-  sprintf(ofilename, "%s.hlspectrum.out", pars_->run_name);
+  sprintf(ofilename, "%s.lhspectrum.out", pars_->run_name);
   FILE* out = fopen(ofilename,"w+");
 
-  cudaMemcpy(hlspectrum_h, hlspectrum, sizeof(float)*grids_->Nmoms, cudaMemcpyDeviceToHost);
+  cudaMemcpy(lhspectrum_h, lhspectrum, sizeof(float)*grids_->Nmoms, cudaMemcpyDeviceToHost);
   
   for(int m=0; m<grids_->Nm; m++) {
     for(int l=0; l<grids_->Nl; l++) {
-      fprintf(out, "%d\t%d\t%e\n", l, m, hlspectrum_h[l+grids_->Nl*m]);
+      fprintf(out, "%d\t%d\t%e\n", l, m, lhspectrum_h[l+grids_->Nl*m]);
     }
     fprintf(out, "\n");
   }
@@ -426,21 +434,28 @@ void Diagnostics::writeLHspectrum(MomentsG* G, int ikx, int iky)
 }
 
 // sum over ky, kz, z with flux surface average
-__global__ void volume_average(float* res, cuComplex* f, float* jacobian, float fluxDenomInv, int ikx, int iky) {
+__global__ void volume_average(float* res, cuComplex* f, cuComplex* g, float* jacobian, float fluxDenomInv, int ikx=-1, int iky=-1) {
   // reduction code follows https://github.com/parallel-forall/code-samples/blob/master/posts/parallel_reduction_with_shfl/device_reduce_atomic.h
   // device_reduce_atomic_kernel
   float sum = 0.;
+  cuComplex fg;
   for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
     unsigned int idy = idxyz % (nx*nyc) % nyc; 
     unsigned int idx = idxyz % (nx*nyc) / nyc; 
     unsigned int idz = idxyz / (nx*nyc);
     float fac;
-    if(idy==0) fac = 1.;
-    else fac = 0.5;
-    if(ikx<0 && iky<0) {
-      if(idy>0 || idx>0) sum += (f[idxyz].x*f[idxyz].x + f[idxyz].y*f[idxyz].y)*jacobian[idz]*fac*fluxDenomInv;
+    if(idy==0) fac = 0.5;
+    else fac = 1.;
+    if(ikx<0 && iky<0) { // default: sum over all k's
+      if(idy>0 || idx>0) {
+        fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*fluxDenomInv;
+        sum += fg.x;
+      }
     } else {
-      if(idy==iky && idx==ikx) sum += (f[idxyz].x*f[idxyz].x + f[idxyz].y*f[idxyz].y)*jacobian[idz]*fac*fluxDenomInv;
+      if(idy==iky && idx==ikx) {
+        fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*fluxDenomInv;
+        sum += fg.x;
+      }
     }
   }
   atomicAdd(res,sum);
@@ -450,13 +465,66 @@ void Diagnostics::LHspectrum(MomentsG* G, int ikx, int iky)
 {
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
-  cudaMemset(hlspectrum, 0., sizeof(float)*grids_->Nmoms);
+  cudaMemset(lhspectrum, 0., sizeof(float)*grids_->Nmoms);
   for(int m=0; m<grids_->Nm; m++) {
     for(int l=0; l<grids_->Nl; l++) {
       volume_average<<<blocks,threads>>>
-	(&hlspectrum[l+grids_->Nl*m], 
-	 G->G(l,m), geo_->jacobian, 1./fluxDenom, ikx, iky);
+	(&lhspectrum[l+grids_->Nl*m], 
+	 G->G(l,m), G->G(l,m), geo_->jacobian, 1./fluxDenom, ikx, iky);
     }
+  }
+}
+
+# define G_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)]
+__global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky, 
+                          float* jacobian, float fluxDenomInv, float *kperp2, float rho2_s, 
+                          int ikx=-1, int iky=-1)
+{
+  float sum = 0.;
+  cuComplex fg;
+  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+    unsigned int idy = idxyz % (nx*nyc) % nyc; 
+    unsigned int idx = idxyz % (nx*nyc) / nyc; 
+    unsigned int idz = idxyz / (nx*nyc);
+    cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+
+    float b_s = kperp2[idxyz]*rho2_s;
+
+    // sum over l
+    cuComplex p_bar = make_cuComplex(0.,0.);
+    for(int l=0; l<nl; l++) {
+      // G_(...) is defined by macro above
+      p_bar = p_bar + 1./sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2)
+      	+ ( l*Jflr(l-1,b_s) + (2.*l+1.5)*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*G_(idxyz, l, 0);
+    }
+  
+    float fac;
+    if(idy==0) fac = 0.5;
+    else fac = 1.;
+    if(ikx<0 && iky<0) { // default: sum over all k's
+      if(idy>0 || idx>0) {
+        fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
+        sum += fg.x;
+      }
+    } else {
+      if(idy==iky && idx==ikx) {
+        fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
+        sum += fg.x;
+      }
+    }
+  }
+  atomicAdd(qflux,sum);
+}
+
+
+void Diagnostics::fluxes(MomentsG* G, Fields* f)
+{
+  int threads=256;
+  int blocks=min((grids_->NxNycNz+threads-1)/threads,2048);
+
+  for(int is=0; is<grids_->Nspecies; is++) {
+    heat_flux<<<blocks,threads>>>
+        (&qflux[is], f->phi, G->G(0,0,is), grids_->ky, geo_->jacobian, 1./fluxDenom, geo_->kperp2, pars_->species_h[is].rho2);
   }
 }
 

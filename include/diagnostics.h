@@ -14,6 +14,8 @@ class Diagnostics {
   bool loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, float time) ;
   void final_diagnostics(MomentsG* G, Fields* fields);
 
+  void fluxes(MomentsG* G, Fields* f);
+
   void writeGridFile(const char* filename); // MFM
   void writeMomOrField(cuComplex* m, const char* filename);
   void writeMomOrFieldKpar(cuComplex* m, const char* filename);
@@ -26,7 +28,8 @@ class Diagnostics {
   void writeHermiteEnergySpectrumHistory();
 
 
-  double pflux[20], qflux[20];
+  float *pflux;
+  float *qflux;
 
   cuDoubleComplex *growth_rates, *growth_rates_h;
 
@@ -35,8 +38,8 @@ class Diagnostics {
   GradParallel* grad_parallel;
 
 
-  cuComplex *m_h;
-  cuComplex *res;
+  cuComplex *amom_h;
+  cuComplex *amom;
 
   Parameters* pars_;
   Grids* grids_;
@@ -51,7 +54,7 @@ class Diagnostics {
 
   bool checkstop();
  
-  float *hlspectrum, *hlspectrum_h;
+  float *lhspectrum, *lhspectrum_h;
  
   float fluxDenom;
 
