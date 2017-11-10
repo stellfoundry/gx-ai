@@ -36,7 +36,7 @@ LaguerreTransform::~LaguerreTransform()
 // toSpectral = toSpectral[j + (J+1)*l] = w_j Psi_l(x_j)
 int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* roots)
 {
-    PyObject *pName, *pModule, *pFunc;
+  /*    PyObject *pName, *pModule, *pFunc;
     PyObject *pArgs, *pReturn;
     PyObject *toGrid_py, *toSpectral_py, *roots_py;
 
@@ -98,7 +98,7 @@ int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* r
     }
     // also causes segfaults...
     //Py_Finalize();
-    return 0;
+    return 0; */
 }
 
 int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
@@ -114,12 +114,13 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
   float beta = 0.;
   int ldc = grids_->NxNyNz;
   int strideC = grids_->NxNyNz*(J+1);
+  /*
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      G_in, lda, strideA,
      toGrid, ldb, strideB,
      &beta, g_res, ldc, strideC,
-     batch_size_);
+     batch_size_); */
 }
 
 int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
@@ -135,10 +136,10 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
   float beta = 0.;
   int ldc = grids_->NxNyNz;
   int strideC = grids_->NxNyNz*(L+1);
-  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+  /*  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      g_in, lda, strideA,
      toSpectral, ldb, strideB,
      &beta, G_res, ldc, strideC,
-     batch_size_);
+     batch_size_); */
 }

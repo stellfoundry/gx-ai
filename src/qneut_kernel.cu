@@ -24,6 +24,7 @@ __global__ void real_space_density(cuComplex* nbar, cuComplex* g, float *kperp2,
   }
 }
 
+// We should probably specify tau_e == T_e/T_ref = 1/ti_ov_te since the paper does it that way
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, float* kperp2, float* jacobian, specie* species, float ti_ov_te)
 {
   unsigned int idy = get_id1();

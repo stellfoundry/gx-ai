@@ -139,8 +139,10 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
    //#pragma unroll
    for(int is=0; is<nspecies; is++) { // might be a better way to handle species loop here...
     specie s = species[is];
-  
+
     // species-specific constants
+    const float vt_ = s.vt;
+    const float zt_ = s.zt;
     const float nu_ = s.nu_ss; 
     const float tprim_ = s.tprim;
     const float fprim_ = s.fprim;
@@ -202,11 +204,11 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
       int sm = m + 2; // offset to get past ghosts
   
       // need to calculate parallel terms separately because need to take derivative via fft 
-      rhs_par[globalIdx] = -s.vt*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
+      rhs_par[globalIdx] = -vt_*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
       // remaining terms
       rhs[globalIdx] = 
-       - s.vt * bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
+       - vt_s * bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
   
                     + sqrtf(m)*l*S_G(sl,sm-1) + sqrtf(m)*(l+1)*S_G(sl+1,sm-1) )
   
@@ -220,19 +222,19 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
       if(m==0) {
         rhs[globalIdx] = rhs[globalIdx] + phi_*(
                   Jflr(l-1,b_s)*( -l*iomegad_s + l*tprim_*iomegastar_ ) 
-                + Jflr(l,  b_s)*( -2*(l+1)*iomegad_s + (fprim_ + tprim_*2*l)*iomegastar_ )
-                + Jflr(l+1,b_s)*( -(l+1)*iomegad_s ) + Jflr(l+1,b_s,false)*(l+1)*tprim_*iomegastar_ )
+                + Jflr(l,  b_s)*( -2*(l+1)*iomegad_s * zt_ + (fprim_ + tprim_*2*l)*iomegastar_ )
+                + Jflr(l+1,b_s)*( -(l+1)*iomegad_s * zt_ ) + Jflr(l+1,b_s,false)*(l+1)*tprim_*iomegastar_ )
 		+ nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 		+ nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_
         - nu_ * ( b_s + 2*l ) * (Jflr(l, b_s)*phi_ );
       } 
       if(m==1) {
-        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_;
-        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ 
+        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_ * zt_ * vt_;
+        rhs[globalIdx] = rhs[globalIdx] - phi_ * ( l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
       		+ nu_ * Jflr(l,b_s) * upar_bar_;
       }
       if(m==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(l,b_s) * (-2*iomegad_s + tprim_*iomegastar_)/sqrtf(2) 
+        rhs[globalIdx] = rhs[globalIdx] + phi_ * Jflr(l,b_s) * (-2*iomegad_s * zt_ + tprim_*iomegastar_)/sqrtf(2) 
 		+ nu_ * sqrtf(2) * Jflr(l,b_s) * t_bar_;
       }  
      } // l loop
@@ -242,8 +244,11 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   } // idxyz < NxNycNz
 }
 
-# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_
+# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_*zt_
 # define G_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
+// C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
+// H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
+// in a clumsy way
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
 {
   unsigned int idxyz = get_id1();
@@ -251,6 +256,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
   if(idxyz<nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
     for(int is=0; is<nspecies; is++) {
+      const float zt_ = s.zt;
       int index = idxyz + nx*nyc*nz*is;
       upar_bar[index] = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);
@@ -258,8 +264,8 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       float b_s = kperp2[idxyz]*species[is].rho2;
       // sum over l
       for(int l=0; l<nl; l++) {
-        // H_(...) is defined by macro above
         upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*G_(idxyz, l, 1, is);
+        // H_(...) is defined by macro above. Only use H here for m=0. Confusing!
         uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*H_(idxyz, l, 0, is);
 
         // energy conservation correction for nlaguerre = 1
