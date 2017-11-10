@@ -31,5 +31,7 @@ class Nonlinear {
   float *dJ0phi_dx, *dJ0phi_dy;
   float *g_res;
 
+  float *vmax_x, *vmax_y;
+
   double dt_cfl;
 };

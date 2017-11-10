@@ -3,8 +3,10 @@
 #include "device_funcs.h"
 #include "get_error.h"
 #include "species.h"
+#include "old/cudaReduc_kernel.cu"
+#include "old/maxReduc.cu"
 
-__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* b, float* muB, specie s);
+__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* b, float* muB, float rho2_s);
 __global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy, float* dg_dy, float* dJ0Phi_dx, float kxfac);
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
@@ -28,6 +30,9 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   dimGrid = dim3(grids_->NxNyNz/dimBlock.x+1, 1, 1);
 
   dt_cfl = 0.;
+
+  cudaMallocHost((void**) &vmax_x, sizeof(float));
+  cudaMallocHost((void**) &vmax_y, sizeof(float));
 }
 
 Nonlinear::~Nonlinear() 
@@ -47,12 +52,12 @@ Nonlinear::~Nonlinear()
 
 void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 {
-  // loop over m to save memory. also makes it easier to parallelize later...
-  // no extra computation though, just no batching in m in FFTs and matrix multiplies
   for(int s=0; s<grids_->Nspecies; s++) {
-    J0phiToGrid<<<dimGrid,dimBlock>>>(J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species[s]);
+    J0phiToGrid<<<dimGrid,dimBlock>>>(J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
     grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
     grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
+    // loop over m to save memory. also makes it easier to parallelize later...
+    // no extra computation though, just no batching in m in FFTs and matrix multiplies
     for(int m=0; m<grids_->Nm; m++) {
       grad_perp_G->dxC2R(G->Gm(m,s), dG);
       laguerre->transformToGrid(dG, dg_dx);
@@ -71,8 +76,8 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 __global__ void max_abs(float *f, float *res)
 {
   float vmax = 0.;
-  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
-    vmax = fmaxf(abs(f[idxyz]), vmax);
+  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x; idxyz<nx*ny*nz; idxyz+=blockDim.x*gridDim.x) {
+    vmax = max(abs(f[idxyz]), vmax); 
   }
   atomicMaxFloat(res, vmax);
 }
@@ -82,25 +87,28 @@ __global__ void max_abs(float *f, float *res)
 double Nonlinear::cfl(double dt_max)
 {
   float vmax = 1.e-10;
-  float vmax_x = 1.e-10, vmax_y = 1.e-10;
+  vmax_x[0] = 1.e-10;
+  vmax_y[0] = 1.e-10;
   int threads=256;
   int blocks=min((grids_->NxNyNz+threads-1)/threads,2048);
-  max_abs<<<blocks,threads>>>(dJ0phi_dx, &vmax_x);
-  max_abs<<<blocks,threads>>>(dJ0phi_dy, &vmax_y);
-  vmax = max(vmax_x, vmax_y);
+  //max_abs<<<blocks,threads>>>(dJ0phi_dx, vmax_x);
+  //max_abs<<<blocks,threads>>>(dJ0phi_dy, vmax_y);
+  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*grids_->Nl, dJ0phi_dx, dJ0phi_dx);
+  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*grids_->Nl, dJ0phi_dy, dJ0phi_dy);
+  vmax = max(vmax_x[0], vmax_y[0]);
   dt_cfl = 1./vmax < dt_max ? 1./vmax : dt_max;
   
   return dt_cfl;
 }
 
-__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2, float* muB, specie s)
+__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2, float* muB, float rho2_s)
 {
   unsigned int idxyz = get_id1();
   unsigned int J = (3*(nl-1)-1)/2;
 
   if(idxyz<nx*nyc*nz) {
     for (int j = threadIdx.y; j < J+1; j += blockDim.y) {
-      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2.*muB[j]*kperp2[idxyz]*s.rho2))*phi[idxyz];
+      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2.*muB[j]*kperp2[idxyz]*rho2_s))*phi[idxyz];
     }
   }
 }
