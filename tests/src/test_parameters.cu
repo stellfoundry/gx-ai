@@ -1,4 +1,5 @@
 #include "gtest/gtest.h"
+#include "device_test.h"
 
 #include "parameters.h"
 
@@ -23,7 +24,8 @@ TEST(TestParameters, ReadNamelist) {
   EXPECT_FLOAT_EQ(1.4, pars->qsf);
 
   // species_parameters_1
-  EXPECT_FLOAT_EQ(6.9, pars->species[0].tprim);
+  EXPECT_FLOAT_EQ(6.9, pars->species_h[0].tprim);
+  EXPECT_FLOAT_EQ_D(&pars->species[0].tprim, 6.9);
 
   // these parameters are commented out in
   // inputs/test_parameters.in so that

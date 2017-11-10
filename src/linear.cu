@@ -208,7 +208,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   
       // remaining terms
       rhs[globalIdx] = 
-       - vt_s * bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
+       - vt_ * bgrad_ * ( -sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)*l*S_G(sl-1,sm+1)
   
                     + sqrtf(m)*l*S_G(sl,sm-1) + sqrtf(m)*(l+1)*S_G(sl+1,sm-1) )
   
@@ -256,7 +256,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
   if(idxyz<nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
     for(int is=0; is<nspecies; is++) {
-      const float zt_ = s.zt;
+      const float zt_ = species[is].zt;
       int index = idxyz + nx*nyc*nz*is;
       upar_bar[index] = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);

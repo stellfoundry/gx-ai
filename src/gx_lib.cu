@@ -135,8 +135,8 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   ////////////////////////
   run_gx(pars, grids, geo, diagnostics);
 
-  memcpy(gxouts->qflux, diagnostics->qflux, sizeof(double)*grids->Nspecies);
-  memcpy(gxouts->pflux, diagnostics->pflux, sizeof(double)*grids->Nspecies);
+  //memcpy(gxouts->qflux, diagnostics->qflux, sizeof(double)*grids->Nspecies);
+  //memcpy(gxouts->pflux, diagnostics->pflux, sizeof(double)*grids->Nspecies);
 
   delete pars;
   delete grids;

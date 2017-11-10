@@ -163,6 +163,8 @@ int MomentsG::add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2,
 
 int MomentsG::reality() 
 {
-  reality_kernel<<<dimGrid,dimBlock>>>(G_lm);
+  dim3 dB = dim3(32,min(grids_->Nz,32),1);
+  dim3 dG = dim3(grids_->Nx/2/dB.x+1, grids_->Nz/dB.y+1, 1);
+  reality_kernel<<<dG,dB>>>(G_lm);
   return 0;
 }

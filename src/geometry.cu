@@ -86,7 +86,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
     float qsf = pars->qsf;
     float beta_e = pars->beta;
     float rmaj = pars->rmaj;
-    specie* species = pars->species;
+    specie* species = pars->species_h;
 
     if(pars->shift < 0.) {
       pars->shift = 0.;

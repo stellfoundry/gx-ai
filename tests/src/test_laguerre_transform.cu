@@ -141,3 +141,46 @@ TEST_F(TestLaguerreTransform, identity) {
   delete geo;
 
 }
+
+__global__ void scale(float* res, float* g, float scaler, int size) {
+  for(int i=0; i<size; i++) {
+    res[i] = g[i]*scaler;
+  }
+}
+
+TEST_F(TestLaguerreTransform, identity2) {
+  
+  float *G, *g, *Gres, *init_h;
+  Geometry *geo = new S_alpha_geo(pars,grids);
+
+  cudaMallocHost((void**) &init_h, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &G, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &Gres, sizeof(float)*grids->NxNyNz*grids->Nl);
+  cudaMalloc((void**) &g, sizeof(float)*grids->NxNyNz*(laguerre->J+1));
+
+  srand(22);
+  float samp = 1.;
+  for(int l=0; l<grids->Nl; l++) {
+    for(int i=0; i<grids->Ny; i++) {
+      for(int j=0; j<grids->Nx; j++) {
+          float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+          for(int k=0; k<grids->Nz; k++) {
+            int index = i + grids->Ny*j + grids->NxNy*k + grids->NxNyNz*l;
+    	    init_h[index] = ra*cos(1.*geo->z_h[k]/pars->Zp);
+          }
+      }
+    }
+  }
+  cudaMemcpy(G, init_h, sizeof(float)*grids->NxNyNz*grids->Nl, cudaMemcpyHostToDevice);
+
+  checkCuda(laguerre->transformToGrid(G, g));
+  scale<<<1,1>>>(g,g,2.,grids->NxNyNz*(laguerre->J+1));
+  checkCuda(laguerre->transformToSpectral(g, Gres));
+  
+  for(int i=0; i<grids->NxNyNz*grids->Nl; i++) {
+    EXPECT_FLOAT_EQ_D(&Gres[i], 2.*init_h[i], 1.e-6);
+  }
+
+  delete geo;
+
+}

@@ -143,7 +143,7 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
   Diagnostics* diagnostics;
   diagnostics = new Diagnostics(pars, grids, geo);
 
-  diagnostics->writeMomOrField(GInit->upar_ptr[0],"upar0_nlink1");
+  //diagnostics->writeMomOrField(GInit->upar_ptr[0],"upar0_nlink1");
 
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
@@ -210,7 +210,7 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
     }
   }
 
-  diagnostics->writeMomOrField(GInit->upar_ptr[0], "upar_nlink1");
+  //diagnostics->writeMomOrField(GInit->upar_ptr[0], "upar_nlink1");
 
   free(init_check);
   free(deriv_check);
