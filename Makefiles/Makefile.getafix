@@ -20,6 +20,10 @@ NVCC=nvcc
 CUDAARCH=35
 export MAKEFLAGS=' -I Makefiles'
 
+PYTHON_INC = -I /opt/anaconda2/include/python2.7
+PYTHON_LIB = -L /opt/anaconda2/lib/ -lpython2.7
+
+
 MPI_INC = -I /usr/local/include -I include -I.
 MPI_LIB= -L /usr/local/lib  -lmpich 
 CUDA_INC = -I /usr/local/cuda/include

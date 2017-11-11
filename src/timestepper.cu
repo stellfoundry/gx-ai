@@ -38,8 +38,8 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f) {
 
   if (forcing_ != NULL) {
     forcing_->stir(G);
-    //    forcing_ = NULL;
   }
+  
   solver_->fieldSolve(G, f);
   *t+=dt_;
   return 0;
