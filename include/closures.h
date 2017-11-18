@@ -66,7 +66,7 @@ class SmithPar : public Closures {
   float gpar_;
   const int q_;
   
-  cuComplex *tmp, *tmp_abs;
+  cuComplex *tmp;
 
   // closure coefficent array
   cuComplex *a_coefficients_;

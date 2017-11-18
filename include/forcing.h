@@ -17,13 +17,22 @@ class KzForcing : public Forcing {
   ~KzForcing();
   void stir(MomentsG *G);
 
- private:
+ protected:
   float forcing_amp_;
   cuComplex random_force;
 
   Parameters *pars_;
   Grids *grids_;
   Geometry *geo_;
+};
+
+class KzForcingImpulse : public KzForcing {
+    public:
+    KzForcingImpulse(Parameters *pars, Grids *grids, Geometry *geo);
+    void stir(MomentsG *G);
+
+    private:
+    bool stirring_done;
 };
 
 

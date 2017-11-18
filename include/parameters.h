@@ -159,6 +159,7 @@ class Parameters {
      bool forcing_init;
      char *forcing_type;
      float forcing_amp;
+     int forcing_index;
   
     // Namelist: knobs
    //   float fphi;

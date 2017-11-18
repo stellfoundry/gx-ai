@@ -22,12 +22,12 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuDoubl
   }
 }
 
-__global__ void computeHermiteEnergySpectrum(cuComplex *m, float *hermite_energy_spectrum, float *hermite_energy_spectrum_avg, int count, int num_writes, int cutoff) {
+__global__ void computeHermiteEnergySpectrum(cuComplex *m, float *hermite_energy_spectrum, float *hermite_energy_spectrum_avg, int count, int num_writes, int cutoff, int forcing_index) {
   int i = threadIdx.x;
   int id = nx*nyc*nz*nl*i;
 
   // calculate |C_m| for each moment
-  float value = m[id+1].x*m[id+1].x + m[id+1].y*m[id+1].y;
+  float value = m[id + forcing_index].x*m[id + forcing_index].x + m[id + forcing_index].y*m[id + forcing_index].y;
 
   hermite_energy_spectrum[i] = value;
 
@@ -573,7 +573,7 @@ bool Diagnostics::checkstop()
 
 // set write_hermite_energy_spectrum to "on" in gx_knobs to calculate and write to file the Hermite energy spectrum
 void Diagnostics::HermiteEnergySpectrum(MomentsG *m, int count) {
-    computeHermiteEnergySpectrum<<<1, pars_->nm_in>>>(m->G(0,0,0), hermite_energy_spectrum, hermite_energy_spectrum_avg, count/pars_->nwrite, pars_->nstep/pars_->nwrite, pars_->hermite_spectrum_avg_cutoff);
+    computeHermiteEnergySpectrum<<<1, pars_->nm_in>>>(m->G(0,0,0), hermite_energy_spectrum, hermite_energy_spectrum_avg, count/pars_->nwrite, pars_->nstep/pars_->nwrite, pars_->hermite_spectrum_avg_cutoff, pars_->forcing_index);
 }
 
 void Diagnostics::writeHermiteEnergySpectrum() {

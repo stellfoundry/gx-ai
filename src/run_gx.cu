@@ -79,16 +79,20 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
       nonlinear = NULL;
     }
     checkCuda(cudaGetLastError());
-   
+
     if (pars->forcing_init) {
       printf("Initializing forcing...\n");
-      if (strcmp(pars->forcing_type, "Kz") == 0) {
+      if(strcmp(pars->forcing_type, "Kz") == 0) {
         forcing = new KzForcing(pars, grids, geo);
-      } 
+      } else if (strcmp(pars->forcing_type, "KzImpulse") == 0) {
+        forcing = new KzForcingImpulse(pars, grids, geo);
+      } else {
+        forcing = NULL;
+      }
+    } else {
+        forcing = NULL;
     }
-    else {
-      forcing = NULL;
-    }
+
     checkCuda(cudaGetLastError());
 
     printf("Initializing timestepper...\n");

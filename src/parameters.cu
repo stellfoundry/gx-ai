@@ -149,7 +149,7 @@ int Parameters::read_namelist(char* filename)
   forcing_init = get_bool_on_off(&namelist_struct, "forcing_knobs", "forcing_init");
   fnr_get_string(&namelist_struct, "forcing_knobs", "forcing_type", &forcing_type);
   fnr_get_float(&namelist_struct, "forcing_knobs", "forcing_amp", &forcing_amp);
-
+  fnr_get_int(&namelist_struct, "forcing_knobs", "forcing_index", &forcing_index);
 
   fnr_get_float(&namelist_struct, "dist_fn_knobs", "g_exb", &(g_exb));
 

@@ -248,7 +248,12 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par_in,
   // calculate closure coefficients 
   a_coefficients_ = (cuComplex*) malloc(q_*sizeof(cuComplex));
   smith_par_getAs(grids->Nm, q_, a_coefficients_);
-   
+
+  /*
+  for (int i = 0; i < q_; i++) {
+      printf("smith_par coefficient: Re: %f, Im: %f\n", a_coefficients_[i].x, a_coefficients_[i].y);
+  } */
+
   // 1d thread blocks over xyz
   dimBlock = 512;
   dimGrid = grids_->NxNycNz/dimBlock.x+1;
@@ -258,7 +263,6 @@ SmithPar::~SmithPar() {
   free(a_coefficients_);
   cudaFree(clos);
   cudaFree(tmp);
-  cudaFree(tmp_abs);
 }
 
 int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 
@@ -274,9 +278,25 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
           grad_par->dz((G->G(l,m)), tmp);
-          grad_par->abs_dz(G->G(l,m), tmp_abs);
-          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - l].y, tmp_abs, a_coefficients_[M - l].x, tmp);
+          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - m].y, tmp, a_coefficients_[M - m].x, tmp);
       }
+
+      /* // Debugging printing for smith closure
+      cuComplex *G_value;
+      cuComplex *closure_value;
+
+      cudaMallocHost((void **) &G_value, sizeof(cuComplex));
+      cudaMallocHost((void **) &closure_value, sizeof(cuComplex));
+
+      cudaMemcpy(G_value, &(GRhs->G(l,M)[1]), sizeof(cuComplex), cudaMemcpyDeviceToHost);
+      cudaMemcpy(closure_value, &(clos[1]), sizeof(cuComplex), cudaMemcpyDeviceToHost);
+
+      printf("Re(Closure): %f,   Re(G(1,M)): %f\n", -sqrt(M+1)*gpar_*cuCrealf(*closure_value), cuCrealf(*G_value));
+      printf("Im(Closure): %f,   Im(G(1,M): %f\n", -sqrt(M+1)*gpar_*cuCimagf(*closure_value), cuCimagf(*G_value));
+
+      cudaFreeHost(G_value);
+      cudaFreeHost(closure_value);
+      */
 
       add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1)*gpar_, clos);
     }

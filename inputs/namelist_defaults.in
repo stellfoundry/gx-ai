@@ -188,6 +188,7 @@ model_option = "const-curv"
  forcing_init = "off"
  forcing_type = "Kz"
  forcing_amp = 1
+ forcing_index = 1
 /
 
 &dist_fn_knobs
