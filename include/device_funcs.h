@@ -50,8 +50,9 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, cuComplex s
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
 
-
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2, double c3, cuComplex* m3);
+
+__global__ void add_scaled_singlemom_kernel(cuComplex* res, cuComplex c1, cuComplex* m1, cuComplex c2, cuComplex* m2);
 
 __global__ void reality_kernel(cuComplex* g);
 __global__ void reality_singlemom_kernel(cuComplex* mom);
