@@ -240,6 +240,7 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par_in,
     grids_(grids), grad_par(grad_par_in), gpar_(geo->gradpar), q_(q)
 { 
   cudaMalloc((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMalloc((void**) &tmp_abs, sizeof(cuComplex)*grids_->NxNycNz);
   
   // allocate closure array
   cudaMalloc((void**) &clos, grids_->NxNycNz*sizeof(cuComplex));
@@ -257,6 +258,7 @@ SmithPar::~SmithPar() {
   free(a_coefficients_);
   cudaFree(clos);
   cudaFree(tmp);
+  cudaFree(tmp_abs);
 }
 
 int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 
@@ -272,7 +274,8 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
           grad_par->dz(G->G(l,m), tmp);
-          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, make_cuComplex(1., 0.), clos, a_coefficients_[M - m], tmp);
+          grad_par->abs_dz(G->G(l,m), tmp_abs);
+          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
       }
 
       add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1)*gpar_, clos);
