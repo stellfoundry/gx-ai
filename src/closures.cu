@@ -275,7 +275,7 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       for (int m = M; m >= grids_->Nm - q_; m--) {
           grad_par->dz(G->G(l,m), tmp);
           grad_par->abs_dz(G->G(l,m), tmp_abs);
-          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
+          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
       }
 
       add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1)*gpar_, clos);
