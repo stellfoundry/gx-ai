@@ -24,7 +24,7 @@ class Beer42 : public Closures {
   float* omegad_;
   float gpar_;
 
-  cuComplex *tmp, *tmp_abs;
+  cuComplex *tmp;
 
   // closure coefficients
   float Beta_par;
@@ -66,7 +66,7 @@ class SmithPar : public Closures {
   float gpar_;
   const int q_;
   
-  cuComplex *tmp;
+  cuComplex *tmp, *tmp_abs;
 
   // closure coefficent array
   cuComplex *a_coefficients_;
