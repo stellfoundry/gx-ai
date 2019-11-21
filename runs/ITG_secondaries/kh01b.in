@@ -1,13 +1,13 @@
 &gx
- debug = F
+ debug = F 
  scheme = "k10"
 
  ntheta = 1
  nperiod = 1
- ny = 32
+ ny = 4
  nx = 4
- y0 = 5.0
- x0 = 2.0
+ y0 = 10.0
+ x0 = 10.0
  boundary = "periodic"
  forcing_amp = 0.
  forcing_init = F
@@ -17,8 +17,10 @@
  closure_model = "none"
  
  dt = 0.01
- nstep  = 5000
- nwrite = 500
+ nstep  = 500
+ nwrite = 100
+ navg   = 5
+ nsave  = 100000
 
  beta = 0. 
  TiTe = 1.0
@@ -30,7 +32,7 @@
  slab = T,     const_curv = F
 
  nonlinear_mode = T 
- cfl = 1.0
+ cfl = 0.5 
 
  nspecies = 1
 
@@ -40,8 +42,8 @@
  write_phi    = T
 
  write_lh_spectrum = T
- write_h_spectrum  = F
- write_l_spectrum  = F
+ write_h_spectrum  = T
+ write_l_spectrum  = T
  write_spec_v_time = F
 
  write_phi_kpar = F
@@ -50,7 +52,7 @@
  restart = T
  restart_from_file = "jet.nc"
 
- eqfix = T
+ eqfix = F
  ikx_fixed = 0
  iky_fixed = 1
 

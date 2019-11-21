@@ -1,17 +1,17 @@
 &gx
  debug = F 
- scheme = "k10"
+ scheme = "rk2"
 
  ntheta = 1
  nperiod = 1
- ny = 4
+ ny = 32
  nx = 4
- y0 = 100.0 
+ y0 = 5.0 
  boundary = "periodic"
  forcing_amp = 0.
  forcing_init = F
  
- nhermite = 4
+ nhermite = 8
  nlaguerre = 4
  closure_model = "none"
  
@@ -31,7 +31,7 @@
  slab = T,     const_curv = F
 
  nonlinear_mode = T 
- cfl = 0.707
+ cfl = 0.5 
 
  nspecies = 1
 
@@ -46,7 +46,7 @@
  write_spec_v_time = F
 
  write_phi_kpar = F
- write_moms = F
+ write_moms = T
  write_rh = F
  restart = F
  restart_from_file = "none.nc"
@@ -56,7 +56,7 @@
  init_single = T
  ikx_single = 0
  iky_single = 1
- init_amp = 1.0
+ init_amp = 1.
  iphi00 = 2  
 /
 
