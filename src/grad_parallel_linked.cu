@@ -12,7 +12,7 @@ __global__ void linkedCopyBack(cuComplex* G_linked, cuComplex* G, int nLinks, in
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
-  int nLinks = (int) 1./(zp*kz[1]);
+  int nLinks = (int) 1./(zp*kz[1]); // is this conversion to integer reliable?
   unsigned int idz = offset % (nz*nLinks);
   cuComplex Ikz = make_cuComplex(0., kz[idz]);
   float normalization = (float) 1./(nz*nLinks);
@@ -93,8 +93,8 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     // allocate and copy into device memory
     cudaMalloc((void**) &ikxLinked[c], sizeof(int)*nLinks[c]*nChains[c]);
     cudaMalloc((void**) &ikyLinked[c], sizeof(int)*nLinks[c]*nChains[c]);
-    cudaMemcpy(ikxLinked[c], ikxLinked_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
-    cudaMemcpy(ikyLinked[c], ikyLinked_h[c], sizeof(int)*nLinks[c]*nChains[c], cudaMemcpyHostToDevice);
+    CP_TO_GPU(ikxLinked[c], ikxLinked_h[c], sizeof(int)*nLinks[c]*nChains[c]);
+    CP_TO_GPU(ikyLinked[c], ikyLinked_h[c], sizeof(int)*nLinks[c]*nChains[c]);
 
     checkCuda(cudaMalloc((void**) &G_linked[c], sizeof(cuComplex)*grids_->Nz*nLinks[c]*nChains[c]*grids_->Nl*grids_->Nm));
     cudaMemset(G_linked[c], 0., sizeof(cuComplex)*grids_->Nz*nLinks[c]*nChains[c]*grids_->Nl*grids_->Nm);
@@ -172,15 +172,17 @@ GradParallelLinked::~GradParallelLinked()
 
 void GradParallelLinked::dz(MomentsG* G) 
 {
-  G->reality();
+  G->reality(); // why is this required?
   for(int c=0; c<nClasses; c++) {
     // each "class" has a different number of links in the chains, and a different number of chains.
-    linkedCopy<<<dimGrid[c],dimBlock[c]>>>(G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-    cufftExecC2C(gradpar_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
-    cufftExecC2C(gradpar_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
-    linkedCopyBack<<<dimGrid[c],dimBlock[c]>>>(G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    linkedCopy <<<dimGrid[c],dimBlock[c]>>>
+      (G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    cufftExecC2C (gradpar_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
+    cufftExecC2C (gradpar_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+    linkedCopyBack <<<dimGrid[c],dimBlock[c]>>>
+      (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
   }
-  G->reality();
+  G->reality(); // why is this here? 
 }
 
 // for a single moment m
@@ -223,7 +225,8 @@ __global__ void linkedCopy(cuComplex* G, cuComplex* G_linked, int nLinks, int nC
     unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
     unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
 
-    // seems hopeless to make these accesses coalesced. how bad is it?
+    // NRM: seems hopeless to make these accesses coalesced. how bad is it?
+    // BD: each link in a chain is contiguous? no, because there are lots of moments. ok
     G_linked[idlink] = G[globalIdx];
   }
 }

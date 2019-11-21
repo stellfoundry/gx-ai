@@ -2,8 +2,7 @@
 #include "cuda_constants.h"
 #include "get_error.h"
 
-__global__ void kInit(float* kx, float* ky, float* kz, 
-                      float X0, float Y0, int Zp) 
+__global__ void kInit(float* kx, float* ky, float* kz, float X0, float Y0, int Zp) 
 {
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -20,8 +19,9 @@ __global__ void kInit(float* kx, float* ky, float* kz,
   } else if(id<nz) {
     kz[id] = (float) (id - nz)/Zp;
   }
-    //if(qsf<0.) kz[id] = shat; // local limit
-    //if(no_zderiv) kz[id] = 0; 
+  //  if(qsf<0.) kz[id] = shat; // local limit
+    //if(no_zderiv) kz[id] = 0;
+  //  kz[id] = 1.0;   // BD HACK
 }
 
 Grids::Grids(Parameters* pars) :
@@ -37,6 +37,7 @@ Grids::Grids(Parameters* pars) :
   Naky((Ny-1)/3+1),
   //Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
   Nakx(1 + 2*((Nx-1)/3)),
+  Nakz(1 + 2*((Nz-1)/3)),
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
   NxNycNz(Nx * Nyc * Nz),
@@ -47,7 +48,9 @@ Grids::Grids(Parameters* pars) :
   pars_(pars)
 {
   cudaDeviceSynchronize();
-  cudaMallocHost((void**) &kx_h, sizeof(float)*Nx);
+  cudaMallocHost((void**) &theta0_h, sizeof(float)*Nakx);
+
+  cudaMallocHost((void**) &kx_h, sizeof(float)*Nx); // BD why not Nakx here? (answer: linear runs?)
   cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
   cudaMallocHost((void**) &kz_h, sizeof(float)*Nz);
 
@@ -55,7 +58,8 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc((void**) &ky, sizeof(float)*Nyc);
   cudaMalloc((void**) &kz, sizeof(float)*Nz);
 
-
+  //  printf("In grids constructor. Nyc = %i \n",Nyc);
+  
   // copy some parameters to device constant memory 
   cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
@@ -64,7 +68,9 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nm, &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nl, &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(zp, &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(zp, &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);  
+  cudaMemcpyToSymbol(ikx_fixed, &pars_->ikx_fixed, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(iky_fixed, &pars_->iky_fixed, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();
 
   // initialize k arrays
@@ -72,9 +78,9 @@ Grids::Grids(Parameters* pars) :
   kInit<<<1, Nmax>>>(kx, ky, kz,
                      pars_->x0, pars_->y0, pars_->Zp);
 
-  cudaMemcpy(kx_h, kx, sizeof(float)*Nx, cudaMemcpyDeviceToHost);
-  cudaMemcpy(ky_h, ky, sizeof(float)*Nyc, cudaMemcpyDeviceToHost);
-  cudaMemcpy(kz_h, kz, sizeof(float)*Nz, cudaMemcpyDeviceToHost);
+  CP_TO_CPU(kx_h, kx, sizeof(float)*Nx);
+  CP_TO_CPU(ky_h, ky, sizeof(float)*Nyc);
+  CP_TO_CPU(kz_h, kz, sizeof(float)*Nz);  
 }
 
 Grids::~Grids() {

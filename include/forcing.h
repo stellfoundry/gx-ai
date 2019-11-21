@@ -1,8 +1,6 @@
 #pragma once
 
-#include "grids.h"
 #include "moments.h"
-#include "geometry.h"
 #include "parameters.h"
 
 class Forcing {
@@ -13,26 +11,36 @@ class Forcing {
 
 class KzForcing : public Forcing {
  public:
-  KzForcing(Parameters *pars, Grids *grids, Geometry *geo); 
+  KzForcing(Parameters *pars);
   ~KzForcing();
   void stir(MomentsG *G);
 
  protected:
   float forcing_amp_;
   cuComplex random_force;
-
   Parameters *pars_;
-  Grids *grids_;
-  Geometry *geo_;
+
 };
 
 class KzForcingImpulse : public KzForcing {
-    public:
-    KzForcingImpulse(Parameters *pars, Grids *grids, Geometry *geo);
+ public:
+  KzForcingImpulse(Parameters *pars);
     void stir(MomentsG *G);
 
     private:
     bool stirring_done;
+};
+
+class genForcing : public Forcing {
+ public:
+  genForcing(Parameters *pars);
+  ~genForcing();
+  void stir(MomentsG *G);
+
+ protected:
+  float forcing_amp_;
+  cuComplex random_force;
+  Parameters *pars_;
 };
 
 

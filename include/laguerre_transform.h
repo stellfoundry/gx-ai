@@ -1,4 +1,11 @@
 #pragma once
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_eigen.h>
+#include <gsl/gsl_sf_gamma.h>
+#include <gsl/gsl_poly.h>
+#include <gsl/gsl_blas.h>
+#include <gsl/gsl_linalg.h>
+
 #include "moments.h"
 #include "grids.h"
 #include <cublas_v2.h>

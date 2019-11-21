@@ -1,23 +1,21 @@
-#include <Python.h>
-#include <numpy/arrayobject.h>
 #include "laguerre_transform.h"
 
 LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
   grids_(grids), L(grids->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
-  cudaMallocHost((void**) &toGrid_h, sizeof(float)*(L+1)*(J+1));
+  cudaMallocHost((void**) &toGrid_h,     sizeof(float)*(L+1)*(J+1));
   cudaMallocHost((void**) &toSpectral_h, sizeof(float)*(L+1)*(J+1));
-  cudaMallocHost((void**) &roots_h, sizeof(float)*(J+1));
+  cudaMallocHost((void**) &roots_h,      sizeof(float)*(J+1));
 
-  cudaMalloc((void**) &toGrid, sizeof(float)*(L+1)*(J+1));
+  cudaMalloc((void**) &toGrid,     sizeof(float)*(L+1)*(J+1));
   cudaMalloc((void**) &toSpectral, sizeof(float)*(L+1)*(J+1));
-  cudaMalloc((void**) &roots, sizeof(float)*(J+1));
+  cudaMalloc((void**) &roots,      sizeof(float)*(J+1));
 
   initTransforms(toGrid_h, toSpectral_h, roots_h);
-  cudaMemcpy(toGrid, toGrid_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
-  cudaMemcpy(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1), cudaMemcpyHostToDevice);
-  cudaMemcpy(roots, roots_h, sizeof(float)*(J+1), cudaMemcpyHostToDevice);
+  CP_TO_GPU(toGrid,     toGrid_h,     sizeof(float)*(L+1)*(J+1));
+  CP_TO_GPU(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1));
+  CP_TO_GPU(roots,      roots_h,      sizeof(float)*(J+1));
 
   cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
@@ -32,73 +30,75 @@ LaguerreTransform::~LaguerreTransform()
   cudaFree(roots);
 }
 
-// toGrid = toGrid[l + (L+1)*j] = Psi^l(x_j)
-// toSpectral = toSpectral[j + (J+1)*l] = w_j Psi_l(x_j)
-int LaguerreTransform::initTransforms(float* toGrid, float* toSpectral, float* roots)
+int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
 {
-    PyObject *pName, *pModule, *pFunc;
-    PyObject *pArgs, *pReturn;
-    PyObject *toGrid_py, *toSpectral_py, *roots_py;
+  int i, j;
+  int Jsq = (J+1) * (J+1);
+  double Jacobi[Jsq];
 
-    const char* filename = "laguerre_quadrature";
-    const char* funcname = "laguerre_quadrature";
+  for (j=0; j<Jsq; j++) Jacobi[j] = 0.0;
 
-    Py_Initialize();
-    pName = PyString_FromString(filename);
+  for (i = 0; i < J+1; i ++) {
+    Jacobi[i * (J+2)] = 2 * i + 1;
+    Jacobi[1 + i * (J+2)] = i + 1;
+    Jacobi[J+1 + i * (J+2)] = i + 1;
+  } 
 
-    pModule = PyImport_Import(pName);
-    Py_DECREF(pName);
+  /*
+  for (i = 0; i < J+1; i ++) {
+    for (j = 0; j < J+1; j ++) {
+      printf("%f \t",Jacobi[i*(J+1)+j]);
+    } 
+    printf("\n");
+  }
+  */
 
-    if (pModule != NULL) {
-        pFunc = PyObject_GetAttrString(pModule, funcname);
+  gsl_matrix_view m = gsl_matrix_view_array (Jacobi, J+1, J+1); // defined type gsl_matrix_view
+  //  gsl_vector *weights = gsl_vector_alloc (J+1);                 // pointer to a structure
+  gsl_vector *eval = gsl_vector_alloc (J+1);
+  gsl_matrix *evec = gsl_matrix_alloc (J+1, J+1);
+  gsl_eigen_symmv_workspace * wrk = gsl_eigen_symmv_alloc (J+1);
+  gsl_eigen_symmv (&m.matrix, eval, evec, wrk);                 // & returns address for pointer
+  gsl_eigen_symmv_free (wrk);
+  gsl_eigen_symmv_sort (eval, evec, GSL_EIGEN_SORT_ABS_ASC);
 
-        if (pFunc && PyCallable_Check(pFunc)) {
-            pArgs = PyTuple_New(1);
-            PyTuple_SetItem(pArgs, 0, PyInt_FromLong(L));
+  // eval: eigenvalues of Jacobi matrix; roots of the (J+1)th Laguerre
+  // evec: Laguerre cardinal polynomials; use these to get the weights 
 
-            pReturn = PyObject_CallObject(pFunc, pArgs);
-            Py_DECREF(pArgs);
-
-            if (pReturn != NULL && PyTuple_Check(pReturn)) {
-
-		toGrid_py = PyTuple_GetItem(pReturn, 0);
-		toSpectral_py = PyTuple_GetItem(pReturn, 1);
-                roots_py = PyTuple_GetItem(pReturn, 2);
-
-                memcpy(toGrid, (float*) PyArray_DATA(toGrid_py), sizeof(float)*(J+1)*(L+1));
-                memcpy(toSpectral, (float*) PyArray_DATA(toSpectral_py), sizeof(float)*(J+1)*(L+1));
-                memcpy(roots, (float*) PyArray_DATA(roots_py), sizeof(float)*(J+1));
-
-                Py_DECREF(toSpectral_py);
-                Py_DECREF(toGrid_py);
-                Py_DECREF(roots_py);
-            }
-            else {
-                Py_DECREF(pFunc);
-                Py_DECREF(pModule);
-                PyErr_Print();
-                fprintf(stderr,"Call failed\n");
-                return 1;
-            }
-            // this causes segfaults...
-            //Py_DECREF(pReturn);
-        }
-        else {
-            if (PyErr_Occurred())
-                PyErr_Print();
-            fprintf(stderr, "Cannot find function \"%s\"\n", funcname);
-        }
-        Py_XDECREF(pFunc);
-        Py_DECREF(pModule);
+  gsl_matrix *poly = gsl_matrix_alloc (J+1, J+1);               // pointer to defined type gsl_matrix
+  gsl_matrix_set_zero (poly);
+  for (i=0; i<J+1; i++) {      
+    for (j=0; j<i+1; j++) {
+      // i-th polynomial, j-th coefficient
+      double tmp = gsl_sf_choose (i, j);      
+      //      printf("tmp = %d\n",tmp);
+      tmp *= gsl_pow_int(-1.0, j) / gsl_sf_fact(j) * gsl_pow_int(-1.0, i);
+      //      printf("tmp=%g \n",tmp);
+      gsl_matrix_set(poly, i, j, tmp);
     }
-    else {
-        PyErr_Print();
-        fprintf(stderr, "Failed to load \"%s\"\n", filename);
-        return 1;
-    }
-    // also causes segfaults...
-    //Py_Finalize();
-    return 0; 
+  }
+  int ell;
+  double x_i, wgt, Lmat;
+  gsl_vector_view polyvec;
+
+  for (j=0; j<J+1; j++) {
+    x_i = gsl_vector_get (eval, j); 
+    //    printf("roots_h[%d]=%g \n",j,x_i);
+    roots_h[j] = (float) x_i; // Used in argument of J0
+    wgt = pow (gsl_matrix_get (evec, 0, j), 2); // square first element of j_th eigenvector
+    //    gsl_vector_set (weights, j, wgt);
+
+    // evaluate the ell-th polynomial at x(j) = x_j and multiply by weight(j) as needed
+    for (ell=0; ell<L+1; ell++) {
+      polyvec = gsl_matrix_row (poly, ell);
+      Lmat = gsl_poly_eval(polyvec.vector.data, ell+1, x_i);
+
+      toGrid_h[ell + (L+1)*j] = (float) Lmat;
+      Lmat = Lmat * wgt;
+      toSpectral_h[j + (J+1)*ell] = (float) Lmat;
+    }	
+  }
+  return 0; 
 }
 
 int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
@@ -135,6 +135,32 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
   float beta = 0.;
   int ldc = grids_->NxNyNz;
   int strideC = grids_->NxNyNz*(L+1);
+
+  // column-major order, according to the manuals. WTF?
+  // So I should transpose everything? 
+
+  // COLUMN MAJOR
+  // G(l) = T(l, j) g(j)   (for every k)
+  // G(k, l) = g(k, j) T(j, l)  <<<<<< Note that T is transposed...
+  // G has leading dimension K and a new block starts K*L away 
+  // g has leading dimension K and a new block starts K*J away 
+  // T has leading dimension J and a stride of zero 
+
+  // T has to be T[j + (J+1)*l] for this to hold together. 
+  // ... and it does; the Python numby flatten trick does that. 
+
+  // C = A B ==> lda=K, strideA = K*J;  ldc=K, strideC=K*L; ldb=J and strideB=0
+  // A has K rows so ::::::::: m = K   ////////////// yes
+  // B has L columns so :::::: n = L   ////////////// yes b/c L = L+1 for some python reason
+  // A has J columns so :::::: k = J   ////////////// yes b/c J = J+1 for some unknown reason
+
+  // lda=K  ///////////////////////// yes
+  // strideA=K*(J+1) /////////////// yes
+  // ldb=J+1        //////////////// yes
+  // strideB=0 ////////////////////// yes
+  // ldc=K  ///////////////////////// yes
+  // strideC=K*(L+1) //////////////  yes
+
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      g_in, lda, strideA,
@@ -142,3 +168,6 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
      &beta, G_res, ldc, strideC,
      batch_size_); 
 }
+
+
+

@@ -17,13 +17,15 @@ class Linear {
   int sharedSize;
 
  private:
-  const Parameters* pars_;
+  Parameters* pars_;
   Grids* grids_;  
   const Geometry* geo_;
   GradParallel* grad_par;
   Closures* closures;
 
   MomentsG* GRhs_par;
+
+  //  const Parameters* pars_;
 
   // conservation terms
   cuComplex* upar_bar;

@@ -1,0 +1,241 @@
+&gx
+ debug = "off"
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Spatial domain   !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ ntheta = 32
+ nperiod = 1
+ nx = 16 
+ ny = 16
+ y0 = 10
+ x0 = 10
+ boundary_option="linked"
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! v-resolution     !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ nhermite  = 4
+ nlaguerre = 2
+
+ closure_model = 'smith_perp'
+ closure_model = 'smith_par'
+ closure_model = 'beer4+2'
+ closure_model = 'none'
+ smith_par_q   = 3
+ smith_perp_q  = 3
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Time domain      !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ nstep  = 10000
+ nwrite = 1000
+ delt   = 0.05
+ navg   = 10
+ nsave  = 1000
+ scheme = rk2
+ scheme = rk4
+ scheme = k10
+
+ restart = "off"
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Spatial domain   !!
+ !! (rarely changed) !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ zp = 1
+ jtwist = -1
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Species          !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ nspec = 1
+ tite = 1.0
+ iphi00 = 2
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Fields           !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ fphi =   1.0
+ fapar =  0.0
+ faperp = 0.0
+ beta = 0.0
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Nonlinearity     !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ nonlinear_mode='off'
+ cfl = 0.1
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Geometry         !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ igeo       = 0
+ geofile    = "eik.out"
+ slab       = "off"
+ const_curv = "off"
+
+ rhoc = 0.54
+ eps = 0.18 
+ epsl = 2.0
+ 
+ shat = 0.8
+ qinp = 1.4
+ shift = 0.0
+
+ akappa = 1.0
+ akappri = 0.0
+ tri = 0.0
+ tripri = 0.0
+
+ Rmaj = 1.0
+
+ beta_prime_input = 0.0
+ s_hat_input = 0.8
+
+ drhodpsi = 1.0
+ kxfac = 1.0
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Rosenbluth-Hinton !
+ !!!!!!!!!!!!!!!!!!!!!!
+ source_option = "phiext+full" !! RH
+ source_option = "default"
+ phi_ext = 0.
+! t0 = -10.0
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Hyper-dissipation !
+ !!!!!!!!!!!!!!!!!!!!!!
+ hyper = "off"
+ nu_hyper = 1.0
+ p_hyper = 2
+ d_hyper = 0.1 
+
+ hypercollisions = .false.
+ nu_hyper_l = 1
+ nu_hyper_m = 1
+ p_hyper_l = 6
+ p_hyper_m = 6
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Initial conditions!
+ !!!!!!!!!!!!!!!!!!!!!!
+ init_amp = 1.0e-5
+ init = "density"
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Diagnostics      !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ write_omega = "off"
+ write_phi = "off"
+ write_h_spectrum = "off"
+ write_l_spectrum = "off"
+ write_lh_spectrum = "off"
+ hermite_spectrum_avg_cutoff = 20
+ write_moms = "off"
+ write_fluxes = "off"
+ write_spec_v_time = "off"
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Rarely used      !!
+ !!!!!!!!!!!!!!!!!!!!!!
+ zero_order_nonlin_flr_only = .false.
+ no_nonlin_cross_terms      = .false.
+ no_nonlin_dens_cross_term  = .false.
+
+ init_single = "off"
+ iky_single = 1
+ ikx_single = 0
+ kpar_init = 0.
+
+ snyder_electrons = "off"
+
+ forcing_init = "off"
+ forcing_type = "Kz"
+ forcing_amp = 1
+ forcing_index = 1
+
+ !!!!!!!!!!!!!!!!!!!!!!
+ !! Available for use !
+ !!!!!!!!!!!!!!!!!!!!!!
+ ! netcdf_restart = .true.
+ ! append_old = .true.
+ ! nlpm = "off"
+ ! inlpm = 25
+ ! dnlpm = 1.0
+ ! dnlpm_dens = -0.4
+ ! dnlpm_tprp = 1.6
+ ! low_b_all = "off"
+ ! iflr = 0
+ ! avail_cpu_time = 1.e10
+ ! margin_cpu_time = 300.
+ ! iso_shear = "off"
+ ! scan_type = "outputs"
+ ! scan_number = 1
+ ! zero_restart_avg = "off"
+ ! no_zderiv_covering = "off"
+ ! no_zderiv= "off"
+ ! zderiv_loop = "on"
+ ! icovering = 1
+ ! no_landau_damping= "off"
+ ! turn_off_gradients_test = "off"
+ ! write_netcdf = .false.
+ ! restartfile = "restart/linear.bin"  
+ ! no_zonal_nlpm = .false.
+ ! dorland_qneut = "off"
+ ! stationary_ions = "off"
+ ! new_nlpm = "on"
+ ! hammett_nlpm_interference = "off"
+ ! higher_order_moments = "off"
+ ! nlpm_zonal_only = "off"
+ ! nlpm_vol_avg = "off"
+ ! nlpm_abs_sgn = "off"
+ ! nlpm_kxdep = "off"
+ ! nlpm_nlps = "off"
+ ! nlpm_cutoff_avg = "off"
+ ! nlpm_zonal_kx1_only = "off"
+ ! smagorinsky = "off"
+ ! dorland_nlpm = "off"
+ ! dorland_nlpm_phase = "off"
+ ! dorland_phase_complex = "off"
+ ! dorland_phase_ifac = 1
+ ! nlpm_option = "constant"
+ ! dnlpm_max = 1.0
+ ! tau_nlpm = 10.0   
+/
+
+&species_parameters_1
+ type  = 'ion'
+ z     = 1.0
+ mass  = 1.0
+ vnewk = 0.0
+ dens  = 1.0
+ temp  = 1.0
+ tprim = 6.9
+ fprim = 2.2
+ uprim = 0.0
+/
+&species_parameters_2
+ type  = 'ion'
+ z     = 1.0
+ mass  = 1.0
+ vnewk = 0.0
+ dens  = 1.0
+ temp  = 1.0
+ tprim = 6.9
+ fprim = 2.2
+ uprim = 0.0
+/
+&species_parameters_3
+ type  = 'ion'
+ z     = 1.0
+ mass  = 1.0
+ vnewk = 0.0
+ dens  = 1.0
+ temp  = 1.0
+ tprim = 6.9
+ fprim = 2.2
+ uprim = 0.0
+/
+

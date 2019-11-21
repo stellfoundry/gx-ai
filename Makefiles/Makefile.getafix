@@ -1,5 +1,4 @@
 # Makefile for getafix: a local machine at UMD
-# Maintainer: gwilkie@umd.edu
 
 USE_LOCAL_SPFUNC=on
 

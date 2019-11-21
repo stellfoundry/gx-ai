@@ -9,7 +9,7 @@ __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *k
   float *kz = (float*) kzData;
   unsigned int idz = offset / (nx*nyc);
   cuComplex Ikz = make_cuComplex(0., kz[idz]);
-  ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
+  ((cuComplex*)dataOut)[offset] = Ikz*element/nz;    
 }
 
 __device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)

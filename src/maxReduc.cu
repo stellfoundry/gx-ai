@@ -82,35 +82,3 @@ T maxReduc (T *data, unsigned int nn, bool overwrite)
   
 }
 
-
-/*void maxReduc(cuComplex* max, cuComplex* f, cuComplex* padded) 
-{    
-  cudaMemcpy(padded,f,sizeof(cuComplex)*Nx*(Ny/2+1)*Nz,cudaMemcpyDeviceToDevice);    
-  cleanPadded<<<dimGrid,dimBlock>>>(padded,Nx,Ny,Nz);
-
-  dim3 dimBlock2(8,8,8);
-  int gridx = (Nx*Ny*Nz)/512;
-    
-  if (Nx*Ny*Nz <= 512) {
-    dimBlock2.x = Nx;
-    dimBlock2.y = Ny;
-    dimBlock2.z = Nz;
-    gridx = 1;
-  }  
-    
-  dim3 dimGrid2(gridx,1,1);
-    
-  maximum <<<dimGrid2, dimBlock2, sizeof(cuComplex)*8*8*8>>>(padded, padded);
-    
-  while(dimGrid2.x > 512) {
-    dimGrid2.x = dimGrid2.x / 512;                                                // dimGrid2.x = 8
-    maximum <<<dimGrid2, dimBlock2, sizeof(cuComplex)*8*8*8>>>(padded, padded);	  // result = 8 elements
-  }  
-    
-  dimBlock2.x = dimGrid2.x;
-  dimGrid2.x = 1;
-  dimBlock2.y = dimBlock2.z = 1;
-  maximum <<<dimGrid2, dimBlock2, sizeof(cuComplex)*8*8*8>>>(padded,padded);  
-    
-  cudaMemcpy(max, padded, sizeof(cuComplex), cudaMemcpyDeviceToHost);
-}    */

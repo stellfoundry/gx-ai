@@ -37,12 +37,49 @@ __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) ;
 __host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) ;
 __device__ int get_ikx(int idx);
 
-__global__ void add_scaled_kernel(cuComplex* res, 
-                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
-                 double c3, cuComplex* m3, double c4, cuComplex* m4,
-                 double c5, cuComplex* m5);
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2);
 
-__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2);
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2,
+				  double c3, cuComplex* m3);
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4);
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4,
+				  double c5, cuComplex* m5);
+
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, bool bdum);
+
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2,
+				  double c3, cuComplex* m3, bool bdum);
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4, bool bdum);
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4,
+				  double c5, cuComplex* m5, bool bdum);
 
 __global__ void scale_kernel(cuComplex* res, cuComplex* m, double s);
 __global__ void scale_kernel(cuComplex* res, cuComplex* m, cuComplex s);

@@ -33,7 +33,6 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
 
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
-
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
 
       float pfilter2 = 0.;
@@ -43,8 +42,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
         pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
       }
 
-      PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
-    
+      PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];    
     }
 }
 
@@ -56,10 +54,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
   
     if( !(idy==0 && idx==0) && idy<(ny/2+1) && idx<nx && idz<nz ) {
 
-
       unsigned int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-
-      unsigned int idxy = idy + (ny/2+1)*idx;
+      unsigned int idxy  = idy + (ny/2+1)*idx;
         
       float pfilter2 = 0.;
 

@@ -25,6 +25,7 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   unsigned int idx = offset % (nx*nyc) / nyc; 
   unsigned int idy = offset % (nx*nyc) % nyc; 
   int ikx = get_ikx(idx);
+  //  if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (ikx==0 && idy==0) || (ikx==ikx_fixed && idy==iky_fixed)) {
   if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (ikx==0 && idy==0)) {
     // mask
     ((cuComplex*)dataOut)[offset].x = 0.;
@@ -79,16 +80,10 @@ GradPerp::~GradPerp()
 }
 
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
-{
-  cufftExecC2R(gradperp_plan_dxC2R, G, dxG);
-}
+{ cufftExecC2R(gradperp_plan_dxC2R, G, dxG); }
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
-{
-  cufftExecC2R(gradperp_plan_dyC2R, G, dyG);
-}
+{ cufftExecC2R(gradperp_plan_dyC2R, G, dyG); }
 
 void GradPerp::R2C(float* G, cuComplex* res)
-{
-  cufftExecR2C(gradperp_plan_R2C, G, res);
-}
+{ cufftExecR2C(gradperp_plan_R2C, G, res);   }

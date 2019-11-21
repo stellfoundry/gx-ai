@@ -105,7 +105,6 @@ model_option = "const-curv"
  print_flux_line = .false.
  write_line = .true.
  write_flux_line = .true.
- write_fields = .true.
  write_phi_over_time = .false.
  write_apar_over_time = .false.
  write_bpar_over_time = .false.
@@ -496,6 +495,7 @@ model_option = "const-curv"
   init = "density"
   debug = "off"
   phiext = 0
+  write_rh = "off"
   init_single = "off"
   iky_single = 1
   ikx_single = 0
@@ -526,9 +526,17 @@ model_option = "const-curv"
   dorland_qneut = "off"
   no_zonal_nlpm = .false.
   
-  write_hermite_energy_spectrum = "off"
-  hermite_spectrum_avg_cutoff = 20
-
+  write_h_spectrum = "off"
+  write_l_spectrum = "off"
+  write_lh_spectrum = "off"
+  write_spec_v_time = "off"
+  lh_ikx = 0
+  lh_iky = 0
+  
+  write_fluxes = "off"
+  write_moms = "off"
+  write_fields_kpar = "off"
+  
   scheme = rk2
 /
 

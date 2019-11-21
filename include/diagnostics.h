@@ -5,69 +5,71 @@
 #include "moments.h"
 #include "fields.h"
 #include "grad_parallel.h"
+#include "ncdf.h"
 
 class Diagnostics {
  public:
   Diagnostics(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics();
 
-  bool loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, float time) ;
+  bool loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, double time) ;
   void final_diagnostics(MomentsG* G, Fields* fields);
-
+  //  void close_netcdf_diag(NetCDF_ids* id);
+  //  void write_something(NetCDF_ids* id);
+  //  void close_netcdf_diag();
+  void write_something();
+  void reduce2k(float* fk, cuComplex* f);
+  void reduce2z(float* fk, cuComplex* f);
+  
   void fluxes(MomentsG* G, Fields* f);
-
-  void writeGridFile(const char* filename); // MFM
-  void writeMomOrField(cuComplex* m, const char* filename);
-  void writeMomOrFieldKpar(cuComplex* m, const char* filename);
-  void writeLHspectrum(MomentsG* G, int ikx=-100, int iky=-100);
-  void writeGeo();
+  void write_init(MomentsG* G, Fields* f);
+  
+  void writeMomOrField(cuComplex* m, int handle);
+  void writeLHspectrum(MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
+  void writeLspectrum (MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
+  void writeHspectrum (MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
   void writeGrowthRates();
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
-  void HermiteEnergySpectrum(MomentsG *m, int count);
-  void writeHermiteEnergySpectrum();
-  void writeHermiteEnergySpectrumHistory();
-
-
+  
   float *pflux;
   float *qflux;
 
-  cuDoubleComplex *growth_rates, *growth_rates_h;
+  //  cuDoubleComplex *growth_rates, *growth_rates_h;
+  cuComplex *growth_rates, *growth_rates_h;
 
  private:
   Fields *fields_old;
   GradParallel* grad_parallel;
-
+  NetCDF_ids* id;
 
   cuComplex *amom_h;
   cuComplex *amom;
-
+  cuComplex valphi;
+  float *val;
+  
+  int ikx_local;
+  int iky_local;
+  int iz_local;
+     
   Parameters* pars_;
   Grids* grids_;
   Geometry* geo_;
-
+  
   int maxThreadsPerBlock_;
   dim3 dimGrid_xy, dimBlock_xy;
 
   void print_growth_rates_to_screen();
 
-  void LHspectrum(MomentsG* G, int ikx=-100, int iky=-100);
+  void LHspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
+  void  Lspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
+  void  Hspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
 
   bool checkstop();
  
-  float *lhspectrum, *lhspectrum_h;
- 
   float fluxDenom;
 
-  bool mask;
+  //  bool mask;
 
   char stopfilename_[2000];
   FILE* timefile;
-  FILE* fluxfile;
- 
-  float *hermite_energy_spectrum;
-  float *hermite_energy_spectrum_avg;
-  float *hermite_energy_spectrum_h;
-  char history_buffer[2000];
-  FILE *history_spectrum_file;
-
 };

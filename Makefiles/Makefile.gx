@@ -1,0 +1,27 @@
+# Makefile for GX on gx: a local machine at UMD
+# Maintainer: bdorland@umd.edu
+
+export MAKEFLAGS='-I Makefiles'\n
+
+USE_LOCAL_SPFUNC=on
+
+NETCDF_INC = -I/usr/include
+NETCDF_LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdff -lnetcdf
+
+ifdef USE_LAPACK
+	LAPACK_LIB = -L/usr/lib/x86_64-linux-gnu -llapack
+endif
+
+MPI_INC= -I/usr/lib/x86_64-linux-gnu/openmpi/include/
+MPI_LIB= -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi
+
+FORT_LIB = -lgfortran
+
+GSL_LIB = -lgsl -lgslcblas -lm
+
+FC=gfortran
+NVCC=nvcc
+CUDAARCH=70
+
+CUDA_LIB = -lcufft_static -lculibos -lcublas -lcusolver
+NVCC_FLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true

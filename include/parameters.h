@@ -1,8 +1,8 @@
 #pragma once
 
-#include "species.h"
-#include "gx_lib.h"
-#include "cufft.h"
+#include <species.h>
+#include <gx_lib.h>
+#include <cufft.h>
 
 #define PHI 0                                                                            
 #define DENS 1
@@ -12,8 +12,10 @@
 #define UPAR 5
 #define TPAR 6
 #define ODD 7
-#define RK2 0
-#define RK4 1
+#define RK2 2
+#define RK3 3
+#define RK4 4
+#define K10 5
 #define BEER42 1
 #define SMITHPERP 2
 #define SMITHPAR 3
@@ -21,322 +23,79 @@
 
 class Parameters {
 
-  public:
-    Parameters(void);
-    ~Parameters(void);
-    int read_namelist(char* file);
+ public:
+  Parameters(void);
+  ~Parameters(void);
+  void get_nml_vars(char* file);
+  float getfloat (int ncid, const char varname[]); 
+  int   getint   (int ncid, const char varname[]); 
+  bool  getbool  (int ncid, const char varname[]); 
 
-    int set_externalpars(external_parameters_struct* externalpars);
-    int import_externalpars(external_parameters_struct* externalpars);
-    void init_species(specie* species);
+  
+  int set_externalpars(external_parameters_struct* externalpars);
+  int import_externalpars(external_parameters_struct* externalpars);
+  void init_species(specie* species);
+  
+  int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo;
+  int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
+  int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
+  int closure_model_opt, forcing_index, smith_par_q, smith_perp_q;
+  int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
+  int dorland_phase_ifac, ivarenna, iflr;
+  int init, iky_single, ikx_single, iky_fixed, ikx_fixed;
+  //  int lh_ikx, lh_iky;
+  int zonal_dens_switch, q0_dens_switch, scheme_opt;
+  // formerly part of time struct
+  int trinity_timestep, trinity_iteration, trinity_conv_count, end_time;   
+  
+  float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
+  float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale;
+  float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
+  float x0, y0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
+  float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
+  float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
+  float low_cutoff, high_cutoff, nlpm_max, tau_nlpm;
+  float ion_z, ion_mass, ion_dens, ion_fprim, ion_uprim, ion_temp, ion_tprim, ion_vnewk;
+  float avail_cpu_time, margin_cpu_time;
+  //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
 
-    int iproc;
+  cuComplex phi_test, smith_perp_w0;
 
-    // Namelist: collisions_knobs
-     char * collision_model;
-  
-   //
-   //&hyper_knobs
-   // hyper_option = 'visc_only'
-   // const_amp = .false.
-   // isotropic_shear = .false.
-   //   float D_hypervisc;
-   ///
+  specie *species, *species_h;
 
-    // Namelist: hypercollisions_knobs
-    bool hypercollisions;
-    float nu_hyper_l, nu_hyper_m;
-    int p_hyper_l, p_hyper_m;
+  bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
+  bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
+  bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
+  bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
+  bool append_old, no_omegad, eqfix;
+  bool const_curv, varenna, varenna_fsa, dorland_phase_complex;
+  bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
+  bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;
+  bool debug, init_single, boundary_option_periodic, forcing_init;
+  bool nlpm_test, new_nlpm, hammett_nlpm_interference, nlpm_abs_sgn, nlpm_hilbert;
+  bool low_b, low_b_all, higher_order_moments, nlpm_zonal_only, nlpm_vol_avg;
+  bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
+  bool zero_order_nonlin_flr_only, no_zonal_nlpm;
+  bool write_l_spectrum, write_h_spectrum, write_lh_spectrum, write_spec_v_time;
+  bool write_phi_kpar, write_moms, write_fluxes;
+  bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
+  bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
+  //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
+  //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
+    
+  char *scan_type;
+  char *equilibrium_option, *nlpm_option;
+  char run_name[255];
+  char restart_from_file[512];
+  char restart_to_file[512];
   
-    // Namelist: theta_grid_parameters
+  char boundary[32], closure_model[32], scheme[32], geofilename[512];
+  char source[32], init_field[32], forcing_type[32];
   
-     int nz_in;
-     int nperiod;
-     int Zp;
-  
-     float rhoc;
-     float eps;
-     float shat;
-     float qsf;
-     float rmaj;
-     float r_geo;
-     float shift;
-     float akappa;
-     float akappri;
-     float tri;
-     float tripri;
-     float drhodpsi;
-     float epsl;
-     float kxfac;
-     bool local_limit;
-  
-    // Namelist: parameters
-     float ti_ov_te;
-     float beta;
-   //  float zeff;
-  
-    // Namelist: theta_grid_eik_knobs
-   //  int itor;
-   //  int iflux;
-     int irho;
-  
-   //ppl_eq = F
-   //gen_eq = F
-   //efit_eq = F
-   //local_eq = T
-  
-     char * eqfile;
-  	 /*equal_arc = T*/
-     int bishop;
-     float s_hat_input;
-     float beta_prime_input;
-   //  float delrho;
-   //  int isym;
-   //writelots = F
-  
-    // Namelist: fields_knobs
-   //field_option='implicit'
-  
-    // Namelist: gs2_diagnostics_knobs
-   //print_flux_line = T
-   //write_nl_flux = T
-   //print_line = F
-   //write_line = F
-   //write_omega = F
-   //write_final_fields = T
-   //write_g = F
-   //write_verr = T
-     int nwrite;
-     int navg;
-     int nsave;
-   //  float omegatinst;
-   //save_for_restart = .true.
-   //omegatol = -1.0e-3
-  
-   //&le_grids_knobs
-   //   int ngauss;
-   //   int negrid;
-   //   float vcut;
-   ///
-  
-    // Namelist: dist_fn_knobs
-   //adiabatic_option="iphi00=2"
-   //  float gridfac;
-   //boundary_option="linked"
-     bool boundary_option_periodic;
-     float g_exb;
-  
-  
-    // Namelist: kt_grids_knobs
-   //grid_option='box'
-  
-    // Namelist: kt_grids_box_parameters
-   // naky = (ny-1)/3 + 1
-     int ny_in;
-   // nakx = 2*(nx-1)/3 + 1
-     int nx_in;
-   // ky_min = 1/y0
-     float y0;
-     float x0;
-     int jtwist;
-  
-    // Namelist: init_g_knobs
-   //chop_side = F
-   //  float phiinit;
-   //restart_file = "nc/cyclone_miller_ke.nc"
-   //ginit_option= "noise"
-   
-   // Namelist: 
-      // new for LH 
-      int nm_in;
-      int nl_in;  // nl will be an array 
-      int closure_model;
-      int smith_perp_q;
-      int smith_par_q;
-      cuComplex smith_perp_w0;
+  cudaDeviceProp prop;
+  int maxThreadsPerBlock;
 
-  // Namelist: forcing knobs
-     bool forcing_init;
-     char *forcing_type;
-     float forcing_amp;
-     int forcing_index;
-  
-    // Namelist: knobs
-   //   float fphi;
-      float fapar;
-   //  float faperp;
-   //    float delt;
-      float dt; //Initial and maximum timestep
-      float maxdt; //Obsolete
-      int nstep; //Number of timesteps
-      float avail_cpu_time; //Available wall clock time in s
-      float margin_cpu_time; //Start finishing up when only margin_cpu_time remains
-  
-    // Namelist: species_knobs
-     int nspec_in;
-
-     specie *species, *species_h;
-  
-     
-     bool adiabatic_electrons;
-     bool snyder_electrons;
-     bool stationary_ions;
-     bool dorland_qneut;
-     float me_ov_mi;
-     float nu_ei;
-  
-  
-    // Namelist: dist_fn_species_knobs_2
-   //  float fexpr;
-   //  float bakdif;
-  
-    // Namelist: theta_grid_knobs
-  	int equilibrium_type;
-  	char * equilibrium_option;
-  	 /*equilibrium_option = "miller"*/
-   //equilibrium_option='eik'
-  
-    // Namelist: nonlinear_terms_knobs
-    // nonlinear_mode='off'
-     bool linear;
-     float cfl;
-  
-    // Namelist: reinit_knobs
-   //  float delt_adj;
-   //  float delt_minimum;
-  
-    // Namelist: layouts_knobs
-   // layout = 'lxyes'
-   // local_field_solve = F
-  
-   // Namelist: source_knobs
-      int source_option;
-      float phiext;
-  
-    // Namelist: gx_knobs
-      int inlpm;
-      float dnlpm;
-      float dnlpm_dens;
-      float dnlpm_tprp;
-      bool hyper;
-      float nu_hyper;
-      float D_hyper;
-      bool iso_shear;
-      int p_hyper;
-      float init_amp;
-      char * scan_type;
-      bool secondary_test;
-      char * secondary_test_restartfileName;
-      cuComplex phi_test;
-      float NLdensfac;
-      float NLuparfac;
-      float NLtparfac;
-      float NLtprpfac;
-      float NLqparfac;
-      float NLqprpfac;
-      int scan_number;
-      bool zero_restart_avg;
-      bool no_zderiv_covering;
-      bool no_zderiv;
-      bool zderiv_loop;
-      int icovering;
-      int iphi00;
-      bool no_landau_damping;
-      bool turn_off_gradients_test;
-      bool slab;
-      bool write_netcdf;
-      bool write_omega;
-      bool write_phi;
-      bool restart;
-      //If restart, use the netcdf restart file
-      bool netcdf_restart;
-      // If a netcdf file with the right run name already exists, open it and append to it
-      bool append_old;
-      bool check_for_restart;
-      bool no_omegad;
-      bool const_curv;
-      bool varenna;
-      bool varenna_fsa;
-      int ivarenna;
-      bool new_varenna;
-      bool new_catto;
-      bool nlpm;
-      bool dorland_nlpm;
-      bool dorland_nlpm_phase;
-      bool dorland_phase_complex;
-      int dorland_phase_ifac;
-      char * nlpm_option;
-      float low_cutoff;
-      float high_cutoff;
-      float dnlpm_max;
-      float tau_nlpm;
-      bool nlpm_kxdep;
-      bool nlpm_nlps;
-      bool nlpm_cutoff_avg;
-      bool nlpm_zonal_kx1_only;
-      bool smagorinsky;
-      int init;
-      bool debug;
-      bool init_single;
-      int iky_single;
-      int ikx_single;
-      int iky_fixed;
-      int ikx_fixed;
-      float kpar_init;
-      bool nlpm_test;
-      bool new_nlpm; 
-      bool hammett_nlpm_interference; 
-      bool nlpm_abs_sgn;
-      bool nlpm_hilbert;
-      bool low_b;
-      bool low_b_all;
-      int iflr;
-      bool higher_order_moments;
-      bool nlpm_zonal_only;
-      bool nlpm_vol_avg;
-      bool no_nonlin_flr;
-      bool no_nonlin_cross_terms;
-      bool no_nonlin_dens_cross_term;
-      bool zero_order_nonlin_flr_only;
-      bool no_zonal_nlpm;
-
-      bool write_hermite_energy_spectrum;
-      int hermite_spectrum_avg_cutoff;
-  
-      int igeo;
-      float shaping_ps;
-      char * geofilename;
-      //char * fluxfile;
-      //char * stopfile;
-      //char * restartfile;
-      bool ostem_rname;
-  
-      //Namelist new_varenna_knobs
-      bool new_varenna_fsa;
-      int zonal_dens_switch;
-      int q0_dens_switch;
-  
-      bool tpar_omegad_corrections ;
-      bool tperp_omegad_corrections ;
-      bool qpar_gradpar_corrections ;
-      bool qpar_bgrad_corrections ;
-      bool qperp_gradpar_corrections ;
-      bool qperp_bgrad_corrections ;
-      bool qpar0_switch ;
-      bool qprp0_switch ;
-  
-      // formerly part of time struct
-      int trinity_timestep;
-      int trinity_iteration;
-      int trinity_conv_count;
-      int end_time;
-
-      int scheme;
-      char run_name[2000];
-
-      cudaDeviceProp prop;
-      int maxThreadsPerBlock;
-  private:
-    bool initialized;
+ private:
+  bool initialized;
 };
 

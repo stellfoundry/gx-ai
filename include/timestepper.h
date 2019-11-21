@@ -17,41 +17,93 @@ class Timestepper {
 
 class RungeKutta2 : public Timestepper {
  public:
-  RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
+  RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~RungeKutta2();
   int advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
   Linear  *linear_;
-  Nonlinear  *nonlinear_;
+  Nonlinear *nonlinear_;
   Solver *solver_;
+  Parameters *pars_;
   Grids  *grids_;
   Forcing *forcing_;
-  double dt_;
   const double dt_max;
 
   MomentsG* GStar;
   MomentsG* GRhs;
+  double dt_;
+};
+
+class RungeKutta3 : public Timestepper {
+ public:
+  RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~RungeKutta3();
+  int advance(double* t, MomentsG* G, Fields* fields);
+  double get_dt() {return dt_;};
+
+ private:
+  Linear  *linear_;
+  Nonlinear *nonlinear_;
+  Solver *solver_;
+  Parameters *pars_;
+  Grids  *grids_;
+  Forcing *forcing_;
+  const double dt_max;
+
+  MomentsG* GRhs1;
+  MomentsG* GRhs2;
+  MomentsG* GStar;
+  double dt_;
 };
 
 class RungeKutta4 : public Timestepper {
  public:
-  RungeKutta4(Linear *linear, Solver *solver, Grids *grids, Forcing *forcing, const double dt_in);
+  RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~RungeKutta4();
   int advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
   Linear  *linear_;
+  Nonlinear *nonlinear_;
   Solver *solver_;
+  Parameters *pars_;
   Grids  *grids_;
   Forcing *forcing_;
+  const double dt_max;
 
   MomentsG* GStar;
   MomentsG* GRhs1;
-  MomentsG* GRhs2;
   MomentsG* GRhs3;
   MomentsG* GRhs4;
+  double dt_;
+};
+
+class Ketcheson10 : public Timestepper {
+ public:
+  Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~Ketcheson10();
+  int advance(double* t, MomentsG* G, Fields* fields);
+  double get_dt() {return dt_;};
+
+ private:
+  Linear  *linear_;
+  Nonlinear *nonlinear_;
+  Solver *solver_;
+  Parameters *pars_;
+  Grids  *grids_;
+  Forcing *forcing_;
+  const double dt_max;
+
+  MomentsG* GRhs;
+  MomentsG* GStar;
+  MomentsG* G_q1;
+  MomentsG* G_q2;
   double dt_;
 };

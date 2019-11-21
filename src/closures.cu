@@ -41,7 +41,7 @@ Beer42::Beer42(Grids* grids, const Geometry* geo, GradParallel* grad_par_in):
   nu_h[10].y= 2.060-7.;
 
   cudaMalloc((void**) &nu, sizeof(cuComplex)*11);
-  cudaMemcpy(nu, nu_h, sizeof(cuComplex)*11, cudaMemcpyHostToDevice);
+  CP_TO_GPU(nu, nu_h, sizeof(cuComplex)*11);
 
   // 1d thread blocks over xyz
   dimBlock = 512;
@@ -192,7 +192,7 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
   }
 
   cudaMalloc((void**) &Aclos_, sizeof(cuComplex)*q_);
-  cudaMemcpy(Aclos_, Aclos_h, sizeof(cuComplex)*q_, cudaMemcpyHostToDevice);
+  CP_TO_GPU(Aclos_, Aclos_h, sizeof(cuComplex)*q_);
 
   // 1d thread blocks over xyz
   dimBlock = 512;
@@ -275,10 +275,12 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       for (int m = M; m >= grids_->Nm - q_; m--) {
           grad_par->dz(G->G(l,m), tmp);
           grad_par->abs_dz(G->G(l,m), tmp_abs);
-          add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
+          add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
+	    (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
       }
 
-      add_scaled_singlemom_kernel<<<dimGrid,dimBlock>>>(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1)*gpar_, clos);
+      add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
+	(GRhs->G(l,M), 1., GRhs->G(l,M), -sqrt(M+1)*gpar_, clos);
     }
     
     return 0;

@@ -7,16 +7,16 @@ __global__ void stirring_kernel(cuComplex force, cuComplex *moments, int forcing
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
 
 /* The following knobs in forcing_knobs need to be set to turn on forcing:
-forcing_init = "on"
+forcing_init = T
 forcing_amp = 1
 forcing_type = "Kz" or "KzImpulse"
 */
 
 // Set forcing_type to "Kz"
-KzForcing::KzForcing(Parameters *pars, Grids *grids, Geometry *geo) :
-  pars_(pars), grids_(grids), geo_(geo) 
+KzForcing::KzForcing(Parameters *pars) : pars_(pars)
 {
   forcing_amp_ = pars_->forcing_amp;
+  printf("forcing_amp = %f \n", forcing_amp_);
 }
 
 KzForcing::~KzForcing()
@@ -26,17 +26,35 @@ KzForcing::~KzForcing()
 // Langevin forcing done at the end of each timestep in timestepper's advance method
 void KzForcing::stir(MomentsG *G) {
   float random_real, random_imag;
-  generate_random_numbers(&random_real, &random_imag, forcing_amp_, pars_->dt);
+  generate_random_numbers (&random_real, &random_imag, forcing_amp_, pars_->dt);
 
   random_force.x = random_real;
   random_force.y = random_imag;
 
-  stirring_kernel<<<1,1>>>(random_force, G->G(0,0,0), pars_->forcing_index);
+  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
+}
+
+genForcing::genForcing(Parameters *pars) : pars_(pars)
+{
+  forcing_amp_ = pars_->forcing_amp;
+}
+
+genForcing::~genForcing()
+{
+}
+
+void genForcing::stir(MomentsG *G) {
+  float random_real, random_imag;
+  generate_random_numbers (&random_real, &random_imag, forcing_amp_, pars_->dt);
+
+  random_force.x = random_real;
+  random_force.y = random_imag;
+
+  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
 }
 
 // Set forcing_type to "KzImpulse"
-KzForcingImpulse::KzForcingImpulse(Parameters *pars, Grids *grids, Geometry *geo)
-: KzForcing(pars, grids, geo)
+KzForcingImpulse::KzForcingImpulse(Parameters *pars) : KzForcing(pars)
 {
   stirring_done = false;
 }
@@ -53,12 +71,10 @@ void KzForcingImpulse::stir(MomentsG *G) {
   random_force.x = random_real;
   random_force.y = random_imag;
 
-  stirring_kernel<<<1,1>>>(random_force, G->G(0,0,0), pars_->forcing_index);
+  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
   stirring_done = true;
 }
 
-
-// Stirs density for 1 kz in the local limit
 __global__ void stirring_kernel(cuComplex force, cuComplex *moments, int forcing_index) {
     moments[forcing_index] = moments[forcing_index] + force;
 }

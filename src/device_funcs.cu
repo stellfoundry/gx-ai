@@ -68,7 +68,7 @@ __device__ float g1(float b) {
     xp1i=1./(1.+x);
     tk  = tk * b2sq * xi * xp1i;
     g += tk;
-    x  += 1.;
+    x += 1.;
     err = abs(tk/g);
   }
   
@@ -78,74 +78,6 @@ __device__ float g1(float b) {
 }
 
 __device__ float sgam0 (float b) {return sqrt(g0(b));}
-
-__device__ float flr(float b) {
-  float gam0 = g0(b);
-  float gam1 = g1(b);
-  float gam = sqrt(gam0);
-  float rg = gam1/gam0;
-  return -b/2. * (1.-rg) * gam;
-}
-
-__device__ float flr2(float b) {
-  float gam0 = g0(b);
-  float gam1 = g1(b);
-  float gam = sqrt(gam0);
-  float rg = gam1/gam0;
-  return -(b/2.) * (1.+(1.-rg)*(1.-(b/2.)*(3.+rg))) * gam;
-}
-
-__device__ float nwgt(float b) {return 1./(1.+b/2.);}
-
-__device__ float twgt(float b) {
-  float d = 1./(1.+b/2.);
-  return -b/2. * d * d;
-}
-
-__device__ float wgt(float b) {
-  float gam0 = g0(b);
-  return 1.-gam0;
-}
-
-__device__ float omegaD(float rho_vt, float kx, float ky, float shat, float gb,float gb0,float cv, float cv0)
-{
-  float shatInv;
-  //if (abs(shat)>1.e-8) {
-    shatInv = 1./shat;
-  //} else {
-  //  shatInv = 1.;
-  //}
-
-  
-  return rho_vt* ( ky * (gb + cv) + kx * shatInv * (gb0 + cv0) );
-  
-}
-
-__device__ float b(float rho, float kx, float ky, float shat, float gds2, float gds21, float gds22, float bmagInv)
-{
-  float shatInv;
-  //if (abs(shat)>1.e-8) {
-    shatInv = 1./shat;
-  //} else {
-  //  shatInv = 1.;
-  //}
-
-  float b = ( ky * (ky*gds2 + 2*kx*shatInv*gds21) + pow(kx*shatInv,2)*gds22 ) * pow(bmagInv,2) * pow(rho,2);
-  return b;
-}
-
-__device__ float c(float kx, float gds22, float qsf, float eps, float bmagInv, float shat, float rho)
-{ 
-  float shatInv;
-  if (abs(shat)>1.e-8) {
-    shatInv = 1./shat;
-  } else {
-    shatInv = 1.;
-  }
-  
-  // -k_r rho_pol / B
-  return kx*shatInv*sqrt(gds22)*qsf/eps*bmagInv*rho;
-}
 
 __host__ __device__ bool operator>(cuComplex f, cuComplex g)
 {
@@ -243,6 +175,14 @@ __device__ int get_ikx(int idx) {
     return idx-nx;
 }
 
+__device__ bool not_fixed_eq(int idxyz) {
+  int idxy_fixed = iky_fixed + ikx_fixed*nyc;
+  if ( idxyz%(nx*nyc) == idxy_fixed )
+    return false;
+  else
+    return true;
+}
+
 __global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
@@ -267,15 +207,76 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res, cuComplex c1, cuComp
   }
 }
 
-__global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) {
     for(int s = 0; s < nspecies; s++) {
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
         for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx];
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, bool eqfix)
+{
+  unsigned int idxyz = get_id1();
+  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2,
+				  double c3, cuComplex* m3)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig]
+	          + c3 * m3[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res,
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2,
+				  double c3, cuComplex* m3, bool eqfix)
+{
+  unsigned int idxyz = get_id1();
+  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig]
+	          + c3 * m3[ig];
         }
       }
     }
@@ -283,19 +284,91 @@ __global__ void add_scaled_kernel(cuComplex* res, double c1, cuComplex* m1, doub
 }
 
 __global__ void add_scaled_kernel(cuComplex* res, 
-                 double c1, cuComplex* m1, double c2, cuComplex* m2, 
-                 double c3, cuComplex* m3, double c4, cuComplex* m4,
-                 double c5, cuComplex* m5)
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4)
 {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) {
     for(int s = 0; s < nspecies; s++) {
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
         for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[globalIdx] = c1*m1[globalIdx] + c2*m2[globalIdx] 
-                         + c3*m3[globalIdx] + c4*m4[globalIdx] 
-                         + c5*m5[globalIdx];
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig] 
+	          + c3 * m3[ig]
+	          + c4 * m4[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4, bool eqfix)
+{
+  unsigned int idxyz = get_id1();
+  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+	          + c2 * m2[ig] 
+	          + c3 * m3[ig]
+	          + c4 * m4[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4,
+				  double c5, cuComplex* m5)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+   	          + c2 * m2[ig] 
+	          + c3 * m3[ig]
+	          + c4 * m4[ig] 
+	          + c5 * m5[ig];
+        }
+      }
+    }
+  }
+}
+
+__global__ void add_scaled_kernel(cuComplex* res, 
+				  double c1, cuComplex* m1,
+				  double c2, cuComplex* m2, 
+				  double c3, cuComplex* m3,
+				  double c4, cuComplex* m4,
+				  double c5, cuComplex* m5, bool eqfix)
+{
+  unsigned int idxyz = get_id1();
+  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
+    for(int s = 0; s < nspecies; s++) {
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = c1 * m1[ig]
+   	          + c2 * m2[ig] 
+	          + c3 * m3[ig]
+	          + c4 * m4[ig] 
+	          + c5 * m5[ig];
         }
       }
     }
@@ -309,8 +382,8 @@ __global__ void scale_kernel(cuComplex* res, cuComplex* mom, double scalar)
     for(int s = 0; s < nspecies; s++) {
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
         for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[globalIdx] = scalar*mom[globalIdx];
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = scalar*mom[ig];
         }
       }
     }
@@ -324,8 +397,8 @@ __global__ void scale_kernel(cuComplex* res, cuComplex* mom, cuComplex scalar)
     for(int s = 0; s < nspecies; s++) {
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
         for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[globalIdx] = scalar*mom[globalIdx];
+          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
+          res[ig] = scalar*mom[ig];
         }
       }
     }
@@ -343,14 +416,17 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, cuComplex
 __global__ void reality_kernel(cuComplex* g) 
 {
   for(int s = 0; s < nspecies; s++) {
-    for (int lm = threadIdx.z; lm < nm*nl; lm += blockDim.z) {
-      for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
-        for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
-          int globalIdx = nyc*(idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-          int globalIdx2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-          if(idx!=0) {
-            g[globalIdx2].x = g[globalIdx].x;
-            g[globalIdx2].y = -g[globalIdx].y;
+    for (int lm = threadIdx.z; lm < nm*nl;     lm += blockDim.z) {
+      for (int idz = threadIdx.y; idz<nz;     idz += blockDim.y) {
+        for (int idx = threadIdx.x; idx<nx/2; idx += blockDim.x) {
+          int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
+          int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
+	  if(idx==0) {
+	    g[ig].x = 0.;
+	    g[ig].y = 0.;
+	  } else if(idx!=0) {
+            g[ig2].x = g[ig].x;
+            g[ig2].y = -g[ig].y;
           }
         }
       }
@@ -362,9 +438,12 @@ __global__ void reality_singlemom_kernel(cuComplex* mom)
 {
   for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
     for (int idx = threadIdx.x; idx<nx/2; idx+=blockDim.x) {
-      unsigned int index = (ny/2+1)*idx + nx*(ny/2+1)*idz;
+      unsigned int index  = (ny/2+1)*idx      + nx*(ny/2+1)*idz;
       unsigned int index2 = (ny/2+1)*(nx-idx) + nx*(ny/2+1)*idz;
-      if(idx!=0) {
+      if(idx==0) {
+	mom[index].x = 0.;
+	mom[index].y = 0.;
+      } else if(idx!=0) {
         mom[index2].x = mom[index].x;
         mom[index2].y = -mom[index].y;
       }
@@ -382,4 +461,49 @@ __device__ float atomicMaxFloat(float* address, float val)
             __float_as_int(::fmaxf(val, __int_as_float(assumed))));
     } while (assumed != old);
     return __int_as_float(old);
+}
+__global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale)
+{
+  unsigned int idx = get_id1();
+  if (idx < nz) bgrad[idx] = ( bgrad_temp[idx] / bmag[idx] ) * scale;
+}
+
+__global__ void init_kperp2(float* kperp2, float* kx, float* ky,
+			    float* gds2, float* gds21, float* gds22,
+			    float* bmagInv, float shat) 
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  float shatInv = 1./shat; // Needs a test for zero
+
+  if(idy<nyc && idx<nx && idz<nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+                      + 2. * kx[idx] * shatInv * gds21[idz]) 
+                      + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
+                      * pow( bmagInv[idz], 2); 
+  }
+}
+
+
+__global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, float* ky,
+			    float* cv, float* gb, float* cv0, float* gb0, float shat) 
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  float shatInv = 1./shat; // BD this needs an exception for shat = 0.
+
+  // cv/gb is the y-directed part of the curvature / grad-B drift
+  // cv0/gb0 is the part proportional to the theta_0, aka the x-directed component
+
+  if(idy<nyc && idx<nx && idz<nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
+    gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
+    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+  }
 }

@@ -48,80 +48,74 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   Forcing *forcing;
   Timestepper *stepper; 
 
+  double time = 0;
+
   if(iproc == 0) {
-    printf("Initializing fields...\n");
-    fields = new Fields(grids);
-    checkCuda(cudaGetLastError());
+    DEBUGPRINT("Initializing fields...\n");           fields = new Fields(grids);
+    CUDA_DEBUG("Initializing fields: %s \n");
 
-    printf("Initializing moments...\n");
-    momsG = new MomentsG(grids);
-    checkCuda(cudaGetLastError());
-    printf("Setting initial conditions...\n");
-    momsG->initialConditions(pars, geo);
-    checkCuda(cudaGetLastError());
+    DEBUGPRINT("Initializing moments...\n");          momsG = new MomentsG(pars, grids);
+    CUDA_DEBUG("Initializing moments: %s \n");
 
-    printf("Initializing field solver...\n");
-    solver = new Solver(pars, grids, geo);
-    checkCuda(cudaGetLastError());
+    DEBUGPRINT("Setting initial conditions...\n");    momsG -> initialConditions(geo, &time);
+    CUDA_DEBUG("Setting initial conditions: %s \n");
+
+    DEBUGPRINT("Initializing field solver...\n");     solver = new Solver(pars, grids, geo);
+    CUDA_DEBUG("Initializing field solver: %s \n");
 
     // initialize fields using field solve
-    printf("Solving for initial fields...\n");
-    solver->fieldSolve(momsG, fields);
-    checkCuda(cudaGetLastError());
+    DEBUGPRINT("Solving for initial fields...\n");    solver -> fieldSolve(momsG, fields);
+    CUDA_DEBUG("Solving for initial fields: %s\n");
 
-    printf("Initializing equations...\n");
-    printf("\tLinear terms...\n");
-    linear = new Linear(pars, grids, geo);
+    DEBUGPRINT("Initializing equations...\n");
+    DEBUGPRINT("\tLinear terms...\n");                linear = new Linear(pars, grids, geo);
+    CUDA_DEBUG("\t Linear terms: %s \n");
+
     if(!pars->linear) {
-      printf("\tNonlinear terms...\n");
-      nonlinear = new Nonlinear(pars, grids, geo);
+      DEBUGPRINT("\tNonlinear terms...\n");           nonlinear = new Nonlinear(pars, grids, geo);
+      CUDA_DEBUG("\tNonlinear terms: %s \n");
     } else {
       nonlinear = NULL;
     }
-    checkCuda(cudaGetLastError());
 
     if (pars->forcing_init) {
-      printf("Initializing forcing...\n");
-      if(strcmp(pars->forcing_type, "Kz") == 0) {
-        forcing = new KzForcing(pars, grids, geo);
-      } else if (strcmp(pars->forcing_type, "KzImpulse") == 0) {
-        forcing = new KzForcingImpulse(pars, grids, geo);
+      DEBUGPRINT("Initializing forcing...\n");
+      if(strcmp(pars->forcing_type, "Kz") == 0) {                 forcing = new KzForcing(pars);
+	CUDA_DEBUG("Initializing Kz Forcing: %s \n");
+      } else if (strcmp(pars->forcing_type, "KzImpulse") == 0) {  forcing = new KzForcingImpulse(pars);
+	CUDA_DEBUG("Initializing Kz Forcing Impulse: %s \n");
+      } else if (strcmp(pars->forcing_type, "general") == 0) {    forcing = new genForcing(pars);
+	CUDA_DEBUG("Initializing general Forcing: %s \n");
       } else {
-        forcing = NULL;
+	forcing = NULL;
       }
     } else {
-        forcing = NULL;
+      forcing = NULL;
     }
 
+    DEBUGPRINT("Initializing timestepper...\n");
+    if(pars->scheme_opt == K10) {stepper = new Ketcheson10(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper K10: %s\n");
+    }
+    if(pars->scheme_opt == RK4) {stepper = new RungeKutta4(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper RK4: %s\n");
+    }
+    if(pars->scheme_opt == RK3) {stepper = new RungeKutta3(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper RK3: %s\n");
+    }
+    if(pars->scheme_opt == RK2) {stepper = new RungeKutta2(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper RK2: %s\n");
+    }
     checkCuda(cudaGetLastError());
 
-    printf("Initializing timestepper...\n");
-    if(nonlinear!=NULL && pars->scheme != RK2) {
-      printf("Warning: nonlinearity not yet implemented in this scheme. Using RK2.\n");
-      pars->scheme = RK2;
-    }
-    if(pars->scheme == RK4) {
-      stepper = new RungeKutta4(linear, solver, grids, forcing, pars->dt);
-    } else {
-      stepper = new RungeKutta2(linear, nonlinear, solver, grids, forcing, pars->dt);
-    }
-    checkCuda(cudaGetLastError());
-
-    printf("After initialization:\n");
+    DEBUGPRINT("After initialization:\n");
     getDeviceMemoryUsage();
   
-    diagnostics->writeMomOrField(momsG->dens_ptr[0], "dens0");
-    diagnostics->writeMomOrField(fields->phi, "phi0");
-
-    // MFM
-    if (pars->igeo == 1) {
-      diagnostics->writeGridFile("geofile");
-    }
+    if (pars->write_moms) diagnostics->write_init(momsG, fields);
   }
-
+  
   // TIMESTEP LOOP
   int counter = 0;
-  double time = 0;
 
   cudaEvent_t start, stop;
   cudaEventCreate(&start);
@@ -130,32 +124,37 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   cudaEventRecord(start,0);
 
   bool checkstop = false;
-  printf("Running %d timesteps.......\n", pars->nstep);
-  printf("dt = %f\n", stepper->get_dt());
-  checkstop = diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
+  DEBUGPRINT("Running %d timesteps.......\n", pars->nstep);
+  DEBUGPRINT("dt = %f\n", stepper->get_dt());
+
+  diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
+
   while(counter<pars->nstep) {
     counter++;
     if(iproc==0) {
       stepper->advance(&time, momsG, fields);
       checkstop = diagnostics->loop_diagnostics(momsG, fields, stepper->get_dt(), counter, time);
-      if(checkstop) break;
-      if(counter%(pars->nwrite*100)==0) diagnostics->final_diagnostics(momsG, fields);
+      if (checkstop) break;
     }
   }
 
+  if (pars->save_for_restart) {
+    momsG->restart_write(&time);
+  }
+  
   cudaEventRecord(stop,0);
   cudaEventSynchronize(stop);
   cudaEventElapsedTime(&timer,start,stop);
 
-  printf("Step %d\n", counter);
-  printf("Finished timestep loop\n");
-  checkCuda(cudaGetLastError());
+  DEBUGPRINT("Step %d\n", counter);
+  DEBUGPRINT("Finished timestep loop\n");
+  CUDA_DEBUG("Finishing up: %s \n");
 
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
   diagnostics->final_diagnostics(momsG, fields);
 
-  printf("Cleaning up...\n");
+  DEBUGPRINT("Cleaning up...\n");
 
   delete fields;
   delete momsG;
@@ -164,7 +163,6 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   delete nonlinear;
   delete forcing;
   delete stepper;
-
 }    
 
 

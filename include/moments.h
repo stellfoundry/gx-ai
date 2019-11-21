@@ -9,7 +9,7 @@ class Geometry; // Forward Declaration
 
 class MomentsG {
  public:
-  MomentsG(Grids* grids);
+  MomentsG(Parameters* pars, Grids* grids);
   ~MomentsG();
 
   // accessor function to get pointer to specific l,m,s of G array
@@ -23,12 +23,16 @@ class MomentsG {
     return G(0,m,s);
   }
 
-  int initialConditions(Parameters *pars, Geometry* geo);
-
+  int initialConditions(Geometry* geo, double* time);
+  int restart_write(double* time);
+  int restart_read(double* time);
+  
   int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, 
-                 double c3, MomentsG* G3, double c4, MomentsG* G4,
-                 double c5, MomentsG* G5);
+  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
+  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
+		 double c4, MomentsG* G4);
+  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
+		 double c4, MomentsG* G4, double c5, MomentsG* G5);
 
   int zero();
   int zero(int l, int m, int s=0);
@@ -53,6 +57,7 @@ class MomentsG {
 
  private:
   cuComplex* G_lm;
+  const Parameters* pars_;
   const Grids* grids_;
   const size_t LHsize_;
   const size_t Momsize_;
