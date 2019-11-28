@@ -1,21 +1,21 @@
 #include "laguerre_transform.h"
 
 LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
-  grids_(grids), L(grids->Nl-1), J((3*L-1)/2), batch_size_(batch_size)
+  grids_(grids), L(grids->Nl), J(3*L/2-1), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
-  cudaMallocHost((void**) &toGrid_h,     sizeof(float)*(L+1)*(J+1));
-  cudaMallocHost((void**) &toSpectral_h, sizeof(float)*(L+1)*(J+1));
-  cudaMallocHost((void**) &roots_h,      sizeof(float)*(J+1));
+  cudaMallocHost((void**) &toGrid_h,     sizeof(float)*L*J);
+  cudaMallocHost((void**) &toSpectral_h, sizeof(float)*L*J);
+  cudaMallocHost((void**) &roots_h,      sizeof(float)*J);
 
-  cudaMalloc((void**) &toGrid,     sizeof(float)*(L+1)*(J+1));
-  cudaMalloc((void**) &toSpectral, sizeof(float)*(L+1)*(J+1));
-  cudaMalloc((void**) &roots,      sizeof(float)*(J+1));
+  cudaMalloc((void**) &toGrid,     sizeof(float)*L*J);
+  cudaMalloc((void**) &toSpectral, sizeof(float)*L*J);
+  cudaMalloc((void**) &roots,      sizeof(float)*J);
 
   initTransforms(toGrid_h, toSpectral_h, roots_h);
-  CP_TO_GPU(toGrid,     toGrid_h,     sizeof(float)*(L+1)*(J+1));
-  CP_TO_GPU(toSpectral, toSpectral_h, sizeof(float)*(L+1)*(J+1));
-  CP_TO_GPU(roots,      roots_h,      sizeof(float)*(J+1));
+  CP_TO_GPU(toGrid,     toGrid_h,     sizeof(float)*L*J);
+  CP_TO_GPU(toSpectral, toSpectral_h, sizeof(float)*L*J);
+  CP_TO_GPU(roots,      roots_h,      sizeof(float)*J);
 
   cublasCreate(&handle);
   cudaFreeHost(toGrid_h);
@@ -33,41 +33,53 @@ LaguerreTransform::~LaguerreTransform()
 int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
 {
   int i, j;
-  int Jsq = (J+1) * (J+1);
-  double Jacobi[Jsq];
+  //  int Jsq = J*J;
+  //  double Jacobi[Jsq];
 
-  for (j=0; j<Jsq; j++) Jacobi[j] = 0.0;
+  gsl_matrix *Jacobi = gsl_matrix_alloc(J,J);
+  gsl_matrix_set_zero (Jacobi);
+  
+  //  for (j=0; j<Jsq; j++) Jacobi[j] = 0.0;
 
-  for (i = 0; i < J+1; i ++) {
-    Jacobi[i * (J+2)] = 2 * i + 1;
-    Jacobi[1 + i * (J+2)] = i + 1;
-    Jacobi[J+1 + i * (J+2)] = i + 1;
+
+  for (i = 0; i < J-1; i++) {
+    gsl_matrix_set(Jacobi, i, i, 2*i+1);
+    gsl_matrix_set(Jacobi, i, i+1, i+1);
+    gsl_matrix_set(Jacobi, i+1, i, i+1);
+  }
+    /*    
+  for (i = 0; i < J; i ++) {
+    Jacobi[i * (J+1)] = 2 * i + 1;
+    Jacobi[1 + i * (J+1)] = i + 1;
+    Jacobi[J + i * (J+1)] = i + 1;
   } 
-
+    */
+    
   /*
-  for (i = 0; i < J+1; i ++) {
-    for (j = 0; j < J+1; j ++) {
-      printf("%f \t",Jacobi[i*(J+1)+j]);
+  for (i = 0; i < J; i ++) {
+    for (j = 0; j < J; j ++) {
+      printf("%f \t",Jacobi[i*J+j]);
     } 
     printf("\n");
   }
   */
-
-  gsl_matrix_view m = gsl_matrix_view_array (Jacobi, J+1, J+1); // defined type gsl_matrix_view
-  //  gsl_vector *weights = gsl_vector_alloc (J+1);                 // pointer to a structure
-  gsl_vector *eval = gsl_vector_alloc (J+1);
-  gsl_matrix *evec = gsl_matrix_alloc (J+1, J+1);
-  gsl_eigen_symmv_workspace * wrk = gsl_eigen_symmv_alloc (J+1);
-  gsl_eigen_symmv (&m.matrix, eval, evec, wrk);                 // & returns address for pointer
+  
+    //  gsl_matrix_view m = gsl_matrix_view_array (Jacobi, J, J); // defined type gsl_matrix_view
+  //  gsl_vector *weights = gsl_vector_alloc (J);                 // pointer to a structure
+  gsl_vector *eval = gsl_vector_alloc (J);
+  gsl_matrix *evec = gsl_matrix_alloc (J, J);
+  gsl_eigen_symmv_workspace *wrk = gsl_eigen_symmv_alloc (J);
+  //  gsl_eigen_symmv (&m.matrix, eval, evec, wrk);                 // & returns address for pointer
+  gsl_eigen_symmv (Jacobi, eval, evec, wrk);                 // & returns address for pointer
   gsl_eigen_symmv_free (wrk);
   gsl_eigen_symmv_sort (eval, evec, GSL_EIGEN_SORT_ABS_ASC);
 
-  // eval: eigenvalues of Jacobi matrix; roots of the (J+1)th Laguerre
+  // eval: eigenvalues of Jacobi matrix; roots of the (J)th Laguerre
   // evec: Laguerre cardinal polynomials; use these to get the weights 
 
-  gsl_matrix *poly = gsl_matrix_alloc (J+1, J+1);               // pointer to defined type gsl_matrix
+  gsl_matrix *poly = gsl_matrix_alloc (J, J);               // pointer to defined type gsl_matrix
   gsl_matrix_set_zero (poly);
-  for (i=0; i<J+1; i++) {      
+  for (i=0; i<J; i++) {      
     for (j=0; j<i+1; j++) {
       // i-th polynomial, j-th coefficient
       double tmp = gsl_sf_choose (i, j);      
@@ -81,7 +93,7 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
   double x_i, wgt, Lmat;
   gsl_vector_view polyvec;
 
-  for (j=0; j<J+1; j++) {
+  for (j=0; j<J; j++) {
     x_i = gsl_vector_get (eval, j); 
     //    printf("roots_h[%d]=%g \n",j,x_i);
     roots_h[j] = (float) x_i; // Used in argument of J0
@@ -89,31 +101,36 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
     //    gsl_vector_set (weights, j, wgt);
 
     // evaluate the ell-th polynomial at x(j) = x_j and multiply by weight(j) as needed
-    for (ell=0; ell<L+1; ell++) {
+    for (ell=0; ell<L; ell++) {
       polyvec = gsl_matrix_row (poly, ell);
       Lmat = gsl_poly_eval(polyvec.vector.data, ell+1, x_i);
 
-      toGrid_h[ell + (L+1)*j] = (float) Lmat;
+      toGrid_h[ell + L*j] = (float) Lmat;
       Lmat = Lmat * wgt;
-      toSpectral_h[j + (J+1)*ell] = (float) Lmat;
+      toSpectral_h[j + J*ell] = (float) Lmat;
     }	
   }
+  gsl_matrix_free(Jacobi);
+  gsl_matrix_free(poly);
+  gsl_vector_free(eval);
+  gsl_matrix_free(evec);
+  
   return 0; 
 }
 
 int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 {
   int m = grids_->NxNyNz;
-  int n = J+1;
-  int k = L+1;
+  int n = J;
+  int k = L;
   float alpha = 1.;
   int lda = grids_->NxNyNz;
-  int strideA = grids_->NxNyNz*(L+1);
-  int ldb = L+1;
+  int strideA = grids_->NxNyNz*L;
+  int ldb = L;
   int strideB = 0;
   float beta = 0.;
   int ldc = grids_->NxNyNz;
-  int strideC = grids_->NxNyNz*(J+1);
+  int strideC = grids_->NxNyNz*J;
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      G_in, lda, strideA,
@@ -125,16 +142,16 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
 {
   int m = grids_->NxNyNz;
-  int n = L+1;
-  int k = J+1;
+  int n = L;
+  int k = J;
   float alpha = 1.;
   int lda = grids_->NxNyNz;
-  int strideA = grids_->NxNyNz*(J+1);
-  int ldb = J+1;
+  int strideA = grids_->NxNyNz*J;
+  int ldb = J;
   int strideB = 0;
   float beta = 0.;
   int ldc = grids_->NxNyNz;
-  int strideC = grids_->NxNyNz*(L+1);
+  int strideC = grids_->NxNyNz*L;
 
   // column-major order, according to the manuals. WTF?
   // So I should transpose everything? 
@@ -146,20 +163,20 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
   // g has leading dimension K and a new block starts K*J away 
   // T has leading dimension J and a stride of zero 
 
-  // T has to be T[j + (J+1)*l] for this to hold together. 
-  // ... and it does; the Python numby flatten trick does that. 
+  // T has to be T[j + J*l] for this to hold together. 
+  // ... and it does; the Python numpy flatten trick does that. 
 
   // C = A B ==> lda=K, strideA = K*J;  ldc=K, strideC=K*L; ldb=J and strideB=0
   // A has K rows so ::::::::: m = K   ////////////// yes
-  // B has L columns so :::::: n = L   ////////////// yes b/c L = L+1 for some python reason
-  // A has J columns so :::::: k = J   ////////////// yes b/c J = J+1 for some unknown reason
+  // B has L columns so :::::: n = L-1   ////////////// yes
+  // A has J columns so :::::: k = J-1   ////////////// yes
 
   // lda=K  ///////////////////////// yes
-  // strideA=K*(J+1) /////////////// yes
-  // ldb=J+1        //////////////// yes
+  // strideA=K*J    /////////////// yes
+  // ldb=J          //////////////// yes
   // strideB=0 ////////////////////// yes
   // ldc=K  ///////////////////////// yes
-  // strideC=K*(L+1) //////////////  yes
+  // strideC=K*L    //////////////  yes
 
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,

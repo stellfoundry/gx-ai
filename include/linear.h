@@ -15,7 +15,7 @@ class Linear {
 
   dim3 dimGrid, dimBlock;
   int sharedSize;
-
+  
  private:
   Parameters* pars_;
   Grids* grids_;  

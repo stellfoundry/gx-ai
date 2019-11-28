@@ -6,7 +6,7 @@
 #include <gsl/gsl_poly.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
-#include <complex.h>
+
 #include "moments.h"
 #include "grids.h"
 #include <cublas_v2.h>
@@ -20,17 +20,17 @@ class HermiteTransform {
   int transformToGrid(float* G_in, float* g_res);
   int transformToSpectral(float* g_in, float* G_res);
 
-  float* get_toGrid() {return toGrid;}
-  float* get_toSpectral() {return toSpectral;}
-  float* get_roots() {return roots;}
+  //  float* get_toGrid() {return toGrid;}
+  //  float* get_toSpectral() {return toSpectral;}
+  //  float* get_roots() {return roots;}
   const int M;
 
  private:
   Grids* grids_; 
 
-  float* toGrid;
-  float* toSpectral;
-  float* roots;
+  float* HtoGrid;
+  float* HtoSpectral;
+  float* Hroots;
 
   int initTransforms(float* toGrid, float* toSpectral, float* roots);
 

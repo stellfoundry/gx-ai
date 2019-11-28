@@ -17,7 +17,7 @@ $(warning use GK_SYSTEM instead)
 $(error GK_SYSTEM is not set)
 	endif
 endif
-include Makefile.$(GK_SYSTEM)
+include Makefiles/Makefile.$(GK_SYSTEM)
 
 ############################
 ## Setup Compiler Flags
@@ -76,7 +76,7 @@ obj/%.o: %.f90
 # Rules for building gx
 ####################################
 
-OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o grad_parallel_linked.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o ncdf.o read_nml.o
+OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o grad_parallel_linked.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o ncdf.o read_nml.o hermite_transform.o
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS)) 

@@ -58,11 +58,12 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
 
-  // set up CUDA grids for main linear kernel
+  // set up CUDA grids for main linear kernel.  
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more LH resolution without changing shared memory layouts.
   // dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
-  dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
+  //  dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
+  dimBlock = dim3(pars_->i_share, min(4, grids_->Nl), min(4, grids_->Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
   sharedSize = dimBlock.x*(grids_->Nl+2)*(grids_->Nm+4)*sizeof(cuComplex);
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
@@ -297,13 +298,16 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) {
-   for(int is=0; is<nspecies; is++) { 
+    float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
+    float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
+    for(int is=0; is<nspecies; is++) { 
     for (int m = threadIdx.z; m < nm; m += blockDim.z) {
      for (int l = threadIdx.y; l < nl; l += blockDim.y) {
       int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
-      if(m>2) {
+      if(m>2 || l>1) {
         rhs[globalIdx] = rhs[globalIdx] -
-	  (nu_hyper_l*pow((float) l/nl, (float) p_hyper_l)+nu_hyper_m*pow((float)m/nm, p_hyper_m))*g[globalIdx];
+  	   (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
+	   +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
       }
      }
     }

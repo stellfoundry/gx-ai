@@ -11,7 +11,11 @@
 #define TPRP 4
 #define UPAR 5
 #define TPAR 6
-#define ODD 7
+#define QPAR 7
+#define QPRP 8
+#define PPRP 10
+#define PPAR 11
+#define ODD 9
 #define RK2 2
 #define RK3 3
 #define RK4 4
@@ -41,7 +45,7 @@ class Parameters {
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int closure_model_opt, forcing_index, smith_par_q, smith_perp_q;
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
-  int dorland_phase_ifac, ivarenna, iflr;
+  int dorland_phase_ifac, ivarenna, iflr, i_share, stirf;
   int init, iky_single, ikx_single, iky_fixed, ikx_fixed;
   //  int lh_ikx, lh_iky;
   int zonal_dens_switch, q0_dens_switch, scheme_opt;
@@ -90,7 +94,7 @@ class Parameters {
   char restart_to_file[512];
   
   char boundary[32], closure_model[32], scheme[32], geofilename[512];
-  char source[32], init_field[32], forcing_type[32];
+  char source[32], init_field[32], forcing_type[32], stir_field[32];
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;

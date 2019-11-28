@@ -9,9 +9,9 @@
 __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuComplex *omega)
 {
   unsigned int idxy = get_id1();
-  cuComplex i_dt = make_cuComplex(0., 1./dt);
+  cuComplex i_dt = make_cuComplex(0., (float) 1./dt);
   int J = nx*nyc;
-  int IG = (int) .5*nz ;
+  int IG = (int) nz/2 ;
   
   if ( idxy<J && idxy > 0) {
     if (abs(phi[idxy+J*IG].x)!=0 && abs(phi[idxy+J*IG].y)!=0) {
@@ -537,17 +537,14 @@ void Diagnostics::print_growth_rates_to_screen()
   if(id->mask) {
     printf("ky\tkx\t\tomega\t\tgamma\n");
 
-    for(int i=2*Nx/3+1; i<Nx; i++) {
-      for(int j=0; j<Naky; j++) {
-	int index = j + Nyc*i;
+    for(int j=0; j<Naky; j++) {
+      for(int i=2*Nx/3+1; i<Nx; i++) {
+ 	int index = j + Nyc*i;
 	printf("%.4f\t%.4f\t\t%.6f\t%.6f",
 	       grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
 	printf("\n");
       }
-      printf("\n");
-    }
-    for(int i=0; i<((Nx-1)/3+1); i++) {
-      for(int j=0; j<Naky; j++) {
+      for(int i=0; i<((Nx-1)/3+1); i++) {
 	int index = j + Nyc*i;
 	if(index!=0) {
 	  printf("%.4f\t%.4f\t\t%.6f\t%.6f",
@@ -559,8 +556,8 @@ void Diagnostics::print_growth_rates_to_screen()
     }
   } else {
     printf("ky\tkx\t\tomega\t\tgamma\n");
-    for(int i=0; i<Nx; i++) {
-      for(int j=0; j<Nyc; j++) {
+    for(int j=0; j<Nyc; j++) {
+      for(int i=0; i<Nx; i++) {
 	int index = j + Nyc*i;
 	if(index!=0) {
 	  printf("%.4f\t%.4f\t\t%.6f\t%.6f",

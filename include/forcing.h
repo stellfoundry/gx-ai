@@ -17,7 +17,7 @@ class KzForcing : public Forcing {
 
  protected:
   float forcing_amp_;
-  cuComplex random_force;
+  cuComplex rf;
   Parameters *pars_;
 
 };
@@ -39,7 +39,7 @@ class genForcing : public Forcing {
 
  protected:
   float forcing_amp_;
-  cuComplex random_force;
+  cuComplex rf;
   Parameters *pars_;
 };
 

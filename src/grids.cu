@@ -61,14 +61,14 @@ Grids::Grids(Parameters* pars) :
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
   
   // copy some parameters to device constant memory 
-  cudaMemcpyToSymbol(nx, &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(ny, &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nx,  &Nx, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(ny,  &Ny, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nyc, &Nyc, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nz, &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nz,  &Nz, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nm, &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(nl, &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol(zp, &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);  
+  cudaMemcpyToSymbol(nm,  &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nl,  &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(zp,  &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);  
   cudaMemcpyToSymbol(ikx_fixed, &pars_->ikx_fixed, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(iky_fixed, &pars_->iky_fixed, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaDeviceSynchronize();

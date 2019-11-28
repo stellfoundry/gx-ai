@@ -74,20 +74,20 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
     int iky = pars_->iky_single;
     int ikx = pars_->ikx_single;
     DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
-    float fac;
-    if(pars_->nlpm_test && iky==0) fac = .5;
-    else fac = 1.;
-    DEBUG_PRINT("fac = %f \n",fac);
+    //    float fac;
+    //    if(pars_->nlpm_test && iky==0) fac = .5;
+    //    else fac = 1.;
+    //    DEBUG_PRINT("fac = %f \n",fac);
     for(int iz=0; iz<grids_->Nz; iz++) {
       int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
-      init_h[index].x = pars_->init_amp*fac;
+      init_h[index].x = pars_->init_amp; //*fac;
       init_h[index].y = 0.; //init_amp;
     }
   } else {
     srand(22);
     float samp;
-    for(int i=0; i<grids_->Nyc; i++) {
-      for(int j=0; j<grids_->Nx; j++) {
+    for(int i=0; i<grids_->Nx; i++) {
+      for(int j=0; j<grids_->Nyc; j++) {
 	// Do not kick the kx=ky=0 mode
 	if(i>0 || j>0) {
 	  samp = pars_->init_amp;
@@ -97,7 +97,7 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
 	  
           //loop over z *here*, to get rid of randomness in z in initial condition
           for(int k=0; k<grids_->Nz; k++) {
-	    int index = i + grids_->Nyc*j + grids_->NxNyc*k;
+	    int index = j + grids_->Nyc*i + grids_->NxNyc*k;
 	    init_h[index].x = ra*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
 	    init_h[index].y = ra*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
           }
@@ -113,7 +113,11 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
   }
   if(pars_->init == TPAR) {         CP_TO_GPU(tpar_ptr[0], init_h, Momsize_);
   }
+  if(pars_->init == QPAR) {         CP_TO_GPU(qpar_ptr[0], init_h, Momsize_);
+  }
   if(pars_->init == TPRP) {         CP_TO_GPU(tprp_ptr[0], init_h, Momsize_);
+  }
+  if(pars_->init == QPRP) {         CP_TO_GPU(qprp_ptr[0], init_h, Momsize_);
   }
   free(init_h);
 

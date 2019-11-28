@@ -66,7 +66,8 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: iky_fixed = -1
   integer :: forcing_index = 1
   integer :: zp = 1
- 
+  integer :: i_share = 8
+  
   real :: x0 = 10.0
   real :: y0 = 10.0
   real :: dt = 0.05
@@ -115,7 +116,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
 !  integer :: id_hspec_cutoff
   integer :: id_forcing_index, id_ikx_single, id_iky_single
   integer :: id_ikx_fixed, id_iky_fixed
-  integer :: id_x0, id_y0, id_dt, id_zp, id_tite
+  integer :: id_x0, id_y0, id_dt, id_zp, id_tite, id_i_share
   integer :: id_fphi, id_fapar, id_fbpar, id_beta, id_cfl
   integer :: id_rhoc, id_eps, id_shat, id_qinp, id_shift
   integer :: id_akappa, id_akappri, id_tri, id_tripri
@@ -126,7 +127,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: id_boundary_dum, id_closure_model_dum, id_scheme_dum, id_geofile_dum
   integer :: id_source_dum, id_init_field_dum, id_forcing_type_dum
   integer :: id_spec_type_dum, id_spec_z, id_spec_mass, id_spec_vnewk
-  integer :: id_spec_dens, id_spec_temp
+  integer :: id_spec_dens, id_spec_temp, id_stir_field_dum
   integer :: id_spec_tprim, id_spec_fprim, id_spec_uprim
 
   integer :: spec_type_dum = -1
@@ -138,6 +139,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: restart_from_file_dum = -1
   integer :: source_dum = -1
   integer :: init_field_dum = -1
+  integer :: stir_field_dum = -1
   integer :: forcing_type_dum = -1
   
   character(32), dimension(max_spec) :: spec_type = "ion"
@@ -149,6 +151,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   character(512):: restart_from_file = "oldsave.nc"
   character(32) :: source = "default"
   character(32) :: init_field = "density"
+  character(32) :: stir_field = "ppar"
   character(32) :: forcing_type = "Kz"
 
   character (kind=c_char, len=1), dimension(256), intent(in) :: c_runname
@@ -162,11 +165,11 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
        nstep, nwrite, dt, navg, nsave, scheme, eqfix, &
        restart, save_for_restart, restart_to_file, restart_from_file, secondary, &
        zp, jtwist, nspecies, tite, iphi00, fphi, fapar, fbpar, beta, &
-       nonlinear_mode, cfl, &
+       nonlinear_mode, cfl, i_share, &
        igeo, geofile, slab, const_curv, rhoc, eps, shat, qinp, shift, &
        akappa, akappri, tri, tripri, Rmaj, beta_prime_input, s_hat_input, &
        drhodpsi, kxfac, source, phi_ext, &
-       hyper, nu_hyper, p_hyper, d_hyper, &
+       hyper, nu_hyper, p_hyper, d_hyper, stir_field, &
        hypercollisions, nu_hyper_l, nu_hyper_m, p_hyper_l, p_hyper_m, &
        init_amp, init_field, write_omega, write_fluxes, write_moms, write_phi, &
        write_phi_kpar, write_rh, write_spec_v_time, &
@@ -280,6 +283,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_def_var (ncid, "nstep",     NF90_INT,       id_nstep)
   retval = nf90_def_var (ncid, "zp",        NF90_INT,       id_zp)
   retval = nf90_def_var (ncid, "jtwist",    NF90_INT,       id_jtwist)
+  retval = nf90_def_var (ncid, "i_share",   NF90_INT,       id_i_share)
 
   !! diagnostics
   retval = nf90_def_var (ncid, "nwrite",    NF90_INT,       id_nwrite)
@@ -346,6 +350,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_def_var (ncid, "phi_ext",   NF90_FLOAT,     id_phi_ext)
   retval = nf90_def_var (ncid, "scale",     NF90_FLOAT,     id_scale)
   retval = nf90_def_var (ncid, "init_field_dum", NF90_INT,  id_init_field_dum)
+  retval = nf90_def_var (ncid, "stir_field_dum", NF90_INT,  id_stir_field_dum)
   retval = nf90_def_var (ncid, "init_single", NF90_INT,     id_init_single)
   retval = nf90_def_var (ncid, "ikx_single", NF90_INT,      id_ikx_single)
   retval = nf90_def_var (ncid, "iky_single", NF90_INT,      id_iky_single)
@@ -417,6 +422,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_att (ncid, id_geofile_dum,       "value", trim(geofile))
   retval = nf90_put_att (ncid, id_source_dum,        "value", trim(source))
   retval = nf90_put_att (ncid, id_init_field_dum,    "value", trim(init_field))
+  retval = nf90_put_att (ncid, id_stir_field_dum,    "value", trim(stir_field))
   retval = nf90_put_att (ncid, id_forcing_type_dum,  "value", trim(forcing_type))
   retval = nf90_put_att (ncid, id_spec_type_dum,     "value", trim(sp(1) % type))
   retval = nf90_put_att (ncid, id_restart_from_file_dum, "value", trim(restart_from_file))
@@ -503,6 +509,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_kpar_init,        kpar_init)
   retval = nf90_put_var (ncid, id_forcing_amp,      forcing_amp)
   retval = nf90_put_var (ncid, id_scale,            scale)
+  retval = nf90_put_var (ncid, id_i_share,          i_share)
 
   retval = nf90_put_var (ncid, id_boundary_dum,     boundary_dum)
   retval = nf90_put_var (ncid, id_closure_model_dum,closure_model_dum)  
@@ -510,6 +517,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_geofile_dum,      geofile_dum)
   retval = nf90_put_var (ncid, id_source_dum,       source_dum)
   retval = nf90_put_var (ncid, id_init_field_dum,   init_field_dum)
+  retval = nf90_put_var (ncid, id_stir_field_dum,   stir_field_dum)
   retval = nf90_put_var (ncid, id_forcing_type_dum, forcing_type_dum)
   retval = nf90_put_var (ncid, id_restart_from_file_dum, restart_from_file_dum)
   retval = nf90_put_var (ncid, id_restart_to_file_dum,   restart_to_file_dum)

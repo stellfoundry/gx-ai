@@ -7,8 +7,12 @@ __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+th
 
 
 // use stirling's approximation
+// switch to tgamma, or gsl? 
 __host__ __device__ float factorial(int m) {
   if(m<2) return 1.;
+  if(m==2) return 2.;
+  if(m==3) return 6.;
+  if(m==4) return 24.;
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
@@ -421,14 +425,16 @@ __global__ void reality_kernel(cuComplex* g)
         for (int idx = threadIdx.x; idx<nx/2; idx += blockDim.x) {
           int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
           int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-	  if(idx==0) {
-	    g[ig].x = 0.;
-	    g[ig].y = 0.;
-	  } else if(idx!=0) {
-            g[ig2].x = g[ig].x;
-            g[ig2].y = -g[ig].y;
-          }
-        }
+	  //	  if (ig<nx*nyc*nz*nl*nm*s && ig2<nx*nyc*nz*nl*nm*s) {
+	    if(idx==0) {
+	      g[ig].x = 0.;
+	      g[ig].y = 0.;
+	    } else if(idx!=0) {
+	      g[ig2].x = g[ig].x;
+	      g[ig2].y = -g[ig].y;
+	    }
+	    //	  }
+	}
       }
     }
   }

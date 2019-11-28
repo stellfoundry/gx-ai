@@ -26,12 +26,22 @@ KzForcing::~KzForcing()
 // Langevin forcing done at the end of each timestep in timestepper's advance method
 void KzForcing::stir(MomentsG *G) {
   float random_real, random_imag;
+
   generate_random_numbers (&random_real, &random_imag, forcing_amp_, pars_->dt);
 
-  random_force.x = random_real;
-  random_force.y = random_imag;
+  rf.x = random_real;
+  rf.y = random_imag;
 
-  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
+  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 }
 
 genForcing::genForcing(Parameters *pars) : pars_(pars)
@@ -47,10 +57,19 @@ void genForcing::stir(MomentsG *G) {
   float random_real, random_imag;
   generate_random_numbers (&random_real, &random_imag, forcing_amp_, pars_->dt);
 
-  random_force.x = random_real;
-  random_force.y = random_imag;
+  rf.x = random_real;
+  rf.y = random_imag;
 
-  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
+  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 }
 
 // Set forcing_type to "KzImpulse"
@@ -68,10 +87,20 @@ void KzForcingImpulse::stir(MomentsG *G) {
   float random_real, random_imag;
   generate_random_numbers(&random_real, &random_imag, forcing_amp_, pars_->dt);
 
-  random_force.x = random_real;
-  random_force.y = random_imag;
+  rf.x = random_real;
+  rf.y = random_imag;
 
-  stirring_kernel <<<1,1>>> (random_force, G->G(0,0,0), pars_->forcing_index);
+  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+
   stirring_done = true;
 }
 
@@ -85,7 +114,7 @@ void generate_random_numbers(float *random_real, float *random_imag, float forci
   float ran_amp = ( (float) rand()) / ((float) RAND_MAX + 1.0 );
 
   // dt term in timestepper scheme accounted for in amp
-  float amp = 1.0*(sqrt(abs(1.0*(forcing_amp_*dt)*log(ran_amp))));
+  float amp = sqrt(abs(forcing_amp_*dt*log(ran_amp)));
   float phase = M_PI*(2.0*( (float) rand()) / ((float) RAND_MAX + 1.0 ) -1.0);
 
   *random_real = amp*cos(phase);

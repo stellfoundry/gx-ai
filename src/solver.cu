@@ -27,12 +27,15 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
     (phiavgdenom, tmpXZ, geo_->kperp2, geo_->jacobian,
      pars_->species, pars_->ti_ov_te); 
 
+  printf("calc_phiavgdenom:\n");
   print_cudims(dimGrid, dimBlock);
   cudaFree(tmpXZ);
 
   // cuda dims for qneut calculation
   dimBlock_qneut = dim3(32, 4, 4);
   dimGrid_qneut = dim3(grids_->Nyc/dimBlock.x+1, grids_->Nx/dimBlock.y+1, grids_->Nz/dimBlock.z+1);
+  printf("_qneut:\n");
+  print_cudims(dimGrid_qneut, dimBlock_qneut);
 }
 
 Solver::~Solver() 
@@ -45,6 +48,7 @@ Solver::~Solver()
 int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
+
     real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
       (nbar, G->G(), geo_->kperp2, pars_->species);
     

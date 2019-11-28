@@ -67,6 +67,7 @@ void Parameters::get_nml_vars(char* filename)
   nwrite  = getint (ncid, "nwrite");
   navg    = getint (ncid, "navg");
   nsave   = getint (ncid, "nsave");
+  i_share = getint (ncid, "i_share");
 
   ikx_fixed = getint (ncid, "ikx_fixed");
   iky_fixed = getint (ncid, "iky_fixed");
@@ -109,6 +110,9 @@ void Parameters::get_nml_vars(char* filename)
 
   if (retval = nc_inq_varid (ncid, "init_field_dum", &idum))   ERR(retval);
   if (retval = nc_get_att_text (ncid, idum, "value", init_field)) ERR(retval);
+
+  if (retval = nc_inq_varid (ncid, "stir_field_dum", &idum))   ERR(retval);
+  if (retval = nc_get_att_text (ncid, idum, "value", stir_field)) ERR(retval);
 
   forcing_amp = getfloat (ncid, "forcing_amp");
   scale = getfloat (ncid, "scale");
@@ -225,13 +229,27 @@ void Parameters::get_nml_vars(char* filename)
   if(qsf < 0  &&  nz_in == 1) { local_limit=true; }
 
   if     ( strcmp(init_field,"density") == 0) { init = DENS;  }
-  else if( strcmp(init_field,"phi"    ) == 0) { init = PHI;   }
+  //  else if( strcmp(init_field,"phi"    ) == 0) { init = PHI;   }
   else if( strcmp(init_field,"force"  ) == 0) { init = FORCE; }
+  else if( strcmp(init_field,"qperp"  ) == 0) { init = QPRP;  }
   else if( strcmp(init_field,"tperp"  ) == 0) { init = TPRP;  }
   else if( strcmp(init_field,"tpar"   ) == 0) { init = TPAR;  }
+  else if( strcmp(init_field,"qpar"   ) == 0) { init = QPAR;  }
   else if( strcmp(init_field,"upar"   ) == 0) { init = UPAR;  }
-  else if( strcmp(init_field,"odd"    ) == 0) { init = ODD;   }
-  else if( strcmp(init_field,"RH_eq"  ) == 0) { init = RH_equilibrium; new_varenna = true; }
+  else if( strcmp(init_field,"ppar"   ) == 0) { init = PPAR;  }
+  else if( strcmp(init_field,"pperp"  ) == 0) { init = PPRP;  }
+  //  else if( strcmp(init_field,"odd"    ) == 0) { init = ODD;   }
+  //  else if( strcmp(init_field,"RH_eq"  ) == 0) { init = RH_equilibrium; new_varenna = true; }
+  if     ( strcmp(stir_field,"density") == 0) { stirf = DENS; }
+  else if( strcmp(stir_field,"qperp"  ) == 0) { stirf = QPRP;  }
+  else if( strcmp(stir_field,"tperp"  ) == 0) { stirf = TPRP;  }
+  else if( strcmp(stir_field,"tpar"   ) == 0) { stirf = TPAR;  }
+  else if( strcmp(stir_field,"qpar"   ) == 0) { stirf = QPAR;  }
+  else if( strcmp(stir_field,"upar"   ) == 0) { stirf = UPAR;  }
+  else if( strcmp(stir_field,"ppar"   ) == 0) { stirf = PPAR;  }
+  else if( strcmp(stir_field,"pperp"  ) == 0) { stirf = PPRP;  }
+  
+
   
   if( strcmp(scheme, "rk2") == 0) scheme_opt = RK2;  
   if( strcmp(scheme, "rk3") == 0) scheme_opt = RK3;  

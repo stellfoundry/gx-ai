@@ -160,17 +160,17 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   }
   
   // Creating CUDA array copy of lhsVector
-  cuDoubleComplex *lhsVectorCuda;
-  cudaMalloc(&lhsVectorCuda, q*q*sizeof(cuDoubleComplex));
-  //  CP_TO_GPU (lhsVectorCuda, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex));
-  cudaMemcpy(lhsVectorCuda, (cuDoubleComplex*) lhsVector,
+  cuDoubleComplex *lhsVector_d;
+  cudaMalloc(&lhsVector_d, q*q*sizeof(cuDoubleComplex));
+  //  CP_TO_GPU (lhsVector_d, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex));
+  cudaMemcpy(lhsVector_d, (cuDoubleComplex*) lhsVector,
 	     q*q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice); 
   
   // Creating CUDA array copy of rhsVector
-  cuDoubleComplex *rhsVectorCuda;
-  cudaMalloc(&rhsVectorCuda, q*sizeof(cuDoubleComplex));
-  //  CP_TO_GPU (rhsVectorCuda, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex));
-  cudaMemcpy(rhsVectorCuda, (cuDoubleComplex*) rhsVector,
+  cuDoubleComplex *rhsVector_d;
+  cudaMalloc(&rhsVector_d, q*sizeof(cuDoubleComplex));
+  //  CP_TO_GPU (rhsVector_d, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex));
+  cudaMemcpy(rhsVector_d, (cuDoubleComplex*) rhsVector,
 	     q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
   
   // Setting up CUDA handlers and stream
@@ -185,16 +185,16 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   cublasSetStream(cublasHandle, stream);
   
   // Calling cuSolver and cuBLAS libraries to solve Ax = b 
-  linearSolverLU(handle, q, lhsVectorCuda, q, rhsVectorCuda, rhsVectorCuda);
+  linearSolverLU(handle, q, lhsVector_d, q, rhsVector_d, rhsVector_d);
   
   // Converting cuDoubleComplex answer to cuComplex and storing it in x_answer
-  cuComplex *rhsVectorCuda_float;
-  cudaMalloc(&rhsVectorCuda_float, q*q*sizeof(cuComplex));
+  cuComplex *rhsVector_d_float;
+  cudaMalloc(&rhsVector_d_float, q*q*sizeof(cuComplex));
   
-  castDoubleToFloat<<<1,1>>>(rhsVectorCuda, rhsVectorCuda_float, q);
+  castDoubleToFloat<<<1,1>>>(rhsVector_d, rhsVector_d_float, q);
   
-  //  CP_TO_CPU(x_answer, rhsVectorCuda_float, q*sizeof(cuComplex));
-  cudaMemcpy(x_answer, rhsVectorCuda_float, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
+  //  CP_TO_CPU(x_answer, rhsVector_d_float, q*sizeof(cuComplex));
+  cudaMemcpy(x_answer, rhsVector_d_float, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
   
   // Print only if debugging
   if (0==1) {
@@ -285,9 +285,9 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   free(Qn);
   free(lhsVector);
   
-  cudaFree(rhsVectorCuda);
-  cudaFree(rhsVectorCuda_float);
-  cudaFree(lhsVectorCuda);
+  cudaFree(rhsVector_d);
+  cudaFree(rhsVector_d_float);
+  cudaFree(lhsVector_d);
 }
 
 /* This function finds the coefficients of the Taylor series expansion of
@@ -333,19 +333,15 @@ void get_normalized_hermite_coefficients(double complex **matrix, int n, double 
   }
   
   /* Calculation standard recurrence relation of normalized Hermite polynomials:
-   * h_n(x) = sqrt(2/n)*x*h_(n-1)(x) - sqrt((n-1)/n)*h_(n-2)(x) */
+   * h_i(x) = sqrt(2/i)*x*h_(i-1)(x) - sqrt((i-1)/i)*h_(i-2)(x) */
   for (i = 2; i <= n; i++) {
     for (j = 0; j <= i; j++){
       double di = (double) i;
       if (j == 0) {
 	matrix[i][0] = -sqrt((di -1)/di)*matrix[i-2][0];
       } else {
-	if (i-2 >= j) {
-	  matrix[i][j] += -sqrt((di -1)/di)*matrix[i-2][j];
-	}
-	if (i-1 >= j-1) {
-	  matrix[i][j] += sqrt(2/di)*scaling*matrix[i-1][j-1];
-	}
+	if (i-2 >= j)   matrix[i][j] += -sqrt((di -1)/di)     * matrix[i-2][j];
+	if (i-1 >= j-1) matrix[i][j] +=  sqrt(2/di) * scaling * matrix[i-1][j-1];
       }
     }
   }
@@ -363,12 +359,11 @@ int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acop
   
   cusolverDnZgetrf_bufferSize(handle, n, n, (cuDoubleComplex*)Acopy, lda, &bufferSize);
   
-  cudaMalloc(&info, sizeof(int));
+  cudaMalloc(&info,   sizeof(int));
   cudaMalloc(&buffer, sizeof(cuDoubleComplex)*bufferSize);
-  cudaMalloc(&A, sizeof(cuDoubleComplex)*lda*n);
-  cudaMalloc(&ipiv, sizeof(int)*n);
-  
-  
+  cudaMalloc(&A,      sizeof(cuDoubleComplex)*lda*n);
+  cudaMalloc(&ipiv,   sizeof(int)*n);
+    
   // Prepare a copy of A because getrf will overwrite A with L
   //  CP_TO_GPU(A, Acopy, sizeof(cuDoubleComplex)*lda*n);
   cudaMemcpy(A, Acopy, sizeof(cuDoubleComplex)*lda*n, cudaMemcpyDeviceToDevice);

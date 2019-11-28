@@ -97,7 +97,8 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   Geometry* geo;  // geometry coefficient arrays
   Grids* grids;   // grids (e.g. kx, ky, z)
   Diagnostics* diagnostics;
-
+  HermiteTransform* herm;
+  
   DEBUGPRINT("Initializing grids...\n");
   grids = new Grids(pars);
   CUDA_DEBUG("Initializing grids: %s \n");
@@ -130,6 +131,10 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     DEBUGPRINT("Initializing diagnostics...\n");
     diagnostics = new Diagnostics(pars, grids, geo);
     CUDA_DEBUG("Initializing diagnostics: %s \n");    
+
+    DEBUGPRINT("Initializing Hermite transforms...\n");
+    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
+    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
   }
 
   cudaDeviceSynchronize();

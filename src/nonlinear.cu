@@ -15,19 +15,27 @@ __global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
+
+  if (grids_->Nl==1) {
+    printf("\n");
+    printf("Cannot do a nonlinear run with nlaguerre < 2\n");
+    printf("\n");
+    exit(1);
+  }
+
   laguerre =        new LaguerreTransform(grids_, 1);
   grad_perp_G =     new GradPerp(grids_, grids_->Nz*grids_->Nl);
-  grad_perp_J0phi = new GradPerp(grids_, grids_->Nz*(laguerre->J+1));
+  grad_perp_J0phi = new GradPerp(grids_, grids_->Nz*laguerre->J);
 
   checkCuda(cudaMalloc((void**) &dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
-  checkCuda(cudaMalloc((void**) &dg_dx, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
-  checkCuda(cudaMalloc((void**) &dg_dy, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &dg_dx, sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc((void**) &dg_dy, sizeof(float)*grids_->NxNyNz*laguerre->J));
 
-  checkCuda(cudaMalloc((void**) &J0phi, sizeof(cuComplex)*grids_->NxNycNz*(laguerre->J+1)));
-  checkCuda(cudaMalloc((void**) &dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
-  checkCuda(cudaMalloc((void**) &dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &J0phi, sizeof(cuComplex)*grids_->NxNycNz*laguerre->J));
+  checkCuda(cudaMalloc((void**) &dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc((void**) &dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*laguerre->J));
 
-  checkCuda(cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*(laguerre->J+1)));
+  checkCuda(cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*laguerre->J));
 
   dimBlock = dim3(32, 4, 1);
   dimGrid = dim3(grids_->NxNyNz / dimBlock.x + 1, 1, 1); 
@@ -105,11 +113,11 @@ double Nonlinear::cfl(double dt_max)
   //  int blocks=min((grids_->NxNyNz+threads-1)/threads,2048);
 
   // BD dJ0phi_dx is defined on the pseudo-spectral v_perp**2 grid
-  // BD so why is the reduction only over Nl? Should be J+1
+  // BD so why is the reduction only over Nl? Should be J
   //  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*grids_->Nl, dJ0phi_dx, dJ0phi_dx);
   //  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*grids_->Nl, dJ0phi_dy, dJ0phi_dy);
-  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*(laguerre->J+1), dJ0phi_dx, dJ0phi_dx);
-  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*(laguerre->J+1), dJ0phi_dy, dJ0phi_dy);
+  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*laguerre->J, dJ0phi_dx, dJ0phi_dx);
+  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*laguerre->J, dJ0phi_dy, dJ0phi_dy);
   vmax = max(vmax_x[0], vmax_y[0]);
 
   dt_cfl = (pars_->cfl/vmax < dt_max) ? pars_->cfl/vmax : dt_max;
@@ -121,10 +129,10 @@ __global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2,
 			    float* muB, float rho2_s)
 {
   unsigned int idxyz = get_id1();
-  unsigned int J = (3*(nl-1)-1)/2;
+  unsigned int J = (3*nl/2-1);
 
   if(idxyz<nx*nyc*nz) {
-    for (int j = threadIdx.y; j < J+1; j += blockDim.y) {
+    for (int j = threadIdx.y; j < J; j += blockDim.y) {
       J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2. * muB[j] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
     }
   }
@@ -134,10 +142,10 @@ __global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
 			float* dg_dy, float* dJ0phi_dx, float kxfac)
 {
   unsigned int idxyz = get_id1();
-  unsigned int J = (3*(nl-1)-1)/2;
+  unsigned int J = (3*nl/2-1);
 
   if(idxyz<nx*ny*nz) {
-    for (int j = threadIdx.y; j < J+1; j += blockDim.y) {
+    for (int j = threadIdx.y; j < J; j += blockDim.y) {
       unsigned int ig = idxyz + nx*ny*nz*j;
 
       g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
