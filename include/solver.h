@@ -12,6 +12,8 @@ class Solver {
   ~Solver();
   
   int fieldSolve(MomentsG* G, Fields* fields);
+  void svar(cuComplex* f, int N);
+  void svar(float* f, int N);
   
   cuComplex* nbar;
  private:

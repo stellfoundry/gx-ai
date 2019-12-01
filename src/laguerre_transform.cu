@@ -13,6 +13,7 @@ LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
   cudaMalloc((void**) &roots,      sizeof(float)*J);
 
   initTransforms(toGrid_h, toSpectral_h, roots_h);
+
   CP_TO_GPU(toGrid,     toGrid_h,     sizeof(float)*L*J);
   CP_TO_GPU(toSpectral, toSpectral_h, sizeof(float)*L*J);
   CP_TO_GPU(roots,      roots_h,      sizeof(float)*J);
@@ -33,44 +34,20 @@ LaguerreTransform::~LaguerreTransform()
 int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
 {
   int i, j;
-  //  int Jsq = J*J;
-  //  double Jacobi[Jsq];
-
   gsl_matrix *Jacobi = gsl_matrix_alloc(J,J);
   gsl_matrix_set_zero (Jacobi);
   
-  //  for (j=0; j<Jsq; j++) Jacobi[j] = 0.0;
-
-
   for (i = 0; i < J-1; i++) {
-    gsl_matrix_set(Jacobi, i, i, 2*i+1);
-    gsl_matrix_set(Jacobi, i, i+1, i+1);
-    gsl_matrix_set(Jacobi, i+1, i, i+1);
+    gsl_matrix_set(Jacobi, i, i, 2.*i+1.);
+    gsl_matrix_set(Jacobi, i, i+1, i+1.);
+    gsl_matrix_set(Jacobi, i+1, i, i+1.);
   }
-    /*    
-  for (i = 0; i < J; i ++) {
-    Jacobi[i * (J+1)] = 2 * i + 1;
-    Jacobi[1 + i * (J+1)] = i + 1;
-    Jacobi[J + i * (J+1)] = i + 1;
-  } 
-    */
+  gsl_matrix_set(Jacobi, J-1, J-1, 2*J-1);
     
-  /*
-  for (i = 0; i < J; i ++) {
-    for (j = 0; j < J; j ++) {
-      printf("%f \t",Jacobi[i*J+j]);
-    } 
-    printf("\n");
-  }
-  */
-  
-    //  gsl_matrix_view m = gsl_matrix_view_array (Jacobi, J, J); // defined type gsl_matrix_view
-  //  gsl_vector *weights = gsl_vector_alloc (J);                 // pointer to a structure
   gsl_vector *eval = gsl_vector_alloc (J);
   gsl_matrix *evec = gsl_matrix_alloc (J, J);
   gsl_eigen_symmv_workspace *wrk = gsl_eigen_symmv_alloc (J);
-  //  gsl_eigen_symmv (&m.matrix, eval, evec, wrk);                 // & returns address for pointer
-  gsl_eigen_symmv (Jacobi, eval, evec, wrk);                 // & returns address for pointer
+  gsl_eigen_symmv (Jacobi, eval, evec, wrk);                 
   gsl_eigen_symmv_free (wrk);
   gsl_eigen_symmv_sort (eval, evec, GSL_EIGEN_SORT_ABS_ASC);
 
@@ -95,10 +72,9 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
 
   for (j=0; j<J; j++) {
     x_i = gsl_vector_get (eval, j); 
-    //    printf("roots_h[%d]=%g \n",j,x_i);
     roots_h[j] = (float) x_i; // Used in argument of J0
+    //    printf("roots_h[%d] =  %f \n",j,roots_h[j]);
     wgt = pow (gsl_matrix_get (evec, 0, j), 2); // square first element of j_th eigenvector
-    //    gsl_vector_set (weights, j, wgt);
 
     // evaluate the ell-th polynomial at x(j) = x_j and multiply by weight(j) as needed
     for (ell=0; ell<L; ell++) {

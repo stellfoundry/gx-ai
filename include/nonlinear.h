@@ -14,7 +14,8 @@ class Nonlinear {
 
   void nlps5d(MomentsG* G, Fields* f, MomentsG* G_res);
   double cfl(double dt_max);
-
+  void qvar(cuComplex* G, int N);
+  
  private:
 
   LaguerreTransform* laguerre;

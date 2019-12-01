@@ -61,15 +61,44 @@ Nonlinear::~Nonlinear()
   cudaFree(g_res);
 }
 
+void Nonlinear::qvar (cuComplex* G, int N)
+{
+  cuComplex* G_h;
+  int Nk = grids_->Nyc;
+  G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
+  CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
+  printf("\n");
+  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  printf("\n");
+
+  free (G_h);
+}
+
 void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 {
   for(int s=0; s<grids_->Nspecies; s++) {
 
     // BD  J0phiToGrid does not use a Laguerre transform. Implications?
     // BD  If we use alternate forms for <J0> then that would need to be reflected here
+    //    printf("nonlinear\n");
+    //    print_cudims(dimGrid, dimBlock);
+
+    /*
+    printf("\n");
+    printf("Phi:\n");
+    qvar(f->phi, grids_->NxNycNz);
+    */
+    
     J0phiToGrid <<<dimGrid,dimBlock>>>
       (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
 
+    /*
+    printf("\n");
+    printf("J0 * Phi:\n");
+    qvar(J0phi, grids_->NxNycNz*laguerre->J);
+    exit(1);
+    */
+    
     grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
     grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
 
@@ -90,17 +119,6 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
     }
   }
 }
-
-/*
-__global__ void max_abs(float *f, float *res)
-{
-  float vmax = 0.;
-  for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x; idxyz<nx*ny*nz; idxyz+=blockDim.x*gridDim.x) {
-    vmax = max(abs(f[idxyz]), vmax); 
-  }
-  atomicMaxFloat(res, vmax);
-}
-*/
 
 // Note: should only be called after nlps5d, as it assumes 
 // dJ0phi_dx, dJ0phi_dy have been calculated.

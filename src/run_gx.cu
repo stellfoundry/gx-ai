@@ -62,7 +62,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
     DEBUGPRINT("Initializing field solver...\n");     solver = new Solver(pars, grids, geo);
     CUDA_DEBUG("Initializing field solver: %s \n");
-       
+
     // initialize fields using field solve
     DEBUGPRINT("Solving for initial fields...\n");    solver -> fieldSolve(momsG, fields);
     CUDA_DEBUG("Solving for initial fields: %s\n");

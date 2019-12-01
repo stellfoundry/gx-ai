@@ -5,7 +5,6 @@
 #include "grad_parallel.h"
 #include "get_error.h"
 
-
 __global__ void init_kperp2(float* kperp2, float* kx, float* ky,
 			    float* gds2, float* gds21, float* gds22,
 			    float* bmagInv, float shat) ;
@@ -210,7 +209,7 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   FILE * geoFile = fopen(pars->geofilename, "r");
   
   if (geoFile == NULL) {
-    printf("Cannot open file %s \n", geoFile);
+    printf("Cannot open file %s \n", pars->geofilename);
     exit(0);
   }
 
@@ -246,20 +245,19 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
     }
 
   oldNz = grids->Nz;
+  int newNz = oldNz;
   oldnperiod = pars->nperiod;
   //lineStartPos[1] is the first line, not i=0
   fsetpos(geoFile, &lineStartPos[2]);
   fscanf(geoFile, "%d %d %d %f %f %f %f %f",
-	 &ntgrid, &pars->nperiod, &grids->Nz,
+	 &ntgrid, &pars->nperiod, &newNz,
 	 &pars->drhodpsi, &pars->rmaj, &pars->shat,
 	 &pars->kxfac, &pars->qsf);
   DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n",
 	   ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
-  //  if(pars->debug)
-  //    printf("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n",
-  //	   ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
 
-  if(oldNz != grids->Nz) {
+  if(oldNz != newNz) {
+    printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
     printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
     abort();
   }
@@ -277,8 +275,8 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
     fscanf(geoFile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
     gbdrift_h[i] = (1./4.)*gbdrift_h[i];
   }
-  //printf("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
-  //printf("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
+  DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
+  DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
 
   //second block
   for(int i=0; i<Nz; i++) {
@@ -289,17 +287,17 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
     jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
     grho_h[i] = 1.;
   }
-  //printf("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
-  //printf("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
-  //printf("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
+  DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
+  DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
+  DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
   //third block
   for(int i=0; i<Nz; i++) {
     fsetpos(geoFile, &lineStartPos[(i+4) + 2*(Nz+2)]);
     fscanf(geoFile, "%f %f", &gds21_h[i], &gds22_h[i]);
   }
-  //printf("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
-  //printf("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
+  DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
+  DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
 
   //fourth block
   for(int i=0; i<Nz; i++) {
@@ -308,9 +306,9 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
     cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
     gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
   }
-  printf("All geometry information read successfully\n");
-  //printf("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[Nz-1]);
-  //printf("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[Nz-1]);
+  DEBUGPRINT("All geometry information read successfully\n");
+  DEBUGPRINT("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[Nz-1]);
+  DEBUGPRINT("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[Nz-1]);
 
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
