@@ -25,3 +25,9 @@ CUDAARCH=70
 
 CUDA_LIB = -lcufft_static -lculibos -lcublas -lcusolver
 NVCC_FLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
+
+ifeq ($(debug),on)
+  NVCCFLAGS += -g -G 
+else
+  NVCCFLAGS += -O3
+endif

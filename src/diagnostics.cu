@@ -157,7 +157,7 @@ void Diagnostics::final_diagnostics(MomentsG* G, Fields* fields)
 
   if (pars_->write_moms) {
     writeMomOrField (G->dens_ptr[0], id->density);
-    writeMomOrField (G->upar_ptr[0], id->upar);
+    if (grids_->Nm>1) {writeMomOrField (G->upar_ptr[0], id->upar);}
     writeMomOrField (fields->phi,    id->phi);
   }
   
@@ -291,8 +291,10 @@ void Diagnostics::writeHspectrum(MomentsG* G, bool endrun, int ikx, int iky)
   int retval;
   float *hspectrum, *hspectrum_h; 
   cudaMalloc    ((void**) &hspectrum,     sizeof(float)*grids_->Nm);
+  cudaMemset(hspectrum, 0.,               sizeof(float)*grids_->Nm);
   cudaMallocHost((void**) &hspectrum_h,   sizeof(float)*grids_->Nm);
-
+  for (int m=0; m<grids_->Nm; m++) hspectrum_h[m] = 0.;
+  
   // calculate spectrum  
   Hspectrum(G, hspectrum, ikx, iky);
 
@@ -318,9 +320,9 @@ __global__ void volume_average(float* res, cuComplex* f, cuComplex* g, float* ja
     unsigned int idy = idxyz % (nx*nyc) % nyc; 
     unsigned int idx = idxyz % (nx*nyc) / nyc; 
     unsigned int idz = idxyz / (nx*nyc);
-    float fac;
+    float fac=2.;
     if(idy==0) fac = 1.0;
-    else fac = 2.;
+
     if(ikx<0 && iky<0) { // default: sum over all k's
       if(idy>0 || idx>0) {
         fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*fluxDenomInv;
@@ -370,7 +372,7 @@ void Diagnostics::Hspectrum(MomentsG* G, float* hspectrum, int ikx, int iky)
 {
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,128); 
-
+  //  printf("blocks = %d \t threads = %d \n", blocks, threads);
   cudaMemset(hspectrum, 0., sizeof(float)*grids_->Nm);
 
   for(int m=0; m<grids_->Nm; m++) {
@@ -552,7 +554,7 @@ void Diagnostics::print_growth_rates_to_screen()
 	  printf("\n");
 	}
       }
-      printf("\n");
+      if (Nx>1) printf("\n");
     }
   } else {
     printf("ky\tkx\t\tomega\t\tgamma\n");
@@ -565,7 +567,7 @@ void Diagnostics::print_growth_rates_to_screen()
 	  printf("\n");
 	}
       }
-      printf("\n");
+      if (Nx>1) printf("\n");
     }    
   }	
 }

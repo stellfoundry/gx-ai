@@ -41,8 +41,9 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar, floa
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
     
-    PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];    
-  }
+    PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+    // This is a function of ky, kx, z. It is used in part2. Check for correct use in part2
+  }  
 }
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbar,
@@ -87,10 +88,6 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
     
     Phi[index].x = ( nbar[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
     Phi[index].y = ( nbar[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
-
-    //    Phi[index].x = idx;
-    //    Phi[index].y = idy;
-    
   }
 }
 

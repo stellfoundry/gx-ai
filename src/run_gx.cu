@@ -94,6 +94,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     }
 
     DEBUGPRINT("Initializing timestepper...\n");
+    
     if(pars->scheme_opt == K10) {stepper = new Ketcheson10(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
       CUDA_DEBUG("Initalizing timestepper K10: %s\n");
     }
@@ -107,7 +108,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
       CUDA_DEBUG("Initalizing timestepper RK2: %s\n");
     }
     checkCuda(cudaGetLastError());
-
+      
     DEBUGPRINT("After initialization:\n");
     getDeviceMemoryUsage();
   

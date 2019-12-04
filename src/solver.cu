@@ -24,8 +24,8 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   dim3 dimBlock = dim3(maxThreadsPerBlock_/grids_->Nz, grids_->Nz, 1);
   dim3 dimGrid  = dim3(grids_->Nx/dimBlock.x+1, 1, 1);
   
-  printf("calc_phiavgdenom:\n");
-  print_cudims(dimGrid, dimBlock);
+  //  printf("calc_phiavgdenom:\n");
+  //  print_cudims(dimGrid, dimBlock);
 
   calc_phiavgdenom <<<dimGrid,dimBlock>>> (phiavgdenom, tmpXZ, geo_->kperp2, geo_->jacobian,
      pars_->species, pars_->ti_ov_te); 
@@ -40,8 +40,8 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   // cuda dims for qneut calculation
   dimBlock_qneut = dim3(32, 4, 4);
   dimGrid_qneut = dim3(grids_->Nyc/dimBlock.x+1, grids_->Nx/dimBlock.y+1, grids_->Nz/dimBlock.z+1);
-  printf("_qneut:\n");
-  print_cudims(dimGrid_qneut, dimBlock_qneut);
+  //  printf("_qneut:\n");
+  //  print_cudims(dimGrid_qneut, dimBlock_qneut);
 }
 
 Solver::~Solver() 
@@ -80,16 +80,11 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
 
-    //    real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
-    //      (nbar, G->G(), geo_->kperp2, pars_->species);
-    
-    
-    real_space_density <<<grids_->NxNycNz/grids_->Nl+1, grids_->Nl>>>
+    real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
       (nbar, G->G(), geo_->kperp2, pars_->species);
     
     if(pars_->iphi00==2) {
       qneutAdiab_part1 <<<dimGrid_qneut, dimBlock_qneut>>>
-
 	(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
 
       qneutAdiab_part2 <<<dimGrid_qneut, dimBlock_qneut>>>

@@ -317,19 +317,20 @@ int MomentsG::restart_write(double* time)
   idum = mask ? 1 : 0;
   if (retval = nc_put_var(ncres, id_mask, &idum)) ERR(retval);
   
-  int itot;
+  int itot, jtot;
+  jtot = Nx * Nyc * Nz * Nm * Nl * nspec;
   if (mask) {
     itot = Nakx * Naky * Nz * Nm * Nl * nspec;
-    cudaMallocHost((void**) &G_h,   sizeof(cuComplex)* itot    );
-    cudaMallocHost((void**) &G_out, sizeof(float)    * itot * 2);
   } else {
     itot = Nx * Nyc * Nz * Nm * Nl * nspec;
-    cudaMallocHost((void**) &G_h, sizeof(cuComplex) * itot);
-    cudaMallocHost((void**) &G_out, sizeof(float)   * itot * 2);
   }
+  cudaMallocHost((void**) &G_h,   sizeof(cuComplex) * jtot);
+  cudaMallocHost((void**) &G_out, sizeof(float)   * itot * 2);
 
+  for (int index=0; index < jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
+  for (int index=0; index<2*itot; index++) G_out[index] = 0.;
   CP_TO_CPU(G_h, G_lm, sizeof(cuComplex)*itot);
-
+  
   if (mask) {
     for (int is=0; is < nspec; is++) {
       for (int m=0; m < Nm; m++) {
@@ -340,15 +341,14 @@ int MomentsG::restart_write(double* time)
 	      for (int j=0; j < Naky; j++) {
 		int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
 		int index_out = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
-		G_out[2*index_out]   = G_h[index].x;
+		G_out[2*index_out]   = G_h[index].x; 
 		G_out[2*index_out+1] = G_h[index].y;
 	      }
 	    }
 
 	    for (int i=2*Nx/3+1; i < Nx; i++) {
 	      for (int j=0; j < Naky; j++) {
-		int index     = j + Nyc*i
-		  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
+		int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
 
 		int index_out = j + Naky*(i-2*Nx/3+(Nx-1)/3)
 		  + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
@@ -493,19 +493,20 @@ int MomentsG::restart_read(double* time)
     }    
   }
 
-  int itot;
+  int itot, jtot;
+  jtot = Nakx * Naky * Nz * Nm * Nl * nspec;
   if (mask) {
     itot = Nakx * Naky * Nz * Nm * Nl * nspec;
-    cudaMallocHost((void**) &G_hold,  sizeof(cuComplex)* itot    );
-    cudaMallocHost((void**) &G_h,     sizeof(cuComplex)* itot    );
-    cudaMallocHost((void**) &G_in,    sizeof(float)    * itot * 2);
   } else {
     itot = Nx * Nyc * Nz * Nm * Nl * nspec;
-    cudaMallocHost((void**) &G_hold,  sizeof(cuComplex) * itot);
-    cudaMallocHost((void**) &G_h,     sizeof(cuComplex) * itot);
-    cudaMallocHost((void**) &G_in,    sizeof(float)   * itot * 2);
   }
-
+  cudaMallocHost((void**) &G_hold,  LHsize_);
+  cudaMallocHost((void**) &G_h,     LHsize_);
+  cudaMallocHost((void**) &G_in,    sizeof(float)   * itot * 2);
+  
+  for (int index=0; index < jtot; index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
+  for (int index=0; index < jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
+  for (int index=0; index<2*itot; index++) {G_in[index] = 0.;}
   CP_TO_CPU(G_hold, G_lm, sizeof(cuComplex)*itot);
   
   if (retval = nc_get_var(ncres, id_G, G_in)) ERR(retval);

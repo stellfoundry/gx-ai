@@ -38,7 +38,10 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*laguerre->J));
 
   dimBlock = dim3(32, 4, 1);
-  dimGrid = dim3(grids_->NxNyNz / dimBlock.x + 1, 1, 1); 
+  dimGrid  = dim3(grids_->NxNyNz / dimBlock.x + 1, 1, 1); 
+
+  //  dimBlock = dim3(32, 4, 1);
+  //  dimGrid = dim3(grids_->NxNyNz / dimBlock.x + 1, laguerre->J/dimBlock.y+1, 1); 
 
   dt_cfl = 0.;
 
@@ -116,7 +119,11 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
     
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
+
     }
+    //      printf("\n");
+    //      qvar(G_res->Gm(0,s), grids_->NxNycNz*laguerre->L);
+    //      exit(1);      
   }
 }
 
