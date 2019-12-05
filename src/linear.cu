@@ -86,7 +86,7 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
 	(upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
-
+  
   // calculate RHS
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
@@ -104,7 +104,7 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // combine
   GRhs->add_scaled(1., GRhs, (float) geo_->gradpar, GRhs_par);
-
+  
   // closures
   if(pars_->closure_model_opt>0) {
     closures->apply_closures(G, GRhs);
@@ -126,7 +126,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   if(idxyz<nx*nyc*nz) {
     const unsigned int sidxyz = threadIdx.x;
     // these modulo operations are expensive... better way to get these indices?
-    const unsigned int idy = idxyz % (nx*nyc) % nyc; 
+    //    const unsigned int idy = idxyz % (nx*nyc) % nyc;// BD there is extra here, right?
+    const unsigned int idy = idxyz % nyc; 
     const unsigned int idz = idxyz / (nx*nyc);
   
     // shared memory blocks of size blockDim.x * (nl+2) * (nm+4)

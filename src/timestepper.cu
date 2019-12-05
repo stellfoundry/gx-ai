@@ -4,7 +4,7 @@
 // ======= RK2 =======
 RungeKutta2::RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
-  linear_(linear), nonlinear_(nonlinear), solver_(solver), 
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), 
   forcing_(forcing), dt_max(dt_in), dt_(dt_in)
 {
   // new objects for temporaries
@@ -21,7 +21,6 @@ RungeKutta2::~RungeKutta2()
 int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
 {
   linear_->rhs(G, f, GRhs);
-
   if(nonlinear_ != NULL) {
 
     nonlinear_->nlps5d(G, f, GStar);
@@ -39,10 +38,23 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
   //////////////////////////////////////////
   
   linear_->rhs(GStar, f, GRhs);
-
+      
   if(nonlinear_ != NULL) {
     nonlinear_->nlps5d(GStar, f, GStar);
+
+    // In slab test case the RHS is zero
+    //    printf("GRhs: (should be zero) \n");
+    //    GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
+
     GRhs->add_scaled(1., GRhs, 1., GStar);
+
+    // There should be values here
+    //    printf("Gnl: \n");
+    //    Gnl->qvar(grids_->Nmoms*grids_->NxNycNz);
+
+    // And now GRhs should = Gnl
+    //    printf("GRhs: \n");
+    //    GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
   }
 
   G->add_scaled(1., G, dt_, GRhs);
@@ -97,7 +109,7 @@ int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
 
       // choose the timestep
     dt_ = nonlinear_->cfl(dt_max);
-}
+  }
   
   // GStar = G(t) + RHS(t) * dt/2 = G(t+dt/2) (first approximation)
   GRhs3->add_scaled(1., G, dt_/2., GRhs1);  // GRhs3 is a tmp array here
@@ -259,7 +271,7 @@ int RungeKutta3::advance(double *t, MomentsG* G, Fields* f)
 // ============= K10,4 ============
 Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
-  linear_(linear), nonlinear_(nonlinear), solver_(solver), 
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids),
   forcing_(forcing), dt_max(dt_in), dt_(dt_in)
 {
   // new objects for temporaries
@@ -291,7 +303,17 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
 
     if(nonlinear_ != NULL) {
       nonlinear_->nlps5d(G_q1, f, GStar);    
+
+      //      printf("GRhs (K10):\n");
+      //      GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
+
       GRhs->add_scaled(1., GRhs, 1., GStar);
+
+      //      printf("GStar (K10):\n");
+      //      GStar->qvar(grids_->Nmoms*grids_->NxNycNz);
+      //
+      //      printf("GRhs (K10):\n");
+      //      GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
 
       // choose the timestep
     dt_ = nonlinear_->cfl(dt_max);

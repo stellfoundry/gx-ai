@@ -25,37 +25,20 @@ void Parameters::get_nml_vars(char* filename)
 {
   strcpy (run_name, filename);
   read_nml(run_name);
-
+  
   char strb[263];
   strcpy(strb, run_name); 
   strcat(strb, ".nc");
 
   int ncid, retval;
   if (retval = nc_open(strb, NC_WRITE, &ncid)) ERR(retval); 
-  
-  int idum;  size_t dimlen;
-
-  if (retval = nc_inq_dimid(ncid, "ny", &idum))   ERR(retval);
-  if (retval = nc_inq_dimlen (ncid, idum, &dimlen)) ERR(retval);
-  ny_in = (int) dimlen;
-
-  if (retval = nc_inq_dimid(ncid, "nx", &idum))   ERR(retval);
-  if (retval = nc_inq_dimlen (ncid, idum, &dimlen)) ERR(retval);
-  nx_in = (int) dimlen;
-
-  if (retval = nc_inq_dimid(ncid, "nhermite", &idum))   ERR(retval);
-  if (retval = nc_inq_dimlen (ncid, idum, &dimlen)) ERR(retval);
-  nm_in = (int) dimlen;
-
-  if (retval = nc_inq_dimid(ncid, "nlaguerre", &idum))   ERR(retval);
-  if (retval = nc_inq_dimlen (ncid, idum, &dimlen)) ERR(retval);
-  nl_in = (int) dimlen;
-
-  if (retval = nc_inq_dimid(ncid, "nspecies", &idum))   ERR(retval);
-  if (retval = nc_inq_dimlen (ncid, idum, &dimlen)) ERR(retval);
-  nspec_in = (int) dimlen;
-
   nz_in = getint (ncid, "ntheta");
+  ny_in = getint (ncid, "ny"); 
+  nx_in = getint (ncid, "nx");
+  nm_in = getint (ncid, "nhermite"); 
+  nl_in = getint (ncid, "nlaguerre");
+  nspec_in = getint (ncid, "nspecies");
+  
   dt = getfloat (ncid, "dt");
   y0 = getfloat (ncid, "y0");
   x0 = getfloat (ncid, "x0");
@@ -102,6 +85,7 @@ void Parameters::get_nml_vars(char* filename)
   p_hyper_l  = getint (ncid, "p_hyper_l");
   p_hyper_m  = getint (ncid, "p_hyper_m");
 
+  int idum;
   if (retval = nc_inq_varid (ncid, "scheme_dum", &idum))   ERR(retval);
   if (retval = nc_get_att_text (ncid, idum, "value", scheme)) ERR(retval);
   
@@ -200,7 +184,6 @@ void Parameters::get_nml_vars(char* filename)
   
   Zp = 2*nperiod - 1; // BD This needs updating
   
-
   // BD  This is messy. Prefer to go back to original method
   // before, jtwist_old assumed Zp=1
   // now, redefining jtwist = jtwist_old*Zp
@@ -248,8 +231,6 @@ void Parameters::get_nml_vars(char* filename)
   else if( strcmp(stir_field,"upar"   ) == 0) { stirf = UPAR;  }
   else if( strcmp(stir_field,"ppar"   ) == 0) { stirf = PPAR;  }
   else if( strcmp(stir_field,"pperp"  ) == 0) { stirf = PPRP;  }
-  
-
   
   if( strcmp(scheme, "rk2") == 0) scheme_opt = RK2;  
   if( strcmp(scheme, "rk3") == 0) scheme_opt = RK3;  

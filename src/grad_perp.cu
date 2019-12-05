@@ -25,8 +25,7 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   unsigned int idx = offset % (nx*nyc) / nyc; 
   unsigned int idy = offset % (nx*nyc) % nyc; 
   int ikx = get_ikx(idx);
-  //  if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (ikx==0 && idy==0) || (ikx==ikx_fixed && idy==iky_fixed)) {
-  if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (ikx==0 && idy==0)) {
+  if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (idx==0 && idy==0)) {
     // mask
     ((cuComplex*)dataOut)[offset].x = 0.;
     ((cuComplex*)dataOut)[offset].y = 0.;

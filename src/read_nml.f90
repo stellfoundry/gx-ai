@@ -2,10 +2,11 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
 
   use netcdf
   use iso_c_binding, only: c_char, c_null_char
-
+  
   integer, parameter :: max_spec = 1
   integer, parameter :: sixteen = 16
   integer :: retval, ncid, id_code, id_ri, j, char16_dim
+  integer :: id_M, id_L
   integer :: ri = 2
 
   type :: plasma
@@ -45,6 +46,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: nx = 1
   integer :: ny = 32
   integer :: nhermite = 4
+  integer :: nh = -1
   integer :: nlaguerre = 2
   integer :: smith_par_q = 3
   integer :: smith_perp_q = 3
@@ -102,14 +104,14 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   real :: scale = 1.0
   
   integer :: id_debug, id_restart, id_nonlinear_mode, id_slab, id_const_curv
-  integer :: id_secondary, id_save_for_restart, id_eqfix
+  integer :: id_secondary, id_save_for_restart, id_eqfix, id_t_dim
   integer :: id_hyper, id_hypercollisions, id_write_omega, id_write_fluxes
   integer :: id_write_moms, id_write_phi, id_write_phi_kpar, id_write_rh
   integer :: id_write_h_spectrum, id_write_l_spectrum, id_write_lh_spectrum
   integer :: id_init_single, id_forcing_init, id_write_spec_v_time
 !  integer :: id_snyder_electrons
   integer :: id_ntheta, id_nperiod, id_nx, id_ny, id_nhermite, id_nlaguerre
-  integer :: id_smith_par_q, id_smith_perp_q
+  integer :: id_smith_par_q, id_smith_perp_q, id_nm, id_nl, id_nspec
   integer :: id_nstep, id_nwrite, id_navg, id_nsave
   integer :: id_jtwist, id_nspecies, id_iphi00, id_igeo
   integer :: id_p_hyper, id_p_hyper_l, id_p_hyper_m
@@ -241,40 +243,21 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
 
   ! Dimensions known directly from the input file
   retval = nf90_def_dim (ncid, "ri",        ri,             id_ri)
-  retval = nf90_def_dim (ncid, "nx",        nx,             id_nx)
-  retval = nf90_def_dim (ncid, "ny",        ny,             id_ny)
-
-  retval = nf90_def_dim (ncid, "nhermite",  nhermite,       id_nm)
-  retval = nf90_def_dim (ncid, "nlaguerre", nlaguerre,      id_nl)
-
-  retval = nf90_def_dim (ncid, "nspecies",  nspecies,       id_nspecies)
-  retval = nf90_def_dim (ncid, "char16",    sixteen,        char16_dim)
+  retval = nf90_def_dim (ncid, "m",         nhermite,       id_M)
+  retval = nf90_def_dim (ncid, "l",         nlaguerre,      id_L)
+  retval = nf90_def_dim (ncid, "s",         nspecies,       id_nspecies)
+!  retval = nf90_def_dim (ncid, "char16",    sixteen,        char16_dim)
   retval = nf90_def_dim (ncid, "time",      NF90_UNLIMITED, id_t_dim)
 
   ! Header information for the dataset
   file_header = "GX simulation data"
   retval = nf90_put_att (ncid, NF90_GLOBAL, "Title", file_header)
-
-  retval = nf90_def_var (ncid, 'code_info', NF90_CHAR, (/ char16_dim /), id_code)
-
-  datestamp(:) = ' '
-  timestamp(:) = ' '
-  timezone(:) = ' '
-  call date_and_time (datestamp, timestamp, timezone)
-
-  ci = 'c1'
-  retval = nf90_put_att (ncid, id_code, trim(ci), 'Date: '//trim(datestamp))
-
-  ci = 'c2'
-  retval = nf90_put_att (ncid, id_code, trim(ci), 'Time: '//trim(timestamp)//' '//trim(timezone))
-
-  ci = 'c3'
-  retval = nf90_put_att (ncid, id_code, trim(ci), 'NetCDF version '//trim(nf90_inq_libvers()))
-
-  ci = 'c4'
-  retval = nf90_put_att (ncid, id_code, trim(ci), 'This code assumes vt == sqrt(T/m)')
-
+  retval = nf90_def_var (ncid, "ny",        NF90_INT,       id_ny)
+  retval = nf90_def_var (ncid, "nx",        NF90_INT,       id_nx)
   retval = nf90_def_var (ncid, "ntheta",    NF90_INT,       id_ntheta)
+  retval = nf90_def_var (ncid, "nhermite",  NF90_INT,       id_nm)
+  retval = nf90_def_var (ncid, "nlaguerre", NF90_INT,       id_nl)
+  retval = nf90_def_var (ncid, "nspecies",  NF90_INT,       id_nspec)
   retval = nf90_def_var (ncid, "dt",        NF90_FLOAT,     id_dt)
 
   retval = nf90_def_var (ncid, "nperiod",   NF90_INT,       id_nperiod)
@@ -428,6 +411,25 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_att (ncid, id_restart_from_file_dum, "value", trim(restart_from_file))
   retval = nf90_put_att (ncid, id_restart_to_file_dum,   "value", trim(restart_to_file))
 
+  retval = nf90_def_var (ncid, 'code_info', NF90_INT, id_code)
+
+  datestamp(:) = ' '
+  timestamp(:) = ' '
+  timezone(:) = ' '
+  call date_and_time (datestamp, timestamp, timezone)
+
+  ci = 'c1'
+  retval = nf90_put_att (ncid, id_code, trim(ci), 'Date: '//trim(datestamp))
+
+  ci = 'c2'
+  retval = nf90_put_att (ncid, id_code, trim(ci), 'Time: '//trim(timestamp)//' '//trim(timezone)//' ')
+
+  ci = 'c3'
+  retval = nf90_put_att (ncid, id_code, trim(ci), 'NetCDF version '//trim(nf90_inq_libvers()))
+
+  ci = 'c4'
+  retval = nf90_put_att (ncid, id_code, trim(ci), 'This code assumes vt == sqrt(T/m) ')
+
   retval = nf90_enddef (ncid)
 
   j=debug;             retval = nf90_put_var (ncid, id_debug, j)
@@ -454,8 +456,13 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
 !  j=snyder_electrons;  retval = nf90_put_var (ncid, id_synder_electrons, j)
   j=forcing_init;      retval = nf90_put_var (ncid, id_forcing_init, j)
 
+  retval = nf90_put_var (ncid, id_ny,               ny)
+  retval = nf90_put_var (ncid, id_nx,               nx)
+  retval = nf90_put_var (ncid, id_nm,               nhermite)
+  retval = nf90_put_var (ncid, id_nl,               nlaguerre)
   retval = nf90_put_var (ncid, id_ntheta,           ntheta)
   retval = nf90_put_var (ncid, id_nperiod,          nperiod)
+  retval = nf90_put_var (ncid, id_nspec,            nspecies)
   retval = nf90_put_var (ncid, id_smith_par_q,      smith_par_q)
   retval = nf90_put_var (ncid, id_smith_perp_q,     smith_perp_q)
   retval = nf90_put_var (ncid, id_nstep,            nstep)
@@ -463,7 +470,6 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_navg,             navg)
   retval = nf90_put_var (ncid, id_nsave,            nsave)
   retval = nf90_put_var (ncid, id_jtwist,           jtwist)
-  retval = nf90_put_var (ncid, id_nspecies,         nspecies)
   retval = nf90_put_var (ncid, id_iphi00,           iphi00)
   retval = nf90_put_var (ncid, id_igeo,             igeo)
   retval = nf90_put_var (ncid, id_p_hyper,          p_hyper)
@@ -475,7 +481,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_ikx_fixed,        ikx_fixed)
   retval = nf90_put_var (ncid, id_iky_fixed,        iky_fixed)
   retval = nf90_put_var (ncid, id_forcing_index,    forcing_index)
-
+  
   retval = nf90_put_var (ncid, id_x0,               x0)
   retval = nf90_put_var (ncid, id_y0,               y0)
   retval = nf90_put_var (ncid, id_dt,               dt)
@@ -534,7 +540,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_spec_vnewk,       sp(1) % vnewk)
 
   retval = nf90_close (ncid)
-
+  
 contains
   
   subroutine get_indexed_species (index)

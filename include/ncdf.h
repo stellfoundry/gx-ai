@@ -11,10 +11,11 @@ class NetCDF_ids {
 
   void close_nc_file();
   
-  int nx, ny, nz, kx_dim, ky_dim, nyc, nhermite, nlaguerre;
+  int nx, ny, nz, kx_dim, ky_dim, nhermite, nlaguerre;
+  int m_dim, l_dim, s_dim;
   int theta, theta_x, bmag, bgrad, gbdrift, gbdrift0, periodic;
   int cvdrift, cvdrift0, gds2, gds21, gds22, grho, jacobian;
-  int nstep, dt, restart, time_dim, nspec_dim, char16_dim;
+  int nstep, dt, restart, time_dim, nspec, char16_dim;
   int cfl, init, init_amp, init_single, iky_single, ikx_single, kpar_init;
   int nu_hyper_l, nu_hyper_m, p_hyper_l, p_hyper_m, scheme_opt;
   int closure_model_opt, file, gpu, write_rh, phi_rh, forcing_index; 
@@ -74,7 +75,6 @@ class NetCDF_ids {
   size_t zkxky_start[3], zkxky_count[3];
   
   float *theta_extended;
-  bool mask;
 
  private:   
   const Parameters* pars_;

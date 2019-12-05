@@ -16,7 +16,7 @@ class Grids {
   const int Nm;
   const int Nl;
   const int Nyc;
-  const int Nakz;
+  //  const int Nakz;
   const int Naky;
   const int Nakx;
   const int NxNyc;

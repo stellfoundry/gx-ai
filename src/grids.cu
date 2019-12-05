@@ -19,9 +19,6 @@ __global__ void kInit(float* kx, float* ky, float* kz, float X0, float Y0, int Z
   } else if(id<nz) {
     kz[id] = (float) (id - nz)/Zp;
   }
-  //  if(qsf<0.) kz[id] = shat; // local limit
-    //if(no_zderiv) kz[id] = 0;
-  //  kz[id] = 1.0;   // BD HACK
 }
 
 Grids::Grids(Parameters* pars) :
@@ -37,7 +34,7 @@ Grids::Grids(Parameters* pars) :
   Naky((Ny-1)/3+1),
   //Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
   Nakx(1 + 2*((Nx-1)/3)),
-  Nakz(1 + 2*((Nz-1)/3)),
+  //  Nakz(1 + 2*((Nz-1)/3)),
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
   NxNycNz(Nx * Nyc * Nz),

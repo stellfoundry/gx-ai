@@ -12,7 +12,7 @@ class Diagnostics {
   Diagnostics(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics();
 
-  bool loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, double time) ;
+  bool loop_diagnostics(MomentsG* G, Fields* fields, double dt, int counter, double time) ;
   void final_diagnostics(MomentsG* G, Fields* fields);
   //  void close_netcdf_diag(NetCDF_ids* id);
   //  void write_something(NetCDF_ids* id);

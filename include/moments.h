@@ -23,6 +23,8 @@ class MomentsG {
     return G(0,m,s);
   }
 
+  void qvar (int N);
+  void apply_mask(void);
   int initialConditions(Geometry* geo, double* time);
   int restart_write(double* time);
   int restart_read(double* time);

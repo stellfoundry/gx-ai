@@ -15,7 +15,8 @@
 
 #define CUDA_DEBUG(_fmt, ...) if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__, cudaGetErrorString(cudaGetLastError()))
 
-#define ERR(e) {printf("Error: %s\n", nc_strerror(e)); exit(2);};
+#define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
+
 
 #pragma once
 

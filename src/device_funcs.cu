@@ -493,6 +493,20 @@ __global__ void init_kperp2(float* kperp2, float* kx, float* ky,
   }
 }
 
+__global__ void set_mask(cuComplex *g)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  if (idx>(nx-1)/3 && idx<2*nx/3 && idy>(ny-1)/3 && idy<ny) {
+    unsigned int ixy = idy + nyc*idx;
+    for (int k=0; k<nz*nm*nl*nspecies; k++) {
+      unsigned index = ixy*k;
+      g[index].x = 0.;
+      g[index].y = 0.;
+    }
+  }
+}
+
 
 __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, float* ky,
 			    float* cv, float* gb, float* cv0, float* gb0, float shat) 

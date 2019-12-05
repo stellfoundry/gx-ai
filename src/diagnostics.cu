@@ -6,7 +6,7 @@
 #include "netcdf.h"
 #include <sys/stat.h>
 
-__global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuComplex *omega)
+__global__ void growthRates(cuComplex *phi, cuComplex *phiOld, double dt, cuComplex *omega)
 {
   unsigned int idxy = get_id1();
   cuComplex i_dt = make_cuComplex(0., (float) 1./dt);
@@ -15,6 +15,7 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuCompl
   
   if ( idxy<J && idxy > 0) {
     if (abs(phi[idxy+J*IG].x)!=0 && abs(phi[idxy+J*IG].y)!=0) {
+    //    if (abs(phiOld[idxy+J*IG].x)!=0 && abs(phiOld[idxy+J*IG].y)!=0) {
       cuComplex ratio = phi[ idxy + J*IG ] / phiOld[ idxy + J*IG ];
       
       cuComplex logr;
@@ -22,6 +23,7 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, float dt, cuCompl
       logr.y = (float) atan2(ratio.y,ratio.x);
       omega[idxy] = logr*i_dt;
     } else {
+      //      printf("idxy = %d \t", idxy);
       omega[idxy].x = 0.;
       omega[idxy].y = 0.;
     }
@@ -85,7 +87,7 @@ Diagnostics::~Diagnostics()
   cudaFree(val);
 }
 
-bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, float dt, int counter, double time) 
+bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, double dt, int counter, double time) 
 {
   int retval;
   bool stop = false;
@@ -191,17 +193,11 @@ void Diagnostics::write_something()
 void Diagnostics::writeGrowthRates()
 {
   int retval;
-  int Nx = grids_->Nx;
   int Nakx = grids_->Nakx;
   int Naky = grids_->Naky;
-  int Nyc  = grids_->Nyc;
   float *omt_out;
   
-  if (id->mask) {
-    cudaMallocHost((void**) &omt_out, sizeof(float)*Nakx*Naky*2);
-  } else {
-    cudaMallocHost((void**) &omt_out, sizeof(float)*Nx*Nyc*2);
-  }
+  cudaMallocHost((void**) &omt_out, sizeof(float)*Nakx*Naky*2);
 
   reduce2k(omt_out, growth_rates_h);
 
@@ -229,11 +225,7 @@ void Diagnostics::writeMomOrField(cuComplex* m, int handle) {
   
   CP_TO_CPU(amom_h, m, sizeof(cuComplex)*Nx*Nyc*Nz);
 
-  if (id->mask) {
-    cudaMallocHost((void**) &mom_out, sizeof(float)*Nakx*Naky*Nz*2);
-  } else {
-    cudaMallocHost((void**) &mom_out, sizeof(float)*Nx*Nyc*Nz*2);
-  }
+  cudaMallocHost((void**) &mom_out, sizeof(float)*Nakx*Naky*Nz*2);
 
   reduce2z(mom_out, amom_h);
 
@@ -407,9 +399,9 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
       	+ ( l*Jflr(l-1,b_s) + (2.*l+1.5)*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*G_(idxyz, l, 0);
     }
   
-    float fac;
-    if(idy==0) fac = 0.5;
-    else fac = 1.;
+    float fac = 2.;
+    if(idy==0) fac = 1.0;
+
     if(ikx<0 && iky<0) { // default: sum over all k's
       if(idy>0 || idx>0) {
         fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
@@ -455,34 +447,23 @@ void Diagnostics::reduce2k(float *fk, cuComplex* f) {
   int Naky = grids_->Naky;
   int Nyc  = grids_->Nyc;
 
-  if(id->mask) {
-    for(int i=0; i<((Nx-1)/3+1); i++) {
-      for(int j=0; j<Naky; j++) {
-	int index     = j + Nyc *i; 
-	int index_out = j + Naky*i; 
-	fk[2*index_out]   = f[index].x;
-	fk[2*index_out+1] = f[index].y;
-      }
-    }
-
-    for(int i=2*Nx/3+1; i<Nx; i++) {
-      for(int j=0; j<Naky; j++) {
-	int index = j + Nyc *i;
-	int index_out = j + Naky*( i - 2*Nx/3 + (Nx-1)/3 );
-	fk[2*index_out]   = f[index].x;
-	fk[2*index_out+1] = f[index].y;
-      }
-    }	
-  } else {
-    for(int i=0; i<Nx; i++) {
-      for(int j=0; j<Nyc; j++) {
-	int index = j + Nyc*i;
-	fk[2*index]   = f[index].x;
-	fk[2*index+1] = f[index].y;
-      }
+  for(int i=0; i<((Nx-1)/3+1); i++) {
+    for(int j=0; j<Naky; j++) {
+      int index     = j + Nyc *i; 
+      int index_out = j + Naky*i; 
+      fk[2*index_out]   = f[index].x;
+      fk[2*index_out+1] = f[index].y;
     }
   }
-
+  
+  for(int i=2*Nx/3+1; i<Nx; i++) {
+    for(int j=0; j<Naky; j++) {
+      int index = j + Nyc *i;
+      int index_out = j + Naky*( i - 2*Nx/3 + (Nx-1)/3 );
+      fk[2*index_out]   = f[index].x;
+      fk[2*index_out+1] = f[index].y;
+    }
+  }	  
 }
 
 // condense a (ky,kx,z) object for netcdf output, taking into account the mask
@@ -495,39 +476,27 @@ void Diagnostics::reduce2z(float *fz, cuComplex* f) {
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
   
-  if(id->mask) {
-    for (int k=0; k<Nz; k++) {
-      for (int i=0; i<((Nx-1)/3+1); i++) {
-	for (int j=0; j<Naky; j++) {
-	  int index     = j + Nyc *i + Nyc*Nx*k; 
-	  int index_out = j + Naky*i + Naky*Nakx*k; 
-	  fz[2*index_out]   = f[index].x;
-	  fz[2*index_out+1] = f[index].y;
-	}
-      }
-    }
-  
-    for (int k=0; k<Nz; k++) {
-      for(int i=2*Nx/3+1; i<Nx; i++) {
-	for(int j=0; j<Naky; j++) {
-	  int index     = j + Nyc *i + Nyc*Nx*k;
-	  int index_out = j + Naky*( i - 2*Nx/3 + (Nx-1)/3 ) + Naky*Nakx*k;
-	  fz[2*index_out]   = f[index].x;
-	  fz[2*index_out+1] = f[index].y;
-	}
-      }	
-    }	
-  } else {
-    for (int k=0; k<Nz; k++) {
-      for(int i=0; i<Nx; i++) {
-	for(int j=0; j<Nyc; j++) {
-	  int index = j + Nyc*i + Nyc*Nx*k;
-	  fz[2*index]   = f[index].x;
-	  fz[2*index+1] = f[index].y;
-	}
+  for (int k=0; k<Nz; k++) {
+    for (int i=0; i<(Nx-1)/3+1; i++) {
+      for (int j=0; j<Naky; j++) {
+	int index     = j + Nyc *i + Nyc*Nx*k; 
+	int index_out = j + Naky*i + Naky*Nakx*k; 
+	fz[2*index_out]   = f[index].x;
+	fz[2*index_out+1] = f[index].y;
       }
     }
   }
+  
+  for (int k=0; k<Nz; k++) {
+    for(int i=2*Nx/3+1; i<Nx; i++) {
+      for(int j=0; j<Naky; j++) {
+	int index     = j + Nyc *i + Nyc*Nx*k;
+	int index_out = j + Naky*( i - 2*Nx/3 + (Nx-1)/3 ) + Naky*Nakx*k;
+	fz[2*index_out]   = f[index].x;
+	fz[2*index_out+1] = f[index].y;
+      }
+    }	
+  }	
 }
 
 void Diagnostics::print_growth_rates_to_screen()
@@ -536,40 +505,27 @@ void Diagnostics::print_growth_rates_to_screen()
   int Naky = grids_->Naky;
   int Nyc  = grids_->Nyc;
 
-  if(id->mask) {
-    printf("ky\tkx\t\tomega\t\tgamma\n");
-
-    for(int j=0; j<Naky; j++) {
-      for(int i=2*Nx/3+1; i<Nx; i++) {
- 	int index = j + Nyc*i;
+  printf("ky\tkx\t\tomega\t\tgamma\n");
+  
+  for(int j=0; j<Naky; j++) {
+    for(int i=2*Nx/3+1; i<Nx; i++) {
+      int index = j + Nyc*i;
+      printf("%.4f\t%.4f\t\t%.6f\t%.6f",
+	     grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
+      printf("\n");
+    }
+    for(int i=0; i<((Nx-1)/3+1); i++) {
+      int index = j + Nyc*i;
+      if(index!=0) {
 	printf("%.4f\t%.4f\t\t%.6f\t%.6f",
 	       grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
 	printf("\n");
+      } else {
+	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
       }
-      for(int i=0; i<((Nx-1)/3+1); i++) {
-	int index = j + Nyc*i;
-	if(index!=0) {
-	  printf("%.4f\t%.4f\t\t%.6f\t%.6f",
-		 grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
-	  printf("\n");
-	}
-      }
-      if (Nx>1) printf("\n");
     }
-  } else {
-    printf("ky\tkx\t\tomega\t\tgamma\n");
-    for(int j=0; j<Nyc; j++) {
-      for(int i=0; i<Nx; i++) {
-	int index = j + Nyc*i;
-	if(index!=0) {
-	  printf("%.4f\t%.4f\t\t%.6f\t%.6f",
-		 grids_->ky_h[j], grids_->kx_h[i], growth_rates_h[index].x, growth_rates_h[index].y);
-	  printf("\n");
-	}
-      }
-      if (Nx>1) printf("\n");
-    }    
-  }	
+    if (Nx>1) printf("\n");
+  }
 }
 
 

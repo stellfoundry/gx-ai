@@ -12,8 +12,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //  if (pars_->write_omega) {printf("In ncdf. pars_->write_omega is true. \n");}
 
   int retval, idum;
-  // skip over masked elements in x and y in output for nonlinearly dealiased runs
-  mask = !pars_->linear;
   
   if (retval = nc_open(strb, NC_WRITE, &file)) ERR(retval);
   if (retval = nc_redef(file));
@@ -21,20 +19,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   int ri;
   // Get handles for the dimensions
   if (retval = nc_inq_dimid(file, "ri", &ri))  ERR(retval);
-  if (retval = nc_inq_dimid(file, "nx", &nx))  ERR(retval);
-  if (retval = nc_inq_dimid(file, "ny", &ny))  ERR(retval);
   
-  if (retval = nc_def_dim(file, "nyc",       grids_->Nyc,      &nyc))       ERR(retval);
-  if (retval = nc_def_dim(file, "nz",        grids_->Nz,       &nz))        ERR(retval);  
-  if (retval = nc_def_dim(file, "kx_dim",    grids_->Nakx,     &kx_dim))    ERR(retval);
-  if (retval = nc_def_dim(file, "ky_dim",    grids_->Naky,     &ky_dim))    ERR(retval);
+  if (retval = nc_def_dim(file, "ky",        grids_->Naky,  &ky_dim))    ERR(retval);
+  if (retval = nc_def_dim(file, "kx",        grids_->Nakx,  &kx_dim))    ERR(retval);
+  if (retval = nc_def_dim(file, "z",         grids_->Nz,    &nz))        ERR(retval);  
 
-  if (retval = nc_inq_dimid(file, "nhermite", &nhermite))   ERR(retval);
-  if (retval = nc_inq_dimid(file, "nlaguerre", &nlaguerre)) ERR(retval);
-  if (retval = nc_inq_dimid(file, "nspecies", &nspec_dim))  ERR(retval);
-  if (retval = nc_inq_dimid(file, "time",     &time_dim))   ERR(retval);
+  if (retval = nc_inq_dimid(file, "m",       &m_dim))    ERR(retval);
+  if (retval = nc_inq_dimid(file, "l",       &l_dim))    ERR(retval);
+  if (retval = nc_inq_dimid(file, "s",       &s_dim))    ERR(retval);
+  if (retval = nc_inq_dimid(file, "time",    &time_dim)) ERR(retval);
 
-  if (retval = nc_def_var(file, "t",       NC_DOUBLE, 1, &time_dim, &time))    ERR(retval);
+  //  if (retval = nc_def_var(file, "m",          NC_INT,    1, &
+  if (retval = nc_def_var(file, "time",       NC_DOUBLE, 1, &time_dim, &time))    ERR(retval);
 
   // BD need to decide whether to keep this around
   //  if (retval = nc_def_var(file, "linear",       NC_INT,   0, 0, &linear))          ERR(retval);
@@ -42,8 +38,13 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_var(file, "periodic",       NC_INT, 0, 0, &periodic))        ERR(retval);
   if (retval = nc_def_var(file, "local_limit",    NC_INT, 0, 0, &local_limit))     ERR(retval);
 
+  //  if (retval = nc_def_var(file, "nhermite",       NC_INT, 0, 0, &nhermite))  ERR(retval);
+  //  if (retval = nc_def_var(file, "nlaguerre",      NC_INT, 0, 0, &nlaguerre)) ERR(retval);
+  //  if (retval = nc_def_var(file, "nx",             NC_INT, 0, 0, &nx))        ERR(retval);
+  //  if (retval = nc_def_var(file, "ny",             NC_INT, 0, 0, &ny))        ERR(retval);
+  //  if (retval = nc_def_var(file, "nspecies",       NC_INT, 0, 0, &nspec))     ERR(retval);
+
   geo_v_theta[0] = nz;
-  
   if (retval = nc_def_var(file, "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
   if (retval = nc_def_var(file, "bmag",     NC_FLOAT, 1, geo_v_theta, &bmag))     ERR(retval);
   if (retval = nc_def_var(file, "bgrad",    NC_FLOAT, 1, geo_v_theta, &bgrad))    ERR(retval);
@@ -66,18 +67,13 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   // define the dependent variables now, starting with their dimensions
 
-  final_field[0] = nx;
-  final_field[1] = ny;
+  //  final_field[0] = nx;
+  //  final_field[1] = ny;
 
   if (pars_->write_moms || pars_->write_phi_kpar) {
     moments_out[0] = nz; 
-    if (mask) {
-      moments_out[1] = kx_dim; 
-      moments_out[2] = ky_dim;
-    } else {
-      moments_out[1] = nx; 
-      moments_out[2] = nyc;
-    }
+    moments_out[1] = kx_dim; 
+    moments_out[2] = ky_dim;
     moments_out[3] = ri;
   }
 
@@ -101,13 +97,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   if (pars_->write_omega) {
     omega_v_time[0] = time_dim;
-    if(mask) {
-      omega_v_time[1] = kx_dim;  
-      omega_v_time[2] = ky_dim; 
-    } else {
-      omega_v_time[1] = nx;  
-      omega_v_time[2] = nyc; 
-    }
+    omega_v_time[1] = kx_dim;  
+    omega_v_time[2] = ky_dim; 
     omega_v_time[3] = ri;
     
     if (retval = nc_def_var(file, "omega_v_time", NC_FLOAT, 4,
@@ -119,13 +110,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     omt_start[3] = 0; 
     
     omt_count[0]= 1; 
-    if (mask) {
-      omt_count[1] = grids_->Nakx;
-      omt_count[2] = grids_->Naky;
-    } else {
-      omt_count[1] = grids_->Nx;    
-      omt_count[2] = grids_->Nyc;
-    }
+    omt_count[1] = grids_->Nakx;
+    omt_count[2] = grids_->Naky;
     omt_count[3] = 2; 
   }
 
@@ -151,8 +137,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
 
   if (pars_->write_lh_spectrum) {
-    g_v_lm[0] = nhermite;
-    g_v_lm[1] = nlaguerre;
+    g_v_lm[0] = m_dim; 
+    g_v_lm[1] = l_dim;
   
     if (retval = nc_def_var(file, "lh_spec", NC_FLOAT, 2, g_v_lm, &lhspec))  ERR(retval);
     lh_start[0] = 0;
@@ -163,8 +149,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
     if (pars_->write_spec_v_time) {
       g_v_lmt[0] = time_dim;
-      g_v_lmt[1] = nhermite;
-      g_v_lmt[2] = nlaguerre;
+      g_v_lmt[1] = m_dim;
+      g_v_lmt[2] = l_dim;
 
       if (retval = nc_def_var(file, "lh_spec_t", NC_FLOAT, 3, g_v_lmt, &lhspec_t))  ERR(retval);
       lht_start[0] = 0;
@@ -178,14 +164,14 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
     
   if (pars_->write_l_spectrum) {
-    g_v_l[0] = nlaguerre;
+    g_v_l[0] = l_dim;
     if (retval = nc_def_var(file, "l_spec", NC_FLOAT, 1, g_v_l, &lspec))  ERR(retval);
     l_start[0] = 0;
     l_count[0] = grids_->Nl;    
 
     if (pars_->write_spec_v_time) {
       g_v_lt[0] = time_dim;
-      g_v_lt[1] = nlaguerre;
+      g_v_lt[1] = l_dim;
 
       if (retval = nc_def_var(file, "l_spec_t", NC_FLOAT, 2, g_v_lt, &lspec_t))  ERR(retval);
       lt_start[0] = 0;
@@ -197,14 +183,14 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
   
   if (pars_->write_h_spectrum) {
-    g_v_m[0] = nhermite;
+    g_v_m[0] = m_dim;
     if (retval = nc_def_var(file, "h_spec", NC_FLOAT, 1, g_v_m, &hspec))  ERR(retval);
     m_start[0] = 0; 
     m_count[0] = grids_->Nm;    
 
     if (pars_->write_spec_v_time) {
       g_v_mt[0] = time_dim;
-      g_v_mt[1] = nhermite;
+      g_v_mt[1] = m_dim;
       if (retval = nc_def_var(file, "h_spec_t", NC_FLOAT, 2, g_v_mt, &hspec_t))  ERR(retval);
       mt_start[0] = 0;
       mt_start[1] = 0;
@@ -226,13 +212,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   mom_start[3] = 0; 
   
   mom_count[0] = grids_->Nz;
-  if (mask) {
-    mom_count[1] = grids_->Nakx;
-    mom_count[2] = grids_->Naky;
-  } else {
-    mom_count[1] = grids_->Nx;    
-    mom_count[2] = grids_->Nyc;
-  }
+  mom_count[1] = grids_->Nakx;
+  mom_count[2] = grids_->Naky;
   mom_count[3] = 2; 
 
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
@@ -242,6 +223,12 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   ///////////////////////////////////
   /// write parameters of this run //
   ///////////////////////////////////
+  
+  //  if (retval = nc_def_dim(file, "nyc",       grids_->Nyc,      &nyc))       ERR(retval);
+
+  //  if (retval = nc_put_var(file, nx,  &nx))  ERR(retval);
+  //  if (retval = nc_put_var(file, ny,  &ny))  ERR(retval);
+  //  if (retval = nc_put_var(file, nyc, &nyc)) ERR(retval);
   
   idum = pars_->boundary_option_periodic ? 1 : 0;
   if (retval = nc_put_var(file, periodic,      &idum))                   ERR(retval);
