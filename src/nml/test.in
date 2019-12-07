@@ -1,7 +1,0 @@
-&gs2_diagnostics_knobs
- write_ascii = T
- print_flux_line = .false.
- nwrite = 2
- nsave = 234
- navg = 3
-/
