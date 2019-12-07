@@ -24,7 +24,7 @@ class Nonlinear {
   Geometry* geo_;
   GradPerp* grad_perp_G;
   GradPerp* grad_perp_J0phi;
-
+  
   dim3 dimGrid, dimBlock;
 
   float *dG, *dg_dx, *dg_dy;

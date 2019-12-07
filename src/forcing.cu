@@ -30,8 +30,9 @@ void KzForcing::stir(MomentsG *G) {
   generate_random_numbers (&random_real, &random_imag, forcing_amp_, pars_->dt);
 
   rf.x = random_real;
-  rf.y = random_imag;
-
+  //  rf.y = random_imag;
+  rf.y = 0.;
+  
   if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
   if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
   if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}

@@ -29,5 +29,5 @@ NVCC_FLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
 else
-  NVCCFLAGS += -O3
+#  NVCCFLAGS += -O3
 endif

@@ -67,6 +67,9 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     DEBUGPRINT("Solving for initial fields...\n");    solver -> fieldSolve(momsG, fields);
     CUDA_DEBUG("Solving for initial fields: %s\n");
 
+    //    printf("After initialization:\n");  fields->print_phi();
+    //    fields->chk_fft();
+    
     DEBUGPRINT("Initializing equations...\n");
     DEBUGPRINT("\tLinear terms...\n");                linear = new Linear(pars, grids, geo);
     CUDA_DEBUG("\t Linear terms: %s \n");
@@ -92,7 +95,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     } else {
       forcing = NULL;
     }
-
+    checkCuda(cudaGetLastError());
+    
     DEBUGPRINT("Initializing timestepper...\n");
     
     if(pars->scheme_opt == K10) {stepper = new Ketcheson10(linear, nonlinear, solver, pars, grids, forcing, pars->dt);

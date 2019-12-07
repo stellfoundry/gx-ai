@@ -18,31 +18,16 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaGetDeviceProperties(&prop, 0);
   maxThreadsPerBlock_ = prop.maxThreadsPerBlock;
 
-  float* tmpXZ;
-  cudaMalloc((void**) &tmpXZ, sizeof(float)*grids_->NxNz);
-  cudaMemset(tmpXZ, 0., grids_->NxNz);
-
-  dim3 dimBlock = dim3(maxThreadsPerBlock_/grids_->Nz, grids_->Nz, 1);
-  dim3 dimGrid  = dim3(grids_->Nx/dimBlock.x+1, 1, 1);
+  int threads, blocks;
+  threads = maxThreadsPerBlock_;
+  blocks = grids_->Nx/threads+1;
   
-  //  printf("calc_phiavgdenom:\n");
-  //  print_cudims(dimGrid, dimBlock);
-
-  calc_phiavgdenom <<<dimGrid,dimBlock>>> (phiavgdenom, tmpXZ, geo_->kperp2, geo_->jacobian,
-     pars_->species, pars_->ti_ov_te); 
-  
-  //  printf("tmpXZ: \n");
-  //  svar(tmpXZ, grids_->Nx*grids_->Nz);
-  cudaFree(tmpXZ);
-
-  //  printf("phiavgdenom: \n");
-  //  svar(phiavgdenom, grids_->Nx);
+  calc_phiavgdenom <<<blocks, threads>>>
+    (phiavgdenom, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te); 
   
   // cuda dims for qneut calculation
   dimBlock_qneut = dim3(32, 4, 4);
   dimGrid_qneut = dim3(grids_->Nyc/dimBlock_qneut.x+1, grids_->Nx/dimBlock_qneut.y+1, grids_->Nz/dimBlock_qneut.z+1);
-  //  printf("_qneut:\n");
-  //  print_cudims(dimGrid_qneut, dimBlock_qneut);
 }
 
 Solver::~Solver() 
@@ -59,11 +44,7 @@ void Solver::svar (cuComplex* f, int N)
   for (int i=0; i<N; i++) {f_h[i].x=0.; f_h[i].y=0.;}
   CP_TO_CPU (f_h, f, N*sizeof(cuComplex));
   for (int i=0; i<N; i++) {
-    int idy=i%grids_->Nyc;
-    int idx=i%(grids_->Nyc*grids_->Nx);
-    idx=idx/grids_->Nyc;
-    int idz=i/(grids_->Nyc*grids_->Nx);
-    printf("solver: var(%d,%d,%d) = (%e, %e) \n", idy, idx, idz, f_h[i].x, f_h[i].y);
+    printf("solver: var(%d) = (%e, %e) \n", i, f_h[i].x, f_h[i].y);
   }
   printf("\n");
 
@@ -89,13 +70,13 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
 
     real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
       (nbar, G->G(), geo_->kperp2, pars_->species);
-    //    printf("nbar: \n");
-    //    svar(nbar, grids_->NxNycNz);
-    
+
     if(pars_->iphi00==2) {
       qneutAdiab_part1 <<<dimGrid_qneut, dimBlock_qneut>>>
 	(tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
 
+      cudaMemset(fields->phi, 0., sizeof(cuComplex)*grids_->NxNycNz);
+      
       qneutAdiab_part2 <<<dimGrid_qneut, dimBlock_qneut>>>
 	(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2,
 	 geo_->jacobian, pars_->species, pars_->ti_ov_te);

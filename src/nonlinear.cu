@@ -69,6 +69,7 @@ void Nonlinear::qvar (cuComplex* G, int N)
   cuComplex* G_h;
   int Nk = grids_->Nyc;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
+  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
   printf("\n");
   for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);

@@ -153,7 +153,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   character(512):: restart_from_file = "oldsave.nc"
   character(32) :: source = "default"
   character(32) :: init_field = "density"
-  character(32) :: stir_field = "ppar"
+  character(32) :: stir_field = "density"
   character(32) :: forcing_type = "Kz"
 
   character (kind=c_char, len=1), dimension(256), intent(in) :: c_runname

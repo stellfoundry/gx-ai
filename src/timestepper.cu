@@ -299,19 +299,18 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
   
   // First five iterations
   for(int i=1; i<6; i++) {
-    linear_->rhs(G_q1, f, GRhs);
 
+    linear_->rhs(G_q1, f, GRhs);
+    
     if(nonlinear_ != NULL) {
       nonlinear_->nlps5d(G_q1, f, GStar);    
 
-      //      printf("GRhs (K10):\n");
-      //      GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
-
       GRhs->add_scaled(1., GRhs, 1., GStar);
 
-      //      printf("GStar (K10):\n");
-      //      GStar->qvar(grids_->Nmoms*grids_->NxNycNz);
-      //
+      //            printf("GStar (K10):\n");
+      //            GStar->qvar(grids_->Nmoms*grids_->NxNycNz);
+
+	    //
       //      printf("GRhs (K10):\n");
       //      GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
 
@@ -320,7 +319,12 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
     }
 
     G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
+
+    //    printf("another G_q1 (K10):\n");
+    //    G_q1->qvar(grids_->Nmoms*grids_->NxNycNz);
+
     solver_->fieldSolve(G_q1, f);
+ 
   }
 
   G_q2->add_scaled(0.04, G_q2, 0.36, G_q1);

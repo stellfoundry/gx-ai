@@ -78,14 +78,13 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
 
   if (pars_->write_moms) {
-    if (retval = nc_def_var(file, "density", NC_FLOAT, 4, moments_out, &density)) ERR(retval);
     if (grids_->Nm>1) {
       if (retval = nc_def_var(file, "upar",    NC_FLOAT, 4, moments_out, &upar))    ERR(retval);
     }
-    if (retval = nc_def_var(file, "phi",     NC_FLOAT, 4, moments_out, &phi))     ERR(retval);
-
-    if (retval = nc_def_var(file, "density0", NC_FLOAT, 4, moments_out, &density0)) ERR(retval);
+    if (retval = nc_def_var(file, "phi",      NC_FLOAT, 4, moments_out, &phi))      ERR(retval);
     if (retval = nc_def_var(file, "phi0",     NC_FLOAT, 4, moments_out, &phi0))     ERR(retval);
+    if (retval = nc_def_var(file, "density",  NC_FLOAT, 4, moments_out, &density))  ERR(retval);
+    if (retval = nc_def_var(file, "density0", NC_FLOAT, 4, moments_out, &density0)) ERR(retval);
   }
 
   if (pars_->write_phi_kpar) {

@@ -15,7 +15,6 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, double dt, cuComp
   
   if ( idxy<J && idxy > 0) {
     if (abs(phi[idxy+J*IG].x)!=0 && abs(phi[idxy+J*IG].y)!=0) {
-    //    if (abs(phiOld[idxy+J*IG].x)!=0 && abs(phiOld[idxy+J*IG].y)!=0) {
       cuComplex ratio = phi[ idxy + J*IG ] / phiOld[ idxy + J*IG ];
       
       cuComplex logr;
@@ -23,7 +22,6 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, double dt, cuComp
       logr.y = (float) atan2(ratio.y,ratio.x);
       omega[idxy] = logr*i_dt;
     } else {
-      //      printf("idxy = %d \t", idxy);
       omega[idxy].x = 0.;
       omega[idxy].y = 0.;
     }
@@ -158,9 +156,9 @@ void Diagnostics::final_diagnostics(MomentsG* G, Fields* fields)
   // print final moments and fields
 
   if (pars_->write_moms) {
+    writeMomOrField (fields->phi,    id->phi);
     writeMomOrField (G->dens_ptr[0], id->density);
     if (grids_->Nm>1) {writeMomOrField (G->upar_ptr[0], id->upar);}
-    writeMomOrField (fields->phi,    id->phi);
   }
   
   if (pars_->write_phi_kpar) {
@@ -226,11 +224,9 @@ void Diagnostics::writeMomOrField(cuComplex* m, int handle) {
   CP_TO_CPU(amom_h, m, sizeof(cuComplex)*Nx*Nyc*Nz);
 
   cudaMallocHost((void**) &mom_out, sizeof(float)*Nakx*Naky*Nz*2);
-
   reduce2z(mom_out, amom_h);
 
   if (retval = nc_put_vara(id->file, handle, id->mom_start, id->mom_count, mom_out)) ERR(retval);
-
   cudaFreeHost(mom_out); 
 }
 
@@ -309,7 +305,7 @@ __global__ void volume_average(float* res, cuComplex* f, cuComplex* g, float* ja
   float sum = 0.;
   cuComplex fg;
   for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
-    unsigned int idy = idxyz % (nx*nyc) % nyc; 
+    unsigned int idy = idxyz % nyc; 
     unsigned int idx = idxyz % (nx*nyc) / nyc; 
     unsigned int idz = idxyz / (nx*nyc);
     float fac=2.;
@@ -364,12 +360,10 @@ void Diagnostics::Hspectrum(MomentsG* G, float* hspectrum, int ikx, int iky)
 {
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,128); 
-  //  printf("blocks = %d \t threads = %d \n", blocks, threads);
   cudaMemset(hspectrum, 0., sizeof(float)*grids_->Nm);
 
   for(int m=0; m<grids_->Nm; m++) {
     for(int l=0; l<grids_->Nl; l++) {
-      //      printf("l, m = %d \t %d \t, ikx, iky = %d \t %d \n",l,m,ikx,iky);
       volume_average <<<blocks,threads>>> (&hspectrum[m], 
 	 G->G(l,m), G->G(l,m), geo_->jacobian, 1./fluxDenom, ikx, iky);
     }
@@ -384,48 +378,51 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
   float sum = 0.;
   cuComplex fg;
   for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
-    unsigned int idy = idxyz % (nx*nyc) % nyc; 
+
+    unsigned int idy = idxyz % nyc; 
     unsigned int idx = idxyz % (nx*nyc) / nyc; 
-    unsigned int idz = idxyz / (nx*nyc);
-    cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
 
-    float b_s = kperp2[idxyz]*rho2_s;
+    if ( unmasked(idx, idy) && idy > 0) {
 
-    // sum over l
-    cuComplex p_bar = make_cuComplex(0.,0.);
-    for(int l=0; l<nl; l++) {
-      // G_(...) is defined by macro above
-      p_bar = p_bar + 1./sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2)
-      	+ ( l*Jflr(l-1,b_s) + (2.*l+1.5)*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*G_(idxyz, l, 0);
-    }
-  
-    float fac = 2.;
-    if(idy==0) fac = 1.0;
-
-    if(ikx<0 && iky<0) { // default: sum over all k's
-      if(idy>0 || idx>0) {
-        fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
-        sum += fg.x;
+      unsigned int idz = idxyz / (nx*nyc);
+      cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      
+      float b_s = kperp2[idxyz]*rho2_s;
+      
+      // sum over l
+      cuComplex p_bar = make_cuComplex(0.,0.);
+      for(int l=0; l<nl; l++) {
+	// G_(...) is defined by macro above
+	p_bar = p_bar + 1./sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2)
+	  + ( l*Jflr(l-1,b_s) + (2.*l+1.5)*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*G_(idxyz, l, 0);
       }
-    } else { // single mode specified by ikx, iky
-      if(idy==iky && idx==ikx) {
-        fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
-        sum += fg.x;
+      
+      float fac = 2.;
+      if(idy==0) fac = 1.0;
+      
+      if(ikx<0 && iky<0) { // default: sum over all relevant k's
+	fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
+	sum += fg.x;
+      } else { // single mode specified by ikx, iky
+	if(idy==iky && idx==ikx) {
+	  fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
+	  sum += fg.x;
+	}
       }
+      atomicAdd(qflux,sum);
     }
   }
-  atomicAdd(qflux,sum);
 }
-
 
 void Diagnostics::fluxes(MomentsG* G, Fields* f)
 {
   int threads=256;
   int blocks=min((grids_->NxNycNz+threads-1)/threads,1024);
-
+  
   for(int is=0; is<grids_->Nspecies; is++) {
     heat_flux <<<blocks,threads>>>
-        (&qflux[is], f->phi, G->G(0,0,is), grids_->ky, geo_->jacobian, 1./fluxDenom, geo_->kperp2, pars_->species_h[is].rho2);
+        (&qflux[is], f->phi, G->G(0,0,is), grids_->ky,
+	 geo_->jacobian, 1./fluxDenom, geo_->kperp2, pars_->species_h[is].rho2);
   }
 }
 
@@ -475,7 +472,7 @@ void Diagnostics::reduce2z(float *fz, cuComplex* f) {
   int Naky = grids_->Naky;
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
-  
+
   for (int k=0; k<Nz; k++) {
     for (int i=0; i<(Nx-1)/3+1; i++) {
       for (int j=0; j<Naky; j++) {

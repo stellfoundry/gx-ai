@@ -15,7 +15,8 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr)
 {
   float *ky = (float*) kyData;
-  unsigned int idy = offset % (nx*nyc) % nyc; 
+  //  unsigned int idy = offset % (nx*nyc) % nyc; 
+  unsigned int idy = offset % nyc; 
   cuComplex Iky = make_cuComplex(0., ky[idy]);
   return Iky*((cuComplex*)dataIn)[offset];
 }
@@ -23,9 +24,10 @@ __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *share
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
 {
   unsigned int idx = offset % (nx*nyc) / nyc; 
-  unsigned int idy = offset % (nx*nyc) % nyc; 
+  //  unsigned int idy = offset % (nx*nyc) % nyc; 
+  unsigned int idy = offset % nyc; 
   int ikx = get_ikx(idx);
-  if( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (idx==0 && idy==0)) {
+  if ( idy>(ny-1)/3 || ikx>(nx-1)/3 || ikx<-(nx-1)/3 || (idx==0 && idy==0) ) {
     // mask
     ((cuComplex*)dataOut)[offset].x = 0.;
     ((cuComplex*)dataOut)[offset].y = 0.;
@@ -46,12 +48,16 @@ GradPerp::GradPerp(Grids* grids, int batch_size)
   cufftCreate(&gradperp_plan_dxC2R);
   cufftCreate(&gradperp_plan_dyC2R);
 
+  //  cufftCreate(&gradperp_plan_C2R);
+  
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
   cufftMakePlanMany(gradperp_plan_R2C, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_, &workSize);
   // need separate plans for dx and dy in order to use callbacks... what is the memory cost?
   cufftMakePlanMany(gradperp_plan_dxC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_dyC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
+
+  //  cufftMakePlanMany(gradperp_plan_C2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
 
   cudaDeviceSynchronize();
   cufftXtSetCallback(gradperp_plan_dxC2R, 
@@ -76,6 +82,7 @@ GradPerp::~GradPerp()
   cufftDestroy(gradperp_plan_R2C);
   cufftDestroy(gradperp_plan_dxC2R);
   cufftDestroy(gradperp_plan_dyC2R);
+  //  cufftDestroy(gradperp_plan_C2R);
 }
 
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
@@ -86,3 +93,7 @@ void GradPerp::dyC2R(cuComplex* G, float* dyG)
 
 void GradPerp::R2C(float* G, cuComplex* res)
 { cufftExecR2C(gradperp_plan_R2C, G, res);   }
+
+//void GradPerp::C2R(cuComplex* G, float* g)
+//{ cufftExecC2R(gradperp_plan_C2R, G, g); }
+

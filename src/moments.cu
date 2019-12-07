@@ -61,12 +61,6 @@ MomentsG::~MomentsG() {
   cudaFree(G_lm);
 }
 
-void MomentsG::apply_mask (void) {
-  dim3 mBlock = dim3(32, 32, 1);
-  dim3 mGrid = dim3(grids_->Nyc/mBlock.x+1, grids_->Nx/mBlock.y+1, 1);
-  set_mask <<<mGrid, mBlock >>> (G_lm);
-}
-
 int MomentsG::initialConditions(Geometry* geo, double* time) {
  
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
@@ -305,6 +299,8 @@ int MomentsG::restart_write(double* time)
   moments_out[5] = id_Nky; count[5] = Naky;
   moments_out[6] = id_ri;  count[6] = ri;
 
+  
+  
   start[0] = 0; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
   if (retval = nc_def_var(ncres, "G", NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
   if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
@@ -320,6 +316,7 @@ int MomentsG::restart_write(double* time)
 
   for (int index=0; index <   jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
   for (int index=0; index < 2*itot; index++) G_out[index] = 0.;
+  
   CP_TO_CPU(G_h, G_lm, sizeof(cuComplex)*jtot);
   
   for (int is=0; is < nspec; is++) {
@@ -499,9 +496,11 @@ void MomentsG::qvar(int N)
   cuComplex* G_h;
   int Nk = grids_->Nyc;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
+  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G_lm, N*sizeof(cuComplex));
   printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  //  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
   printf("\n");
 
   free (G_h);

@@ -85,7 +85,7 @@ void GradParallelPeriodic::dz(MomentsG* G)
   // i*kz*G calculated via callback, defined as part of gradpar_plan_forward
   // for now, loop over all l and m because cannot batch 
   // eventually will optimize by first transposing so that z is fastest index
-  G->reality();
+  //  G->reality(); // Why is this here? 
   for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
     // forward FFT (z -> kz) & multiply by i kz (via callback)
     cufftExecC2C(gradpar_plan_forward, G->G(i), G->G(i), CUFFT_FORWARD);
@@ -93,25 +93,26 @@ void GradParallelPeriodic::dz(MomentsG* G)
     // backward FFT (kz -> z)
     cufftExecC2C(gradpar_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);
   }
-  G->reality();
+  //  G->reality(); // Why is this here?
 }
 
 // FFT and derivative for a single moment
 void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
+  //  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  //  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 // FFT and |kz| operator for a single moment
 void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
 {
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
+  // BD check this
+  //  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(abs_gradpar_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(gradpar_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+  //  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
 }
 
 // FFT only for a single moment
