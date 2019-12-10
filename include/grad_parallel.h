@@ -28,9 +28,9 @@ class GradParallelPeriodic : public GradParallel {
  private:
   Grids* grids_;
   
-  cufftHandle gradpar_plan_forward;
-  cufftHandle abs_gradpar_plan_forward;
-  cufftHandle gradpar_plan_inverse;
+  cufftHandle dz_plan_forward;
+  cufftHandle abs_dz_plan_forward;
+  cufftHandle dz_plan_inverse;
 };
 
 class GradParallelLinked : public GradParallel {
@@ -60,12 +60,12 @@ class GradParallelLinked : public GradParallel {
   float **kzLinked;
   cuComplex **G_linked;
 
-  cufftHandle* gradpar_plan_forward;
-  cufftHandle* gradpar_plan_inverse;
-  cufftHandle* gradpar_plan_forward_singlemom;
-  cufftHandle* abs_gradpar_plan_forward_singlemom;
-  cufftHandle* gradpar_plan_inverse_singlemom;
-  dim3 *dimGrid, *dimBlock;
+  cufftHandle* dz_plan_forward;
+  cufftHandle* dz_plan_inverse;
+  cufftHandle* dz_plan_forward_singlemom;
+  cufftHandle* abs_dz_plan_forward_singlemom;
+  cufftHandle* dz_plan_inverse_singlemom;
+  dim3 *dG, *dB;
 };
 
 class GradParallelLocal : public GradParallel {
@@ -79,7 +79,7 @@ class GradParallelLocal : public GradParallel {
  private:
   Grids* grids_;
 
-  dim3 dimGrid, dimBlock;
+  dim3 dG, dB;
 };
 
 class GradParallel1D {
@@ -91,8 +91,8 @@ class GradParallel1D {
  private:
   Grids* grids_;
   
-  cufftHandle gradpar_plan_forward;
-  cufftHandle gradpar_plan_inverse;
+  cufftHandle dz_plan_forward;
+  cufftHandle dz_plan_inverse;
 
   cuComplex *b_complex;
 };

@@ -31,7 +31,7 @@ void Fields::chk_fft()
 
   size_t fs = sizeof(float)*grids_->NxNyNz;
   
-  printf("d Phi/dy in real space: \n");
+  printf("d Phi/dx in real space: \n");
   float* fr;
   checkCuda(cudaMalloc((void**) &fr, fs));
   cudaMemset(fr, 0., fs);
@@ -39,10 +39,12 @@ void Fields::chk_fft()
   float* fh;
   cudaMallocHost((void**) &fh, fs);
   
-  fft->dyC2R(phi, fr);  CP_TO_CPU(fh, fr, fs);  cudaFree(fr);
+  fft->dxC2R(phi, fr);  CP_TO_CPU(fh, fr, fs);  cudaFree(fr);
   
   for (int ig=0; ig<grids_->NxNyNz; ig++) {
     printf("phi(%d) = %e \n", ig, fh[ig]);
+    //    printf("phi(%d,%d) = %e \n", ig%4, ig/4, fh[ig]);
+    //    if (ig%4==3) printf("\n");
   }
   
   cudaFreeHost(fh);

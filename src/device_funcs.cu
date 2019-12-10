@@ -19,6 +19,7 @@ __host__ __device__ float factorial(int m) {
 
 __device__ float Jflr(int l, float b, bool enforce_JL_0) {
   if (l>30) return 0.; // protect against underflow for single precision evaluation
+
   if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.);

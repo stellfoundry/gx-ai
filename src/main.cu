@@ -11,4 +11,5 @@ int main(int argc, char* argv[])
   gx_main(argc, argv, mpcom_ftn);
 
   MPI_Finalize();
+  cudaDeviceReset();
 }

@@ -34,7 +34,6 @@ Grids::Grids(Parameters* pars) :
   Naky((Ny-1)/3+1),
   //Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
   Nakx(1 + 2*((Nx-1)/3)),
-  //  Nakz(1 + 2*((Nz-1)/3)),
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
   NxNycNz(Nx * Nyc * Nz),

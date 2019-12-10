@@ -107,6 +107,15 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
       }
     }
   }
+  /*
+  int i, j, index;
+
+  i=0; j=1; index = j + grids_->Nyc*i; 
+  init_h[index].x = 0.;  init_h[index].y = -0.5;
+
+  i=1; j=0; index = j + grids_->Nyc*i; 
+  init_h[index].x = 0.;  init_h[index].y = -0.025;
+  */
   
   // copy initial condition into device memory
   if(pars_->init == DENS) {         CP_TO_GPU(dens_ptr[0], init_h, Momsize_);
