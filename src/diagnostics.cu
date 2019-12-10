@@ -57,6 +57,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   if (pars_->write_fluxes) {
     cudaMallocHost((void**) &pflux,  sizeof(float)*grids_->Nspecies);
     cudaMallocHost((void**) &qflux,  sizeof(float)*grids_->Nspecies);
+    for (int j=0; j<grids_->Nspecies; j++) qflux[j] = 0.;
   }
   cudaMallocHost((void**) &val,    sizeof(float)*2);
     
@@ -90,6 +91,7 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, double dt, int c
   int retval;
   bool stop = false;
   int nw;
+
   nw = pars_->nwrite;
   if(counter%nw == 0) {
     printf("Step %d: Time = %f\n", counter, time);
@@ -137,7 +139,9 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, double dt, int c
   if( counter%nw == 0 && pars_->write_fluxes) {
     // calculate fluxes
     fluxes(G, fields);
+    cudaDeviceSynchronize();
     if (retval = nc_put_vara(id->file, id->qflux, id->flux_start, id->flux_count,  &qflux[0]))    ERR(retval);
+    for (int j=0; j<grids_->Nspecies; j++) qflux[j] = 0.;    
     id->flux_start[0] += 1; 
   }
 
@@ -380,7 +384,7 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
   for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
 
     unsigned int idy = idxyz % nyc; 
-    unsigned int idx = idxyz % (nx*nyc) / nyc; 
+    unsigned int idx = idxyz / nyc % nx;
 
     if ( unmasked(idx, idy) && idy > 0) {
 

@@ -317,14 +317,14 @@ int MomentsG::restart_write(double* time)
 
   if (retval = nc_put_var(ncres, id_time, time)) ERR(retval);
   
-  int itot, jtot;
+  unsigned int itot, jtot;
   jtot = Nx   * Nyc  * Nz * Nm * Nl * nspec;
   itot = Nakx * Naky * Nz * Nm * Nl * nspec;
   cudaMallocHost((void**) &G_h,   sizeof(cuComplex) * jtot); 
   cudaMallocHost((void**) &G_out, sizeof(float) * itot * 2);
 
-  for (int index=0; index <   jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
-  for (int index=0; index < 2*itot; index++) G_out[index] = 0.;
+  for (unsigned int index=0; index <   jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
+  for (unsigned int index=0; index < 2*itot; index++) G_out[index] = 0.;
   
   CP_TO_CPU(G_h, G_lm, sizeof(cuComplex)*jtot);
   
@@ -335,8 +335,8 @@ int MomentsG::restart_write(double* time)
 	  
 	  for (int i=0; i < (Nx-1)/3+1; i++) {
 	    for (int j=0; j < Naky; j++) {
-	      int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      int index_out = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
+	      unsigned int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
+	      unsigned int index_out = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
 	      G_out[2*index_out]   = G_h[index].x; 
 	      G_out[2*index_out+1] = G_h[index].y;
 	    }
@@ -344,9 +344,9 @@ int MomentsG::restart_write(double* time)
 	  
 	  for (int i=2*Nx/3+1; i < Nx; i++) {
 	    for (int j=0; j < Naky; j++) {
-	      int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
+	      unsigned int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
 	      
-	      int index_out = j + Naky*(i-2*Nx/3+(Nx-1)/3)
+	      unsigned int index_out = j + Naky*(i-2*Nx/3+(Nx-1)/3)
 		+ Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
 	      
 	      G_out[2*index_out]   = G_h[index].x;
@@ -444,15 +444,15 @@ int MomentsG::restart_read(double* time)
     exit (1);
   }
 
-  int itot;
+  unsigned int itot;
   itot = Nakx * Naky * Nz * Nm * Nl * nspec;
   cudaMallocHost((void**) &G_hold, LHsize_);
   cudaMallocHost((void**) &G_h,    LHsize_);
   cudaMallocHost((void**) &G_in,   sizeof(float) * itot * 2);
   
-  for (int index=0; index < itot; index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
-  for (int index=0; index < itot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
-  for (int index=0; index<2*itot; index++) {G_in[index] = 0.;}
+  for (unsigned int index=0; index < itot; index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
+  for (unsigned int index=0; index < itot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
+  for (unsigned int index=0; index<2*itot; index++) {G_in[index] = 0.;}
   CP_TO_CPU(G_hold, G_lm, sizeof(cuComplex)*itot);
   
   if (retval = nc_get_var(ncres, id_G, G_in)) ERR(retval);
@@ -467,8 +467,8 @@ int MomentsG::restart_read(double* time)
 	  
 	  for (int i=0; i < ((Nx-1)/3+1); i++) {
 	    for (int j=0; j < Naky; j++) {
-	      int index    = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      int index_in = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
+	      unsigned int index    = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
+	      unsigned int index_in = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
 	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
 	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
 	    }
@@ -476,10 +476,10 @@ int MomentsG::restart_read(double* time)
 	  
 	  for (int i=2*Nx/3+1; i < Nx; i++) {
 	    for (int j=0; j < Naky; j++) {
-	      int index    = j + Nyc*i
+	      unsigned int index    = j + Nyc*i
 		+ Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
 	      
-	      int index_in = j + Naky*(i-2*Nx/3+(Nx-1)/3)
+	      unsigned int index_in = j + Naky*(i-2*Nx/3+(Nx-1)/3)
 		+ Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
 	      
 	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
@@ -494,7 +494,8 @@ int MomentsG::restart_read(double* time)
   cudaFreeHost(G_in);
   cudaFreeHost(G_hold);
 
-  CP_TO_GPU(G_lm, G_h, sizeof(cuComplex)*itot);
+  unsigned int jtot = Nx * Nyc * Nz * Nm * Nl * nspec;
+  CP_TO_GPU(G_lm, G_h, sizeof(cuComplex)*jtot);
   
   cudaFreeHost(G_h);
 

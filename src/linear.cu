@@ -123,13 +123,14 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
 
   unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
-  if(idxyz<nx*nyc*nz) {
+  const unsigned int idy = idxyz % nyc; 
+  const unsigned int idx = idxyz / nyc % nx;
+  if(idxyz<nx*nyc*nz && unmasked(idx, idy)) {
     const unsigned int sidxyz = threadIdx.x;
     // these modulo operations are expensive... better way to get these indices?
     //    const unsigned int idy = idxyz % (nx*nyc) % nyc;// BD there is extra here, right?
-    const unsigned int idy = idxyz % nyc; 
     const unsigned int idz = idxyz / (nx*nyc);
-  
+    
     // shared memory blocks of size blockDim.x * (nl+2) * (nm+4)
     const int sDimx = blockDim.x;
     const int sDimy = nl+2;
@@ -264,7 +265,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
-__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
+__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
+				   cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
 {
   unsigned int idxyz = get_id1();
 
