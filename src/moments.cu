@@ -88,21 +88,27 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
   } else {
     srand(22);
     float samp;
-    for(int i=0; i<grids_->Nx; i++) {
-      for(int j=0; j<grids_->Nyc; j++) {
-	// Do not kick the kx=ky=0 mode
-	if(i>0 || j>0) {
+    int idx;
+    for(int i=0; i < (grids_->Nx - 1)/3 + 1; i++) { 
+    // do not kick the ky=0 modes
+      for(int j=1; j< (grids_->Ny - 1)/3 + 1; j++) {
+	for (int js=0; js < 2; js++) {
+	  if (i==0) {
+	    idx = i;
+	  } else {
+	    idx = js*(grids_->Nx - 2*i) + i;
+	  }
 	  samp = pars_->init_amp;
 	  
-          float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-          float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  
-          //loop over z *here*, to get rid of randomness in z in initial condition
-          for(int k=0; k<grids_->Nz; k++) {
-	    int index = j + grids_->Nyc*i + grids_->NxNyc*k;
+	  //loop over z *here*, to get rid of randomness in z in initial condition
+	  for(int k=0; k<grids_->Nz; k++) {
+	    int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
 	    init_h[index].x = ra*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
 	    init_h[index].y = rb*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
-          }
+	  }
 	}
       }
     }

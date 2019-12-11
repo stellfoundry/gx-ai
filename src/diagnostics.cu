@@ -286,7 +286,7 @@ void Diagnostics::writeHspectrum(MomentsG* G, bool endrun, int ikx, int iky)
   cudaMemset(hspectrum, 0.,               sizeof(float)*grids_->Nm);
   cudaMallocHost((void**) &hspectrum_h,   sizeof(float)*grids_->Nm);
   for (int m=0; m<grids_->Nm; m++) hspectrum_h[m] = 0.;
-  
+
   // calculate spectrum  
   Hspectrum(G, hspectrum, ikx, iky);
 
