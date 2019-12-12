@@ -17,7 +17,7 @@ endef
 
 USE_LOCAL_SPFUNC=on
 
-NETCDF_LIB = -L ${NETCDFDIR}/lib64 -lnetcdff -lnetcdf -L ${HDF5DIR} -lhdf5 -lhdf5_hl
+NETCDF_LIB = -L ${NETCDFDIR}/lib64 -lnetcdff -lnetcdf -L ${HDF5DIR}/lib64 -lhdf5 -lhdf5_hl
 
 ifdef USE_LAPACK
 	LAPACK_LIB = -L/usr/lib/x86_64-linux-gnu -llapack

@@ -492,7 +492,7 @@ bool Parameters::getbool (int const ncid, const char varname[]) {
   bool res;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &ires)) ERR(retval);
-  res = (ires==1) ? true : false ;
+  res = (ires!=0) ? true : false ;
   if (debug) printf("%s = %i \n", varname, ires);
   return res;
 }
