@@ -1,21 +1,22 @@
 &gx
- debug = F 
- scheme = "rk2"
+ debug = F
+ scheme = "k10"
 
  ntheta = 1
  nperiod = 1
  ny = 4
  nx = 4
- y0 = 10.0 
- boundary = "periodic"
+ y0 = 10.0
+ x0 = 20.0
+ boundary = "linked"
  forcing_amp = 0.
  forcing_init = F
  
  nhermite = 4
- nlaguerre = 16
+ nlaguerre = 2
  closure_model = "none"
  
- dt = 1e8
+ dt = 1.
  nstep  = 0
  nwrite = 1
  navg   = 1
@@ -31,7 +32,7 @@
  slab = T,     const_curv = F
 
  nonlinear_mode = T 
- cfl = 0.5 
+ cfl = 1.0
 
  nspecies = 1
 
@@ -53,11 +54,13 @@
  save_for_restart = T
  restart_to_file = "kh01_restart.nc"
  init_field = "density"
+
  init_single = T
- ikx_single = 0
  iky_single = 1
- init_amp = 1.
- iphi00 = 2  
+ ikx_single = 0
+
+ init_amp = 1.0
+ iphi00 = 2 
 /
 
 &species_parameters_1
@@ -71,16 +74,3 @@
  vnewk = 0.0
  type = "ion" 
 /
-
-&species_parameters_2
- z = -1.0 
- mass = 2.7e-4
- dens = 1. 
- temp = 1.0 
- tprim = 6.9
- fprim = 2.2 
- uprim = 0.0 
- vnewk = 0. 
- type = "electron" 
-/
-
