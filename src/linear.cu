@@ -179,7 +179,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
     }
   
     // this syncthreads is not necessary unless ghosts require information from interior cells
-    //__syncthreads();
+    //    __syncthreads();
   
     // set up ghost cells in m (for all l's)
     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
@@ -227,7 +227,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
 	- icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + 2.*m*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
 	- igb_d_s * (              (l+1)*S_G(sl+1,sm) + 2.*(l+1)*S_G(sl,sm)          + l*S_G(sl-1,sm) )
   
-           - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
+	- nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
   
       // add potential, drive, and conservation terms in low hermite moments
       if(m==0) {
@@ -237,9 +237,15 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
 	  + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
 	  + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
 	  + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-	  + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ ;
+	  + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
+	  - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ;
+	/* Add this last line in because for the m=0 part, w/o worrying about conservation terms:
+	
+	   dG/dt = - nu ( b + 2*l) H  << equation we are supposed to be solving 
+	  = - nu ( b + 2*l) (G + J0 phi)
+	  = - nu ( b + 2*l) G - nu ( b + 2*l) J0 phi  << equation in our variables
+	*/
       }
- //  - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ; // BD What was this doing here?!
 
       if(m==1) {
         rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_ * zt_ * vt_;
