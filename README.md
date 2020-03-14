@@ -21,3 +21,4 @@ $ ./gx [path_to_inputfile]
 
 A sample linear input file is provided in inputs/cyclone_linear.in.
 
+
