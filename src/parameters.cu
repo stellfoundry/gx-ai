@@ -9,7 +9,9 @@ Parameters::Parameters() {
   initialized = false;
 
   // some cuda parameters (not from input file)
-  cudaGetDeviceProperties(&prop, 0);
+  int dev; 
+  cudaGetDevice(&dev);
+  cudaGetDeviceProperties(&prop, dev);
   maxThreadsPerBlock = prop.maxThreadsPerBlock;
 }
 
@@ -64,6 +66,7 @@ void Parameters::get_nml_vars(char* filename)
   write_fluxes      = getbool (ncid, "write_fluxes");
   write_moms        = getbool (ncid, "write_moms");
   write_rh          = getbool (ncid, "write_rh");
+  write_pzt         = getbool (ncid, "write_pzt");
   write_phi         = getbool (ncid, "write_phi");
   write_phi_kpar    = getbool (ncid, "write_phi_kpar");
   write_h_spectrum  = getbool (ncid, "write_h_spectrum");
@@ -178,8 +181,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_close(ncid)) ERR(retval); 
   
   if(nz_in != 1) {
-      int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
-      nz_in = 2*ntgrid; // force even
+    int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
+    nz_in = 2*ntgrid; // force even
   }
   
   Zp = 2*nperiod - 1; // BD This needs updating
@@ -232,10 +235,11 @@ void Parameters::get_nml_vars(char* filename)
   else if( strcmp(stir_field,"ppar"   ) == 0) { stirf = PPAR;  }
   else if( strcmp(stir_field,"pperp"  ) == 0) { stirf = PPRP;  }
   
-  if( strcmp(scheme, "rk2") == 0) scheme_opt = RK2;  
-  if( strcmp(scheme, "rk3") == 0) scheme_opt = RK3;  
-  if( strcmp(scheme, "rk4") == 0) scheme_opt = RK4;  
-  if( strcmp(scheme, "k10") == 0) scheme_opt = K10;  
+  if( strcmp(scheme, "sspx2") == 0) scheme_opt = SSPX2;  
+  if( strcmp(scheme, "rk2")   == 0) scheme_opt = RK2;  
+  if( strcmp(scheme, "rk3")   == 0) scheme_opt = RK3;  
+  if( strcmp(scheme, "rk4")   == 0) scheme_opt = RK4;  
+  if( strcmp(scheme, "k10")   == 0) scheme_opt = K10;  
   
   if( strcmp(source, "phiext_full")==0 ) {
     source_option = PHIEXT;
@@ -473,7 +477,7 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
   //  printf("(1) x0 = %f \n \n", x0);
   //  printf("jtwist = %i \n \n", jtwist);
   // BD This is where jtwist is set: 
-  if(jtwist!=0 && abs(shat)>1.e-6) x0 = y0*jtwist/(2*M_PI*Zp*abs(shat));  
+  if (jtwist!=0 && abs(shat)>1.e-6) x0 = y0*jtwist/(2*M_PI*Zp*abs(shat));  
   //  printf("(2) x0 = %f \n \n", x0);
   
   return 0;

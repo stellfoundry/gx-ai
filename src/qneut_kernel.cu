@@ -83,12 +83,14 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
     
     cuDoubleComplex PhiAvg;	
     if (idy == 0 && idx != 0) {
-      PhiAvg.x = PhiAvgNum_zSum.x/( (double) PhiAvgDenom[idx] ); 
+      PhiAvg.x = PhiAvgNum_zSum.x/( (double) PhiAvgDenom[idx] );
       PhiAvg.y = PhiAvgNum_zSum.y/( (double) PhiAvgDenom[idx] ); 
     } else {
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
-    
+
+    //    Phi[index].x = (( nbar[index].x  ) / (ti_ov_te + pfilter2) ) * jacobian[idz];
+    //    Phi[index].y = (( nbar[index].y  ) / (ti_ov_te + pfilter2) ) * jacobian[idz];    
     Phi[index].x = ( nbar[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
     Phi[index].y = ( nbar[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
   }
@@ -151,7 +153,11 @@ __global__ void qneutAdiab(cuComplex* Phi, cuComplex* nbar,
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
     
-    Phi[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
-  }
+    //    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) ) * jacobian[idz]; // what is this factor of jacobian[idz]?
+    //    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+
+    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) );
+    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) );
+}
 }
 

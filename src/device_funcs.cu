@@ -520,3 +520,29 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, 
     omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
   }
 }
+
+# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_
+# define G_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
+// C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
+// H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
+// in a clumsy way
+__global__ void Tbar(cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2)
+{
+  unsigned int idxyz = get_id1();
+  if(idxyz<nx*nyc*nz) {
+    cuComplex phi_ = phi[idxyz];
+    int index = idxyz;
+    t_bar[index] = make_cuComplex(0., 0.);
+    float b_s = kperp2[idxyz]; // only species=0, assumes zt, rho2 = 1
+    for(int l=0; l<nl; l++) {
+      // energy conservation correction for nlaguerre = 1
+      if (nl == 1) {
+	t_bar[index] = t_bar[index] + sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2, 0);
+      } else {
+	t_bar[index] = t_bar[index] + sqrtf(2.)/3.*Jflr(l,b_s)*G_(idxyz, l, 2, 0)
+	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
+      }
+    }
+  }
+}
+

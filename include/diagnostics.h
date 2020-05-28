@@ -21,6 +21,7 @@ class Diagnostics {
   void reduce2k(float* fk, cuComplex* f);
   void reduce2z(float* fk, cuComplex* f);
   
+  void pzt(MomentsG* G, Fields* f);
   void fluxes(MomentsG* G, Fields* f);
   void write_init(MomentsG* G, Fields* f);
   
@@ -33,7 +34,10 @@ class Diagnostics {
   
   float *pflux;
   float *qflux;
-
+  float *primary;
+  float *secondary;
+  float *tertiary;
+  
   //  cuDoubleComplex *growth_rates, *growth_rates_h;
   cuComplex *growth_rates, *growth_rates_h;
 
@@ -41,7 +45,8 @@ class Diagnostics {
   Fields *fields_old;
   GradParallel* grad_parallel;
   NetCDF_ids* id;
-
+  cuComplex *t_bar;
+  
   cuComplex *amom_h;
   cuComplex *amom;
   cuComplex valphi;

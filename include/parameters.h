@@ -16,6 +16,7 @@
 #define PPRP 10
 #define PPAR 11
 #define ODD 9
+#define SSPX2 1
 #define RK2 2
 #define RK3 3
 #define RK4 4
@@ -71,7 +72,7 @@ class Parameters {
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
-  bool append_old, no_omegad, eqfix;
+  bool append_old, no_omegad, eqfix, write_pzt;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex;
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;

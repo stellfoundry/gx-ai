@@ -48,8 +48,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     closures = new SmithPar(grids_, geo_, grad_par, pars_->smith_par_q);
   }
 
-
-  // allocate conservation terms for collision operator
+   // allocate conservation terms for collision operator
   int size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
   cudaMalloc((void**) &upar_bar, size);
   cudaMalloc((void**) &uperp_bar, size);
@@ -57,7 +56,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(upar_bar, 0., size);
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
-
+   
   // set up CUDA grids for main linear kernel.  
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more LH resolution without changing shared memory layouts.
@@ -85,8 +84,14 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // calculate conservation terms for collision operator
   conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
-	(upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
-  
+    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
+  /*
+  for (int is=0; is < grids_->Nspecies; is++) {
+    conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
+      (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species[is].zt, pars_->species[is].rho2, is);
+  }
+  */
+
   // calculate RHS
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
@@ -242,8 +247,8 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
 	/* Add this last line in because for the m=0 part, w/o worrying about conservation terms:
 	
 	   dG/dt = - nu ( b + 2*l) H  << equation we are supposed to be solving 
-	  = - nu ( b + 2*l) (G + J0 phi)
-	  = - nu ( b + 2*l) G - nu ( b + 2*l) J0 phi  << equation in our variables
+	  = - nu ( b + 2*l) (G + J0 phi Z/T)
+	  = - nu ( b + 2*l) G - nu ( b + 2*l) J0 phi Z/T  << equation in our variables
 	*/
       }
 
@@ -265,6 +270,7 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi,
    } // species loop
   } // idxyz < NxNycNz
 }
+
 
 # define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_*zt_
 # define G_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
@@ -303,6 +309,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
     }
   }
 }
+
 
 __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();

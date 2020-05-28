@@ -27,14 +27,15 @@ class NetCDF_ids {
   int write_omega, write_phi, write_apar, write_h_spectrum, write_l_spectrum;
   int write_lh_spectrum, lh_ikx, lh_iky, lhspec, lspec, hspec, source_opt;
   int write_spec_v_time, lhspec_t, lspec_t, hspec_t, density_kpar, phi_kpar;
-  int eqfix, ikx_fixed, iky_fixed;
+  int eqfix, ikx_fixed, iky_fixed, write_pzt, prim, sec, tert;
   
   //  char closure_model[32], scheme[32], source[32];
   
   int geo_v_theta[1];     // dims for a real scalar as a function of theta
   int scalar_v_time[1];   // dims for a real scalar as function of time
   int complex_v_time[2];  // dims for a complex scalar as function of time
-
+  int pzt_v_time[1];      // dims for real scalar v time
+  
   int g_v_l[1];          // dims for a real quantity vs l
   int g_v_lt[2];         // dims for a real quantity vs l, time
 
@@ -55,6 +56,8 @@ class NetCDF_ids {
 
   size_t time_start[1], time_count[1];
 
+  size_t pzt_start[1], pzt_count[1];
+  
   // BD eventually needs [grids_->Nspecies] instead of [1]
   size_t flux_start[1], flux_count[1];
 

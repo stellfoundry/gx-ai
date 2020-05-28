@@ -13,7 +13,8 @@ __global__ void test(float* z) {
   printf("Device: %f\n", z[0]);
 }
 
-void gx_get_default_parameters_(struct external_parameters_struct * externalpars, char *run_name, MPI_Comm mpcom) {  
+void gx_get_default_parameters_(struct external_parameters_struct * externalpars,
+				char *run_name, MPI_Comm mpcom, int devid) {  
   
   int iproc;
 
@@ -24,7 +25,9 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   int numdev;
 
   cudaGetDeviceCount(&numdev);
-  cudaGetDevice(&externalpars->mpirank);
+  cudaSetDevice(devid);
+
+  cudaGetDevice(&externalpars->mpirank); // this does not look right
   if(iproc==0 && false) printf("Initializing gx ...\t runname is %s\n", run_name);
 
   // read input parameters from namelist
@@ -151,6 +154,8 @@ void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
   struct external_parameters_struct externalpars;
   struct gx_outputs_struct gxouts;
 
+  int devid = 0; // This should be determined (optionally) on the command line
+  
   char *run_name;
   if ( argc < 1) {
     fprintf(stderr, "The correct usage is:\n gx <runname>\n");
@@ -159,6 +164,6 @@ void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
     run_name = argv[1];
   }
 
-  gx_get_default_parameters_(&externalpars, run_name, mpcom);
+  gx_get_default_parameters_(&externalpars, run_name, mpcom, devid);
   gx_get_fluxes_(&externalpars, &gxouts, mpcom);
 }

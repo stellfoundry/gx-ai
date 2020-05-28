@@ -49,10 +49,17 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     cudaMallocHost((void**) &growth_rates_h, sizeof(cuComplex)*grids_->NxNyc);
 
     cudaMemset(growth_rates, 0., sizeof(cuComplex)*grids_->NxNyc);
-  }
+  }  
   
   cudaMallocHost((void**) &amom_h, sizeof(cuComplex)*grids_->NxNycNz);
   cudaMalloc((void**) &amom, sizeof(cuComplex)*grids_->NxNycNz);
+
+  if (pars_->write_pzt) {
+    cudaMallocHost((void**) &primary,   sizeof(float));    primary[0] = 0.;  
+    cudaMallocHost((void**) &secondary, sizeof(float));    secondary[0] = 0.;
+    cudaMallocHost((void**) &tertiary,  sizeof(float));    tertiary[0] = 0.;
+    cudaMalloc((void**) &t_bar, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies);
+  }
 
   if (pars_->write_fluxes) {
     cudaMallocHost((void**) &pflux,  sizeof(float)*grids_->Nspecies);
@@ -62,7 +69,9 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMallocHost((void**) &val,    sizeof(float)*2);
     
   cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
+  int dev;
+  cudaGetDevice(&dev);
+  cudaGetDeviceProperties(&prop, dev);
   maxThreadsPerBlock_ = prop.maxThreadsPerBlock;
 
   // for volume averaging
@@ -79,10 +88,20 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 Diagnostics::~Diagnostics()
 {
   delete fields_old;
-  cudaFree(growth_rates);
-  cudaFreeHost(growth_rates_h); 
-  cudaFreeHost(pflux);
-  cudaFreeHost(qflux);
+  if (pars_->write_omega) {
+    cudaFree(growth_rates);
+    cudaFreeHost(growth_rates_h);
+  }
+  if (pars_->write_fluxes) {
+    cudaFreeHost(pflux);
+    cudaFreeHost(qflux);
+  }
+  if (pars_->write_pzt) {
+    cudaFreeHost(primary);
+    cudaFreeHost(secondary);
+    cudaFreeHost(tertiary);
+    cudaFree(t_bar);
+  }
   cudaFree(val);
 }
 
@@ -134,6 +153,16 @@ bool Diagnostics::loop_diagnostics(MomentsG* G, Fields* fields, double dt, int c
     
     if (retval = nc_put_vara(id->file, id->phi_rh, id->rh_start, id->rh_count,  val))    ERR(retval);
     id->rh_start[0] += 1;
+  }
+
+  if( counter%nw == 0 && pars_->write_pzt) {
+    pzt(G, fields);  // calculate PZT
+    cudaDeviceSynchronize();
+    if (retval = nc_put_vara(id->file, id->prim, id->pzt_start, id->pzt_count,  &primary[0]))   ERR(retval);
+    if (retval = nc_put_vara(id->file, id->sec,  id->pzt_start, id->pzt_count,  &secondary[0])) ERR(retval);
+    if (retval = nc_put_vara(id->file, id->tert, id->pzt_start, id->pzt_count,  &tertiary[0]))  ERR(retval);
+    primary[0]=0.; secondary[0]=0.; tertiary[0]=0.;
+    id->pzt_start[0] += 1; 
   }
 
   if( counter%nw == 0 && pars_->write_fluxes) {
@@ -374,6 +403,59 @@ void Diagnostics::Hspectrum(MomentsG* G, float* hspectrum, int ikx, int iky)
   }
 }
 
+__global__ void get_pzt (float* primary, float* secondary, float* tertiary, cuComplex* phi, cuComplex* tbar)
+{
+  float Psum = 0.;
+  float Zsum = 0.;
+  float Tsum = 0.;
+  
+  cuComplex P2, T2;
+  for (int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+
+    unsigned int idy = idxyz % nyc; 
+    unsigned int idx = idxyz / nyc % nx;
+
+    if ( unmasked(idx, idy)) {
+
+      // Ultimately:
+      // For this xyz, get:
+
+      // phi_zonal(kx) = 0.
+      // phi_zonal(kx) = int dz Phi (kx, ky=0, z)
+      // secondary = sum phi_zonal**2 (kx)
+      //
+      // primary = 0.
+      // primary = sum Phi(kx=0, ky, z)**2
+      //
+      // tertiary = 0.
+      // tertiary = sum (Phi(kx, ky=0, z)**2 ) - secondary
+
+      // for now:
+      // secondary = sum Phi (kx, ky=0, z)**2
+      // primary   = sum tbar(kx=0, ky, z)**2
+      // tertiary  = sum tbar(kx!=0,ky, z)**2
+
+      // Caution: missing all geometry 
+      
+      float fac = 2.;
+      if(idy==0) fac = 1.0;
+      
+      P2 = cuConjf(phi[idxyz])*phi[idxyz]*fac;
+      T2 = cuConjf(tbar[idxyz])*tbar[idxyz]*fac; // assumes main species only
+
+      if (idx==0) {
+	Psum = T2.x;   atomicAdd(primary, Psum);       // P2
+      } else {
+	Tsum = T2.x;   atomicAdd(tertiary, Tsum);       // T2
+      }
+            
+      if (idy==0) {
+	Zsum = P2.x;   atomicAdd(secondary,Zsum);       // Z2
+      }
+    }
+  }
+}
+
 # define G_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)]
 __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky, 
                           float* jacobian, float fluxDenomInv, float *kperp2, float rho2_s, 
@@ -382,6 +464,7 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
   float sum = 0.;
   cuComplex fg;
   for(int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+    //  float sum = 0.; // This was being zeroed out before the loop. It should be zero for each trip since we atomicadd each trip
 
     unsigned int idy = idxyz % nyc; 
     unsigned int idx = idxyz / nyc % nx;
@@ -406,16 +489,25 @@ __global__ void heat_flux(float* qflux, cuComplex* phi, cuComplex* g, float* ky,
       
       if(ikx<0 && iky<0) { // default: sum over all relevant k's
 	fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
-	sum += fg.x;
+	sum = fg.x;
       } else { // single mode specified by ikx, iky
 	if(idy==iky && idx==ikx) {
 	  fg = cuConjf(vE_r)*p_bar*jacobian[idz]*fac*fluxDenomInv;
-	  sum += fg.x;
+	  sum = fg.x;
 	}
       }
       atomicAdd(qflux,sum);
     }
   }
+}
+
+void Diagnostics::pzt(MomentsG* G, Fields* f)
+{
+  int threads=256;
+  int blocks=min((grids_->NxNycNz+threads-1)/threads,1024);  
+
+  Tbar <<<blocks, threads>>> (t_bar, G->G(), f->phi, geo_->kperp2);
+  get_pzt <<<blocks, threads>>> (&primary[0], &secondary[0], &tertiary[0], f->phi, t_bar);
 }
 
 void Diagnostics::fluxes(MomentsG* G, Fields* f)

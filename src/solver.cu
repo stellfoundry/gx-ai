@@ -15,7 +15,9 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(phiavgdenom, 0., sizeof(float)*grids_->Nx);
   
   cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
+  int dev;
+  cudaGetDevice(&dev);
+  cudaGetDeviceProperties(&prop, dev);
   maxThreadsPerBlock_ = prop.maxThreadsPerBlock;
 
   int threads, blocks;
@@ -67,7 +69,6 @@ void Solver::svar (float* f, int N)
 int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if(pars_->adiabatic_electrons) {
-
     real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
       (nbar, G->G(), geo_->kperp2, pars_->species);
 
@@ -79,13 +80,14 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
       
       qneutAdiab_part2 <<<dimGrid_qneut, dimBlock_qneut>>>
 	(fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2,
-	 geo_->jacobian, pars_->species, pars_->ti_ov_te);
+      	 geo_->jacobian, pars_->species, pars_->ti_ov_te);
     } 
 
     if(pars_->iphi00==1) {
+      
       qneutAdiab <<<dimGrid_qneut, dimBlock_qneut>>>
 	(fields->phi, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
-    }    
+    }
   }
   if(pars_->source_option==PHIEXT) {
     add_source <<<dimGrid_qneut, dimBlock_qneut>>> (fields->phi, pars_->phi_ext);

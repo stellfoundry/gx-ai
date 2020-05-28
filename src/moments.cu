@@ -9,6 +9,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   LHsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
   Momsize_(sizeof(cuComplex)*grids->NxNycNz)
 {
+
   checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
   cudaMemset(G_lm, 0., LHsize_);
 
@@ -521,3 +522,4 @@ void MomentsG::qvar(int N)
 
   free (G_h);
 }
+

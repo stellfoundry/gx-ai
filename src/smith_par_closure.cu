@@ -317,7 +317,7 @@ void fill_r_matrix(double complex *power_series, double complex **rMatrix, int q
 
 /* Fills matrix with coefficients of the first n Hermite polynomial with specified scaling
  * and type (P for regular normalized Hermite, Q for conjugate polynomials)
- * Generates physicists' Hermite polynomials from 0 to n of form: 1\sqrt(j!2^j)H_j(scaling*x) */
+ * Generates physicists' Hermite polynomials from 0 to n of form: 1/sqrt(j!2^j)H_j(scaling*x) */
 void get_normalized_hermite_coefficients(double complex **matrix, int n, double complex  scaling,
 					 char type) {
   int i,j;
@@ -332,7 +332,7 @@ void get_normalized_hermite_coefficients(double complex **matrix, int n, double 
     matrix[1][1] = 0;
   }
   
-  /* Calculation standard recurrence relation of normalized Hermite polynomials:
+  /* Calculation using standard recurrence relation of normalized Hermite polynomials:
    * h_i(x) = sqrt(2/i)*x*h_(i-1)(x) - sqrt((i-1)/i)*h_(i-2)(x) */
   for (i = 2; i <= n; i++) {
     for (j = 0; j <= i; j++){
@@ -393,8 +393,6 @@ int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acop
 /* Kernel to cast cuDoubleComplex array to a cuComplex array (calculation is done with double precision
    and then converted to single precision for use in the simulation */
 __global__ void castDoubleToFloat(cuDoubleComplex *array_d, cuComplex *array_f, int size) {
-  for (int i = 0; i < size; i++) {
-    array_f[i] = cuComplexDoubleToFloat(array_d[i]);
-  }
+  for (int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }
 

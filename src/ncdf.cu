@@ -126,7 +126,13 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     rh_count[0] = 1;
     rh_count[1] = 2;
   }
-  
+
+  if (pars_->write_pzt) {
+    pzt_v_time[0] = time_dim;
+    if (retval = nc_def_var(file, "prim", NC_FLOAT, 1, pzt_v_time, &prim)) ERR(retval);
+    if (retval = nc_def_var(file, "tert", NC_FLOAT, 1, pzt_v_time, &tert)) ERR(retval);
+    if (retval = nc_def_var(file, "sec",  NC_FLOAT, 1, pzt_v_time, &sec))  ERR(retval);
+  }
   
   if (pars_->write_fluxes) {
     scalar_v_time[0] = time_dim;
@@ -199,6 +205,9 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     }
   }
 
+  pzt_start[0] = 0;
+  pzt_count[0] = 1;
+  
   time_start[0] = 0;
   time_count[0] = 1;
 

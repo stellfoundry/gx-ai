@@ -28,7 +28,9 @@ void getDeviceMemoryUsage() {
   }
   // for some reason, total_byte returned by above call is not correct. 
   cudaDeviceProp prop;
-  checkCuda( cudaGetDeviceProperties(&prop, 0) );
+  int dev;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
   double free_db = (double) free_byte;
   double total_db = (double) prop.totalGlobalMem;
   double used_db = total_db - free_db ;
@@ -107,6 +109,9 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     }
     if(pars->scheme_opt == RK2) {stepper = new RungeKutta2(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
       CUDA_DEBUG("Initalizing timestepper RK2: %s\n");
+    }
+    if(pars->scheme_opt == SSPX2) {stepper = new SSPx2(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper SSPx2: %s\n");
     }
     checkCuda(cudaGetLastError());
       

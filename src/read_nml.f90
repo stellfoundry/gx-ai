@@ -34,6 +34,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   logical :: write_h_spectrum = .false.
   logical :: write_l_spectrum = .false.
   logical :: write_lh_spectrum = .false.
+  logical :: write_pzt = .false.
   logical :: write_rh = .false.
   logical :: init_single = .false.
 !  logical :: snyder_electrons = .false.
@@ -108,7 +109,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: id_hyper, id_hypercollisions, id_write_omega, id_write_fluxes
   integer :: id_write_moms, id_write_phi, id_write_phi_kpar, id_write_rh
   integer :: id_write_h_spectrum, id_write_l_spectrum, id_write_lh_spectrum
-  integer :: id_init_single, id_forcing_init, id_write_spec_v_time
+  integer :: id_init_single, id_forcing_init, id_write_spec_v_time, id_write_pzt
 !  integer :: id_snyder_electrons
   integer :: id_ntheta, id_nperiod, id_nx, id_ny, id_nhermite, id_nlaguerre
   integer :: id_smith_par_q, id_smith_perp_q, id_nm, id_nl, id_nspec
@@ -174,7 +175,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
        hyper, nu_hyper, p_hyper, d_hyper, stir_field, &
        hypercollisions, nu_hyper_l, nu_hyper_m, p_hyper_l, p_hyper_m, &
        init_amp, init_field, write_omega, write_fluxes, write_moms, write_phi, &
-       write_phi_kpar, write_rh, write_spec_v_time, &
+       write_phi_kpar, write_rh, write_spec_v_time, write_pzt, &
        write_h_spectrum, write_l_spectrum, write_lh_spectrum, &
        init_single, iky_single, ikx_single, kpar_init, ikx_fixed, iky_fixed, &
        forcing_init, forcing_type, forcing_amp, forcing_index, scale
@@ -308,6 +309,8 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_def_var (ncid, "write_spec_v_time", &
                                             NF90_INT,       id_write_spec_v_time)
 
+  retval = nf90_def_var (ncid, "write_pzt", NF90_INT,       id_write_pzt)
+  
   !! numerical parameters
   retval = nf90_def_var (ncid, "cfl",       NF90_FLOAT,     id_cfl)
   retval = nf90_def_var (ncid, "init_amp",  NF90_FLOAT,     id_init_amp)
@@ -455,6 +458,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   j=init_single;       retval = nf90_put_var (ncid, id_init_single, j)
 !  j=snyder_electrons;  retval = nf90_put_var (ncid, id_synder_electrons, j)
   j=forcing_init;      retval = nf90_put_var (ncid, id_forcing_init, j)
+  j=write_pzt;         retval = nf90_put_var (ncid, id_write_pzt, j)
 
   retval = nf90_put_var (ncid, id_ny,               ny)
   retval = nf90_put_var (ncid, id_nx,               nx)

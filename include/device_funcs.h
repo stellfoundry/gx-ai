@@ -97,3 +97,5 @@ __device__ int get_ikx(int idx);
 __device__ bool unmasked(int idx, int idy);
 __device__ bool   masked(int idx, int idy);
 
+__global__ void Tbar(cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2);
+		     
