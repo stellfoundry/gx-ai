@@ -1,17 +1,10 @@
 #include "gx_lib.h"
 #include "mpi.h"
-#include "cufft.h"
 #include "parameters.h"
 #include "run_gx.h"
 #include "geometry.h"
 #include "get_error.h"
-#include "ncdf.h"
 #include <assert.h>
-
-
-__global__ void test(float* z) {
-  printf("Device: %f\n", z[0]);
-}
 
 void gx_get_default_parameters_(struct external_parameters_struct * externalpars,
 				char *run_name, MPI_Comm mpcom, int devid) {  
@@ -167,3 +160,4 @@ void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
   gx_get_default_parameters_(&externalpars, run_name, mpcom, devid);
   gx_get_fluxes_(&externalpars, &gxouts, mpcom);
 }
+

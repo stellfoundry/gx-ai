@@ -29,12 +29,13 @@ class MomentsG {
   int restart_write(double* time);
   int restart_read(double* time);
   
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
-		 double c4, MomentsG* G4);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
-		 double c4, MomentsG* G4, double c5, MomentsG* G5);
+  int acc_scaled(const double c1, MomentsG* G1);
+  int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2);
+  int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3);
+  int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3,
+		 const double c4, MomentsG* G4);
+  int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3,
+		 const double c4, MomentsG* G4, const double c5, MomentsG* G5);
 
   int zero();
   int zero(int l, int m, int s=0);

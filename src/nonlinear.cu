@@ -1,22 +1,14 @@
 #include "nonlinear.h"
-#include "cuda_constants.h"
+// #include "cuda_constants.h"
 #include "device_funcs.h"
 #include "get_error.h"
 #include "species.h"
-#include "cudaReduc_kernel.cu"
-#include "maxReduc.cu"
-
-__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* b,
-			    float* muB, float rho2_s);
-
-__global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
-			float* dg_dy, float* dJ0Phi_dx, float kxfac);
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
 
-  if (grids_->Nl==1) {
+  if (grids_->Nl<2) {
     printf("\n");
     printf("Cannot do a nonlinear run with nlaguerre < 2\n");
     printf("\n");
@@ -24,25 +16,32 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   laguerre =        new LaguerreTransform(grids_, 1);
+  red =             new Red(grids_->NxNyNz*laguerre->J);
   grad_perp_G =     new GradPerp(grids_, grids_->Nz*grids_->Nl);
   grad_perp_J0phi = new GradPerp(grids_, grids_->Nz*laguerre->J);
+  
+  checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*laguerre->J));
 
-  checkCuda(cudaMalloc((void**) &dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
-  checkCuda(cudaMalloc((void**) &dg_dx, sizeof(float)*grids_->NxNyNz*laguerre->J));
-  checkCuda(cudaMalloc((void**) &dg_dy, sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&J0phi,      sizeof(cuComplex)*grids_->NxNycNz*laguerre->J));
+  checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*laguerre->J));
 
-  checkCuda(cudaMalloc((void**) &J0phi, sizeof(cuComplex)*grids_->NxNycNz*laguerre->J));
-  checkCuda(cudaMalloc((void**) &dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*laguerre->J));
-  checkCuda(cudaMalloc((void**) &dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*laguerre->J));
 
-  checkCuda(cudaMalloc((void**) &g_res, sizeof(float)*grids_->NxNyNz*laguerre->J));
-
+  checkCuda(cudaMalloc(&val1,  sizeof(float)));
+  cudaMemset(val1, 0., sizeof(float));
+  
   dimBlock = dim3(32, 4, 1);
   dimGrid  = dim3(grids_->NxNyNz / dimBlock.x + 1, 1, 1); 
 
   //  dimBlock = dim3(32, 4, 1);
   //  dimGrid = dim3(grids_->NxNyNz / dimBlock.x + 1, laguerre->J/dimBlock.y+1, 1); 
 
+  cfl_x_inv = (float) grids_->Nx / (pars_->cfl * 2 * M_PI * pars_->x0);
+  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
+  
   dt_cfl = 0.;
 
   cudaMallocHost((void**) &vmax_x, sizeof(float));
@@ -51,6 +50,7 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
 
 Nonlinear::~Nonlinear() 
 {
+  delete red;
   delete laguerre;
   delete grad_perp_G;
   delete grad_perp_J0phi;
@@ -122,9 +122,6 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
 
     }
-    //      printf("\n");
-    //      qvar(G_res->Gm(0,s), grids_->NxNycNz*laguerre->L);
-    //      exit(1);      
   }
 }
 
@@ -133,49 +130,15 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 double Nonlinear::cfl(double dt_max)
 {
   float vmax = 1.e-10;
-  vmax_x[0] = vmax;
-  vmax_y[0] = vmax;
-  //  int threads=256;
-  //  int blocks=min((grids_->NxNyNz+threads-1)/threads,2048);
+  vmax_x[0] = vmax;  vmax_y[0] = vmax;
 
-  // BD dJ0phi_dx is defined on the pseudo-spectral v_perp**2 grid
-  // BD so why is the reduction only over Nl? Should be J
-  //  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*grids_->Nl, dJ0phi_dx, dJ0phi_dx);
-  //  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*grids_->Nl, dJ0phi_dy, dJ0phi_dy);
-  vmax_x[0] = maxReduc(dJ0phi_dx, grids_->NxNyNz*laguerre->J, dJ0phi_dx, dJ0phi_dx);
-  vmax_y[0] = maxReduc(dJ0phi_dy, grids_->NxNyNz*laguerre->J, dJ0phi_dy, dJ0phi_dy);
-  vmax = max(vmax_x[0], vmax_y[0]);
+  red->MaxAbs(dJ0phi_dx, val1);    cudaMemcpy(vmax_y, val1, sizeof(float), cudaMemcpyDeviceToHost);
+  red->MaxAbs(dJ0phi_dy, val1);    cudaMemcpy(vmax_x, val1, sizeof(float), cudaMemcpyDeviceToHost);
 
-  dt_cfl = (pars_->cfl/vmax < dt_max) ? pars_->cfl/vmax : dt_max;
-  //  printf("dt_cfl = %f \n", dt_cfl);
+  vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);    
+  dt_cfl = min(dt_max, 1./vmax);
+
   return dt_cfl;
 }
 
-__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2,
-			    float* muB, float rho2_s)
-{
-  unsigned int idxyz = get_id1();
-  unsigned int J = (3*nl/2-1);
 
-  if(idxyz<nx*nyc*nz) {
-    for (int j = threadIdx.y; j < J; j += blockDim.y) {
-      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2. * muB[j] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
-    }
-  }
-}
-
-__global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
-			float* dg_dy, float* dJ0phi_dx, float kxfac)
-{
-  unsigned int idxyz = get_id1();
-  unsigned int J = (3*nl/2-1);
-
-  if(idxyz<nx*ny*nz) {
-    for (int j = threadIdx.y; j < J; j += blockDim.y) {
-      unsigned int ig = idxyz + nx*ny*nz*j;
-
-      g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
-
-    }
-  }
-}

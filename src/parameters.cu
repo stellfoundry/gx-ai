@@ -150,7 +150,7 @@ void Parameters::get_nml_vars(char* filename)
   eps      = getfloat (ncid, "eps");
   rhoc     = getfloat (ncid, "rhoc");
   qsf      = getfloat (ncid, "q");
-  shat     = getfloat (ncid, "shat");
+  shat     = getfloat (ncid, "shat"); // is this always consistent with geometry inputs? should force it. BD
   akappa   = getfloat (ncid, "kappa");
   akappri  = getfloat (ncid, "kappa_prime");
   tri      = getfloat (ncid, "tri");
@@ -178,7 +178,6 @@ void Parameters::get_nml_vars(char* filename)
   fapar = getfloat (ncid, "fapar");
   fbpar = getfloat (ncid, "fbpar");
 
-  if (retval = nc_close(ncid)) ERR(retval); 
   
   if(nz_in != 1) {
     int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
@@ -190,15 +189,39 @@ void Parameters::get_nml_vars(char* filename)
   // BD  This is messy. Prefer to go back to original method
   // before, jtwist_old assumed Zp=1
   // now, redefining jtwist = jtwist_old*Zp
-  // set default jtwist to 2pi*shat so that X0~Y0
-  if (jtwist == -1) {
-    //    printf("(A) jtwist = %i \n \n", jtwist);
-    jtwist = (int) round(2*M_PI*shat*Zp);  // Use Zp or Z0 here?
-    //    printf("(B) jtwist = %i \n \n", jtwist);
-  }  
-  
-  // BD I believe the problem can be fixed using character fill, perhaps?
 
+  if (jtwist==0) {
+    // this is an error
+    printf("************************** \n");
+    printf("************************** \n");
+    printf("jtwist = 0 is not allowed! \n");
+    printf("************************** \n");
+    printf("************************** \n");
+  }
+
+  // if jtwist = -1 in the input file
+  // set default jtwist to 2*pi*shat to get the x0 in the input file
+  
+  if (jtwist == -1) {
+    if (abs(shat)>1.e-6) {
+      jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
+    } else {
+      // no need to do anthing here. x0 is set from input file and jtwist should not be used anywhere
+    }
+    if (jtwist == 0) jtwist = 1;  // just to be safe
+  }   
+
+  // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
+  if (abs(shat)>1.e-6) {
+    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
+  }
+
+  // record the values of jtwist and x0 used in runname.nc
+  putint (ncid, "jtwist", jtwist);
+  putfloat (ncid, "x0", x0);
+  
+  if (retval = nc_close(ncid)) ERR(retval); 
+  
   if(strcmp(closure_model, "beer4+2")==0) {
     printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
     nm_in = 4;
@@ -469,17 +492,14 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
     // determine value of jtwist needed to make X0~Y0
     jtwist_square = (int) round(2*M_PI*abs(shat)*Zp); // Use Zp here or Z0?
     if (jtwist_square == 0) jtwist_square = 1;
-    // as currently implemented, there is no way to manually set jtwist from input file
-    // there could be some switch here where we choose whether to use
-    // jtwist_in or jtwist_square
     jtwist = jtwist_square*2;
   }
-  //  printf("(1) x0 = %f \n \n", x0);
-  //  printf("jtwist = %i \n \n", jtwist);
-  // BD This is where jtwist is set: 
-  if (jtwist!=0 && abs(shat)>1.e-6) x0 = y0*jtwist/(2*M_PI*Zp*abs(shat));  
-  //  printf("(2) x0 = %f \n \n", x0);
-  
+  if (abs(shat)>1.e-6) {
+    if (jtwist!=0) x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
+  } else {
+    if (jtwist!=0) x0 = y0 * jtwist; // should allow real ratio in this case. 
+  }
+  // BD This is only setting x0 (and adjusting jtwist) when running within Trinity
   return 0;
 }
 
@@ -489,6 +509,13 @@ int Parameters::getint (int const ncid, const char varname[]) {
   if (retval = nc_get_var  (ncid, idum, &res)) ERR(retval);
   if (debug) printf("%s = %i \n",varname, res);
   return res;
+}
+
+void Parameters::putint (int const ncid, const char varname[], int val) {
+  int idum, retval;
+  if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
+  if (retval = nc_put_var  (ncid, idum, &val)) ERR(retval);
+  if (debug) printf("%s = %i \n",varname, val);
 }
 
 bool Parameters::getbool (int const ncid, const char varname[]) {
@@ -508,6 +535,13 @@ float Parameters::getfloat (int const ncid, const char varname[]) {
   if (retval = nc_get_var  (ncid, idum, &res)) ERR(retval);
   if (debug) printf("%s = %f \n",varname, res);
   return res;
+}
+
+void Parameters::putfloat (int const ncid, const char varname[], float val) {
+  int idum, retval;
+  if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
+  if (retval = nc_put_var  (ncid, idum, &val)) ERR(retval);
+  if (debug) printf("%s = %f \n",varname, val);
 }
 
 

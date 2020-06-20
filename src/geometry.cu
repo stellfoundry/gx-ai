@@ -5,13 +5,6 @@
 #include "grad_parallel.h"
 #include "get_error.h"
 
-__global__ void init_kperp2(float* kperp2, float* kx, float* ky,
-			    float* gds2, float* gds21, float* gds22,
-			    float* bmagInv, float shat) ;
-__global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, float* ky,
-			    float* cv, float* gb, float* cv0, float* gb0, float shat) ;
-__global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale);
-
 Geometry::~Geometry() {
   cudaFree(z);
   cudaFree(bmag);
@@ -140,12 +133,12 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
       bmag_h[k] = 1.;
     }
     if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; }
-    
+
     // calculate these derived coefficients after slab overrides
     bmagInv_h[k] = 1./bmag_h[k];
     jacobian_h[k] = 1. / abs(pars->drhodpsi * gradpar * bmag_h[k]);
   }  
-  
+
   CP_TO_GPU (z,        z_h,        size);
   CP_TO_GPU (gbdrift,  gbdrift_h,  size);
   CP_TO_GPU (grho,     grho_h,     size);
@@ -309,7 +302,7 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   DEBUGPRINT("All geometry information read successfully\n");
   DEBUGPRINT("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[Nz-1]);
   DEBUGPRINT("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[Nz-1]);
-
+  
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
   CP_TO_GPU (gbdrift,  gbdrift_h,  size);
@@ -332,6 +325,7 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 
   // calculate bgrad
   calculate_bgrad(grids);
+  CUDA_DEBUG("calc bgrad: %s \n");
 }
 
 void Geometry::initializeOperatorArrays(Grids* grids) {
@@ -358,8 +352,8 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
 void Geometry::calculate_bgrad(Grids* grids)
 {
   operator_arrays_allocated_=false;
+
   size_t size = sizeof(float)*grids->Nz;
- 
   cudaMallocHost((void**) &bgrad_h, size);
 
   cudaMalloc((void**) &bgrad, size);

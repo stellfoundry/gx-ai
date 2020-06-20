@@ -117,7 +117,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
       
     DEBUGPRINT("After initialization:\n");
     getDeviceMemoryUsage();
-  
+
     if (pars->write_moms) diagnostics->write_init(momsG, fields);
   }
   

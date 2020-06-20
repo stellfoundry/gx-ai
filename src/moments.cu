@@ -7,7 +7,7 @@
 MomentsG::MomentsG(Parameters* pars, Grids* grids) : 
   grids_(grids), pars_(pars), 
   LHsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
-  Momsize_(sizeof(cuComplex)*grids->NxNycNz)
+  Momsize_(sizeof(cuComplex)*grids_->NxNycNz)
 {
 
   checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
@@ -114,6 +114,7 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
       }
     }
   }
+
   /*
   int i, j, index;
 
@@ -146,8 +147,6 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
   }
-  
-  this->reality();
 
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
@@ -175,8 +174,13 @@ int MomentsG::scale(cuComplex scalar) {
   return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2) {
+int MomentsG::acc_scaled(const double c1, MomentsG* G1) {
+  acc_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm, c1, G1->G_lm);
+  return 0;
+}
+
+int MomentsG::add_scaled(const double c1, MomentsG* G1,
+			 const double c2, MomentsG* G2) {
   if(pars_->eqfix) {
     bool bdum = true;
     add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
@@ -190,9 +194,9 @@ int MomentsG::add_scaled(double c1, MomentsG* G1,
   return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2,
-			 double c3, MomentsG* G3) {
+int MomentsG::add_scaled(const double c1, MomentsG* G1,
+			 const double c2, MomentsG* G2,
+			 const double c3, MomentsG* G3) {
   if(pars_->eqfix) {
     bool bdum = true;
     add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
@@ -208,10 +212,10 @@ int MomentsG::add_scaled(double c1, MomentsG* G1,
   return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2,
-			 double c3, MomentsG* G3,
-			 double c4, MomentsG* G4) {
+int MomentsG::add_scaled(const double c1, MomentsG* G1,
+			 const double c2, MomentsG* G2,
+			 const double c3, MomentsG* G3,
+			 const double c4, MomentsG* G4) {
   if(pars_->eqfix) {
     bool bdum = true;
     add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
@@ -229,11 +233,11 @@ int MomentsG::add_scaled(double c1, MomentsG* G1,
   return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2, 
-			 double c3, MomentsG* G3,
-			 double c4, MomentsG* G4,
-			 double c5, MomentsG* G5)
+int MomentsG::add_scaled(const double c1, MomentsG* G1,
+			 const double c2, MomentsG* G2, 
+			 const double c3, MomentsG* G3,
+			 const double c4, MomentsG* G4,
+			 const double c5, MomentsG* G5)
 {
   if(pars_->eqfix) {
     bool bdum = true;

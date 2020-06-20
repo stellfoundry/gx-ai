@@ -1,11 +1,12 @@
 #pragma once
-
+#include "device_funcs.h"
 #include "parameters.h"
 #include "grids.h"
 #include "moments.h"
 #include "fields.h"
 #include "grad_parallel.h"
 #include "ncdf.h"
+#include "reductions.h"
 
 class Diagnostics {
  public:
@@ -26,9 +27,9 @@ class Diagnostics {
   void write_init(MomentsG* G, Fields* f);
   
   void writeMomOrField(cuComplex* m, int handle);
-  void writeLHspectrum(MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
-  void writeLspectrum (MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
-  void writeHspectrum (MomentsG* G, bool endrun, int ikx=-100, int iky=-100);
+  void writeLHspectrum(MomentsG* G, bool endrun);
+  void writeLspectrum (MomentsG* G, bool endrun);
+  void writeHspectrum (MomentsG* G, bool endrun);
   void writeGrowthRates();
   void writeTimeHistory(cuComplex* f, float time, int i, int j, int k, FILE* out);
   
@@ -43,6 +44,7 @@ class Diagnostics {
 
  private:
   Fields *fields_old;
+  Red *red;
   GradParallel* grad_parallel;
   NetCDF_ids* id;
   cuComplex *t_bar;
@@ -50,7 +52,9 @@ class Diagnostics {
   cuComplex *amom_h;
   cuComplex *amom;
   cuComplex valphi;
+  float *rmom; 
   float *val;
+  float *val1;
   
   int ikx_local;
   int iky_local;
@@ -62,16 +66,18 @@ class Diagnostics {
   
   int maxThreadsPerBlock_;
   dim3 dimGrid_xy, dimBlock_xy;
-
+  dim3 dG_spec, dB_spec;
+  
   void print_growth_rates_to_screen();
 
-  void LHspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
-  void  Lspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
-  void  Hspectrum(MomentsG* G, float* f, int ikx=-100, int iky=-100);
+  void LHspectrum(MomentsG* G, float* f);
+  void  Lspectrum(MomentsG* G, float* f);
+  void  Hspectrum(MomentsG* G, float* f);
 
   bool checkstop();
  
   float fluxDenom;
+  float fluxDenomInv;
 
   //  bool mask;
 

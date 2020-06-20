@@ -1,6 +1,8 @@
 #pragma once
 #include "grids.h"
 #include "moments.h"
+#include "cufftXt.h"
+#include "cufft.h"
 
 class MomentsG; // Forward Declaration
 

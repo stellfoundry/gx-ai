@@ -38,11 +38,11 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_var(file, "periodic",       NC_INT, 0, 0, &periodic))        ERR(retval);
   if (retval = nc_def_var(file, "local_limit",    NC_INT, 0, 0, &local_limit))     ERR(retval);
 
-  //  if (retval = nc_def_var(file, "nhermite",       NC_INT, 0, 0, &nhermite))  ERR(retval);
-  //  if (retval = nc_def_var(file, "nlaguerre",      NC_INT, 0, 0, &nlaguerre)) ERR(retval);
-  //  if (retval = nc_def_var(file, "nx",             NC_INT, 0, 0, &nx))        ERR(retval);
-  //  if (retval = nc_def_var(file, "ny",             NC_INT, 0, 0, &ny))        ERR(retval);
-  //  if (retval = nc_def_var(file, "nspecies",       NC_INT, 0, 0, &nspec))     ERR(retval);
+  v_ky[0] = ky_dim;
+  if (retval = nc_def_var(file, "ky",       NC_FLOAT, 1, v_ky, &ky))              ERR(retval);
+
+  v_kx[0] = kx_dim;
+  if (retval = nc_def_var(file, "kx",       NC_FLOAT, 1, v_kx, &kx))              ERR(retval);
 
   geo_v_theta[0] = nz;
   if (retval = nc_def_var(file, "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
@@ -231,13 +231,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   ///////////////////////////////////
   /// write parameters of this run //
   ///////////////////////////////////
-  
-  //  if (retval = nc_def_dim(file, "nyc",       grids_->Nyc,      &nyc))       ERR(retval);
+  ky_start[0] = 0;
+  ky_count[0] = grids_->Naky;
 
-  //  if (retval = nc_put_var(file, nx,  &nx))  ERR(retval);
-  //  if (retval = nc_put_var(file, ny,  &ny))  ERR(retval);
-  //  if (retval = nc_put_var(file, nyc, &nyc)) ERR(retval);
-  
+  if (retval = nc_put_vara(file, ky, ky_start, ky_count, grids_->ky_h))         ERR(retval);
+
+  kx_start[0] = 0;
+  kx_count[0] = grids_->Nakx;
+
+  if (retval = nc_put_vara(file, kx, kx_start, kx_count, grids_->kx_h))         ERR(retval);
+
   idum = pars_->boundary_option_periodic ? 1 : 0;
   if (retval = nc_put_var(file, periodic,      &idum))                   ERR(retval);
 
@@ -249,7 +252,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
 
-  // BD: could check whether this is a linear run and write more in that case?
   if (geo_->shat != 0.) {
     
     int Nx = grids_->Nx;

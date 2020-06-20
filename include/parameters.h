@@ -35,7 +35,8 @@ class Parameters {
   float getfloat (int ncid, const char varname[]); 
   int   getint   (int ncid, const char varname[]); 
   bool  getbool  (int ncid, const char varname[]); 
-
+  void  putint   (int ncid, const char varname[], int val);
+  void  putfloat (int ncid, const char varname[], float val); 
   
   int set_externalpars(external_parameters_struct* externalpars);
   int import_externalpars(external_parameters_struct* externalpars);

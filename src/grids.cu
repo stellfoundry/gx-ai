@@ -1,25 +1,7 @@
 #include "grids.h"
 #include "cuda_constants.h"
 #include "get_error.h"
-
-__global__ void kInit(float* kx, float* ky, float* kz, float X0, float Y0, int Zp) 
-{
-  int id = threadIdx.x + blockIdx.x*blockDim.x;
-
-  if(id<nyc) {
-    ky[id] = (float) id/Y0;
-  }
-  if(id<nx/2+1) {
-    kx[id] = (float) id/X0;
-  } else if (id<nx) {
-    kx[id] = (float) (id - nx)/X0;
-  }
-  if(id<(nz/2+1)) {
-    kz[id] = (float) id/Zp;
-  } else if(id<nz) {
-    kz[id] = (float) (id - nz)/Zp;
-  }
-}
+#include "device_funcs.h"
 
 Grids::Grids(Parameters* pars) :
   // copy from input parameters
@@ -46,7 +28,8 @@ Grids::Grids(Parameters* pars) :
   cudaDeviceSynchronize();
   cudaMallocHost((void**) &theta0_h, sizeof(float)*Nakx);
 
-  cudaMallocHost((void**) &kx_h, sizeof(float)*Nx); // BD why not Nakx here? (answer: linear runs?)
+  cudaMallocHost((void**) &kx_outh, sizeof(float)*Nx); 
+  cudaMallocHost((void**) &kx_h, sizeof(float)*Nakx); 
   cudaMallocHost((void**) &ky_h, sizeof(float)*Nyc);
   cudaMallocHost((void**) &kz_h, sizeof(float)*Nz);
 
@@ -74,9 +57,12 @@ Grids::Grids(Parameters* pars) :
   kInit<<<1, Nmax>>>(kx, ky, kz,
                      pars_->x0, pars_->y0, pars_->Zp);
 
-  CP_TO_CPU(kx_h, kx, sizeof(float)*Nx);
+  CP_TO_CPU(kx_outh, kx, sizeof(float)*Nx);
   CP_TO_CPU(ky_h, ky, sizeof(float)*Nyc);
-  CP_TO_CPU(kz_h, kz, sizeof(float)*Nz);  
+  CP_TO_CPU(kz_h, kz, sizeof(float)*Nz);
+
+  for (int i=0; i<((Nx-1)/3+1); i++) kx_h[i]=kx_outh[i];
+  for (int i=2*Nx/3+1; i<Nx; i++) kx_h[i-2*Nx/3+(Nx-1)/3] = kx_outh[i];
 }
 
 Grids::~Grids() {

@@ -32,7 +32,7 @@ class Grids {
   float * kz;
 
   float * ky_h;
-  float * kx_h;
+  float * kx_h, *kx_outh;
   float * kz_h;
 
   float * theta0_h;

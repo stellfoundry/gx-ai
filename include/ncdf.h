@@ -11,7 +11,7 @@ class NetCDF_ids {
 
   void close_nc_file();
   
-  int nx, ny, nz, kx_dim, ky_dim, nhermite, nlaguerre;
+  int nx, ny, nz, kx_dim, ky_dim, nhermite, nlaguerre, kx, ky;
   int m_dim, l_dim, s_dim;
   int theta, theta_x, bmag, bgrad, gbdrift, gbdrift0, periodic;
   int cvdrift, cvdrift0, gds2, gds21, gds22, grho, jacobian;
@@ -31,6 +31,8 @@ class NetCDF_ids {
   
   //  char closure_model[32], scheme[32], source[32];
   
+  int v_kx[1];            // dims for a real scalar as a function of kx 
+  int v_ky[1];            // dims for a real scalar as a function of ky 
   int geo_v_theta[1];     // dims for a real scalar as a function of theta
   int scalar_v_time[1];   // dims for a real scalar as function of time
   int complex_v_time[2];  // dims for a complex scalar as function of time
@@ -76,6 +78,8 @@ class NetCDF_ids {
   size_t mom_start[4], mom_count[4];
   size_t geo_start[1], geo_count[1];
   size_t zkxky_start[3], zkxky_count[3];
+  size_t ky_start[1], ky_count[1];
+  size_t kx_start[1], kx_count[1];
   
   float *theta_extended;
 

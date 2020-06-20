@@ -1,9 +1,7 @@
 #include "forcing.h"
 #include "get_error.h"
 #include "device_funcs.h"
-#include "cuda_constants.h"
 
-__global__ void stirring_kernel(cuComplex force, cuComplex *moments, int forcing_index);
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
 
 /* The following knobs in forcing_knobs need to be set to turn on forcing:
@@ -103,10 +101,6 @@ void KzForcingImpulse::stir(MomentsG *G) {
                              stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 
   stirring_done = true;
-}
-
-__global__ void stirring_kernel(cuComplex force, cuComplex *moments, int forcing_index) {
-    moments[forcing_index] = moments[forcing_index] + force;
 }
 
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt) {

@@ -16,8 +16,6 @@
 #define CUDA_DEBUG(_fmt, ...) if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__, cudaGetErrorString(cudaGetLastError()))
 
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
-
-
 #pragma once
 
 //char *runname;
@@ -90,8 +88,6 @@ struct gx_outputs_struct {
 
 void gx_get_default_parameters_(struct external_parameters_struct *, char *run_name, MPI_Comm mpcom);
 extern "C"
-void gx_get_fluxes_(struct external_parameters_struct *, struct gx_outputs_struct*, MPI_Comm mpcom);
+void gx_get_fluxes_(struct external_parameters_struct *, struct gx_outputs_struct*,  MPI_Comm mpcom);
 
 void gx_main(int argc, char* argv[], MPI_Comm mpcom);
-
-
