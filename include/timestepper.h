@@ -152,9 +152,35 @@ class SSPx2 : public Timestepper {
   Forcing *forcing_;
   const double dt_max;
 
-  MomentsG* G1;
-  MomentsG* GStar;
-  MomentsG* GRhs;
+  MomentsG *G1, *G2;
+  MomentsG *GStar;
+  MomentsG *GRhs;
   double dt_;
 };
-  
+
+class SSPx3 : public Timestepper {
+ public:
+  SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~SSPx3();
+  int advance(double* t, MomentsG* G, Fields* fields);
+  double get_dt() {return dt_;};
+
+ private:
+  void EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
+  Linear  *linear_;
+  Nonlinear *nonlinear_;
+  Solver *solver_;
+  Parameters *pars_;
+  Grids  *grids_;
+  Forcing *forcing_;
+  float w1, w2, w3; 
+
+  const double dt_max;
+  const double adt = pow(1./6., 1./3.);
+  MomentsG *G1, *G2, *G3;
+  MomentsG *GStar;
+  MomentsG *GRhs;
+  double dt_;
+};
+

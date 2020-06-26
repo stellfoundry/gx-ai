@@ -27,7 +27,6 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   Parameters *pars = new Parameters;
   //  pars->read_namelist(run_name);
   pars->get_nml_vars(run_name);
-
   // copy elements of input_parameters_struct into external_parameters_struct externalpars
   if (iproc==0) pars->set_externalpars(externalpars);
 
@@ -94,7 +93,7 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   Grids* grids;   // grids (e.g. kx, ky, z)
   Diagnostics* diagnostics;
   //  HermiteTransform* herm;
-  
+
   DEBUGPRINT("Initializing grids...\n");
   grids = new Grids(pars);
   CUDA_DEBUG("Initializing grids: %s \n");

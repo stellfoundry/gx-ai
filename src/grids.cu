@@ -54,8 +54,7 @@ Grids::Grids(Parameters* pars) :
 
   // initialize k arrays
   int Nmax = max(max(Nx, Nyc),Nz);
-  kInit<<<1, Nmax>>>(kx, ky, kz,
-                     pars_->x0, pars_->y0, pars_->Zp);
+  kInit<<<1, Nmax>>>(kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
 
   CP_TO_CPU(kx_outh, kx, sizeof(float)*Nx);
   CP_TO_CPU(ky_h, ky, sizeof(float)*Nyc);

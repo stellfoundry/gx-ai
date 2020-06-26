@@ -183,6 +183,11 @@ __global__ void rhs_linear(cuComplex *g, cuComplex* phi, cuComplex* upar_bar,
 			   float* b, float* cv_d, float* gb_d, float* bgrad,
 			   float* ky, specie* s, cuComplex* rhs_par, cuComplex* rhs);
 
+__global__ void new_linear(cuComplex *g, cuComplex* phi, cuComplex* upar_bar,
+			   cuComplex* uperp_bar, cuComplex* t_bar,
+			   float* b, float* cv_d, float* gb_d, float* bgrad,
+			   float* ky, specie* s, cuComplex* rhs_par, cuComplex* rhs);
+
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,
 				   cuComplex* t_bar, cuComplex* G, cuComplex* phi,
 				   float *b, specie* species);

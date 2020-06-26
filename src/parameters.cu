@@ -206,7 +206,7 @@ void Parameters::get_nml_vars(char* filename)
     if (abs(shat)>1.e-6) {
       jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
     } else {
-      // no need to do anthing here. x0 is set from input file and jtwist should not be used anywhere
+      // no need to do anything here. x0 is set from input file and jtwist should not be used anywhere
     }
     if (jtwist == 0) jtwist = 1;  // just to be safe
   }   
@@ -492,12 +492,12 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
     // determine value of jtwist needed to make X0~Y0
     jtwist_square = (int) round(2*M_PI*abs(shat)*Zp); // Use Zp here or Z0?
     if (jtwist_square == 0) jtwist_square = 1;
-    jtwist = jtwist_square*2;
+    jtwist = jtwist_square;
   }
   if (abs(shat)>1.e-6) {
     if (jtwist!=0) x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
   } else {
-    if (jtwist!=0) x0 = y0 * jtwist; // should allow real ratio in this case. 
+    // just use the x0 and y0 values directly
   }
   // BD This is only setting x0 (and adjusting jtwist) when running within Trinity
   return 0;
