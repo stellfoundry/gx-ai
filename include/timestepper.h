@@ -174,10 +174,15 @@ class SSPx3 : public Timestepper {
   Parameters *pars_;
   Grids  *grids_;
   Forcing *forcing_;
-  float w1, w2, w3; 
+
+  const double adt = pow(1./6., 1./3.);
+  const double wgtfac = sqrt(9. - 2.* pow(6.,2./3.));
+  const double w1 = 0.5 * (wgtfac - 1.);
+  const double w2 = 0.5 * (pow(6.,2./3.) - 1 - wgtfac);
+  const double w3 = 1./adt - 1. - w2*(w1+1.);
 
   const double dt_max;
-  const double adt = pow(1./6., 1./3.);
+
   MomentsG *G1, *G2, *G3;
   MomentsG *GStar;
   MomentsG *GRhs;

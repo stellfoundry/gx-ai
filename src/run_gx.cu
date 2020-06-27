@@ -113,6 +113,9 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     if(pars->scheme_opt == SSPX2) {stepper = new SSPx2(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
       CUDA_DEBUG("Initalizing timestepper SSPx2: %s\n");
     }
+    if(pars->scheme_opt == SSPX3) {stepper = new SSPx3(linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+      CUDA_DEBUG("Initalizing timestepper SSPx3: %s\n");
+    }
     checkCuda(cudaGetLastError());
       
     DEBUGPRINT("After initialization:\n");

@@ -259,6 +259,7 @@ void Parameters::get_nml_vars(char* filename)
   else if( strcmp(stir_field,"pperp"  ) == 0) { stirf = PPRP;  }
   
   if( strcmp(scheme, "sspx2") == 0) scheme_opt = SSPX2;  
+  if( strcmp(scheme, "sspx3") == 0) scheme_opt = SSPX3;  
   if( strcmp(scheme, "rk2")   == 0) scheme_opt = RK2;  
   if( strcmp(scheme, "rk3")   == 0) scheme_opt = RK3;  
   if( strcmp(scheme, "rk4")   == 0) scheme_opt = RK4;  

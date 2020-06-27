@@ -44,11 +44,9 @@ int SSPx2::advance(double *t, MomentsG* G, Fields* f)
   EulerStep (G1, G, GRhs, f, GStar, true); 
   solver_->fieldSolve(G1, f);
 
-  G->add_scaled(2.-sqrt(2.), G, sqrt(2.)-2., G1);
-
   EulerStep (G2, G1, GRhs, f, GStar, false);
 
-  G->add_scaled(1., G, 1., G2);
+  G->add_scaled(2.-sqrt(2.), G, sqrt(2.)-2., G1, 1., G2);
   
   if (forcing_ != NULL) forcing_->stir(G);  
 
@@ -64,6 +62,14 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
   forcing_(forcing), dt_max(dt_in), dt_(dt_in)
 {
+  
+  /*
+  printf("a  = %f \n",adt);
+  printf("w1 = %f \n",w1);
+  printf("w2 = %f \n",w2);
+  printf("w3 = %f \n",w3);
+  */
+  
   // new objects for temporaries
   GStar = new MomentsG(pars, grids);
   GRhs  = new MomentsG(pars, grids);
@@ -94,7 +100,6 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, Mome
 
   if (pars_->eqfix) G1->copyFrom(G);   
   G1->add_scaled(1., G, adt*dt_, GRhs);
-
 }
 
 int SSPx3::advance(double *t, MomentsG* G, Fields* f)
@@ -103,11 +108,14 @@ int SSPx3::advance(double *t, MomentsG* G, Fields* f)
   EulerStep (G1, G, GRhs, f, GStar, true); 
   solver_->fieldSolve(G1, f);
 
-  G->add_scaled(1.-w1, G, w1, G1);
-
   EulerStep (G2, G1, GRhs, f, GStar, false);
 
-  G->add_scaled(1., G, 1., G2);
+  G2->add_scaled((1.-w1), G, (w1-1.), G1, 1., G2);
+  solver_->fieldSolve(G2, f);
+
+  EulerStep (G3, G2, GRhs, f, GStar, false);
+
+  G->add_scaled((1.-w2-w3), G, w3, G1, (w2-1.), G2, 1., G3);
   
   if (forcing_ != NULL) forcing_->stir(G);  
 
