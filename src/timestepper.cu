@@ -662,3 +662,81 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
   *t += dt_;
   return 0;
 }
+
+K2::K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+       Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), 
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+{
+  // new objects for temporaries
+  G_q1 = new MomentsG(pars, grids);
+  G_q2 = new MomentsG(pars, grids);
+  GRhs = new MomentsG(pars, grids);
+  GStar = new MomentsG(pars, grids);
+}
+
+K2::~K2()
+{
+  delete G_q1;
+  delete G_q2;
+  delete GRhs;
+  delete GStar;
+}
+
+void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt)
+{
+  linear_->rhs(G_q1, f, GRhs);
+
+  if(nonlinear_ != NULL) {
+    nonlinear_->nlps5d(G_q1, f, GStar);
+    GRhs->add_scaled(1., GRhs, 1., GStar);
+    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+  }
+
+  G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
+  solver_->fieldSolve(G_q1, f);    
+}
+
+int K2::advance(double *t, MomentsG* G, Fields* f)
+{
+
+  G_q1->copyFrom(G);
+  G_q2->copyFrom(G);
+
+  bool setdt;
+  
+  // First five iterations
+  for(int i=1; i<6; i++) {
+    if (i==1) {setdt = true; } else { setdt = false;}      
+    EulerStep(G_q1, GRhs, f, GStar, setdt);
+    //    if (setdt) printf("another G (k10):\n");
+    //    if (setdt) GRhs->qvar(grids_->Nmoms*grids_->NxNycNz);
+    //    if (setdt) f->print_phi();
+
+  }
+
+  // middle bit
+  G_q2->add_scaled(0.04, G_q2, 0.36, G_q1);
+  G_q1->add_scaled(15, G_q2, -5, G_q1);
+  solver_->fieldSolve(G_q1, f);
+  
+  setdt = false;
+  // Next four iterations
+  for(int i=6; i<10; i++) EulerStep(G_q1, GRhs, f, GStar, setdt);
+
+   // 10th and final stage
+  linear_->rhs(G_q1, f, GRhs);
+
+  if(nonlinear_ != NULL) {
+    nonlinear_->nlps5d(G_q1, f, GStar);    
+    GRhs->add_scaled(1., GRhs, 1., GStar);
+  }
+
+  G->add_scaled(1., G_q2, 0.6, G_q1, 0.1*dt_, GRhs);
+  
+  if (forcing_ != NULL) forcing_->stir(G);
+  
+  solver_->fieldSolve(G, f);
+  *t += dt_;
+  return 0;
+}
