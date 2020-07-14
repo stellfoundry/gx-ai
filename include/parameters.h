@@ -17,10 +17,11 @@
 #define PPAR 11
 #define ODD 9
 #define SSPX2 1
-#define RK2 2
-#define RK3 3
-#define RK4 4
-#define K10 5
+#define SSPX3 2
+#define RK2 3
+#define RK3 4
+#define RK4 5
+#define K10 6
 #define BEER42 1
 #define SMITHPERP 2
 #define SMITHPAR 3
