@@ -430,23 +430,28 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, const cuC
 
 __global__ void reality_kernel(cuComplex* g) 
 {
-  for(int s = 0; s < nspecies; s++) {
-    for (int lm = threadIdx.z; lm < nm*nl;     lm += blockDim.z) {
-      for (int idz = threadIdx.y; idz<nz;     idz += blockDim.y) {
-        for (int idx = threadIdx.x; idx<(nx-1)/3+1; idx += blockDim.x) {
-          int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-          int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-	  //	  if (ig<nx*nyc*nz*nl*nm*s && ig2<nx*nyc*nz*nl*nm*s) {
-	    if(idx==0) {
-	      g[ig].x = 0.;
-	      g[ig].y = 0.;
-	    } else if(idx!=0) {
-	      g[ig2].x = g[ig].x;
-	      g[ig2].y = -g[ig].y;
-	    }
-	    //	  }
-	}
-      }
+  int idx = get_id1();
+  int idz = get_id2();
+  int idslm = get_id3();
+  /* the following 2 lines are intended to
+  - Determine the species from thread index idslm
+  - Satisfy the condition lm < nm*nl
+  - Utilize the full dimension of blockDim.z = nspecies*nm*nl
+  */
+  int s = idslm / (nm*nl);
+  int lm = idslm % (nm*nl);
+  
+  if (idx < (nx-1)/3+1 && idz < nz) {
+    
+    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
+    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
+
+    if(idx==0) {
+      g[ig].x = 0.;
+      g[ig].y = 0.;
+    } else if(idx!=0) {
+      g[ig2].x = g[ig].x;
+      g[ig2].y = -g[ig].y;
     }
   }
 }
