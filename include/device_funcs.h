@@ -11,9 +11,9 @@ __host__ __device__ float factorial(int m);
 __device__ float Jflr(int l, float b, bool enforce_JL_0=true);
 __device__ float Jfac(int l, float b);
 
-__device__ float g0(float b);
-__device__ float g1(float b);
-__device__ float sgam0 (float b);
+__host__ __device__ float g0(float b);
+__host__ __device__ float g1(float b);
+__host__ __device__ float sgam0 (float b);
 
 __host__ __device__ bool operator>(cuComplex f, cuComplex g);
 __host__ __device__ bool operator<(cuComplex f, cuComplex g);
@@ -96,7 +96,6 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    cuComplex c2, cuComplex* m2);
 
 __global__ void reality_kernel(cuComplex* g);
-__global__ void reality_singlemom_kernel(cuComplex* mom);
 
 __device__ int get_ikx(int idx);
 __device__ bool unmasked(int idx, int idy);

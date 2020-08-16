@@ -40,8 +40,9 @@ Beer42::Beer42(Grids* grids, const Geometry* geo, GradParallel* grad_par_in):
   CP_TO_GPU(nu, nu_h, sizeof(cuComplex)*11);
 
   // 1d thread blocks over xyz
+  int nxyz = grids_->NxNycNz;
   dimBlock = 512;
-  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+  dimGrid = nxyz/dimBlock.x + min(nxyz%512, 1);
 }
 
 Beer42::~Beer42() {
@@ -162,8 +163,9 @@ SmithPerp::SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0):
   CP_TO_GPU(Aclos_, Aclos_h, sizeof(cuComplex)*q_);
 
   // 1d thread blocks over xyz
+  int nxyz = grids_->NxNycNz;
   dimBlock = 512;
-  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+  dimGrid = nxyz/dimBlock.x + min(nxyz%512, 1);
 }
 
 SmithPerp::~SmithPerp() {
@@ -193,8 +195,10 @@ SmithPar::SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par_in,
   smith_par_getAs(grids->Nm, q_, a_coefficients_);
 
   // 1d thread blocks over xyz
+  int nxyz = grids_->NxNycNz;
   dimBlock = 512;
-  dimGrid = grids_->NxNycNz/dimBlock.x+1;
+  dimGrid = nxyz/dimBlock.x + min(nxyz%512, 1);
+
 }
 
 SmithPar::~SmithPar() {

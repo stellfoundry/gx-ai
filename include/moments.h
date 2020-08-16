@@ -29,7 +29,6 @@ class MomentsG {
   int restart_write(double* time);
   int restart_read(double* time);
   
-  int acc_scaled(const double c1, MomentsG* G1);
   int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2);
   int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3);
   int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3,
@@ -43,7 +42,7 @@ class MomentsG {
   int scale(double scalar);
   int scale(cuComplex scalar);
 
-  int reality();
+  int reality(int ngz);
   
   inline void copyFrom(MomentsG* source) {
     cudaMemcpy(this->G(), source->G(), LHsize_, cudaMemcpyDeviceToDevice);
@@ -57,6 +56,7 @@ class MomentsG {
   cuComplex** qprp_ptr;
  
   dim3 dimGrid, dimBlock;
+  dim3 dG_all, dB_all;
 
  private:
   cuComplex* G_lm;

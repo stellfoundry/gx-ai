@@ -26,7 +26,8 @@ class Nonlinear {
   GradPerp* grad_perp_G;
   GradPerp* grad_perp_J0phi;
   Red* red; 
-  dim3 dimGrid, dimBlock;
+  dim3 dGk, dBk;
+  dim3 dGx, dBx;
 
   float *dG, *dg_dx, *dg_dy, *val1;
   cuComplex *J0phi;

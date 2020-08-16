@@ -1,6 +1,7 @@
 #include "device_funcs.h"
 #include "cuda_constants.h"
-
+#include <stdio.h>
+ 
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
@@ -24,7 +25,7 @@ __device__ float Jflr(int l, float b, bool enforce_JL_0) {
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
 }
 
-__device__ float g0(float b) {
+__host__ __device__ float g0(float b) {
 
   float tol = 1.e-7;
   float tk, b2, b2sq;
@@ -34,7 +35,7 @@ __device__ float g0(float b) {
 
   b2 = 0.5 * b;
   b2sq = b2 * b2;
-  tk = __expf(-b);
+  tk = expf(-b);
   g = tk;
 
   x = 1.;
@@ -53,7 +54,7 @@ __device__ float g0(float b) {
 
 }
 
-__device__ float g1(float b) {
+__host__ __device__ float g1(float b) {
 
   float tol = 1.e-7;
   float tk, b2, b2sq;
@@ -63,7 +64,7 @@ __device__ float g1(float b) {
 
   b2 = 0.5 * b;
   b2sq = b2 * b2;
-  tk = __expf(-b) * b2;
+  tk = expf(-b) * b2;
   g = tk;
 
   x = 1.;
@@ -83,97 +84,48 @@ __device__ float g1(float b) {
 
 }
 
-__device__ float sgam0 (float b) {return sqrt(g0(b));}
-
-__host__ __device__ bool operator>(cuComplex f, cuComplex g)
-{
-  return f.x*f.x+f.y*f.y > g.x*g.x+g.y*g.y;
-}
-
-__host__ __device__ bool operator<(cuComplex f, cuComplex g)
-{
-  return f.x*f.x+f.y*f.y < g.x*g.x+g.y*g.y;
-}
-
-
-__host__ __device__ cuComplex operator+(cuComplex f, cuComplex g) 
-{
-  return cuCaddf(f,g);
-} 
-
-__host__ __device__ cuComplex operator-(cuComplex f, cuComplex g)
-{
-  return cuCsubf(f,g);
-}  
+__host__ __device__ float sgam0 (float b) {return sqrt(g0(b));}
+__host__ __device__ bool operator>(cuComplex f, cuComplex g) { return f.x*f.x+f.y*f.y > g.x*g.x+g.y*g.y; }
+__host__ __device__ bool operator<(cuComplex f, cuComplex g) { return f.x*f.x+f.y*f.y < g.x*g.x+g.y*g.y; }
+__host__ __device__ cuComplex operator+(cuComplex f, cuComplex g) { return cuCaddf(f,g); }
+__host__ __device__ cuComplex operator-(cuComplex f, cuComplex g) { return cuCsubf(f,g); }
 
 __host__ __device__ cuComplex operator-(cuComplex f)
 {
   cuComplex zero;
-  zero.x = 0.;
-  zero.y = 0.;
+  zero.x = 0.; zero.y = 0.;
   return cuCsubf(zero,f);
 }  
 
-/*
-__host__ __device__ cuComplex operator*(float scaler, cuComplex f) 
+__host__ __device__ cuComplex operator*(float scale, cuComplex f) 
 {
   cuComplex result;
-  result.x = scaler*f.x;
-  result.y = scaler*f.y;
+  result.x = scale*f.x;
+  result.y = scale*f.y;
   return result;
 }
 
-__host__ __device__ cuComplex operator*(cuComplex f, float scaler) 
+__host__ __device__ cuComplex operator*(cuComplex f, float scale) 
 {
   cuComplex result;
-  result.x = scaler*f.x;
-  result.y = scaler*f.y;
-  return result;
-}
-*/
-__host__ __device__ cuComplex operator*(float scaler, cuComplex f) 
-{
-  cuComplex result;
-  result.x = scaler*f.x;
-  result.y = scaler*f.y;
+  result.x = scale*f.x;
+  result.y = scale*f.y;
   return result;
 }
 
-__host__ __device__ cuComplex operator*(cuComplex f, float scaler) 
+__host__ __device__ cuComplex operator*(cuComplex f, cuComplex g) { return cuCmulf(f,g); }
+__host__ __device__ cuDoubleComplex operator*(cuDoubleComplex f, cuDoubleComplex g) { return cuCmul(f,g); }
+
+__host__ __device__ cuComplex operator/(cuComplex f, float scale)
 {
   cuComplex result;
-  result.x = scaler*f.x;
-  result.y = scaler*f.y;
+  result.x = f.x / scale;
+  result.y = f.y / scale;
   return result;
 }
 
-__host__ __device__ cuComplex operator*(cuComplex f, cuComplex g)
-{
-  return cuCmulf(f,g);
-}
-
-__host__ __device__ cuDoubleComplex operator*(cuDoubleComplex f, cuDoubleComplex g)
-{
-  return cuCmul(f,g);
-}
-
-__host__ __device__ cuComplex operator/(cuComplex f, float scaler)
-{
-  cuComplex result;
-  result.x = f.x / scaler;
-  result.y = f.y / scaler;
-  return result;
-}
-
-__host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) 
-{
-  return cuCdivf(f,g);
-}
-
-__host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) 
-{
-  return cuCdiv(f,g);
-}
+__host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) { return cuCdivf(f,g); }
+__host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) { return cuCdiv(f,g); }
 
 __device__ int get_ikx(int idx) {
   if (idx < nx/2+1)
@@ -208,53 +160,31 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res, cuComplex c1, cuComp
   if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
 }
 
-__global__ void acc_scaled_kernel(cuComplex* res,
-				  const double c1, cuComplex* __restrict__ m1)
-{
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = res[ig] + c1 * m1[ig];
-        }
-      }
-    }
-  }
-}
+/*
+
+!eqfix            false  true    false   true     
+not_fixed_eq      true   true    false   false 
+ 
+action            true   true    false    true
+
+bool proceed == (!eqfix || not_fixed_eq);
+*/
 
 __global__ void add_scaled_kernel(cuComplex* res,
 				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2)
+				  const double c2, cuComplex* m2, bool neqfix = true)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig];
-        }
-      }
-    }
-  }
-}
-
-__global__ void add_scaled_kernel(cuComplex* res,
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, bool eqfix)
-{
-  unsigned int idxyz = get_id1();
-  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig];
-        }
+  unsigned int idxy = get_id1(); 
+  if(idxy < nx*nyc) {
+    if (neqfix || not_fixed_eq(idxy)) {
+      
+      unsigned int idz  = get_id2();
+      if (idz < nz) {
+	
+	unsigned int idslm = get_id3(); 
+	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	
+	res[ig] = c1 * m1[ig] + c2 * m2[ig];
       }
     }
   }
@@ -263,38 +193,19 @@ __global__ void add_scaled_kernel(cuComplex* res,
 __global__ void add_scaled_kernel(cuComplex* res,
 				  const double c1, cuComplex* m1,
 				  const double c2, cuComplex* m2,
-				  const double c3, cuComplex* m3)
+				  const double c3, cuComplex* m3, bool neqfix = true)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig]
-	          + c3 * m3[ig];
-        }
-      }
-    }
-  }
-}
-
-__global__ void add_scaled_kernel(cuComplex* res,
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2,
-				  const double c3, cuComplex* m3, bool eqfix)
-{
-  unsigned int idxyz = get_id1();
-  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig]
-	          + c3 * m3[ig];
-        }
+  unsigned int idxy = get_id1(); 
+  if(idxy < nx*nyc) {
+    if (neqfix || not_fixed_eq(idxy)) {
+      
+      unsigned int idz  = get_id2();
+      if (idz < nz) {
+	
+	unsigned int idslm = get_id3(); 
+	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	
+	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig];
       }
     }
   }
@@ -304,41 +215,19 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  const double c1, cuComplex* m1,
 				  const double c2, cuComplex* m2, 
 				  const double c3, cuComplex* m3,
-				  const double c4, cuComplex* m4)
+				  const double c4, cuComplex* m4, bool neqfix = true)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig] 
-	          + c3 * m3[ig]
-	          + c4 * m4[ig];
-        }
-      }
-    }
-  }
-}
-
-__global__ void add_scaled_kernel(cuComplex* res, 
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, 
-				  const double c3, cuComplex* m3,
-				  const double c4, cuComplex* m4, bool eqfix)
-{
-  unsigned int idxyz = get_id1();
-  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-	          + c2 * m2[ig] 
-	          + c3 * m3[ig]
-	          + c4 * m4[ig];
-        }
+  unsigned int idxy = get_id1(); 
+  if(idxy < nx*nyc) {
+    if (neqfix || not_fixed_eq(idxy)) {
+      
+      unsigned int idz  = get_id2();
+      if (idz < nz) {
+	
+	unsigned int idslm = get_id3(); 
+	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	
+	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig] + c4 * m4[ig];
       }
     }
   }
@@ -349,75 +238,52 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  const double c2, cuComplex* m2, 
 				  const double c3, cuComplex* m3,
 				  const double c4, cuComplex* m4,
-				  const double c5, cuComplex* m5)
+				  const double c5, cuComplex* m5, bool neqfix = true)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-   	          + c2 * m2[ig] 
-	          + c3 * m3[ig]
-	          + c4 * m4[ig] 
-	          + c5 * m5[ig];
-        }
+  unsigned int idxy = get_id1(); 
+  if(idxy < nx*nyc) {
+    if (neqfix || not_fixed_eq(idxy)) {
+      
+      unsigned int idz  = get_id2();
+      if (idz < nz) {
+	
+	unsigned int idslm = get_id3(); 
+	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	
+	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig] + c4 * m4[ig] + c5 * m5[ig];
       }
     }
   }
 }
 
-__global__ void add_scaled_kernel(cuComplex* res, 
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, 
-				  const double c3, cuComplex* m3,
-				  const double c4, cuComplex* m4,
-				  const double c5, cuComplex* m5, bool eqfix)
-{
-  unsigned int idxyz = get_id1();
-  if(not_fixed_eq(idxyz) && idxyz<nx*nyc*nz) { 
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = c1 * m1[ig]
-   	          + c2 * m2[ig] 
-	          + c3 * m3[ig]
-	          + c4 * m4[ig] 
-	          + c5 * m5[ig];
-        }
-      }
-    }
-  }
-}
 
 __global__ void scale_kernel(cuComplex* res, cuComplex* mom, const double scalar)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = scalar*mom[ig];
-        }
-      }
+  unsigned int idxy = get_id1(); 
+  if (idxy < nx*nyc) {
+    unsigned int idz  = get_id2();
+    if (idz < nz) {
+      
+      unsigned int idslm = get_id3(); 
+      unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+      
+      res[ig] = scalar*mom[ig];
     }
   }
 }
 
+
 __global__ void scale_kernel(cuComplex* res, cuComplex* mom, const cuComplex scalar)
 {
-  unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
-    for(int s = 0; s < nspecies; s++) {
-      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-          int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*s; 
-          res[ig] = scalar*mom[ig];
-        }
-      }
+  unsigned int idxy = get_id1(); 
+  if (idxy < nx*nyc) {
+    unsigned int idz  = get_id2();
+    if (idz < nz) {
+      
+      unsigned int idslm = get_id3(); 
+      unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+      
+      res[ig] = scalar*mom[ig];
     }
   }
 }
@@ -433,42 +299,18 @@ __global__ void reality_kernel(cuComplex* g)
   int idx = get_id1();
   int idz = get_id2();
   int idslm = get_id3();
-  /* the following 2 lines are intended to
-  - Determine the species from thread index idslm
-  - Satisfy the condition lm < nm*nl
-  - Utilize the full dimension of blockDim.z = nspecies*nm*nl
-  */
-  int s = idslm / (nm*nl);
-  int lm = idslm % (nm*nl);
   
   if (idx < (nx-1)/3+1 && idz < nz) {
-    
-    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
-    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*lm + nx*nyc*nz*nl*nm*s; 
 
+    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idslm;
+    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idslm;
+    
     if(idx==0) {
       g[ig].x = 0.;
       g[ig].y = 0.;
-    } else if(idx!=0) {
-      g[ig2].x = g[ig].x;
+    } else {
+      g[ig2].x =  g[ig].x;
       g[ig2].y = -g[ig].y;
-    }
-  }
-}
-
-__global__ void reality_singlemom_kernel(cuComplex* mom) 
-{
-  for (int idz = threadIdx.y; idz<nz; idz+=blockDim.y) {
-    for (int idx = threadIdx.x; idx<(nx-1)/3+1; idx+=blockDim.x) {
-      unsigned int index  = nyc*(idx    + nx*idz);
-      unsigned int index2 = nyc*(nx-idx + nx*idz);
-      if(idx==0) {
-	mom[index].x = 0.;
-	mom[index].y = 0.;
-      } else if(idx!=0) {
-        mom[index2].x =  mom[index].x;
-        mom[index2].y = -mom[index].y;
-      }
     }
   }
 }
@@ -606,15 +448,10 @@ __global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2,
 			    float* muB, float rho2_s)
 {
   unsigned int idxyz = get_id1();
-  unsigned int J = (3*nl/2-1);
-
-  // Need to generalize the definition of <J0> 
-  // And this could skip the masked elements on the k grid
-  
-  if(idxyz<nx*nyc*nz) {
-    for (int j = threadIdx.y; j < J; j += blockDim.y) {
-      J0phi[idxyz + nx*nyc*nz*j] = j0f(sqrtf(2. * muB[j] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
-    }
+  unsigned int idj = get_id2();
+  if(idxyz<nx*nyc*nz && idj<nj) {
+    unsigned int ig = idxyz + nx*nyc*nz*idj;
+    J0phi[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
   }
 }
 
@@ -688,15 +525,12 @@ __global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
 			float* dg_dy, float* dJ0phi_dx, float kxfac)
 {
   unsigned int idxyz = get_id1();
-  unsigned int J = (3*nl/2-1);
+  unsigned int idj = get_id2();
 
-  if(idxyz<nx*ny*nz) {
-    for (int j = threadIdx.y; j < J; j += blockDim.y) {
-      unsigned int ig = idxyz + nx*ny*nz*j;
-
-      g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
-
-    }
+  if(idxyz<nx*ny*nz && idj<nj) {
+    unsigned int ig = idxyz + nx*ny*nz*idj;
+    g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
+    
   }
 }
 
@@ -1132,7 +966,8 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
 
-  unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
+  //  unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
+  unsigned int idxyz = get_id1();
   const unsigned int idy = idxyz % nyc; 
   const unsigned int idx = idxyz / nyc % nx;
   if(idxyz<nx*nyc*nz && unmasked(idx, idy)) {
@@ -1177,6 +1012,7 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
   
     // read tile of g into shared mem
     // each thread in the block reads in multiple values of l and m
+    // blockIdx for y and z and both unity in the kernel invocation
     for (int m = threadIdx.z; m < nm; m += blockDim.z) {
      for (int l = threadIdx.y; l < nl; l += blockDim.y) {
       int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
@@ -1190,6 +1026,7 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
     //    __syncthreads();
   
     // set up ghost cells in m (for all l's)
+    // blockIdx.y is unity in the kernel invocation
     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
       int sl = l + 1;
       int sm = threadIdx.z + 2;
@@ -1203,6 +1040,7 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
     }
   
     // set up ghost cells in l (for all m's)
+    // blockIdx.z is unity in the kernel invocation
     for (int m = threadIdx.z; m < nm+2; m += blockDim.z) {
       int sm = m + 1; // this takes care of corners...
       int sl = threadIdx.y + 1;
@@ -1218,6 +1056,7 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
     __syncthreads();
   
     // stencil (on non-ghost cells)
+    // blockIdx for y and z are unity in the kernel invocation
     for (int m = threadIdx.z; m < nm; m += blockDim.z) {
      for (int l = threadIdx.y; l < nl; l += blockDim.y) {
       int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
@@ -1270,21 +1109,23 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
 
 __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();
+
   if(idxyz<nx*nyc*nz) {
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
     float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
     for(int is=0; is<nspecies; is++) { 
-    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
-      if(m>2 || l>1) {
-        rhs[globalIdx] = rhs[globalIdx] -
-  	   (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
-	   +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
+    // blockIdx for y and z are unity in the kernel invocation      
+      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+	for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+	  int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	  if(m>2 || l>1) {
+	    rhs[globalIdx] = rhs[globalIdx] -
+	      (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
+	       +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
+	  }
+	}
       }
-     }
     }
-   }
   }
 }
 
@@ -1297,6 +1138,8 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 				   cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
 {
   unsigned int idxyz = get_id1();
+
+  // can this kernel be moved into the cub framework?
 
   if(idxyz<nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];

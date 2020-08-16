@@ -50,6 +50,20 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
 
   dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   dimGrid = dim3(grids_->NxNycNz/dimBlock.x+1, 1, 1);
+
+  int nyx = grids_->Nyc*grids_->Nx;
+  int nslm =  grids_->Nspecies*grids_->Nm*grids_->Nl;
+
+  int nbx = 32;
+  int ngx = nyx/nbx + min(nyx%nbx, 1);
+
+  int nby = 32;
+  int ngy = grids_->Nz/nby + min(grids_->Nz % nby, 1);
+  
+
+  dB_all = dim3(nbx, nby, 1);
+  dG_all = dim3(ngx, ngy, nslm);
+	 
 }
 
 MomentsG::~MomentsG() {
@@ -165,50 +179,27 @@ int MomentsG::zero(int l, int m, int s) {
 }
 
 int MomentsG::scale(double scalar) {
-  scale_kernel<<<dimGrid,dimBlock>>>(G_lm, G_lm, scalar);
+  scale_kernel <<< dG_all, dB_all >>>(G_lm, G_lm, scalar);
   return 0;
 }
 
 int MomentsG::scale(cuComplex scalar) {
-  scale_kernel<<<dimGrid,dimBlock>>>(G_lm, G_lm, scalar);
-  return 0;
-}
-
-int MomentsG::acc_scaled(const double c1, MomentsG* G1) {
-  acc_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm, c1, G1->G_lm);
+  scale_kernel <<< dG_all, dB_all >>>(G_lm, G_lm, scalar);
   return 0;
 }
 
 int MomentsG::add_scaled(const double c1, MomentsG* G1,
 			 const double c2, MomentsG* G2) {
-  if(pars_->eqfix) {
-    bool bdum = true;
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm, bdum);
-  } else {
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm);
-  }
+  bool neqfix = !pars_->eqfix;
+  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, neqfix);
   return 0;
 }
 
 int MomentsG::add_scaled(const double c1, MomentsG* G1,
 			 const double c2, MomentsG* G2,
 			 const double c3, MomentsG* G3) {
-  if(pars_->eqfix) {
-    bool bdum = true;
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm,
-					      c3, G3->G_lm, bdum);
-  } else {
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm,
-					      c3, G3->G_lm);
-  }
+  bool neqfix = !pars_->eqfix;
+  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, neqfix);
   return 0;
 }
 
@@ -216,20 +207,8 @@ int MomentsG::add_scaled(const double c1, MomentsG* G1,
 			 const double c2, MomentsG* G2,
 			 const double c3, MomentsG* G3,
 			 const double c4, MomentsG* G4) {
-  if(pars_->eqfix) {
-    bool bdum = true;
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm,
-					      c3, G3->G_lm,
-					      c4, G4->G_lm, bdum);
-  } else {
-    add_scaled_kernel <<<dimGrid,dimBlock>>> (G_lm,
-					      c1, G1->G_lm,
-					      c2, G2->G_lm,
-					      c3, G3->G_lm,
-					      c4, G4->G_lm);
-  }
+  bool neqfix = !pars_->eqfix;
+  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, neqfix);
   return 0;
 }
 
@@ -239,31 +218,31 @@ int MomentsG::add_scaled(const double c1, MomentsG* G1,
 			 const double c4, MomentsG* G4,
 			 const double c5, MomentsG* G5)
 {
-  if(pars_->eqfix) {
-    bool bdum = true;
-    add_scaled_kernel<<<dimGrid,dimBlock>>>(G_lm,
-					    c1, G1->G_lm,
-					    c2, G2->G_lm,
-					    c3, G3->G_lm,
-					    c4, G4->G_lm,
-					    c5, G5->G_lm, bdum);
-  } else {
-    add_scaled_kernel<<<dimGrid,dimBlock>>>(G_lm,
-					    c1, G1->G_lm,
-					    c2, G2->G_lm,
-					    c3, G3->G_lm,
-					    c4, G4->G_lm,
-					    c5, G5->G_lm);
-  }
+  bool neqfix = !pars_->eqfix;
+  add_scaled_kernel<<< dG_all, dB_all >>>(G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm, neqfix);
   return 0;
   
 }
 
-int MomentsG::reality() 
+int MomentsG::reality(int ngz) 
 {
-  dim3 dB = dim3(32,min(grids_->Nz,32),1);
-  dim3 dG = dim3((grids_->Nx-1)/3/dB.x+1, grids_->Nz/dB.y, grids_->Nspecies*grids_->Nm*grids_->Nl);
-  reality_kernel<<<dG,dB>>>(G_lm);
+  dim3 dB;
+  dim3 dG;
+
+  int ntx = (grids_->Nx-1)/3 + 1;
+  
+  dB.x = 32;
+  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+
+  int nty = grids_->Nz;
+
+  dB.y = 16;
+  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  
+  dB.z = 1;
+  dG.z = ngz;
+
+  reality_kernel <<< dG, dB >>> (G_lm);
   return 0;
 }
 

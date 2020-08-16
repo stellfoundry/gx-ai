@@ -11,10 +11,10 @@ Grids::Grids(Parameters* pars) :
   Nspecies(pars->nspec_in),
   Nm(pars->nm_in),
   Nl(pars->nl_in),
+  Nj(3*pars->nl_in/2-1),
   // some additional derived grid sizes
   Nyc(Ny/2+1),
   Naky((Ny-1)/3+1),
-  //Nakx(Nx - (2*Nx/3+1 - ((Nx-1)/3+1))),
   Nakx(1 + 2*((Nx-1)/3)),
   NxNyc(Nx * Nyc),
   NxNy(Nx * Ny),
@@ -47,6 +47,7 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol(nspecies, &Nspecies, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nm,  &Nm, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(nl,  &Nl, sizeof(int),0,cudaMemcpyHostToDevice);
+  cudaMemcpyToSymbol(nj,  &Nj, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(zp,  &pars_->Zp, sizeof(float),0,cudaMemcpyHostToDevice);  
   cudaMemcpyToSymbol(ikx_fixed, &pars_->ikx_fixed, sizeof(int),0,cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol(iky_fixed, &pars_->iky_fixed, sizeof(int),0,cudaMemcpyHostToDevice);

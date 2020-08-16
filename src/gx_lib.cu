@@ -38,11 +38,11 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   char serial[100];
   FILE *fp;
 
-  fp = popen("nvidia-smi -q | grep Serial", "r");
+  //  fp = popen("nvidia-smi -q | grep Serial", "r");
   //  while(fgets(serial_full, sizeof(serial_full)-1,fp) != NULL) {
   //    printf("%s\n", serial_full);
   //  }
-  pclose(fp);
+  //  pclose(fp);
   
   for(int i=0; i<8; i++) {
     serial[i] = serial_full[strlen(serial_full) - (9-i)];
@@ -146,7 +146,7 @@ void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
   struct external_parameters_struct externalpars;
   struct gx_outputs_struct gxouts;
 
-  int devid = 0; // This should be determined (optionally) on the command line
+  int devid = 1; // This should be determined (optionally) on the command line
   
   char *run_name;
   if ( argc < 1) {

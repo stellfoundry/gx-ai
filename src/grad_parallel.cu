@@ -58,7 +58,7 @@ void GradParallelPeriodic::dz(MomentsG* G)
   // i*kz*G calculated via callback, defined as part of dz_plan_forward
   // for now, loop over all l and m because cannot batch 
   // eventually will optimize by first transposing so that z is fastest index
-  G->reality(); // Why is this here? 
+
   for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
     // forward FFT (z -> kz) & multiply by i kz (via callback)
     cufftExecC2C(dz_plan_forward, G->G(i), G->G(i), CUFFT_FORWARD);
@@ -66,26 +66,57 @@ void GradParallelPeriodic::dz(MomentsG* G)
     // backward FFT (kz -> z)
     cufftExecC2C(dz_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);
   }
-  G->reality(); // Why is this here?
+  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl); // Why is this here?
 }
 
 // FFT and derivative for a single moment
 void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(dz_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(dz_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+
+  dim3 dB;
+  dim3 dG;
+
+  int ntx = (grids_->Nx-1)/3 + 1;
+  
+  dB.x = 32;
+  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+
+  int nty = grids_->Nz;
+
+  dB.y = 16;
+  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  
+  dB.z = 1;
+  dG.z = 1;
+
+  reality_kernel <<< dG, dB >>> (res);
 }
 
 // FFT and |kz| operator for a single moment
 void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
 {
-  // BD check this
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(mom);
   cufftExecC2C(abs_dz_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(dz_plan_inverse, res, res, CUFFT_INVERSE);
-  reality_singlemom_kernel<<<dim3(32,32,1),dim3(grids_->Nx/32+1, grids_->Nz/32+1,1)>>>(res);
+
+  dim3 dB;
+  dim3 dG;
+
+  int ntx = (grids_->Nx-1)/3 + 1;
+  
+  dB.x = 32;
+  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+
+  int nty = grids_->Nz;
+
+  dB.y = 16;
+  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  
+  dB.z = 1;
+  dG.z = 1;
+
+  reality_kernel <<< dG, dB >>> (res);
 }
 
 // FFT only for a single moment

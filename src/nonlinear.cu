@@ -4,6 +4,16 @@
 #include "get_error.h"
 #include "species.h"
 
+#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
+inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
+{
+  if (code != cudaSuccess) 
+    {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+    }
+}
+
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
@@ -32,12 +42,25 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
-  
-  dimBlock = dim3(32, 4, 1);
-  dimGrid  = dim3(grids_->NxNyNz / dimBlock.x + 1, 1, 1); 
 
-  //  dimBlock = dim3(32, 4, 1);
-  //  dimGrid = dim3(grids_->NxNyNz / dimBlock.x + 1, laguerre->J/dimBlock.y+1, 1); 
+  int nxyz = grids_->NxNyNz;
+  int nlag = laguerre->J;
+
+  int nbx = 32;
+  int ngx = nxyz/nbx + min(nxyz%nbx, 1);
+ 
+  int nby = 8;
+  int ngy = nlag/nby + min(nlag%nby, 1);
+
+  dBx = dim3(nbx, nby, 1);
+  dGx = dim3(ngx, ngy, 1);
+
+  nxyz = grids_->NxNycNz;
+  nbx = 32;
+  ngx = nxyz/nbx + min(nxyz%nbx, 1);
+
+  dBk = dim3(nbx, nby, 1);
+  dGk = dim3(ngx, ngy, 1);
 
   cfl_x_inv = (float) grids_->Nx / (pars_->cfl * 2 * M_PI * pars_->x0);
   cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
@@ -67,7 +90,7 @@ Nonlinear::~Nonlinear()
 void Nonlinear::qvar (cuComplex* G, int N)
 {
   cuComplex* G_h;
-  int Nk = grids_->Nyc;
+  int Nk = grids_->Nyc*grids_->Nx;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
   for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
@@ -93,8 +116,9 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
     qvar(f->phi, grids_->NxNycNz);
     */
     
-    J0phiToGrid <<<dimGrid,dimBlock>>>
+    J0phiToGrid <<< dGk, dBk >>>
       (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+    //    gpuErrchk( cudaPeekAtLastError() );
 
     /*
     printf("\n");
@@ -116,7 +140,7 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
       grad_perp_G->dyC2R(G->Gm(m,s), dG);
       laguerre->transformToGrid(dG, dg_dy);
     
-      bracket <<<dimGrid,dimBlock>>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+      bracket <<< dGx, dBx >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
     
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
