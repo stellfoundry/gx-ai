@@ -146,7 +146,7 @@ void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
   struct external_parameters_struct externalpars;
   struct gx_outputs_struct gxouts;
 
-  int devid = 1; // This should be determined (optionally) on the command line
+  int devid = 0; // This should be determined (optionally) on the command line
   
   char *run_name;
   if ( argc < 1) {
