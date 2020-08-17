@@ -1,6 +1,6 @@
 &gx
  debug = F
- scheme = "k10"
+ scheme = "sspx3"
 
  ntheta = 1
  nperiod = 1
@@ -13,7 +13,7 @@
  forcing_init = F
  
  nhermite = 4
- nlaguerre = 16
+ nlaguerre = 3
  closure_model = "none"
  
  dt = 0.01
@@ -30,7 +30,7 @@
  slab = T,     const_curv = F
 
  nonlinear_mode = T 
- cfl = 1.0
+ cfl = 0.1
 
  nspecies = 1
 
