@@ -178,6 +178,10 @@ void Parameters::get_nml_vars(char* filename)
   fapar = getfloat (ncid, "fapar");
   fbpar = getfloat (ncid, "fbpar");
 
+  tp_t0 = getfloat (ncid, "t0");
+  tp_tf = getfloat (ncid, "tf");
+  tprim0 = getfloat (ncid, "tprim0");
+  tprimf = getfloat (ncid, "tprimf");
   
   if(nz_in != 1) {
     int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 

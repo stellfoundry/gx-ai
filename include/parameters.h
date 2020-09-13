@@ -65,6 +65,7 @@ class Parameters {
   float ion_z, ion_mass, ion_dens, ion_fprim, ion_uprim, ion_temp, ion_tprim, ion_vnewk;
   float avail_cpu_time, margin_cpu_time;
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
+  float tp_t0, tp_tf, tprim0, tprimf;
 
   cuComplex phi_test, smith_perp_w0;
 

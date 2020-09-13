@@ -103,6 +103,10 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   real :: kpar_init = 0.
   real :: forcing_amp = 1.0
   real :: scale = 1.0
+  real :: t0 = -1.0
+  real :: tf = -1.0 
+  real :: tprim0 = -1. 
+  real :: tprimf = -1.
   
   integer :: id_debug, id_restart, id_nonlinear_mode, id_slab, id_const_curv
   integer :: id_secondary, id_save_for_restart, id_eqfix, id_t_dim
@@ -132,6 +136,7 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   integer :: id_spec_type_dum, id_spec_z, id_spec_mass, id_spec_vnewk
   integer :: id_spec_dens, id_spec_temp, id_stir_field_dum
   integer :: id_spec_tprim, id_spec_fprim, id_spec_uprim
+  integer :: id_t0, id_tf, id_tprim0, id_tprimf
 
   integer :: spec_type_dum = -1
   integer :: boundary_dum = -1
@@ -178,7 +183,8 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
        write_phi_kpar, write_rh, write_spec_v_time, write_pzt, &
        write_h_spectrum, write_l_spectrum, write_lh_spectrum, &
        init_single, iky_single, ikx_single, kpar_init, ikx_fixed, iky_fixed, &
-       forcing_init, forcing_type, forcing_amp, forcing_index, scale
+       forcing_init, forcing_type, forcing_amp, forcing_index, scale, &
+       t0, tf, tprim0, tprimf
   ! snyder_electrons, &       
   !       hermite_spectrum_avg_cutoff, &
   ! zero_order_nonlin_flr_only, &
@@ -399,6 +405,11 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_def_var (ncid, "fapar",     NF90_FLOAT,     id_fapar)
   retval = nf90_def_var (ncid, "fbpar",     NF90_FLOAT,     id_fbpar)
 
+  retval = nf90_def_var (ncid, "t0",        NF90_FLOAT,     id_t0)
+  retval = nf90_def_var (ncid, "tf",        NF90_FLOAT,     id_tf)
+  retval = nf90_def_var (ncid, "tprim0",        NF90_FLOAT,     id_tprim0)
+  retval = nf90_def_var (ncid, "tprimf",        NF90_FLOAT,     id_tprimf)
+
 !  retval = nf90_def_var (ncid, "snyder_electrons", &
 !                                            NF90_INT,       id_snyder_electrons)
 
@@ -542,6 +553,11 @@ subroutine read_nml(c_runname) bind(c, name='read_nml')
   retval = nf90_put_var (ncid, id_spec_temp,        sp(1) % temp)
   retval = nf90_put_var (ncid, id_spec_tprim,       sp(1) % tprim)    
   retval = nf90_put_var (ncid, id_spec_vnewk,       sp(1) % vnewk)
+
+  retval = nf90_put_var (ncid, id_t0,      t0)
+  retval = nf90_put_var (ncid, id_tf,      tf)  
+  retval = nf90_put_var (ncid, id_tprim0,  tprim0)
+  retval = nf90_put_var (ncid, id_tprimf,  tprimf)  
 
   retval = nf90_close (ncid)
   
