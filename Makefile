@@ -29,8 +29,8 @@ GEO_LIBS=${GS2}/geometry_c_interface.o
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
 # CFLAGS= -std=c++03 ${CUDA_INC} ${MPI_INC} ${GSL_INC} 
-CFLAGS= -std=c++11 ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC}
-LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${GSL_LIB} ${NETCDF_LIB} ${FORT_LIB} ${CUTENSOR_LIB}
+CFLAGS= -std=c++11 ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${NETCDF_INC} ${PMI_INC}
+LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${GSL_LIB} ${NETCDF_LIB} ${FORT_LIB} ${PMI_LIB}
 
 #####################################
 # Rule for building the system_config
