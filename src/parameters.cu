@@ -381,8 +381,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "code_info",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   // should put attributes here, for date, time, version, normalization
 
-  //  if (retval = nc_enddef (ncid)) ERR(retval);
-  // bug?
+  if (retval = nc_enddef (ncid)) ERR(retval);
   
   putbool  (ncid, "debug",     debug);
   putint   (ncid, "ntheta",    nz_in);
