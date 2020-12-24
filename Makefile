@@ -28,9 +28,9 @@ LD = $(NVCC)
 GEO_LIBS=${GS2}/geometry_c_interface.o 
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
-# CFLAGS= -std=c++03 ${CUDA_INC} ${MPI_INC} ${GSL_INC} 
-CFLAGS= -std=c++11 ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC}
-LDFLAGS=$(CUDA_LIB) ${MPI_LIB} ${GSL_LIB} ${NETCDF_LIB} ${FORT_LIB} ${CUTENSOR_LIB}
+CFLAGS= ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC}
+#CFLAGS= -std=c++14 ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC} 
+LDFLAGS= ${FORT_LIB} $(CUDA_LIB) ${MPI_LIB} ${GSL_LIB} ${NETCDF_LIB} ${CUTENSOR_LIB}
 
 #####################################
 # Rule for building the system_config
@@ -60,13 +60,8 @@ VPATH=.:src
 
 HEADERS=$(wildcard include/*.h) 
 
-## special dependencies
-obj/parameters.o: read_nml.f90
-obj/diagnostics.o: reductions.cu
-obj/nonlinear.o: reductions.cu
-
 obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include 
+	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include 
 
 obj/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
@@ -78,7 +73,7 @@ obj/%.o: %.f90
 # Rules for building gx
 ####################################
 
-OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o reductions.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o grad_parallel_linked.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o ncdf.o read_nml.o 
+OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o reductions.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o grad_parallel_linked.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o ncdf.o
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS)) 

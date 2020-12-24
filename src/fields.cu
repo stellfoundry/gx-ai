@@ -8,12 +8,9 @@ Fields::Fields(Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz),
   cudaMemset(phi, 0., size_);
 
   cudaMallocHost((void**) &phih, size_);
-  fft = new GradPerp(grids_, grids_->Nz);
-  
 }
 
 Fields::~Fields() {
-  delete fft;
   cudaFree(phi);
   cudaFreeHost(phih);
 }
@@ -26,26 +23,3 @@ void Fields::print_phi(void)
   printf("\n");
 }
 
-void Fields::chk_fft()
-{
-
-  size_t fs = sizeof(float)*grids_->NxNyNz;
-  
-  printf("d Phi/dx in real space: \n");
-  float* fr;
-  checkCuda(cudaMalloc((void**) &fr, fs));
-  cudaMemset(fr, 0., fs);
-  
-  float* fh;
-  cudaMallocHost((void**) &fh, fs);
-  
-  fft->dxC2R(phi, fr);  CP_TO_CPU(fh, fr, fs);  cudaFree(fr);
-  
-  for (int ig=0; ig<grids_->NxNyNz; ig++) {
-    printf("phi(%d) = %e \n", ig, fh[ig]);
-    //    printf("phi(%d,%d) = %e \n", ig%4, ig/4, fh[ig]);
-    //    if (ig%4==3) printf("\n");
-  }
-  
-  cudaFreeHost(fh);
-}

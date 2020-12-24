@@ -67,7 +67,11 @@ void Solver::svar (float* f, int N)
 
 int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
+  // NEED TO BUILD THE NON_ADIABATIC OPTION! 
   if(pars_->adiabatic_electrons) {
+    // To do:
+    // ??Better to define an object J_0 G(m=0) * dens * z == JG == JG(ky, kx, z, l, s)
+    // and then use a tensor reduction to take JG => N = N(ky, kx, z, s)
     real_space_density <<<grids_->NxNycNz/maxThreadsPerBlock_+1, maxThreadsPerBlock_>>>
       (nbar, G->G(), geo_->kperp2, pars_->species);
 

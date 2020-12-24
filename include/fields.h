@@ -2,7 +2,6 @@
 
 #include "cufft.h"
 #include "grids.h"
-#include "grad_perp.h"
 
 class Fields {
   public:
@@ -13,8 +12,7 @@ class Fields {
     cuComplex* phi;
     cuComplex* apar; // for electromagnetic only
     void print_phi(void);
-    void chk_fft(void);
-    
+
     inline void copyFrom(Fields* source) {
       cudaMemcpyAsync(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
     }
@@ -22,6 +20,5 @@ class Fields {
   private:
     const size_t size_;
     int N;
-    GradPerp* fft;
     Grids* grids_;
 };

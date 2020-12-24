@@ -1,5 +1,5 @@
 #include "nonlinear.h"
-// #include "cuda_constants.h"
+#include "cuda_constants.h"
 #include "device_funcs.h"
 #include "get_error.h"
 #include "species.h"
@@ -18,7 +18,7 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {
 
-  if (grids_->Nl<2) {
+  if (grids_ -> Nl < 2) {
     printf("\n");
     printf("Cannot do a nonlinear run with nlaguerre < 2\n");
     printf("\n");
@@ -26,25 +26,35 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   laguerre =        new LaguerreTransform(grids_, 1);
-  red =             new Red(grids_->NxNyNz*laguerre->J);
-  grad_perp_G =     new GradPerp(grids_, grids_->Nz*grids_->Nl);
-  grad_perp_J0phi = new GradPerp(grids_, grids_->Nz*laguerre->J);
+  //  red =             new Red(grids_->NxNyNz*grids_->Nj);
+  red =             new Red(grids_->NxNyNz);
+
+  nBatch = grids_->Nz*grids_->Nl; 
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
+  
+  nBatch = grids_->Nz*grids_->Nj; 
+  grad_perp_J0phi = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
+
+  nBatch = grids_->Nz;
+  grad_perp_phi =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
   
   checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
-  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*laguerre->J));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
-  checkCuda(cudaMalloc(&J0phi,      sizeof(cuComplex)*grids_->NxNycNz*laguerre->J));
-  checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*laguerre->J));
-  checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&J0phi,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+  checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
-  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*laguerre->J));
+  checkCuda(cudaMalloc(&dphi,  sizeof(float)*grids_->NxNyNz));
+  
+  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
 
   int nxyz = grids_->NxNyNz;
-  int nlag = laguerre->J;
+  int nlag = grids_->Nj;
 
   int nbx = 32;
   int ngx = nxyz/nbx + min(nxyz%nbx, 1);
@@ -94,8 +104,24 @@ void Nonlinear::qvar (cuComplex* G, int N)
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
   for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
+
   printf("\n");
   for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  printf("\n");
+
+  free (G_h);
+}
+
+void Nonlinear::qvar (float* G, int N)
+{
+  float* G_h;
+  int N_ = grids_->Ny*grids_->Nx*grids_->Nz;
+  G_h = (float*) malloc (sizeof(float)*N);
+  for (int i=0; i<N; i++) {G_h[i] = 0.;}
+  CP_TO_CPU (G_h, G, N*sizeof(float));
+
+  printf("\n");
+  for (int i=0; i<N; i++) printf("var(%d,%d) = %e \n", i%N_, i/N_, G_h[i]);
   printf("\n");
 
   free (G_h);
@@ -107,62 +133,42 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
 
     // BD  J0phiToGrid does not use a Laguerre transform. Implications?
     // BD  If we use alternate forms for <J0> then that would need to be reflected here
-    //    printf("nonlinear\n");
+
     //    print_cudims(dimGrid, dimBlock);
 
-    /*
-    printf("\n");
-    printf("Phi:\n");
-    qvar(f->phi, grids_->NxNycNz);
-    */
-    
-    J0phiToGrid <<< dGk, dBk >>>
-      (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
-    //    gpuErrchk( cudaPeekAtLastError() );
+    //    printf("\n");
+    //    printf("Phi:\n");
+    //    qvar(f->phi, grids_->NxNycNz);
 
-    /*
-    printf("\n");
-    printf("J0 * Phi:\n");
-    qvar(J0phi, grids_->NxNycNz*laguerre->J);
-    exit(1);
-    */
     
-    grad_perp_J0phi->dxC2R(J0phi, dJ0phi_dx);
-    grad_perp_J0phi->dyC2R(J0phi, dJ0phi_dy);
+    J0phiToGrid <<< dGk, dBk >>> (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+
+    grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
+    grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
 
     // loop over m to save memory. also makes it easier to parallelize later...
-    // no extra computation though, just no batching in m in FFTs and matrix multiplies
+    // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     for(int m=0; m<grids_->Nm; m++) {
 
-      grad_perp_G->dxC2R(G->Gm(m,s), dG);
-      laguerre->transformToGrid(dG, dg_dx);
+      grad_perp_G -> dxC2R(G->Gm(m,s), dG);
+      laguerre    -> transformToGrid(dG, dg_dx);
     
-      grad_perp_G->dyC2R(G->Gm(m,s), dG);
-      laguerre->transformToGrid(dG, dg_dy);
-    
+      grad_perp_G -> dyC2R(G->Gm(m,s), dG);      
+      laguerre    -> transformToGrid(dG, dg_dy);
+         
       bracket <<< dGx, dBx >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
-    
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
 
     }
+
   }
 }
-
-// Note: should only be called after nlps5d, as it assumes 
-// dJ0phi_dx, dJ0phi_dy have been calculated.
-double Nonlinear::cfl(double dt_max)
+double Nonlinear::cfl(Fields *f, double dt_max)
 {
-  float vmax = 1.e-10;
-  vmax_x[0] = vmax;  vmax_y[0] = vmax;
-
-  red->MaxAbs(dJ0phi_dx, val1);    cudaMemcpy(vmax_y, val1, sizeof(float), cudaMemcpyDeviceToHost);
-  red->MaxAbs(dJ0phi_dy, val1);    cudaMemcpy(vmax_x, val1, sizeof(float), cudaMemcpyDeviceToHost);
-
-  vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);    
+  grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
+  grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
+  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
   dt_cfl = min(dt_max, 1./vmax);
-
   return dt_cfl;
 }
-
-

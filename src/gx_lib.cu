@@ -8,7 +8,7 @@
 
 void gx_get_default_parameters_(struct external_parameters_struct * externalpars,
 				char *run_name, MPI_Comm mpcom, int devid) {  
-  
+
   int iproc;
 
   //  printf("Communicator is %d\n", mpcom);
@@ -18,15 +18,31 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   int numdev;
 
   cudaGetDeviceCount(&numdev);
+  //
+  // If there are multiple devices available, this needs work
+  // bug
   cudaSetDevice(devid);
 
-  cudaGetDevice(&externalpars->mpirank); // this does not look right
+  cudaGetDevice(&externalpars->mpirank); // assuming there is one GPU per CPU this
+                                         // sets externalpars->mpirank to be the devid for that GPU
   if(iproc==0 && false) printf("Initializing gx ...\t runname is %s\n", run_name);
 
   // read input parameters from namelist
   Parameters *pars = new Parameters;
   //  pars->read_namelist(run_name);
   pars->get_nml_vars(run_name);
+  //
+  // With the present setup, this call to get_nml_vars will be 
+  // run on every host (for all values of iproc). 
+  // Each one will attempt to open an output file called run_name.nc
+  // This is fine for gx as a standalone code with one host and one dev
+  // but it is not correct for one host and two devs.
+  // If there were multiple calls to gx as a library, from Trinity,
+  // then as long as one gx is running on one host with one device, this is fine.
+  // Well, actually, it might be that Trinity maintains a family with a single
+  // run_name and then this will be problematic. Depends on Trinity usage.
+
+  
   // copy elements of input_parameters_struct into external_parameters_struct externalpars
   if (iproc==0) pars->set_externalpars(externalpars);
 
@@ -36,7 +52,7 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   
   char serial_full[100];
   char serial[100];
-  FILE *fp;
+  //  FILE *fp;
 
   //  fp = popen("nvidia-smi -q | grep Serial", "r");
   //  while(fgets(serial_full, sizeof(serial_full)-1,fp) != NULL) {
@@ -53,7 +69,12 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
   
   if (false) printf("About to broadcast externalpars %d %d\n", nprocs, iproc);
 
-  // BD: We could communicate the externalpars through NetCDF files instead
+  // BD: I think this is designed for a case with multiple cores that 
+  // are running an instance of (linear) gs2 (with sources from gx nonlinearities)
+  // on multiple CPUs, and a single copy of gx for this namespace?
+  // And then Trinity is managing the calls to these gx+gs2 instances?
+  
+  
   //  
   // EGH: this is a nasty way to broadcast externalpars... we should
   // really define a custom MPI datatype. However it should continue
@@ -82,7 +103,7 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   
   //  int gpuID = externalpars->job_id;
   
-  // Only proc0 needs to import paramters to gx
+  // Only proc0 needs to import parameters to gx
   // copy elements of external_parameters_struct externalpars into pars
   // this is done because externalpars may have been changed externally (i.e. by Trinity) 
   // between calls to gx_get_default_parameters and gx_get_fluxes.
@@ -110,6 +131,9 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
     }
     else if(igeo==1) {
       geo = new File_geo(pars, grids);
+      printf("************************* \n \n \n");
+      printf("Warning: assumed grho = 1 \n \n \n");
+      printf("************************* \n");
       CUDA_DEBUG("Initializing geometry from file: %s \n");
     } 
     else if(igeo==2) {

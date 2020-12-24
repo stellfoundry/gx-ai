@@ -66,7 +66,8 @@ class Geometry {
   float * omegad; // still used in closures. Should be cleaned out. 
   float * cv_d;
   float * gb_d; 
-
+  float * kperp2_h;
+  
   void initializeOperatorArrays(Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM
 

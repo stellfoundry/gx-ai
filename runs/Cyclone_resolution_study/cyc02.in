@@ -1,5 +1,5 @@
 &gx
- debug = F
+ debug = false
  scheme = "k10"
 
  ntheta = 32
@@ -20,63 +20,60 @@
  navg   = 200
  nsave  = 100000
 
- beta = 0. 
+ beta = 0.0 
  TiTe = 1.0
 
- igeo = 0,     rhoc = 0.18,  eps = 0.18,   shat = 0.8
- Rmaj = 1.0,   shift = 0.0,  qinp = 1.4,
- akappa = 1.0, akappri = 0.0, tri = 0.,   tripri = 0.
+ igeo = 0
+ rhoc = 0.18
+ eps = 0.18
+ shat = 0.8
+ Rmaj = 1.0
+ shift = 0.0
+ qinp = 1.4
+ 
+ akappa = 1.0
+ akappri = 0.0
+ tri = 0.0
+ tripri = 0.0
 
- slab = F,     const_curv = F
+ slab = false
+ const_curv = false
 
- nonlinear_mode = F 
+ nonlinear_mode = false 
  cfl = 0.5 
 
  nspecies = 1
 
- kpar_init = 0.
- write_fluxes = F
- write_omega  = T
- write_phi    = T
+ kpar_init = 0.0
+ write_fluxes = false
+ write_omega  = true
+ write_phi    = true
 
- write_lh_spectrum = T
- write_h_spectrum  = T
- write_l_spectrum  = T
- write_spec_v_time = T
+ write_lh_spectrum = true
+ write_h_spectrum  = true
+ write_l_spectrum  = true
+ write_spec_v_time = true
 
- write_phi_kpar = F
- write_moms = T
- write_rh = F
- restart = F
+ write_phi_kpar = false
+ write_moms = true
+ write_rh = false
+ restart = false
  restart_to_file = "cyc01.out.nc"
- save_for_restart = T
+ save_for_restart = true
  init_field = "density"
 
- init_amp = 1.e-20
+ init_amp = 1.0e-20
  iphi00 = 2  
-/
 
-&species_parameters_1
- z = 1.0 
- mass = 1.0 
- dens = 1.0
- temp = 1.0 
- tprim = 6.9
- fprim = 2.2 
- uprim = 0.0 
- vnewk = 0.0
- type = "ion" 
-/
 
-&species_parameters_2
- z = -1.0 
- mass = 2.7e-4
- dens = 1. 
- temp = 1.0 
- tprim = 6.9
- fprim = 2.2 
- uprim = 0.0 
- vnewk = 0. 
- type = "electron" 
-/
+[species]
+ z      = [ 1.0,   -1.0  ]
+ mass   = [ 1.0,   2.7e-4]
+ dens   = [ 1.0,    1.0  ]
+ temp   = [ 1.0,    1.0  ]
+ tprim  = [ 6.9,    0.0  ]
+ fprim  = [ 2.2,    2.2  ]
+ uprim  = [ 0.0,    0.0  ]
+ vnewk  = [ 0.0,    0.0  ]
+ type   = [ "ion", "electron" ] 
 

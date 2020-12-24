@@ -14,8 +14,9 @@ class Nonlinear {
   ~Nonlinear();
 
   void nlps5d(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(double dt_max);
+  double cfl(Fields *f, double dt_max);
   void qvar(cuComplex* G, int N);
+  void qvar(float* G, int N);
   
  private:
 
@@ -25,13 +26,17 @@ class Nonlinear {
   Geometry* geo_;
   GradPerp* grad_perp_G;
   GradPerp* grad_perp_J0phi;
+  GradPerp* grad_perp_phi;
   Red* red; 
   dim3 dGk, dBk;
   dim3 dGx, dBx;
 
+  int nBatch;
+  size_t Size; 
+  
   float *dG, *dg_dx, *dg_dy, *val1;
   cuComplex *J0phi;
-  float *dJ0phi_dx, *dJ0phi_dy;
+  float *dJ0phi_dx, *dJ0phi_dy, *dphi;
   float *g_res;
 
   float *vmax_x, *vmax_y;

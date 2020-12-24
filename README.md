@@ -6,9 +6,9 @@ This allows GX to smoothly interpolate between coarse gyrofluid-like resolutions
 
 To get started, you will need an NVIDIA GPU and the gsl (cpu) and CUDA (gpu) libraries.
 
-GX is currently supported on Maverick at TACC, where you can simply module load cuda and set the GK_SYSTEM environment variable with 
+GX is currently supported on Traverse at Princeton, where you can simply module load cuda and set the GK_SYSTEM environment variable with 
 
-$ export GK_SYSTEM=maverick 
+$ export GK_SYSTEM=traverse
 
 On other systems, you will need to make a custom Makefiles/Makefile.[SYSTEM] with the paths to the CUDA libraries 
 (use Makefile.maverick as an example) and set the GK_SYSTEM environment variable to [SYSTEM].

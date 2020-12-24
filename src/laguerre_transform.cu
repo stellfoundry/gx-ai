@@ -62,7 +62,7 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
       double tmp = gsl_sf_choose (i, j);      
       //      printf("tmp = %d\n",tmp);
       tmp *= gsl_pow_int(-1.0, j) / gsl_sf_fact(j) * gsl_pow_int(-1.0, i);
-      //      printf("tmp=%g \n",tmp);
+      //      printf("i, j, tmp = %d, %d, %e \n", i, j, tmp);
       gsl_matrix_set(poly, i, j, tmp);
     }
   }
@@ -75,12 +75,12 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
     roots_h[j] = (float) x_i; // Used in argument of J0
     //    printf("roots_h[%d] =  %f \n",j,roots_h[j]);
     wgt = pow (gsl_matrix_get (evec, 0, j), 2); // square first element of j_th eigenvector
-
+    //    printf("wgt = %e \n",wgt);
     // evaluate the ell-th polynomial at x(j) = x_j and multiply by weight(j) as needed
     for (ell=0; ell<L; ell++) {
       polyvec = gsl_matrix_row (poly, ell);
       Lmat = gsl_poly_eval(polyvec.vector.data, ell+1, x_i);
-
+      //printf("j, l, L(j,l) = %d, %d, %e \n",j,ell,(float) Lmat);
       toGrid_h[ell + L*j] = (float) Lmat;
       Lmat = Lmat * wgt;
       toSpectral_h[j + J*ell] = (float) Lmat;
@@ -107,6 +107,7 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
   float beta = 0.;
   int ldc = grids_->NxNyNz;
   int strideC = grids_->NxNyNz*J;
+  //  printf("J = %d \n",J);
   return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      G_in, lda, strideA,

@@ -23,6 +23,7 @@ Grids::Grids(Parameters* pars) :
   NxNz(Nx * Nz),
   NycNz(Nyc * Nz),
   Nmoms(Nm*Nl),
+  size_G( sizeof(cuComplex) * NxNycNz * Nmoms * Nspecies), 
   pars_(pars)
 {
   cudaDeviceSynchronize();

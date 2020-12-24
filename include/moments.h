@@ -19,9 +19,7 @@ class MomentsG {
     // glm[ky, kx, z]
   }
 
-  cuComplex* Gm(int m, int s=0) {
-    return G(0,m,s);
-  }
+  cuComplex* Gm(int m, int s=0) {   return G(0,m,s);   }
 
   void qvar (int N);
   void apply_mask(void);
@@ -35,9 +33,6 @@ class MomentsG {
 		 const double c4, MomentsG* G4);
   int add_scaled(const double c1, MomentsG* G1, const double c2, MomentsG* G2, const double c3, MomentsG* G3,
 		 const double c4, MomentsG* G4, const double c5, MomentsG* G5);
-
-  int zero();
-  int zero(int l, int m, int s=0);
 
   int scale(double scalar);
   int scale(cuComplex scalar);

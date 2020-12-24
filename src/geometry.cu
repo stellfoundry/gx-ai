@@ -61,6 +61,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   cudaMallocHost((void**) &cvdrift0_h, size);
   cudaMallocHost((void**) &grho_h, size);
   cudaMallocHost((void**) &jacobian_h, size);
+
+  //  cudaMallocHost((void**) &kperp2_h, sizeof(float)*grids->NxNycNz);
   
   cudaMalloc((void**) &z, size);
   cudaMalloc((void**) &bmag, size);
@@ -199,10 +201,10 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   cudaMalloc((void**) &grho, size);
   cudaMalloc((void**) &jacobian, size);
   
-  FILE * geoFile = fopen(pars->geofilename, "r");
+  FILE * geoFile = fopen(pars->geofilename.c_str(), "r");
   
   if (geoFile == NULL) {
-    printf("Cannot open file %s \n", pars->geofilename);
+    printf("Cannot open file %s \n", pars->geofilename.c_str());
     exit(0);
   }
 
@@ -346,6 +348,19 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
 				       gds2, gds21, gds22, bmagInv, shat);
   init_omegad <<<dimGrid, dimBlock>>> (omegad, cv_d, gb_d, grids->kx, grids->ky,
 				       cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
+  /*
+  CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);
+
+  for (int iz=0; iz < grids->Nz; iz++) {
+    for (int ikx=0; ikx < grids->Nx; ikx++) {
+      for (int iky=0; iky< grids->Nyc; iky++) {
+	printf("kperp2(%d,%d,%d) = %e \n", iky, ikx, iz, kperp2_h[iky + grids->Nyc*ikx + grids->Nyc*grids->Nx*iz]);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+  */  
 }
 
 // MFM - 07/25/17

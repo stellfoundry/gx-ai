@@ -30,7 +30,7 @@ void SSPx2::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, Mome
   if(nonlinear_ != NULL) {
     nonlinear_->nlps5d(G, f, GStar);
     GRhs->add_scaled(1., GRhs, 1., GStar);
-    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
   if (pars_->eqfix) G1->copyFrom(G);   
@@ -95,7 +95,7 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, Mome
   if(nonlinear_ != NULL) {
     nonlinear_->nlps5d(G, f, GStar);
     GRhs->add_scaled(1., GRhs, 1., GStar);
-    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
   if (pars_->eqfix) G1->copyFrom(G);   
@@ -132,6 +132,8 @@ int SSPx3::advance(double *t, MomentsG* G, Fields* f)
     }
   }
 
+  //  f->print_phi();
+  
   EulerStep (G1, G, GRhs, f, GStar, true); 
   solver_->fieldSolve(G1, f);
 
@@ -181,7 +183,7 @@ void RungeKutta2::EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* G, MomentsG* G
     nonlinear_->nlps5d(G0, f, GStar);
     GRhs->add_scaled(1., GRhs, 1., GStar);
 
-    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
   if (pars_->eqfix) G1->copyFrom(G);   
@@ -243,7 +245,7 @@ int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
     GRhs1->add_scaled(1., GRhs1, 1., GRhs3); // GRhs3 is a tmp array here
 
       // choose the timestep
-    dt_ = nonlinear_->cfl(dt_max);
+    dt_ = nonlinear_->cfl(f, dt_max);
   }
   
   // GRhs3 = G(t) + RHS(t) * dt/2 = G(t+dt/2) (first approximation)
@@ -357,7 +359,7 @@ int RungeKutta3::advance(double *t, MomentsG* G, Fields* f)
     GRhs1->add_scaled(1., GRhs1, 1., GStar);
 
     // choose the timestep
-    dt_ = nonlinear_->cfl(dt_max);
+    dt_ = nonlinear_->cfl(f, dt_max);
   }    
 
   if (pars_->eqfix) GRhs1->copyFrom(G);
@@ -598,7 +600,7 @@ void SDCe::full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar)
     GRhs->add_scaled(1., GRhs, 1., GStar);
   }
 
-  //  if (setdt) dt_ = nonlinear_->cfl(dt_max);
+  //  if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   //  G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
 
   //    printf("another G_q1 (K10):\n");
@@ -631,7 +633,34 @@ Ketcheson10::~Ketcheson10()
   delete GRhs;
   delete GStar;
 }
+/*  
 
+// 
+// should be able to use less temporary memory by calculating things in a different order
+// and just accumulating the results. 
+// The problem is that the nonlinear term gets written into from inverse FFTs, so it needs to 
+// go first, and then have the rhs_par term calculated ... and returned by adding to the 
+// existing array? Hmmm.
+//
+// In any case, we should not need temporary space for all of nonlinear and rhs_par and GRHS
+// 
+
+void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt)
+{
+
+  if(nonlinear_ != NULL) {
+    nonlinear_->nlps5d(G_q1, f, GStar);
+    //    GRhs->add_scaled(1., GRhs, 1., GStar);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
+  }
+
+  linear_->rhs(G_q1, f, GRhs);
+
+
+  G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
+  solver_->fieldSolve(G_q1, f);    
+}
+*/
 void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt)
 {
   linear_->rhs(G_q1, f, GRhs);
@@ -639,7 +668,7 @@ void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG*
   if(nonlinear_ != NULL) {
     nonlinear_->nlps5d(G_q1, f, GStar);
     GRhs->add_scaled(1., GRhs, 1., GStar);
-    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
   G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
@@ -717,7 +746,7 @@ void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, b
   if(nonlinear_ != NULL) {
     nonlinear_->nlps5d(G_q1, f, GStar);
     GRhs->add_scaled(1., GRhs, 1., GStar);
-    if (setdt) dt_ = nonlinear_->cfl(dt_max);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
   G_q1->add_scaled(1., G_q1, dt_/6., GRhs);

@@ -27,6 +27,7 @@ class Grids {
   const int NxNz;
   const int NycNz;
   const int Nmoms;
+  const size_t size_G;
   
   float * ky;
   float * kx;

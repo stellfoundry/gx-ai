@@ -66,7 +66,7 @@ void GradParallelPeriodic::dz(MomentsG* G)
     // backward FFT (kz -> z)
     cufftExecC2C(dz_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);
   }
-  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl); // Why is this here?
+  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl); // Why is this here? Evidence of a bug somewhere?
 }
 
 // FFT and derivative for a single moment

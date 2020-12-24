@@ -1,10 +1,8 @@
 #pragma once
 #define ION 0
-
-// Defines the species identifiers and the specie struct
-// which stores species properties
+ 
 typedef struct {
-  float z;
+  float z; 
   float mass;
   float dens;
   float temp;
@@ -17,6 +15,9 @@ typedef struct {
   float nu_ss;
   float rho;           
   float rho2;           
-  float vt;    
-  // char type[100];        
+  float vt;
+  float nt;
+  float qneut;
+  float nz;
+  int type;
 } specie;

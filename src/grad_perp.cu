@@ -4,14 +4,17 @@
 #include "grad_perp.h"
 #include "cuda_constants.h"
 
-GradPerp::GradPerp(Grids* grids, int batch_size)
- : grids_(grids), batch_size_(batch_size)
+GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
+  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size)
 {
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_dxC2R);
   cufftCreate(&gradperp_plan_dyC2R);
 
-  //  cufftCreate(&gradperp_plan_C2R);
+  // Use MakePlanMany to enable callbacks
+  // Order of Nx, Ny is correct here
+
+  cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_);
   
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
@@ -36,16 +39,25 @@ GradPerp::GradPerp(Grids* grids, int batch_size)
 
 GradPerp::~GradPerp()
 {
+  cudaFree (tmp);
   cufftDestroy(gradperp_plan_R2C);
   cufftDestroy(gradperp_plan_dxC2R);
   cufftDestroy(gradperp_plan_dyC2R);
 }
 
+// Out-of-place 2D transforms in cufft now overwrite the input data. 
+
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
-{ cufftExecC2R(gradperp_plan_dxC2R, G, dxG); }
+{
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
+  cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG);
+}
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
-{ cufftExecC2R(gradperp_plan_dyC2R, G, dyG); }
+{
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;  
+  cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG);
+}
 
 void GradPerp::R2C(float* G, cuComplex* res)
 { cufftExecR2C(gradperp_plan_R2C, G, res);   }

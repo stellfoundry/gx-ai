@@ -3,6 +3,8 @@
 #include <species.h>
 #include <gx_lib.h>
 #include <cufft.h>
+#include <string>
+#include <vector>
 
 #define PHI 0                                                                            
 #define DENS 1
@@ -27,22 +29,37 @@
 #define SMITHPAR 3
 #define PHIEXT 1
 
+#define WSPECTRA_species 0
+#define WSPECTRA_kx 1
+#define WSPECTRA_ky 2
+#define WSPECTRA_z  3
+#define WSPECTRA_l  4
+#define WSPECTRA_m  5
+#define WSPECTRA_lm 6
+#define WSPECTRA_kperp 7
+#define WSPECTRA_kxky 8
+
+#define PSPECTRA_species 0
+#define PSPECTRA_kx 1
+#define PSPECTRA_ky 2
+#define PSPECTRA_kperp 3
+#define PSPECTRA_kxky 4
+#define PSPECTRA_z 5
+
 class Parameters {
 
  public:
   Parameters(void);
   ~Parameters(void);
-  void get_nml_vars(char* file);
-  float getfloat (int ncid, const char varname[]); 
-  int   getint   (int ncid, const char varname[]); 
-  bool  getbool  (int ncid, const char varname[]); 
-  void  putint   (int ncid, const char varname[], int val);
-  void  putfloat (int ncid, const char varname[], float val); 
   
+  const int nw_spectra = 9;
+  const int np_spectra = 6;
+  void get_nml_vars(char* file);
   int set_externalpars(external_parameters_struct* externalpars);
   int import_externalpars(external_parameters_struct* externalpars);
   void init_species(specie* species);
-  
+
+  int ncid;
   int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
@@ -85,7 +102,8 @@ class Parameters {
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
   bool zero_order_nonlin_flr_only, no_zonal_nlpm;
   bool write_l_spectrum, write_h_spectrum, write_lh_spectrum, write_spec_v_time;
-  bool write_phi_kpar, write_moms, write_fluxes;
+  bool write_phi_kpar, write_moms, write_fluxes, diagnosing_spectra;
+  bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
@@ -94,16 +112,46 @@ class Parameters {
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
   char run_name[255];
-  char restart_from_file[512];
-  char restart_to_file[512];
+
+  int specs[1]; // dims for netcdf species variable arrays
+  size_t is_start[1], is_count[1]; 
+
+  int pspecdim[1]; // dimension of control structure for spectral plots
+  int wspecdim[1]; // dimension of control structure for spectral plots
+  size_t pspectra_start[1], pspectra_count[1]; 
+  size_t wspectra_start[1], wspectra_count[1]; 
   
-  char boundary[32], closure_model[32], scheme[32], geofilename[512];
-  char source[32], init_field[32], forcing_type[32], stir_field[32];
+  std::string restart_from_file, restart_to_file;
+  //  char restart_from_file[512];
+  //  char restart_to_file[512];
+  
+  std::string scheme, forcing_type, init_field, stir_field;
+  std::string closure_model, boundary, source;
+  
+  // char scheme[32], forcing_type[32], init_field[32], stir_field[32];
+  // char boundary[32], closure_model[32], source[32];
+
+  std::string geofilename;
+  //  char geofilename[512];
+
+  //  int *spectra = (int*) malloc (sizeof(int)*13);
+  std::vector<int> wspectra;
+  std::vector<int> pspectra;
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;
 
  private:
+
+  float getfloat (int ncid, const char varname[]); 
+  int   getint   (int ncid, const char varname[]); 
+  bool  getbool  (int ncid, const char varname[]); 
+  void  putint   (int ncid, const char varname[], int val);
+  void  putfloat (int ncid, const char varname[], float val); 
+  void  putbool  (int ncid, const char varname[], bool val);
+  void  putspec (int ncid, int m, specie* val);
+  void  put_wspectra (int const ncid, std::vector<int> s);
+  void  put_pspectra (int const ncid, std::vector<int> s);
   bool initialized;
 };
 

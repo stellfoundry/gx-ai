@@ -17,7 +17,17 @@ __host__ __device__ float factorial(int m) {
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__device__ float Jflr(int l, float b, bool enforce_JL_0) {
+__device__ float JU (const int l, const float b, bool enforce_JL_0) {
+  return (sqrtf(b)*(Jflr(l, b, enforce_JL_0) + Jflr(l-1, b, enforce_JL_0)));;
+}
+
+__device__ float JT (const int l, const float b, bool enforce_JL_0) {
+  return (l * Jflr(l-1, b, enforce_JL_0)
+     +  2*l * Jflr(l  , b, enforce_JL_0)
+     + (l+1)* Jflr(l+1, b, enforce_JL_0));
+}
+
+__device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
   if (l>30) return 0.; // protect against underflow for single precision evaluation
 
   if (l<0) return 0.;
@@ -142,19 +152,26 @@ __device__ bool not_fixed_eq(int idxyz) {
     return true;
 }
 
-__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2)
+__global__ void add_scaled_singlemom_kernel(cuComplex* res,
+					    double c1, const cuComplex* m1,
+					    double c2, const cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
 }
 
-__global__ void add_scaled_singlemom_kernel(cuComplex* res, double c1, cuComplex* m1, double c2, cuComplex* m2, double c3, cuComplex* m3)
+__global__ void add_scaled_singlemom_kernel(cuComplex* res,
+					    double c1, const cuComplex* m1,
+					    double c2, const cuComplex* m2,
+					    double c3, const cuComplex* m3)
 {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz] + c3*m3[idxyz];
 }
 
-__global__ void add_scaled_singlemom_kernel(cuComplex* res, cuComplex c1, cuComplex* m1, cuComplex c2, cuComplex* m2)
+__global__ void add_scaled_singlemom_kernel(cuComplex* res,
+					    cuComplex c1, const cuComplex* m1,
+					    cuComplex c2, const cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
   if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
@@ -171,8 +188,8 @@ bool proceed == (!eqfix || not_fixed_eq);
 */
 
 __global__ void add_scaled_kernel(cuComplex* res,
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, bool neqfix = true)
+				  double c1, const cuComplex* m1,
+				  double c2, const cuComplex* m2, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
   if(idxy < nx*nyc) {
@@ -191,9 +208,9 @@ __global__ void add_scaled_kernel(cuComplex* res,
 }
 
 __global__ void add_scaled_kernel(cuComplex* res,
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2,
-				  const double c3, cuComplex* m3, bool neqfix = true)
+				  double c1, const cuComplex* m1,
+				  double c2, const cuComplex* m2,
+				  double c3, const cuComplex* m3, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
   if(idxy < nx*nyc) {
@@ -212,10 +229,10 @@ __global__ void add_scaled_kernel(cuComplex* res,
 }
 
 __global__ void add_scaled_kernel(cuComplex* res, 
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, 
-				  const double c3, cuComplex* m3,
-				  const double c4, cuComplex* m4, bool neqfix = true)
+				  double c1, const cuComplex* m1,
+				  double c2, const cuComplex* m2, 
+				  double c3, const cuComplex* m3,
+				  double c4, const cuComplex* m4, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
   if(idxy < nx*nyc) {
@@ -234,11 +251,11 @@ __global__ void add_scaled_kernel(cuComplex* res,
 }
 
 __global__ void add_scaled_kernel(cuComplex* res, 
-				  const double c1, cuComplex* m1,
-				  const double c2, cuComplex* m2, 
-				  const double c3, cuComplex* m3,
-				  const double c4, cuComplex* m4,
-				  const double c5, cuComplex* m5, bool neqfix = true)
+				  double c1, const cuComplex* m1,
+				  double c2, const cuComplex* m2, 
+				  double c3, const cuComplex* m3,
+				  double c4, const cuComplex* m4,
+				  double c5, const cuComplex* m5, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
   if(idxy < nx*nyc) {
@@ -257,7 +274,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 }
 
 
-__global__ void scale_kernel(cuComplex* res, cuComplex* mom, const double scalar)
+__global__ void scale_kernel(cuComplex* res, double scalar)
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -267,13 +284,13 @@ __global__ void scale_kernel(cuComplex* res, cuComplex* mom, const double scalar
       unsigned int idslm = get_id3(); 
       unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
       
-      res[ig] = scalar*mom[ig];
+      res[ig] = scalar*res[ig];
     }
   }
 }
 
 
-__global__ void scale_kernel(cuComplex* res, cuComplex* mom, const cuComplex scalar)
+__global__ void scale_kernel(cuComplex* res, const cuComplex scalar)
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -283,7 +300,7 @@ __global__ void scale_kernel(cuComplex* res, cuComplex* mom, const cuComplex sca
       unsigned int idslm = get_id3(); 
       unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
       
-      res[ig] = scalar*mom[ig];
+      res[ig] = scalar*res[ig];
     }
   }
 }
@@ -343,16 +360,16 @@ __device__ bool masked(int idx, int idy) {
     return false;
 }
 
-__global__ void calc_bgrad(float* bgrad, float* bgrad_temp, float* bmag, float scale)
+__global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale)
 {
-  // BD This will fail for Nz > 1024
+ // BD Depending on how it is called, this could fail for Nz > 1024   so without a flag this is a bug
   unsigned int idz = get_id1();
   if (idz < nz) bgrad[idz] = ( bgrad_temp[idz] / bmag[idz] ) * scale;
 }
 
-__global__ void init_kperp2(float* kperp2, float* kx, float* ky,
-			    float* gds2, float* gds21, float* gds22,
-			    float* bmagInv, float shat) 
+__global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
+			    const float* gds2, const float* gds21, const float* gds22,
+			    const float* bmagInv, float shat) 
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -369,8 +386,8 @@ __global__ void init_kperp2(float* kperp2, float* kx, float* ky,
   }
 }
 
-__global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, float* ky,
-			    float* cv, float* gb, float* cv0, float* gb0, float shat) 
+__global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float* kx, const float* ky,
+			    const float* cv, const float* gb, const float* cv0, const float* gb0, float shat) 
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -394,7 +411,7 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, float* kx, 
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
-__global__ void Tbar(cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kperp2)
+__global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi, const float *kperp2)
 {
   // should re-do this with real space/wavenumber indexing and using unmasked function
   unsigned int idxyz = get_id1();
@@ -409,13 +426,14 @@ __global__ void Tbar(cuComplex* t_bar, cuComplex* g, cuComplex* phi, float *kper
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2, 0);
       } else {
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)/3.*Jflr(l,b_s)*G_(idxyz, l, 2, 0)
-	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
+	  + 2./3. * JT(l, b_s) * H_(idxyz, l, 0, 0);
+//	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
       }
     }
   }
 }
 
-__global__ void growthRates(cuComplex *phi, cuComplex *phiOld, double dt, cuComplex *omega)
+__global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, double dt, cuComplex *omega)
 {
   unsigned int idxy = get_id1();
   cuComplex i_dt = make_cuComplex(0., (float) 1./dt);
@@ -444,8 +462,8 @@ __global__ void growthRates(cuComplex *phi, cuComplex *phiOld, double dt, cuComp
   }
 }
 
-__global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2,
-			    float* muB, float rho2_s)
+__global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float* kperp2,
+			    const float* muB, const float rho2_s)
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
@@ -455,7 +473,7 @@ __global__ void J0phiToGrid(cuComplex* J0phi, cuComplex* phi, float* kperp2,
   }
 }
 
-__global__ void castDoubleToFloat (cuDoubleComplex *array_d, cuComplex *array_f, int size) {
+__global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size) {
   for (int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }
 
@@ -492,6 +510,7 @@ __managed__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
 __managed__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
 __managed__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
 
+// Multiplies by i kz / Nz 
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -519,10 +538,10 @@ __managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
 __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 
-__global__ void acc(float *a, float *b) {a[0] = a[0] + b[0];}
+__global__ void acc(float *a, const float *b) {a[0] = a[0] + b[0];}
 
-__global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
-			float* dg_dy, float* dJ0phi_dx, float kxfac)
+__global__ void bracket(float* g_res, const float* dg_dx, const float* dJ0phi_dy,
+			const float* dg_dy, const float* dJ0phi_dx, float kxfac)
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
@@ -535,7 +554,7 @@ __global__ void bracket(float* g_res, float* dg_dx, float* dJ0phi_dy,
 }
 
 # define LM(L, M) idxyz + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)
-__global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* nu)
+__global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs, const float* omegad, const cuComplex* nu)
 {
   unsigned int idxyz = get_id1();
 
@@ -563,7 +582,8 @@ __global__ void beer_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* ome
 
 }
 
-__global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, float* omegad, cuComplex* Aclos, int q)
+__global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
+					     const float* omegad, const cuComplex* Aclos, int q)
 {
   unsigned int idxyz = get_id1();
   
@@ -587,10 +607,39 @@ __global__ void smith_perp_toroidal_closures(cuComplex* g, cuComplex* gRhs, floa
   }
 }
 
-__global__ void stirring_kernel(cuComplex force, cuComplex *moments, int forcing_index)
+__global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index)
 { moments[forcing_index] = moments[forcing_index] + force; }
 
-__global__ void vol_summand(float *rmom, cuComplex* f, cuComplex* g, float* jacobian, float fluxDenomInv)
+
+
+__global__ void W_summand(float *G2, const cuComplex* g,
+			  const float* jacobian, float volDenomInv, const specie *species) 
+{
+  unsigned int idxy = get_id1(); 
+  if (idxy < nx*nyc) {
+    unsigned int idz = get_id2();
+    if (idz < nz) {
+      unsigned int idslm = get_id3();
+      unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+      unsigned int is = idslm / (nm*nl);
+
+      unsigned int idy = idxy % nyc;
+      unsigned int idx = idxy / nyc;// % nx;
+      cuComplex fg;
+      if (unmasked(idx, idy)) {
+
+	float fac = 2.0;
+	if (idy==0) fac = 1.0;
+	fg = cuConjf(g[ig]) * g[ig] * jacobian[idz] * fac * volDenomInv;
+	G2[ig] = 0.5 * fg.x * species[is].nt;
+      } else {
+	G2[ig] = 0.;
+      }
+    }
+  }
+}
+
+__global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* jacobian, float volDenomInv)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -604,7 +653,7 @@ __global__ void vol_summand(float *rmom, cuComplex* f, cuComplex* g, float* jaco
       float fac=2.;
       if(idy==0) fac = 1.0;
       
-      fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*fluxDenomInv;
+      fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*volDenomInv;
       rmom[idxyz] = fg.x;
     } else {
       rmom[idxyz] = 0.;
@@ -612,7 +661,7 @@ __global__ void vol_summand(float *rmom, cuComplex* f, cuComplex* g, float* jaco
   }
 }
 
-__global__ void get_pzt (float* primary, float* secondary, float* tertiary, cuComplex* phi, cuComplex* tbar)
+__global__ void get_pzt (float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar)
 {
   float Psum = 0.;
   float Zsum = 0.;
@@ -665,9 +714,52 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cuCo
   }
 }
 
+__global__ void Wphi_scale(float* p2, float alpha)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+
+  if (idy<nyc && idx<nx && idz<nz) { 
+    if (unmasked(idx, idy)) {
+      p2[idxyz] *= alpha;
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacobian,
+			     float volDenomInv, const float* kperp2, float rho2_s)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+
+  if (idy<nyc && idx<nx && idz<nz) { 
+    if (unmasked(idx, idy)) {    
+      cuComplex tmp;
+      float fac=2.;
+      if (idy==0) fac = 1.0;
+
+      float b_s = kperp2[idxyz]*rho2_s;
+
+      tmp = cuConjf(phi[idxyz])*(1.-g0(b_s))*phi[idxyz]*fac * volDenomInv * jacobian[idz];
+      p2[idxyz] = 0.5 * tmp.x;
+
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)]
-__global__ void heat_flux_summand(float* rmom, cuComplex* phi, cuComplex* g, float* ky, 
-				  float* jacobian, float fluxDenomInv, float *kperp2, float rho2_s)
+__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				  const float* jacobian, float fluxDenomInv, const float *kperp2, float rho2_s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -685,22 +777,21 @@ __global__ void heat_flux_summand(float* rmom, cuComplex* phi, cuComplex* g, flo
     
       // sum over l
       cuComplex p_bar = make_cuComplex(0.,0.);
+
       for(int il=0; il<nl; il++) {
 	p_bar = p_bar + Jfac(il, b_s)*Gh_(idxyz, il, 0) + rsqrtf(2.)*Jflr(il, b_s)*Gh_(idxyz, il, 2);
       }
     
-      float fac = 2. * fluxDenomInv * jacobian[idz];
-
-      fg = cuConjf(vE_r)*p_bar*fac;
-      rmom[idxyz] = fg.x;
+      fg = cuConjf(vE_r) * p_bar * 2. * fluxDenomInv * jacobian[idz];
+      qflux[idxyz] = fg.x;
 
     } else {
-      rmom[idxyz] = 0.;
+      qflux[idxyz] = 0.;
     }
   }
 }
 
-__global__ void kInit(float* kx, float* ky, float* kz, float X0, float Y0, int Zp) 
+__global__ void kInit(float* kx, float* ky, float* kz, const float X0, const float Y0, const int Zp) 
 {
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -719,7 +810,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, float X0, float Y0, int Z
   }
 }
 
-__global__ void real_space_density(cuComplex* nbar, cuComplex* g, float *kperp2, specie *species) 
+__global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species) 
 {
   unsigned int idxyz = get_id1();
 
@@ -731,19 +822,20 @@ __global__ void real_space_density(cuComplex* nbar, cuComplex* g, float *kperp2,
       for(int is=0; is<nspecies; is++) {
 	const float b_s = kperp2[idxyz]*species[is].rho2;
 	for(int l=0; l<nl; l++) {
-	  // sum over l for m=0
-	  // Each thread does the full Laguerre sum for a particular (kx, ky, z) element
+	  int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	  // sum over l and s for m=0
+	  // Each thread does the full Laguerre sum for a particular (kx, ky, z) 
 	  //
-	  // This needs a factor of species[is].dens, I believe BD
-	  nbar[idxyz] = nbar[idxyz] + Jflr(l,b_s)*g[idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is];
+	  nbar[idxyz] = nbar[idxyz] + Jflr(l,b_s) * g[ig] * species[is].nz;
 	}	
       }
     }
   }
 }
 
-__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar,
-				 float* kperp2, float* jacobian, specie* species, float ti_ov_te)
+__global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
+				 const float* kperp2, const float* jacobian,
+				 const specie* species, const float ti_ov_te)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -765,9 +857,9 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, cuComplex* nbar,
 }
 
 
-__global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuComplex* nbar,
-				 float* PhiAvgDenom, float* kperp2, float* jacobian,
-				 specie* species, float ti_ov_te)
+__global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
+				 const float* PhiAvgDenom, const float* kperp2, const float* jacobian,
+				 const specie* species, const float ti_ov_te)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -804,15 +896,13 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, cuComplex* PhiAvgNum_tmp, cuCom
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
 
-    //    Phi[index].x = (( nbar[index].x  ) / (ti_ov_te + pfilter2) ) * jacobian[idz];
-    //    Phi[index].y = (( nbar[index].y  ) / (ti_ov_te + pfilter2) ) * jacobian[idz];    
     Phi[index].x = ( nbar[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
     Phi[index].y = ( nbar[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
   }
 }
 
-__global__ void calc_phiavgdenom(float* PhiAvgDenom, float* kperp2,
-				 float* jacobian, specie* species, float ti_ov_te)
+__global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
+				 const float* jacobian, const specie* species, const float ti_ov_te)
 {   
   unsigned int idx = get_id1();
   
@@ -836,7 +926,7 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, float* kperp2,
 }
 
 // Is this really set up correctly? 
-__global__ void add_source(cuComplex* f, float source)
+__global__ void add_source(cuComplex* f, const float source)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -848,9 +938,9 @@ __global__ void add_source(cuComplex* f, float source)
   }
 }
 
-__global__ void qneutAdiab(cuComplex* Phi, cuComplex* nbar,
-			   float* kperp2, float* jacobian,
-			   specie* species, float ti_ov_te)
+__global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
+			   const float* kperp2, const float* jacobian,
+			   const specie* species, float ti_ov_te)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -868,11 +958,8 @@ __global__ void qneutAdiab(cuComplex* Phi, cuComplex* nbar,
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
     
-    //    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) ) * jacobian[idz]; // what is this factor of jacobian[idz]?
-    //    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
-
-    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) );
-    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) );
+    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
+    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
   }
 }
 
@@ -927,24 +1014,24 @@ __global__ void init_kzLinked(float* kz, int nLinks)
 __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr = i_kzLinked;
 __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
-__global__ void linkedCopy(cuComplex* G, cuComplex* G_linked,
-			   int nLinks, int nChains, int* ikx, int* iky, int nMoms)
+__global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
+			   int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {
-  unsigned int idz = get_id1();
-  unsigned int idk = get_id2();
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
   unsigned int idlm = get_id3();
 
   if(idz<nz && idk<nLinks*nChains && idlm<nMoms) {
     unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
-    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
+    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + nyc*nx*idz + nyc*nx*nz*idlm;
 
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
     G_linked[idlink] = G[globalIdx];
   }
 }
 
-__global__ void linkedCopyBack(cuComplex* G_linked, cuComplex* G,
-			       int nLinks, int nChains, int* ikx, int* iky, int nMoms)
+__global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {
   unsigned int idz = get_id1();
   unsigned int idk = get_id2();
@@ -960,8 +1047,10 @@ __global__ void linkedCopyBack(cuComplex* G_linked, cuComplex* G,
 
 // main kernel function for calculating RHS
 # define S_G(L, M) s_g[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-			   float* kperp2, float* cv_d, float* gb_d, float* bgrad, float* ky, specie* species,
+__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
+			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
+			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* ky, const specie* species,
 			   cuComplex* rhs_par, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
@@ -1083,9 +1172,11 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
 	  + Jflr(l,  b_s)*( -2*(l+1)*igb_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
 	  + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
 	  + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
-	  + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-	  + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
+	  + nu_ * (JU(l, b_s) * uperp_bar_ + 2. * JT(l, b_s) * t_bar_) 
 	  - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ;
+//	  + nu_ * 2. *  JT(l, b_s)  * t_bar_ 
+//	  + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+//	  + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
       }
 
       if(m==1) {
@@ -1107,7 +1198,8 @@ __global__ void rhs_linear(cuComplex* g, cuComplex* phi, cuComplex* upar_bar, cu
   } // idxyz < NxNycNz
 }
 
-__global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m, int p_hyper_l, int p_hyper_m, cuComplex* rhs) {
+__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
+				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();
 
   if(idxyz<nx*nyc*nz) {
@@ -1135,36 +1227,63 @@ __global__ void hypercollisions(cuComplex* g, float nu_hyper_l, float nu_hyper_m
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-				   cuComplex* g, cuComplex* phi, float *kperp2, specie* species)
+				   const cuComplex* g, const cuComplex* phi, const float *kperp2, const specie* species)
 {
   unsigned int idxyz = get_id1();
-
-  // can this kernel be moved into the cub framework?
 
   if(idxyz<nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
     for(int is=0; is<nspecies; is++) {
       const float zt_ = species[is].zt;
       int index = idxyz + nx*nyc*nz*is;
-      upar_bar[index] = make_cuComplex(0., 0.);
+
+      upar_bar[index]  = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);
-      t_bar[index] = make_cuComplex(0., 0.);
+      t_bar[index]     = make_cuComplex(0., 0.);
+      
       float b_s = kperp2[idxyz]*species[is].rho2;
       // sum over l
       for(int l=0; l<nl; l++) {
         upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*Gc_(idxyz, l, 1, is);
         // Hc_(...) is defined by macro above. Only use H here for m=0. Confusing!
-        uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0, is);
+        uperp_bar[index] = uperp_bar[index] + JU(l, b_s) * Hc_(idxyz, l, 0, is);
+//        uperp_bar[index] = uperp_bar[index] + sqrtf(b_s)*(Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0, is);
 
         // energy conservation correction for nlaguerre = 1
         if (nl == 1) {
             t_bar[index] = t_bar[index] + sqrtf(2.)*Jflr(l,b_s)*Gc_(idxyz, l, 2, is);
         } else {
             t_bar[index] = t_bar[index] + sqrtf(2.)/3.*Jflr(l,b_s)*Gc_(idxyz, l, 2, is)
-		    + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, 0, is);
+	      + 2./3. * JT(l, b_s) * Hc_(idxyz, l, 0, is);
+//		    + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, 0, is);
         }
       }
-      uperp_bar[index] = uperp_bar[index]*sqrtf(b_s);
     }
   }
 }
+
+// uperp_bar(ky, kx, z, s) = sqrt(b(s)) * sum_l [Jflr(ky, kx, z, l,  b(s)) + Jflr(ky, kx, z, l-1, b(s))] *
+//                                                 [g(ky, kx, z, l, 0, is) + Jflr(ky, kx, z, l, b(s)) phi(ky, kx, z, s)) 
+// Could form H (ky, kx, z, l, 0, s)
+// and        J (ky, kx, z, l, s)
+// and        J'(ky, kx, z, l, s)   (where l == l-1 and J'(-1) == 0)
+// and then this is a reduction over l.
+// Ah, actually we should define J'' == J + J' and build and store that
+// J'' has size: Nyc Nx Nz Nl Nspecies
+//
+// We should define the summands: One kernel to calculate H. One kernel to build J'' (at the beginning of the run only)
+// and then this would be a multiplication element-wise
+//
+// or should we just recalculate J'' on the fly every time? There are factorials and exponentials. Probably not?
+// Let's store it. So there should be a kernel to build J'' in the constructor of Linear.
+// Then the job for a given timestep would be to build the summand sqrt(b(s)) J'' H
+// and then perform a tensor reduction
+//
+// upar_bar(ky, kx, z, s) = sum Jflr(ky, kx, z, l, b(s)) * g(ky, kx, z, l, 1, s)
+// which is again a reduction over l. Build the summand, do a tensor reduction.
+// 
+// tpar_bar works exactly like upar_bar.
+// tperp_bar works like uperp, except now we work with
+// J''' == l J(l-1) * 2l J(l) + (l+1) J(l+1)
+// We should keep H around for both uperp and tperp
+// finally, we take t_bar to be a weighted sum of tpar_bar and tperp_bar.

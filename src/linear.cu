@@ -73,12 +73,6 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
     (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
-  /*
-  for (int is=0; is < grids_->Nspecies; is++) {
-    conservation_terms<<<grids_->NxNycNz/256+1, 256>>>
-      (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species[is].zt, pars_->species[is].rho2, is);
-  }
-  */
 
   // calculate RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
@@ -94,7 +88,8 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   }
 
   // parallel gradient term
-  grad_par->dz(GRhs_par);
+  grad_par->dz(GRhs_par);          // BD can this be moved to the first part of the calculation?
+                                   // to allow accumulation of the RHS with less temporary memory
 
   // combine
   GRhs->add_scaled(1., GRhs, (float) geo_->gradpar, GRhs_par);

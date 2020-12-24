@@ -5,9 +5,10 @@
 #include "cuda_constants.h"
 
 MomentsG::MomentsG(Parameters* pars, Grids* grids) : 
-  grids_(grids), pars_(pars), 
-  LHsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
+  grids_(grids), pars_(pars),
+  LHsize_(grids_->size_G), 
   Momsize_(sizeof(cuComplex)*grids_->NxNycNz)
+  //  LHsize_(sizeof(cuComplex)*grids_->NxNycNz*grids_->Nmoms*grids_->Nspecies), 
 {
 
   checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
@@ -60,7 +61,6 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   int nby = 32;
   int ngy = grids_->Nz/nby + min(grids_->Nz % nby, 1);
   
-
   dB_all = dim3(nbx, nby, 1);
   dG_all = dim3(ngx, ngy, nslm);
 	 
@@ -114,31 +114,21 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
 	    idx = js*(grids_->Nx - 2*i) + i;
 	  }
 	  samp = pars_->init_amp;
-	  
 	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-	  
+	  //	  printf("ra = %e \t rb = %e \n",ra,rb);
 	  //loop over z *here*, to get rid of randomness in z in initial condition
 	  for(int k=0; k<grids_->Nz; k++) {
 	    int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
 	    init_h[index].x = ra*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
 	    init_h[index].y = rb*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
+	    //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	  }
 	}
       }
     }
   }
 
-  /*
-  int i, j, index;
-
-  i=0; j=1; index = j + grids_->Nyc*i; 
-  init_h[index].x = 0.;  init_h[index].y = -0.5;
-
-  i=1; j=0; index = j + grids_->Nyc*i; 
-  init_h[index].x = 0.;  init_h[index].y = -0.025;
-  */
-  
   // copy initial condition into device memory
   if(pars_->init == DENS) {         CP_TO_GPU(dens_ptr[0], init_h, Momsize_);
   }
@@ -156,7 +146,7 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
 
   // restart_read goes here, if restart == T
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
-  // that has happened above, in this routine. 
+  // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
@@ -168,23 +158,13 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
   return cudaGetLastError();
 }
 
-int MomentsG::zero() {
-  cudaMemset(G_lm, 0., LHsize_);
-  return 0;
-}
-
-int MomentsG::zero(int l, int m, int s) {
-  cudaMemset(G(l,m,s), 0., Momsize_);
-  return 0;
-}
-
 int MomentsG::scale(double scalar) {
-  scale_kernel <<< dG_all, dB_all >>>(G_lm, G_lm, scalar);
+  scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
   return 0;
 }
 
 int MomentsG::scale(cuComplex scalar) {
-  scale_kernel <<< dG_all, dB_all >>>(G_lm, G_lm, scalar);
+  scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
   return 0;
 }
 
@@ -272,7 +252,7 @@ int MomentsG::restart_write(double* time)
   int id_G, id_time;
 
   char strb[512];
-  strcpy(strb, pars_->restart_to_file);
+  strcpy(strb, pars_->restart_to_file.c_str());
 
   //  if(pars_->restart) {
   // ultimately, appending to an existing file
@@ -298,8 +278,6 @@ int MomentsG::restart_write(double* time)
   moments_out[5] = id_Nky; count[5] = Naky;
   moments_out[6] = id_ri;  count[6] = ri;
 
-  
-  
   start[0] = 0; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
   if (retval = nc_def_var(ncres, "G", NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
   if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
@@ -384,9 +362,9 @@ int MomentsG::restart_read(double* time)
 
   char stra[NC_MAX_NAME+1];
   char strb[512];
-  strcpy(strb, pars_->restart_from_file);
+  strcpy(strb, pars_->restart_from_file.c_str());
 
-  if (retval = nc_open(strb, 0, &ncres)) ERR(retval);
+  if (retval = nc_open(strb, NC_NOWRITE, &ncres)) { printf("file: %s \n",strb); ERR(retval);}
   
   if (retval = nc_inq_dimid(ncres, "Nkx",  &id_Nkx))  ERR(retval);
   if (retval = nc_inq_dimid(ncres, "Nky",  &id_Nky))  ERR(retval);    
@@ -494,13 +472,14 @@ int MomentsG::restart_read(double* time)
 void MomentsG::qvar(int N)
 {
   cuComplex* G_h;
-  int Nk = grids_->Nyc;
+  //  int Nk = grids_->Nyc;
+  int Nk = grids_->NxNycNz;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
   for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G_lm, N*sizeof(cuComplex));
   printf("\n");
-  //  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
-  for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  // for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
   printf("\n");
 
   free (G_h);
