@@ -1,0 +1,3 @@
+/Users/mfmartin/Documents/Work/GX/geometry_module/build/CMakeFiles/rebuild_cache.dir
+/Users/mfmartin/Documents/Work/GX/geometry_module/build/CMakeFiles/edit_cache.dir
+/Users/mfmartin/Documents/Work/GX/geometry_module/build/CMakeFiles/convert_VMEC_to_GX.dir

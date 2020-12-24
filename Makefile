@@ -29,7 +29,6 @@ GEO_LIBS=${GS2}/geometry_c_interface.o
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
 CFLAGS= ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC}
-#CFLAGS= -std=c++14 ${CUDA_INC} ${MPI_INC} ${GSL_INC} ${CUTENSOR_INC} 
 LDFLAGS= ${FORT_LIB} $(CUDA_LIB) ${MPI_LIB} ${GSL_LIB} ${NETCDF_LIB} ${CUTENSOR_LIB}
 
 #####################################
