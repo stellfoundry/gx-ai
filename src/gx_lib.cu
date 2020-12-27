@@ -19,8 +19,7 @@ void gx_get_default_parameters_(struct external_parameters_struct * externalpars
 
   cudaGetDeviceCount(&numdev);
   //
-  // If there are multiple devices available, this needs work
-  // bug
+  // If there are multiple devices available, this needs work  (bug)
   cudaSetDevice(devid);
 
   cudaGetDevice(&externalpars->mpirank); // assuming there is one GPU per CPU this

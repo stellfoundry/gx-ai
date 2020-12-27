@@ -57,17 +57,17 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   int nlag = grids_->Nj;
 
   int nbx = 32;
-  int ngx = nxyz/nbx + min(nxyz%nbx, 1);
+  int ngx = (nxyz-1)/nbx + 1;
  
   int nby = 8;
-  int ngy = nlag/nby + min(nlag%nby, 1);
+  int ngy = (nlag-1)/nby + 1;
 
   dBx = dim3(nbx, nby, 1);
   dGx = dim3(ngx, ngy, 1);
 
   nxyz = grids_->NxNycNz;
   nbx = 32;
-  ngx = nxyz/nbx + min(nxyz%nbx, 1);
+  ngx = (nxyz-1)/nbx + 1;
 
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);

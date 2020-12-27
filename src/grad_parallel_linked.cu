@@ -78,7 +78,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     cufftCreate(    &dz_plan_inverse_singlemom[c]);
     int size = nLinks[c]*grids_->Nz;
     size_t workSize;
-    int nClm = nChains[c]*grids_->Nl*grids_->Nm;
+    int nClm = nChains[c]*grids_->Nl*grids_->Nm; 
     cufftMakePlanMany(dz_plan_forward[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, nClm, &workSize);
     cufftMakePlanMany(dz_plan_inverse[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, nClm, &workSize);
 
@@ -132,22 +132,23 @@ GradParallelLinked::~GradParallelLinked()
   cudaFreeHost(kzLinked);
 }
 
-
 void GradParallelLinked::dz(MomentsG* G) 
 {
-  for(int c=0; c<nClasses; c++) {
-    // each "class" has a different number of links in the chains, and a different number of chains.
-    linkedCopy <<<dG[c],dB[c]>>>
-      (G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-    cufftExecC2C (dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
-    cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
-    linkedCopyBack <<<dG[c],dB[c]>>>
-      (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+  for (int is=0; is < grids_->Nspecies; is++) {
+    for(int c=0; c<nClasses; c++) {
+      // each "class" has a different number of links in the chains, and a different number of chains.
+      linkedCopy <<<dG[c],dB[c]>>>
+	(G->G(0,0,is), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      cufftExecC2C (dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
+      cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+      linkedCopyBack <<<dG[c],dB[c]>>>
+	(G_linked[c], G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    }
   }
-  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl); // why is this here? 
+  G->reality(grids_->Nl*grids_->Nm*grids_->Nspecies); // why is this here? 
 }
 
-// for a single moment m
+// for a single moment m *and thus a single species!* 
 void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
 {
   int nMoms=1;
@@ -166,12 +167,12 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
   int ntx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+  dG.x = (ntx-1)/dB.x + 1;
 
   int nty = grids_->Nz;
 
   dB.y = 16;
-  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  dG.y = (nty-1)/dB.y + 1;
   
   dB.z = 1;
   dG.z = 1;
@@ -198,12 +199,12 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
   int ntx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+  dG.x = (ntx-1)/dB.x + 1;
 
   int nty = grids_->Nz;
 
   dB.y = 16;
-  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  dG.y = (nty-1)/dB.y + 1;
   
   dB.z = 1;
   dG.z = 1;

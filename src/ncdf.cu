@@ -52,13 +52,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_var(file, "grho",     NC_FLOAT, 1, geo_v_theta, &grho))     ERR(retval);
   if (retval = nc_def_var(file, "jacobian", NC_FLOAT, 1, geo_v_theta, &jacobian)) ERR(retval);
   
-  
-  zkxky[0] = nz;
-  zkxky[1] = kx_dim; 
-  zkxky[2] = ky_dim;
-  
-  if (retval = nc_def_var(file, "theta_x",  NC_FLOAT, 3, zkxky, &theta_x))  ERR(retval);
-
   //  time.dims[0] = 
   time.time_start[0] = 0;
   time.time_count[0] = 1;
@@ -845,6 +838,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     }
   }
 
+  bool linked = (not pars_->local_limit && not pars_->boundary_option_periodic);
+
+  if (linked) {
+    zkxky[0] = nz;
+    zkxky[1] = kx_dim; 
+    zkxky[2] = ky_dim;
+    
+    if (retval = nc_def_var(file, "theta_x",  NC_FLOAT, 3, zkxky, &theta_x))  ERR(retval);
+  }
+
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
   
   if (retval = nc_enddef(file)) ERR(retval);
@@ -873,7 +876,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
 
-  if (abs(geo_->shat) > 1.e-4) {
+  if (linked) {
     
     int Nx = grids_->Nx;
     int Ny = grids_->Ny;

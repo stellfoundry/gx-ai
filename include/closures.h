@@ -1,6 +1,7 @@
 #pragma once
 
 #include "grids.h"
+#include "parameters.h"
 #include "moments.h"
 #include "grad_parallel.h"
 #include "geometry.h"
@@ -13,12 +14,13 @@ class Closures {
 
 class Beer42 : public Closures {
  public:
-  Beer42(Grids* grids, const Geometry* geo, GradParallel* grad_par);
+  Beer42(Parameters* pars, Grids* grids, const Geometry* geo, GradParallel* grad_par);
   ~Beer42();
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids* grids_;
+  Parameters* pars_;
   GradParallel* grad_par;
 
   float* omegad_;
@@ -32,39 +34,39 @@ class Beer42 : public Closures {
   float D_perp;
   cuComplex* nu;
 
-
   dim3 dimGrid, dimBlock;
 };
 
 class SmithPerp : public Closures {
  public: 
-  SmithPerp(Grids* grids, const Geometry* geo, int q, cuComplex w0);
+  SmithPerp(Parameters* pars, Grids* grids, const Geometry* geo);
   ~SmithPerp();
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids* grids_;
+  Parameters* pars_;
   float* omegad_;
   
   // closure coefficent array, to be allocated
   cuComplex* Aclos_;
-  const int q_;
+  int q_;
 
-  dim3 dimGrid, dimBlock;
- 
+  dim3 dimGrid, dimBlock; 
 };
 
 class SmithPar : public Closures {
  public: 
-  SmithPar(Grids* grids, const Geometry* geo, GradParallel* grad_par, int q);
+  SmithPar(Parameters* pars, Grids* grids, const Geometry* geo, GradParallel* grad_par);
   ~SmithPar();
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids *grids_;
+  Parameters* pars_;
   GradParallel *grad_par;
   float gpar_;
-  const int q_;
+  int q_;
   
   cuComplex *tmp, *tmp_abs;
 
@@ -74,7 +76,5 @@ class SmithPar : public Closures {
   // closure array
   cuComplex *clos;
 
-
   dim3 dimGrid, dimBlock;
- 
 };

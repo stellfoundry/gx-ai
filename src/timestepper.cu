@@ -649,8 +649,7 @@ void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG*
 {
 
   if(nonlinear_ != NULL) {
-    nonlinear_->nlps5d(G_q1, f, GStar);
-    //    GRhs->add_scaled(1., GRhs, 1., GStar);
+    nonlinear_->nlps5d(G_q1, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 

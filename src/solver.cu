@@ -91,6 +91,8 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
       qneutAdiab <<<dimGrid_qneut, dimBlock_qneut>>>
 	(fields->phi, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->ti_ov_te);
     }
+  } else {
+    // 
   }
   if(pars_->source_option==PHIEXT) {
     add_source <<<dimGrid_qneut, dimBlock_qneut>>> (fields->phi, pars_->phi_ext);

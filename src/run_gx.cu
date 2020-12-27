@@ -1,4 +1,3 @@
-
 #include "toml.hpp"
 #include <iostream>
 #include "mpi.h"

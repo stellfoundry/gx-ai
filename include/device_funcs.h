@@ -21,6 +21,8 @@ __host__ __device__ bool operator>(cuComplex f, cuComplex g);
 __host__ __device__ bool operator<(cuComplex f, cuComplex g);
 
 __host__ __device__ cuComplex operator+(cuComplex f, cuComplex g); 
+__host__ __device__ cuComplex operator+(cuComplex g, float f);
+__host__ __device__ cuComplex operator+(float f, cuComplex g);
 __host__ __device__ cuComplex operator-(cuComplex f, cuComplex g);
 __host__ __device__ cuComplex operator-(cuComplex f);
 
@@ -119,10 +121,10 @@ __global__ void bracket(float* g_res,
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size);
 
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-				       const float* omegad, const cuComplex* nu);
+				       const float* omegad, const cuComplex* nu, const specie *species);
 
 __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-					     const float* omegad, const cuComplex* Aclos, int q);
+					     const float* omegad, const cuComplex* Aclos, int q, specie *species);
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 

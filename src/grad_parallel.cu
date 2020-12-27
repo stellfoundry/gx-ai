@@ -81,12 +81,12 @@ void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
   int ntx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+  dG.x = (ntx-1)/dB.x + 1;
 
   int nty = grids_->Nz;
-
+  
   dB.y = 16;
-  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  dG.y = (nty-1)/dB.y + 1;
   
   dB.z = 1;
   dG.z = 1;
@@ -106,12 +106,12 @@ void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
   int ntx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
+  dG.x = (ntx-1)/dB.x + 1;
 
   int nty = grids_->Nz;
 
   dB.y = 16;
-  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  dG.y = (nty-1)/dB.y + 1;
   
   dB.z = 1;
   dG.z = 1;
@@ -174,9 +174,9 @@ GradParallel1D::~GradParallel1D() {
   cudaFree(b_complex);
 }
 
-void GradParallel1D::dz1D(float* b)
+void GradParallel1D::dz1D(float* b)  // even tho cuda 11+ overwrites inputs, this is ok
 {
-  cufftExecR2C(dz_plan_forward, b, b_complex);
+  cufftExecR2C(dz_plan_forward, b, b_complex); 
   cufftExecC2R(dz_plan_inverse, b_complex, b);
 }
 

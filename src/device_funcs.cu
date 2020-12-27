@@ -1,19 +1,58 @@
 #include "device_funcs.h"
 #include "cuda_constants.h"
 #include <stdio.h>
- 
+
+// threadIdx == ithread
+// blockDim == nthread
+// blockIdx == iblock
+//
+// dimGrid == nblock
+// dimBlock == nthread
+// 
+// loops are therefore executed in parallel (for each dimension) and can
+// be thought of as something like 
+// for (int iblock = 0; iblock < nblock; iblock++) {
+//   for (int ithread = 0; ithread < nthread; ithread++) {
+//     int idx = ithread + iblock * nthread ;
+//     f[idx] = ...
+//   }
+//  }
+// as long as one keeps track of memory correctly -- meaning,
+// each idx is assumed to control its own memory.
+// If you want to couple idx's you want to use shared memory
+// which is shared for each iblock of nthreads in the straightforward case
+// and can be updated safely only with explicit synchronization.
+//
+// This way of thinking only works correctly with the understanding that
+// block.x, block.y, block.z are one block from the point of view of what
+// can be synchronized inside of a kernel. This is probably why Nvidia
+// made the semantics of cuda the way they did, but it is confusing
+// if one is accustomed to thinking of ithread, nthread as going together
+// and iblock, nblock going together, since in the cuda semantics, one
+// should naturally think of a grid of blocks, with coding that provides
+// ithread and iblock as built ins. 
+//
+// To make things easier,
+// define get_id1, get_id2, get_id3, which return
+// idx1 (for the .x loops)
+// idx2 (for the .y loops)
+// idx3 (for the .z loops)
+// 
+
+
+
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
 
 // use stirling's approximation
 __host__ __device__ float factorial(int m) {
-  if(m <2) return 1.;
-  if(m==2) return 2.;
-  if(m==3) return 6.;
-  if(m==4) return 24.;
-  if(m==5) return 120.;
-  if(m==6) return 720.;
+  if (m <2) return 1.;
+  if (m==2) return 2.;
+  if (m==3) return 6.;
+  if (m==4) return 24.;
+  if (m==5) return 120.;
+  if (m==6) return 720.;
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
@@ -59,7 +98,7 @@ __host__ __device__ float g0(float b) {
     err = abs(tk/g);
   }
   
-  if(g<tol) g=tol; 
+  if (g<tol) g=tol; 
   return g;
 
 }
@@ -89,7 +128,7 @@ __host__ __device__ float g1(float b) {
     err = abs(tk/g);
   }
   
-  if(g<tol) g=tol; 
+  if (g<tol) g=tol; 
   return g;
 
 }
@@ -99,6 +138,22 @@ __host__ __device__ bool operator>(cuComplex f, cuComplex g) { return f.x*f.x+f.
 __host__ __device__ bool operator<(cuComplex f, cuComplex g) { return f.x*f.x+f.y*f.y < g.x*g.x+g.y*g.y; }
 __host__ __device__ cuComplex operator+(cuComplex f, cuComplex g) { return cuCaddf(f,g); }
 __host__ __device__ cuComplex operator-(cuComplex f, cuComplex g) { return cuCsubf(f,g); }
+
+__host__ __device__ cuComplex operator+(float f, cuComplex g)
+{
+  cuComplex result;
+  result.x = f + g.x;
+  result.y = g.y;
+  return result;
+}
+
+__host__ __device__ cuComplex operator+(cuComplex g, float f)
+{
+  cuComplex result;
+  result.x = f + g.x;
+  result.y = g.y;
+  return result;
+}
 
 __host__ __device__ cuComplex operator-(cuComplex f)
 {
@@ -157,7 +212,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    double c2, const cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
+  if (idxyz < nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
 }
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
@@ -166,7 +221,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    double c3, const cuComplex* m3)
 {
   unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz] + c3*m3[idxyz];
+  if (idxyz < nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz] + c3*m3[idxyz];
 }
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
@@ -174,7 +229,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    cuComplex c2, const cuComplex* m2)
 {
   unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
+  if (idxyz < nx*nyc*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
 }
 
 /*
@@ -192,7 +247,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c2, const cuComplex* m2, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
-  if(idxy < nx*nyc) {
+  if (idxy < nx*nyc) {
     if (neqfix || not_fixed_eq(idxy)) {
       
       unsigned int idz  = get_id2();
@@ -213,7 +268,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c3, const cuComplex* m3, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
-  if(idxy < nx*nyc) {
+  if (idxy < nx*nyc) {
     if (neqfix || not_fixed_eq(idxy)) {
       
       unsigned int idz  = get_id2();
@@ -235,7 +290,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c4, const cuComplex* m4, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
-  if(idxy < nx*nyc) {
+  if (idxy < nx*nyc) {
     if (neqfix || not_fixed_eq(idxy)) {
       
       unsigned int idz  = get_id2();
@@ -258,7 +313,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c5, const cuComplex* m5, bool neqfix = true)
 {
   unsigned int idxy = get_id1(); 
-  if(idxy < nx*nyc) {
+  if (idxy < nx*nyc) {
     if (neqfix || not_fixed_eq(idxy)) {
       
       unsigned int idz  = get_id2();
@@ -308,7 +363,7 @@ __global__ void scale_kernel(cuComplex* res, const cuComplex scalar)
 __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, const cuComplex scalar)
 {
   unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) res[idxyz] = scalar*mom[idxyz];
+  if (idxyz < nx*nyc*nz) res[idxyz] = scalar*mom[idxyz];
 }
 
 __global__ void reality_kernel(cuComplex* g) 
@@ -322,7 +377,7 @@ __global__ void reality_kernel(cuComplex* g)
     int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idslm;
     int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idslm;
     
-    if(idx==0) {
+    if (idx==0) {
       g[ig].x = 0.;
       g[ig].y = 0.;
     } else {
@@ -362,7 +417,7 @@ __device__ bool masked(int idx, int idy) {
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale)
 {
- // BD Depending on how it is called, this could fail for Nz > 1024   so without a flag this is a bug
+ // BD Depending on how it is called, this could fail for Nz > 1024   so without a flag this is a possible bug
   unsigned int idz = get_id1();
   if (idz < nz) bgrad[idz] = ( bgrad_temp[idz] / bmag[idz] ) * scale;
 }
@@ -415,12 +470,12 @@ __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi,
 {
   // should re-do this with real space/wavenumber indexing and using unmasked function
   unsigned int idxyz = get_id1();
-  if(idxyz<nx*nyc*nz) {
+  if (idxyz < nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
     //    int index = idxyz;
     t_bar[idxyz] = make_cuComplex(0., 0.);
     float b_s = kperp2[idxyz]; // only species=0, assumes zt, rho2 = 1
-    for(int l=0; l<nl; l++) {
+    for (int l=0; l < nl; l++) {
       // energy conservation correction for nlaguerre = 1
       if (nl == 1) {
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2, 0);
@@ -467,7 +522,7 @@ __global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float*
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
-  if(idxyz<nx*nyc*nz && idj<nj) {
+  if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     J0phi[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
   }
@@ -546,67 +601,82 @@ __global__ void bracket(float* g_res, const float* dg_dx, const float* dJ0phi_dy
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
 
-  if(idxyz<nx*ny*nz && idj<nj) {
+  if (idxyz < nx*ny*nz && idj < nj) {
     unsigned int ig = idxyz + nx*ny*nz*idj;
     g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
     
   }
 }
 
-# define LM(L, M) idxyz + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)
-__global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs, const float* omegad, const cuComplex* nu)
+# define LM(L, M, S) idxyz + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)
+__global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
+				       const float* omegad,
+				       const cuComplex* nu,
+				       const specie *species)
 {
   unsigned int idxyz = get_id1();
 
-  if(idxyz<nx*nyc*nz) {
-
+  if (idxyz < nx*nyc*nz) {
     const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
     const float abs_omegad = abs(omegad[idxyz]);
 
-    gRhs[LM(0,2)] = gRhs[LM(0,2)]
-      - sqrtf(2)*abs_omegad*( nu[1].x*sqrtf(2)*g[LM(0,2)] + nu[2].x*g[LM(1,0)] )
-      - sqrtf(2)* iomegad * ( nu[1].y*sqrtf(2)*g[LM(0,2)] + nu[2].y*g[LM(1,0)] );
+    for (int is=0; is < nspecies; is++) {
+      const float tz_ = species[is].tz;
 
-    gRhs[LM(1,0)] = gRhs[LM(1,0)]
-      - 2.*abs_omegad*( nu[3].x*sqrtf(2)*g[LM(0,2)] + nu[4].x*g[LM(1,0)] )
-      - 2.* iomegad * ( nu[3].y*sqrtf(2)*g[LM(0,2)] + nu[4].y*g[LM(1,0)] );
+      const cuComplex iwd_s = iomegad * tz_;
+      const float awd_s = abs_omegad * tz_;
 
-    gRhs[LM(0,3)] = gRhs[LM(0,3)]
-      - 1./sqrtf(6)*abs_omegad*( nu[5].x*g[LM(0,1)] + nu[6].x*sqrtf(6)*g[LM(0,3)] + nu[7].x*g[LM(1,1)] )
-      - 1./sqrtf(6)* iomegad * ( nu[5].y*g[LM(0,1)] + nu[6].y*sqrtf(6)*g[LM(0,3)] + nu[7].y*g[LM(1,1)] );
-
-    gRhs[LM(1,1)] = gRhs[LM(1,1)]
-      - abs_omegad*( nu[8].x*g[LM(0,1)] + nu[9].x*sqrtf(6)*g[LM(0,3)] + nu[10].x*g[LM(1,1)] )
-      -  iomegad * ( nu[8].y*g[LM(0,1)] + nu[9].y*sqrtf(6)*g[LM(0,3)] + nu[10].y*g[LM(1,1)] );
+      gRhs[LM(0,2,is)] = gRhs[LM(0,2,is)]
+	- sqrtf(2) * awd_s * ( nu[1].x*sqrtf(2)*g[LM(0,2,is)] + nu[2].x*g[LM(1,0,is)] )
+	- sqrtf(2) * iwd_s * ( nu[1].y*sqrtf(2)*g[LM(0,2,is)] + nu[2].y*g[LM(1,0,is)] );
+      
+      gRhs[LM(1,0,is)] = gRhs[LM(1,0,is)]
+	- 2. * awd_s * ( nu[3].x*sqrtf(2)*g[LM(0,2,is)] + nu[4].x*g[LM(1,0,is)] )
+	- 2. * iwd_s * ( nu[3].y*sqrtf(2)*g[LM(0,2,is)] + nu[4].y*g[LM(1,0,is)] );
+      
+      gRhs[LM(0,3,is)] = gRhs[LM(0,3,is)]
+	- 1./sqrtf(6) * awd_s * ( nu[5].x*g[LM(0,1,is)] + nu[6].x*sqrtf(6)*g[LM(0,3,is)] + nu[7].x*g[LM(1,1,is)] )
+	- 1./sqrtf(6) * iwd_s * ( nu[5].y*g[LM(0,1,is)] + nu[6].y*sqrtf(6)*g[LM(0,3,is)] + nu[7].y*g[LM(1,1,is)] );
+      
+      gRhs[LM(1,1,is)] = gRhs[LM(1,1,is)]
+	- awd_s * ( nu[8].x*g[LM(0,1,is)] + nu[9].x*sqrtf(6)*g[LM(0,3,is)] + nu[10].x*g[LM(1,1,is)] )
+	- iwd_s * ( nu[8].y*g[LM(0,1,is)] + nu[9].y*sqrtf(6)*g[LM(0,3,is)] + nu[10].y*g[LM(1,1,is)] );
+    }
+    
   }
-
 }
 
 __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-					     const float* omegad, const cuComplex* Aclos, int q)
+					     const float* omegad, const cuComplex* Aclos, int q, specie *species)
 {
   unsigned int idxyz = get_id1();
   
-  if(idxyz<nx*nyc*nz) {
+  if (idxyz < nx*nyc*nz) {
 
-    const cuComplex iomegad = make_cuComplex(0., omegad[idxyz]);
-    const cuComplex abs_omegad = make_cuComplex(abs(omegad[idxyz]),0.);
+    const cuComplex    iomegad = make_cuComplex(0., omegad[idxyz]);
+    const float     abs_omegad = abs(omegad[idxyz]);
+    
+    for (int is=0; is < nspecies; is++) {
+      const float tz_ = species[is].tz;
 
-    int L = nl - 1;
+      const cuComplex iwd_s =    iomegad * tz_;
+      const float     awd_s = abs_omegad * tz_;
 
-    // apply closure to Lth laguerre equation for all hermite moments
-    for(int m=0; m<nm; m++) {
-      // calculate closure expression as sum of lower laguerre moments
-      cuComplex clos = make_cuComplex(0.,0.);
-      for(int l=L; l>=nl-q; l--) {
-        clos = clos + (abs_omegad*Aclos[L-l].y + iomegad*Aclos[L-l].x)*g[LM(l,m)];
+      int L = nl - 1;
+      
+      // apply closure to Lth laguerre equation for all hermite moments
+      for (int m=0; m < nm; m++) {
+
+	// calculate closure expression as sum of lower laguerre moments
+	cuComplex clos = make_cuComplex(0.,0.);
+	for (int l=L; l>=nl-q; l--) clos = clos + (awd_s * Aclos[L-l].y + iwd_s * Aclos[L-l].x)*g[LM(l,m,is)];
+
+	gRhs[LM(L,m,is)] = gRhs[LM(L,m,is)] - (L+1)*clos;
       }
-
-      gRhs[LM(L,m)] = gRhs[LM(L,m)] - (L+1)*clos;
     }
   }
 }
-
+ 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index)
 { moments[forcing_index] = moments[forcing_index] + force; }
 
@@ -647,11 +717,11 @@ __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g,
 
   unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
 
-  if (idy<nyc && idx<nx && idz<nz) {
+  if (idy < nyc && idx < nx && idz < nz) {
     if (unmasked(idx, idy)) {      
       cuComplex fg;  
       float fac=2.;
-      if(idy==0) fac = 1.0;
+      if (idy==0) fac = 1.0;
       
       fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*volDenomInv;
       rmom[idxyz] = fg.x;
@@ -668,7 +738,7 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cons
   float Tsum = 0.;
   
   cuComplex P2, T2;
-  for (int idxyz=blockIdx.x*blockDim.x+threadIdx.x;idxyz<nx*nyc*nz;idxyz+=blockDim.x*gridDim.x) {
+  for (int idxyz = blockIdx.x*blockDim.x+threadIdx.x;idxyz < nx*nyc*nz; idxyz += blockDim.x*gridDim.x) {
 
     unsigned int idy = idxyz % nyc; 
     unsigned int idx = idxyz / nyc % nx;
@@ -696,7 +766,7 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cons
       // Caution: missing all geometry 
       
       float fac = 2.;
-      if(idy==0) fac = 1.0;
+      if (idy==0) fac = 1.0;
       
       P2 = cuConjf(phi[idxyz])*phi[idxyz]*fac;
       T2 = cuConjf(tbar[idxyz])*tbar[idxyz]*fac; // assumes main species only
@@ -722,7 +792,7 @@ __global__ void Wphi_scale(float* p2, float alpha)
 
   unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
 
-  if (idy<nyc && idx<nx && idz<nz) { 
+  if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {
       p2[idxyz] *= alpha;
     } else {
@@ -740,7 +810,7 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacob
 
   unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
 
-  if (idy<nyc && idx<nx && idz<nz) { 
+  if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {    
       cuComplex tmp;
       float fac=2.;
@@ -768,7 +838,7 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   cuComplex fg;
 
   unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
-  if (idy<nyc && idx<nx && idz<nz) { 
+  if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
       cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
@@ -778,7 +848,7 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
       // sum over l
       cuComplex p_bar = make_cuComplex(0.,0.);
 
-      for(int il=0; il<nl; il++) {
+      for (int il=0; il < nl; il++) {
 	p_bar = p_bar + Jfac(il, b_s)*Gh_(idxyz, il, 0) + rsqrtf(2.)*Jflr(il, b_s)*Gh_(idxyz, il, 2);
       }
     
@@ -795,17 +865,17 @@ __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const flo
 {
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
-  if(id<nyc) {
+  if (id < nyc) {
     ky[id] = (float) id/Y0;
   }
-  if(id<nx/2+1) {
+  if (id < nx/2+1) {
     kx[id] = (float) id/X0;
-  } else if (id<nx) {
+  } else if (id < nx) {
     kx[id] = (float) (id - nx)/X0;
   }
-  if(id<(nz/2+1)) {
+  if (id < (nz/2+1)) {
     kz[id] = (float) id/Zp;
-  } else if(id<nz) {
+  } else if (id < nz) {
     kz[id] = (float) (id - nz)/Zp;
   }
 }
@@ -814,14 +884,14 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
 {
   unsigned int idxyz = get_id1();
 
-  if(idxyz<nx*nyc*nz) {
+  if (idxyz < nx*nyc*nz) {
     nbar[idxyz] = make_cuComplex(0., 0.);
     int idy = idxyz % nyc;
     int idx = idxyz / nyc % nx;
     if ( unmasked(idx, idy) ) {
-      for(int is=0; is<nspecies; is++) {
-	const float b_s = kperp2[idxyz]*species[is].rho2;
-	for(int l=0; l<nl; l++) {
+      for (int is=0; is < nspecies; is++) {
+	const float b_s = kperp2[idxyz] * species[is].rho2;
+	for (int l=0; l < nl; l++) {
 	  int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	  // sum over l and s for m=0
 	  // Each thread does the full Laguerre sum for a particular (kx, ky, z) 
@@ -847,7 +917,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
     float pfilter2 = 0.;
     
     // BD This species stuff will need to be changed when species are shared over GPUs. 
-    for(int is=0; is<nspecies; is++) {
+    for (int is=0; is < nspecies; is++) {
       specie s = species[is];
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
@@ -873,7 +943,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
     float pfilter2 = 0.;
     
     // BD multiple GPUs will require change here
-    for(int is=0; is<nspecies; is++) {
+    for (int is=0; is < nspecies; is++) {
       specie s = species[is];
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
@@ -883,7 +953,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
     PhiAvgNum_zSum.x = (double) 0.;
     PhiAvgNum_zSum.y = (double) 0.;
 
-    for(int i=0; i<nz; i++) {
+    for (int i=0; i < nz; i++) {
       PhiAvgNum_zSum.x = (double) PhiAvgNum_zSum.x + PhiAvgNum_tmp[idxy + i*nx*nyc].x;
       PhiAvgNum_zSum.y = (double) PhiAvgNum_zSum.y + PhiAvgNum_tmp[idxy + i*nx*nyc].y;
     }
@@ -913,9 +983,9 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
       float pfilter2;
       PhiAvgDenom[idx] = 0.;  
 
-      for(int i=0; i<nz; i++) {
+      for (int i=0; i < nz; i++) {
 	pfilter2 = 0.;
-	for (int is=0; is<nspecies; is++) {
+	for (int is=0; is < nspecies; is++) {
 	  specie s = species[is];
 	  pfilter2 += s.dens*s.z*s.zt*(1. - g0(kperp2[(idx + i*nx)*nyc]*s.rho2));
 	}	
@@ -953,7 +1023,7 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
     float pfilter2 = 0.;
     
     // BD Check this for parallel correctness when nspecies > 1
-    for(int is=0; is<nspecies; is++) {
+    for (int is=0; is < nspecies; is++) {
       specie s = species[is];
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
     }
@@ -1002,8 +1072,8 @@ __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element,
 
 __global__ void init_kzLinked(float* kz, int nLinks)
 {
-  for(int i=0; i<nz*nLinks; i++) {
-    if(i<nz*nLinks/2+1) {
+  for (int i=0; i < nz*nLinks; i++) {
+    if (i < nz*nLinks/2+1) {
       kz[i] = (float) i/(zp*nLinks);
     } else {
       kz[i] = (float) (i-nz*nLinks)/(zp*nLinks);
@@ -1021,7 +1091,7 @@ __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
   unsigned int idk  = get_id2();
   unsigned int idlm = get_id3();
 
-  if(idz<nz && idk<nLinks*nChains && idlm<nMoms) {
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
     unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + nyc*nx*idz + nyc*nx*nz*idlm;
 
@@ -1037,7 +1107,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   unsigned int idk = get_id2();
   unsigned int idlm = get_id3();
 
-  if(idz<nz && idk<nLinks*nChains && idlm<nMoms) {
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
     unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
 
@@ -1054,12 +1124,12 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 			   cuComplex* rhs_par, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
-
+  
   //  unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
   unsigned int idxyz = get_id1();
   const unsigned int idy = idxyz % nyc; 
   const unsigned int idx = idxyz / nyc % nx;
-  if(idxyz<nx*nyc*nz && unmasked(idx, idy)) {
+  if (idxyz < nx*nyc*nz && unmasked(idx, idy)) {
     const unsigned int sidxyz = threadIdx.x;
     // these modulo operations are expensive... better way to get these indices?
     const unsigned int idz = idxyz / (nx*nyc);
@@ -1080,119 +1150,121 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
   
     // this is coalesced?
     const cuComplex iky_ = make_cuComplex(0., ky[idy]); 
-  
-   for(int is=0; is<nspecies; is++) { // might be a better way to handle species loop here...
-    specie s = species[is];
 
-    // species-specific constants
-    const float vt_ = s.vt;
-    const float zt_ = s.zt;
-    const float nu_ = s.nu_ss; 
-    const float tprim_ = s.tprim;
-    const float fprim_ = s.fprim;
-    const float b_s = kperp2[idxyz] * s.rho2;
-    const cuComplex icv_d_s = 2. * s.tz * make_cuComplex(0., cv_d[idxyz]);
-    const cuComplex igb_d_s = 2. * s.tz * make_cuComplex(0., gb_d[idxyz]);
+    int nR = nyc * nx * nz;
+    
+   for (int is=0; is < nspecies; is++) { // might be a better way to handle species loop here...
+     specie s = species[is];
+     
+     // species-specific constants
+     const float vt_ = s.vt;
+     const float zt_ = s.zt;
+     const float nu_ = s.nu_ss; 
+     const float tprim_ = s.tprim;
+     const float fprim_ = s.fprim;
+     const float b_s = kperp2[idxyz] * s.rho2;
+     const cuComplex icv_d_s = 2. * s.tz * make_cuComplex(0., cv_d[idxyz]);
+     const cuComplex igb_d_s = 2. * s.tz * make_cuComplex(0., gb_d[idxyz]);
+     
+     // conservation terms (species-specific)
+     cuComplex upar_bar_  =  upar_bar[idxyz + is * nR]; 
+     cuComplex uperp_bar_ = uperp_bar[idxyz + is * nR];
+     cuComplex t_bar_     =     t_bar[idxyz + is * nR];
 
-    // conservation terms (species-specific)
-    cuComplex upar_bar_  =  upar_bar[idxyz + is*nx*nyc*nz];
-    cuComplex uperp_bar_ = uperp_bar[idxyz + is*nx*nyc*nz];
-    cuComplex t_bar_     =     t_bar[idxyz + is*nx*nyc*nz];
-  
-    // read tile of g into shared mem
-    // each thread in the block reads in multiple values of l and m
-    // blockIdx for y and z and both unity in the kernel invocation
-    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
-      int sl = l + 1;
-      int sm = m + 2;
-      S_G(sl, sm) = g[globalIdx];
+
+     // read tile of g into shared mem
+     // each thread in the block reads in multiple values of l and m
+     // blockIdx for y and z and both of size unity in the kernel invocation
+     for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+	 int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	 int sl = l + 1;
+	 int sm = m + 2;
+	 S_G(sl, sm) = g[globalIdx];
+       }
      }
-    }
-  
-    // this syncthreads is not necessary unless ghosts require information from interior cells
-    //    __syncthreads();
-  
-    // set up ghost cells in m (for all l's)
-    // blockIdx.y is unity in the kernel invocation
-    for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-      int sl = l + 1;
-      int sm = threadIdx.z + 2;
-      if(sm < 4) {
-        // set ghost to zero at low m
-        S_G(sl, sm-2) = make_cuComplex(0., 0.);
-  
-        // set ghost with closures at high m
-        S_G(sl, sm+nm) = make_cuComplex(0., 0.);
-      }
-    }
-  
-    // set up ghost cells in l (for all m's)
-    // blockIdx.z is unity in the kernel invocation
-    for (int m = threadIdx.z; m < nm+2; m += blockDim.z) {
-      int sm = m + 1; // this takes care of corners...
-      int sl = threadIdx.y + 1;
-      if(sl < 2) {
-        // set ghost to zero at low l
-        S_G(sl-1, sm) = make_cuComplex(0., 0.);
-  
-        // set ghost with closures at high l
-        S_G(sl+nl, sm) = make_cuComplex(0., 0.);
-      }
-    }
-  
-    __syncthreads();
+     
+     // this syncthreads is not necessary unless ghosts require information from interior cells
+     //    __syncthreads();
+     
+     // set up ghost cells in m (for all l's)
+     // blockIdx.y is of size unity in the kernel invocation
+     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+       int sl = l + 1;
+       int sm = threadIdx.z + 2;
+       if (sm < 4) {
+	 // set ghost to zero at low m
+	 S_G(sl, sm-2) = make_cuComplex(0., 0.);
+	 
+	 // set ghost with closures at high m
+	 S_G(sl, sm+nm) = make_cuComplex(0., 0.);
+       }
+     }
+       
+     // set up ghost cells in l (for all m's)
+     // blockIdx.z is unity in the kernel invocation
+     for (int m = threadIdx.z; m < nm+2; m += blockDim.z) {
+       int sm = m + 1; // this takes care of corners...
+       int sl = threadIdx.y + 1;
+       if (sl < 2) {
+	 // set ghost to zero at low l
+	 S_G(sl-1, sm) = make_cuComplex(0., 0.);
+	 
+	 // set ghost with closures at high l
+	 S_G(sl+nl, sm) = make_cuComplex(0., 0.);
+       }
+     }
+     
+     __syncthreads();
   
     // stencil (on non-ghost cells)
     // blockIdx for y and z are unity in the kernel invocation
-    for (int m = threadIdx.z; m < nm; m += blockDim.z) {
-     for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-      int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
-      int sl = l + 1; // offset to get past ghosts
-      int sm = m + 2; // offset to get past ghosts
+     for (int m = threadIdx.z; m < nm; m += blockDim.z) {
+       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+	 int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	 int sl = l + 1; // offset to get past ghosts
+	 int sm = m + 2; // offset to get past ghosts
   
-      // need to calculate parallel terms separately because need to take derivative via fft 
-      rhs_par[globalIdx] = -vt_*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
+	 // need to calculate parallel terms separately because need to take derivative via fft 
+	 rhs_par[globalIdx] = -vt_*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
-      // remaining terms
-      rhs[globalIdx] = 
-       - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)* l   *S_G(sl-1,sm+1)  
-                          + sqrtf(m  )* l   *S_G(sl,sm-1) + sqrtf(m  )*(l+1)*S_G(sl+1,sm-1) )
+	 // remaining terms
+	 rhs[globalIdx] = 
+	   - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)* l   *S_G(sl-1,sm+1)  
+                              + sqrtf(m  )* l   *S_G(sl,sm-1) + sqrtf(m  )*(l+1)*S_G(sl+1,sm-1) )
   
-	- icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + 2.*m*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
-	- igb_d_s * (              (l+1)*S_G(sl+1,sm) + 2.*(l+1)*S_G(sl,sm)          + l*S_G(sl-1,sm) )
+	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + 2.*m*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
+	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + 2.*(l+1)*S_G(sl,sm)          + l*S_G(sl-1,sm) )
+	   
+	   - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
   
-	- nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
-  
-      // add potential, drive, and conservation terms in low hermite moments
-      if(m==0) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ * (
-            Jflr(l-1,b_s)*(      -l *igb_d_s * zt_ +           tprim_  *l  * iky_ )
-	  + Jflr(l,  b_s)*( -2*(l+1)*igb_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
-	  + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
-	  + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
-	  + nu_ * (JU(l, b_s) * uperp_bar_ + 2. * JT(l, b_s) * t_bar_) 
-	  - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ;
-//	  + nu_ * 2. *  JT(l, b_s)  * t_bar_ 
-//	  + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-//	  + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
-      }
+	 // add potential, drive, and conservation terms in low hermite moments
+	 if (m==0) {
+	   rhs[globalIdx] = rhs[globalIdx] + phi_ * (
+              Jflr(l-1,b_s)*(      -l *igb_d_s * zt_ +           tprim_  *l  * iky_ )
+	    + Jflr(l,  b_s)*( -2*(l+1)*igb_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
+	    + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
+	    + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
+	    + nu_ * (JU(l, b_s) * uperp_bar_ + 2. * JT(l, b_s) * t_bar_) 
+	    - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ;
+//	    + nu_ * 2. *  JT(l, b_s)  * t_bar_ 
+//	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+//	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
+	 }
 
-      if(m==1) {
-        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_ * zt_ * vt_;
-
-        rhs[globalIdx] = rhs[globalIdx] - phi_ * (
-	          l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
-      		+ nu_ * Jflr(l,b_s) * upar_bar_;
-      }
-      if(m==2) {
-        rhs[globalIdx] = rhs[globalIdx] + phi_ *
-	          Jflr(l,b_s) * (-2*icv_d_s * zt_ + tprim_ * iky_)/sqrtf(2) 
-		+ nu_ * sqrtf(2) * Jflr(l,b_s) * t_bar_;
-      }  
-     } // l loop
-    } // m loop
+	 if (m==1) {
+	   rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_ * zt_ * vt_;
+	   
+	   rhs[globalIdx] = rhs[globalIdx] - phi_ * (
+	            l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
+      		  + nu_ * Jflr(l,b_s) * upar_bar_;
+	 }
+	 if (m==2) {
+	   rhs[globalIdx] = rhs[globalIdx] + phi_ *
+	     Jflr(l,b_s) * (-2*icv_d_s * zt_ + tprim_ * iky_)/sqrtf(2) + nu_ * sqrtf(2) * Jflr(l,b_s) * t_bar_;
+	 }  
+       } // l loop
+     } // m loop
   
    } // species loop
   } // idxyz < NxNycNz
@@ -1202,15 +1274,15 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();
 
-  if(idxyz<nx*nyc*nz) {
+  if (idxyz < nx*nyc*nz) {
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
     float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
-    for(int is=0; is<nspecies; is++) { 
+    for (int is=0; is < nspecies; is++) { 
     // blockIdx for y and z are unity in the kernel invocation      
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
 	for (int l = threadIdx.y; l < nl; l += blockDim.y) {
 	  int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
-	  if(m>2 || l>1) {
+	  if (m>2 || l>1) {
 	    rhs[globalIdx] = rhs[globalIdx] -
 	      (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
 	       +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
@@ -1231,9 +1303,9 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 {
   unsigned int idxyz = get_id1();
 
-  if(idxyz<nx*nyc*nz) {
+  if (idxyz < nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
-    for(int is=0; is<nspecies; is++) {
+    for (int is=0; is < nspecies; is++) {
       const float zt_ = species[is].zt;
       int index = idxyz + nx*nyc*nz*is;
 
@@ -1243,7 +1315,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       
       float b_s = kperp2[idxyz]*species[is].rho2;
       // sum over l
-      for(int l=0; l<nl; l++) {
+      for (int l=0; l < nl; l++) {
         upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*Gc_(idxyz, l, 1, is);
         // Hc_(...) is defined by macro above. Only use H here for m=0. Confusing!
         uperp_bar[index] = uperp_bar[index] + JU(l, b_s) * Hc_(idxyz, l, 0, is);

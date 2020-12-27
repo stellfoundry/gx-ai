@@ -154,10 +154,10 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   int nslm = nL * nM * nS;
 
   int nbx = 32;
-  int ngx = nyx/nbx + min(nyx%nbx, 1);
+  int ngx = (nyx-1)/nbx + 1;
 
   int nby = 32;
-  int ngy = grids_->Nz/nby + min(nZ % nby, 1);
+  int ngy = (grids_->Nz-1)/nby + 1;
   
   dB_all = dim3(nbx, nby, 1);
   dG_all = dim3(ngx, ngy, nslm);

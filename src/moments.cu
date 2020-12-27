@@ -56,10 +56,10 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   int nslm =  grids_->Nspecies*grids_->Nm*grids_->Nl;
 
   int nbx = 32;
-  int ngx = nyx/nbx + min(nyx%nbx, 1);
+  int ngx = (nyx-1)/nbx + 1;
 
   int nby = 32;
-  int ngy = grids_->Nz/nby + min(grids_->Nz % nby, 1);
+  int ngy = (grids_->Nz-1)/nby + 1;
   
   dB_all = dim3(nbx, nby, 1);
   dG_all = dim3(ngx, ngy, nslm);
@@ -212,12 +212,12 @@ int MomentsG::reality(int ngz)
   int ntx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = ntx/dB.x + min(ntx%dB.x, 1);
-
+  dG.x = (ntx-1)/dB.x + 1;
+  
   int nty = grids_->Nz;
 
   dB.y = 16;
-  dG.y = nty/dB.y + min(nty%dB.y, 1);
+  dG.y = (nty-1)/dB.y + 1;
   
   dB.z = 1;
   dG.z = ngz;
