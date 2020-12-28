@@ -71,9 +71,9 @@ Linear::~Linear()
 int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // calculate conservation terms for collision operator
-  conservation_terms<<<(grids_->NxNycNz-1)/256+1, 256>>>
-    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
-
+  if (pars_->collisions)  conservation_terms <<<(grids_->NxNycNz-1)/256+1, 256>>>
+      (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
+  
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
@@ -90,13 +90,12 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // closures
   if(pars_->closure_model_opt>0) closures->apply_closures(G, GRhs);
 
-    // hypercollisions
+  // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
 								   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,
 								   pars_->p_hyper_m, GRhs->G());
-
   return 0;
 }
 

@@ -30,9 +30,9 @@ class NetCDF_ids {
   int iphi00, local_limit, linear, forcing, forcing_type, forcing_amp;
   int hypercollisions, snyder_electrons, nlpm, no_zonal_nlpm;
   int no_nl_flr, no_nl_cross_terms, no_nl_dens_cross_term;  
-  int phi_ext, nwrite, navg, nsave, debug;
+  int phi_ext, nwrite, navg, nsave, debug, nreal;
   int density, upar, phi, apar, density0, phi0, qflux;
-  int write_apar;
+  int write_apar, collisions;
   int source_opt;
   int write_spec_v_time, density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;

@@ -60,7 +60,7 @@ class Parameters {
   void init_species(specie* species);
 
   int ncid;
-  int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo;
+  int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int closure_model_opt, forcing_index, smith_par_q, smith_perp_q;
@@ -92,7 +92,7 @@ class Parameters {
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
-  bool append_old, no_omegad, eqfix, write_pzt;
+  bool append_old, no_omegad, eqfix, write_pzt, collisions;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex;
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;

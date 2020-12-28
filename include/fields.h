@@ -8,14 +8,18 @@ class Fields {
     Fields(Grids* grids);
     ~Fields();
 
-    cuComplex* phih;
-    cuComplex* phi;
-    cuComplex* apar; // for electromagnetic only
-    void print_phi(void);
-
-    inline void copyFrom(Fields* source) {
-      cudaMemcpyAsync(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
-    }
+  cuComplex *phi, *phi_h;
+  cuComplex *apar, *apar_h;
+  
+  void print_phi(void);
+  void print_apar(void);
+  
+  inline void copyPhiFrom(Fields* source) {
+    cudaMemcpyAsync(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
+  }
+  inline void copyAparFrom(Fields* source) {
+    cudaMemcpyAsync(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
+  }
 
   private:
     const size_t size_;

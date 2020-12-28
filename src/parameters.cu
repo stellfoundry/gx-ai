@@ -55,7 +55,8 @@ void Parameters::get_nml_vars(char* filename)
   navg    = toml::find_or <int> (nml, "navg", 10);
   nsave   = toml::find_or <int> (nml, "nsave", 2000000);
   i_share = toml::find_or <int> (nml, "i_share", 8);
-
+  nreal   = toml::find_or <int> (nml, "nreal", 10000);
+  
   ikx_fixed = toml::find_or <int> (nml, "ikx_fixed", -1);
   iky_fixed = toml::find_or <int> (nml, "iky_fixed", -1);
   eqfix             = toml::find_or <bool> (nml, "eqfix", false);
@@ -205,6 +206,11 @@ void Parameters::get_nml_vars(char* filename)
     species_h[is].type = stype == "ion" ? 0 : 1;
   }
   
+  float numax = -1.;
+  collisions = false;
+  for (int i=0; i<nspec_in; i++) {numax = max(numax, species_h[i].nu_ss);}
+  if (numax > 0.) collisions = true;
+
   fphi = toml::find_or <float> (nml, "fphi", 1.0);
   fapar = toml::find_or <float> (nml, "fapar", 0.0);
   fbpar = toml::find_or <float> (nml, "fbpar", 0.0);
@@ -271,7 +277,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "zp",                    NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "jtwist",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "i_share",               NC_INT,   0, NULL, &ivar)) ERR(retval);
-
+  if (retval = nc_def_var (ncid, "nreal",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   // diagnostics
   if (retval = nc_def_var (ncid, "nwrite",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "navg",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -338,6 +345,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_put_att_text (ncid, ivar, "value", source.size(), source.c_str())) ERR(retval);
   if (retval = nc_def_var (ncid, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "hypercollisions",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "collisions",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "closure_model_dum",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", closure_model.size(), closure_model.c_str())) ERR(retval);
   if (retval = nc_def_var (ncid, "smith_par_q",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -402,6 +410,7 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "nwrite",  nwrite);
   putint   (ncid, "navg",    navg);
   putint   (ncid, "nsave",   nsave);
+  putint   (ncid, "nreal",   nreal);
   putint   (ncid, "i_share", i_share);
 
   putint   (ncid, "ikx_fixed", ikx_fixed);
@@ -451,6 +460,7 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "iphi00", iphi00);
   putbool  (ncid, "hyper", hyper);
   putbool  (ncid, "hypercollisions", hypercollisions);
+  putbool  (ncid, "collisions", collisions);
   
   putbool  (ncid, "slab", slab);
   putbool  (ncid, "const_curv", const_curv);
@@ -534,6 +544,7 @@ void Parameters::get_nml_vars(char* filename)
   //   exit(1);
    
   //  if(strcmp(closure_model, "beer4+2")==0) {
+  closure_model_opt = 0;
   if( closure_model == "beer4+2") {
     printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
     nm_in = 4;
@@ -768,7 +779,7 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
     species_h[i].nu_ss = externalpars->nu[i] ;
   }
   cudaMemcpy(species, species_h, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
-  
+
   //jtwist should never be < 0. If we set jtwist < 0 in the input file,
   // this triggers the use of jtwist_square... i.e. jtwist is 
   // set to what it needs to make the box square at the outboard midplane

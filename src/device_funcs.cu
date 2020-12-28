@@ -56,16 +56,6 @@ __host__ __device__ float factorial(int m) {
   else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
-__device__ float JU (const int l, const float b, bool enforce_JL_0) {
-  return (sqrtf(b)*(Jflr(l, b, enforce_JL_0) + Jflr(l-1, b, enforce_JL_0)));;
-}
-
-__device__ float JT (const int l, const float b, bool enforce_JL_0) {
-  return (l * Jflr(l-1, b, enforce_JL_0)
-     +  2*l * Jflr(l  , b, enforce_JL_0)
-     + (l+1)* Jflr(l+1, b, enforce_JL_0));
-}
-
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
   if (l>30) return 0.; // protect against underflow for single precision evaluation
 
@@ -366,16 +356,16 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, const cuC
   if (idxyz < nx*nyc*nz) res[idxyz] = scalar*mom[idxyz];
 }
 
-__global__ void reality_kernel(cuComplex* g) 
+__global__ void reality_kernel(cuComplex* g, int N) 
 {
   int idx = get_id1();
   int idz = get_id2();
-  int idslm = get_id3();
+  int idlms = get_id3();
   
-  if (idx < (nx-1)/3+1 && idz < nz) {
+  if (idx < (nx-1)/3+1 && idz < nz && idlms < N) {
 
-    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idslm;
-    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idslm;
+    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idlms;
+    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idlms;
     
     if (idx==0) {
       g[ig].x = 0.;
@@ -417,7 +407,6 @@ __device__ bool masked(int idx, int idy) {
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale)
 {
- // BD Depending on how it is called, this could fail for Nz > 1024   so without a flag this is a possible bug
   unsigned int idz = get_id1();
   if (idz < nz) bgrad[idz] = ( bgrad_temp[idz] / bmag[idz] ) * scale;
 }
@@ -466,7 +455,7 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
-__global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi, const float *kperp2)
+__global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi, const float *kperp2) // crude diagnostic
 {
   // should re-do this with real space/wavenumber indexing and using unmasked function
   unsigned int idxyz = get_id1();
@@ -481,8 +470,8 @@ __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi,
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)*Jflr(l,b_s)*G_(idxyz, l, 2, 0);
       } else {
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)/3.*Jflr(l,b_s)*G_(idxyz, l, 2, 0)
-	  + 2./3. * JT(l, b_s) * H_(idxyz, l, 0, 0);
-//	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
+	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
+
       }
     }
   }
@@ -1171,7 +1160,6 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      cuComplex uperp_bar_ = uperp_bar[idxyz + is * nR];
      cuComplex t_bar_     =     t_bar[idxyz + is * nR];
 
-
      // read tile of g into shared mem
      // each thread in the block reads in multiple values of l and m
      // blockIdx for y and z and both of size unity in the kernel invocation
@@ -1245,11 +1233,9 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	    + Jflr(l,  b_s)*( -2*(l+1)*igb_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
 	    + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
 	    + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
-	    + nu_ * (JU(l, b_s) * uperp_bar_ + 2. * JT(l, b_s) * t_bar_) 
-	    - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ ;
-//	    + nu_ * 2. *  JT(l, b_s)  * t_bar_ 
-//	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-//	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_ 
+	     - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ 
+	     + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+	     + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
 
 	 if (m==1) {
@@ -1316,20 +1302,21 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       float b_s = kperp2[idxyz]*species[is].rho2;
       // sum over l
       for (int l=0; l < nl; l++) {
-        upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*Gc_(idxyz, l, 1, is);
+
         // Hc_(...) is defined by macro above. Only use H here for m=0. Confusing!
-        uperp_bar[index] = uperp_bar[index] + JU(l, b_s) * Hc_(idxyz, l, 0, is);
-//        uperp_bar[index] = uperp_bar[index] + sqrtf(b_s)*(Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0, is);
+	uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0, is);
+
+        upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*Gc_(idxyz, l, 1, is);
 
         // energy conservation correction for nlaguerre = 1
         if (nl == 1) {
             t_bar[index] = t_bar[index] + sqrtf(2.)*Jflr(l,b_s)*Gc_(idxyz, l, 2, is);
         } else {
             t_bar[index] = t_bar[index] + sqrtf(2.)/3.*Jflr(l,b_s)*Gc_(idxyz, l, 2, is)
-	      + 2./3. * JT(l, b_s) * Hc_(idxyz, l, 0, is);
-//		    + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, 0, is);
+	      + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, 0, is);
         }
       }
+      uperp_bar[index] = uperp_bar[index]*sqrtf(b_s);
     }
   }
 }

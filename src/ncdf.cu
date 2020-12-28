@@ -853,24 +853,30 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_enddef(file)) ERR(retval);
   
   ///////////////////////////////////
-  /// write parameters of this run //
+  //                               //
+  //        ky                     //
+  //                               //
   ///////////////////////////////////
   ky_start[0] = 0;
   ky_count[0] = grids_->Naky;
 
   if (retval = nc_put_vara(file, ky, ky_start, ky_count, grids_->ky_h))         ERR(retval);
 
+  ///////////////////////////////////
+  //                               //
+  //        kx                     //
+  //                               //
+  ///////////////////////////////////
   kx_start[0] = 0;
   kx_count[0] = grids_->Nakx;
 
   if (retval = nc_put_vara(file, kx, kx_start, kx_count, grids_->kx_h))         ERR(retval);
 
-  idum = pars_->boundary_option_periodic ? 1 : 0;
-  if (retval = nc_put_var(file, periodic,      &idum))                   ERR(retval);
-
-  idum = pars_->local_limit ? 1 : 0;
-  if (retval = nc_put_var(file, local_limit,   &pars_->local_limit))     ERR(retval);
-
+  ///////////////////////////////////
+  //                               //
+  //  geometric information        //
+  //                               //
+  ///////////////////////////////////
   geo_start[0] = 0;
   geo_count[0] = grids_->Nz;
   
@@ -930,7 +936,12 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_put_vara(file, gds22,    geo_start, geo_count, geo_->gds22_h))     ERR(retval);
   if (retval = nc_put_vara(file, grho,     geo_start, geo_count, geo_->grho_h))      ERR(retval);
   if (retval = nc_put_vara(file, jacobian, geo_start, geo_count, geo_->jacobian_h))  ERR(retval);
-  
+
+  idum = pars_->boundary_option_periodic ? 1 : 0;
+  if (retval = nc_put_var(file, periodic,      &idum))                   ERR(retval);
+
+  idum = pars_->local_limit ? 1 : 0;
+  if (retval = nc_put_var(file, local_limit,   &pars_->local_limit))     ERR(retval);
 }
 
 NetCDF_ids::~NetCDF_ids() {

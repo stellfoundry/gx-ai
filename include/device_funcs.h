@@ -9,8 +9,6 @@ __device__ unsigned int get_id3(void);
 
 __host__ __device__ float factorial(int m);
 __device__ float Jflr(int l, float b, bool enforce_JL_0=true);
-__device__ float JT  (int l, float b, bool enforce_HL_0=true);
-__device__ float JU  (int l, float b, bool enforce_HL_0=true);
 __device__ float Jfac(int l, float b);
 
 __host__ __device__ float g0(float b);
@@ -99,7 +97,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    cuComplex c1, cuComplex* m1,
 					    cuComplex c2, cuComplex* m2);
 
-__global__ void reality_kernel(cuComplex* g);
+__global__ void reality_kernel(cuComplex* g, int N);
 
 __device__ int get_ikx(int idx);
 __device__ bool unmasked(int idx, int idy);

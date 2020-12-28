@@ -334,7 +334,6 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   // set this flag so we know to deallocate
   operator_arrays_allocated_ = true;
 
-  checkCuda(cudaGetLastError());
   cudaMalloc((void**) &kperp2, sizeof(float)*grids->NxNycNz);
   cudaMalloc((void**) &omegad, sizeof(float)*grids->NxNycNz);
   cudaMalloc((void**) &cv_d,   sizeof(float)*grids->NxNycNz);
@@ -381,7 +380,8 @@ void Geometry::calculate_bgrad(Grids* grids)
   //bgrad = d/dz ln(B(z)) = 1/B dB/dz
   grad_par->dz1D(bgrad_temp); // FFT and k-space derivative
   float scale = gradpar;
-  calc_bgrad <<< 1, grids->Nz >>> (bgrad, bgrad_temp, bmag, scale);
+  //  calc_bgrad <<< 1, grids->Nz >>> (bgrad, bgrad_temp, bmag, scale);
+  calc_bgrad <<< (grids->Nz-1)/512 + 1, 512 >>> (bgrad, bgrad_temp, bmag, scale);  
 
   CP_TO_CPU (bgrad_h, bgrad, size);
   cudaFree(bgrad_temp);

@@ -78,7 +78,11 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     counter++;
     timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
-    if (checkstop) break; 
+    if (checkstop) break;
+    if (counter % pars->nreal == 0)  {
+      G -> reality(grids->Nl * grids->Nm * grids->Nspecies); 
+      solver -> fieldSolve(G, fields);
+    }
   }
 
   if (pars->save_for_restart) G->restart_write(&time);

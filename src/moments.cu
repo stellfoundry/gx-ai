@@ -209,20 +209,20 @@ int MomentsG::reality(int ngz)
   dim3 dB;
   dim3 dG;
 
-  int ntx = (grids_->Nx-1)/3 + 1;
+  int ngx = (grids_->Nx-1)/3 + 1;
   
   dB.x = 32;
-  dG.x = (ntx-1)/dB.x + 1;
+  dG.x = (ngx-1)/dB.x + 1;
   
-  int nty = grids_->Nz;
+  int ngy = grids_->Nz;
 
-  dB.y = 16;
-  dG.y = (nty-1)/dB.y + 1;
+  dB.y = 8;
+  dG.y = (ngy-1)/dB.y + 1;
   
-  dB.z = 1;
-  dG.z = ngz;
+  dB.z = 4;
+  dG.z = (ngz-1)/dB.z + 1;
 
-  reality_kernel <<< dG, dB >>> (G_lm);
+  reality_kernel <<< dG, dB >>> (G_lm, ngz);
   return 0;
 }
 

@@ -66,7 +66,6 @@ void GradParallelPeriodic::dz(MomentsG* G)
     // backward FFT (kz -> z)
     cufftExecC2C(dz_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);
   }
-  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl); // Why is this here? Evidence of a bug somewhere?
 }
 
 // FFT and derivative for a single moment
@@ -74,24 +73,6 @@ void GradParallelPeriodic::dz(cuComplex* mom, cuComplex* res)
 {
   cufftExecC2C(dz_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(dz_plan_inverse, res, res, CUFFT_INVERSE);
-
-  dim3 dB;
-  dim3 dG;
-
-  int ntx = (grids_->Nx-1)/3 + 1;
-  
-  dB.x = 32;
-  dG.x = (ntx-1)/dB.x + 1;
-
-  int nty = grids_->Nz;
-  
-  dB.y = 16;
-  dG.y = (nty-1)/dB.y + 1;
-  
-  dB.z = 1;
-  dG.z = 1;
-
-  reality_kernel <<< dG, dB >>> (res);
 }
 
 // FFT and |kz| operator for a single moment
@@ -99,24 +80,6 @@ void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
 {
   cufftExecC2C(abs_dz_plan_forward, mom, res, CUFFT_FORWARD);
   cufftExecC2C(dz_plan_inverse, res, res, CUFFT_INVERSE);
-
-  dim3 dB;
-  dim3 dG;
-
-  int ntx = (grids_->Nx-1)/3 + 1;
-  
-  dB.x = 32;
-  dG.x = (ntx-1)/dB.x + 1;
-
-  int nty = grids_->Nz;
-
-  dB.y = 16;
-  dG.y = (nty-1)/dB.y + 1;
-  
-  dB.z = 1;
-  dG.z = 1;
-
-  reality_kernel <<< dG, dB >>> (res);
 }
 
 // FFT only for a single moment

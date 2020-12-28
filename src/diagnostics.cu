@@ -257,7 +257,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
   }
 
   if(id->omg.write_v_time) {
-    if (counter%nw == nw-1) fields_old->copyFrom(fields);
+    if (counter%nw == nw-1) fields_old->copyPhiFrom(fields);
 
     if (counter%nw == 0 && counter > 0) {
       freqs(fields, fields_old, dt);

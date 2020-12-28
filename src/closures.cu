@@ -59,19 +59,21 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
     cudaMemset(GRhs->G(1, 2, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
     cudaMemset(GRhs->G(1, 3, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
-    // parallel terms (each must be done separately because of FFTs)
+    // parallel streaming
     grad_par->dz(G->G(0, 2, is), tmp); // roughly d/dz T_par
+    
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -Beta_par/sqrt(3.)*gpar_*vt_, tmp);
 
-    grad_par->abs_dz(G->G(0, 3, is), tmp); // roughly |d/dz| q_par
+    grad_par->abs_dz(G->G(0, 3, is), tmp); // roughly |d/dz| q_par,par
+
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -sqrt(2.)*D_par*gpar_*vt_, tmp);
 
-    grad_par->abs_dz(G->G(1, 1, is), tmp); // 
+    grad_par->abs_dz(G->G(1, 1, is), tmp); // rougly |d/dz| q_par,perp
+
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(1, 1, is), 1., GRhs->G(1, 1, is), -sqrt(2.)*D_perp*gpar_*vt_, tmp);
-  
   }
   
   // toroidal terms.  
@@ -231,7 +233,9 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       for (int m = M; m >= grids_->Nm - q_; m--) {
 
 	grad_par->dz(G->G(l, m, is), tmp);
+
 	grad_par->abs_dz(G->G(l, m, is), tmp_abs);
+	
 	add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
 	  (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
       }

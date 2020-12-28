@@ -145,10 +145,9 @@ void GradParallelLinked::dz(MomentsG* G)
 	(G_linked[c], G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
   }
-  G->reality(grids_->Nl*grids_->Nm*grids_->Nspecies); // why is this here? 
 }
 
-// for a single moment m *and thus a single species!* 
+// for a single moment m 
 void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
 {
   int nMoms=1;
@@ -160,24 +159,6 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
-
-  dim3 dB;
-  dim3 dG;
-
-  int ntx = (grids_->Nx-1)/3 + 1;
-  
-  dB.x = 32;
-  dG.x = (ntx-1)/dB.x + 1;
-
-  int nty = grids_->Nz;
-
-  dB.y = 16;
-  dG.y = (nty-1)/dB.y + 1;
-  
-  dB.z = 1;
-  dG.z = 1;
-
-  reality_kernel <<< dG, dB >>> (res);
 }
 
 // for a single moment m
@@ -192,26 +173,7 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
-
-  dim3 dB;
-  dim3 dG;
-
-  int ntx = (grids_->Nx-1)/3 + 1;
-  
-  dB.x = 32;
-  dG.x = (ntx-1)/dB.x + 1;
-
-  int nty = grids_->Nz;
-
-  dB.y = 16;
-  dG.y = (nty-1)/dB.y + 1;
-  
-  dB.z = 1;
-  dG.z = 1;
-
-  reality_kernel <<< dG, dB >>> (res);
 }
-
 
 int compare (const void * a, const void * b)
 {
@@ -465,17 +427,6 @@ void GradParallelLinked::linkPrint() {
     }
     printf("\n\n");
   }
-}
-
-// for testing
-void GradParallelLinked::identity(MomentsG* G)
-{
-  for(int c=0; c<nClasses; c++) {
-    // each "class" has a different number of links in the chains, and a different number of chains.
-    linkedCopy<<<dG[c],dB[c]>>>(G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-    linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-  }
-  G->reality(grids_->Nspecies*grids_->Nm*grids_->Nl);
 }
 
 void GradParallelLinked::set_callbacks()

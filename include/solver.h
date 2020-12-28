@@ -26,5 +26,5 @@ class Solver {
   Geometry* geo_;
 
   int maxThreadsPerBlock_;
-  dim3 dimGrid_qneut, dimBlock_qneut;
+  dim3 dG, dB;
 };
