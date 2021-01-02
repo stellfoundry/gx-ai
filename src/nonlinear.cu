@@ -26,7 +26,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   laguerre =        new LaguerreTransform(grids_, 1);
-  //  red =             new Red(grids_->NxNyNz*grids_->Nj);
   red =             new Red(grids_->NxNyNz);
 
   nBatch = grids_->Nz*grids_->Nl; 

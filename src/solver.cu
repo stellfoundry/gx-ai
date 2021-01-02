@@ -37,15 +37,21 @@ Solver::~Solver()
 
 int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
-  // NEED TO BUILD THE NON_ADIABATIC OPTION! 
+  bool em = pars_->beta > 0. ? true : false;
+  
+  if (pars_->all_kinetic) {
+    qneut <<< dG, dB >>> (fields->phi, G->G(), geo_->kperp2, pars_->species);
+
+    if (em) ampere <<< dG, dB >>> (fields->apar, G->G(0,1,0), geo_->kperp2, pars_->species, pars_->beta);
+  }
+  
   if(pars_->adiabatic_electrons) {
-    // To do:
-    // ??Better to define an object J_0 G(m=0) * dens * z == JG == JG(ky, kx, z, l, s)
-    // and then use a tensor reduction to take JG => N = N(ky, kx, z, s)
-    int nthreads = 512;
-    real_space_density <<< (grids_->NxNycNz-1)/nthreads + 1, nthreads >>> (nbar, G->G(),
-									   geo_->kperp2,
-									   pars_->species);
+
+    int nts = 512;
+    nts = min(nts, grids_->Nyc*grids_->Nx);
+    int nbs = (grids_->NxNycNz-1)/nts + 1;
+
+    real_space_density <<< nbs, nts >>> (nbar, G->G(), geo_->kperp2, pars_->species);
 
     if(pars_->iphi00==2) {
       qneutAdiab_part1 <<< dG, dB >>> (tmp, nbar,
@@ -59,14 +65,12 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
       qneutAdiab_part2 <<< dG, dB >>> (fields->phi, tmp, nbar,
 				       phiavgdenom,
 				       geo_->kperp2,							    
-				       geo_->jacobian,
 				       pars_->species,
 				       pars_->ti_ov_te);
     } 
     
     if(pars_->iphi00==1) qneutAdiab <<< dG, dB >>> (fields->phi, nbar,
 						    geo_->kperp2,
-						    geo_->jacobian,
 						    pars_->species,
 						    pars_->ti_ov_te);
   }

@@ -1,18 +1,20 @@
 #include "fields.h"
 #include "get_error.h"
 
-Fields::Fields(Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz),
-			       N(grids->NxNycNz), grids_(grids)
+Fields::Fields(Parameters* pars, Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz),
+						 N(grids->NxNycNz), grids_(grids), pars_(pars)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
   cudaMemset(phi, 0., size_);
 
   cudaMallocHost((void**) &phi_h, size_);
 
-  //  checkCuda(cudaMalloc((void**) &apar, size_));
-  //  cudaMemset(apar, 0., size_);
+  if (pars_->beta > 0.) {
+    checkCuda(cudaMalloc((void**) &apar, size_));
+    cudaMemset(apar, 0., size_);
 
-  //  cudaMallocHost((void**) &apar_h, size_);
+    cudaMallocHost((void**) &apar_h, size_);
+  }
 }
 
 Fields::~Fields() {

@@ -450,7 +450,7 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
   }
 }
 
-# define H_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_
+# define H_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_)
 # define G_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
@@ -869,6 +869,35 @@ __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const flo
   }
 }
 
+
+__global__ void ampere(cuComplex* Apar,
+		       const cuComplex* gu,
+		       const float* kperp2,
+		       const specie* species,
+		       float beta)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if ( unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz; // spatial index
+    
+    cuComplex jpar;    jpar = make_cuComplex(0., 0.);
+        
+    for (int is=0 ; is < nspecies; is++) {
+      const specie s = species[is];
+      const float b_s = kperp2[idxyz] * s.rho2;
+      const float j_s = s.nz * s.vt * beta; // This must be beta_ref
+      for (int l=0; l < nl; l++) {
+	int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	jpar = jpar + Jflr(l, b_s) * gu[ig] * j_s;
+      }
+    }        
+    Apar[idxyz] = jpar / kperp2[idxyz];
+  }
+}
+
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species) 
 {
   unsigned int idxyz = get_id1();
@@ -892,6 +921,33 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
   }
 }
 
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const specie* species)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if ( unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz; // spatial index
+    
+    cuComplex nbar;    nbar = make_cuComplex(0., 0.);
+    float denom = 0.;
+        
+    for (int is=0 ; is < nspecies; is++) {
+      const specie s = species[is];
+      const float b_s = kperp2[idxyz] * s.rho2;
+
+      for (int l=0; l < nl; l++) {
+	int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	nbar = nbar + Jflr(l, b_s) * g[ig] * s.nz;
+      }
+      denom += s.dens * s.z * s.zt * ( 1. - g0(kperp2[idxyz]*s.rho2) );
+    }    
+    
+    Phi[idxyz] = nbar / denom;    
+  }
+}
+
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian,
 				 const specie* species, const float ti_ov_te)
@@ -902,22 +958,21 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 
   if ( unmasked(idx, idy) && idz < nz) {
   
-    unsigned int index = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
     float pfilter2 = 0.;
     
-    // BD This species stuff will need to be changed when species are shared over GPUs. 
     for (int is=0; is < nspecies; is++) {
       specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
+      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
     
-    PhiAvgNum_tmp[index] = ( nbar[index] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+    PhiAvgNum_tmp[idxyz] = ( nbar[idxyz] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
   }
 }
 
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
-				 const float* PhiAvgDenom, const float* kperp2, const float* jacobian,
+				 const float* PhiAvgDenom, const float* kperp2, 
 				 const specie* species, const float ti_ov_te)
 {
   unsigned int idy = get_id1();
@@ -926,7 +981,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
   
   if ( unmasked(idx, idy) && idz < nz) {
 
-    unsigned int index = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
     unsigned int idxy  = idy + nyc*idx;
 
     float pfilter2 = 0.;
@@ -934,7 +989,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
     // BD multiple GPUs will require change here
     for (int is=0; is < nspecies; is++) {
       specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
+      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
 
     // This is okay because PhiAvgNum_zSum is local to each thread
@@ -955,8 +1010,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
 
-    Phi[index].x = ( nbar[index].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
-    Phi[index].y = ( nbar[index].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
+    Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
+    Phi[idxyz].y = ( nbar[idxyz].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
   }
 }
 
@@ -992,13 +1047,13 @@ __global__ void add_source(cuComplex* f, const float source)
   unsigned int idz = get_id3();
   
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int index = idy + nyc*idx + nx*nyc*idz;
-    f[index].x = f[index].x + source;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    f[idxyz].x = f[idxyz].x + source;
   }
 }
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
-			   const float* kperp2, const float* jacobian,
+			   const float* kperp2, 
 			   const specie* species, float ti_ov_te)
 {
   unsigned int idy = get_id1();
@@ -1008,17 +1063,17 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
   // BD all these qneut routines now assume we are working with the dealiased grids only
   if ( unmasked(idx, idy) && idz < nz) {
     
-    unsigned int index = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
     float pfilter2 = 0.;
     
     // BD Check this for parallel correctness when nspecies > 1
     for (int is=0; is < nspecies; is++) {
       specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[index]*s.rho2) );
+      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
     
-    Phi[index].x = ( nbar[index].x / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
-    Phi[index].y = ( nbar[index].y / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
+    Phi[idxyz].x = ( nbar[idxyz].x / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
+    Phi[idxyz].y = ( nbar[idxyz].y / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
   }
 }
 
@@ -1279,7 +1334,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
   }
 }
 
-# define Hc_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_*zt_
+# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_*zt_)
 # define Gc_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms

@@ -10,7 +10,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo)
 {  
   id = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
-  fields_old = new Fields(grids_);          cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
+  fields_old = new Fields(pars_, grids_);   cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
   int nS  = grids_->Nspecies;
   int nM  = grids_->Nm;

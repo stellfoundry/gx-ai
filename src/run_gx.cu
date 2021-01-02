@@ -42,7 +42,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 {
   double time = 0;
 
-  Fields      * fields;       fields = new Fields(grids);
+  Fields      * fields;       fields = new Fields(pars, grids);
   MomentsG    * G;            G      = new MomentsG(pars, grids);           G  -> initialConditions(geo, &time);
   Solver      * solver;       solver = new Solver(pars, grids, geo);    solver -> fieldSolve(G, fields);
   Linear      * linear;       linear = new Linear(pars, grids, geo);

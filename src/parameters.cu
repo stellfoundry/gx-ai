@@ -110,6 +110,8 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (nml, "boundary", "linked");
   source = toml::find_or <std::string> (nml, "source", "default");
 
+  all_kinetic = toml::find_or <bool> (nml, "all_kinetic", false);
+  
   smith_par_q = toml::find_or <int> (nml, "smith_par_q", 3);
   smith_perp_q = toml::find_or <int> (nml, "smith_perp_q", 3);
   iphi00 = toml::find_or <int> (nml, "iphi00", 2);
@@ -136,8 +138,8 @@ void Parameters::get_nml_vars(char* filename)
   akappri  = toml::find_or <float> (nml, "akappri", 0.0);
   tri      = toml::find_or <float> (nml, "tri", 0.0);
   tripri   = toml::find_or <float> (nml, "tripri", 0.0);
-  beta     = toml::find_or <float> (nml, "beta", 0.0);
-
+  beta     = toml::find_or <float> (nml, "beta", -1.0);
+  
   beta_prime_input = toml::find_or <float> (nml, "beta_prime_input", 0.0);
   s_hat_input      = toml::find_or <float> (nml, "s_hat_input", 0.8);
 
@@ -340,6 +342,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "boundary_dum",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", boundary.size(), boundary.c_str())) ERR(retval);
 
+  if (retval = nc_def_var (ncid, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "iphi00",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "source_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", source.size(), source.c_str())) ERR(retval);
@@ -391,6 +394,10 @@ void Parameters::get_nml_vars(char* filename)
 
   if (retval = nc_enddef (ncid)) ERR(retval);
   
+
+  adiabatic_electrons = true;
+  // all_kinetic logic required
+
   putbool  (ncid, "debug",     debug);
   putint   (ncid, "ntheta",    nz_in);
   putint   (ncid, "nx",        nx_in);
@@ -398,6 +405,7 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "nhermite",  nm_in);
   putint   (ncid, "nlaguerre", nl_in);
   putint   (ncid, "nspecies",  nspec_in);
+  putbool  (ncid, "all_kinetic", all_kinetic);
 
   putfloat (ncid, "dt", dt);
   putfloat (ncid, "y0", y0);
@@ -598,7 +606,6 @@ void Parameters::get_nml_vars(char* filename)
 
   if(hypercollisions) printf("Using hypercollisions.\n");
 
-  adiabatic_electrons = true;
   if(debug) printf("nspec_in = %i \n",nspec_in);
 
   cudaMalloc((void**)     &species,   sizeof(specie)*nspec_in);

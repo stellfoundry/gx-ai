@@ -5,9 +5,9 @@
 
 class Fields {
   public:
-    Fields(Grids* grids);
-    ~Fields();
-
+  Fields(Parameters *pars, Grids* grids);
+  ~Fields();
+  
   cuComplex *phi, *phi_h;
   cuComplex *apar, *apar_h;
   
@@ -20,9 +20,10 @@ class Fields {
   inline void copyAparFrom(Fields* source) {
     cudaMemcpyAsync(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
   }
-
-  private:
-    const size_t size_;
-    int N;
-    Grids* grids_;
+  
+private:
+  const size_t size_;
+  int N;
+  Grids* grids_;
+  Parameters* pars_;
 };

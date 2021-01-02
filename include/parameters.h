@@ -89,6 +89,7 @@ class Parameters {
   specie *species, *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
+  bool all_kinetic;
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
