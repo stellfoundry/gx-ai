@@ -20,36 +20,44 @@ class Diagnostics {
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
 
-  Fields *fields_old;
-  Red *red, *pot, *all_red;
-  GradParallel* grad_parallel;
-  NetCDF_ids* id;
-  cuComplex *t_bar;
-  
-  float *primary;
-  float *secondary;
-  float *tertiary;
-  
-  float *amom_h;
-  cuComplex *tmp_amom_h, *amom_d;
-  cuComplex valphi;
-  float *G2, *P2s;
-  float *val, *pflux, *qflux;
-  cuComplex *omg_d, *tmp_omg_h;
-  float *omg_h;
-  
   int ikx_local, iky_local, iz_local;;
-     
-  Parameters* pars_;
-  Grids* grids_;
-  Geometry* geo_;
-  
   int maxThreadsPerBlock_;
-  dim3 dimGrid_xy, dimBlock_xy;
-  dim3 dG_spec, dB_spec;
-  dim3 dG_all, dB_all;
-  dim3 dG_scale, dB_scale;
+  dim3 dimGrid_xy, dimBlock_xy, dG_spec, dB_spec, dG_all, dB_all, dG_scale, dB_scale;
+  bool checkstop();
+ 
+  float fluxDenom, fluxDenomInv;
+  float  volDenom,  volDenomInv;
+ 
+  cuComplex valphi;
+
+  Parameters   * pars_         = NULL;
+  Grids        * grids_        = NULL;
+  Geometry     * geo_          = NULL;  
+
+  Fields       * fields_old    = NULL;
+  Red          * red           = NULL;
+  Red          * pot           = NULL;
+  Red          * all_red       = NULL;
+  GradParallel * grad_parallel = NULL;
+  NetCDF_ids   * id            = NULL;
   
+  float        * primary       = NULL;
+  float        * secondary     = NULL;
+  float        * tertiary      = NULL;
+  
+  float        * amom_h        = NULL;
+  float        * omg_h         = NULL;
+  float        * G2            = NULL;
+  float        * P2s           = NULL;
+  float        * val           = NULL;
+  float        * pflux         = NULL;
+  float        * qflux         = NULL;
+  cuComplex    * tmp_omg_h     = NULL;
+  cuComplex    * omg_d         = NULL;
+  cuComplex    * tmp_amom_h    = NULL;
+  cuComplex    * amom_d        = NULL;
+  cuComplex    * t_bar         = NULL;
+       
   void fluxes(MomentsG* G, Fields* f, bool endrun);
   void freqs (Fields* f, Fields* f_old, double dt);
   void write_omg (cuComplex *W, bool endrun);
@@ -63,37 +71,58 @@ private:
   void write_nc    (int ncid, nca D, const float  *f, const bool endrun);
   void write_nc    (int ncid, nca D, const double  f, const bool endrun);
 
-  void write_Wm    (float* G2, bool endrun);
-  void write_Wl    (float* G2, bool endrun);
-  void write_Wlm   (float* G2, bool endrun);
+  void write_Wm    (float * G2, bool endrun);
+  void write_Wl    (float * G2, bool endrun);
+  void write_Wlm   (float * G2, bool endrun);
 
-  void write_Wtot  (float* Wh, bool endrun);
-  void write_Ws    (float* G2, bool endrun);
-  void write_Wz    (float* G2, bool endrun);
-  void write_Wky   (float* G2, bool endrun);
-  void write_Wkx   (float* G2, bool endrun);
-  void write_Wkxky (float* G2, bool endrun);
+  void write_Wtot  (float * Wh, bool endrun);
+  void write_Ws    (float * G2, bool endrun);
+  void write_Wz    (float * G2, bool endrun);
+  void write_Wky   (float * G2, bool endrun);
+  void write_Wkx   (float * G2, bool endrun);
+  void write_Wkxky (float * G2, bool endrun);
 
-  void write_Ps    (float* P2, bool endrun);
-  void write_Pz    (float* P2, bool endrun);
-  void write_Pky   (float* P2, bool endrun);
-  void write_Pkx   (float* P2, bool endrun);
-  void write_Pkxky (float* P2, bool endrun);
+  void write_Ps    (float * P2, bool endrun);
+  void write_Pz    (float * P2, bool endrun);
+  void write_Pky   (float * P2, bool endrun);
+  void write_Pkx   (float * P2, bool endrun);
+  void write_Pkxky (float * P2, bool endrun);
   
-  
-  bool checkstop();
- 
-  float fluxDenom, fluxDenomInv;
-  float  volDenom,  volDenomInv;
-
-  float *Wm_d, *Wm_h, *Wl_d, *Wl_h, *Wlm_d, *Wlm_h;
-  float *Ws_d, *Ws_h, *Wz_d, *Wz_h, *Wky_d, *Wky_h, *tmp_Wky_h, *Wkx_d, *Wkx_h, *tmp_Wkx_h; 
-  float *Ps_d, *Ps_h, *Pz_d, *Pz_h, *Pky_d, *Pky_h, *tmp_Pky_h, *Pkx_d, *Pkx_h, *tmp_Pkx_h;
-  float *Wkxky_d, *Wkxky_h, *tmp_Wkxky_h;  
-  float *Pkxky_d, *Pkxky_h, *tmp_Pkxky_h;
-  float *qs_d, *qs_h;
-  float *Wtot_h;
+  float * Wm_d        = NULL;
+  float * Wm_h        = NULL;
+  float * Wl_d        = NULL;
+  float * Wl_h        = NULL;
+  float * Wlm_d       = NULL;
+  float * Wlm_h       = NULL;
+  float * Ws_d        = NULL;
+  float * Ws_h        = NULL;
+  float * Wz_d        = NULL;
+  float * Wz_h        = NULL;
+  float * Wky_d       = NULL;
+  float * Wky_h       = NULL;
+  float * tmp_Wky_h   = NULL;
+  float * Wkx_d       = NULL;
+  float * Wkx_h       = NULL;
+  float * tmp_Wkx_h   = NULL;
+  float * Ps_d        = NULL;
+  float * Ps_h        = NULL;
+  float * Pz_d        = NULL;
+  float * Pz_h        = NULL;
+  float * Pky_d       = NULL;
+  float * Pky_h       = NULL;
+  float * tmp_Pky_h   = NULL;
+  float * Pkx_d       = NULL;
+  float * Pkx_h       = NULL;
+  float * tmp_Pkx_h   = NULL;
+  float * Wkxky_d     = NULL;
+  float * Wkxky_h     = NULL;
+  float * tmp_Wkxky_h = NULL;
+  float * Pkxky_d     = NULL;
+  float * Pkxky_h     = NULL;
+  float * tmp_Pkxky_h = NULL;
+  float * qs_d        = NULL;
+  float * qs_h        = NULL;
+  float * Wtot_h      = NULL;
    
   char stopfilename_[2000];
-  FILE* timefile;
 };

@@ -17,12 +17,15 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   threads = 128;
   blocks = (grids_->Nx-1)/threads+1;
   
-  calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom,
-					  geo_->kperp2,
-					  geo_->jacobian,
-					  pars_->species,
-					  pars_->ti_ov_te); 
-  
+  if (pars_->ks) {
+    // nothing
+  } else {
+    calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom,
+					    geo_->kperp2,
+					    geo_->jacobian,
+					    pars_->species,
+					    pars_->ti_ov_te); 
+  }
   // cuda dims for qneut calculation
   dB = dim3(32, 4, 4);
   dG = dim3((grids_->Nyc-1)/dB.x+1, (grids_->Nx-1)/dB.y+1, (grids_->Nz-1)/dB.z+1);  
@@ -37,6 +40,8 @@ Solver::~Solver()
 
 int Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
+  if (pars_->ks) return 0;
+  
   bool em = pars_->beta > 0. ? true : false;
   
   if (pars_->all_kinetic) {

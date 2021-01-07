@@ -19,18 +19,17 @@ class LaguerreTransform {
   int transformToGrid(float* G_in, float* g_res);
   int transformToSpectral(float* g_in, float* G_res);
 
-  float* get_toGrid() {return toGrid;}
-  float* get_toSpectral() {return toSpectral;}
-  float* get_roots() {return roots;}
+  float * get_toGrid() {return toGrid;}
+  float * get_toSpectral() {return toSpectral;}
+  float * get_roots() {return roots;}
   const int L;
   const int J;
 
  private:
-  Grids* grids_; 
-
-  float* toGrid;
-  float* toSpectral;
-  float* roots;
+  Grids * grids_     = NULL; 
+  float * toGrid     = NULL;
+  float * toSpectral = NULL;
+  float * roots      = NULL;
 
   int initTransforms(float* toGrid, float* toSpectral, float* roots);
 
@@ -38,7 +37,6 @@ class LaguerreTransform {
 
   // batch_size = number of hermite moments to transform 
   const int batch_size_;
-  
 };
 
 

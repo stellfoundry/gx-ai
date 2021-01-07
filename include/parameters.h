@@ -89,7 +89,7 @@ class Parameters {
   specie *species, *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
-  bool all_kinetic;
+  bool all_kinetic, ks, gx;
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
@@ -151,8 +151,8 @@ class Parameters {
   void  putfloat (int ncid, const char varname[], float val); 
   void  putbool  (int ncid, const char varname[], bool val);
   void  putspec (int ncid, int m, specie* val);
-  void  put_wspectra (int const ncid, std::vector<int> s);
-  void  put_pspectra (int const ncid, std::vector<int> s);
+  void  put_wspectra (int ncid, std::vector<int> s);
+  void  put_pspectra (int ncid, std::vector<int> s);
   bool initialized;
 };
 

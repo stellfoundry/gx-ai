@@ -59,6 +59,7 @@ void Parameters::get_nml_vars(char* filename)
   
   ikx_fixed = toml::find_or <int> (nml, "ikx_fixed", -1);
   iky_fixed = toml::find_or <int> (nml, "iky_fixed", -1);
+  ks                = toml::find_or <bool> (nml, "ks", false);
   eqfix             = toml::find_or <bool> (nml, "eqfix", false);
   restart           = toml::find_or <bool> (nml, "restart", false);
   save_for_restart  = toml::find_or <bool> (nml, "save_for_restart", true);
@@ -181,6 +182,8 @@ void Parameters::get_nml_vars(char* filename)
     wspectra[WSPECTRA_species] = 1;
     pspectra[PSPECTRA_species] = 1;
   }
+
+  gx = not ks;
   
   uint32_t ksize = 0;
   for (int k=0;k<pspectra.size(); k++) {ksize = max(ksize, pspectra[k]);}
@@ -807,7 +810,7 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
   return 0;
 }
 
-int Parameters::getint (int const ncid, const char varname[]) {
+int Parameters::getint (int ncid, const char varname[]) {
   int idum, retval, res;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &res)) ERR(retval);
@@ -815,21 +818,21 @@ int Parameters::getint (int const ncid, const char varname[]) {
   return res;
 }
 
-void Parameters::putint (int const ncid, const char varname[], int val) {
+void Parameters::putint (int ncid, const char varname[], int val) {
   int idum, retval;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_put_var  (ncid, idum, &val)) ERR(retval);
   //  if (debug) printf("%s = %i \n",varname, val);
 }
 
-void Parameters::putbool (int const ncid, const char varname[], bool val) {
+void Parameters::putbool (int ncid, const char varname[], bool val) {
   int idum, retval;
   int b = val==true ? 1 : 0 ; 
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_put_var  (ncid, idum, &b))       ERR(retval);
 }
 
-bool Parameters::getbool (int const ncid, const char varname[]) {
+bool Parameters::getbool (int ncid, const char varname[]) {
   int idum, ires, retval;
   bool res;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
@@ -839,7 +842,7 @@ bool Parameters::getbool (int const ncid, const char varname[]) {
   return res;
 }
 
-float Parameters::getfloat (int const ncid, const char varname[]) {
+float Parameters::getfloat (int ncid, const char varname[]) {
   int idum, retval;
   float res;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
@@ -848,14 +851,14 @@ float Parameters::getfloat (int const ncid, const char varname[]) {
   return res;
 }
 
-void Parameters::putfloat (int const ncid, const char varname[], float val) {
+void Parameters::putfloat (int ncid, const char varname[], float val) {
   int idum, retval;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_put_var  (ncid, idum, &val)) ERR(retval);
   //  if (debug) printf("%s = %f \n",varname, val);
 }
 
-void Parameters::put_wspectra (int const ncid, std::vector<int> s) {
+void Parameters::put_wspectra (int ncid, std::vector<int> s) {
 
   int idum, retval;
   wspectra_start[0] = 0;
@@ -865,7 +868,7 @@ void Parameters::put_wspectra (int const ncid, std::vector<int> s) {
   if (retval = nc_put_vara (ncid, idum, wspectra_start, wspectra_count, s.data())) ERR(retval);
 }
 
-void Parameters::put_pspectra (int const ncid, std::vector<int> s) {
+void Parameters::put_pspectra (int ncid, std::vector<int> s) {
 
   int idum, retval;
   pspectra_start[0] = 0;
@@ -875,7 +878,7 @@ void Parameters::put_pspectra (int const ncid, std::vector<int> s) {
   if (retval = nc_put_vara (ncid, idum, pspectra_start, pspectra_count, s.data())) ERR(retval);
 }
 
-void Parameters::putspec (int const ncid, int nspec, specie* spec) {
+void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   int idum, retval;
   
   is_start[0] = 0;

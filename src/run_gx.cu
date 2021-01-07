@@ -1,18 +1,4 @@
-#include "toml.hpp"
-#include <iostream>
-#include "mpi.h"
-#include "geometry.h"
-#include "parameters.h"
-#include "grids.h"
-#include "fields.h"
-#include "moments.h"
-#include "solver.h"
-#include "forcing.h"
-#include "timestepper.h"
-#include "linear.h"
-#include "diagnostics.h"
-#include "cuda_constants.h"
-#include "get_error.h"
+#include "run_gx.h"
 
 void getDeviceMemoryUsage() {
   cudaDeviceSynchronize();
@@ -42,19 +28,49 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 {
   double time = 0;
 
-  Fields      * fields;       fields = new Fields(pars, grids);
-  MomentsG    * G;            G      = new MomentsG(pars, grids);           G  -> initialConditions(geo, &time);
-  Solver      * solver;       solver = new Solver(pars, grids, geo);    solver -> fieldSolve(G, fields);
-  Linear      * linear;       linear = new Linear(pars, grids, geo);
+  Fields    * fields    = NULL;
+  MomentsG  * G         ;
+  Solver    * solver    = NULL;
+  Linear    * linear    = NULL;
+  Nonlinear * nonlinear = NULL;
+  Forcing   * forcing   = NULL;
+  
+  G         = new MomentsG (pars, grids);
+  solver    = new Solver   (pars, grids, geo);    
+  
+  /////////////////////////////////
+  //                             //
+  // Initialize gyrokinetic eqs  // 
+  //                             //
+  /////////////////////////////////
+  if (pars->gx) {
 
-  Nonlinear   * nonlinear;    nonlinear = NULL;    if(!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);
-  Forcing     * forcing;      forcing   = NULL;
-
-  if (pars->forcing_init) {
-    if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
-    if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
-    if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+    linear = new Linear(pars, grids, geo);    
+    fields = new Fields(pars, grids);
+    G      -> initialConditions(geo, &time);
+    solver -> fieldSolve(G, fields);    
+    
+    if (!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);
+    
+    if (pars->forcing_init) {
+      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
+      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
+      if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+    }
   }
+
+  //////////////////////////////
+  //                          //
+  // Kuramoto-Sivashinsky eq  // 
+  //                          //
+  //////////////////////////////  
+  if (pars->ks) {
+    linear    = new Linear(pars, grids);    
+
+    G -> initialConditions(&time);
+    G -> qvar(grids->Naky);
+    if (!pars->linear) nonlinear = new Nonlinear(pars, grids);
+  }    
 
   Timestepper * timestep;
   if(pars->scheme_opt == K10)   timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
@@ -67,7 +83,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   getDeviceMemoryUsage();
   
   if (pars->write_moms) diagnostics -> write_init(G, fields);
-  
+  printf("starting timestep \n");
+	 
   // TIMESTEP LOOP
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
@@ -92,8 +109,14 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
   diagnostics->finish(G, fields);
 
-  delete fields;     delete G;        delete solver;    delete linear;    delete nonlinear;
-  delete forcing;    delete timestep;
+  if (G)         delete G;
+  if (solver)    delete solver;
+  if (linear)    delete linear;
+  if (nonlinear) delete nonlinear;
+  if (timestep)  delete timestep;
+
+  if (fields)    delete fields;
+  if (forcing)   delete forcing;     
 }    
 
 

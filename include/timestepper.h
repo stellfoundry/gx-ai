@@ -26,18 +26,18 @@ class RungeKutta2 : public Timestepper {
  private:
   void EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* G, MomentsG* GRhs,
 		 Fields* f, MomentsG* GStar, double adt, bool setdt);
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
-  const double dt_max;
-  
-  MomentsG* GStar;
-  MomentsG* GRhs;
-  MomentsG* G1;
+
   double dt_;
+  const double dt_max;
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+  MomentsG   * GStar      = NULL;
+  MomentsG   * GRhs       = NULL;
+  MomentsG   * G1         = NULL;
 };
 
 class RungeKutta3 : public Timestepper {
@@ -49,18 +49,18 @@ class RungeKutta3 : public Timestepper {
   double get_dt() {return dt_;};
   
  private:
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
   const double dt_max;
-
-  MomentsG* GRhs1;
-  MomentsG* GRhs2;
-  MomentsG* GStar;
   double dt_;
+
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+  MomentsG   * GRhs1      = NULL;
+  MomentsG   * GRhs2      = NULL;
+  MomentsG   * GStar      = NULL;
 };
 
 class RungeKutta4 : public Timestepper {
@@ -72,19 +72,19 @@ class RungeKutta4 : public Timestepper {
   double get_dt() {return dt_;};
 
  private:
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
   const double dt_max;
-
-  MomentsG* GStar;
-  MomentsG* GRhs1;
-  MomentsG* GRhs3;
-  MomentsG* GRhs4;
   double dt_;
+
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+  MomentsG   * GStar      = NULL;
+  MomentsG   * GRhs1      = NULL;
+  MomentsG   * GRhs3      = NULL;
+  MomentsG   * GRhs4      = NULL;
 };
 /*
 class SDCe : public Timestepper {
@@ -119,19 +119,19 @@ class Ketcheson10 : public Timestepper {
 
  private:
   void EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
   const double dt_max;
-
-  MomentsG* GRhs;
-  MomentsG* GStar;
-  MomentsG* G_q1;
-  MomentsG* G_q2;
   double dt_;
+
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+  MomentsG   * GRhs       = NULL;
+  MomentsG   * GStar      = NULL;
+  MomentsG   * G_q1       = NULL;
+  MomentsG   * G_q2       = NULL;
 };
 
 class K2 : public Timestepper {
@@ -144,19 +144,20 @@ class K2 : public Timestepper {
 
  private:
   void EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
   const double dt_max;
-
-  MomentsG* GRhs;
-  MomentsG* GStar;
-  MomentsG* G_q1;
-  MomentsG* G_q2;
   double dt_;
+
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+
+  MomentsG   * GRhs       = NULL;
+  MomentsG   * GStar      = NULL;
+  MomentsG   * G_q1       = NULL;
+  MomentsG   * G_q2       = NULL;
 };
 
 class SSPx2 : public Timestepper {
@@ -169,18 +170,19 @@ class SSPx2 : public Timestepper {
 
  private:
   void EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
   const double dt_max;
-
-  MomentsG *G1, *G2;
-  MomentsG *GStar;
-  MomentsG *GRhs;
   double dt_;
+
+  Linear     * linear_    = NULL;
+  Nonlinear  * nonlinear_ = NULL;
+  Solver     * solver_    = NULL;
+  Parameters * pars_      = NULL;
+  Grids      * grids_     = NULL;
+  Forcing    * forcing_   = NULL;
+  MomentsG   * G1         = NULL;
+  MomentsG   * G2         = NULL;
+  MomentsG   * GStar      = NULL;
+  MomentsG   * GRhs       = NULL;
 };
 
 class SSPx3 : public Timestepper {
@@ -193,24 +195,25 @@ class SSPx3 : public Timestepper {
 
  private:
   void EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
-  Linear  *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids  *grids_;
-  Forcing *forcing_;
 
+  const double dt_max;
   const double adt = pow(1./6., 1./3.);
   const double wgtfac = sqrt(9. - 2.* pow(6.,2./3.));
   const double w1 = 0.5 * (wgtfac - 1.);
   const double w2 = 0.5 * (pow(6.,2./3.) - 1 - wgtfac);
   const double w3 = 1./adt - 1. - w2*(w1+1.);
-
-  const double dt_max;
-
-  MomentsG *G1, *G2, *G3;
-  MomentsG *GStar;
-  MomentsG *GRhs;
+ 
+  Linear      * linear_    = NULL;
+  Nonlinear   * nonlinear_ = NULL;
+  Solver      * solver_    = NULL;
+  Parameters  * pars_      = NULL;
+  Grids       * grids_     = NULL;
+  Forcing     * forcing_   = NULL;
+  MomentsG    * G1         = NULL;
+  MomentsG    * G2         = NULL;
+  MomentsG    * G3         = NULL;
+  MomentsG    * GStar      = NULL;
+  MomentsG    * GRhs       = NULL;
   double dt_;
 };
 

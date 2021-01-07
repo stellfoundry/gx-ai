@@ -200,6 +200,8 @@ __global__ void init_kzLinked(float* kz, int nLinks);
 extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
+__global__ void nlks(float *res, const float *Gy, const float *dG);
+__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky);
 __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,

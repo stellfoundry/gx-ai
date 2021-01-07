@@ -3,7 +3,7 @@
 #include "get_error.h"
 #include "smith_par_closure.h"
 
-Beer42::Beer42(Parameters* pars, Grids* grids, const Geometry* geo, GradParallel* grad_par_in): 
+Beer42::Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in): 
   pars_(pars), grids_(grids), grad_par(grad_par_in), omegad_(geo->omegad), gpar_(geo->gradpar)
 {
   cudaMalloc ((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
@@ -45,8 +45,8 @@ Beer42::Beer42(Parameters* pars, Grids* grids, const Geometry* geo, GradParallel
 }
 
 Beer42::~Beer42() {
-  cudaFree(tmp);
-  cudaFree(nu);
+  if (tmp) cudaFree(tmp);
+  if (nu)  cudaFree(nu);
 }
 
 int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs) 
@@ -81,7 +81,7 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
   return 0;
 }
 
-SmithPerp::SmithPerp(Parameters* pars, Grids* grids, const Geometry* geo): 
+SmithPerp::SmithPerp(Parameters* pars, Grids* grids, Geometry* geo): 
   pars_(pars), grids_(grids), omegad_(geo->omegad)
 {
   int q_ = pars_->smith_perp_q;
@@ -175,7 +175,7 @@ SmithPerp::SmithPerp(Parameters* pars, Grids* grids, const Geometry* geo):
 }
 
 SmithPerp::~SmithPerp() {
-  cudaFree(Aclos_);
+  if (Aclos_) cudaFree(Aclos_);
 }
 
 int SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
@@ -187,7 +187,7 @@ int SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs)
 }
 
 
-SmithPar::SmithPar(Parameters* pars, Grids* grids, const Geometry* geo, GradParallel* grad_par_in):  
+SmithPar::SmithPar(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in):  
   pars_(pars), grids_(grids), grad_par(grad_par_in), gpar_(geo->gradpar)
 { 
 
@@ -210,10 +210,11 @@ SmithPar::SmithPar(Parameters* pars, Grids* grids, const Geometry* geo, GradPara
 }
 
 SmithPar::~SmithPar() {
-  free(a_coefficients_);
-  cudaFree(clos);
-  cudaFree(tmp);
-  cudaFree(tmp_abs);
+  if (a_coefficients_) free(a_coefficients_);
+
+  if (clos)        cudaFree(clos);
+  if (tmp)         cudaFree(tmp);
+  if (tmp_abs)     cudaFree(tmp_abs);
 }
 
 int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 

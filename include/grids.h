@@ -1,6 +1,5 @@
 #pragma once
 
-//#include "cufft.h"
 #include "parameters.h"
 
 class Grids {
@@ -29,32 +28,33 @@ class Grids {
   const int Nmoms;
   const size_t size_G;
   
-  float * ky;
-  float * kx;
-  float * kz;
+  float * ky = NULL;
+  float * kx = NULL;
+  float * kz = NULL;
 
-  float * ky_h;
-  float * kx_h, *kx_outh;
-  float * kz_h;
+  float * ky_h = NULL;
+  float * kx_h = NULL;
+  float * kx_outh = NULL;
+  float * kz_h = NULL;
 
-  float * theta0_h;
+  float * theta0_h = NULL;
 
   /* A grid the size of kx, true if in the dealiased zone*/
-  bool * kx_mask;
+  bool * kx_mask = NULL;
   
   /* Flow shear arrays*/
-  float * kx_shift;
-  int * jump;
+  float * kx_shift = NULL;
+  int * jump = NULL;
   
   /* Stuff for z covering */
-  int nClasses;
+  int nClasses = NULL;
   /* Note: the arrays below are allocated in initialize_z_covering, not
    * in the main allocation routines. Also note that the ** 
    * pointers to pointers point to arrays of pointers on the
    * host. The pointers themselves then may point to arrays 
    * on either the device or host */
-  int * nLinks;
-  int * nChains;
+  int * nLinks = NULL;
+  int * nChains = NULL;
   int ** kxCover;
   int ** kyCover;
   //cuComplex ** g_covering;
@@ -67,10 +67,9 @@ class Grids {
   //int * nLinks_d;
   //int * nChains_d;
   
-  float * covering_scaler;
+  float * covering_scaler = NULL;
   
  private:
-  const Parameters* pars_; //local Parameters object for convenience
-
+  Parameters * pars_ = NULL; //local Parameters object for convenience
 };
 

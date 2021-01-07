@@ -3,11 +3,13 @@
 #include "device_funcs.h"
 #include "grad_perp.h"
 #include "cuda_constants.h"
+#include "get_error.h"
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   : grids_(grids), batch_size_(batch_size), mem_size_(mem_size)
 {
   cufftCreate(&gradperp_plan_R2C);
+  cufftCreate(&gradperp_plan_C2R);
   cufftCreate(&gradperp_plan_dxC2R);
   cufftCreate(&gradperp_plan_dyC2R);
 
@@ -18,6 +20,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
+  cufftMakePlanMany(gradperp_plan_C2R,   2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_R2C,   2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_dxC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
   cufftMakePlanMany(gradperp_plan_dyC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
@@ -39,10 +42,11 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 
 GradPerp::~GradPerp()
 {
-  cudaFree (tmp);
-  cufftDestroy(gradperp_plan_R2C);
-  cufftDestroy(gradperp_plan_dxC2R);
-  cufftDestroy(gradperp_plan_dyC2R);
+  if (tmp)      cudaFree (tmp);
+  cufftDestroy ( gradperp_plan_R2C   );
+  cufftDestroy ( gradperp_plan_C2R   );
+  cufftDestroy ( gradperp_plan_dxC2R );
+  cufftDestroy ( gradperp_plan_dyC2R );
 }
 
 // Out-of-place 2D transforms in cufft now overwrite the input data. 
@@ -59,6 +63,16 @@ void GradPerp::dyC2R(cuComplex* G, float* dyG)
   cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG);
 }
 
+void GradPerp::C2R(cuComplex* G, float* Gy)
+{
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;  
+  cufftExecC2R(gradperp_plan_C2R, tmp, Gy);
+}
+
+// overload an R2C that accumulates -- will be very useful
 void GradPerp::R2C(float* G, cuComplex* res)
-{ cufftExecR2C(gradperp_plan_R2C, G, res);   }
+{
+  cufftExecR2C(gradperp_plan_R2C, G, res);
+}
+
 

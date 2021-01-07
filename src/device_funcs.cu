@@ -197,6 +197,16 @@ __device__ bool not_fixed_eq(int idxyz) {
     return true;
 }
 
+__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky)
+{
+  unsigned int idy = get_id1();
+  if (idy < (ny-1)/3 + 1) {
+    float k2 = ky[idy]*ky[idy];    float lin = k2 - k2*k2;
+
+    GRhs[idy] = lin * G[idy];
+  }
+}
+
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    double c1, const cuComplex* m1,
 					    double c2, const cuComplex* m2)
@@ -358,14 +368,14 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, const cuC
 
 __global__ void reality_kernel(cuComplex* g, int N) 
 {
-  int idx = get_id1();
-  int idz = get_id2();
-  int idlms = get_id3();
+  unsigned int idx = get_id1();
+  unsigned int idz = get_id2();
+  unsigned int idlms = get_id3();
   
   if (idx < (nx-1)/3+1 && idz < nz && idlms < N) {
 
-    int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idlms;
-    int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idlms;
+    unsigned int ig  = nyc*(idx    + nx*idz) + nx*nyc*nz*idlms;
+    unsigned int ig2 = nyc*(nx-idx + nx*idz) + nx*nyc*nz*idlms;
     
     if (idx==0) {
       g[ig].x = 0.;
@@ -481,7 +491,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 {
   unsigned int idxy = get_id1();
   cuComplex i_dt = make_cuComplex(0., (float) 1./dt);
-  int J = nx*nyc;
+  unsigned int J = nx*nyc;
 
   if (idxy < J) {
     int IG = (int) nz/2 ;
@@ -518,7 +528,7 @@ __global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float*
 }
 
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size) {
-  for (int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
+  for (unsigned int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }
 
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr)
@@ -583,6 +593,12 @@ __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 
 __global__ void acc(float *a, const float *b) {a[0] = a[0] + b[0];}
+
+__global__ void nlks(float *res, const float *Gy, const float *dG)
+{
+  unsigned int idy = get_id1();
+  if (idy < ny) res[idy] = - Gy[idy] * dG[idy];
+}
 
 __global__ void bracket(float* g_res, const float* dg_dx, const float* dJ0phi_dy,
 			const float* dg_dy, const float* dJ0phi_dx, float kxfac)
@@ -727,7 +743,7 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cons
   float Tsum = 0.;
   
   cuComplex P2, T2;
-  for (int idxyz = blockIdx.x*blockDim.x+threadIdx.x;idxyz < nx*nyc*nz; idxyz += blockDim.x*gridDim.x) {
+  for (unsigned int idxyz = blockIdx.x*blockDim.x+threadIdx.x;idxyz < nx*nyc*nz; idxyz += blockDim.x*gridDim.x) {
 
     unsigned int idy = idxyz % nyc; 
     unsigned int idx = idxyz / nyc % nx;
@@ -910,7 +926,7 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
       for (int is=0; is < nspecies; is++) {
 	const float b_s = kperp2[idxyz] * species[is].rho2;
 	for (int l=0; l < nl; l++) {
-	  int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	  unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	  // sum over l and s for m=0
 	  // Each thread does the full Laguerre sum for a particular (kx, ky, z) 
 	  //
@@ -938,7 +954,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, c
       const float b_s = kperp2[idxyz] * s.rho2;
 
       for (int l=0; l < nl; l++) {
-	int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	unsigned int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	nbar = nbar + Jflr(l, b_s) * g[ig] * s.nz;
       }
       denom += s.dens * s.z * s.zt * ( 1. - g0(kperp2[idxyz]*s.rho2) );
@@ -986,7 +1002,6 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
 
     float pfilter2 = 0.;
     
-    // BD multiple GPUs will require change here
     for (int is=0; is < nspecies; is++) {
       specie s = species[is];
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
@@ -1060,20 +1075,18 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  // BD all these qneut routines now assume we are working with the dealiased grids only
   if ( unmasked(idx, idy) && idz < nz) {
     
     unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
     float pfilter2 = 0.;
     
-    // BD Check this for parallel correctness when nspecies > 1
     for (int is=0; is < nspecies; is++) {
       specie s = species[is];
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
     
-    Phi[idxyz].x = ( nbar[idxyz].x / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
-    Phi[idxyz].y = ( nbar[idxyz].y / (ti_ov_te + pfilter2 ) );  // There was once a factor of jacobian[idz]
+    Phi[idxyz].x = ( nbar[idxyz].x / (ti_ov_te + pfilter2 ) );  
+    Phi[idxyz].y = ( nbar[idxyz].y / (ti_ov_te + pfilter2 ) );  
   }
 }
 
@@ -1195,7 +1208,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
     // this is coalesced?
     const cuComplex iky_ = make_cuComplex(0., ky[idy]); 
 
-    int nR = nyc * nx * nz;
+    unsigned int nR = nyc * nx * nz;
     
    for (int is=0; is < nspecies; is++) { // might be a better way to handle species loop here...
      specie s = species[is];
@@ -1220,7 +1233,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      // blockIdx for y and z and both of size unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	 int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
 	 int sl = l + 1;
 	 int sm = m + 2;
 	 S_G(sl, sm) = g[globalIdx];
@@ -1348,7 +1361,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
     cuComplex phi_ = phi[idxyz];
     for (int is=0; is < nspecies; is++) {
       const float zt_ = species[is].zt;
-      int index = idxyz + nx*nyc*nz*is;
+      unsigned int index = idxyz + nx*nyc*nz*is;
 
       upar_bar[index]  = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);

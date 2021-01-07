@@ -108,7 +108,7 @@ private:
 
   std::vector<uint64_t> sAdd;
   uint64_t sizeWork = 0;  
-  uint64_t sizeAddT = 0;  void *AddworkT = nullptr;
-  uint64_t sizeAdd = 0;   void *Addwork = nullptr;
-  uint64_t sizeMax = 0;   void *Maxwork = nullptr;
+  uint64_t sizeAddT = 0;  void * AddworkT = nullptr;
+  uint64_t sizeAdd = 0;   void * Addwork = nullptr;
+  uint64_t sizeMax = 0;   void * Maxwork = nullptr;
 };  

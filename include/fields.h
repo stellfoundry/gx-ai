@@ -1,15 +1,16 @@
 #pragma once
-
-#include "cufft.h"
 #include "grids.h"
+#include "cufft.h"
 
 class Fields {
   public:
-  Fields(Parameters *pars, Grids* grids);
+  Fields(Parameters *pars, Grids *grids);
   ~Fields();
   
-  cuComplex *phi, *phi_h;
-  cuComplex *apar, *apar_h;
+  cuComplex * phi    = NULL;
+  cuComplex * phi_h  = NULL;
+  cuComplex * apar   = NULL;
+  cuComplex * apar_h = NULL;
   
   void print_phi(void);
   void print_apar(void);
@@ -24,6 +25,5 @@ class Fields {
 private:
   const size_t size_;
   int N;
-  Grids* grids_;
-  Parameters* pars_;
+  Parameters * pars_  = NULL;
 };

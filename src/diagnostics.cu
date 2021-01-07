@@ -39,86 +39,86 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     volDenomInv = 1./volDenom;   
 
     if (id->Wm.write) {
-      cudaMalloc    (&Wm_d,        sizeof(float) * nM * nS);
-      cudaMallocHost(&Wm_h,        sizeof(float) * nM * nS);
+      cudaMalloc     (&Wm_d,        sizeof(float) * nM * nS);
+      cudaMallocHost (&Wm_h,        sizeof(float) * nM * nS);
     }
     if (id->Wl.write) {
-      cudaMalloc    (&Wl_d,        sizeof(float) * nL * nS); 
-      cudaMallocHost(&Wl_h,        sizeof(float) * nL * nS); 
+      cudaMalloc     (&Wl_d,        sizeof(float) * nL * nS); 
+      cudaMallocHost (&Wl_h,        sizeof(float) * nL * nS); 
     }
     if (id->Wlm.write) {
-      cudaMalloc    (&Wlm_d,       sizeof(float) * nL * nM * nS);
-      cudaMallocHost(&Wlm_h,       sizeof(float) * nL * nM * nS);
+      cudaMalloc     (&Wlm_d,       sizeof(float) * nL * nM * nS);
+      cudaMallocHost (&Wlm_h,       sizeof(float) * nL * nM * nS);
     }
     if (id->Wky.write) {
-      cudaMalloc    (&Wky_d,       sizeof(float) * nY * nS); 
-      cudaMallocHost(&tmp_Wky_h,   sizeof(float) * nY * nS); 
-      cudaMallocHost(&Wky_h,       sizeof(float) * nYk * nS);
+      cudaMalloc     (&Wky_d,       sizeof(float) * nY * nS); 
+      cudaMallocHost (&tmp_Wky_h,   sizeof(float) * nY * nS); 
+      cudaMallocHost (&Wky_h,       sizeof(float) * nYk * nS);
     }
     if (id->Wkx.write) {
-      cudaMalloc    (&Wkx_d,       sizeof(float) * nX * nS);
-      cudaMallocHost(&tmp_Wkx_h,   sizeof(float) * nX * nS);
-      cudaMallocHost(&Wkx_h,       sizeof(float) * nXk * nS);
+      cudaMalloc     (&Wkx_d,       sizeof(float) * nX * nS);
+      cudaMallocHost (&tmp_Wkx_h,   sizeof(float) * nX * nS);
+      cudaMallocHost (&Wkx_h,       sizeof(float) * nXk * nS);
     }
     if (id->Wkxky.write) {
-      cudaMalloc    (&Wkxky_d,     sizeof(float) * nX * nY * nS);
-      cudaMallocHost(&tmp_Wkxky_h, sizeof(float) * nX * nY * nS);
-      cudaMallocHost(&Wkxky_h,     sizeof(float) * nXk * nYk * nS);
+      cudaMalloc     (&Wkxky_d,     sizeof(float) * nX * nY * nS);
+      cudaMallocHost (&tmp_Wkxky_h, sizeof(float) * nX * nY * nS);
+      cudaMallocHost (&Wkxky_h,     sizeof(float) * nXk * nYk * nS);
     }
     if (id->Wz.write) {
-      cudaMalloc    (&Wz_d,        sizeof(float) * nZ * nS);
-      cudaMallocHost(&Wz_h,        sizeof(float) * nZ * nS);
+      cudaMalloc     (&Wz_d,        sizeof(float) * nZ * nS);
+      cudaMallocHost (&Wz_h,        sizeof(float) * nZ * nS);
     }
     if (id->Ws.write) {
-      cudaMalloc    (&Ws_d,        sizeof(float) * nS);
-      cudaMallocHost(&Ws_h,        sizeof(float) * nS);
+      cudaMalloc     (&Ws_d,        sizeof(float) * nS);
+      cudaMallocHost (&Ws_h,        sizeof(float) * nS);
     }
     if (id->Pky.write) {
-      cudaMalloc    (&Pky_d,       sizeof(float) * nY * nS);
-      cudaMallocHost(&tmp_Pky_h,   sizeof(float) * nY * nS);
-      cudaMallocHost(&Pky_h,       sizeof(float) * nYk * nS);
+      cudaMalloc     (&Pky_d,       sizeof(float) * nY * nS);
+      cudaMallocHost (&tmp_Pky_h,   sizeof(float) * nY * nS);
+      cudaMallocHost (&Pky_h,       sizeof(float) * nYk * nS);
     }
     if (id->Pz.write) {
-      cudaMalloc    (&Pz_d,        sizeof(float) * nZ * nS); 
-      cudaMallocHost(&Pz_h,        sizeof(float) * nZ * nS); 
+      cudaMalloc     (&Pz_d,        sizeof(float) * nZ * nS); 
+      cudaMallocHost (&Pz_h,        sizeof(float) * nZ * nS); 
     }
     if (id->Pkx.write) {
-      cudaMalloc    (&Pkx_d,       sizeof(float) * nX * nS); 
-      cudaMallocHost(&tmp_Pkx_h,   sizeof(float) * nX * nS); 
-      cudaMallocHost(&Pkx_h,       sizeof(float) * nXk * nS); 
+      cudaMalloc     (&Pkx_d,       sizeof(float) * nX * nS); 
+      cudaMallocHost (&tmp_Pkx_h,   sizeof(float) * nX * nS); 
+      cudaMallocHost (&Pkx_h,       sizeof(float) * nXk * nS); 
     }
     if (id->Pkxky.write) {
-      cudaMalloc    (&Pkxky_d,     sizeof(float) * nX * nY * nS);
-      cudaMallocHost(&tmp_Pkxky_h, sizeof(float) * nX * nY * nS);
-      cudaMallocHost(&Pkxky_h,     sizeof(float) * nXk * nYk * nS);
+      cudaMalloc     (&Pkxky_d,     sizeof(float) * nX * nY * nS);
+      cudaMallocHost (&tmp_Pkxky_h, sizeof(float) * nX * nY * nS);
+      cudaMallocHost (&Pkxky_h,     sizeof(float) * nXk * nYk * nS);
     }
     if (id->Ps.write) {
-      cudaMalloc    (&Ps_d,        sizeof(float) * nS);
-      cudaMallocHost(&Ps_h,        sizeof(float) * nS);
+      cudaMalloc     (&Ps_d,        sizeof(float) * nS);
+      cudaMallocHost (&Ps_h,        sizeof(float) * nS);
     }    
-    cudaMalloc(&G2, sizeof(float) * nG); // G2 is the only big array associated with these diagnostics.
+    cudaMalloc (&G2, sizeof(float) * nG); // G2 is the only big array associated with these diagnostics.
   }
-  cudaMalloc(&P2s, sizeof(float) * nR * nS);
+  cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
   if (id->omg.write_v_time) {
-    cudaMalloc    (&omg_d,       sizeof(cuComplex) * nX * nY);
-    cudaMallocHost(&tmp_omg_h,   sizeof(cuComplex) * nX * nY); 
-    cudaMallocHost(&omg_h,       sizeof(cuComplex) * nXk * nYk);
+    cudaMalloc     (&omg_d,       sizeof(cuComplex) * nX * nY);
+    cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY); 
+    cudaMallocHost (&omg_h,       sizeof(cuComplex) * nXk * nYk);
 
     for (int i=0; i < nXk * nYk * 2; i++) omg_h[i] = 0.;
-    cudaMemset(omg_d, 0., sizeof(cuComplex) * nX * nY);
+    cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
   }  
   
   if (pars_->diagnosing_moments) {    
-    cudaMallocHost(&amom_h,     sizeof(cuComplex) * nK * nS);
-    cudaMallocHost(&tmp_amom_h, sizeof(cuComplex) * nR);
-    cudaMalloc    (&amom_d,     sizeof(cuComplex) * nR);
+    cudaMallocHost (&amom_h,     sizeof(cuComplex) * nK * nS);
+    cudaMallocHost (&tmp_amom_h, sizeof(cuComplex) * nR);
+    cudaMalloc     (&amom_d,     sizeof(cuComplex) * nR);
   }
   if (pars_->diagnosing_pzt) {
-    cudaMallocHost(&primary,   sizeof(float));    primary[0] = 0.;  
-    cudaMallocHost(&secondary, sizeof(float));    secondary[0] = 0.;
-    cudaMallocHost(&tertiary,  sizeof(float));    tertiary[0] = 0.;
-    cudaMalloc(&t_bar, sizeof(cuComplex) * nR * nS);
+    cudaMallocHost (&primary,   sizeof(float));    primary[0] = 0.;  
+    cudaMallocHost (&secondary, sizeof(float));    secondary[0] = 0.;
+    cudaMallocHost (&tertiary,  sizeof(float));    tertiary[0] = 0.;
+    cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
   }
   if (id->flx.write_v_time) {
     cudaMallocHost(&pflux,  sizeof(float) * nS);
@@ -166,11 +166,11 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 
 Diagnostics::~Diagnostics()
 {
-  delete fields_old;
-  if (pars_->diagnosing_spectra) delete red;
-  if (pars_->diagnosing_spectra) delete pot;
-  if (id->flx.write_v_time)      delete all_red;
-  delete id;
+  if (fields_old) delete fields_old;
+  if (red)        delete red;
+  if (pot)        delete pot;
+  if (all_red)    delete all_red;
+  if (id)         delete id;
 
   if (G2)                 cudaFree(G2);
   if (P2s)                cudaFree(P2s);
@@ -182,6 +182,7 @@ Diagnostics::~Diagnostics()
   if (amom_h)             cudaFreeHost(amom_h);
   if (tmp_amom_h)         cudaFreeHost(tmp_amom_h);
   if (amom_d)             cudaFree(amom_d);
+  if (t_bar)              cudaFree(t_bar);
   
   if (primary)            cudaFreeHost(primary);
   if (secondary)          cudaFreeHost(secondary);
@@ -331,7 +332,6 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     // sync the netcdf data 
     if (retval = nc_sync(id->file)) ERR(retval);
   }
-
   // check to see if we should stop simulation
   stop = checkstop();
   return stop;
@@ -677,7 +677,7 @@ bool Diagnostics::checkstop()
 {
   struct stat buffer;   
   bool stop = (stat (stopfilename_, &buffer) == 0);
-  if(stop) remove(stopfilename_);
+  if (stop) remove(stopfilename_);
   return stop;
 }
 

@@ -6,39 +6,39 @@
 #include "get_error.h"
 
 Geometry::~Geometry() {
-  cudaFree(z);
-  cudaFree(bmag);
-  cudaFree(bmagInv);
-  cudaFree(bgrad);
-  cudaFree(gds2);	
-  cudaFree(gds21);	
-  cudaFree(gds22);	
-  cudaFree(gbdrift);	
-  cudaFree(gbdrift0);	
-  cudaFree(cvdrift);	
-  cudaFree(cvdrift0);	
-  cudaFree(grho);	
-  cudaFree(jacobian);	
+  if (z)         cudaFree(z);
+  if (bmag)      cudaFree(bmag);
+  if (bmagInv)   cudaFree(bmagInv);
+  if (bgrad)     cudaFree(bgrad);
+  if (gds2);     cudaFree(gds2);	
+  if (gds21);    cudaFree(gds21);	
+  if (gds22);    cudaFree(gds22);	
+  if (gbdrift);  cudaFree(gbdrift);	
+  if (gbdrift0); cudaFree(gbdrift0);	
+  if (cvdrift);  cudaFree(cvdrift);	
+  if (cvdrift0); cudaFree(cvdrift0);	
+  if (grho);     cudaFree(grho);	
+  if (jacobian); cudaFree(jacobian);	
 
-  cudaFreeHost(z_h);
-  cudaFreeHost(bmag_h);
-  cudaFreeHost(bmagInv_h);
-  cudaFreeHost(bgrad_h);
-  cudaFreeHost(gds2_h);	
-  cudaFreeHost(gds21_h);	
-  cudaFreeHost(gds22_h);	
-  cudaFreeHost(gbdrift_h);	
-  cudaFreeHost(gbdrift0_h);	
-  cudaFreeHost(cvdrift_h);	
-  cudaFreeHost(cvdrift0_h);	
-  cudaFreeHost(grho_h);	
-  cudaFreeHost(jacobian_h);	
+  if (z_h)         cudaFreeHost(z_h);
+  if (bmag_h)      cudaFreeHost(bmag_h);
+  if (bmagInv_h)   cudaFreeHost(bmagInv_h);
+  if (bgrad_h)     cudaFreeHost(bgrad_h);
+  if (gds2_h);     cudaFreeHost(gds2_h);	
+  if (gds21_h);    cudaFreeHost(gds21_h);	
+  if (gds22_h);    cudaFreeHost(gds22_h);	
+  if (gbdrift_h);  cudaFreeHost(gbdrift_h);	
+  if (gbdrift0_h); cudaFreeHost(gbdrift0_h);	
+  if (cvdrift_h);  cudaFreeHost(cvdrift_h);	
+  if (cvdrift0_h); cudaFreeHost(cvdrift0_h);	
+  if (grho_h);     cudaFreeHost(grho_h);	
+  if (jacobian_h); cudaFreeHost(jacobian_h);	
 
   if(operator_arrays_allocated_) {
-    cudaFree(kperp2);
-    cudaFree(omegad);
-    cudaFree(cv_d);
-    cudaFree(gb_d);
+    if (kperp2) cudaFree(kperp2);
+    if (omegad) cudaFree(omegad);
+    if (cv_d)   cudaFree(cv_d);
+    if (gb_d)   cudaFree(gb_d);
   }
 }
 
@@ -48,35 +48,35 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   float theta;
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*Nz;
-  cudaMallocHost((void**) &z_h, size);
-  cudaMallocHost((void**) &bmag_h, size);
-  cudaMallocHost((void**) &bmagInv_h, size);
-  cudaMallocHost((void**) &bgrad_h, size);
-  cudaMallocHost((void**) &gds2_h, size);
-  cudaMallocHost((void**) &gds21_h, size);
-  cudaMallocHost((void**) &gds22_h, size);
-  cudaMallocHost((void**) &gbdrift_h, size);
-  cudaMallocHost((void**) &gbdrift0_h, size);
-  cudaMallocHost((void**) &cvdrift_h, size);
-  cudaMallocHost((void**) &cvdrift0_h, size);
-  cudaMallocHost((void**) &grho_h, size);
-  cudaMallocHost((void**) &jacobian_h, size);
+  cudaMallocHost ((void**) &z_h, size);
+  cudaMallocHost ((void**) &bmag_h, size);
+  cudaMallocHost ((void**) &bmagInv_h, size);
+  cudaMallocHost ((void**) &bgrad_h, size);
+  cudaMallocHost ((void**) &gds2_h, size);
+  cudaMallocHost ((void**) &gds21_h, size);
+  cudaMallocHost ((void**) &gds22_h, size);
+  cudaMallocHost ((void**) &gbdrift_h, size);
+  cudaMallocHost ((void**) &gbdrift0_h, size);
+  cudaMallocHost ((void**) &cvdrift_h, size);
+  cudaMallocHost ((void**) &cvdrift0_h, size);
+  cudaMallocHost ((void**) &grho_h, size);
+  cudaMallocHost ((void**) &jacobian_h, size);
 
   //  cudaMallocHost((void**) &kperp2_h, sizeof(float)*grids->NxNycNz);
   
-  cudaMalloc((void**) &z, size);
-  cudaMalloc((void**) &bmag, size);
-  cudaMalloc((void**) &bmagInv, size);
-  cudaMalloc((void**) &bgrad, size);
-  cudaMalloc((void**) &gds2, size);
-  cudaMalloc((void**) &gds21, size);
-  cudaMalloc((void**) &gds22, size);
-  cudaMalloc((void**) &gbdrift, size);
-  cudaMalloc((void**) &gbdrift0, size);
-  cudaMalloc((void**) &cvdrift, size);
-  cudaMalloc((void**) &cvdrift0, size);
-  cudaMalloc((void**) &grho, size);
-  cudaMalloc((void**) &jacobian, size);
+  cudaMalloc ((void**) &z, size);
+  cudaMalloc ((void**) &bmag, size);
+  cudaMalloc ((void**) &bmagInv, size);
+  cudaMalloc ((void**) &bgrad, size);
+  cudaMalloc ((void**) &gds2, size);
+  cudaMalloc ((void**) &gds21, size);
+  cudaMalloc ((void**) &gds22, size);
+  cudaMalloc ((void**) &gbdrift, size);
+  cudaMalloc ((void**) &gbdrift0, size);
+  cudaMalloc ((void**) &cvdrift, size);
+  cudaMalloc ((void**) &cvdrift0, size);
+  cudaMalloc ((void**) &grho, size);
+  cudaMalloc ((void**) &jacobian, size);
   
   float qsf = pars->qsf;
   float beta_e = pars->beta;
@@ -175,31 +175,31 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz; 
-  cudaMallocHost((void**) &z_h, size);
-  cudaMallocHost((void**) &bmag_h, size);
-  cudaMallocHost((void**) &bmagInv_h, size);
-  cudaMallocHost((void**) &gds2_h, size);
-  cudaMallocHost((void**) &gds21_h, size);
-  cudaMallocHost((void**) &gds22_h, size);
-  cudaMallocHost((void**) &gbdrift_h, size);
-  cudaMallocHost((void**) &gbdrift0_h, size);
-  cudaMallocHost((void**) &cvdrift_h, size);
-  cudaMallocHost((void**) &cvdrift0_h, size);
-  cudaMallocHost((void**) &grho_h, size);
-  cudaMallocHost((void**) &jacobian_h, size);
+  cudaMallocHost ((void**) &z_h, size);
+  cudaMallocHost ((void**) &bmag_h, size);
+  cudaMallocHost ((void**) &bmagInv_h, size);
+  cudaMallocHost ((void**) &gds2_h, size);
+  cudaMallocHost ((void**) &gds21_h, size);
+  cudaMallocHost ((void**) &gds22_h, size);
+  cudaMallocHost ((void**) &gbdrift_h, size);
+  cudaMallocHost ((void**) &gbdrift0_h, size);
+  cudaMallocHost ((void**) &cvdrift_h, size);
+  cudaMallocHost ((void**) &cvdrift0_h, size);
+  cudaMallocHost ((void**) &grho_h, size);
+  cudaMallocHost ((void**) &jacobian_h, size);
 
-  cudaMalloc((void**) &z, size);
-  cudaMalloc((void**) &bmag, size);
-  cudaMalloc((void**) &bmagInv, size);
-  cudaMalloc((void**) &gds2, size);
-  cudaMalloc((void**) &gds21, size);
-  cudaMalloc((void**) &gds22, size);
-  cudaMalloc((void**) &gbdrift, size);
-  cudaMalloc((void**) &gbdrift0, size);
-  cudaMalloc((void**) &cvdrift, size);
-  cudaMalloc((void**) &cvdrift0, size);
-  cudaMalloc((void**) &grho, size);
-  cudaMalloc((void**) &jacobian, size);
+  cudaMalloc ((void**) &z, size);
+  cudaMalloc ((void**) &bmag, size);
+  cudaMalloc ((void**) &bmagInv, size);
+  cudaMalloc ((void**) &gds2, size);
+  cudaMalloc ((void**) &gds21, size);
+  cudaMalloc ((void**) &gds22, size);
+  cudaMalloc ((void**) &gbdrift, size);
+  cudaMalloc ((void**) &gbdrift0, size);
+  cudaMalloc ((void**) &cvdrift, size);
+  cudaMalloc ((void**) &cvdrift0, size);
+  cudaMalloc ((void**) &grho, size);
+  cudaMalloc ((void**) &jacobian, size);
   
   FILE * geoFile = fopen(pars->geofilename.c_str(), "r");
   
@@ -334,14 +334,14 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   // set this flag so we know to deallocate
   operator_arrays_allocated_ = true;
 
-  cudaMalloc((void**) &kperp2, sizeof(float)*grids->NxNycNz);
-  cudaMalloc((void**) &omegad, sizeof(float)*grids->NxNycNz);
-  cudaMalloc((void**) &cv_d,   sizeof(float)*grids->NxNycNz);
-  cudaMalloc((void**) &gb_d,   sizeof(float)*grids->NxNycNz);
-  checkCuda(cudaGetLastError());
+  cudaMalloc ((void**) &kperp2, sizeof(float)*grids->NxNycNz);
+  cudaMalloc ((void**) &omegad, sizeof(float)*grids->NxNycNz);
+  cudaMalloc ((void**) &cv_d,   sizeof(float)*grids->NxNycNz);
+  cudaMalloc ((void**) &gb_d,   sizeof(float)*grids->NxNycNz);
+  checkCuda  (cudaGetLastError());
 
-  dim3 dimBlock(32, 4, 4);
-  dim3 dimGrid(grids->Nyc/dimBlock.x+1, grids->Nx/dimBlock.y+1, grids->Nz/dimBlock.z+1);
+  dim3 dimBlock (32, 4, 4);
+  dim3 dimGrid  (grids->Nyc/dimBlock.x+1, grids->Nx/dimBlock.y+1, grids->Nz/dimBlock.z+1);
  
   init_kperp2 <<<dimGrid, dimBlock>>> (kperp2, grids->kx, grids->ky,
 				       gds2, gds21, gds22, bmagInv, shat);
@@ -370,8 +370,8 @@ void Geometry::calculate_bgrad(Grids* grids)
   size_t size = sizeof(float)*grids->Nz;
   cudaMallocHost((void**) &bgrad_h, size);
 
-  cudaMalloc((void**) &bgrad, size);
-  cudaMalloc((void**) &bgrad_temp, size);
+  cudaMalloc ((void**) &bgrad, size);
+  cudaMalloc ((void**) &bgrad_temp, size);
 
   CP_ON_GPU (bgrad_temp, bmag, size);
   

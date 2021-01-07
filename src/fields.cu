@@ -2,7 +2,7 @@
 #include "get_error.h"
 
 Fields::Fields(Parameters* pars, Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz),
-						 N(grids->NxNycNz), grids_(grids), pars_(pars)
+						 N(grids->NxNycNz), pars_(pars)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
   cudaMemset(phi, 0., size_);

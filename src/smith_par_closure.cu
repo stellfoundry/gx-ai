@@ -50,20 +50,20 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   int i, j, k;
   
   // Create matrices for r, P coefficients, Q coefficients, P, Q, and the final LHS matrix
-  cuDoubleComplex **rMatrix = (cuDoubleComplex **) malloc(q*sizeof(cuDoubleComplex *));
-  cuDoubleComplex **PCoefficients = (cuDoubleComplex **) malloc((n+1)*sizeof(cuDoubleComplex *));
-  cuDoubleComplex **QCoefficients = (cuDoubleComplex **) malloc((n+1)*sizeof(cuDoubleComplex *));
-  cuDoubleComplex **PMatrix = (cuDoubleComplex **) malloc(q*sizeof(cuDoubleComplex *));
-  cuDoubleComplex **QMatrix = (cuDoubleComplex **) malloc(q*sizeof(cuDoubleComplex *));
-  cuDoubleComplex **lhsMatrix = (cuDoubleComplex **) malloc(q*sizeof(cuDoubleComplex *));
+  cuDoubleComplex **rMatrix       = (cuDoubleComplex **) malloc(q *     sizeof(cuDoubleComplex *));
+  cuDoubleComplex **PCoefficients = (cuDoubleComplex **) malloc((n+1) * sizeof(cuDoubleComplex *));
+  cuDoubleComplex **QCoefficients = (cuDoubleComplex **) malloc((n+1) * sizeof(cuDoubleComplex *));
+  cuDoubleComplex **PMatrix       = (cuDoubleComplex **) malloc(q *     sizeof(cuDoubleComplex *));
+  cuDoubleComplex **QMatrix       = (cuDoubleComplex **) malloc(q *     sizeof(cuDoubleComplex *));
+  cuDoubleComplex **lhsMatrix     = (cuDoubleComplex **) malloc(q *     sizeof(cuDoubleComplex *));
   
   for (i = 0; i < q; i++) {
-    rMatrix[i] = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex));
+    rMatrix[i] =       (cuDoubleComplex *) calloc(q,   sizeof(cuDoubleComplex));
     PCoefficients[i] = (cuDoubleComplex *) calloc(i+1, sizeof(cuDoubleComplex));
     QCoefficients[i] = (cuDoubleComplex *) calloc(i+1, sizeof(cuDoubleComplex));
-    PMatrix[i] = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex));
-    QMatrix[i] = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex));
-    lhsMatrix[i] = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex)); 
+    PMatrix[i] =       (cuDoubleComplex *) calloc(q,   sizeof(cuDoubleComplex));
+    QMatrix[i] =       (cuDoubleComplex *) calloc(q,   sizeof(cuDoubleComplex));
+    lhsMatrix[i] =     (cuDoubleComplex *) calloc(q,   sizeof(cuDoubleComplex)); 
   }
   
   for (i = q; i <= n; i++) {
@@ -78,7 +78,7 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   // Create lhsVector and rhsVector (lhsVector is the final LHS matrix as a single vector;
   // rhsVector is the b vector in Ax = b)
   cuDoubleComplex *lhsVector = (cuDoubleComplex *) calloc(q*q, sizeof(cuDoubleComplex));
-  cuDoubleComplex *rhsVector = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex));
+  cuDoubleComplex *rhsVector = (cuDoubleComplex *) calloc(q,   sizeof(cuDoubleComplex));
   
 //Create power_series array
   cuDoubleComplex *power_series = (cuDoubleComplex *) calloc(q, sizeof(cuDoubleComplex));
@@ -160,16 +160,16 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   }
   
   // Creating CUDA array copy of lhsVector
-  cuDoubleComplex *lhsVector_d;
+  cuDoubleComplex * lhsVector_d = NULL;
   cudaMalloc(&lhsVector_d, q*q*sizeof(cuDoubleComplex));
-  cudaMemcpy(lhsVector_d, (cuDoubleComplex*) lhsVector,
-	     q*q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice); 
+  //  cudaMemcpy(lhsVector_d, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice); 
+  CP_TO_GPU (lhsVector_d, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex));
   
   // Creating CUDA array copy of rhsVector
-  cuDoubleComplex *rhsVector_d;
+  cuDoubleComplex *rhsVector_d = NULL;
   cudaMalloc(&rhsVector_d, q*sizeof(cuDoubleComplex));
-  cudaMemcpy(rhsVector_d, (cuDoubleComplex*) rhsVector,
-	     q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+  //  cudaMemcpy(rhsVector_d, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
+  CP_TO_GPU (rhsVector_d, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex));
   
   // Setting up CUDA handlers and stream
   cusolverDnHandle_t handle = NULL;
@@ -186,13 +186,12 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   linearSolverLU(handle, q, lhsVector_d, q, rhsVector_d, rhsVector_d);
   
   // Converting cuDoubleComplex answer to cuComplex and storing it in x_answer
-  cuComplex *rhsVector_d_float;
+  cuComplex * rhsVector_d_float = NULL;
   cudaMalloc(&rhsVector_d_float, q*q*sizeof(cuComplex));
   
   castDoubleToFloat<<<1,1>>>(rhsVector_d, rhsVector_d_float, q);
   
-  //  cudaMemcpy(x_answer, rhsVector_d_float, q*sizeof(cuComplex), cudaMemcpyDeviceToHost);
-  CP_TO_CPU(x_answer, rhsVector_d_float, sizeof(cuComplex)*q);
+  CP_TO_CPU (x_answer, rhsVector_d_float, sizeof(cuComplex)*q);
   
   // Print only if debugging
   if (0==1) {
@@ -270,9 +269,9 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   free(Qn);
   free(lhsVector);
   
-  cudaFree(rhsVector_d);
-  cudaFree(rhsVector_d_float);
-  cudaFree(lhsVector_d);
+  if (lhsVector_d)       cudaFree(lhsVector_d);
+  if (rhsVector_d)       cudaFree(rhsVector_d);
+  if (rhsVector_d_float) cudaFree(rhsVector_d_float);
 }
 
 /* This function finds the coefficients of the Taylor series expansion of

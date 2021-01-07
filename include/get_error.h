@@ -19,13 +19,12 @@
 template <typename T>
 inline T __checkCudaErrors__(T code, const char *func, const char *file, int line) 
 {
-    if (code) {
-        fprintf(stderr, "CUDA error at %s:%d code=%d \"%s\" \n",
-                file, line, (unsigned int)code, func);
-        cudaDeviceReset();
-        exit(EXIT_FAILURE);
-    }
-    return code;
+  if (code) {
+    fprintf(stderr, "CUDA error at %s:%d code=%d \"%s\" \n", file, line, (unsigned int)code, func);
+    cudaDeviceReset();
+    exit(EXIT_FAILURE);
+  }
+  return code;
 }
 
 inline cudaError_t print_cudims(dim3 dimGrid, dim3 dimBlock) {
