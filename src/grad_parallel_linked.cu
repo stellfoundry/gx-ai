@@ -40,25 +40,25 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
 
-  cudaMallocHost((void**) &dz_plan_forward,               sizeof(cufftHandle*)*nClasses);
-  cudaMallocHost((void**) &dz_plan_inverse,               sizeof(cufftHandle*)*nClasses);
-  cudaMallocHost((void**) &dz_plan_forward_singlemom,     sizeof(cufftHandle*)*nClasses);
-  cudaMallocHost((void**) &abs_dz_plan_forward_singlemom, sizeof(cufftHandle*)*nClasses);
-  cudaMallocHost((void**) &dz_plan_inverse_singlemom,     sizeof(cufftHandle*)*nClasses);
+  cudaMallocHost ((void**) &dz_plan_forward,               sizeof(cufftHandle*)*nClasses);
+  cudaMallocHost ((void**) &dz_plan_inverse,               sizeof(cufftHandle*)*nClasses);
+  cudaMallocHost ((void**) &dz_plan_forward_singlemom,     sizeof(cufftHandle*)*nClasses);
+  cudaMallocHost ((void**) &abs_dz_plan_forward_singlemom, sizeof(cufftHandle*)*nClasses);
+  cudaMallocHost ((void**) &dz_plan_inverse_singlemom,     sizeof(cufftHandle*)*nClasses);
 
   // these are arrays of pointers to device memory
-  cudaMallocHost((void**) &ikxLinked, sizeof(int*)      *nClasses);
-  cudaMallocHost((void**) &ikyLinked, sizeof(int*)      *nClasses);
-  cudaMallocHost((void**) &G_linked,  sizeof(cuComplex*)*nClasses);
-  cudaMallocHost((void**) &kzLinked,  sizeof(float*)    *nClasses);
+  cudaMallocHost ((void**) &ikxLinked, sizeof(int*)      *nClasses);
+  cudaMallocHost ((void**) &ikyLinked, sizeof(int*)      *nClasses);
+  cudaMallocHost ((void**) &G_linked,  sizeof(cuComplex*)*nClasses);
+  cudaMallocHost ((void**) &kzLinked,  sizeof(float*)    *nClasses);
 
   //  printf("nClasses = %d\n", nClasses);
   for(int c=0; c<nClasses; c++) {
     //    printf("\tClass %d: nChains = %d, nLinks = %d\n", c, nChains[c], nLinks[c]);
     // allocate and copy into device memory
     int nLC = nLinks[c]*nChains[c];
-    cudaMalloc((void**) &ikxLinked[c],      sizeof(int)*nLC);
-    cudaMalloc((void**) &ikyLinked[c],      sizeof(int)*nLC);
+    cudaMalloc ((void**) &ikxLinked[c],      sizeof(int)*nLC);
+    cudaMalloc ((void**) &ikyLinked[c],      sizeof(int)*nLC);
 
     CP_TO_GPU(ikxLinked[c], ikxLinked_h[c], sizeof(int)*nLC);
     CP_TO_GPU(ikyLinked[c], ikyLinked_h[c], sizeof(int)*nLC);
@@ -90,7 +90,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
                       nChains[c], &workSize);
 
     // initialize kzLinked
-    init_kzLinked<<<1,1>>>(kzLinked[c], nLinks[c]);
+    init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c]);
     
     dB[c] = dim3(32,4,4);
     dG[c] = dim3(grids_->Nz/dB[c].x+1, nLinks[c]*nChains[c]/dB[c].y+1, grids_->Nmoms/dB[c].z+1);
@@ -102,10 +102,10 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
 GradParallelLinked::~GradParallelLinked()
 {
-  free(nLinks);
-  free(nChains);
-  free(dB);
-  free(dG);
+  if (nLinks)  free(nLinks);
+  if (nChains) free(nChains);
+  if (dB)      free(dB);
+  if (dG)      free(dG);
   for(int c=0; c<nClasses; c++) {
     cufftDestroy(    dz_plan_forward[c]);
     cufftDestroy(    dz_plan_inverse[c]);
@@ -170,7 +170,7 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
     // these only use the G(0,0) part of G_linked
     linkedCopy<<<dG[c],dB[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
     cufftExecC2C(abs_dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
-    cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+    cufftExecC2C(    dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
     linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }

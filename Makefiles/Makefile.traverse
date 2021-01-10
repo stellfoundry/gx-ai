@@ -32,7 +32,7 @@ CUDA_INC  = -I ${CUDA_DIR}/include
 CUDA_LIB  = -L ${CUDA_DIR}/lib -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp
 MPI_INC = -I ${OMPI_DIR}/include
 MPI_LIB= -L ${OMPI_DIR}/lib64 -lmpi 
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -prec-sqrt=true 
+NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

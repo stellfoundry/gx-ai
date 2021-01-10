@@ -167,13 +167,16 @@ extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const float Y0, const int Zp);
 
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const specie* species);
+__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const specie* species, float beta);
+
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species);
 
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian, const specie* species, const float ti_ov_te);
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
-				 const float* PhiAvgDenom, const float* kperp2, const float* jacobian,
+				 const float* PhiAvgDenom, const float* kperp2, 
 				 const specie* species, const float ti_ov_te);
 
 __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
@@ -182,8 +185,7 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
 __global__ void add_source(cuComplex* f, const float source);
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
-			   const float* kperp2, const float* jacobian,
-			   const specie* species, float ti_ov_te);
+			   const float* kperp2, const specie* species, float ti_ov_te);
 
 __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked, int nLinks, int nChains,
 			   const int* ikx, const int* iky, int nMoms);
@@ -198,6 +200,8 @@ __global__ void init_kzLinked(float* kz, int nLinks);
 extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
+__global__ void nlks(float *res, const float *Gy, const float *dG);
+__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky);
 __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,

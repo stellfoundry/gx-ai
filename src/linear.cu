@@ -24,15 +24,17 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
  
-  if(pars_->closure_model_opt == BEER42) {                                 DEBUGPRINT("Initializing Beer 4+2 closures\n");
-    closures = new Beer42(pars_, grids_, geo_, grad_par);
-  } else if (pars_->closure_model_opt == SMITHPERP) {                      DEBUGPRINT("Initializing Smith perpendicular toroidal closures\n");
-    closures = new SmithPerp(pars_, grids_, geo_);
-  } else if (pars_->closure_model_opt == SMITHPAR) {                       DEBUGPRINT("Initializing Smith parallel closures\n");
-    closures = new SmithPar(pars_, grids_, geo_, grad_par);
+  if(pars_->closure_model_opt > 0) {
+    if(pars_->closure_model_opt == BEER42) {                                 DEBUGPRINT("Initializing Beer 4+2 closures\n");
+      closures = new Beer42(pars_, grids_, geo_, grad_par);
+    } else if (pars_->closure_model_opt == SMITHPERP) {                      DEBUGPRINT("Initializing Smith perpendicular toroidal closures\n");
+      closures = new SmithPerp(pars_, grids_, geo_);
+    } else if (pars_->closure_model_opt == SMITHPAR) {                       DEBUGPRINT("Initializing Smith parallel closures\n");
+      closures = new SmithPar(pars_, grids_, geo_, grad_par);
+    }
   }
 
-   // allocate conservation terms for collision operator
+  // allocate conservation terms for collision operator
   size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
   cudaMalloc((void**) &upar_bar, size);
   cudaMalloc((void**) &uperp_bar, size);
@@ -40,7 +42,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(upar_bar, 0., size);
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
-  
+
   // set up CUDA grids for main linear kernel.  
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more LH resolution without changing shared memory layouts.
@@ -58,17 +60,34 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 }
 
+Linear::Linear(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+  ks = true;
+  
+  dB = dim3(min(128, grids_->Naky), 1, 1);
+  dG = dim3((grids_->Naky-1)/dB.x + 1, 1, 1);
+}
+
 Linear::~Linear()
 {
-  if(pars_->closure_model_opt>0) delete closures;
-  delete grad_par;
-  delete GRhs_par;
+  if (closures) delete closures;
+  if (grad_par) delete grad_par;
+  if (GRhs_par) delete GRhs_par;
+
   if (upar_bar)   cudaFree(upar_bar);
   if (uperp_bar)  cudaFree(uperp_bar);
   if (t_bar)      cudaFree(t_bar);
 }
 
+
 int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+
+
+  if (ks) {
+    rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky);
+    return 0;
+  }
 
   // calculate conservation terms for collision operator
   if (pars_->collisions)  conservation_terms <<<(grids_->NxNycNz-1)/256+1, 256>>>
@@ -98,6 +117,9 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->p_hyper_m, GRhs->G());
   return 0;
 }
+
+
+
 
 
 

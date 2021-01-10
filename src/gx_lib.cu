@@ -1,5 +1,4 @@
 #include "gx_lib.h"
-#include "mpi.h"
 #include "parameters.h"
 #include "run_gx.h"
 #include "geometry.h"
@@ -109,9 +108,9 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   // pars then needs to be updated since pars is what is used in run_gx.
   if(iproc==0) { pars->import_externalpars(externalpars); }
   
-  Geometry* geo;  // geometry coefficient arrays
-  Grids* grids;   // grids (e.g. kx, ky, z)
-  Diagnostics* diagnostics;
+  Geometry    * geo         = NULL;  // geometry coefficient arrays
+  Grids       * grids       = NULL;  // grids (e.g. kx, ky, z)
+  Diagnostics * diagnostics = NULL;
   //  HermiteTransform* herm;
 
   DEBUGPRINT("Initializing grids...\n");

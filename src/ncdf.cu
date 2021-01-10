@@ -921,7 +921,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 	if (retval = nc_put_vara(file, theta_x, zkxky_start, zkxky_count, theta_extended)) ERR(retval);
       }
     }
-    cudaFreeHost(theta_extended);
+    if (theta_extended) cudaFreeHost(theta_extended);
   }
 
   if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);

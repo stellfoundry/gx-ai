@@ -26,7 +26,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   laguerre =        new LaguerreTransform(grids_, 1);
-  //  red =             new Red(grids_->NxNyNz*grids_->Nj);
   red =             new Red(grids_->NxNyNz);
 
   nBatch = grids_->Nz*grids_->Nl; 
@@ -46,8 +45,14 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
   checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
+  if (pars_->beta > 0.) {
+    // we do not actually need memory for J0_Apar; could simply point to J0phi and reuse that array
+    checkCuda(cudaMalloc(&J0_Apar,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+    checkCuda(cudaMalloc(&dJ0_Apar_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
+    checkCuda(cudaMalloc(&dJ0_Apar_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  }
+
   checkCuda(cudaMalloc(&dphi,  sizeof(float)*grids_->NxNyNz));
-  
   checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
@@ -81,20 +86,50 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMallocHost((void**) &vmax_y, sizeof(float));
 }
 
+Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+  ks = true;
+  
+  nBatch = 1;
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Ny);
+  
+  checkCuda(cudaMalloc(&Gy,    sizeof(float)*grids_->Ny));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->Ny));
+
+  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->Ny));
+
+  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
+  
+  dt_cfl = 0.;
+
+  cudaMallocHost((void**) &vmax_y, sizeof(float));
+}
+
 Nonlinear::~Nonlinear() 
 {
-  delete red;
-  delete laguerre;
-  delete grad_perp_G;
-  delete grad_perp_J0phi;
+  if ( grad_perp_G     ) delete grad_perp_G;
+  if ( red             ) delete red;
+  if ( laguerre        ) delete laguerre;
+  if ( grad_perp_J0phi ) delete grad_perp_J0phi;
+  if ( grad_perp_phi   ) delete grad_perp_phi;
 
-  cudaFree(dG);
-  cudaFree(dg_dx);
-  cudaFree(dg_dy);
-  cudaFree(J0phi);
-  cudaFree(dJ0phi_dx);
-  cudaFree(dJ0phi_dy);
-  cudaFree(g_res);
+  if ( dG          ) cudaFree ( dG          );
+  if ( dg_dx       ) cudaFree ( dg_dx       );
+  if ( dg_dy       ) cudaFree ( dg_dy       );
+  if ( val1        ) cudaFree ( val1        ); 
+  if ( Gy          ) cudaFree ( Gy          );
+  if ( dJ0phi_dx   ) cudaFree ( dJ0phi_dx   );
+  if ( dJ0phi_dy   ) cudaFree ( dJ0phi_dy   );
+  if ( dJ0_Apar_dx ) cudaFree ( dJ0_Apar_dx );
+  if ( dJ0_Apar_dy ) cudaFree ( dJ0_Apar_dy );
+  if ( dphi        ) cudaFree ( dphi        );
+  if ( g_res       ) cudaFree ( g_res       );
+  if ( J0phi       ) cudaFree ( J0phi       );
+  if ( J0_Apar     ) cudaFree ( J0_Apar     );
+
+  if ( vmax_x    ) cudaFreeHost ( vmax_x );
+  if ( vmax_y    ) cudaFreeHost ( vmax_y );
 }
 
 void Nonlinear::qvar (cuComplex* G, int N)
@@ -127,14 +162,28 @@ void Nonlinear::qvar (float* G, int N)
   free (G_h);
 }
 
-void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
+void Nonlinear::nlps(cuComplex *G, cuComplex *res)
 {
+  grad_perp_G -> dyC2R(G, dg_dy);
+  grad_perp_G -> C2R(G, Gy);
+  nlks <<< (grids_->Ny-1)/128+1, 128 >>> (g_res, Gy, dg_dy);
+  grad_perp_G -> R2C(g_res, res);
+}
+
+void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
+{
+  if (ks) {
+    grad_perp_G -> dyC2R(G->G(), dg_dy);
+    grad_perp_G -> C2R(G->G(), Gy);
+    nlks <<< (grids_->Ny-1)/128+1, 128 >>> (g_res, Gy, dg_dy);
+    grad_perp_G -> R2C(g_res, G_res->G());
+    return;
+  }
+  
   for(int s=0; s<grids_->Nspecies; s++) {
 
     // BD  J0phiToGrid does not use a Laguerre transform. Implications?
     // BD  If we use alternate forms for <J0> then that would need to be reflected here
-
-    //    print_cudims(dimGrid, dimBlock);
 
     //    printf("\n");
     //    printf("Phi:\n");
@@ -146,6 +195,14 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
     grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
     grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
 
+    // electromagnetic terms will couple different Hermites together. Accumulate bracket results.
+    if (pars_->beta > 0.) {
+      J0phiToGrid <<< dGk, dBk >>> (J0_Apar, f->apar, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+      
+      grad_perp_J0phi -> dxC2R(J0_Apar, dJ0_Apar_dx);
+      grad_perp_J0phi -> dyC2R(J0_Apar, dJ0_Apar_dy);
+    }
+    
     // loop over m to save memory. also makes it easier to parallelize later...
     // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     for(int m=0; m<grids_->Nm; m++) {
@@ -157,18 +214,22 @@ void Nonlinear::nlps5d(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre    -> transformToGrid(dG, dg_dy);
          
       bracket <<< dGx, dBx >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
-
     }
-
   }
 }
 double Nonlinear::cfl(Fields *f, double dt_max)
 {
-  grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
-  grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
-  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
-  dt_cfl = min(dt_max, 1./vmax);
-  return dt_cfl;
+  if (pars_->ks) {
+    return dt_max;
+  } else {
+    grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
+    grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
+    // need em evaluation if beta > 0
+    float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
+    dt_cfl = min(dt_max, 1./vmax);
+    return dt_cfl;
+  }
 }

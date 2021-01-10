@@ -1,15 +1,16 @@
 #pragma once
-
-#include "cufft.h"
 #include "grids.h"
+#include "cufft.h"
 
 class Fields {
   public:
-    Fields(Grids* grids);
-    ~Fields();
-
-  cuComplex *phi, *phi_h;
-  cuComplex *apar, *apar_h;
+  Fields(Parameters *pars, Grids *grids);
+  ~Fields();
+  
+  cuComplex * phi    = NULL;
+  cuComplex * phi_h  = NULL;
+  cuComplex * apar   = NULL;
+  cuComplex * apar_h = NULL;
   
   void print_phi(void);
   void print_apar(void);
@@ -20,9 +21,9 @@ class Fields {
   inline void copyAparFrom(Fields* source) {
     cudaMemcpyAsync(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
   }
-
-  private:
-    const size_t size_;
-    int N;
-    Grids* grids_;
+  
+private:
+  const size_t size_;
+  int N;
+  Parameters * pars_  = NULL;
 };

@@ -4,31 +4,31 @@ LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size) :
   grids_(grids), L(grids->Nl), J(grids->Nj), batch_size_(batch_size)
 {
   float *toGrid_h, *toSpectral_h, *roots_h;
-  cudaMallocHost((void**) &toGrid_h,     sizeof(float)*L*J);
-  cudaMallocHost((void**) &toSpectral_h, sizeof(float)*L*J);
-  cudaMallocHost((void**) &roots_h,      sizeof(float)*J);
+  cudaMallocHost ((void**) &toGrid_h,     sizeof(float)*L*J);
+  cudaMallocHost ((void**) &toSpectral_h, sizeof(float)*L*J);
+  cudaMallocHost ((void**) &roots_h,      sizeof(float)*J);
 
-  cudaMalloc((void**) &toGrid,     sizeof(float)*L*J);
-  cudaMalloc((void**) &toSpectral, sizeof(float)*L*J);
-  cudaMalloc((void**) &roots,      sizeof(float)*J);
+  cudaMalloc ((void**) &toGrid,     sizeof(float)*L*J);
+  cudaMalloc ((void**) &toSpectral, sizeof(float)*L*J);
+  cudaMalloc ((void**) &roots,      sizeof(float)*J);
 
   initTransforms(toGrid_h, toSpectral_h, roots_h);
 
-  CP_TO_GPU(toGrid,     toGrid_h,     sizeof(float)*L*J);
-  CP_TO_GPU(toSpectral, toSpectral_h, sizeof(float)*L*J);
-  CP_TO_GPU(roots,      roots_h,      sizeof(float)*J);
+  CP_TO_GPU (toGrid,     toGrid_h,     sizeof(float)*L*J);
+  CP_TO_GPU (toSpectral, toSpectral_h, sizeof(float)*L*J);
+  CP_TO_GPU (roots,      roots_h,      sizeof(float)*J);
 
-  cublasCreate(&handle);
-  cudaFreeHost(toGrid_h);
-  cudaFreeHost(toSpectral_h);
-  cudaFreeHost(roots_h);
+  cublasCreate (&handle);
+  if (toGrid_h)     cudaFreeHost (toGrid_h);
+  if (toSpectral_h) cudaFreeHost (toSpectral_h);
+  if (roots_h)      cudaFreeHost (roots_h);
 }
 
 LaguerreTransform::~LaguerreTransform()
 {
-  cudaFree(toGrid);
-  cudaFree(toSpectral);
-  cudaFree(roots);
+  if (toGrid)     cudaFree(toGrid);
+  if (toSpectral) cudaFree(toSpectral);
+  if (roots)      cudaFree(roots);
 }
 
 int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
