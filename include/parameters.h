@@ -46,6 +46,13 @@
 #define PSPECTRA_kxky 4
 #define PSPECTRA_z 5
 
+#define ASPECTRA_species 0
+#define ASPECTRA_kx 1
+#define ASPECTRA_ky 2
+#define ASPECTRA_kperp 3
+#define ASPECTRA_kxky 4
+#define ASPECTRA_z 5
+
 class Parameters {
 
  public:
@@ -54,6 +61,7 @@ class Parameters {
   
   const int nw_spectra = 9;
   const int np_spectra = 6;
+  const int na_spectra = 6;
   void get_nml_vars(char* file);
   int set_externalpars(external_parameters_struct* externalpars);
   int import_externalpars(external_parameters_struct* externalpars);
@@ -117,8 +125,10 @@ class Parameters {
   int specs[1]; // dims for netcdf species variable arrays
   size_t is_start[1], is_count[1]; 
 
-  int pspecdim[1]; // dimension of control structure for spectral plots
-  int wspecdim[1]; // dimension of control structure for spectral plots
+  int aspecdim[1]; // dimension of control structure for spectral plots (adiabatic species)
+  int pspecdim[1]; // dimension of control structure for spectral plots (1-Gamma_0) Phi**2
+  int wspecdim[1]; // dimension of control structure for spectral plots G**2
+  size_t aspectra_start[1], aspectra_count[1]; 
   size_t pspectra_start[1], pspectra_count[1]; 
   size_t wspectra_start[1], wspectra_count[1]; 
   
@@ -138,6 +148,7 @@ class Parameters {
   //  int *spectra = (int*) malloc (sizeof(int)*13);
   std::vector<int> wspectra;
   std::vector<int> pspectra;
+  std::vector<int> aspectra;
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;
@@ -153,6 +164,7 @@ class Parameters {
   void  putspec (int ncid, int m, specie* val);
   void  put_wspectra (int ncid, std::vector<int> s);
   void  put_pspectra (int ncid, std::vector<int> s);
+  void  put_aspectra (int ncid, std::vector<int> s);
   bool initialized;
 };
 

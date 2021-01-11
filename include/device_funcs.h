@@ -134,6 +134,8 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cons
   
 __global__ void Wphi_scale(float* p2, float alpha);
 
+__global__ void Wphi2_summand(float* p2, const cuComplex* phi, const float* jacobian, float fluxDenomInv);
+  
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacobian,
 			     float fluxDenomInv, const float* kperp2, float rho2_s);
   
@@ -171,6 +173,10 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, c
 __global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const specie* species, float beta);
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species);
+
+//__global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
+//					const float *kperp2, const float *jacobian,
+//					const specie *species, const float ti_ov_te, float *work);
 
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian, const specie* species, const float ti_ov_te);
