@@ -207,6 +207,12 @@ __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky)
   }
 }
 
+__global__ void add_section(cuComplex *res, const cuComplex *tmp, int ntot)
+{
+  unsigned int i = get_id1();
+  if (i < ntot) res[i] = res[i] + tmp[i];
+}
+
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    double c1, const cuComplex* m1,
 					    double c2, const cuComplex* m2)

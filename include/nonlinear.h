@@ -15,7 +15,6 @@ class Nonlinear {
   ~Nonlinear();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  void nlps(cuComplex *G, cuComplex *res);
   double cfl(Fields *f, double dt_max);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);

@@ -86,6 +86,8 @@ __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, cuComplex s
 
 // Should we have some eqfix options in the singlemom_kernels? 
 
+__global__ void add_section(cuComplex *res, const cuComplex *tmp, int ntot);
+
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 					    double c1, const cuComplex* m1,
 					    double c2, const cuComplex* m2);

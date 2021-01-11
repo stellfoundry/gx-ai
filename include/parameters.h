@@ -6,6 +6,14 @@
 #include <string>
 #include <vector>
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 #define PHI 0                                                                            
 #define DENS 1
 #define FORCE 2 
@@ -21,7 +29,6 @@
 #define SSPX2 1
 #define SSPX3 2
 #define RK2 3
-#define RK3 4
 #define RK4 5
 #define K10 6
 #define BEER42 1

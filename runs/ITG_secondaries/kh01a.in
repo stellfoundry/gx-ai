@@ -17,8 +17,8 @@
  closure_model = "none"
  
  dt = 0.01
- nstep  = 500
- nwrite = 50
+ nstep  = 400
+ nwrite = 100
 
  beta = 0.0 
  TiTe = 1.0
@@ -55,7 +55,7 @@
  restart = true
  restart_from_file = "kh01_restart.nc"
 
- eqfix = true
+ eqfix = false
  ikx_fixed = 0
  iky_fixed = 1
 
@@ -65,7 +65,7 @@
  init_single = false
  ikx_single = 1
  iky_single = 1
- init_amp = 1.0
+ init_amp = 1.0e-8
  iphi00 = 2  
  scale = 500.0
 

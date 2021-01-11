@@ -17,6 +17,13 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   // Order of Nx, Ny is correct here
 
   cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_);
+
+  int maxthreads = 1024; 
+  int nthreads = min(maxthreads, mem_size_);
+  int nblocks = (mem_size_-1)/nthreads + 1;
+
+  dB = dim3(nthreads, 1, 1);
+  dG = dim3(nblocks,  1, 1);
   
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
@@ -72,7 +79,8 @@ void GradPerp::C2R(cuComplex* G, float* Gy)
 // overload an R2C that accumulates -- will be very useful
 void GradPerp::R2C(float* G, cuComplex* res)
 {
-  cufftExecR2C(gradperp_plan_R2C, G, res);
+  cufftExecR2C(gradperp_plan_R2C, G, tmp);
+  add_section <<< dG, dB >>> (res, tmp, mem_size_);
 }
 
 

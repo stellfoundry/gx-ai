@@ -1,28 +1,6 @@
 #include "run_gx.h"
 
-void getDeviceMemoryUsage() {
-  cudaDeviceSynchronize();
-  // show memory usage of GPU
-  size_t free_byte;  size_t total_byte;  cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte) ;
-
-  if ( cudaSuccess != cuda_status ){
-      printf("Error: cudaMemGetInfo fails, %s \n", cudaGetErrorString(cuda_status) );
-      exit(1);
-  }
-  // for some reason, total_byte returned by above call is not correct. 
-
-  int dev;
-  cudaDeviceProp prop;
-  checkCuda( cudaGetDevice(&dev) );
-  checkCuda( cudaGetDeviceProperties(&prop, dev) );
-  double free_db = (double) free_byte;
-  double total_db = (double) prop.totalGlobalMem;
-  double used_db = total_db - free_db ;
-  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%), total = %f MB\n",
-	 used_db /1024.0/1024.0, used_db/total_db*100.,
-	 free_db /1024.0/1024.0, free_db/total_db*100.,
-	 total_db/1024.0/1024.0);
-}
+void getDeviceMemoryUsage();
 
 void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnostics)
 {
@@ -75,7 +53,6 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   Timestepper * timestep;
   if(pars->scheme_opt == K10)   timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == RK4)   timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-  if(pars->scheme_opt == RK3)   timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == RK2)   timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == SSPX2) timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == SSPX3) timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
@@ -102,6 +79,22 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   }
 
   if (pars->save_for_restart) G->restart_write(&time);
+
+  if (pars->eqfix && (pars->scheme_opt == K10)) {
+    printf("\n");
+    printf("\n");
+    printf(ANSI_COLOR_MAGENTA);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_GREEN);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_RED);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_BLUE);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_RESET);    
+    printf("\n");
+    printf("\n");
+  }  
   
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
@@ -118,6 +111,27 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   if (forcing)   delete forcing;     
 }    
 
+void getDeviceMemoryUsage()
+{
+  cudaDeviceSynchronize();
+  // show memory usage of GPU
+  size_t free_byte;  size_t total_byte;  cudaError_t cuda_status = cudaMemGetInfo(&free_byte, &total_byte) ;
 
+  if ( cudaSuccess != cuda_status ){
+      printf("Error: cudaMemGetInfo fails, %s \n", cudaGetErrorString(cuda_status) );
+      exit(1);
+  }
+  // for some reason, total_byte returned by above call is not correct. 
 
-
+  int dev;
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
+  double free_db = (double) free_byte;
+  double total_db = (double) prop.totalGlobalMem;
+  double used_db = total_db - free_db ;
+  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%), total = %f MB\n",
+	 used_db /1024.0/1024.0, used_db/total_db*100.,
+	 free_db /1024.0/1024.0, free_db/total_db*100.,
+	 total_db/1024.0/1024.0);
+}

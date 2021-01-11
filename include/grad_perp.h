@@ -11,10 +11,11 @@ class GradPerp {
   void dyC2R(cuComplex* G, float* g);
   void C2R  (cuComplex* G, float* Gy);
   void R2C  (float* G, cuComplex* res);
-
+  
  private:
   const int batch_size_;
   const int mem_size_;
+  dim3 dG, dB;
   Grids     * grids_ = NULL;
   cuComplex * tmp    = NULL;
   cufftHandle gradperp_plan_R2C;

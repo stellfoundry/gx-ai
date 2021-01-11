@@ -162,14 +162,6 @@ void Nonlinear::qvar (float* G, int N)
   free (G_h);
 }
 
-void Nonlinear::nlps(cuComplex *G, cuComplex *res)
-{
-  grad_perp_G -> dyC2R(G, dg_dy);
-  grad_perp_G -> C2R(G, Gy);
-  nlks <<< (grids_->Ny-1)/128+1, 128 >>> (g_res, Gy, dg_dy);
-  grad_perp_G -> R2C(g_res, res);
-}
-
 void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
   if (ks) {
