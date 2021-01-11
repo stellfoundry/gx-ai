@@ -806,6 +806,29 @@ __global__ void Wphi_scale(float* p2, float alpha)
   }
 }
 
+__global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *jacobian, float volDenomInv)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy)) {    
+      cuComplex tmp;
+      float fac=2.;
+      if (idy==0) fac = 1.0;
+
+      tmp = cuConjf(phi[idxyz])*phi[idxyz]*fac * volDenomInv * jacobian[idz];
+      p2[idxyz] = 0.5 * tmp.x;
+
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacobian,
 			     float volDenomInv, const float* kperp2, float rho2_s)
 {
@@ -928,7 +951,7 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
 	for (int l=0; l < nl; l++) {
 	  unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	  // sum over l and s for m=0
-	  // Each thread does the full Laguerre sum for a particular (kx, ky, z) 
+	  // Each thread does this double sum for a particular (kx, ky, z) 
 	  //
 	  nbar[idxyz] = nbar[idxyz] + Jflr(l,b_s) * g[ig] * species[is].nz;
 	}	
@@ -964,6 +987,135 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, c
   }
 }
 
+/*
+========================
+
+Given 
+
+phi = <<phi>> + D      (1)
+
+we have
+
+nbar = tau (phi - <<phi>>) + (1-G) phi
+
+or 
+
+nbar = tau phi + (1-G) phi - tau << phi >>.          (2) 
+
+Use (1) to rewrite this as 
+
+nbar = tau <<phi>> + tau D + (1-G) <<phi>> + (1-G) D - tau <<phi>>
+
+nbar = tau D + (1-G) <<phi>> + (1-G) D         
+
+<<phi>> = [ nbar - tau D ] / (1-G).
+
+This is fine, but solve for D to make it useful:
+
+D = nbar/(tau + 1 - G) + (1-G)/(tau + 1 - G) <<phi>>
+
+Since by definition <<D>> = 0, we have 
+
+<<nbar/(tau + 1 - G)>> = << (1-G)/(tau+1-G)>> <<phi>>
+
+so <<phi>> = <<nbar/(tau + 1 - G)>> / << (1-G)/(tau+1-G) >>.    (3)
+
+Use (2) with (3): 
+
+nbar = (tau + 1 - G) phi - tau <<phi>>
+
+phi = (nbar + tau <<phi>>) / (tau + 1 - G)  (4)
+
+Eq. (4) is the result. Note that there is an implied sum over 
+species everywhere (1-G) appears, and that nbar is the actual 
+density from summing over all the ions at fixed r. 
+
+
+The denominator of the RHS of Eq. (3) is precalculated when 
+the solver object is instantiated using the calc_phiavgdenom
+kernel here.
+
+The <<...>> averages below can be off by a constant as they 
+end up in ratios.
+
+The variables in parts 1 and 2 of the quasineutrality solver 
+for iphi00 == 2 are:
+
+====
+
+nbar = tau phi - tau <<phi>> + (1-G) phi
+
+phi = [ nbar + tau <<phi>> ] / (tau + 1 - G)
+
+phi = nbar / (tau + 1 - G) + tau <<nbar/(tau+1-G)>> / <<(1-G)/(tau + 1 - G)>>
+
+PhiAvgNum_tmp is integrand for second term on RHS:
+
+PhiAvgNum_tmp = J nbar / (tau + 1 - G)
+
+PhiAvgNum_zSum = int dz PhiAvgNum_tmp == <<nbar/(tau+1-G)>>
+
+PhiAvgDenom == <<(1-G)/(tau + 1 - G)>>
+
+PhiAvg == <<nbar/(tau+1-G)>> / <<(1-G)/(tau + 1 - G)>> == <<phi>>
+
+Phi = nbar / (tau + 1 - G) + tau PhiAvg / (tau + 1 - G)
+
+=====================
+*/
+
+/*
+This proposed substitute routine fails because pfilter2 is not thread-local memory
+
+__global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
+					const float *kperp2, const float *jacobian,
+					const specie *species, const float ti_ov_te, float *pfilter2)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+
+  if ( unmasked(idx, idy)) {
+    unsigned int idxy  = idy + nyc*idx;
+
+    cuDoubleComplex PhiAvg; // this is thread-local
+    PhiAvg.x = (double) 0.;
+    PhiAvg.y = (double) 0.;
+   
+    for (int idz=0; idz < nz; idz++) {
+      pfilter2[idz] = 0.;
+      for (int is=0; is < nspecies; is++) {
+	specie s = species[is];
+	pfilter2[idz] += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxy + idz*nx*nyc]*s.rho2) );
+      }
+    }
+    
+    if (idy == 0) { 
+      for (int idz=0; idz < nz; idz++) {
+	int idxyz = idxy + idz*nx*nyc;	
+	PhiAvg.x = (double) PhiAvg.x + ( nbar[idxyz].x / (ti_ov_te + pfilter2[idz] ) ) * jacobian[idz];
+	PhiAvg.y = (double) PhiAvg.y + ( nbar[idxyz].y / (ti_ov_te + pfilter2[idz] ) ) * jacobian[idz];
+      }      
+      PhiAvg.x = PhiAvg.x/( (double) PhiAvgDenom[idx] );
+      PhiAvg.y = PhiAvg.y/( (double) PhiAvgDenom[idx] );      
+    }
+    
+    for (int idz=0; idz < nz; idz++) {
+      int idxyz = idxy + idz*nx*nyc;
+      Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2[idz]);
+      Phi[idxyz].y = ( nbar[idxyz].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2[idz]);
+    }
+  }
+  
+  // No need for the memset to zero if we do this:
+  if ( masked(idx, idy)) {
+    for (int idz=0; idz < nz; idz++) {
+      unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+      Phi[idxyz].x = 0.;
+      Phi[idxyz].y = 0.;
+    }
+  }
+}
+*/
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian,
 				 const specie* species, const float ti_ov_te)
@@ -1012,20 +1164,21 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
     PhiAvgNum_zSum.x = (double) 0.;
     PhiAvgNum_zSum.y = (double) 0.;
 
+    // inefficient
     for (int i=0; i < nz; i++) {
-      PhiAvgNum_zSum.x = (double) PhiAvgNum_zSum.x + PhiAvgNum_tmp[idxy + i*nx*nyc].x;
+      PhiAvgNum_zSum.x = (double) PhiAvgNum_zSum.x + PhiAvgNum_tmp[idxy + i*nx*nyc].x; // numerator of Eq. 3
       PhiAvgNum_zSum.y = (double) PhiAvgNum_zSum.y + PhiAvgNum_tmp[idxy + i*nx*nyc].y;
     }
     
     cuDoubleComplex PhiAvg;	
     if (idy == 0 && idx != 0) {
-      PhiAvg.x = PhiAvgNum_zSum.x/( (double) PhiAvgDenom[idx] );
+      PhiAvg.x = PhiAvgNum_zSum.x/( (double) PhiAvgDenom[idx] ); // Eq. 3
       PhiAvg.y = PhiAvgNum_zSum.y/( (double) PhiAvgDenom[idx] ); 
     } else {
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
 
-    Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2);
+    Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2); // Eq 4
     Phi[idxyz].y = ( nbar[idxyz].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
   }
 }

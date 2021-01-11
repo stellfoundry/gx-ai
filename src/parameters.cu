@@ -144,8 +144,13 @@ void Parameters::get_nml_vars(char* filename)
   beta_prime_input = toml::find_or <float> (nml, "beta_prime_input", 0.0);
   s_hat_input      = toml::find_or <float> (nml, "s_hat_input", 0.8);
 
-  wspectra.resize(nw_spectra);     pspectra.resize(np_spectra);
-  wspectra.assign(nw_spectra, 0);  pspectra.assign(np_spectra, 0);
+  wspectra.resize(nw_spectra);
+  pspectra.resize(np_spectra);
+  aspectra.resize(na_spectra);
+
+  wspectra.assign(nw_spectra, 0);
+  pspectra.assign(np_spectra, 0);
+  aspectra.assign(na_spectra, 0);
 
   if (nml.contains("Wspectra")) {
     const auto tomlW = toml::find (nml, "Wspectra");
@@ -168,6 +173,17 @@ void Parameters::get_nml_vars(char* filename)
     pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tomlP, "kperp",            false)) == true ? 1 : 0;
     pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tomlP, "kxky",             false)) == true ? 1 : 0;
   }
+  // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
+  if (!all_kinetic) {
+    if (iphi00==1) {
+      aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
+      aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
+      aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
+      aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
+      aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
+      aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
+    }
+  }
   // for backwards compatibility
   if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
   if (write_h_spectrum)  wspectra[WSPECTRA_m] = 1;
@@ -176,11 +192,13 @@ void Parameters::get_nml_vars(char* filename)
   // Some diagnostics are not yet available:
   wspectra[ WSPECTRA_kperp] = 0;
   pspectra[ PSPECTRA_kperp] = 0;
-
-  // If Wtot is requested, turn Ws and Ps:
+  aspectra[ ASPECTRA_kperp] = 0;
+  
+  // If Wtot is requested, turn Ws, Ps, Phi2 on:
   if (write_free_energy) {
     wspectra[WSPECTRA_species] = 1;
     pspectra[PSPECTRA_species] = 1;
+    if (iphi00==1) aspectra[ASPECTRA_species] = 1;
   }
 
   gx = not ks;
@@ -188,6 +206,7 @@ void Parameters::get_nml_vars(char* filename)
   uint32_t ksize = 0;
   for (int k=0;k<pspectra.size(); k++) {ksize = max(ksize, pspectra[k]);}
   for (int k=0;k<wspectra.size(); k++) {ksize = max(ksize, wspectra[k]);}
+  for (int k=0;k<aspectra.size(); k++) {ksize = max(ksize, aspectra[k]);}
   
   diagnosing_pzt = write_pzt;
   
@@ -234,7 +253,7 @@ void Parameters::get_nml_vars(char* filename)
   strcpy(strb, run_name); 
   strcat(strb, ".nc");
 
-  int retval, idim, sdim, wdim, pdim;
+  int retval, idim, sdim, wdim, pdim, adim;
   if (retval = nc_create(strb, NC_CLOBBER, &ncid)) ERR(retval);
   
   int ri = 2;
@@ -245,6 +264,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_dim (ncid, "time",    NC_UNLIMITED,  &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "nw",      nw_spectra,    &wdim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "np",      np_spectra,    &pdim)) ERR(retval);
+  if (retval = nc_def_dim (ncid, "na",      na_spectra,    &adim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -263,6 +283,9 @@ void Parameters::get_nml_vars(char* filename)
 
   specs[0] = pdim;
   if (retval = nc_def_var (ncid, "pspectra",              NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  specs[0] = adim;
+  if (retval = nc_def_var (ncid, "aspectra",              NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
   if (retval = nc_def_var (ncid, "spec_type",             NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -497,6 +520,7 @@ void Parameters::get_nml_vars(char* filename)
 
   put_wspectra (ncid, wspectra); 
   put_pspectra (ncid, pspectra); 
+  put_aspectra (ncid, aspectra); 
   putspec (ncid, nspec_in, species_h);
   
   putfloat (ncid, "tite", ti_ov_te);
@@ -876,6 +900,16 @@ void Parameters::put_pspectra (int ncid, std::vector<int> s) {
 
   if (retval = nc_inq_varid(ncid, "pspectra", &idum))     ERR(retval);
   if (retval = nc_put_vara (ncid, idum, pspectra_start, pspectra_count, s.data())) ERR(retval);
+}
+
+void Parameters::put_aspectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  aspectra_start[0] = 0;
+  aspectra_count[0] = na_spectra;
+
+  if (retval = nc_inq_varid(ncid, "aspectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, aspectra_start, aspectra_count, s.data())) ERR(retval);
 }
 
 void Parameters::putspec (int  ncid, int nspec, specie* spec) {
