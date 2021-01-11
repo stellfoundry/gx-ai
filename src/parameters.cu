@@ -596,10 +596,24 @@ void Parameters::get_nml_vars(char* filename)
   if (scheme == "sspx2") scheme_opt = SSPX2;
   if (scheme == "sspx3") scheme_opt = SSPX3;
   if (scheme == "rk2")   scheme_opt = RK2;
-  if (scheme == "rk3")   scheme_opt = RK3;
   if (scheme == "rk4")   scheme_opt = RK4;
   if (scheme == "k10")   scheme_opt = K10;
 
+  if (eqfix && (scheme_opt == K10)) {
+    printf("\n");
+    printf("\n");
+    printf(ANSI_COLOR_MAGENTA);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_GREEN);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_RED);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_BLUE);
+    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf(ANSI_COLOR_RESET);    
+    printf("\n");
+    printf("\n");
+  }  
   //  printf("scheme_opt = %d \n",scheme_opt);
     
   if( source == "phiext_full") {
