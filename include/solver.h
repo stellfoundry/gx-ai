@@ -20,9 +20,10 @@ class Solver {
 private:
 
   int maxThreadsPerBlock_;
-  dim3 dG, dB;
+  dim3 dG, dB, dg, db;
 
-  float * phiavgdenom = NULL; 
+  float * phiavgdenom = NULL;
+  //  float * work        = NULL;
   cuComplex * tmp = NULL;
 
   // local private copies

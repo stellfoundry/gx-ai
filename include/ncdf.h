@@ -17,6 +17,7 @@ class NetCDF_ids {
   nca Pzt, pZt, pzT, Wtot;
   nca Ps, Pky, Pkx, Pkxky, Pz;
   nca Ws, Wky, Wkx, Wkxky, Wz;
+  nca As, Aky, Akx, Akxky, Az;
   nca time;
   
   int nx, ny, nz, kx_dim, ky_dim, kx, ky;
@@ -36,31 +37,13 @@ class NetCDF_ids {
   int source_opt;
   int write_spec_v_time, density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;
-  int write_W, W_phi, W_phi_t;
 
-  //  int write_omega, omega_t, gamma_t;
-  
-  //  char closure_model[32], scheme[32], source[32];
-  
   int v_kx[1];           // dims for a real scalar as a function of kx 
   int v_ky[1];           // dims for a real scalar as a function of ky 
   int geo_v_theta[1];    // dims for a real scalar as a function of theta
   int zkxky[3];          // dims for a real quantity vs kx, ky, z
   size_t zkxky_start[3], zkxky_count[3];
-  //  size_t time_start[1], time_count[1];
 
-  //  size_t pzt_start[1], pzt_count[1];
-  
-  // BD eventually needs [grids_->Nspecies] instead of [1]
-  //  size_t flux_start[1], flux_count[1];
-
-  size_t W_phi_start[1], W_phi_count[1];
-  size_t W_phi_t_start[2], W_phi_t_count[2];
-  
-  //  size_t om_start[3],  om_count[3];
-  //  size_t omt_start[4], omt_count[4];
-
-  //  size_t mom_start[4], mom_count[4];
   size_t geo_start[1], geo_count[1];
   size_t ky_start[1], ky_count[1];
   size_t kx_start[1], kx_count[1];

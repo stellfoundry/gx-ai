@@ -24,16 +24,15 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   int nK  = nXk * nYk * nZ;
   int nG  = nR * grids_->Nmoms * nS;
   
-  if (id->Wtot.write_v_time) cudaMallocHost( &Wtot_h, sizeof(float) * nS);
-  
   if (id->wphik.write || id->denk.write) {
     // Only appropriate for unsheared configurations ... otherwise this diagnostic has a bug
     grad_parallel = new GradParallelPeriodic(grids_); cudaDeviceSynchronize();  CUDA_DEBUG("Grad parallel periodic: %s \n");
   }
-  
   if (pars_->diagnosing_spectra) {    
+    float dum = 1.0;
     red = new Red(grids_, pars_->wspectra);       cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
     pot = new Red(grids_, pars_->pspectra, true); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
+    ph2 = new Red(grids_, pars_->aspectra,  dum); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
 
     volDenom = 0.;  for (int i=0; i<nZ; i++)   volDenom += geo_->jacobian_h[i]; 
     volDenomInv = 1./volDenom;   
@@ -96,10 +95,38 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
       cudaMalloc     (&Ps_d,        sizeof(float) * nS);
       cudaMallocHost (&Ps_h,        sizeof(float) * nS);
     }    
+    if (id->Aky.write) {
+      cudaMalloc     (&Aky_d,       sizeof(float) * nY); 
+      cudaMallocHost (&tmp_Aky_h,   sizeof(float) * nY); 
+      cudaMallocHost (&Aky_h,       sizeof(float) * nYk);
+    }
+    if (id->Akx.write) {
+      cudaMalloc     (&Akx_d,       sizeof(float) * nX);
+      cudaMallocHost (&tmp_Akx_h,   sizeof(float) * nX);
+      cudaMallocHost (&Akx_h,       sizeof(float) * nXk);
+    }
+    if (id->Akxky.write) {
+      cudaMalloc     (&Akxky_d,     sizeof(float) * nX * nY);
+      cudaMallocHost (&tmp_Akxky_h, sizeof(float) * nX * nY);
+      cudaMallocHost (&Akxky_h,     sizeof(float) * nXk * nYk);
+    }
+    if (id->Az.write) {
+      cudaMalloc     (&Az_d,        sizeof(float) * nZ);
+      cudaMallocHost (&Az_h,        sizeof(float) * nZ);
+    }
+    if (id->As.write) {
+      cudaMalloc     (&As_d,        sizeof(float));
+      cudaMallocHost (&As_h,        sizeof(float));
+    }
     cudaMalloc (&G2, sizeof(float) * nG); // G2 is the only big array associated with these diagnostics.
   }
   cudaMalloc (&P2s, sizeof(float) * nR * nS);
-
+  if (!pars_->all_kinetic) {
+    if (pars_->iphi00 == 1) {
+      cudaMalloc (&Phi2, sizeof(float) * nR);  
+    }
+  }
+  
   if (id->omg.write_v_time) {
     cudaMalloc     (&omg_d,       sizeof(cuComplex) * nX * nY);
     cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY); 
@@ -169,6 +196,7 @@ Diagnostics::~Diagnostics()
   if (fields_old) delete fields_old;
   if (red)        delete red;
   if (pot)        delete pot;
+  if (ph2)        delete ph2;
   if (all_red)    delete all_red;
   if (id)         delete id;
 
@@ -203,24 +231,6 @@ Diagnostics::~Diagnostics()
   if (Wlm_d)              cudaFree    (Wlm_d);
   if (Wlm_h)              cudaFreeHost(Wlm_h);
 
-  if (Ps_d)               cudaFree    (Ps_d);
-  if (Ps_h)               cudaFreeHost(Ps_h);
-
-  if (Pz_d)               cudaFree    (Pz_d);
-  if (Pz_h)               cudaFreeHost(Pz_h);
-
-  if (Pky_d)              cudaFree    (Pky_d);
-  if (tmp_Pky_h)          cudaFreeHost(tmp_Pky_h);
-  if (Pky_h)              cudaFreeHost(Pky_h);
-
-  if (Pkx_d)              cudaFree    (Pkx_d);
-  if (tmp_Pkx_h)          cudaFreeHost(tmp_Pkx_h);
-  if (Pkx_h)              cudaFreeHost(Pkx_h);
-
-  if (Pkxky_d)            cudaFree    (Pkxky_d);
-  if (tmp_Pkxky_h)        cudaFreeHost(tmp_Pkxky_h);
-  if (Pkxky_h)            cudaFreeHost(Pkxky_h);
-
   if (Ws_d)               cudaFree    (Ws_d);
   if (Ws_h)               cudaFreeHost(Ws_h);
 
@@ -239,7 +249,41 @@ Diagnostics::~Diagnostics()
   if (Wkxky_h)            cudaFreeHost(Wkxky_h);
   if (tmp_Wkxky_h)        cudaFreeHost(tmp_Wkxky_h);
 
-  if (Wtot_h)             cudaFreeHost(Wtot_h);
+  if (Ps_d)               cudaFree    (Ps_d);
+  if (Ps_h)               cudaFreeHost(Ps_h);
+
+  if (Pz_d)               cudaFree    (Pz_d);
+  if (Pz_h)               cudaFreeHost(Pz_h);
+
+  if (Pky_d)              cudaFree    (Pky_d);
+  if (tmp_Pky_h)          cudaFreeHost(tmp_Pky_h);
+  if (Pky_h)              cudaFreeHost(Pky_h);
+
+  if (Pkx_d)              cudaFree    (Pkx_d);
+  if (tmp_Pkx_h)          cudaFreeHost(tmp_Pkx_h);
+  if (Pkx_h)              cudaFreeHost(Pkx_h);
+
+  if (Pkxky_d)            cudaFree    (Pkxky_d);
+  if (tmp_Pkxky_h)        cudaFreeHost(tmp_Pkxky_h);
+  if (Pkxky_h)            cudaFreeHost(Pkxky_h);
+
+  if (As_d)               cudaFree    (As_d);
+  if (As_h)               cudaFreeHost(As_h);
+
+  if (Az_d)               cudaFree    (Az_d);
+  if (Az_h)               cudaFreeHost(Az_h);
+
+  if (Aky_d)              cudaFree    (Aky_d);
+  if (tmp_Aky_h)          cudaFreeHost(tmp_Aky_h);
+  if (Aky_h)              cudaFreeHost(Aky_h);
+
+  if (Akx_d)              cudaFree    (Akx_d);
+  if (tmp_Akx_h)          cudaFreeHost(tmp_Akx_h);
+  if (Akx_h)              cudaFreeHost(Akx_h);
+
+  if (Akxky_d)            cudaFree    (Akxky_d);
+  if (tmp_Akxky_h)        cudaFreeHost(tmp_Akxky_h);
+  if (Akxky_h)            cudaFreeHost(Akxky_h);
 }
 
 bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, double time) 
@@ -276,7 +320,14 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       
       Wphi_scale <<<dG_spec, dB_spec>>> (P2(is), pars_->species_h[is].qneut);
     }
-    
+    if (!pars_->all_kinetic) {
+      if (pars_->iphi00==1) {
+	Wphi2_summand <<< dG_spec, dB_spec>>> (Phi2, fields->phi, geo_->jacobian, volDenomInv);
+	float fac = 1./pars_->ti_ov_te;
+	Wphi_scale <<<dG_spec, dB_spec>>> (Phi2, fac);	// assume hydrogenic ion species only
+      }
+    }
+        
     if (id->Wm.write)    write_Wm (G2, false);
     if (id->Wl.write)    write_Wl (G2, false);
     if (id->Wlm.write)   write_Wlm(G2, false);
@@ -291,13 +342,23 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     if (id->Pkx.write)   write_Pkx(P2(), false);
     if (id->Pkxky.write) write_Pkxky(P2(), false);
 
+    if (id->Az.write)    write_Az(Phi2, false);
+    if (id->Aky.write)   write_Aky(Phi2, false);
+    if (id->Akx.write)   write_Akx(Phi2, false);
+    if (id->Akxky.write) write_Akxky(Phi2, false);
+
     // Do not move these next two calls
     if (id->Ps.write)    write_Ps(P2(), false);
     if (id->Ws.write)    write_Ws(G2, false);
+
+    if (id->As.write_v_time) write_As(Phi2, false);
+    
     if (id->Wtot.write_v_time) {
-      for (int is=0; is<grids_->Nspecies; is++) Wtot_h[is] = Ws_h[is] + Ps_h[is];
-      // Still need to take account of any Boltzmann species
-      write_Wtot(Wtot_h, false);
+      totW = 0.;
+      for (int is=0; is<grids_->Nspecies; is++) totW += Ws_h[is] + Ps_h[is];
+
+      if (!pars_->all_kinetic && (pars_->iphi00==1)) totW += As_h[0];
+      write_Wtot(totW, false);
     }
   }
   
@@ -370,13 +431,12 @@ void Diagnostics::finish(MomentsG* G, Fields* fields)
     if (id->Wl.write   )  write_Wl  (G2, true);
     if (id->Wlm.write  )  write_Wlm (G2, true);
     
-    if (id->Ws.write   )   write_Ws (G2, true);
+    if (id->Ps.write   )   write_Ps (P2(), true);
     if (id->Wz.write   )   write_Wz (G2, true);
     if (id->Wky.write  )  write_Wky (G2, true);
     if (id->Wkx.write  )  write_Wkx (G2, true);
     if (id->Wkxky.write) write_Wkxky(G2, true);
     
-    if (id->Ps.write   )   write_Ps (P2(), true);
     if (id->Pz.write   )   write_Pz (P2(), true);
     if (id->Pky.write  )   write_Pky(P2(), true);
     if (id->Pkx.write  )   write_Pkx(P2(), true);
@@ -448,6 +508,12 @@ void Diagnostics::write_Wm(float* G2, bool endrun)
   write_nc(id->file, id->Wm,  Wm_h, endrun);       id->Wm.increment_ts();
 }
 
+void Diagnostics::write_Ps(float* P2, bool endrun)
+{
+  pot->pSum(P2, Ps_d, PSPECTRA_species);             CP_TO_CPU(Ps_h, Ps_d, sizeof(float)*grids_->Nspecies);
+  write_nc(id->file, id->Ps, Ps_h, endrun);          id->Ps.increment_ts();
+}
+
 void Diagnostics::write_Pky(float* P2, bool endrun)
 {
   int i = grids_->Nyc*grids_->Nspecies;
@@ -474,7 +540,7 @@ void Diagnostics::write_Pkx(float* P2, bool endrun)
 {
   int i = grids_->Nx*grids_->Nspecies;             int NK = (grids_->Nx-1)/3+1;
 
-  pot->pSum(G2, Pkx_d, WSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
+  pot->pSum(G2, Pkx_d, PSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
 
   for (int is = 0; is < grids_->Nspecies; is++) {
     for (int it = 0; it < NK; it++) {
@@ -580,9 +646,9 @@ void Diagnostics::write_Wz(float* G2, bool endrun)
   write_nc(id->file, id->Wz, Wz_h, endrun);        id->Wz.increment_ts();
 }
 
-void Diagnostics::write_Wtot(float* Wh, bool endrun)
+void Diagnostics::write_Wtot(float Wh, bool endrun)
 {
-  write_nc(id->file, id->Wtot, Wh, endrun);
+  write_nc(id->file, id->Wtot, &Wh, endrun);
   id->Wtot.increment_ts();
 }
 void Diagnostics::write_Ws(float* G2, bool endrun)
@@ -609,10 +675,70 @@ void Diagnostics::write_Q (float* Q, bool endrun)
   printf("\n");
 }
 
-void Diagnostics::write_Ps(float* P2, bool endrun)
+void Diagnostics::write_As(float *P2, bool endrun)
 {
-  pot->pSum(P2, Ps_d, PSPECTRA_species);             CP_TO_CPU(Ps_h, Ps_d, sizeof(float)*grids_->Nspecies);
-  write_nc(id->file, id->Ps, Ps_h, endrun);          id->Ps.increment_ts();
+  printf("write_As \n");
+  ph2 ->iSum(Phi2, As_d, ASPECTRA_species);         CP_TO_CPU (As_h, As_d, sizeof(float));
+  write_nc(id->file, id->As, As_h, endrun);         id->As.increment_ts();
+}
+
+void Diagnostics::write_Aky(float* P2, bool endrun)
+{
+  int i = grids_->Naky;
+  
+  printf("write_Aky \n");
+  pot->iSum(P2, Aky_d, ASPECTRA_ky);               CP_TO_CPU(Aky_h, Aky_d, sizeof(float)*i);
+  write_nc(id->file, id->Aky, Aky_h, endrun);      id->Aky.increment_ts();  
+}
+
+void Diagnostics::write_Az(float* P2, bool endrun)
+{
+  int i = grids_->Nz;
+
+  printf("write_Az \n");
+  pot->iSum(P2, Az_d, ASPECTRA_z);                 CP_TO_CPU(Az_h, Az_d, sizeof(float)*i);
+  write_nc(id->file, id->Az, Az_h, endrun);        id->Az.increment_ts();
+}
+
+void Diagnostics::write_Akx(float* P2, bool endrun)
+{
+  int i = grids_->Nx;                              int NK = (grids_->Nx-1)/3+1;
+
+  printf("write_Akx \n");
+  pot->iSum(G2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*i);
+
+  for (int it = 0; it < NK; it++) Akx_h[it] = tmp_Akx_h[it];;
+
+  for (int it = 2*grids_->Nx/3+1; it<grids_->Nx; it++) {
+    int ith = it - 2*grids_->Nx/3 + (grids_->Nx-1)/3;
+    Akx_h[ith] = tmp_Akx_h[it];
+  }
+  write_nc(id->file, id->Akx, Akx_h, endrun);      id->Akx.increment_ts();  
+}
+
+void Diagnostics::write_Akxky(float* P2, bool endrun)
+{
+  int i = grids_->Nyc*grids_->Nx; int NK = (grids_->Nx-1)/3+1;
+  printf("write_Akxky \n");
+  pot->iSum(P2, Akxky_d, ASPECTRA_kxky);
+  CP_TO_CPU(tmp_Akxky_h, Akxky_d, sizeof(float)*i);
+
+  for (int it = 0; it < NK; it++) {
+    for (int ik = 0; ik < grids_->Naky; ik++) {
+      int Q = ik + it*grids_->Naky;
+      int R = ik + it*grids_->Nyc ;
+      Akxky_h[Q] = tmp_Akxky_h[R];
+    }
+  }
+  for (int it = 2*grids_->Nx/3+1; it<grids_->Nx; it++) {
+    for (int ik = 0; ik < grids_->Naky; ik++) {     
+      int ith = it - 2*grids_->Nx/3 + (grids_->Nx-1)/3;
+      int Q = ik + ith*grids_->Naky;
+      int R = ik + it *grids_->Nyc;
+      Akxky_h[Q] = tmp_Akxky_h[R];
+    }
+  }
+  write_nc(id->file, id->Akxky, Akxky_h, endrun);  id->Akxky.increment_ts();  
 }
 
   // For each kx, z, l and m, sum the moments of G**2 + Phi**2 (1-Gamma_0) with weights:

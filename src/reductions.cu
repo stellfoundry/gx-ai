@@ -77,6 +77,31 @@ Red::Red(Grids *grids, std::vector<int> spectra, bool potential) : grids_(grids)
   }
 }
 
+// Reduction methods for ASPECTRA integrations (integrating Phi**2, for example, representing an adiabatic ion species)
+Red::Red(Grids *grids, std::vector<int> spectra, float dum) : grids_(grids), spectra_(spectra)
+{  
+  version_red = 'I';
+  int J;  J = spectra_.size();
+  initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
+
+  extent['y'] = grids_->Nyc;
+  extent['x'] = grids_->Nx;
+  extent['z'] = grids_->Nz;
+
+  for (auto mode : Imode) extent_I.push_back(extent[mode]);
+  for (int j = 0; j < J; j++) {
+    if (spectra_[j] == 1) {
+      for (auto mode : iModes[j]) extents[j].push_back(extent[mode]);
+      
+      HANDLE_ERROR( cutensorInit(&handle));
+      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_ABS));
+      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &desc[j], iModes[j].size(),
+						 extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS));
+
+    }
+  }
+}
+
 Red::~Red() {
   if (Addwork) cudaFree(Addwork);
   if (Maxwork) cudaFree(Maxwork);
@@ -85,7 +110,7 @@ Red::~Red() {
 
 void Red::pSum(float* P2, float* res, int ispec)
 {
-  // calculate reduction, res = res + sum_i P2(i), over first few indices, mainly for Phi**2 integrations
+  // calculate reduction, res = res + sum_i P2(i), over first few indices, mainly for (1-Gamma_0) Phi**2 integrations
   if (version_red != 'P') exit(1);
 
   if (initialized[ispec] == 0) {
@@ -109,6 +134,34 @@ void Red::pSum(float* P2, float* res, int ispec)
 				 (const void*) &alpha, P2, &dP, Pmode.data(),
 				 (const void*) &beta,  res,  &desc[ispec], pModes[ispec].data(),
 				                       res,  &desc[ispec], pModes[ispec].data(),
+				 opAdd, typeCompute, Addwork, sizeWork, 0));
+}
+void Red::iSum(float* I2, float* res, int ispec)
+{
+  if (version_red != 'I') exit(1);
+
+  if (initialized[ispec] == 0) {
+  
+    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, I2, &dI, Imode.data(),
+					       res, &desc[ispec], iModes[ispec].data(),
+					       res, &desc[ispec], iModes[ispec].data(),
+					       opAdd, typeCompute, &sizeAdd));;
+    if (sizeAdd > sizeWork) {
+      sizeWork = sizeAdd;
+      if (Addwork) cudaFree (Addwork);
+      if (cudaSuccess != cudaMalloc(&Addwork, sizeWork)) {
+	Addwork = nullptr;
+	sizeWork = 0;
+      }
+    }
+    initialized[ispec]  = 1;
+    printf("sizeAdd = %d \n",sizeAdd);
+  }
+  
+  HANDLE_ERROR(cutensorReduction(&handle,
+				 (const void*) &alpha, I2, &dI, Imode.data(),
+				 (const void*) &beta,  res,  &desc[ispec], iModes[ispec].data(),
+				                       res,  &desc[ispec], iModes[ispec].data(),
 				 opAdd, typeCompute, Addwork, sizeWork, 0));
 }
 

@@ -12,6 +12,9 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   // set up phiavgdenom, which is stored for quasineutrality calculation
   cudaMalloc((void**) &phiavgdenom, sizeof(float)*grids_->Nx);
   cudaMemset(phiavgdenom, 0., sizeof(float)*grids_->Nx);
+
+  //  cudaMalloc((void**) &work, sizeof(float)*grids_->Nz);
+  //  cudaMemset(work, 0., sizeof(float)*grids_->Nz);
   
   int threads, blocks;
   threads = 128;
@@ -29,6 +32,9 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   // cuda dims for qneut calculation
   dB = dim3(32, 4, 4);
   dG = dim3((grids_->Nyc-1)/dB.x+1, (grids_->Nx-1)/dB.y+1, (grids_->Nz-1)/dB.z+1);  
+
+  db = dim3(32, 32, 1);
+  dg = dim3((grids_->Nyc-1)/db.x+1, (grids_->Nx-1)/db.y+1, 1);  
 }
 
 Solver::~Solver() 
@@ -57,7 +63,15 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
     int nbs = (grids_->NxNycNz-1)/nts + 1;
 
     real_space_density <<< nbs, nts >>> (nbar, G->G(), geo_->kperp2, pars_->species);
-
+    /* This routine is not correct
+    if (pars_->iphi00==2) qneut_fieldlineaveraged <<< dg, db >>> (fields->phi, nbar, phiavgdenom, 
+								  geo_->kperp2,
+								  geo_->jacobian,
+								  pars_->species,
+								  pars_->ti_ov_te, work);
+    */
+    // In these routines there is inefficiency because multiple threads
+    // calculate the same field line averages. It is correct but inefficient.
     if(pars_->iphi00==2) {
       qneutAdiab_part1 <<< dG, dB >>> (tmp, nbar,
 				       geo_->kperp2,
@@ -73,6 +87,7 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
 				       pars_->species,
 				       pars_->ti_ov_te);
     } 
+
     
     if(pars_->iphi00==1) qneutAdiab <<< dG, dB >>> (fields->phi, nbar,
 						    geo_->kperp2,

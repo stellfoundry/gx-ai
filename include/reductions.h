@@ -29,11 +29,13 @@ struct CustomMax
 class Red {
 public:
   Red(Grids *grids, std::vector<int> s, bool potential);
+  Red(Grids *grids, std::vector<int> s, float dummy);
   Red(Grids *grids, std::vector<int> s);
   Red(int N, int ns = 1);
   ~Red();
   void  Sum(float* rmom, float* val, int ispec); // WSPECTRA
   void pSum(float* rmom, float* val, int ispec); // PSPECTRA
+  void iSum(float* rmom, float* val, int ispec); // ASPECTRA
   void sSum(float* Q, float* R); // d^3 r, species by species
   void aSum(float* A2, float* val); // sum over all elements
   void  Max(float* A2, float* val); // CFL
@@ -52,6 +54,7 @@ private:
   // incoming types
   std::vector<int32_t> Wmode{'y', 'x', 'z', 'l', 'm', 's'};
   std::vector<int32_t> Pmode{'y', 'x', 'z', 's'};
+  std::vector<int32_t> Imode{'y', 'x', 'z'};
   std::vector<int32_t> Amode{'a'};
   std::vector<int32_t> Bmode{};
   std::vector<int32_t> Qmode{'a', 's'};
@@ -63,7 +66,7 @@ private:
   bool first_SumT = true;
   
   //
-  // These control arrays are ordered according to the WSPECTRA and PSPECTRA definitions in parameters.h
+  // These control arrays are ordered according to the WSPECTRA, PSPECTRA, and ASPECTRA definitions in parameters.h
   // 
   std::vector<std::vector<int32_t>> Modes{{'s'},
 					  {'x', 's'},
@@ -79,25 +82,33 @@ private:
 					   {'y', 's'},
 					   {'y', 'x', 's'},
 					   {'y', 'x', 's'},
-					   {'z', 's'}};
+					   {'z', 's'}};							       
+  std::vector<std::vector<int32_t>> iModes{{},
+					   {'x'},
+					   {'y'},
+					   {'y', 'x'},
+					   {'y', 'x'},
+					   {'z'}};
 							       
     
   int32_t nWmode = Wmode.size(); // for integrals of g**2, all species, or all (m,s), or all (l,m,s), etc.
   int32_t nPmode = Pmode.size(); // for integrals of (1-Gamma_0) Phi**2
+  int32_t nImode = Imode.size(); // for integrals of Phi**2
   int32_t nAmode = Amode.size(); // for single-block data input (such as for CFL condition)
   int32_t nBmode = Bmode.size(); // scalar output for contiguous data
   int32_t nQmode = Qmode.size(); // for single-block data input (such as flux)
   int32_t nRmode = Rmode.size(); // for single-block data input (such as flux)
   
   std::unordered_map<int32_t, int64_t> extent;
-  std::vector<int64_t> extent_W, extent_P, extent_A, extent_B, extent_Q, extent_R;
+  std::vector<int64_t> extent_W, extent_P, extent_A, extent_B, extent_Q, extent_R, extent_I;
   std::vector<std::vector<int64_t>> extents;
   char version_red;
   cutensorHandle_t handle;
   
-  std::vector<cutensorTensorDescriptor_t> desc; // for WSPECTRA and PSPECTRA
+  std::vector<cutensorTensorDescriptor_t> desc; // for WSPECTRA, PSPECTRA, ASPECTRA
   cutensorTensorDescriptor_t dW; // for data like G**2 
   cutensorTensorDescriptor_t dP;
+  cutensorTensorDescriptor_t dI;
   cutensorTensorDescriptor_t dA;
   cutensorTensorDescriptor_t dB;
   cutensorTensorDescriptor_t dQ;

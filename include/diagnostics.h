@@ -16,6 +16,7 @@ class Diagnostics {
   bool loop(MomentsG* G, Fields* fields, double dt, int counter, double time) ;
   void finish(MomentsG* G, Fields* fields);  
   void write_init(MomentsG* G, Fields* f);
+  float totW; 
 
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
@@ -37,6 +38,7 @@ private:
   Fields       * fields_old    = NULL;
   Red          * red           = NULL;
   Red          * pot           = NULL;
+  Red          * ph2           = NULL;
   Red          * all_red       = NULL;
   GradParallel * grad_parallel = NULL;
   NetCDF_ids   * id            = NULL;
@@ -49,6 +51,7 @@ private:
   float        * omg_h         = NULL;
   float        * G2            = NULL;
   float        * P2s           = NULL;
+  float        * Phi2          = NULL;
   float        * val           = NULL;
   float        * pflux         = NULL;
   float        * qflux         = NULL;
@@ -75,12 +78,18 @@ private:
   void write_Wl    (float * G2, bool endrun);
   void write_Wlm   (float * G2, bool endrun);
 
-  void write_Wtot  (float * Wh, bool endrun);
+  void write_Wtot  (float   Wh, bool endrun);
   void write_Ws    (float * G2, bool endrun);
   void write_Wz    (float * G2, bool endrun);
   void write_Wky   (float * G2, bool endrun);
   void write_Wkx   (float * G2, bool endrun);
   void write_Wkxky (float * G2, bool endrun);
+
+  void write_As    (float * P2, bool endrun);
+  void write_Az    (float * P2, bool endrun);
+  void write_Aky   (float * P2, bool endrun);
+  void write_Akx   (float * P2, bool endrun);
+  void write_Akxky (float * P2, bool endrun);
 
   void write_Ps    (float * P2, bool endrun);
   void write_Pz    (float * P2, bool endrun);
@@ -94,6 +103,7 @@ private:
   float * Wl_h        = NULL;
   float * Wlm_d       = NULL;
   float * Wlm_h       = NULL;
+
   float * Ws_d        = NULL;
   float * Ws_h        = NULL;
   float * Wz_d        = NULL;
@@ -104,6 +114,10 @@ private:
   float * Wkx_d       = NULL;
   float * Wkx_h       = NULL;
   float * tmp_Wkx_h   = NULL;
+  float * Wkxky_d     = NULL;
+  float * Wkxky_h     = NULL;
+  float * tmp_Wkxky_h = NULL;
+
   float * Ps_d        = NULL;
   float * Ps_h        = NULL;
   float * Pz_d        = NULL;
@@ -114,15 +128,26 @@ private:
   float * Pkx_d       = NULL;
   float * Pkx_h       = NULL;
   float * tmp_Pkx_h   = NULL;
-  float * Wkxky_d     = NULL;
-  float * Wkxky_h     = NULL;
-  float * tmp_Wkxky_h = NULL;
   float * Pkxky_d     = NULL;
   float * Pkxky_h     = NULL;
   float * tmp_Pkxky_h = NULL;
+
+  float * As_d        = NULL;
+  float * As_h        = NULL;
+  float * Az_d        = NULL;
+  float * Az_h        = NULL;
+  float * Aky_d       = NULL;
+  float * Aky_h       = NULL;
+  float * tmp_Aky_h   = NULL;
+  float * Akx_d       = NULL;
+  float * Akx_h       = NULL;
+  float * tmp_Akx_h   = NULL;
+  float * Akxky_d     = NULL;
+  float * Akxky_h     = NULL;
+  float * tmp_Akxky_h = NULL;
+
   float * qs_d        = NULL;
   float * qs_h        = NULL;
-  float * Wtot_h      = NULL;
    
   char stopfilename_[2000];
 };

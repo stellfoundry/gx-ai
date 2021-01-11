@@ -343,13 +343,11 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //
   // To do:
   //
-  // Get the n Z**2 / T factors into the Wphi calculation
   // Include the W from the adiabatic species (so for ETG, Phi**2 )
-  // Get the species sum of the components
   //
 
   Wtot.write_v_time = pars_->write_free_energy;
-
+  
   if (Wtot.write_v_time) {
     Wtot.time_dims[0] = time_dim;
 
@@ -573,6 +571,23 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   ////////////////////////////
   //                        //
+  // W (adiabatic species)  //
+  //                        //
+  ////////////////////////////
+
+ 
+  As.write_v_time = (pars_->aspectra[ASPECTRA_species] > 0);
+
+  if (As.write_v_time) {
+    As.time_dims[0] = time_dim;
+    
+    if (retval = nc_def_var(file, "W_adiabatic", NC_FLOAT, 1, As.time_dims, &As.time))  ERR(retval);
+    As.time_start[0] = 0;
+    As.time_count[0] = 1;      
+  }
+  
+  ////////////////////////////
+  //                        //
   //   W (ky, species)      //
   //                        //
   ////////////////////////////
@@ -604,6 +619,36 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
       Wky.time_count[0] = 1;
       Wky.time_count[1] = grids_->Nspecies;
       Wky.time_count[2] = grids_->Naky;
+      
+    }
+  }   
+
+  ////////////////////////////
+  //                        //
+  //   W (ky) adiabatic     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_ky] > 0) Aky.write = true;
+  Aky.write_v_time = pars_->write_spec_v_time;
+
+  if (Aky.write) {
+    Aky.dims[0] = ky_dim;
+    
+    if (retval = nc_def_var(file, "Akys", NC_FLOAT, 1, Aky.dims, &Aky.idx))  ERR(retval);
+    Aky.start[0] = 0;
+    Aky.count[0] = grids_->Naky;
+
+    if (Aky.write_v_time) {
+      Aky.time_dims[0] = time_dim;
+      Aky.time_dims[1] = ky_dim;
+      
+      if (retval = nc_def_var(file, "Akyst", NC_FLOAT, 2, Aky.time_dims, &Aky.time))  ERR(retval);
+      Aky.time_start[0] = 0;
+      Aky.time_start[1] = 0;
+      
+      Aky.time_count[0] = 1;
+      Aky.time_count[1] = grids_->Naky;
       
     }
   }   
@@ -644,6 +689,36 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
       
     }
   }
+  
+  ////////////////////////////
+  //                        //
+  //   W (kx) adiabatic     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_kx] > 0) Akx.write = true;
+  Akx.write_v_time = pars_->write_spec_v_time;
+
+  if (Akx.write) {
+    Akx.dims[0] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Akxs", NC_FLOAT, 1, Akx.dims, &Akx.idx))  ERR(retval);
+    Akx.start[0] = 0;
+    Akx.count[0] = grids_->Nakx;
+
+    if (Akx.write_v_time) {
+      Akx.time_dims[0] = time_dim;
+      Akx.time_dims[1] = kx_dim;
+      
+      if (retval = nc_def_var(file, "Akxst", NC_FLOAT, 2, Akx.time_dims, &Akx.time))  ERR(retval);
+      Akx.time_start[0] = 0;
+      Akx.time_start[1] = 0;
+      
+      Akx.time_count[0] = 1;
+      Akx.time_count[1] = grids_->Nakx;
+      
+    }
+  }   
   
   ////////////////////////////
   //                        //
@@ -689,6 +764,42 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   ////////////////////////////
   //                        //
+  //   W (kx,ky) adiabatic  //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_kxky] > 0) Akxky.write = true;
+  Akxky.write_v_time = pars_->write_spec_v_time;
+
+  if (Akxky.write) {
+    Akxky.dims[0] = kx_dim;
+    Akxky.dims[1] = ky_dim;
+    
+    if (retval = nc_def_var(file, "Akxkys", NC_FLOAT, 2, Akxky.dims, &Akxky.idx))  ERR(retval);
+    Akxky.start[0] = 0;
+    Akxky.start[1] = 0;
+
+    Akxky.count[0] = grids_->Nakx;
+    Akxky.count[1] = grids_->Naky;
+
+    if (Akxky.write_v_time) {
+      Akxky.time_dims[0] = time_dim;
+      Akxky.time_dims[1] = kx_dim;
+      Akxky.time_dims[2] = ky_dim;
+      
+      if (retval = nc_def_var(file, "Akxkyst", NC_FLOAT, 3, Akxky.time_dims, &Akxky.time))  ERR(retval);
+      Akxky.time_start[0] = 0;
+      Akxky.time_start[1] = 0;
+      Akxky.time_start[2] = 0;
+      
+      Akxky.time_count[0] = 1;
+      Akxky.time_count[1] = grids_->Nakx;
+      Akxky.time_count[2] = grids_->Naky;      
+    }
+  }   
+  
+  ////////////////////////////
+  //                        //
   //   W (z, species)       //
   //                        //
   ////////////////////////////
@@ -720,6 +831,36 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
       Wz.time_count[0] = 1;
       Wz.time_count[1] = grids_->Nspecies;
       Wz.time_count[2] = grids_->Nz;
+      
+    }
+  }   
+  
+  ////////////////////////////
+  //                        //
+  //   W (a)  adiabatic     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_z] > 0) Az.write = true;
+  Az.write_v_time = pars_->write_spec_v_time;
+
+  if (Az.write) {
+    Az.dims[0] = nz;
+    
+    if (retval = nc_def_var(file, "Azs", NC_FLOAT, 1, Az.dims, &Az.idx))  ERR(retval);
+    Az.start[0] = 0;
+    Az.count[0] = grids_->Nz;
+
+    if (Az.write_v_time) {
+      Az.time_dims[0] = time_dim;
+      Az.time_dims[1] = nz;
+      
+      if (retval = nc_def_var(file, "Azst", NC_FLOAT, 2, Az.time_dims, &Az.time))  ERR(retval);
+      Az.time_start[0] = 0;
+      Az.time_start[1] = 0;
+      
+      Az.time_count[0] = 1;
+      Az.time_count[1] = grids_->Nz;
       
     }
   }   
