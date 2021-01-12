@@ -5,6 +5,38 @@
 #include "grad_parallel.h"
 #include "get_error.h"
 
+Geometry::Geometry() {
+
+  operator_arrays_allocated_=false;
+
+  z_h          = nullptr;  gbdrift_h  = nullptr;  grho_h     = nullptr;  cvdrift_h  = nullptr;
+  bmag_h       = nullptr;  bmagInv_h  = nullptr;  bgrad_h    = nullptr;  gds2_h     = nullptr;
+  gds21_h      = nullptr;  gds22_h    = nullptr;  cvdrift0_h = nullptr;  gbdrift0_h = nullptr;
+  jacobian_h   = nullptr;
+
+  z            = nullptr;  gbdrift    = nullptr;  grho       = nullptr;  cvdrift    = nullptr;
+  bmag         = nullptr;  bmagInv    = nullptr;  bgrad      = nullptr;  gds2       = nullptr;
+  gds21        = nullptr;  gds22      = nullptr;  cvdrift0   = nullptr;  gbdrift0   = nullptr;
+  jacobian     = nullptr;
+
+  gradpar_arr  = nullptr;  Rplot      = nullptr;  Zplot      = nullptr;  aplot      = nullptr;
+  Xplot        = nullptr;  Yplot      = nullptr;  Rprime     = nullptr;  Zprime     = nullptr;
+  aprime       = nullptr;  deltaFL    = nullptr; 
+  
+  bmag_complex = nullptr;  bgrad_temp = nullptr; 
+  
+  float drhodpsi;
+  float gradpar;
+  float bi;
+  float aminor;
+  float shat;
+  
+  // operator arrays
+  kperp2       = nullptr;  omegad     = nullptr;  cv_d       = nullptr;   gb_d      = nullptr;
+  kperp2_h     = nullptr; 
+
+}
+
 Geometry::~Geometry() {
   if (z)         cudaFree(z);
   if (bmag)      cudaFree(bmag);
@@ -384,7 +416,8 @@ void Geometry::calculate_bgrad(Grids* grids)
   calc_bgrad <<< (grids->Nz-1)/512 + 1, 512 >>> (bgrad, bgrad_temp, bmag, scale);  
 
   CP_TO_CPU (bgrad_h, bgrad, size);
-  cudaFree(bgrad_temp);
+  if (bgrad_temp) cudaFree(bgrad_temp);
+
   delete grad_par;
 
 //  for(int i=0; i<grids->Nz; i++) {

@@ -54,9 +54,10 @@ class MomentsG {
   cuComplex ** qprp_ptr;
  
  private:
-  cuComplex  * G_lm   = NULL;
-  Parameters * pars_  = NULL;
-  Grids      * grids_ = NULL;
+  cuComplex  * G_lm;
+  Parameters * pars_;
+  Grids      * grids_;
   size_t LHsize_;
   size_t Momsize_;
+
 };

@@ -15,8 +15,16 @@ inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=t
 }
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo)
+  pars_(pars), grids_(grids), geo_(geo),
+  red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
 {
+
+  ks = false;
+  
+  dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
+  Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
+  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
+  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -87,10 +95,16 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
 }
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids)
+  pars_(pars), grids_(grids), geo_(nullptr),
+  red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
 {
   ks = true;
   
+  dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
+  Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
+  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
+  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
+
   nBatch = 1;
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Ny);
   

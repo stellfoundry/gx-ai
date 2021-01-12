@@ -7,8 +7,36 @@
 #include <sys/stat.h>
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo)
+  pars_(pars), grids_(grids), geo_(geo),
+  fields_old(nullptr), id(nullptr), grad_parallel(nullptr),
+  red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr)
 {  
+
+  primary     = nullptr;  secondary   = nullptr;  tertiary    = nullptr;
+  amom_h      = nullptr;  omg_h       = nullptr;  G2          = nullptr;  P2s         = nullptr;
+  Phi2        = nullptr;  val         = nullptr;  pflux       = nullptr;  qflux       = nullptr;
+  tmp_omg_h   = nullptr;  tmp_amom_h  = nullptr;  omg_d       = nullptr;  amom_d      = nullptr;
+  t_bar       = nullptr;  
+
+  Wm_d        = nullptr;  Wm_h        = nullptr;  Wl_d        = nullptr;
+  Wl_h        = nullptr;  Wlm_d       = nullptr;  Wlm_h       = nullptr;
+
+  Ws_d        = nullptr;  Ws_h        = nullptr;  Wz_d        = nullptr;  Wz_h        = nullptr;
+  Wky_d       = nullptr;  Wky_h       = nullptr;  tmp_Wky_h   = nullptr;
+  Wkx_d       = nullptr;  Wkx_h       = nullptr;  tmp_Wkx_h   = nullptr;
+  Wkxky_d     = nullptr;  Wkxky_h     = nullptr;  tmp_Wkxky_h = nullptr;
+
+  Ps_d        = nullptr;  Ps_h        = nullptr;  Pz_d        = nullptr;  Pz_h        = nullptr;
+  Pky_d       = nullptr;  Pky_h       = nullptr;  tmp_Pky_h   = nullptr;
+  Pkx_d       = nullptr;  Pkx_h       = nullptr;  tmp_Pkx_h   = nullptr;
+  Pkxky_d     = nullptr;  Pkxky_h     = nullptr;  tmp_Pkxky_h = nullptr;
+  
+  As_d        = nullptr;  As_h        = nullptr;  Az_d        = nullptr;  Az_h        = nullptr;
+  Aky_d       = nullptr;  Aky_h       = nullptr;  tmp_Aky_h   = nullptr;
+  Akx_d       = nullptr;  Akx_h       = nullptr;  tmp_Akx_h   = nullptr;
+  Akxky_d     = nullptr;  Akxky_h     = nullptr;  tmp_Akxky_h = nullptr;
+  qs_d        = nullptr;  qs_h        = nullptr;
+
   id = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new Fields(pars_, grids_);   cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
@@ -28,14 +56,14 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     // Only appropriate for unsheared configurations ... otherwise this diagnostic has a bug
     grad_parallel = new GradParallelPeriodic(grids_); cudaDeviceSynchronize();  CUDA_DEBUG("Grad parallel periodic: %s \n");
   }
+  volDenom = 0.;  for (int i=0; i<nZ; i++)   volDenom += geo_->jacobian_h[i]; 
+  volDenomInv = 1./volDenom;   
+
   if (pars_->diagnosing_spectra) {    
     float dum = 1.0;
     red = new Red(grids_, pars_->wspectra);       cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
     pot = new Red(grids_, pars_->pspectra, true); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
     ph2 = new Red(grids_, pars_->aspectra,  dum); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n");
-
-    volDenom = 0.;  for (int i=0; i<nZ; i++)   volDenom += geo_->jacobian_h[i]; 
-    volDenomInv = 1./volDenom;   
 
     if (id->Wm.write) {
       cudaMalloc     (&Wm_d,        sizeof(float) * nM * nS);
@@ -443,6 +471,44 @@ void Diagnostics::finish(MomentsG* G, Fields* fields)
     if (id->Pkxky.write) write_Pkxky(P2(), true);
   }
   id->close_nc_file();  fflush(NULL);
+
+  /*
+  cuComplex *favg;
+  cudaMalloc((void**) &favg, sizeof(cuComplex)*grids_->Nx);
+  
+  cuComplex *df;
+  cudaMalloc((void**) &df, sizeof(cuComplex)*grids_->NxNycNz);
+
+  fieldlineaverage<<< (grids_->Nx*grids_->Nyc-1)/grids_->Nakx+1, grids_->Nakx >>> (favg, df, fields->phi, geo_->jacobian, volDenomInv);
+
+  cuComplex *favg_h;
+  cudaMallocHost((void**) &favg_h, sizeof(cuComplex)*grids_->Nx);
+
+  cuComplex *df_h;
+  cudaMallocHost((void**) &df_h, sizeof(cuComplex)*grids_->NxNycNz);
+  
+  cuComplex *phi_h;
+  cudaMallocHost((void**) &phi_h, sizeof(cuComplex)*grids_->NxNycNz);
+  
+  
+  CP_TO_CPU (df_h, df, sizeof(cuComplex)*grids_->NxNycNz);
+  CP_TO_CPU (phi_h, fields->phi, sizeof(cuComplex)*grids_->NxNycNz);
+  CP_TO_CPU (favg_h, favg, sizeof(cuComplex)*grids_->Nx);
+
+  for (int iz = 0; iz < grids_->Nz; iz++) {
+    for (int idx = 0; idx < grids_->Nx; idx++) {
+      for (int idy = 0; idy < grids_->Nyc; idy++) {
+	int ig = idy + idx*grids_->Nyc + iz*grids_->Nyc*grids_->Nx;
+	printf("phi(%d, %d, %d) = (%e, %e) \t <<phi>> = (%e, %e) \t df = (%e, %e) \n", idy, idx, iz,
+	       phi_h[ig].x,   phi_h[ig].y, 
+	       favg_h[idx].x, favg_h[idx].y, 
+	       df_h[ig].x,     df_h[ig].y);
+      }
+      printf("\n");
+    }
+    printf("\n");
+  }
+  */  
 }
 
 void Diagnostics::write_init(MomentsG* G, Fields* fields) {

@@ -6,12 +6,12 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 {
   double time = 0;
 
-  Fields    * fields    = NULL;
-  MomentsG  * G         ;
-  Solver    * solver    = NULL;
-  Linear    * linear    = NULL;
-  Nonlinear * nonlinear = NULL;
-  Forcing   * forcing   = NULL;
+  Fields    * fields    = nullptr;
+  MomentsG  * G         = nullptr;
+  Solver    * solver    = nullptr;
+  Linear    * linear    = nullptr;
+  Nonlinear * nonlinear = nullptr;
+  Forcing   * forcing   = nullptr;
   
   G         = new MomentsG (pars, grids);
   solver    = new Solver   (pars, grids, geo);    
@@ -56,6 +56,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   if(pars->scheme_opt == RK2)   timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == SSPX2) timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == SSPX3) timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
+    //    if (timestep == nullptr) {bail out}
   
   getDeviceMemoryUsage();
   

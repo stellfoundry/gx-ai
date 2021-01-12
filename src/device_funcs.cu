@@ -692,6 +692,34 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
 { moments[forcing_index] = moments[forcing_index] + force; }
 
 
+__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *jacobian, float volDenomInv)
+{
+  unsigned int idxy = get_id1();
+  if (idxy < nx*nyc) {
+    unsigned int idy = idxy % nyc;
+    unsigned int idx = idxy / nyc;
+
+    favg[idx] = make_cuComplex(0., 0.);
+
+    // calculate <<f>> 
+    if (idy == 0 && unmasked(idx, idy)) {
+      for (int idz = 0; idz<nz; idz++) {
+	favg[idx] = favg[idx] + f[idxy + idz*nx*nyc] * jacobian[idz] * volDenomInv;
+      }
+      for (int idz = 0; idz<nz; idz++) {
+	df[idxy + idz*nx*nyc] = f[idxy + idz*nx*nyc] - favg[idx];
+      }
+    }
+    
+    if (idy > 0 && unmasked(idx, idy)) {
+      for (int idz = 0; idz<nz; idz++) df[idxy + idz*nx*nyc] = f[idxy + idz*nx*nyc];
+    } 
+
+    if (masked(idx, idy)) {
+      for (int idz = 0; idz<nz; idz++) df[idxy + idz*nx*nyc] = make_cuComplex(0., 0.);
+    }
+  }
+}
 
 __global__ void W_summand(float *G2, const cuComplex* g,
 			  const float* jacobian, float volDenomInv, const specie *species) 

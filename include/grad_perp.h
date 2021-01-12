@@ -16,11 +16,10 @@ class GradPerp {
   const int batch_size_;
   const int mem_size_;
   dim3 dG, dB;
-  Grids     * grids_ = NULL;
-  cuComplex * tmp    = NULL;
+  Grids     * grids_ ;
+  cuComplex * tmp    ;
   cufftHandle gradperp_plan_R2C;
   cufftHandle gradperp_plan_C2R;
   cufftHandle gradperp_plan_dxC2R;
   cufftHandle gradperp_plan_dyC2R;
-
 };

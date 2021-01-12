@@ -7,9 +7,12 @@
 MomentsG::MomentsG(Parameters* pars, Grids* grids) : 
   grids_(grids), pars_(pars), LHsize_(grids_->size_G), Momsize_(sizeof(cuComplex)*grids_->NxNycNz)
 {
+  G_lm       = nullptr;  dens_ptr   = nullptr;  upar_ptr   = nullptr;  tpar_ptr   = nullptr;
+  tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
+  
   checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
   cudaMemset(G_lm, 0., LHsize_);
-
+  
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   tpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
@@ -119,7 +122,7 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
  
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
 
-  cuComplex *init_h = NULL;  cudaMallocHost((void**) &init_h, Momsize_); 
+  cuComplex *init_h = nullptr;  cudaMallocHost((void**) &init_h, Momsize_); 
   for (int idx=0; idx<grids_->NxNycNz; idx++) {
     init_h[idx].x = 0.;
     init_h[idx].y = 0.;

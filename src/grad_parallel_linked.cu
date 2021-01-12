@@ -8,6 +8,16 @@
 GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
  : grids_(grids)
 {
+  nLinks       = nullptr;  nChains      = nullptr;
+  ikxLinked_h  = nullptr;  ikyLinked_h  = nullptr;
+  ikxLinked    = nullptr;  ikyLinked    = nullptr;
+  kzLinked     = nullptr;  G_linked     = nullptr;
+  dG           = nullptr;  dB           = nullptr;
+ 
+  dz_plan_forward           = nullptr;       dz_plan_inverse               = nullptr;
+  dz_plan_forward_singlemom = nullptr;       abs_dz_plan_forward_singlemom = nullptr;
+  dz_plan_inverse_singlemom = nullptr;       
+
   //  int naky = grids_->Nyc;
   //  int nakx = grids_->Nakx;
 
@@ -24,12 +34,14 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
   nClasses = get_nClasses(idxRight, idxLeft, linksR, linksL, n_k, naky, nakx, jtwist);
 
-  nLinks = (int*) malloc(sizeof(int)*nClasses);
-  nChains = (int*) malloc(sizeof(int)*nClasses);
+  nLinks   = (int*) malloc(sizeof(int)*nClasses);
+  nChains  = (int*) malloc(sizeof(int)*nClasses);
+
   get_nLinks_nChains(nLinks, nChains, n_k, nClasses, naky, nakx);
 
   ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses);
   ikyLinked_h = (int**) malloc(sizeof(int*)*nClasses);
+
   for(int c=0; c<nClasses; c++) {
     ikxLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
     ikyLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
@@ -55,6 +67,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
   //  printf("nClasses = %d\n", nClasses);
   for(int c=0; c<nClasses; c++) {
     //    printf("\tClass %d: nChains = %d, nLinks = %d\n", c, nChains[c], nLinks[c]);
+
     // allocate and copy into device memory
     int nLC = nLinks[c]*nChains[c];
     cudaMalloc ((void**) &ikxLinked[c],      sizeof(int)*nLC);
@@ -64,6 +77,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     CP_TO_GPU(ikyLinked[c], ikyLinked_h[c], sizeof(int)*nLC);
 
     size_t sLClmz = sizeof(cuComplex)*nLC*grids_->Nl*grids_->Nm*grids_->Nz;
+
     checkCuda(cudaMalloc((void**) &G_linked[c], sLClmz));
     cudaMemset(G_linked[c], 0., sLClmz);
 
@@ -106,30 +120,35 @@ GradParallelLinked::~GradParallelLinked()
   if (nChains) free(nChains);
   if (dB)      free(dB);
   if (dG)      free(dG);
+
   for(int c=0; c<nClasses; c++) {
+
     cufftDestroy(    dz_plan_forward[c]);
     cufftDestroy(    dz_plan_inverse[c]);
     cufftDestroy(    dz_plan_forward_singlemom[c]);
     cufftDestroy(abs_dz_plan_forward_singlemom[c]);
     cufftDestroy(    dz_plan_inverse_singlemom[c]);
-    free(ikxLinked_h[c]);
-    free(ikyLinked_h[c]);
-    cudaFree(ikxLinked[c]);
-    cudaFree(ikyLinked[c]);
-    cudaFree(kzLinked[c]);
-    cudaFree(G_linked[c]);
+
+    if (ikxLinked_h[c])       free(ikxLinked_h[c]);
+    if (ikyLinked_h[c])       free(ikyLinked_h[c]);
+    if (ikxLinked[c])         cudaFree(ikxLinked[c]);
+    if (ikyLinked[c])         cudaFree(ikyLinked[c]);
+    if (kzLinked[c])          cudaFree(kzLinked[c]);
+    if (G_linked[c])          cudaFree(G_linked[c]);
   }
-  cudaFreeHost(    dz_plan_forward);
-  cudaFreeHost(    dz_plan_inverse);
-  cudaFreeHost(    dz_plan_forward_singlemom);
-  cudaFreeHost(abs_dz_plan_forward_singlemom);
-  cudaFreeHost(    dz_plan_inverse_singlemom);
-  free(ikxLinked_h);
-  free(ikyLinked_h);
-  cudaFreeHost(ikxLinked);
-  cudaFreeHost(ikyLinked);
-  cudaFreeHost(G_linked);
-  cudaFreeHost(kzLinked);
+  if (dz_plan_forward)               cudaFreeHost(    dz_plan_forward);
+  if (dz_plan_inverse)               cudaFreeHost(    dz_plan_inverse);
+  if (dz_plan_forward_singlemom)     cudaFreeHost(    dz_plan_forward_singlemom);
+  if (abs_dz_plan_forward_singlemom) cudaFreeHost(abs_dz_plan_forward_singlemom);
+  if (dz_plan_inverse_singlemom)     cudaFreeHost(    dz_plan_inverse_singlemom);
+
+  if (ikxLinked_h)         free(ikxLinked_h);
+  if (ikyLinked_h)         free(ikyLinked_h);
+
+  if (ikxLinked)           cudaFreeHost(ikxLinked);
+  if (ikyLinked)           cudaFreeHost(ikyLinked);
+  if (G_linked)            cudaFreeHost(G_linked);
+  if (kzLinked)            cudaFreeHost(kzLinked);
 }
 
 void GradParallelLinked::dz(MomentsG* G) 
@@ -139,8 +158,10 @@ void GradParallelLinked::dz(MomentsG* G)
       // each "class" has a different number of links in the chains, and a different number of chains.
       linkedCopy <<<dG[c],dB[c]>>>
 	(G->G(0,0,is), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+
       cufftExecC2C (dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
       cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+
       linkedCopyBack <<<dG[c],dB[c]>>>
 	(G_linked[c], G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
@@ -155,8 +176,10 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
     linkedCopy<<<dG[c],dB[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+
     cufftExecC2C(dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+
     linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
@@ -169,8 +192,10 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
     linkedCopy<<<dG[c],dB[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+
     cufftExecC2C(abs_dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(    dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+
     linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }

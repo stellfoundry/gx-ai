@@ -48,10 +48,10 @@ class NetCDF_ids {
   size_t ky_start[1], ky_count[1];
   size_t kx_start[1], kx_count[1];
   
-  float * theta_extended = NULL;
+  float * theta_extended ;
 
  private:   
-  Parameters * pars_  = NULL;
-  Grids      * grids_ = NULL;
-  Geometry   * geo_   = NULL;
+  Parameters * pars_  ;
+  Grids      * grids_ ;
+  Geometry   * geo_   ;
 };

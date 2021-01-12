@@ -3,7 +3,8 @@
 #include "get_error.h"
 
 Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo)
+  pars_(pars), grids_(grids), geo_(geo),
+  tmp(nullptr), nbar(nullptr), phiavgdenom(nullptr)
 {
   size_t cgrid = sizeof(cuComplex)*grids_->NxNycNz;
   cudaMalloc((void**) &nbar, cgrid); cudaMemset(nbar, 0., cgrid);

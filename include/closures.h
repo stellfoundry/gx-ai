@@ -20,17 +20,17 @@ class Beer42 : public Closures {
 
  private:
   float gpar_;
-  Grids        * grids_   = NULL;
-  Parameters   * pars_    = NULL;
-  GradParallel * grad_par = NULL;
-  float        * omegad_  = NULL;
-  cuComplex    * tmp      = NULL;
+  Grids        * grids_   ;
+  Parameters   * pars_    ;
+  GradParallel * grad_par_;
+  float        * omegad_  ;
+  cuComplex    * tmp      ;
 
   // closure coefficients
   float Beta_par;
   float D_par;
   float D_perp;
-  cuComplex * nu = NULL;
+  cuComplex * nu ;
 
   dim3 dimGrid, dimBlock;
 };
@@ -42,12 +42,12 @@ class SmithPerp : public Closures {
   int apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
-  Grids      * grids_  = NULL;
-  Parameters * pars_   = NULL;
-  float      * omegad_ = NULL;
+  Grids      * grids_  ;
+  Parameters * pars_   ;
+  float      * omegad_ ;
   
   // closure coefficent array, to be allocated
-  cuComplex * Aclos_   = NULL;
+  cuComplex * Aclos_   ;
   int q_;
 
   dim3 dimGrid, dimBlock; 
@@ -63,15 +63,15 @@ class SmithPar : public Closures {
   dim3 dimGrid, dimBlock;  
   int q_;
   float gpar_;
-  Grids        * grids_   = NULL;
-  Parameters   * pars_    = NULL;
-  GradParallel * grad_par = NULL;
-  cuComplex    * tmp      = NULL;
-  cuComplex    * tmp_abs  = NULL;
+  Grids        * grids_   ;
+  Parameters   * pars_    ;
+  GradParallel * grad_par_;
+  cuComplex    * tmp      ;
+  cuComplex    * tmp_abs  ;
 
   // closure coefficent array
-  cuComplex * a_coefficients_ = NULL;
+  cuComplex * a_coefficients_ ;
 
   // closure array
-  cuComplex * clos = NULL;
+  cuComplex * clos ;
 };

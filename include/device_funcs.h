@@ -128,6 +128,8 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 
+__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *jacobian, float voldenominv);
+
 __global__ void W_summand(float *G2, const cuComplex* g, const float* jacobian, float volDenomInv, const specie *s);
 
 __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* jacobian, float volDenomInv);

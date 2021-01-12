@@ -108,9 +108,9 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   // pars then needs to be updated since pars is what is used in run_gx.
   if(iproc==0) { pars->import_externalpars(externalpars); }
   
-  Geometry    * geo         = NULL;  // geometry coefficient arrays
-  Grids       * grids       = NULL;  // grids (e.g. kx, ky, z)
-  Diagnostics * diagnostics = NULL;
+  Geometry    * geo         = nullptr;  // geometry coefficient arrays
+  Grids       * grids       = nullptr;  // grids (e.g. kx, ky, z)
+  Diagnostics * diagnostics = nullptr;
   //  HermiteTransform* herm;
 
   DEBUGPRINT("Initializing grids...\n");

@@ -26,10 +26,10 @@ class LaguerreTransform {
   const int J;
 
  private:
-  Grids * grids_     = NULL; 
-  float * toGrid     = NULL;
-  float * toSpectral = NULL;
-  float * roots      = NULL;
+  Grids * grids_     ; 
+  float * toGrid     ;
+  float * toSpectral ;
+  float * roots      ;
 
   int initTransforms(float* toGrid, float* toSpectral, float* roots);
 

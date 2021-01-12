@@ -5,7 +5,7 @@
 SSPx2::SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	     Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr)
 {
   // new objects for temporaries
   GRhs  = new MomentsG (pars, grids);
@@ -25,7 +25,7 @@ void SSPx2::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 {
   linear_->rhs(G, f, GRhs);
 
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -45,7 +45,7 @@ int SSPx2::advance(double *t, MomentsG* G, Fields* f)
 
   G->add_scaled(2.-sqrt(2.), G, sqrt(2.)-2., G1, 1., G2);
   
-  if (forcing_ != NULL) forcing_->stir(G);  
+  if (forcing_ != nullptr) forcing_->stir(G);  
 
   solver_->fieldSolve(G, f);
 
@@ -57,7 +57,7 @@ int SSPx2::advance(double *t, MomentsG* G, Fields* f)
 SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	     Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr), G3(nullptr)
 {
   
   // new objects for temporaries
@@ -80,7 +80,7 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 {
   linear_->rhs(G, f, GRhs);
 
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -133,7 +133,7 @@ int SSPx3::advance(double *t, MomentsG* G, Fields* f)
 
   G->add_scaled((1.-w2-w3), G, w3, G1, (w2-1.), G2, 1., G3);
   
-  if (forcing_ != NULL) forcing_->stir(G);  
+  if (forcing_ != nullptr) forcing_->stir(G);  
 
   solver_->fieldSolve(G, f);
 
@@ -145,7 +145,7 @@ int SSPx3::advance(double *t, MomentsG* G, Fields* f)
 RungeKutta2::RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in), GRhs(nullptr), G1(nullptr)
 {
   // new objects for temporaries
   GRhs  = new MomentsG (pars, grids);
@@ -164,7 +164,7 @@ void RungeKutta2::EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* G, MomentsG* G
 {
   linear_->rhs(G0, f, GRhs); 
   
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G0, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -179,7 +179,7 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
   EulerStep (G1, G, G, GRhs, f, 0.5, true);    solver_->fieldSolve(G1, f);
   EulerStep (G, G1, G, GRhs, f, 1.0, false);   
 
-  if (forcing_ != NULL) forcing_->stir(G);  
+  if (forcing_ != nullptr) forcing_->stir(G);  
    
   solver_->fieldSolve(G, f);
 
@@ -191,7 +191,8 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
 RungeKutta4::RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in),
+  GStar(nullptr), GRhs(nullptr), G_q1(nullptr), G_q2(nullptr)
 {
   GStar = new MomentsG (pars, grids);
   GRhs  = new MomentsG (pars, grids);
@@ -212,7 +213,7 @@ RungeKutta4::~RungeKutta4()
 void RungeKutta4::partial(MomentsG* G, MomentsG* Gt, Fields *f, MomentsG* Rhs, MomentsG *Gnew, double adt, bool setdt)
 {
   linear_->rhs(Gt, f, Rhs);
-  if (nonlinear_ != NULL) {
+  if (nonlinear_ != nullptr) {
     nonlinear_->nlps (Gt, f, Rhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -238,7 +239,7 @@ int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
   GRhs->add_scaled(1., GRhs, dt_/3., GStar);
   
   linear_->rhs(G_q1, f, GStar);
-  if(nonlinear_ != NULL) nonlinear_->nlps(G_q1, f, GStar);     
+  if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, GStar);     
   
   G->add_scaled(1., G, 1., GRhs, dt_/6., GStar);
 
@@ -246,12 +247,12 @@ int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
   partial(G, G_q2, f, G_q1, GStar, 1., false);
 
   linear_->rhs(GStar, f, G_q2);               
-  if(nonlinear_ != NULL) nonlinear_->nlps(GStar, f, G_q2);     
+  if(nonlinear_ != nullptr) nonlinear_->nlps(GStar, f, G_q2);     
   
   G->add_scaled(1., G, 1., GRhs, dt_/3., G_q1, dt_/6., G_q2);
   */
   
-  if (forcing_ != NULL) forcing_->stir(G);
+  if (forcing_ != nullptr) forcing_->stir(G);
   
   solver_->fieldSolve(G, f);
   *t += dt_;
@@ -440,7 +441,7 @@ void SDCe::full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar)
 {
   linear_->rhs(G_q1, f, GRhs);
 
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G_q1, f, GRhs);
 //    GRhs->add_scaled(1., GRhs, 1., GStar);
   }
@@ -461,12 +462,12 @@ int SDCe::advance(double *t, MomentsG* G, Fields* f)
 // ============= K10,4 ============
 Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
-  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), 
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in), G_q1(nullptr), G_q2(nullptr)
 {
   // new objects for temporaries
-  G_q1  = new MomentsG (pars, grids);
-  G_q2  = new MomentsG (pars, grids);
+  G_q1  = new MomentsG (pars_, grids_);
+  G_q2  = new MomentsG (pars_, grids_);
 }
 
 Ketcheson10::~Ketcheson10()
@@ -479,7 +480,7 @@ void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, bool setd
 {
   linear_->rhs(G_q1, f, GRhs);
 
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G_q1, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -507,11 +508,11 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
   for(int i=6; i<10; i++) EulerStep(G_q1, G, f, setdt);
   
   linear_->rhs(G_q1, f, G);
-  if(nonlinear_ != NULL) nonlinear_->nlps(G_q1, f, G);
+  if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, G);
 
   G->add_scaled(1., G_q2, 0.6, G_q1, 0.1*dt_, G);
   
-  if (forcing_ != NULL) forcing_->stir(G);
+  if (forcing_ != nullptr) forcing_->stir(G);
   
   solver_->fieldSolve(G, f);
   *t += dt_;
@@ -520,14 +521,15 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
 
 K2::K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
        Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
-  linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), 
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in)
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in),
+  G_q1(nullptr), G_q2(nullptr), GRhs(nullptr), GStar(nullptr)
 {
   // new objects for temporaries
-  G_q1  = new MomentsG (pars, grids);
-  G_q2  = new MomentsG (pars, grids);
-  GRhs  = new MomentsG (pars, grids);
-  GStar = new MomentsG (pars, grids);
+  G_q1  = new MomentsG (pars_, grids_);
+  G_q2  = new MomentsG (pars_, grids_);
+  GRhs  = new MomentsG (pars_, grids_);
+  GStar = new MomentsG (pars_, grids_);
 }
 
 K2::~K2()
@@ -542,7 +544,7 @@ void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, b
 {  
   linear_->rhs(G_q1, f, GRhs);
 
-  if(nonlinear_ != NULL) {
+  if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G_q1, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
@@ -571,11 +573,11 @@ int K2::advance(double *t, MomentsG* G, Fields* f)
 
   linear_->rhs(G_q1, f, GRhs);
 
-  if(nonlinear_ != NULL) nonlinear_->nlps(G_q1, f, GRhs);    
+  if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, GRhs);    
 
   G->add_scaled(1., G_q2, 0.6, G_q1, 0.1*dt_, GRhs);
   
-  if (forcing_ != NULL) forcing_->stir(G);
+  if (forcing_ != nullptr) forcing_->stir(G);
   
   solver_->fieldSolve(G, f);
   *t += dt_;

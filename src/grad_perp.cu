@@ -6,7 +6,7 @@
 #include "get_error.h"
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
-  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size)
+  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr)
 {
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_C2R);

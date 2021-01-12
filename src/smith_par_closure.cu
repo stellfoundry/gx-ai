@@ -160,13 +160,13 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   }
   
   // Creating CUDA array copy of lhsVector
-  cuDoubleComplex * lhsVector_d = NULL;
+  cuDoubleComplex * lhsVector_d = nullptr;
   cudaMalloc(&lhsVector_d, q*q*sizeof(cuDoubleComplex));
   //  cudaMemcpy(lhsVector_d, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice); 
   CP_TO_GPU (lhsVector_d, (cuDoubleComplex*) lhsVector, q*q*sizeof(cuDoubleComplex));
   
   // Creating CUDA array copy of rhsVector
-  cuDoubleComplex *rhsVector_d = NULL;
+  cuDoubleComplex *rhsVector_d = nullptr;
   cudaMalloc(&rhsVector_d, q*sizeof(cuDoubleComplex));
   //  cudaMemcpy(rhsVector_d, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex), cudaMemcpyHostToDevice);
   CP_TO_GPU (rhsVector_d, (cuDoubleComplex*) rhsVector, q*sizeof(cuDoubleComplex));
@@ -186,7 +186,7 @@ void smith_par_getAs(int n, int q, cuComplex *x_answer) {
   linearSolverLU(handle, q, lhsVector_d, q, rhsVector_d, rhsVector_d);
   
   // Converting cuDoubleComplex answer to cuComplex and storing it in x_answer
-  cuComplex * rhsVector_d_float = NULL;
+  cuComplex * rhsVector_d_float = nullptr;
   cudaMalloc(&rhsVector_d_float, q*q*sizeof(cuComplex));
   
   castDoubleToFloat<<<1,1>>>(rhsVector_d, rhsVector_d_float, q);
@@ -348,10 +348,10 @@ void get_normalized_hermite_coefficients(cuDoubleComplex **matrix, int n, double
 int linearSolverLU(cusolverDnHandle_t handle, int n, const cuDoubleComplex *Acopy,
 		   int lda, const cuDoubleComplex *b, cuDoubleComplex *x) {
   int bufferSize = 0;
-  int *info = NULL;
-  cuDoubleComplex *buffer = NULL;
-  cuDoubleComplex *A = NULL;
-  int *ipiv = NULL; // pivoting sequence
+  int *info = nullptr;
+  cuDoubleComplex *buffer = nullptr;
+  cuDoubleComplex *A = nullptr;
+  int *ipiv = nullptr; // pivoting sequence
   int h_info = 0;
   
   cusolverDnZgetrf_bufferSize(handle, n, n, (cuDoubleComplex*)Acopy, lda, &bufferSize);

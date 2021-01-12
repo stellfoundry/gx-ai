@@ -15,19 +15,19 @@ class Solver {
   void svar(cuComplex* f, int N);
   void svar(float* f, int N);
   
-  cuComplex * nbar = NULL;
+  cuComplex * nbar ;
 
 private:
 
   int maxThreadsPerBlock_;
   dim3 dG, dB, dg, db;
 
-  float * phiavgdenom = NULL;
-  //  float * work        = NULL;
-  cuComplex * tmp = NULL;
+  float * phiavgdenom ;
+  //  float * work        ;
+  cuComplex * tmp ;
 
   // local private copies
-  Parameters * pars_  = NULL;
-  Grids      * grids_ = NULL;
-  Geometry   * geo_   = NULL;
+  Parameters * pars_  ;
+  Grids      * grids_ ;
+  Geometry   * geo_   ;
 };

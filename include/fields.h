@@ -7,10 +7,10 @@ class Fields {
   Fields(Parameters *pars, Grids *grids);
   ~Fields();
   
-  cuComplex * phi    = NULL;
-  cuComplex * phi_h  = NULL;
-  cuComplex * apar   = NULL;
-  cuComplex * apar_h = NULL;
+  cuComplex * phi    ;
+  cuComplex * phi_h  ;
+  cuComplex * apar   ;
+  cuComplex * apar_h ;
   
   void print_phi(void);
   void print_apar(void);
@@ -25,5 +25,5 @@ class Fields {
 private:
   const size_t size_;
   int N;
-  Parameters * pars_  = NULL;
+  Parameters * pars_  ;
 };

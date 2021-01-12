@@ -4,6 +4,8 @@
 Red::Red(int N, int nspecies) : N_(N)
 {
   version_red = 'N';
+  Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+  
   extent['a'] = N_;
   extent['s'] = nspecies;
   for (auto mode : Amode) extent_A.push_back(extent[mode]); // incoming tensor assuming data is contiguous
@@ -21,6 +23,8 @@ Red::Red(int N, int nspecies) : N_(N)
 Red::Red(Grids *grids, std::vector<int> spectra) : grids_(grids), spectra_(spectra)
 {
   version_red = 'W';
+  Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+
   int J;  J = spectra_.size();
   initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
   
@@ -51,6 +55,8 @@ Red::Red(Grids *grids, std::vector<int> spectra) : grids_(grids), spectra_(spect
 Red::Red(Grids *grids, std::vector<int> spectra, bool potential) : grids_(grids), spectra_(spectra)
 {  
   version_red = 'P';
+  Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+
   int J;  J = spectra_.size();
   initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
 

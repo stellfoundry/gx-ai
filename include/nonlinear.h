@@ -22,40 +22,35 @@ class Nonlinear {
  private:
 
   int nBatch;
-
   size_t Size; 
-
-  bool ks = false;
-  
+  bool ks;
   dim3 dGk, dBk, dGx, dBx;
-  
   float cfl_x_inv, cfl_y_inv;
-
   double dt_cfl;
 
-  Parameters        * pars_           = NULL;
-  Grids             * grids_          = NULL;  
-  Geometry          * geo_            = NULL;
+  Parameters        * pars_           ;
+  Grids             * grids_          ;  
+  Geometry          * geo_            ;
   
-  Red               * red             = NULL; 
-  LaguerreTransform * laguerre        = NULL;
-  GradPerp          * grad_perp_G     = NULL;
-  GradPerp          * grad_perp_J0phi = NULL;
-  GradPerp          * grad_perp_phi   = NULL;
+  Red               * red             ; 
+  LaguerreTransform * laguerre        ;
+  GradPerp          * grad_perp_G     ;
+  GradPerp          * grad_perp_J0phi ;
+  GradPerp          * grad_perp_phi   ;
 
-  float * dG          = NULL;
-  float * dg_dx       = NULL;
-  float * dg_dy       = NULL;
-  float * val1        = NULL;
-  float * Gy          = NULL;
-  float * dJ0phi_dx   = NULL;
-  float * dJ0phi_dy   = NULL;
-  float * dJ0_Apar_dx = NULL;
-  float * dJ0_Apar_dy = NULL;
-  float * dphi        = NULL;
-  float * g_res       = NULL;
-  float * vmax_x      = NULL;
-  float * vmax_y      = NULL;
-  cuComplex * J0phi   = NULL;
-  cuComplex * J0_Apar = NULL;
+  float * dG          ;
+  float * dg_dx       ;
+  float * dg_dy       ;
+  float * val1        ;
+  float * Gy          ;
+  float * dJ0phi_dx   ;
+  float * dJ0phi_dy   ;
+  float * dJ0_Apar_dx ;
+  float * dJ0_Apar_dy ;
+  float * dphi        ;
+  float * g_res       ;
+  float * vmax_x      ;
+  float * vmax_y      ;
+  cuComplex * J0phi   ;
+  cuComplex * J0_Apar ;
 };

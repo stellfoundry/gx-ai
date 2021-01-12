@@ -29,14 +29,14 @@ class RungeKutta2 : public Timestepper {
 
   double dt_;
   const double dt_max;
-  Linear     * linear_    = NULL;
-  Nonlinear  * nonlinear_ = NULL;
-  Solver     * solver_    = NULL;
-  Parameters * pars_      = NULL;
-  Grids      * grids_     = NULL;
-  Forcing    * forcing_   = NULL;
-  MomentsG   * GRhs       = NULL;
-  MomentsG   * G1         = NULL;
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG   * GRhs       ;
+  MomentsG   * G1         ;
 };
 
 class RungeKutta4 : public Timestepper {
@@ -53,16 +53,16 @@ class RungeKutta4 : public Timestepper {
   const double dt_max;
   double dt_;
 
-  Linear     * linear_    = NULL;
-  Nonlinear  * nonlinear_ = NULL;
-  Solver     * solver_    = NULL;
-  Parameters * pars_      = NULL;
-  Grids      * grids_     = NULL;
-  Forcing    * forcing_   = NULL;
-  MomentsG   * GStar      = NULL;
-  MomentsG   * GRhs       = NULL;
-  MomentsG   * G_q1       = NULL;
-  MomentsG   * G_q2       = NULL;
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG   * GStar      ;
+  MomentsG   * GRhs       ;
+  MomentsG   * G_q1       ;
+  MomentsG   * G_q2       ;
 };
 /*
 class SDCe : public Timestepper {
@@ -100,14 +100,14 @@ class Ketcheson10 : public Timestepper {
   const double dt_max;
   double dt_;
 
-  Linear     * linear_    = NULL;
-  Nonlinear  * nonlinear_ = NULL;
-  Solver     * solver_    = NULL;
-  Parameters * pars_      = NULL;
-  Grids      * grids_     = NULL;
-  Forcing    * forcing_   = NULL;
-  MomentsG   * G_q1       = NULL;
-  MomentsG   * G_q2       = NULL;
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG   * G_q1       ;
+  MomentsG   * G_q2       ;
 };
 
 class K2 : public Timestepper {
@@ -123,17 +123,17 @@ class K2 : public Timestepper {
   const double dt_max;
   double dt_;
 
-  Linear     * linear_    = NULL;
-  Nonlinear  * nonlinear_ = NULL;
-  Solver     * solver_    = NULL;
-  Parameters * pars_      = NULL;
-  Grids      * grids_     = NULL;
-  Forcing    * forcing_   = NULL;
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
 
-  MomentsG   * GRhs       = NULL;
-  MomentsG   * GStar      = NULL;
-  MomentsG   * G_q1       = NULL;
-  MomentsG   * G_q2       = NULL;
+  MomentsG   * GRhs       ;
+  MomentsG   * GStar      ;
+  MomentsG   * G_q1       ;
+  MomentsG   * G_q2       ;
 };
 
 class SSPx2 : public Timestepper {
@@ -149,15 +149,15 @@ class SSPx2 : public Timestepper {
   const double dt_max;
   double dt_;
 
-  Linear     * linear_    = NULL;
-  Nonlinear  * nonlinear_ = NULL;
-  Solver     * solver_    = NULL;
-  Parameters * pars_      = NULL;
-  Grids      * grids_     = NULL;
-  Forcing    * forcing_   = NULL;
-  MomentsG   * G1         = NULL;
-  MomentsG   * G2         = NULL;
-  MomentsG   * GRhs       = NULL;
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG   * G1         ;
+  MomentsG   * G2         ;
+  MomentsG   * GRhs       ;
 };
 
 class SSPx3 : public Timestepper {
@@ -178,16 +178,16 @@ class SSPx3 : public Timestepper {
   const double w2 = 0.5 * (pow(6.,2./3.) - 1 - wgtfac);
   const double w3 = 1./adt - 1. - w2*(w1+1.);
  
-  Linear      * linear_    = NULL;
-  Nonlinear   * nonlinear_ = NULL;
-  Solver      * solver_    = NULL;
-  Parameters  * pars_      = NULL;
-  Grids       * grids_     = NULL;
-  Forcing     * forcing_   = NULL;
-  MomentsG    * G1         = NULL;
-  MomentsG    * G2         = NULL;
-  MomentsG    * G3         = NULL;
-  MomentsG    * GRhs       = NULL;
+  Linear      * linear_    ;
+  Nonlinear   * nonlinear_ ;
+  Solver      * solver_    ;
+  Parameters  * pars_      ;
+  Grids       * grids_     ;
+  Forcing     * forcing_   ;
+  MomentsG    * G1         ;
+  MomentsG    * G2         ;
+  MomentsG    * G3         ;
+  MomentsG    * GRhs       ;
   double dt_;
 };
 

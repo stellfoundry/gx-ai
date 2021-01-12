@@ -1,8 +1,9 @@
 #include "fields.h"
 #include "get_error.h"
 
-Fields::Fields(Parameters* pars, Grids* grids) : size_(sizeof(cuComplex)*grids->NxNycNz),
-						 N(grids->NxNycNz), pars_(pars)
+Fields::Fields(Parameters* pars, Grids* grids) :
+  size_(sizeof(cuComplex)*grids->NxNycNz), N(grids->NxNycNz), pars_(pars),
+  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_h(nullptr)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
   cudaMemset(phi, 0., size_);

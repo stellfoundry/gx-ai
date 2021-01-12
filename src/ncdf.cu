@@ -10,6 +10,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   strcat(strb, ".nc");
 
   int retval, idum;
+
+  theta_extended = nullptr;
   
   //  if (retval = nc_open(strb, NC_NETCDF4|NC_WRITE, &file)) ERR(retval);
   file = pars_->ncid;

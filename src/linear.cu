@@ -6,8 +6,12 @@
 #include "cuda_constants.h"
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo)
+  pars_(pars), grids_(grids), geo_(geo),
+  GRhs_par(nullptr), closures(nullptr), grad_par(nullptr)
 {
+  ks = false;
+  upar_bar  = nullptr;           uperp_bar = nullptr;            t_bar     = nullptr;
+  
   GRhs_par = new MomentsG(pars_, grids_);
 
   // set up parallel ffts
@@ -92,6 +96,10 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   if (pars_->collisions)  conservation_terms <<<(grids_->NxNycNz-1)/256+1, 256>>>
       (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
+  
+  // Moving streaming here. Get rhs_par, then d/dz of it. save as rhs.
+
+  // change this to add to rhs that exists
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    

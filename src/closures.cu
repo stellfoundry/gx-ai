@@ -4,7 +4,7 @@
 #include "smith_par_closure.h"
 
 Beer42::Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in): 
-  pars_(pars), grids_(grids), grad_par(grad_par_in), omegad_(geo->omegad), gpar_(geo->gradpar)
+  pars_(pars), grids_(grids), grad_par_(grad_par_in), omegad_(geo->omegad), gpar_(geo->gradpar), tmp(nullptr), nu(nullptr)
 {
   cudaMalloc ((void**) &tmp, sizeof(cuComplex)*grids_->NxNycNz);
 
@@ -60,17 +60,17 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
     cudaMemset(GRhs->G(1, 3, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
     // parallel streaming
-    grad_par->dz(G->G(0, 2, is), tmp); // roughly d/dz T_par
+    grad_par_->dz(G->G(0, 2, is), tmp); // roughly d/dz T_par
     
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -Beta_par/sqrt(3.)*gpar_*vt_, tmp);
 
-    grad_par->abs_dz(G->G(0, 3, is), tmp); // roughly |d/dz| q_par,par
+    grad_par_->abs_dz(G->G(0, 3, is), tmp); // roughly |d/dz| q_par,par
 
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -sqrt(2.)*D_par*gpar_*vt_, tmp);
 
-    grad_par->abs_dz(G->G(1, 1, is), tmp); // rougly |d/dz| q_par,perp
+    grad_par_->abs_dz(G->G(1, 1, is), tmp); // rougly |d/dz| q_par,perp
 
     add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
       (GRhs->G(1, 1, is), 1., GRhs->G(1, 1, is), -sqrt(2.)*D_perp*gpar_*vt_, tmp);
@@ -82,7 +82,7 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
 }
 
 SmithPerp::SmithPerp(Parameters* pars, Grids* grids, Geometry* geo): 
-  pars_(pars), grids_(grids), omegad_(geo->omegad)
+  pars_(pars), grids_(grids), omegad_(geo->omegad), Aclos_(nullptr)
 {
   int q_ = pars_->smith_perp_q;
   cuComplex Aclos_h[q_];
@@ -188,7 +188,8 @@ int SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs)
 
 
 SmithPar::SmithPar(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in):  
-  pars_(pars), grids_(grids), grad_par(grad_par_in), gpar_(geo->gradpar)
+  pars_(pars), grids_(grids), grad_par_(grad_par_in), gpar_(geo->gradpar),
+  tmp(nullptr), tmp_abs(nullptr), clos(nullptr), a_coefficients_(nullptr)
 { 
 
   int q_ = pars_->smith_par_q;
@@ -233,9 +234,9 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
 
-	grad_par->dz(G->G(l, m, is), tmp);
+	grad_par_->dz(G->G(l, m, is), tmp);
 
-	grad_par->abs_dz(G->G(l, m, is), tmp_abs);
+	grad_par_->abs_dz(G->G(l, m, is), tmp_abs);
 	
 	add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
 	  (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);

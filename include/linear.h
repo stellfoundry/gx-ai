@@ -19,17 +19,18 @@ public:
   int sharedSize;
   
  private:
-  bool ks = false;
+  bool ks;
 
-  Geometry       * geo_     = NULL;
-  Parameters     * pars_    = NULL;
-  Grids          * grids_   = NULL;  
-  GradParallel   * grad_par = NULL;
-  Closures       * closures = NULL;
-  MomentsG       * GRhs_par = NULL;
+  Geometry       * geo_     ;
+  Parameters     * pars_    ;
+  Grids          * grids_   ;  
+
+  GradParallel   * grad_par ;
+  Closures       * closures ;
+  MomentsG       * GRhs_par ;
 
   // conservation terms
-  cuComplex * upar_bar      = NULL;
-  cuComplex * uperp_bar     = NULL;
-  cuComplex * t_bar         = NULL;
+  cuComplex * upar_bar      ;
+  cuComplex * uperp_bar     ;
+  cuComplex * t_bar         ;
 };
