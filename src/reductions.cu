@@ -1,4 +1,5 @@
 #include "reductions.h"
+#include <iostream>
 
 // catch-all reduction to a scalar, for any block of N contiguous floats
 Red::Red(int N, int nspecies) : N_(N)
@@ -67,6 +68,7 @@ Red::Red(Grids *grids, std::vector<int> spectra, bool potential) : grids_(grids)
     extent['z'] = grids_->Nz;
     extent['s'] = grids_->Nspecies;;
   } else {
+    printf("Exiting from Red constructor because potential is false \n");
     exit(1);
   }
   for (auto mode : Pmode) extent_P.push_back(extent[mode]);
@@ -93,11 +95,13 @@ Red::Red(Grids *grids, std::vector<int> spectra, float dum) : grids_(grids), spe
   extent['y'] = grids_->Nyc;
   extent['x'] = grids_->Nx;
   extent['z'] = grids_->Nz;
-
+  
   for (auto mode : Imode) extent_I.push_back(extent[mode]);
   for (int j = 0; j < J; j++) {
     if (spectra_[j] == 1) {
       for (auto mode : iModes[j]) extents[j].push_back(extent[mode]);
+
+      //      printf("0 =? %d \n",iModes[0].size());
       
       HANDLE_ERROR( cutensorInit(&handle));
       HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_ABS));
@@ -117,7 +121,7 @@ Red::~Red() {
 void Red::pSum(float* P2, float* res, int ispec)
 {
   // calculate reduction, res = res + sum_i P2(i), over first few indices, mainly for (1-Gamma_0) Phi**2 integrations
-  if (version_red != 'P') exit(1);
+  if (version_red != 'P') {printf("version should be P in pSum \n"); exit(1);}
 
   if (initialized[ispec] == 0) {
   
@@ -144,7 +148,7 @@ void Red::pSum(float* P2, float* res, int ispec)
 }
 void Red::iSum(float* I2, float* res, int ispec)
 {
-  if (version_red != 'I') exit(1);
+  if (version_red != 'I') {printf("version should be I in iSum \n"); exit(1);}
 
   if (initialized[ispec] == 0) {
   
@@ -156,14 +160,14 @@ void Red::iSum(float* I2, float* res, int ispec)
       sizeWork = sizeAdd;
       if (Addwork) cudaFree (Addwork);
       if (cudaSuccess != cudaMalloc(&Addwork, sizeWork)) {
+	printf("Oops! \n");
 	Addwork = nullptr;
 	sizeWork = 0;
       }
     }
     initialized[ispec]  = 1;
-    printf("sizeAdd = %d \n",sizeAdd);
-  }
-  
+  } 
+
   HANDLE_ERROR(cutensorReduction(&handle,
 				 (const void*) &alpha, I2, &dI, Imode.data(),
 				 (const void*) &beta,  res,  &desc[ispec], iModes[ispec].data(),
@@ -174,7 +178,7 @@ void Red::iSum(float* I2, float* res, int ispec)
 void Red::Max(float* A2, float* B)
 {
   // calculate reduction, B = max(|A2|), over first few indices
-  if (version_red != 'N') exit(1);
+  if (version_red != 'N') {printf("version should be N in Max \n"); exit(1);}
 
   if (first_Max) {
     
@@ -202,7 +206,7 @@ void Red::Max(float* A2, float* B)
 void Red::sSum(float* Q, float* R)
 {
   // calculate reduction, R = sum Q, leaving results sorted by species only
-  if (version_red != 'N') exit(1);
+  if (version_red != 'N') {printf("version should be N in sSum \n"); exit(1);}
 
   if (first_Sum) {
     
@@ -230,7 +234,7 @@ void Red::sSum(float* Q, float* R)
 void Red::aSum(float* A, float* B)
 {
   // calculate full reduction, B = sum A
-  if (version_red != 'N') exit(1);
+  if (version_red != 'N')  {printf("version should be N in aSum \n"); exit(1);}
 
   if (first_SumT) {
     
@@ -257,7 +261,7 @@ void Red::aSum(float* A, float* B)
 // res = Sum_appropriately W
 void Red::Sum(float* W, float* res, int ispec) 
 {
-  if (version_red != 'W') exit(1);
+  if (version_red != 'W')  {printf("version should be W in Sum \n"); exit(1);}
   if (initialized[ispec] == 0) {
 
     // Get size of workspace that will be used, stored in sizeAdd (sizeWork)

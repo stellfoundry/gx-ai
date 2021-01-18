@@ -692,7 +692,7 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
 { moments[forcing_index] = moments[forcing_index] + force; }
 
 
-__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *jacobian, float volDenomInv)
+__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac)
 {
   unsigned int idxy = get_id1();
   if (idxy < nx*nyc) {
@@ -704,7 +704,7 @@ __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex
     // calculate <<f>> 
     if (idy == 0 && unmasked(idx, idy)) {
       for (int idz = 0; idz<nz; idz++) {
-	favg[idx] = favg[idx] + f[idxy + idz*nx*nyc] * jacobian[idz] * volDenomInv;
+	favg[idx] = favg[idx] + f[idxy + idz*nx*nyc] * volJac[idz];
       }
       for (int idz = 0; idz<nz; idz++) {
 	df[idxy + idz*nx*nyc] = f[idxy + idz*nx*nyc] - favg[idx];
@@ -721,8 +721,7 @@ __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex
   }
 }
 
-__global__ void W_summand(float *G2, const cuComplex* g,
-			  const float* jacobian, float volDenomInv, const specie *species) 
+__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const specie *species) 
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -739,7 +738,7 @@ __global__ void W_summand(float *G2, const cuComplex* g,
 
 	float fac = 2.0;
 	if (idy==0) fac = 1.0;
-	fg = cuConjf(g[ig]) * g[ig] * jacobian[idz] * fac * volDenomInv;
+	fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
 	G2[ig] = 0.5 * fg.x * species[is].nt;
       } else {
 	G2[ig] = 0.;
@@ -748,7 +747,7 @@ __global__ void W_summand(float *G2, const cuComplex* g,
   }
 }
 
-__global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* jacobian, float volDenomInv)
+__global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -762,7 +761,8 @@ __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g,
       float fac=2.;
       if (idy==0) fac = 1.0;
       
-      fg = cuConjf(f[idxyz])*g[idxyz]*jacobian[idz]*fac*volDenomInv;
+      fg = cuConjf( f[idxyz] ) * g[idxyz] * volJac[idz] * fac;
+
       rmom[idxyz] = fg.x;
     } else {
       rmom[idxyz] = 0.;
@@ -840,7 +840,7 @@ __global__ void Wphi_scale(float* p2, float alpha)
   }
 }
 
-__global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *jacobian, float volDenomInv)
+__global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -854,7 +854,7 @@ __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *jaco
       float fac=2.;
       if (idy==0) fac = 1.0;
 
-      tmp = cuConjf(phi[idxyz])*phi[idxyz]*fac * volDenomInv * jacobian[idz];
+      tmp = cuConjf( phi[idxyz] ) * phi[idxyz] *fac * volJac[idz] ;
       p2[idxyz] = 0.5 * tmp.x;
 
     } else {
@@ -863,8 +863,7 @@ __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *jaco
   }
 }
 
-__global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacobian,
-			     float volDenomInv, const float* kperp2, float rho2_s)
+__global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -880,7 +879,7 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacob
 
       float b_s = kperp2[idxyz]*rho2_s;
 
-      tmp = cuConjf(phi[idxyz])*(1.-g0(b_s))*phi[idxyz]*fac * volDenomInv * jacobian[idz];
+      tmp = cuConjf( phi[idxyz] ) * ( 1.0 - g0(b_s) ) * phi[idxyz] * fac * volJac[idz];
       p2[idxyz] = 0.5 * tmp.x;
 
     } else {
@@ -891,7 +890,7 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacob
 
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M)]
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* jacobian, float fluxDenomInv, const float *kperp2, float rho2_s)
+				  const float* flxJac, const float *kperp2, float rho2_s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -914,7 +913,7 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
 	p_bar = p_bar + Jfac(il, b_s)*Gh_(idxyz, il, 0) + rsqrtf(2.)*Jflr(il, b_s)*Gh_(idxyz, il, 2);
       }
     
-      fg = cuConjf(vE_r) * p_bar * 2. * fluxDenomInv * jacobian[idz];
+      fg = cuConjf(vE_r) * p_bar * 2. * flxJac[idz];
       qflux[idxyz] = fg.x;
 
     } else {
@@ -1103,7 +1102,7 @@ This proposed substitute routine fails because pfilter2 is not thread-local memo
 
 __global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
 					const float *kperp2, const float *jacobian,
-					const specie *species, const float ti_ov_te, float *pfilter2)
+					const specie *species, const float tau_fac, float *pfilter2)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1126,8 +1125,8 @@ __global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, c
     if (idy == 0) { 
       for (int idz=0; idz < nz; idz++) {
 	int idxyz = idxy + idz*nx*nyc;	
-	PhiAvg.x = (double) PhiAvg.x + ( nbar[idxyz].x / (ti_ov_te + pfilter2[idz] ) ) * jacobian[idz];
-	PhiAvg.y = (double) PhiAvg.y + ( nbar[idxyz].y / (ti_ov_te + pfilter2[idz] ) ) * jacobian[idz];
+	PhiAvg.x = (double) PhiAvg.x + ( nbar[idxyz].x / (tau_fac + pfilter2[idz] ) ) * jacobian[idz];
+	PhiAvg.y = (double) PhiAvg.y + ( nbar[idxyz].y / (tau_fac + pfilter2[idz] ) ) * jacobian[idz];
       }      
       PhiAvg.x = PhiAvg.x/( (double) PhiAvgDenom[idx] );
       PhiAvg.y = PhiAvg.y/( (double) PhiAvgDenom[idx] );      
@@ -1135,8 +1134,8 @@ __global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, c
     
     for (int idz=0; idz < nz; idz++) {
       int idxyz = idxy + idz*nx*nyc;
-      Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2[idz]);
-      Phi[idxyz].y = ( nbar[idxyz].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2[idz]);
+      Phi[idxyz].x = ( nbar[idxyz].x + tau_fac * PhiAvg.x ) / (tau_fac + pfilter2[idz]);
+      Phi[idxyz].y = ( nbar[idxyz].y + tau_fac * PhiAvg.y ) / (tau_fac + pfilter2[idz]);
     }
   }
   
@@ -1152,7 +1151,7 @@ __global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, c
 */
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian,
-				 const specie* species, const float ti_ov_te)
+				 const specie* species, const float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1168,14 +1167,14 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
     
-    PhiAvgNum_tmp[idxyz] = ( nbar[idxyz] / (ti_ov_te + pfilter2 ) ) * jacobian[idz];
+    PhiAvgNum_tmp[idxyz] = ( nbar[idxyz] / (tau_fac + pfilter2 ) ) * jacobian[idz];
   }
 }
 
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* PhiAvgDenom, const float* kperp2, 
-				 const specie* species, const float ti_ov_te)
+				 const specie* species, const float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1212,13 +1211,13 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
 
-    Phi[idxyz].x = ( nbar[idxyz].x + ti_ov_te*PhiAvg.x ) / (ti_ov_te + pfilter2); // Eq 4
-    Phi[idxyz].y = ( nbar[idxyz].y + ti_ov_te*PhiAvg.y ) / (ti_ov_te + pfilter2);
+    Phi[idxyz].x = ( nbar[idxyz].x + tau_fac * PhiAvg.x ) / (tau_fac + pfilter2); // Eq 4
+    Phi[idxyz].y = ( nbar[idxyz].y + tau_fac * PhiAvg.y ) / (tau_fac + pfilter2);
   }
 }
 
 __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
-				 const float* jacobian, const specie* species, const float ti_ov_te)
+				 const float* jacobian, const specie* species, const float tau_fac)
 {   
   unsigned int idx = get_id1();
   
@@ -1235,7 +1234,7 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
 	  specie s = species[is];
 	  pfilter2 += s.dens*s.z*s.zt*(1. - g0(kperp2[(idx + i*nx)*nyc]*s.rho2));
 	}	
-	PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[i] * pfilter2 / (ti_ov_te + pfilter2);
+	PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[i] * pfilter2 / (tau_fac + pfilter2);
       }
     }
   }
@@ -1256,7 +1255,7 @@ __global__ void add_source(cuComplex* f, const float source)
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* kperp2, 
-			   const specie* species, float ti_ov_te)
+			   const specie* species, float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1272,8 +1271,8 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
       pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
     }
     
-    Phi[idxyz].x = ( nbar[idxyz].x / (ti_ov_te + pfilter2 ) );  
-    Phi[idxyz].y = ( nbar[idxyz].y / (ti_ov_te + pfilter2 ) );  
+    Phi[idxyz].x = ( nbar[idxyz].x / (tau_fac + pfilter2 ) );  
+    Phi[idxyz].y = ( nbar[idxyz].y / (tau_fac + pfilter2 ) );  
   }
 }
 

@@ -33,8 +33,10 @@ void Parameters::get_nml_vars(char* filename)
   strcpy(nml_file, run_name);
   strcat(nml_file, ".in");
 
-  const auto nml = toml::parse(nml_file);
+  printf(ANSI_COLOR_MAGENTA);
 
+  const auto nml = toml::parse(nml_file);
+    
   debug = toml::find_or <bool> (nml, "debug",    false);
   nz_in = toml::find_or <int> (nml, "ntheta",    32);
   ny_in = toml::find_or <int> (nml, "ny",        32);
@@ -75,7 +77,6 @@ void Parameters::get_nml_vars(char* filename)
   write_h_spectrum  = toml::find_or <bool> (nml, "write_h_spectrum", false);
   write_l_spectrum  = toml::find_or <bool> (nml, "write_l_spectrum", false);
   write_lh_spectrum = toml::find_or <bool> (nml, "write_lh_spectrum", false);
-  write_spec_v_time = toml::find_or <bool> (nml, "write_spec_v_time", false);
   init_single       = toml::find_or <bool> (nml, "init_single", false);
 
   cfl        = toml::find_or <float> (nml, "cfl", 0.1);
@@ -111,11 +112,94 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (nml, "boundary", "linked");
   source = toml::find_or <std::string> (nml, "source", "default");
 
-  all_kinetic = toml::find_or <bool> (nml, "all_kinetic", false);
+  ///////////////////////////////////////////////////////////////////////
+  //
+  // New way to handle Boltzmann response. 
+  // 
+  // Preferred: 
+  //     All kinetic? Leave out iphi00 entirely; leave out add_Boltzmann_species or set add_Boltzmann_species = false
+  //
+  //     Include a Boltzmann species? Set add_Boltzmann_species = true, and set Boltzmann_type 
+  //            as either "electrons" (to recover iphi00=2 in the old way)
+  //            or "ions"             (to recover iphi00=1 in the old way)
+  //     Use "tau_fac" instead of ti_ov_te as the multiplier for the Boltzmann response
+  // 
+  // Backward compatibility possibilities (not preferred)
+  //     
+  //     Assume there is always a Boltzmann species unless electromagnetic
+  //     and control the response with iphi00 and ti_ov_te
+  //
+  //     This mode of operation is deprecated, and should be removed in early 2021.
+  //
+  ///////////////////////////////////////////////////////////////////////
   
+  
+  add_Boltzmann_species = toml::find_or <bool> (nml, "add_Boltzmann_species", false);
+  Btype = toml::find_or <std::string> (nml, "Boltzmann_type", "electrons");
+
+  iphi00 = toml::find_or <int> (nml, "iphi00", -2);
+
+  // For backward compatibility, check if iphi00 was specified and act accordingly
+  if (iphi00 > 0) {
+    if (iphi00 == 1) Btype = "Ions";
+    if (iphi00 == 2) Btype = "Electrons";
+    add_Boltzmann_species = true;
+  }
+  
+  all_kinetic = true;
+  if (add_Boltzmann_species) all_kinetic = false;
+
+  if (all_kinetic && nspec_in == 1) {
+    printf("You have chosen to treat all species as kinetic, but with only one species. This is very unusual and likely wrong.\n");
+    printf("You have chosen to treat all species as kinetic, but with only one species. This is very unusual and likely wrong.\n");
+  }
+
+  // allow some sloppiness here:
+  
+  if (Btype == "Electrons") Boltzmann_opt = BOLTZMANN_ELECTRONS;
+  if (Btype == "Electron" ) Boltzmann_opt = BOLTZMANN_ELECTRONS;
+  if (Btype == "Ions")      Boltzmann_opt = BOLTZMANN_IONS;
+  if (Btype == "Ion" )      Boltzmann_opt = BOLTZMANN_IONS;
+
+  if (Btype == "electrons") Boltzmann_opt = BOLTZMANN_ELECTRONS;
+  if (Btype == "electron" ) Boltzmann_opt = BOLTZMANN_ELECTRONS;
+  if (Btype == "ions")      Boltzmann_opt = BOLTZMANN_IONS;
+  if (Btype == "ion" )      Boltzmann_opt = BOLTZMANN_IONS;
+
+  ti_ov_te = toml::find_or <float> (nml, "TiTe", 1.0);     // backward compatibility, sets default overall as tau_fac = unity
+  tau_fac  = toml::find_or <float> (nml, "tau_fac", -1.0); // check for new, physically sensible value in the input file
+  if (tau_fac > 0.) ti_ov_te = tau_fac;                    // new definition has priority if it was provided
+  tau_fac = ti_ov_te;                                      // In the body of the code, use tau_fac instead of ti_ov_te
+  
+  ///////////////////////////////////////////////////////////////////////
+  //                                                                   //
+  // Testing that we have working options                              //
+  //                                                                   //
+  ///////////////////////////////////////////////////////////////////////
+
+  if (all_kinetic) {
+    if (iphi00 > 0) {
+      printf("all_kinetic = true and iphi00 > 0 not both allowed.\n");                      exit(1);
+    }
+    if (add_Boltzmann_species) {
+      printf("all_kinetic = true and add_Boltzmann_species = true not both allowed.\n");    exit(1);
+    }
+  }
+  
+  if (!all_kinetic) {
+    if (tau_fac < 0.) {
+      printf("all_kinetic == false and tau_fac < 0. not both allowed.\n");                   exit(1);
+    }
+    if ( !(Boltzmann_opt == BOLTZMANN_ELECTRONS) && !(Boltzmann_opt == BOLTZMANN_IONS) ) {
+      printf("all_kinetic == false but no legal Boltzmann_type specified.\n");               exit(1);
+    }
+    if ( !add_Boltzmann_species ) {
+      printf("Cannot accept all_kinetic == false AND all_Boltzmann_species == false.\n");    exit(1);
+    }
+  }
+      
   smith_par_q = toml::find_or <int> (nml, "smith_par_q", 3);
   smith_perp_q = toml::find_or <int> (nml, "smith_perp_q", 3);
-  iphi00 = toml::find_or <int> (nml, "iphi00", 2);
   hyper = toml::find_or <bool> (nml, "hyper", false);
   hypercollisions = toml::find_or <bool> (nml, "hypercollisions", false);
 
@@ -175,14 +259,12 @@ void Parameters::get_nml_vars(char* filename)
   }
   // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
   if (!all_kinetic) {
-    if (iphi00==1) {
-      aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
-      aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
-      aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
-      aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
-      aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
-      aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
-    }
+    aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
+    aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
+    aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
+    aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
+    aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
+    aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
   }
   // for backwards compatibility
   if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
@@ -198,16 +280,16 @@ void Parameters::get_nml_vars(char* filename)
   if (write_free_energy) {
     wspectra[WSPECTRA_species] = 1;
     pspectra[PSPECTRA_species] = 1;
-    if (iphi00==1) aspectra[ASPECTRA_species] = 1;
+    if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
   gx = not ks;
-  
-  uint32_t ksize = 0;
-  for (int k=0;k<pspectra.size(); k++) {ksize = max(ksize, pspectra[k]);}
-  for (int k=0;k<wspectra.size(); k++) {ksize = max(ksize, wspectra[k]);}
-  for (int k=0;k<aspectra.size(); k++) {ksize = max(ksize, aspectra[k]);}
-  
+
+  int ksize = 0;
+  for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
+  for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
+  for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
+
   diagnosing_pzt = write_pzt;
   
   diagnosing_spectra = false;
@@ -239,8 +321,6 @@ void Parameters::get_nml_vars(char* filename)
   fapar = toml::find_or <float> (nml, "fapar", 0.0);
   fbpar = toml::find_or <float> (nml, "fbpar", 0.0);
 
-  ti_ov_te = toml::find_or <float> (nml, "TiTe", 1.0);
-  
   tp_t0 = toml::find_or <float> (nml, "t0", -1.0);
   tp_tf = toml::find_or <float> (nml, "tf", -1.0);
   tprim0 = toml::find_or <float> (nml, "tprim0", -1.0);
@@ -288,7 +368,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "aspectra",              NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
-  if (retval = nc_def_var (ncid, "spec_type",             NC_INT,   1, specs, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "species_type",          NC_INT,   1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "z",                     NC_FLOAT, 1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "m",                     NC_FLOAT, 1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "n0",                    NC_FLOAT, 1, specs, &ivar)) ERR(retval);
@@ -330,7 +410,6 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "write_phi",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_phi_kpar",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_rh",              NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "write_spec_v_time",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_pzt",             NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   // numerical parameters
@@ -368,8 +447,14 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "boundary_dum",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", boundary.size(), boundary.c_str())) ERR(retval);
 
+  // for boltzmann opts need attribute BD bug
+
+  if (retval = nc_def_var (ncid, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "iphi00",                NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "Boltzmann_type_dum",    NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_put_att_text (ncid, ivar, "value", Btype.size(), Btype.c_str() ) ) ERR(retval);
+  
   if (retval = nc_def_var (ncid, "source_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", source.size(), source.c_str())) ERR(retval);
   if (retval = nc_def_var (ncid, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -404,8 +489,6 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "beta_prime_input",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "s_hat_input",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
-  if (retval = nc_def_var (ncid, "tite",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-
   if (retval = nc_def_var (ncid, "fphi",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "fapar",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "fbpar",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
@@ -421,9 +504,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_enddef (ncid)) ERR(retval);
   
 
-  adiabatic_electrons = true;
-  // all_kinetic logic required
-
+  putbool  (ncid, "all_kinetic", all_kinetic);
+  putbool  (ncid, "add_Boltzmann_species", add_Boltzmann_species);
   putbool  (ncid, "debug",     debug);
   putint   (ncid, "ntheta",    nz_in);
   putint   (ncid, "nx",        nx_in);
@@ -431,7 +513,6 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "nhermite",  nm_in);
   putint   (ncid, "nlaguerre", nl_in);
   putint   (ncid, "nspecies",  nspec_in);
-  putbool  (ncid, "all_kinetic", all_kinetic);
 
   putfloat (ncid, "dt", dt);
   putfloat (ncid, "y0", y0);
@@ -462,7 +543,6 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (ncid, "write_pzt", write_pzt);
   putbool  (ncid, "write_phi", write_phi);
   putbool  (ncid, "write_phi_kpar", write_phi_kpar);
-  putbool  (ncid, "write_spec_v_time", write_spec_v_time);
   putbool  (ncid, "init_single", init_single);
 
   putfloat (ncid, "cfl", cfl);
@@ -491,7 +571,6 @@ void Parameters::get_nml_vars(char* filename)
   
   putint   (ncid, "smith_par_q", smith_par_q);
   putint   (ncid, "smith_perp_q", smith_perp_q);
-  putint   (ncid, "iphi00", iphi00);
   putbool  (ncid, "hyper", hyper);
   putbool  (ncid, "hypercollisions", hypercollisions);
   putbool  (ncid, "collisions", collisions);
@@ -523,8 +602,8 @@ void Parameters::get_nml_vars(char* filename)
   put_aspectra (ncid, aspectra); 
   putspec (ncid, nspec_in, species_h);
   
-  putfloat (ncid, "tite", ti_ov_te);
-
+  putfloat (ncid, "tau_fac", tau_fac);
+  
   putfloat (ncid, "fphi", fphi);
   putfloat (ncid, "fapar", fapar);
   putfloat (ncid, "fbpar", fbpar);
@@ -679,6 +758,8 @@ void Parameters::get_nml_vars(char* filename)
   CP_TO_GPU (species, species_h, sizeof(specie)*nspec_in);
   initialized = true;
   cudaDeviceSynchronize();
+  printf(ANSI_COLOR_RESET);    
+
 }
 
 void Parameters::init_species(specie* species)
@@ -986,7 +1067,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_inq_varid(ncid, "nu", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, nu))  ERR(retval);
 
-  if (retval = nc_inq_varid(ncid, "spec_type", &idum))   ERR(retval);
+  if (retval = nc_inq_varid(ncid, "species_type", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 

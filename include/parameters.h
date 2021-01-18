@@ -60,6 +60,9 @@
 #define ASPECTRA_kxky 4
 #define ASPECTRA_z 5
 
+#define BOLTZMANN_IONS 1
+#define BOLTZMANN_ELECTRONS 2
+
 class Parameters {
 
  public:
@@ -82,13 +85,14 @@ class Parameters {
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
   int dorland_phase_ifac, ivarenna, iflr, i_share, stirf;
   int init, iky_single, ikx_single, iky_fixed, ikx_fixed;
+  int Boltzmann_opt; 
   //  int lh_ikx, lh_iky;
   int zonal_dens_switch, q0_dens_switch, scheme_opt;
   // formerly part of time struct
   int trinity_timestep, trinity_iteration, trinity_conv_count, end_time;   
   
   float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
-  float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale;
+  float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
@@ -104,7 +108,7 @@ class Parameters {
   specie *species, *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
-  bool all_kinetic, ks, gx;
+  bool all_kinetic, ks, gx, add_Boltzmann_species;
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
@@ -117,7 +121,7 @@ class Parameters {
   bool low_b, low_b_all, higher_order_moments, nlpm_zonal_only, nlpm_vol_avg;
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
   bool zero_order_nonlin_flr_only, no_zonal_nlpm;
-  bool write_l_spectrum, write_h_spectrum, write_lh_spectrum, write_spec_v_time;
+  bool write_l_spectrum, write_h_spectrum, write_lh_spectrum;
   bool write_phi_kpar, write_moms, write_fluxes, diagnosing_spectra;
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
@@ -138,6 +142,8 @@ class Parameters {
   size_t aspectra_start[1], aspectra_count[1]; 
   size_t pspectra_start[1], pspectra_count[1]; 
   size_t wspectra_start[1], wspectra_count[1]; 
+  
+  std::string Btype;
   
   std::string restart_from_file, restart_to_file;
   //  char restart_from_file[512];

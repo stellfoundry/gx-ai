@@ -60,7 +60,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   
   getDeviceMemoryUsage();
   
-  if (pars->write_moms) diagnostics -> write_init(G, fields);
+  //  if (pars->write_moms) diagnostics -> write_init(G, fields);
 	 
   // TIMESTEP LOOP
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;

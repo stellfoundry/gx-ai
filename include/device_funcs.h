@@ -128,23 +128,22 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 
-__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *jacobian, float voldenominv);
+__global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac);
 
-__global__ void W_summand(float *G2, const cuComplex* g, const float* jacobian, float volDenomInv, const specie *s);
+__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const specie *species);
 
-__global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* jacobian, float volDenomInv);
+__global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac);
 
 __global__ void get_pzt (float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar);
   
 __global__ void Wphi_scale(float* p2, float alpha);
 
-__global__ void Wphi2_summand(float* p2, const cuComplex* phi, const float* jacobian, float fluxDenomInv);
+__global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJac);
   
-__global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* jacobian,
-			     float fluxDenomInv, const float* kperp2, float rho2_s);
+__global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s);
   
-__global__ void heat_flux_summand(float* rmom, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* jacobian, float fluxDenomInv, const float *kperp2, float rho2_s);
+__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s);
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
