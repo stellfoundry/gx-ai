@@ -160,7 +160,6 @@ void Red::iSum(float* I2, float* res, int ispec)
       sizeWork = sizeAdd;
       if (Addwork) cudaFree (Addwork);
       if (cudaSuccess != cudaMalloc(&Addwork, sizeWork)) {
-	printf("Oops! \n");
 	Addwork = nullptr;
 	sizeWork = 0;
       }

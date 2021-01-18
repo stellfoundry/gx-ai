@@ -69,24 +69,21 @@
  iphi00 = 2  
  scale = 500.0
 
-Wspectra.species          = true
-Wspectra.hermite          = false
-Wspectra.laguerre         = false
-Wspectra.hermite_laguerre = false
-Wspectra.kx               = false
-Wspectra.ky               = false
-Wspectra.kxky             = true
-Wspectra.kperp            = false
-Wspectra.z                = false
+ Wspectra.species          = true
+ Wspectra.hermite          = true
+ Wspectra.laguerre         = false
+ Wspectra.hermite_laguerre = false
+ Wspectra.kx               = false
+ Wspectra.ky               = false
+ Wspectra.kxky             = true
+ Wspectra.kperp            = false
+ Wspectra.z                = false
 
-Pspectra.species          = true
-Pspectra.kx               = false
-Pspectra.ky               = true
-Pspectra.kxky             = false
-Pspectra.kperp            = false
-
-write_spec_v_time = true
-
+ Pspectra.species          = true
+ Pspectra.kx               = false
+ Pspectra.ky               = true
+ Pspectra.kxky             = false
+ Pspectra.kperp            = false
 
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 

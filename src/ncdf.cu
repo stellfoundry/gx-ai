@@ -595,7 +595,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     As.time_start[0] = 0;
     As.time_count[0] = 1;
 
-    cudaMalloc     (&As_d,        sizeof(float)); // bd bug chase back to as.write
+    cudaMalloc     (&As_d,        sizeof(float)*2); // bd bug chase back to as.write
     cudaMallocHost (&As_h,        sizeof(float));      
   }
   
