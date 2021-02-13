@@ -1,9 +1,4 @@
 #include "geometry.h"
-#include "parameters.h"
-#include "device_funcs.h"
-#include "cuda_constants.h"
-#include "grad_parallel.h"
-#include "get_error.h"
 
 Geometry::Geometry() {
 
@@ -24,13 +19,7 @@ Geometry::Geometry() {
   aprime       = nullptr;  deltaFL    = nullptr; 
   
   bmag_complex = nullptr;  bgrad_temp = nullptr; 
-  
-  float drhodpsi;
-  float gradpar;
-  float bi;
-  float aminor;
-  float shat;
-  
+    
   // operator arrays
   kperp2       = nullptr;  omegad     = nullptr;  cv_d       = nullptr;   gb_d      = nullptr;
   kperp2_h     = nullptr; 
@@ -241,7 +230,7 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   }
 
   int nlines=0;
-  fpos_t* lineStartPos;
+  fpos_t lineStartPos;
   int ch;
 
   int ntgrid;
@@ -251,37 +240,26 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   nlines=0;
 
   // Find number of lines
-  while( (ch = fgetc(geoFile)) != EOF)
-    {
-      if(ch == '\n') {
-	nlines++;
-      }
-    }
+  while( (ch = fgetc(geoFile)) != EOF) {if(ch == '\n') nlines++;}
   printf("Counted %d lines in geofile.\n",nlines);
   
-  lineStartPos = (fpos_t*) malloc(sizeof(fpos_t)*nlines);
-  int i=2;
-  rewind(geoFile);
-  fgetpos(geoFile, &lineStartPos[1]);
-  while( (ch = fgetc(geoFile)) != EOF)
-    {
-      if(ch == '\n') {
-	fgetpos(geoFile, &lineStartPos[i]);
-	i++;
-      }
-    }
+  fsetpos(geoFile, &lineStartPos);
 
   oldNz = grids->Nz;
   int newNz = oldNz;
   oldnperiod = pars->nperiod;
-  //lineStartPos[1] is the first line, not i=0
-  fsetpos(geoFile, &lineStartPos[2]);
+
+  while( (ch = fgetc(geoFile)) != '\n') {}
+  float sdum;
+  
   fscanf(geoFile, "%d %d %d %f %f %f %f %f",
 	 &ntgrid, &pars->nperiod, &newNz,
 	 &pars->drhodpsi, &pars->rmaj, &pars->shat,
 	 &pars->kxfac, &pars->qsf);
   DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n",
 	   ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
+
+  while( (ch = fgetc(geoFile)) != '\n') {} // finish this line
 
   if(oldNz != newNz) {
     printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
@@ -296,19 +274,23 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   // Local copy to simplify loops
   int Nz = grids->Nz;
   
+  while( (ch = fgetc(geoFile)) != '\n') {} //read text
+
   //first block
   for(int i=0; i<Nz; i++) {
-    fsetpos(geoFile, &lineStartPos[i+4]);
     fscanf(geoFile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
     gbdrift_h[i] = (1./4.)*gbdrift_h[i];
   }
   DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
   DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
 
+  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
+  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
+  while( (ch = fgetc(geoFile)) != '\n') {} // read text
+  
   //second block
   for(int i=0; i<Nz; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 1*(Nz+2)]);
-    fscanf(geoFile, "%f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i]);
+    fscanf(geoFile, "%f %f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i], &sdum);
     cvdrift_h[i] = (1./4.)*cvdrift_h[i];
     bmagInv_h[i] = 1./bmag_h[i];
     jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
@@ -318,18 +300,24 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
   DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
+  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
+  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
+  while( (ch = fgetc(geoFile)) != '\n') {} // read text
+  
   //third block
   for(int i=0; i<Nz; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 2*(Nz+2)]);
-    fscanf(geoFile, "%f %f", &gds21_h[i], &gds22_h[i]);
+    fscanf(geoFile, "%f %f %f", &gds21_h[i], &gds22_h[i], &sdum);
   }
   DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
   DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
 
+  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
+  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
+  while( (ch = fgetc(geoFile)) != '\n') {} // read text
+  
   //fourth block
   for(int i=0; i<Nz; i++) {
-    fsetpos(geoFile, &lineStartPos[(i+4) + 3*(Nz+2)]);
-    fscanf(geoFile, "%f %f", &cvdrift0_h[i], &gbdrift0_h[i]);
+    fscanf(geoFile, "%f %f %f", &cvdrift0_h[i], &gbdrift0_h[i], &sdum);
     cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
     gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
   }

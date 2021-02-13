@@ -1,5 +1,4 @@
 #pragma once
-#include "toml.hpp"
 #include <iostream>
 #include "mpi.h"
 #include "parameters.h"
@@ -12,6 +11,7 @@
 #include "forcing.h"
 #include "timestepper.h"
 #include "linear.h"
+#include "nonlinear.h"
 #include "cuda_constants.h"
 #include "get_error.h"
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "parameters.h"
 #include "grids.h"
 #include "cufft.h"
 

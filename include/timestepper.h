@@ -11,7 +11,7 @@
 class Timestepper {
  public:
   virtual ~Timestepper() {};
-  virtual int advance(double* t, MomentsG* G, Fields* fields) = 0;
+  virtual void advance(double* t, MomentsG* G, Fields* fields) = 0;
   virtual double get_dt() = 0;
 };
 
@@ -20,7 +20,7 @@ class RungeKutta2 : public Timestepper {
   RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~RungeKutta2();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
   
  private:
@@ -44,7 +44,7 @@ class RungeKutta4 : public Timestepper {
   RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~RungeKutta4();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   void partial(MomentsG* G, MomentsG* Gt, Fields *f,
 	       MomentsG* Rhs, MomentsG *Gnew, double adt, bool setdt);
   double get_dt() {return dt_;};
@@ -70,7 +70,7 @@ class SDCe : public Timestepper {
   SDCe(Linear *linear, Nonlinear *nonlinear, Solver *solver,
        Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~SDCe();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
   
  private:
@@ -92,7 +92,7 @@ class Ketcheson10 : public Timestepper {
   Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~Ketcheson10();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
@@ -115,7 +115,7 @@ class K2 : public Timestepper {
   K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~K2();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
@@ -141,7 +141,7 @@ class SSPx2 : public Timestepper {
   SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~SSPx2();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:
@@ -165,7 +165,7 @@ class SSPx3 : public Timestepper {
   SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
   ~SSPx3();
-  int advance(double* t, MomentsG* G, Fields* fields);
+  void advance(double* t, MomentsG* G, Fields* fields);
   double get_dt() {return dt_;};
 
  private:

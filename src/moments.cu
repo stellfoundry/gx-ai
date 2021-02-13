@@ -1,17 +1,15 @@
-#include "netcdf.h"
 #include "moments.h"
-#include "device_funcs.h"
-#include "get_error.h"
-#include "cuda_constants.h"
 
 MomentsG::MomentsG(Parameters* pars, Grids* grids) : 
-  grids_(grids), pars_(pars), LHsize_(grids_->size_G), Momsize_(sizeof(cuComplex)*grids_->NxNycNz)
+  grids_(grids), pars_(pars)
 {
   G_lm       = nullptr;  dens_ptr   = nullptr;  upar_ptr   = nullptr;  tpar_ptr   = nullptr;
   tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
+
+  size_t lhsize = grids_->size_G;
   
-  checkCuda(cudaMalloc((void**) &G_lm, LHsize_));
-  cudaMemset(G_lm, 0., LHsize_);
+  checkCuda(cudaMalloc((void**) &G_lm, lhsize));
+  cudaMemset(G_lm, 0., lhsize);
   
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
@@ -20,7 +18,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   qpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   qprp_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
 
-  printf("Allocated a G_lm array of size %.2f MB\n", LHsize_/1024./1024.);
+  printf("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
 
   int Nm = grids_->Nm;
   int Nl = grids_->Nl;
@@ -86,10 +84,10 @@ MomentsG::~MomentsG() {
   if ( G_lm     ) cudaFree ( G_lm );
 }
 
-int MomentsG::initialConditions(double *time) {
+void MomentsG::initialConditions(double *time) {
 
-  printf("n = %d \n",Momsize_);
-  cuComplex *init_h;  cudaMallocHost((void**) &init_h, Momsize_); 
+  size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
+  cuComplex *init_h;  cudaMallocHost((void**) &init_h, momsize); 
   
   for (int idy = 0; idy<grids_->Nyc; idy++) {
     init_h[idy].x = 0.0;
@@ -99,8 +97,7 @@ int MomentsG::initialConditions(double *time) {
   init_h[1].x =  0.5;
   init_h[2].y = -0.25;
   
-  printf("n = %d \n",Momsize_);
-  CP_TO_GPU(G_lm, init_h, Momsize_);
+  CP_TO_GPU(G_lm, init_h, momsize);
   
   cudaFree(init_h);
 
@@ -115,14 +112,16 @@ int MomentsG::initialConditions(double *time) {
   cudaDeviceSynchronize();
   //  checkCuda(cudaGetLastError());
 
-  return cudaGetLastError();
+  //  return cudaGetLastError();
+  
 }
 
-int MomentsG::initialConditions(Geometry* geo, double* time) {
+void MomentsG::initialConditions(float* z_h, double* time) {
  
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
 
-  cuComplex *init_h = nullptr;  cudaMallocHost((void**) &init_h, Momsize_); 
+  size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
+  cuComplex *init_h = nullptr;  cudaMallocHost((void**) &init_h, momsize); 
   for (int idx=0; idx<grids_->NxNycNz; idx++) {
     init_h[idx].x = 0.;
     init_h[idx].y = 0.;
@@ -167,8 +166,8 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
 	    //loop over z *here*, to get rid of randomness in z in initial condition
 	    for(int k=0; k<grids_->Nz; k++) {
 	      int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
-	      init_h[index].x = ra*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
-	      init_h[index].y = rb*cos(pars_->kpar_init*geo->z_h[k]/pars_->Zp);
+	      init_h[index].x = ra*cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+	      init_h[index].y = rb*cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 	      //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
@@ -179,12 +178,12 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
 
   // copy initial condition into device memory
   for (int is=0; is<grids_->Nspecies; is++) {
-    if(pars_->init == DENS) CP_TO_GPU(dens_ptr[is], init_h, Momsize_);
-    if(pars_->init == UPAR) CP_TO_GPU(upar_ptr[is], init_h, Momsize_);
-    if(pars_->init == TPAR) CP_TO_GPU(tpar_ptr[is], init_h, Momsize_);
-    if(pars_->init == QPAR) CP_TO_GPU(qpar_ptr[is], init_h, Momsize_);
-    if(pars_->init == TPRP) CP_TO_GPU(tprp_ptr[is], init_h, Momsize_);
-    if(pars_->init == QPRP) CP_TO_GPU(qprp_ptr[is], init_h, Momsize_);
+    if(pars_->init == DENS) CP_TO_GPU(dens_ptr[is], init_h, momsize);
+    if(pars_->init == UPAR) CP_TO_GPU(upar_ptr[is], init_h, momsize);
+    if(pars_->init == TPAR) CP_TO_GPU(tpar_ptr[is], init_h, momsize);
+    if(pars_->init == QPAR) CP_TO_GPU(qpar_ptr[is], init_h, momsize);
+    if(pars_->init == TPRP) CP_TO_GPU(tprp_ptr[is], init_h, momsize);
+    if(pars_->init == QPRP) CP_TO_GPU(qprp_ptr[is], init_h, momsize);
   }
   cudaFree(init_h);
 
@@ -199,56 +198,49 @@ int MomentsG::initialConditions(Geometry* geo, double* time) {
   cudaDeviceSynchronize();
   //  checkCuda(cudaGetLastError());
 
-  return cudaGetLastError();
+  //  return cudaGetLastError();
 }
 
-int MomentsG::scale(double scalar) {
+void MomentsG::scale(double scalar) {
   scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
-  return 0;
 }
 
-int MomentsG::scale(cuComplex scalar) {
+void MomentsG::scale(cuComplex scalar) {
   scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
-  return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2) {
+void MomentsG::add_scaled(double c1, MomentsG* G1,
+			  double c2, MomentsG* G2) {
   bool neqfix = !pars_->eqfix;
   add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, neqfix);
-  return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2,
-			 double c3, MomentsG* G3) {
+void MomentsG::add_scaled(double c1, MomentsG* G1,
+			  double c2, MomentsG* G2,
+			  double c3, MomentsG* G3) {
   bool neqfix = !pars_->eqfix;
   add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, neqfix);
-  return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2,
-			 double c3, MomentsG* G3,
-			 double c4, MomentsG* G4) {
+void MomentsG::add_scaled(double c1, MomentsG* G1,
+			  double c2, MomentsG* G2,
+			  double c3, MomentsG* G3,
+			  double c4, MomentsG* G4) {
   bool neqfix = !pars_->eqfix;
   add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, neqfix);
-  return 0;
 }
 
-int MomentsG::add_scaled(double c1, MomentsG* G1,
-			 double c2, MomentsG* G2, 
-			 double c3, MomentsG* G3,
-			 double c4, MomentsG* G4,
-			 double c5, MomentsG* G5)
+void MomentsG::add_scaled(double c1, MomentsG* G1,
+			  double c2, MomentsG* G2, 
+			  double c3, MomentsG* G3,
+			  double c4, MomentsG* G4,
+			  double c5, MomentsG* G5)
 {
   bool neqfix = !pars_->eqfix;
   add_scaled_kernel<<< dG_all, dB_all >>>(G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm, neqfix);
-  return 0;
-  
 }
 
-int MomentsG::reality(int ngz) 
+void MomentsG::reality(int ngz) 
 {
   dim3 dB;
   dim3 dG;
@@ -267,10 +259,9 @@ int MomentsG::reality(int ngz)
   dG.z = (ngz-1)/dB.z + 1;
 
   reality_kernel <<< dG, dB >>> (G_lm, ngz);
-  return 0;
 }
 
-int MomentsG::restart_write(double* time)
+void MomentsG::restart_write(double* time)
 {
   float* G_out;
   cuComplex* G_h;
@@ -376,10 +367,9 @@ int MomentsG::restart_write(double* time)
   cudaFreeHost(G_h);
 
   if (retval = nc_close(ncres)) ERR(retval);
-  return retval;
 }
 
-int MomentsG::restart_read(double* time)
+void MomentsG::restart_read(double* time)
 {
   float scale;
   float* G_in;
@@ -389,6 +379,7 @@ int MomentsG::restart_read(double* time)
   int retval;
   int ncres;
   
+  size_t lhsize = grids_->size_G;
   size_t ldum;
   int Nx   = grids_->Nx;
   int Nakx = grids_->Nakx;
@@ -458,8 +449,8 @@ int MomentsG::restart_read(double* time)
 
   unsigned int itot;
   itot = Nakx * Naky * Nz * Nm * Nl * nspec;
-  cudaMallocHost((void**) &G_hold, LHsize_);
-  cudaMallocHost((void**) &G_h,    LHsize_);
+  cudaMallocHost((void**) &G_hold, lhsize);
+  cudaMallocHost((void**) &G_h,    lhsize);
   cudaMallocHost((void**) &G_in,   sizeof(float) * itot * 2);
   
   for (unsigned int index=0; index < itot; index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
@@ -510,8 +501,6 @@ int MomentsG::restart_read(double* time)
   CP_TO_GPU(G_lm, G_h, sizeof(cuComplex)*jtot);
   
   cudaFreeHost(G_h);
-
-  return retval;
 }
 void MomentsG::qvar(int N)
 {

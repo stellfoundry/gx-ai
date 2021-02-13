@@ -1,11 +1,10 @@
 #pragma once
-
+#include "netcdf.h"
 #include "grids.h"
-#include "fields.h"
 #include "parameters.h"
-#include "geometry.h"
-
-class Geometry; // Forward Declaration
+#include "device_funcs.h"
+#include "get_error.h"
+#include "cuda_constants.h"
 
 class MomentsG {
  public:
@@ -23,25 +22,26 @@ class MomentsG {
 
   void qvar (int N);
   void apply_mask(void);
-  int initialConditions(Geometry* geo, double* time);
-  int initialConditions(double* time);
-  int restart_write(double* time);
-  int restart_read(double* time);
+  void initialConditions(float* z_h, double* time);
+  void initialConditions(double* time);
+  void restart_write(double* time);
+  void restart_read(double* time);
   
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
-		 double c4, MomentsG* G4);
-  int add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
-		 double c4, MomentsG* G4, double c5, MomentsG* G5);
+  void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
+  void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
+  void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
+		  double c4, MomentsG* G4);
+  void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
+		  double c4, MomentsG* G4, double c5, MomentsG* G5);
 
-  int scale(double scalar);
-  int scale(cuComplex scalar);
+  void scale(double scalar);
+  void scale(cuComplex scalar);
 
-  int reality(int ngz);
+  //  void dz(MomentsG* G);
+  void reality(int ngz);
   
   inline void copyFrom(MomentsG* source) {
-    cudaMemcpy(this->G(), source->G(), LHsize_, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(this->G(), source->G(), grids_->size_G, cudaMemcpyDeviceToDevice);
   }
  
   dim3 dimGrid, dimBlock, dG_all, dB_all;
@@ -55,9 +55,6 @@ class MomentsG {
  
  private:
   cuComplex  * G_lm;
-  Parameters * pars_;
   Grids      * grids_;
-  size_t LHsize_;
-  size_t Momsize_;
-
+  Parameters * pars_;
 };

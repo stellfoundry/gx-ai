@@ -5,13 +5,15 @@
 #include "geometry.h"
 #include "fields.h"
 #include "moments.h"
+#include "device_funcs.h"
+#include "get_error.h"
 
 class Solver {
  public:
   Solver(Parameters* pars, Grids* grids, Geometry* geo);
   ~Solver();
   
-  int fieldSolve(MomentsG* G, Fields* fields);
+  void fieldSolve(MomentsG* G, Fields* fields);
   void svar(cuComplex* f, int N);
   void svar(float* f, int N);
   
@@ -19,11 +21,9 @@ class Solver {
 
 private:
 
-  int maxThreadsPerBlock_;
   dim3 dG, dB, dg, db;
 
   float * phiavgdenom ;
-  //  float * work        ;
   cuComplex * tmp ;
 
   // local private copies

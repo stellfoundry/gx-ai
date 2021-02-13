@@ -1,7 +1,4 @@
 #include "closures.h"
-#include "device_funcs.h"
-#include "get_error.h"
-#include "smith_par_closure.h"
 
 Beer42::Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in): 
   pars_(pars), grids_(grids), grad_par_(grad_par_in), omegad_(geo->omegad), gpar_(geo->gradpar), tmp(nullptr), nu(nullptr)
@@ -49,7 +46,7 @@ Beer42::~Beer42() {
   if (nu)  cudaFree(nu);
 }
 
-int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs) 
+void Beer42::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   for (int is=0; is < grids_->Nspecies; is++) {
 
@@ -78,7 +75,6 @@ int Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
   
   // toroidal terms.  
   beer_toroidal_closures <<< dimGrid, dimBlock>>>(G->G(), GRhs->G(), omegad_, nu, pars_->species);
-  return 0;
 }
 
 SmithPerp::SmithPerp(Parameters* pars, Grids* grids, Geometry* geo): 
@@ -178,12 +174,10 @@ SmithPerp::~SmithPerp() {
   if (Aclos_) cudaFree(Aclos_);
 }
 
-int SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
+void SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   // perp closure terms are only toroidal
   smith_perp_toroidal_closures <<< dimGrid, dimBlock >>> (G->G(), GRhs->G(), omegad_, Aclos_, q_, pars_->species);
-
-  return 0;
 }
 
 
@@ -218,7 +212,7 @@ SmithPar::~SmithPar() {
   if (tmp_abs)     cudaFree(tmp_abs);
 }
 
-int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 
+void SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   int M = grids_->Nm - 1;
 
@@ -246,5 +240,4 @@ int SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
 	(GRhs->G(l, M, is), 1., GRhs->G(l, M, is), -sqrtf(M+1)*gpar_*vt_, clos);
     }
   }
-  return 0;
 }

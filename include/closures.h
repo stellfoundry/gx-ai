@@ -5,18 +5,21 @@
 #include "moments.h"
 #include "grad_parallel.h"
 #include "geometry.h"
+#include "device_funcs.h"
+#include "get_error.h"
+#include "smith_par_closure.h"
 
 class Closures {
  public:
   virtual ~Closures() {};
-  virtual int apply_closures(MomentsG* G, MomentsG* GRhs) = 0;
+  virtual void apply_closures(MomentsG* G, MomentsG* GRhs) = 0;
 };
 
 class Beer42 : public Closures {
  public:
   Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par);
   ~Beer42();
-  int apply_closures(MomentsG* G, MomentsG* GRhs);
+  void apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   float gpar_;
@@ -39,7 +42,7 @@ class SmithPerp : public Closures {
  public: 
   SmithPerp(Parameters* pars, Grids* grids, Geometry* geo);
   ~SmithPerp();
-  int apply_closures(MomentsG* G, MomentsG* GRhs);
+  void apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   Grids      * grids_  ;
@@ -57,7 +60,7 @@ class SmithPar : public Closures {
  public: 
   SmithPar(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par);
   ~SmithPar();
-  int apply_closures(MomentsG* G, MomentsG* GRhs);
+  void apply_closures(MomentsG* G, MomentsG* GRhs);
 
  private:
   dim3 dimGrid, dimBlock;  

@@ -1,6 +1,4 @@
 #include "solver.h"
-#include "device_funcs.h"
-#include "get_error.h"
 
 Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -47,9 +45,9 @@ Solver::~Solver()
   if (phiavgdenom) cudaFree(phiavgdenom);
 }
 
-int Solver::fieldSolve(MomentsG* G, Fields* fields)
+void Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
-  if (pars_->ks) return 0;
+  if (pars_->ks) return;
   
   bool em = pars_->beta > 0. ? true : false;
   
@@ -93,8 +91,6 @@ int Solver::fieldSolve(MomentsG* G, Fields* fields)
   }
   
   if(pars_->source_option==PHIEXT) add_source <<< dG, dB >>> (fields->phi, pars_->phi_ext);
-
-  return 0;
 }
 
 void Solver::svar (cuComplex* f, int N)

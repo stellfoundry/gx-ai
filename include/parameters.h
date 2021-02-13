@@ -1,7 +1,18 @@
 #pragma once
 
-#include <species.h>
-#include <gx_lib.h>
+#define DEBUGPRINT(_fmt, ...)  if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
+#define DEBUG_PRINT(_fmt, ...)  if (pars_->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
+
+#define CP_ON_GPU(to, from, isize) cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice)
+#define CP_TO_GPU(gpu, cpu, isize) cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice)
+#define CP_TO_CPU(cpu, gpu, isize) cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost)
+
+#define CUDA_DEBUG(_fmt, ...) if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__, cudaGetErrorString(cudaGetLastError()))
+
+#define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
+
+#include "species.h"
+#include "external_parameters.h"
 #include <cufft.h>
 #include <string>
 #include <vector>
@@ -73,8 +84,9 @@ class Parameters {
   const int np_spectra = 6;
   const int na_spectra = 6;
   void get_nml_vars(char* file);
-  int set_externalpars(external_parameters_struct* externalpars);
-  int import_externalpars(external_parameters_struct* externalpars);
+
+  void set_externalpars(external_parameters_struct* externalpars);
+  void import_externalpars(external_parameters_struct* externalpars);
   void init_species(specie* species);
 
   int ncid;

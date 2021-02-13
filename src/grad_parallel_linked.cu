@@ -1,7 +1,4 @@
 #include "grad_parallel.h"
-#include "device_funcs.h"
-#include "cufftXt.h"
-#include "cufft.h"
 #include <stdlib.h>
 #include "get_error.h"
 

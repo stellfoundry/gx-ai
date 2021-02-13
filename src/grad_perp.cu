@@ -1,8 +1,4 @@
-#include "cufftXt.h"
-#include "cufft.h"
-#include "device_funcs.h"
 #include "grad_perp.h"
-#include "cuda_constants.h"
 #include "get_error.h"
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)

@@ -57,7 +57,7 @@ void Parameters::get_nml_vars(char* filename)
   navg    = toml::find_or <int> (nml, "navg", 10);
   nsave   = toml::find_or <int> (nml, "nsave", 2000000);
   i_share = toml::find_or <int> (nml, "i_share", 8);
-  nreal   = toml::find_or <int> (nml, "nreal", 10000);
+  nreal   = toml::find_or <int> (nml, "nreal", 1);
   
   ikx_fixed = toml::find_or <int> (nml, "ikx_fixed", -1);
   iky_fixed = toml::find_or <int> (nml, "iky_fixed", -1);
@@ -778,7 +778,7 @@ void Parameters::init_species(specie* species)
 }
 
 // this function copies elements of parameters object into external_parameters_struct externalpars
-int Parameters::set_externalpars(external_parameters_struct* externalpars) {
+void Parameters::set_externalpars(external_parameters_struct* externalpars) {
   externalpars->equilibrium_type = equilibrium_type;
   
   //Defaults if we are not using Trinity
@@ -835,11 +835,10 @@ int Parameters::set_externalpars(external_parameters_struct* externalpars) {
     externalpars->tprim[i] = species_h[i].tprim;
     externalpars->nu[i]    = species_h[i].nu_ss;
   }
-  return 0;
 }
 
 // this function copies elements of external_parameters_struct externalpars into parameters object
-int Parameters::import_externalpars(external_parameters_struct* externalpars) {
+void Parameters::import_externalpars(external_parameters_struct* externalpars) {
   equilibrium_type = externalpars->equilibrium_type ;
   if (externalpars->restart==1) restart  = true;
   else if (externalpars->restart==2){
@@ -926,7 +925,6 @@ int Parameters::import_externalpars(external_parameters_struct* externalpars) {
     // just use the x0 and y0 values directly
   }
   // BD This is only setting x0 (and adjusting jtwist) when running within Trinity
-  return 0;
 }
 
 int Parameters::getint (int ncid, const char varname[]) {

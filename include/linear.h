@@ -3,6 +3,13 @@
 #include "moments.h"
 #include "grad_parallel.h"
 #include "closures.h"
+#include "device_funcs.h"
+#include "cufft.h"
+#include "get_error.h"
+#include "species.h"
+#include "cuda_constants.h"
+
+
 
 class Linear {
 public:
@@ -10,10 +17,10 @@ public:
   Linear(Parameters* pars, Grids* grids); 
   ~Linear();
 
-  int rhs(cuComplex *G, cuComplex *GRhs);
-  int rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  //  void rhs(cuComplex *G, cuComplex *GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
 
-  int zderiv(MomentsG *G);
+  //  int zderiv(MomentsG *G);
 
   dim3 dimGrid, dimBlock, dG, dB;
   int sharedSize;
@@ -24,7 +31,6 @@ public:
   Geometry       * geo_     ;
   Parameters     * pars_    ;
   Grids          * grids_   ;  
-
   GradParallel   * grad_par ;
   Closures       * closures ;
   MomentsG       * GRhs_par ;

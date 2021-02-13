@@ -1,9 +1,4 @@
 #include "gx_lib.h"
-#include "parameters.h"
-#include "run_gx.h"
-#include "geometry.h"
-#include "get_error.h"
-#include <assert.h>
 
 void gx_get_default_parameters_(struct external_parameters_struct * externalpars,
 				char *run_name, MPI_Comm mpcom, int devid) {  
@@ -164,7 +159,7 @@ void gx_get_fluxes_(struct external_parameters_struct *  externalpars,
   delete diagnostics;
 }  	
 
-void gx_main(int argc, char* argv[], MPI_Comm mpcom) {
+void gx_main(int argc, char **argv, MPI_Comm mpcom) {
   struct external_parameters_struct externalpars;
   struct gx_outputs_struct gxouts;
 

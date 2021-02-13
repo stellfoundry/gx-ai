@@ -1,6 +1,8 @@
 #pragma once
-
 #include "parameters.h"
+#include "cuda_constants.h"
+#include "get_error.h"
+#include "device_funcs.h"
 
 class Grids {
 
@@ -25,7 +27,7 @@ class Grids {
   const int NxNz;
   const int NycNz;
   const int Nmoms;
-  const size_t size_G;
+  size_t size_G;
   
   float * ky;       float * kx;    float * kz;
   float * ky_h;     float * kx_h;  float * kz_h;

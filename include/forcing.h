@@ -1,7 +1,7 @@
 #pragma once
-
 #include "moments.h"
 #include "parameters.h"
+#include "device_funcs.h"
 
 class Forcing {
   public:

@@ -1,6 +1,9 @@
 #pragma once
-
 #include "grids.h"
+#include "cufftXt.h"
+#include "cufft.h"
+#include "device_funcs.h"
+#include "cuda_constants.h"
 
 class GradPerp {
  public:

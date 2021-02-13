@@ -1,6 +1,4 @@
 #include "forcing.h"
-#include "get_error.h"
-#include "device_funcs.h"
 
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
 

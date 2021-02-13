@@ -1,5 +1,5 @@
 #include "timestepper.h"
-#include "get_error.h"
+// #include "get_error.h"
 
 // ======= SSPx2 =======
 SSPx2::SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
@@ -35,7 +35,7 @@ void SSPx2::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 
 }
 
-int SSPx2::advance(double *t, MomentsG* G, Fields* f)
+void SSPx2::advance(double *t, MomentsG* G, Fields* f)
 {
 
   EulerStep (G1, G, GRhs, f, true); 
@@ -50,7 +50,6 @@ int SSPx2::advance(double *t, MomentsG* G, Fields* f)
   solver_->fieldSolve(G, f);
 
   *t += dt_;
-  return 0;
 }
 
 // ======= SSPx3 =======
@@ -89,7 +88,7 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
   G1->add_scaled(1., G, adt*dt_, GRhs);
 }
 
-int SSPx3::advance(double *t, MomentsG* G, Fields* f)
+void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 {
 
   // adjust tprim according to the function 
@@ -138,7 +137,6 @@ int SSPx3::advance(double *t, MomentsG* G, Fields* f)
   solver_->fieldSolve(G, f);
 
   *t += dt_;
-  return 0;
 }
 
 // ======= RK2 =======
@@ -174,7 +172,7 @@ void RungeKutta2::EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* G, MomentsG* G
 
 }
 
-int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
+void RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
 {
   EulerStep (G1, G, G, GRhs, f, 0.5, true);    solver_->fieldSolve(G1, f);
   EulerStep (G, G1, G, GRhs, f, 1.0, false);   
@@ -184,7 +182,6 @@ int RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
   solver_->fieldSolve(G, f);
 
   *t += dt_;
-  return 0;
 }
 
 // ============= RK4 =============
@@ -224,7 +221,7 @@ void RungeKutta4::partial(MomentsG* G, MomentsG* Gt, Fields *f, MomentsG* Rhs, M
   solver_->fieldSolve(Gnew, f);
 }
 
-int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
+void RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
 {
 
   partial(G, G,    f, GRhs,  G_q1, 0.5, true);
@@ -256,7 +253,6 @@ int RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
   
   solver_->fieldSolve(G, f);
   *t += dt_;
-  return 0;
 }
 
 /*
@@ -455,7 +451,7 @@ void SDCe::full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar)
   //  solver_->fieldSolve(G_q1, f);    
 }
 
-int SDCe::advance(double *t, MomentsG* G, Fields* f)
+void SDCe::advance(double *t, MomentsG* G, Fields* f)
 {
 }
 */
@@ -489,7 +485,7 @@ void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, bool setd
   solver_->fieldSolve(G_q1, f);    
 }
 
-int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
+void Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
 {
   bool setdt = true;
 
@@ -516,7 +512,6 @@ int Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
   
   solver_->fieldSolve(G, f);
   *t += dt_;
-  return 0;
 }
 
 K2::K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
@@ -553,7 +548,7 @@ void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, b
   solver_->fieldSolve(G_q1, f);    
 }
 
-int K2::advance(double *t, MomentsG* G, Fields* f)
+void K2::advance(double *t, MomentsG* G, Fields* f)
 {
   G_q1->copyFrom(G);
   G_q2->copyFrom(G);
@@ -581,5 +576,4 @@ int K2::advance(double *t, MomentsG* G, Fields* f)
   
   solver_->fieldSolve(G, f);
   *t += dt_;
-  return 0;
 }

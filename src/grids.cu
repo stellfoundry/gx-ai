@@ -1,7 +1,4 @@
 #include "grids.h"
-#include "cuda_constants.h"
-#include "get_error.h"
-#include "device_funcs.h"
 
 Grids::Grids(Parameters* pars) :
   // copy from input parameters
@@ -57,7 +54,7 @@ Grids::Grids(Parameters* pars) :
   cudaMemcpyToSymbol ( nm,        &Nm,               sizeof(int),  0, cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol ( nl,        &Nl,               sizeof(int),  0, cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol ( nj,        &Nj,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( zp,        &pars_->Zp,        sizeof(float),0, cudaMemcpyHostToDevice);  
+  cudaMemcpyToSymbol ( zp,        &pars_->Zp,        sizeof(int),  0, cudaMemcpyHostToDevice);  
   cudaMemcpyToSymbol ( ikx_fixed, &pars_->ikx_fixed, sizeof(int),  0, cudaMemcpyHostToDevice);
   cudaMemcpyToSymbol ( iky_fixed, &pars_->iky_fixed, sizeof(int),  0, cudaMemcpyHostToDevice);
 

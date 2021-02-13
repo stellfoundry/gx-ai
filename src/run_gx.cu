@@ -25,7 +25,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
     linear = new Linear(pars, grids, geo);    
     fields = new Fields(pars, grids);
-    G      -> initialConditions(geo, &time);
+    G      -> initialConditions(geo->z_h, &time);
     solver -> fieldSolve(G, fields);    
     
     if (!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);
@@ -65,8 +65,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   // TIMESTEP LOOP
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
-
-  diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+  bool bvar; 
+  bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
   
   while(counter<pars->nstep) {
     counter++;

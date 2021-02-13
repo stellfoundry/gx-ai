@@ -16,8 +16,8 @@ class LaguerreTransform {
   LaguerreTransform(Grids* grids, int batch_size);
   ~LaguerreTransform();
   
-  int transformToGrid(float* G_in, float* g_res);
-  int transformToSpectral(float* g_in, float* G_res);
+  void transformToGrid(float* G_in, float* g_res);
+  void transformToSpectral(float* g_in, float* G_res);
 
   float * get_toGrid() {return toGrid;}
   float * get_toSpectral() {return toSpectral;}
@@ -31,7 +31,7 @@ class LaguerreTransform {
   float * toSpectral ;
   float * roots      ;
 
-  int initTransforms(float* toGrid, float* toSpectral, float* roots);
+  void initTransforms(float* toGrid, float* toSpectral, float* roots);
 
   cublasHandle_t handle;
 

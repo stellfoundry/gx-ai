@@ -1,8 +1,4 @@
 #include "grad_parallel.h"
-#include "cuda_constants.h"
-#include "cufftXt.h"
-#include "cufft.h"
-#include "device_funcs.h"
 
 GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   grids_(grids)

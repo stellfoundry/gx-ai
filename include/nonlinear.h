@@ -7,6 +7,9 @@
 #include "moments.h"
 #include "fields.h"
 #include "reductions.h"
+#include "cuda_constants.h"
+#include "device_funcs.h"
+#include "species.h"
 
 class Nonlinear {
  public:

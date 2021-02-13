@@ -1,9 +1,4 @@
 #include "linear.h"
-#include "device_funcs.h"
-#include "cufft.h"
-#include "get_error.h"
-#include "species.h"
-#include "cuda_constants.h"
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -85,12 +80,12 @@ Linear::~Linear()
 }
 
 
-int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
 
   if (ks) {
     rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky);
-    return 0;
+    return;
   }
 
   // calculate conservation terms for collision operator
@@ -123,7 +118,6 @@ int Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,
 								   pars_->p_hyper_m, GRhs->G());
-  return 0;
 }
 
 

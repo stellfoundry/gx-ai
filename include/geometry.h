@@ -5,8 +5,11 @@
 #include "parameters.h"
 #include "grids.h"
 #include "grad_parallel.h" // MFM
+#include "device_funcs.h"
+#include "cuda_constants.h"
+#include "get_error.h"
 
-class GradParallel; // Forward Declaration
+// class GradParallel; // Forward Declaration
 
 class Geometry {
  public:

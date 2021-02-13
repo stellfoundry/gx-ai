@@ -32,7 +32,7 @@ LaguerreTransform::~LaguerreTransform()
   if (roots)      cudaFree(roots);
 }
 
-int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
+void LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)
 {
   int i, j;
   gsl_matrix *Jacobi = gsl_matrix_alloc(J,J);
@@ -91,11 +91,9 @@ int LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, floa
   gsl_matrix_free(poly);
   gsl_vector_free(eval);
   gsl_matrix_free(evec);
-  
-  return 0; 
 }
 
-int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
+void LaguerreTransform::transformToGrid(float* G_in, float* g_res)
 {
   int m = grids_->NxNyNz;
   int n = J;
@@ -109,7 +107,8 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
   int ldc = grids_->NxNyNz;
   int strideC = grids_->NxNyNz*J;
   //  printf("J = %d \n",J);
-  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+  int status; 
+  status = cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      G_in, lda, strideA,
      toGrid, ldb, strideB,
@@ -117,7 +116,7 @@ int LaguerreTransform::transformToGrid(float* G_in, float* g_res)
      batch_size_); 
 }
 
-int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
+void LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
 {
   int m = grids_->NxNyNz;
   int n = L;
@@ -156,7 +155,8 @@ int LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
   // ldc=K  ///////////////////////// yes
   // strideC=K*L    //////////////  yes
 
-  return cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+  int status;
+  status = cublasSgemmStridedBatched(handle, CUBLAS_OP_N, CUBLAS_OP_N,
      m, n, k, &alpha,
      g_in, lda, strideA,
      toSpectral, ldb, strideB,
