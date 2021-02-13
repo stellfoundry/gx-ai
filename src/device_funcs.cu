@@ -1475,8 +1475,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	   - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)* l   *S_G(sl-1,sm+1)  
                               + sqrtf(m  )* l   *S_G(sl,sm-1) + sqrtf(m  )*(l+1)*S_G(sl+1,sm-1) )
   
-	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + 2.*m*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
-	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + 2.*(l+1)*S_G(sl,sm)          + l*S_G(sl-1,sm) )
+	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + (2.*m+1)*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
+	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + (2.*l+1)*S_G(sl,sm)          + l*S_G(sl-1,sm) )
 	   
 	   - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
   
@@ -1484,7 +1484,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 if (m==0) {
 	   rhs[globalIdx] = rhs[globalIdx] + phi_ * (
               Jflr(l-1,b_s)*(      -l *igb_d_s * zt_ +           tprim_  *l  * iky_ )
-	    + Jflr(l,  b_s)*( -2*(l+1)*igb_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
+	    + Jflr(l,  b_s)*( -(2*l+1)*igb_d_s * zt_ -icv_d_s*zt_ + (fprim_ + tprim_*2*l) * iky_ )
 	    + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
 	    + Jflr(l+1,b_s,false)*                              tprim_*(l+1) * iky_ )
 	     - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ 
