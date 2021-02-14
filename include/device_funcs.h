@@ -7,7 +7,7 @@ __device__ unsigned int get_id1(void);
 __device__ unsigned int get_id2(void);
 __device__ unsigned int get_id3(void);
 
-__host__ __device__ double factorial(int m);
+__host__ __device__ float factorial(int m);
 __device__ float Jflr(int l, float b, bool enforce_JL_0=true);
 __device__ float Jfac(int l, float b);
 

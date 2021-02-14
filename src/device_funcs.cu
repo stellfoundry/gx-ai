@@ -46,14 +46,14 @@ __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+th
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
 
 // use stirling's approximation
-__host__ __device__ double factorial(int m) {
+__host__ __device__ float factorial(int m) {
   if (m <2) return 1.;
   if (m==2) return 2.;
   if (m==3) return 6.;
   if (m==4) return 24.;
   if (m==5) return 120.;
   if (m==6) return 720.;
-  else return sqrt(2.*M_PI*m)*pow(m,m)*exp(-m)*(1.+1./(12.*m)+1./(288.*m*m));
+  else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
@@ -61,7 +61,7 @@ __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
 
   if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
-  else return (float) 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
+  else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
 }
 
 __host__ __device__ float g0(float b) {
