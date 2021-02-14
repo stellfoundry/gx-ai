@@ -1,4 +1,8 @@
 #include "geometry.h"
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <sstream>
 
 Geometry::Geometry() {
 
@@ -236,97 +240,99 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   int ntgrid;
   int oldNz, oldnperiod;
   
-  rewind(geoFile);
+  //  rewind(geoFile);
   nlines=0;
-
-  // Find number of lines
-  while( (ch = fgetc(geoFile)) != EOF) {if(ch == '\n') nlines++;}
-  printf("Counted %d lines in geofile.\n",nlines);
-  
-  fsetpos(geoFile, &lineStartPos);
-
+  using namespace std;
+  string datline;
+  ifstream myfile (pars->geofilename.c_str());
   oldNz = grids->Nz;
   int newNz = oldNz;
-  oldnperiod = pars->nperiod;
 
-  while( (ch = fgetc(geoFile)) != '\n') {}
-  float sdum;
-  
-  fscanf(geoFile, "%d %d %d %f %f %f %f %f",
-	 &ntgrid, &pars->nperiod, &newNz,
-	 &pars->drhodpsi, &pars->rmaj, &pars->shat,
-	 &pars->kxfac, &pars->qsf);
-  shat = pars->shat;
-  drhodpsi= pars->drhodpsi;
+  if (myfile.is_open())
+    {
+      getline (myfile, datline);  // text
+      getline (myfile, datline);  
+      stringstream ss(datline);      string element;       
+      getline( ss, element, ' '); ntgrid         = stoi(element);    
+      getline( ss, element, ' '); pars->nperiod  = stoi(element);
+      getline( ss, element, ' '); newNz          = stoi(element);   
+      getline( ss, element, ' '); pars->drhodpsi = stof(element);
+      getline( ss, element, ' '); pars->rmaj     = stof(element);
+      getline( ss, element, ' '); pars->shat     = stof(element);
+      getline( ss, element, ' '); pars->kxfac    = stof(element);       
+      getline( ss, element, ' '); pars->qsf      = stof(element);       
 
-  DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f, shat = %f\n\n\n",
-	     ntgrid, pars->nperiod, grids->Nz, pars->rmaj, shat);
+      shat       = pars->shat;
+      drhodpsi   = pars->drhodpsi;
+      oldnperiod = pars->nperiod;
+      
+      DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f, shat = %f\n\n\n",
+		 ntgrid, pars->nperiod, grids->Nz, pars->rmaj, shat);
+      
+      if(oldNz != newNz) {
+	printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
+	printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
+	abort();
+      }
+      int Nz = newNz;
+      if(oldnperiod != pars->nperiod) {
+	printf("You must set nperiod in the namelist equal to nperiod in the geofile. Exiting...\n");
+	abort();
+      }
+      
+      getline (myfile, datline);  // text
+      for (int idz=0; idz < newNz; idz++) {
+	getline (myfile, datline); stringstream ss(datline);
+	cout << datline << '\n' ;
+	getline( ss, element, ' '); gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.25;
+        getline( ss, element, ' '); gradpar        = stof(element);
+	getline( ss, element, ' '); grho_h[idz]    = stof(element);
+	getline( ss, element, ' '); z_h[idz]       = stof(element);
+      }
+      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
-  while( (ch = fgetc(geoFile)) != '\n') {} // finish this line
+      
+      DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
+      DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
+      
+      getline (myfile, datline);  // text
+      for (int idz=0; idz < newNz; idz++) {
+	getline (myfile, datline); stringstream ss(datline);
+	getline( ss, element, ' '); cvdrift_h[idz] = stof(element); cvdrift_h[idz] *= 0.25;
+        getline( ss, element, ' '); gds2_h[idz]    = stof(element);
+	getline( ss, element, ' '); bmag_h[idz]    = stof(element); bmagInv_h[idz] = 1./bmag_h[idz]; jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
+      }
+      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
-  if(oldNz != newNz) {
-    printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
-    printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
-    abort();
-  }
-  if(oldnperiod != pars->nperiod) {
-    printf("You must set nperiod in the namelist equal to nperiod in the geofile. Exiting...\n");
-    abort();
-  }
-  
-  // Local copy to simplify loops
-  int Nz = grids->Nz;
-  
-  while( (ch = fgetc(geoFile)) != '\n') {} //read text
+      DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
+      DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
+      DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
-  //first block
-  for(int i=0; i<Nz; i++) {
-    fscanf(geoFile, "%f %f %f %f", &gbdrift_h[i], &gradpar, &grho_h[i], &z_h[i]);
-    gbdrift_h[i] = (1./4.)*gbdrift_h[i];
-  }
-  DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
-  DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
+      getline(myfile, datline); // text
+      for (int idz=0; idz < newNz; idz++) {
+	getline (myfile, datline); stringstream ss(datline);
+	getline( ss, element, ' '); gds21_h[idz] = stof(element); 
+        getline( ss, element, ' '); gds22_h[idz] = stof(element);
+      }
+      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
-  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
-  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
-  while( (ch = fgetc(geoFile)) != '\n') {} // read text
-  
-  //second block
-  for(int i=0; i<Nz; i++) {
-    fscanf(geoFile, "%f %f %f %f", &cvdrift_h[i], &gds2_h[i], &bmag_h[i], &sdum);
-    cvdrift_h[i] = (1./4.)*cvdrift_h[i];
-    bmagInv_h[i] = 1./bmag_h[i];
-    jacobian_h[i] = 1. / abs(pars->drhodpsi*gradpar*bmag_h[i]);
-    grho_h[i] = 1.;
-  }
-  DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
-  DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
-  DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
+      DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
+      DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
 
-  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
-  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
-  while( (ch = fgetc(geoFile)) != '\n') {} // read text
-  
-  //third block
-  for(int i=0; i<Nz; i++) {
-    fscanf(geoFile, "%f %f %f", &gds21_h[i], &gds22_h[i], &sdum);
-  }
-  DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
-  DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
+            getline(myfile, datline); // text
+      for (int idz=0; idz < newNz; idz++) {
+	getline (myfile, datline); stringstream ss(datline);
+	getline( ss, element, ' '); cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.25;
+        getline( ss, element, ' '); gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.25;
+      }
+      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
-  while( (ch = fgetc(geoFile)) != '\n') {} // finish the line
-  while( (ch = fgetc(geoFile)) != '\n') {} // skip the periodic point
-  while( (ch = fgetc(geoFile)) != '\n') {} // read text
-  
-  //fourth block
-  for(int i=0; i<Nz; i++) {
-    fscanf(geoFile, "%f %f %f", &cvdrift0_h[i], &gbdrift0_h[i], &sdum);
-    cvdrift0_h[i] = (1./4.)*cvdrift0_h[i];
-    gbdrift0_h[i] = (1./4.)*gbdrift0_h[i];
-  }
-  DEBUGPRINT("All geometry information read successfully\n");
-  DEBUGPRINT("cvdrift0[0]: %.7e    cvdrift0[end]: %.7e\n",4.*cvdrift0_h[0],4.*cvdrift0_h[Nz-1]);
-  DEBUGPRINT("gbdrift0[0]: %.7e    gbdrift0[end]: %.7e\n",4.*gbdrift0_h[0],4.*gbdrift0_h[Nz-1]);
+      DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
+      DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
+      
+      myfile.close();      
+    }
+  else cout << "Failed to open";    
   
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
