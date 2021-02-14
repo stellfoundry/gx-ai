@@ -283,7 +283,6 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
 	getline (myfile, datline); stringstream ss(datline);
-	cout << datline << '\n' ;
 	getline( ss, element, ' '); gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.25;
         getline( ss, element, ' '); gradpar        = stof(element);
 	getline( ss, element, ' '); grho_h[idz]    = stof(element);
