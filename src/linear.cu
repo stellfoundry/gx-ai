@@ -46,10 +46,9 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more LH resolution without changing shared memory layouts.
   // dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
-  //  dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
 
   dimBlock = dim3(pars_->i_share, min(4, grids_->Nl), min(4, grids_->Nm));
-  dimGrid = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
+  dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
   sharedSize = dimBlock.x*(grids_->Nl+2)*(grids_->Nm+4)*sizeof(cuComplex);
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
   if(sharedSize/1024.>96.) {
@@ -81,7 +80,6 @@ Linear::~Linear()
 
 
 void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
-
 
   if (ks) {
     rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky);

@@ -256,8 +256,11 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 	 &ntgrid, &pars->nperiod, &newNz,
 	 &pars->drhodpsi, &pars->rmaj, &pars->shat,
 	 &pars->kxfac, &pars->qsf);
-  DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f\n\n\n",
-	   ntgrid, pars->nperiod, grids->Nz, pars->rmaj);
+  shat = pars->shat;
+  drhodpsi= pars->drhodpsi;
+
+  DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f, shat = %f\n\n\n",
+	     ntgrid, pars->nperiod, grids->Nz, pars->rmaj, shat);
 
   while( (ch = fgetc(geoFile)) != '\n') {} // finish this line
 
@@ -360,8 +363,13 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   cudaMalloc ((void**) &gb_d,   sizeof(float)*grids->NxNycNz);
   checkCuda  (cudaGetLastError());
 
+  cudaMemset (kperp2, 0., sizeof(float)*grids->NxNycNz);
+  cudaMemset (omegad, 0., sizeof(float)*grids->NxNycNz);
+  cudaMemset (cv_d,   0., sizeof(float)*grids->NxNycNz);
+  cudaMemset (gb_d,   0., sizeof(float)*grids->NxNycNz);
+  
   dim3 dimBlock (32, 4, 4);
-  dim3 dimGrid  (grids->Nyc/dimBlock.x+1, grids->Nx/dimBlock.y+1, grids->Nz/dimBlock.z+1);
+  dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
  
   init_kperp2 <<<dimGrid, dimBlock>>> (kperp2, grids->kx, grids->ky,
 				       gds2, gds21, gds22, bmagInv, shat);

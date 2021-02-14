@@ -78,7 +78,6 @@ SSPx3::~SSPx3()
 void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool setdt)
 {
   linear_->rhs(G, f, GRhs);
-
   if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);

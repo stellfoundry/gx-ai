@@ -150,24 +150,22 @@ void MomentsG::initialConditions(float* z_h, double* time) {
       srand(22);
       float samp;
       int idx;
-      for(int i=0; i < (grids_->Nx - 1)/3 + 1; i++) { 
-	// do not kick the ky=0 modes
-	for(int j=1; j< (grids_->Ny - 1)/3 + 1; j++) {
+      for(int i=0; i < 1 + (grids_->Nx - 1)/3; i++) { 
+	for(int j=1; j < 1 + (grids_->Ny - 1)/3; j++) {
+	  samp = pars_->init_amp;
+	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  for (int js=0; js < 2; js++) {
-	    if (i==0) {
-	      idx = i;
-	    } else {
-	      idx = js*(grids_->Nx - 2*i) + i;
-	    }
-	    samp = pars_->init_amp;
-	    float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-	    float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
-	    //	  printf("ra = %e \t rb = %e \n",ra,rb);
-	    //loop over z *here*, to get rid of randomness in z in initial condition
+	    idx = (js==0) ? i : grids_->Nx-i;
 	    for(int k=0; k<grids_->Nz; k++) {
 	      int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
-	      init_h[index].x = ra*cos(pars_->kpar_init*z_h[k]/pars_->Zp);
-	      init_h[index].y = rb*cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+	      if (js == 0) {
+		init_h[index].x = ra;		init_h[index].y = rb;
+	      } else {
+		init_h[index].x = rb;		init_h[index].y = ra;
+	      }
+	      init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+	      init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 	      //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
@@ -506,13 +504,15 @@ void MomentsG::qvar(int N)
 {
   cuComplex* G_h;
   int Nk = grids_->Nyc;
+  //  Nk = 1;
   //  int Nk = grids_->NxNycNz;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
   for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G_lm, N*sizeof(cuComplex));
   printf("\n");
   for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
-  // for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  //  for (int i=N-20; i<N; i++) printf("var(%d) = (%e, %e) \n", i, G_h[i].x, G_h[i].y);
+  //for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
   printf("\n");
 
   free (G_h);

@@ -71,6 +71,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   while(counter<pars->nstep) {
     counter++;
     timestep -> advance(&time, G, fields);
+    //    G -> qvar(grids->NxNycNz);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     if (checkstop) break;
     if (counter % pars->nreal == 0)  {

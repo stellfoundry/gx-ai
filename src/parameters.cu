@@ -26,9 +26,7 @@ Parameters::~Parameters() {
 void Parameters::get_nml_vars(char* filename)
 {
   strcpy (run_name, filename);
-  //  read_nml(run_name);
   char nml_file[263];
-
   
   strcpy(nml_file, run_name);
   strcat(nml_file, ".in");

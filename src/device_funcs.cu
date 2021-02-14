@@ -46,14 +46,14 @@ __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+th
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
 
 // use stirling's approximation
-__host__ __device__ float factorial(int m) {
+__host__ __device__ double factorial(int m) {
   if (m <2) return 1.;
   if (m==2) return 2.;
   if (m==3) return 6.;
   if (m==4) return 24.;
   if (m==5) return 120.;
   if (m==6) return 720.;
-  else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
+  else return sqrt(2.*M_PI*m)*pow(m,m)*exp(-m)*(1.+1./(12.*m)+1./(288.*m*m));
 }
 
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
@@ -61,7 +61,7 @@ __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
 
   if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
-  else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
+  else return (float) 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
 }
 
 __host__ __device__ float g0(float b) {
@@ -442,7 +442,7 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
     kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
                       + 2. * kx[idx] * shatInv * gds21[idz]) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
-                      * pow( bmagInv[idz], 2); 
+                      * pow( bmagInv[idz], 2);
   }
 }
 
@@ -1391,7 +1391,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
     // no bank conflicts for reading from global memory though. 
     const float bgrad_ = bgrad[idz];  
   
-    // this is coalesced?
+    // this is coalesced
     const cuComplex iky_ = make_cuComplex(0., ky[idy]); 
 
     unsigned int nR = nyc * nx * nz;
@@ -1408,26 +1408,25 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      const float b_s = kperp2[idxyz] * s.rho2;
      const cuComplex icv_d_s = 2. * s.tz * make_cuComplex(0., cv_d[idxyz]);
      const cuComplex igb_d_s = 2. * s.tz * make_cuComplex(0., gb_d[idxyz]);
-     
-     // conservation terms (species-specific)
+      // conservation terms (species-specific)
      cuComplex upar_bar_  =  upar_bar[idxyz + is * nR]; 
      cuComplex uperp_bar_ = uperp_bar[idxyz + is * nR];
      cuComplex t_bar_     =     t_bar[idxyz + is * nR];
-
+     
      // read tile of g into shared mem
      // each thread in the block reads in multiple values of l and m
      // blockIdx for y and z and both of size unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; 
 	 int sl = l + 1;
 	 int sm = m + 2;
 	 S_G(sl, sm) = g[globalIdx];
        }
      }
-     
+      
      // this syncthreads is not necessary unless ghosts require information from interior cells
-     //    __syncthreads();
+     //     __syncthreads();
      
      // set up ghost cells in m (for all l's)
      // blockIdx.y is of size unity in the kernel invocation
@@ -1442,7 +1441,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 S_G(sl, sm+nm) = make_cuComplex(0., 0.);
        }
      }
-       
+     
      // set up ghost cells in l (for all m's)
      // blockIdx.z is unity in the kernel invocation
      for (int m = threadIdx.z; m < nm+2; m += blockDim.z) {
@@ -1458,15 +1457,15 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      }
      
      __syncthreads();
-  
-    // stencil (on non-ghost cells)
-    // blockIdx for y and z are unity in the kernel invocation
+     
+     // stencil (on non-ghost cells)
+     // blockIdx for y and z are unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
 	 int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
 	 int sl = l + 1; // offset to get past ghosts
 	 int sm = m + 2; // offset to get past ghosts
-  
+
 	 // need to calculate parallel terms separately because need to take derivative via fft 
 	 rhs_par[globalIdx] = -vt_*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
