@@ -21,7 +21,7 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
     threads = 128;
     blocks = 1 + (grids_->Nx-1)/threads;
     
-    if (!pars_->all_kinetic && (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS)) {     
+    if (!pars_->all_kinetic && (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) && !pars_->no_fields) {     
       calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom,
 					      geo_->kperp2,
 					      geo_->jacobian,
@@ -48,6 +48,11 @@ Solver::~Solver()
 void Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if (pars_->ks) return;
+  
+  if (pars_->no_fields) {
+    cudaMemset (fields->phi, 0., sizeof(cuComplex)*grids_->NxNycNz);
+    return;
+  }
   
   bool em = pars_->beta > 0. ? true : false;
   

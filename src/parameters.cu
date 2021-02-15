@@ -97,7 +97,8 @@ void Parameters::get_nml_vars(char* filename)
 
   forcing_index = toml::find_or <int> (nml, "forcing_index", 1);
   forcing_init  = toml::find_or <bool> (nml, "forcing_init", false);
-
+  no_fields     = toml::find_or <bool> (nml, "no_fields", false);
+  
   phi_ext = toml::find_or <float> (nml, "phi_ext", 0.0);
   kpar_init = toml::find_or <float> (nml, "kpar_init", 0.0);
 
@@ -424,6 +425,7 @@ void Parameters::get_nml_vars(char* filename)
   // model flags
   if (retval = nc_def_var (ncid, "scheme_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", scheme.size(), scheme.c_str())) ERR(retval);
+  if (retval = nc_def_var (ncid, "no_fields",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "forcing_init",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "forcing_type_dum",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", forcing_type.size(), forcing_type.c_str())) ERR(retval);
@@ -559,6 +561,7 @@ void Parameters::get_nml_vars(char* filename)
   
   putint   (ncid, "forcing_index", forcing_index);
   putbool  (ncid, "forcing_init", forcing_init);
+  putbool  (ncid, "no_fields", no_fields);
   
   putfloat (ncid, "phi_ext", phi_ext);
   putfloat (ncid, "kpar_init", kpar_init);
