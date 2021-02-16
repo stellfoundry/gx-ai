@@ -1,4 +1,5 @@
 #include "moments.h"
+#define GALL <<< dG_all, dB_all >>>
 
 MomentsG::MomentsG(Parameters* pars, Grids* grids) : 
   grids_(grids), pars_(pars)
@@ -199,25 +200,20 @@ void MomentsG::initialConditions(float* z_h, double* time) {
   //  return cudaGetLastError();
 }
 
-void MomentsG::scale(double scalar) {
-  scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
-}
-
-void MomentsG::scale(cuComplex scalar) {
-  scale_kernel <<< dG_all, dB_all >>>(G_lm, scalar);
-}
+void MomentsG::scale(double    scalar) {scale_kernel GALL (G_lm, scalar);}
+void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G_lm, scalar);}
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, neqfix);
+  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2,
 			  double c3, MomentsG* G3) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, neqfix);
+  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
@@ -225,7 +221,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c3, MomentsG* G3,
 			  double c4, MomentsG* G4) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel <<< dG_all, dB_all >>> (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, neqfix);
+  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
@@ -235,7 +231,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c5, MomentsG* G5)
 {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel<<< dG_all, dB_all >>>(G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm, neqfix);
+  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm, neqfix);
 }
 
 void MomentsG::reality(int ngz) 

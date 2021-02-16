@@ -1,4 +1,6 @@
 #include "geometry.h"
+#define GGEO <<< dimGrid, dimBlock >>>
+
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -376,10 +378,8 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   dim3 dimBlock (32, 4, 4);
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
  
-  init_kperp2 <<<dimGrid, dimBlock>>> (kperp2, grids->kx, grids->ky,
-				       gds2, gds21, gds22, bmagInv, shat);
-  init_omegad <<<dimGrid, dimBlock>>> (omegad, cv_d, gb_d, grids->kx, grids->ky,
-				       cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
+  init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
+  init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
   /*
   CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);
 
@@ -414,7 +414,7 @@ void Geometry::calculate_bgrad(Grids* grids)
   grad_par->dz1D(bgrad_temp); // FFT and k-space derivative
   float scale = gradpar;
   //  calc_bgrad <<< 1, grids->Nz >>> (bgrad, bgrad_temp, bmag, scale);
-  calc_bgrad <<< (grids->Nz-1)/512 + 1, 512 >>> (bgrad, bgrad_temp, bmag, scale);  
+  calc_bgrad <<< 1 + (grids->Nz-1)/512, 512 >>> (bgrad, bgrad_temp, bmag, scale);  
 
   CP_TO_CPU (bgrad_h, bgrad, size);
   if (bgrad_temp) cudaFree(bgrad_temp);

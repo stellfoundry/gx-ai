@@ -1,6 +1,7 @@
 #include "grad_parallel.h"
 #include <stdlib.h>
 #include "get_error.h"
+#define GCHAINS <<< dG[c], dB[c] >>>
 
 GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
  : grids_(grids)
@@ -153,14 +154,12 @@ void GradParallelLinked::dz(MomentsG* G)
   for (int is=0; is < grids_->Nspecies; is++) {
     for(int c=0; c<nClasses; c++) {
       // each "class" has a different number of links in the chains, and a different number of chains.
-      linkedCopy <<<dG[c],dB[c]>>>
-	(G->G(0,0,is), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      linkedCopy GCHAINS (G->G(0,0,is), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
 
       cufftExecC2C (dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
       cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-      linkedCopyBack <<<dG[c],dB[c]>>>
-	(G_linked[c], G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      linkedCopyBack GCHAINS (G_linked[c], G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
   }
 }
@@ -172,12 +171,12 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res)
 
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
-    linkedCopy<<<dG[c],dB[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopy GCHAINS (m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
 
     cufftExecC2C(dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
 
@@ -188,12 +187,12 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res)
 
   for(int c=0; c<nClasses; c++) {
     // these only use the G(0,0) part of G_linked
-    linkedCopy<<<dG[c],dB[c]>>>(m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopy GCHAINS (m, G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
 
     cufftExecC2C(abs_dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(    dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack<<<dG[c],dB[c]>>>(G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
 

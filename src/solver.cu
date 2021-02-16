@@ -1,4 +1,5 @@
 #include "solver.h"
+#define GQN <<< dG, dB >>>
 
 Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -58,9 +59,9 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
   
   if (pars_->all_kinetic) {
 
-    qneut <<< dG, dB >>> (fields->phi, G->G(), geo_->kperp2, pars_->species);
+    qneut GQN (fields->phi, G->G(), geo_->kperp2, pars_->species);
 
-    if (em) ampere <<< dG, dB >>> (fields->apar, G->G(0,1,0), geo_->kperp2, pars_->species, pars_->beta);
+    if (em) ampere GQN (fields->apar, G->G(0,1,0), geo_->kperp2, pars_->species, pars_->beta);
 
   } else {
 
@@ -74,28 +75,18 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
     // calculate the same field line averages. It is correct but inefficient.
 
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
-      qneutAdiab_part1 <<< dG, dB >>> (tmp, nbar,
-				       geo_->kperp2,
-				       geo_->jacobian,
-				       pars_->species,
-				       pars_->tau_fac);
+      qneutAdiab_part1 GQN (tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->tau_fac);
       
       cudaMemset(fields->phi, 0., sizeof(cuComplex)*grids_->NxNycNz);
-      
-      qneutAdiab_part2 <<< dG, dB >>> (fields->phi, tmp, nbar,
-				       phiavgdenom,
-				       geo_->kperp2,							    
-				       pars_->species,
-				       pars_->tau_fac);
+
+      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, pars_->species, pars_->tau_fac);
     } 
     
-    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab <<< dG, dB >>> (fields->phi, nbar,
-									  geo_->kperp2,
-									  pars_->species,
-									  pars_->tau_fac);
+    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar,
+							       geo_->kperp2, pars_->species, pars_->tau_fac);
   }
   
-  if(pars_->source_option==PHIEXT) add_source <<< dG, dB >>> (fields->phi, pars_->phi_ext);
+  if(pars_->source_option==PHIEXT) add_source GQN (fields->phi, pars_->phi_ext);
 }
 
 void Solver::svar (cuComplex* f, int N)

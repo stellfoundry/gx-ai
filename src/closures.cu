@@ -1,4 +1,5 @@
 #include "closures.h"
+#define GB <<< dimGrid, dimBlock >>>
 
 Beer42::Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad_par_in): 
   pars_(pars), grids_(grids), grad_par_(grad_par_in), omegad_(geo->omegad), gpar_(geo->gradpar), tmp(nullptr), nu(nullptr)
@@ -59,22 +60,19 @@ void Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
     // parallel streaming
     grad_par_->dz(G->G(0, 2, is), tmp); // roughly d/dz T_par
     
-    add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
-      (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -Beta_par/sqrt(3.)*gpar_*vt_, tmp);
+    add_scaled_singlemom_kernel GB (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -Beta_par/sqrt(3.)*gpar_*vt_, tmp);
 
     grad_par_->abs_dz(G->G(0, 3, is), tmp); // roughly |d/dz| q_par,par
 
-    add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
-      (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -sqrt(2.)*D_par*gpar_*vt_, tmp);
+    add_scaled_singlemom_kernel GB (GRhs->G(0, 3, is), 1., GRhs->G(0, 3, is), -sqrt(2.)*D_par*gpar_*vt_, tmp);
 
     grad_par_->abs_dz(G->G(1, 1, is), tmp); // rougly |d/dz| q_par,perp
 
-    add_scaled_singlemom_kernel <<< dimGrid, dimBlock >>>
-      (GRhs->G(1, 1, is), 1., GRhs->G(1, 1, is), -sqrt(2.)*D_perp*gpar_*vt_, tmp);
+    add_scaled_singlemom_kernel GB (GRhs->G(1, 1, is), 1., GRhs->G(1, 1, is), -sqrt(2.)*D_perp*gpar_*vt_, tmp);
   }
   
   // toroidal terms.  
-  beer_toroidal_closures <<< dimGrid, dimBlock>>>(G->G(), GRhs->G(), omegad_, nu, pars_->species);
+  beer_toroidal_closures GB (G->G(), GRhs->G(), omegad_, nu, pars_->species);
 }
 
 SmithPerp::SmithPerp(Parameters* pars, Grids* grids, Geometry* geo): 
@@ -177,7 +175,7 @@ SmithPerp::~SmithPerp() {
 void SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   // perp closure terms are only toroidal
-  smith_perp_toroidal_closures <<< dimGrid, dimBlock >>> (G->G(), GRhs->G(), omegad_, Aclos_, q_, pars_->species);
+  smith_perp_toroidal_closures GB (G->G(), GRhs->G(), omegad_, Aclos_, q_, pars_->species);
 }
 
 
@@ -229,15 +227,11 @@ void SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
       for (int m = M; m >= grids_->Nm - q_; m--) {
 
 	grad_par_->dz(G->G(l, m, is), tmp);
-
 	grad_par_->abs_dz(G->G(l, m, is), tmp_abs);
 	
-	add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
-	  (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
+	add_scaled_singlemom_kernel GB (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);
       }
-      
-      add_scaled_singlemom_kernel <<<dimGrid,dimBlock>>>
-	(GRhs->G(l, M, is), 1., GRhs->G(l, M, is), -sqrtf(M+1)*gpar_*vt_, clos);
+      add_scaled_singlemom_kernel GB (GRhs->G(l, M, is), 1., GRhs->G(l, M, is), -sqrtf(M+1)*gpar_*vt_, clos);
     }
   }
 }

@@ -1,18 +1,7 @@
 #include "nonlinear.h"
-// #include "cuda_constants.h"
-// #include "device_funcs.h"
 #include "get_error.h"
-// #include "species.h"
-
-#define gpuErrchk(ans) { gpuAssert((ans), __FILE__, __LINE__); }
-inline void gpuAssert(cudaError_t code, const char *file, int line, bool abort=true)
-{
-  if (code != cudaSuccess) 
-    {
-      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-      if (abort) exit(code);
-    }
-}
+#define GBK <<< dGk, dBk >>>
+#define GBX <<< dGx, dBx >>>
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -196,14 +185,14 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     //    qvar(f->phi, grids_->NxNycNz);
 
     
-    J0phiToGrid <<< dGk, dBk >>> (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+    J0phiToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
 
     grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
     grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
 
     // electromagnetic terms will couple different Hermites together. Accumulate bracket results.
     if (pars_->beta > 0.) {
-      J0phiToGrid <<< dGk, dBk >>> (J0_Apar, f->apar, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+      J0phiToGrid GBK (J0_Apar, f->apar, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
       
       grad_perp_J0phi -> dxC2R(J0_Apar, dJ0_Apar_dx);
       grad_perp_J0phi -> dyC2R(J0_Apar, dJ0_Apar_dy);
@@ -219,7 +208,7 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       grad_perp_G -> dyC2R(G->Gm(m,s), dG);      
       laguerre    -> transformToGrid(dG, dg_dy);
          
-      bracket <<< dGx, dBx >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+      bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
 
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));

@@ -4,6 +4,9 @@
 #include "get_error.h"
 #include "netcdf.h"
 #include <sys/stat.h>
+#define GSPEC <<< dG_spectra, dB_spectra >>>
+#define GALL <<< dG_all, dB_all >>>
+#define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>>	  
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -92,8 +95,9 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   dB_all = dim3(nbx, nby, 1);
   dG_all = dim3(ngx, ngy, nslm);
 
+  if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
 
-  printf(ANSI_COLOR_RESET);  
+  printf(ANSI_COLOR_RESET);
 }
 
 Diagnostics::~Diagnostics()
@@ -137,36 +141,32 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     if (!id->qs.write_v_time) printf("Step %d: Time = %f\n",          counter, time);
   
     if (id->qs.write_v_time) {                                                                 // heat flux
-
+      
       for(int is=0; is<grids_->Nspecies; is++) {
-	heat_flux_summand <<<dG_spectra, dB_spectra>>> (P2(is), fields->phi, G->G(0,0,is),
-						  grids_->ky, flux_fac, 
-						  geo_->kperp2, pars_->species_h[is].rho2);
+	heat_flux_summand GSPEC (P2(is), fields->phi, G->G(0,0,is),
+				 grids_->ky, flux_fac, geo_->kperp2, pars_->species_h[is].rho2);	
       }
       id->write_Q(P2s); 
     }      
 
     if (pars_->diagnosing_spectra) {                                        // Various spectra
-      W_summand <<<dG_all, dB_all>>> (G2, G->G(), vol_fac, pars_->species_h);
+      W_summand GALL (G2, G->G(), vol_fac, pars_->species_h);
       
-      for (int is=0; is < grids_->Nspecies; is++) {                       // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	Wphi_summand <<<dG_spectra, dB_spectra>>> (P2(is), fields->phi,
-					     vol_fac, geo_->kperp2,
-					     pars_->species_h[is].rho2);
-	
-	Wphi_scale <<<dG_spectra, dB_spectra>>> (P2(is), pars_->species_h[is].qneut);
+      for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+	Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, pars_->species_h[is].rho2);	
+	Wphi_scale GSPEC   (P2(is), pars_->species_h[is].qneut);
       }
 
       if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand <<< dG_spectra, dB_spectra>>> (Phi2, fields->phi, vol_fac);
+	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
 	
-	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
-	  fieldlineaverage <<< (grids_->Nx*grids_->Nyc-1)/grids_->Nakx+1, grids_->Nakx >>> (favg, df, fields->phi, vol_fac);
-	  Wphi2_summand <<< dG_spectra, dB_spectra>>> (Phi2, df, vol_fac); 	
+	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
+	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac);
+	  Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
 	}
-	
-	float fac = 1./pars_->tau_fac; // seems incorrect this morning BD bug
-	Wphi_scale <<<dG_spectra, dB_spectra>>> (Phi2, fac);
+
+	float fac = 1./pars_->tau_fac;
+	Wphi_scale GSPEC (Phi2, fac);
       }
       
       id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );
@@ -254,7 +254,7 @@ void Diagnostics::finish(MomentsG* G, Fields* fields)
   cuComplex *df;
   cudaMalloc((void**) &df, sizeof(cuComplex)*grids_->NxNycNz);
 
-  fieldlineaverage<<< (grids_->Nx*grids_->Nyc-1)/grids_->Nakx+1, grids_->Nakx >>> (favg, df, fields->phi, vol_fac);
+  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac);
 
   cuComplex *favg_h;
   cudaMallocHost((void**) &favg_h, sizeof(cuComplex)*grids_->Nx);

@@ -1,4 +1,5 @@
 #include "forcing.h"
+#define GSINGLE <<< 1, 1 >>>
 
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
 
@@ -29,16 +30,16 @@ void KzForcing::stir(MomentsG *G) {
   //  rf.y = random_imag;
   rf.y = 0.;
   
-  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == DENS) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel GSINGLE (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel GSINGLE (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 }
 
 genForcing::genForcing(Parameters *pars) : pars_(pars)
@@ -57,16 +58,16 @@ void genForcing::stir(MomentsG *G) {
   rf.x = random_real;
   rf.y = random_imag;
 
-  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == DENS) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel GSINGLE (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel GSINGLE (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 }
 
 // Set forcing_type to "KzImpulse"
@@ -87,16 +88,16 @@ void KzForcingImpulse::stir(MomentsG *G) {
   rf.x = random_real;
   rf.y = random_imag;
 
-  if (pars_->stirf == DENS) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == UPAR) {stirring_kernel<<<1,1>>> (rf,           G->upar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPAR) {stirring_kernel<<<1,1>>> (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == TPRP) {stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == QPRP) {stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPRP) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf,           G->tprp_ptr[0], pars_->forcing_index);}
-  if (pars_->stirf == PPAR) {stirring_kernel<<<1,1>>> (rf,           G->dens_ptr[0], pars_->forcing_index);
-                             stirring_kernel<<<1,1>>> (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == DENS) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == UPAR) {stirring_kernel GSINGLE (rf,           G->upar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPAR) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPAR) {stirring_kernel GSINGLE (rf*sqrt(6.0), G->qpar_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == TPRP) {stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == QPRP) {stirring_kernel GSINGLE (rf*sqrt(2.0), G->qprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPRP) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf,           G->tprp_ptr[0], pars_->forcing_index);}
+  if (pars_->stirf == PPAR) {stirring_kernel GSINGLE (rf,           G->dens_ptr[0], pars_->forcing_index);
+                             stirring_kernel GSINGLE (rf*sqrt(2.0), G->tpar_ptr[0], pars_->forcing_index);}
 
   stirring_done = true;
 }

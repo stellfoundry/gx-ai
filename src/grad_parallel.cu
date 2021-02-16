@@ -1,4 +1,5 @@
 #include "grad_parallel.h"
+#define GGP <<< dG, dB >>>
 
 GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   grids_(grids)
@@ -98,15 +99,12 @@ void GradParallelLocal::dz(MomentsG *G)
 }
 
 // single moment
-void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) 
-{
-  scale_singlemom_kernel<<<dG,dB>>>(res, mom, make_cuComplex(0.,1.));
+void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
+  scale_singlemom_kernel GGP (res, mom, make_cuComplex(0.,1.));
 }
-
 // single moment
-void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) 
-{
-  scale_singlemom_kernel<<<dG,dB>>>(res, mom, make_cuComplex(1.,0.));
+void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) {
+  scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));
 }
 
 GradParallel1D::GradParallel1D(Grids* grids) :
