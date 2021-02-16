@@ -171,6 +171,7 @@ void gx_main(int argc, char **argv, MPI_Comm mpcom) {
     exit(1);
   } else {    
     run_name = argv[1];
+    printf("Running %s \n",run_name);
   }
 
   gx_get_default_parameters_(&externalpars, run_name, mpcom, devid);

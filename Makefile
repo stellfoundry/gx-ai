@@ -65,38 +65,26 @@ obj/%.o: %.cu $(HEADERS)
 obj/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
 
+.SILENT: src/version.c obj/version.o
+
+obj/version.o: src/version.c
+	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
+
+src/version.c: .git/COMMIT_EDITMSG .git/HEAD 
+	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
+	date | awk 'BEGIN {} {print "const char * build_git_time = \""$$0"\";"} END {} ' >> src/version.c
+	whoami | awk 'BEGIN {} {print "const char * build_user = \""$$0"\";"} END {} ' >> src/version.c
+	hostname | awk 'BEGIN {} {print "const char * build_hostname = \""$$0"\";"} END {} ' >> src/version.c
+
 #######################################
 # Rules for building gx
 ####################################
-
-OBJS = main.o run_gx.o gx_lib.o parameters.o geometry.o grids.o reductions.o moments.o fields.o solver.o linear.o timestepper.o diagnostics.o device_funcs.o grad_parallel.o grad_parallel_linked.o closures.o cuda_constants.o smith_par_closure.o forcing.o laguerre_transform.o nonlinear.o grad_perp.o ncdf.o
-
-# header dependencies
-# ncdf.h: ncarr.h
-# device_funcs.h: species.h cuda_constants.h
-# parameters.h: species.h external_parameters.h toml.hpp
-# grids.h: parameters.h device_funcs.h
-# reductions.h: grids.h
-# grad_perp.h: grids.h 
-# fields.h: grids.h 
-# moments.h: grids.h 
-# forcing.h: moments.h
-# grad_parallel.h: moments.h
-# geometry.h: grad_parallel.h
-# laguerre_transform.h: moments.h
-# ncdf.h: geometry.h reductions.h
-# solver.h: fields.h moments.h geometry.h 
-# closures.h: moments.h geometry.h smith_par_closure.h
-# linear.h: fields.h closures.h 
-# nonlinear.h: fields.h grad_perp.h geometry.h laguerre_transform.h reductions.h 
-# timestepper.h: linear.h nonlinear.h solver.h forcing.h
-# diagnostics.h: fields.h geometry.h ncdf.h reductions.h 
-# run_gx.h: timestepper.h diagnostics.h 
-# gx_lib.h: run_gx.h
+OBJS = cuda_constants.o device_funcs.o parameters.o grids.o reductions.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o laguerre_transform.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o timestepper.o diagnostics.o run_gx.o gx_lib.o version.o main.o 
 
 # main program
-$(TARGET): $(addprefix obj/, $(OBJS)) 
-	$(NVCC) -o $@ $(addprefix obj/, $(OBJS)) $(NVCCFLAGS) $(LDFLAGS)
+$(TARGET): $(addprefix obj/, $(OBJS))
+	$(NVCC) $(NVCCFLAGS) -o $@ $(addprefix obj/, $(OBJS)) $(LDFLAGS)
+	@mv src/version.c old/version.c
 
 ########################
 # Cleaning up
@@ -107,8 +95,6 @@ clean:
 
 distclean: clean clean_tests
 	rm -rf $(TARGET)
-
-
 
 #########################
 # Misc

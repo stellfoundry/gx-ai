@@ -2,6 +2,7 @@
 #include <netcdf.h>
 #include "toml.hpp"
 #include <iostream>
+#include "version.h"
 using namespace std;
 
 Parameters::Parameters() {
@@ -87,10 +88,10 @@ void Parameters::get_nml_vars(char* filename)
   p_hyper_l  = toml::find_or <int> (nml, "p_hyper_l", 6);
   p_hyper_m  = toml::find_or <int> (nml, "p_hyper_m", 1);
   
-  scheme       = toml::find_or <std::string> (nml, "scheme", "sspx2");
-  forcing_type = toml::find_or <std::string> (nml, "forcing_type", "Kz");
-  init_field   = toml::find_or <std::string> (nml, "init_field", "density");
-  stir_field   = toml::find_or <std::string> (nml, "stir_field", "density");
+  scheme       = toml::find_or <string> (nml, "scheme", "sspx2");
+  forcing_type = toml::find_or <string> (nml, "forcing_type", "Kz");
+  init_field   = toml::find_or <string> (nml, "init_field", "density");
+  stir_field   = toml::find_or <string> (nml, "stir_field", "density");
 
   forcing_amp = toml::find_or <float> (nml, "forcing_amp", 1.0);
   scale       = toml::find_or <float> (nml, "scale", 1.0);
@@ -499,7 +500,15 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "tprimf",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (ncid, "code_info",             NC_INT,   0, NULL, &ivar)) ERR(retval);
-  // should put attributes here, for date, time, version, normalization
+
+  std::string hash(build_git_sha);                       
+  if (retval = nc_put_att_text (ncid, ivar, "Hash",      hash.size(), hash.c_str() ) ) ERR(retval);
+  std::string compiled(build_git_time);                  
+  if (retval = nc_put_att_text (ncid, ivar, "BuildDate", compiled.size(), compiled.c_str() ) ) ERR(retval);
+  std::string builder(build_user);                       
+  if (retval = nc_put_att_text (ncid, ivar, "BuildUser", builder.size(), builder.c_str() ) ) ERR(retval);
+  std::string build_host(build_hostname);                
+  if (retval = nc_put_att_text (ncid, ivar, "BuildHost", build_host.size(), build_host.c_str() ) ) ERR(retval);
 
   if (retval = nc_enddef (ncid)) ERR(retval);
   

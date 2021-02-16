@@ -156,6 +156,7 @@ class Parameters {
   size_t wspectra_start[1], wspectra_count[1]; 
   
   std::string Btype;
+  std::string code_info;
   
   std::string restart_from_file, restart_to_file;
   //  char restart_from_file[512];
