@@ -73,18 +73,19 @@
  Wspectra.hermite          = true
  Wspectra.laguerre         = false
  Wspectra.hermite_laguerre = false
- Wspectra.kx               = false
- Wspectra.ky               = false
+ Wspectra.kx               = true
+ Wspectra.ky               = true
  Wspectra.kxky             = true
  Wspectra.kperp            = false
  Wspectra.z                = false
 
  Pspectra.species          = true
- Pspectra.kx               = false
+ Pspectra.kx               = true
  Pspectra.ky               = true
- Pspectra.kxky             = false
+ Pspectra.kxky             = true
  Pspectra.kperp            = false
-
+ Pspectra.z                = false
+ 
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 
 [species]

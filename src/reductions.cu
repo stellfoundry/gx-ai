@@ -13,6 +13,9 @@ Red::Red(int N, int nspecies) : N_(N)
   for (auto mode : Bmode) extent_B.push_back(extent[mode]); // target scalar output
   for (auto mode : Qmode) extent_Q.push_back(extent[mode]); // incoming tensor without abs value
   for (auto mode : Rmode) extent_R.push_back(extent[mode]); // target species scalar output
+
+  //  for (auto mode : Amode) cout << Amode[mode] << '\n';
+  
   HANDLE_ERROR( cutensorInit(&handle));
   HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, cfloat, CUTENSOR_OP_ABS));
   HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, cfloat, CUTENSOR_OP_ABS));

@@ -177,13 +177,14 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       float *dum;
       cudaMallocHost (&dum, sizeof(float)*grids_->NxNycNz);
       CP_TO_CPU (dum, Phi2, sizeof(float)*grids_->NxNycNz);
-      for (int iz=0; iz<grids_->Nz; iz++) {
-	for (int ix=0; ix<grids_->Nx; ix++) {
-	  for (int iy=0; iy<grids_->Nyc; iy++) {
+      //      for (int iz=0; iz<grids_->Nz; iz++) {
+      int iz = 0;
+      for (int ix=0; ix<grids_->Nx; ix++) {
+	  for (int iy=0; iy<grids_->Naky; iy++) {
 	    printf("dum(%d, %d, %d) = %e \n",iy, ix, iz, dum[iy+ix*grids_->Nyc+iz*grids_->Nyc*grids_->Nx]);
 	  }
 	}
-      }
+	//      }
       cudaFreeHost(dum);
       */
       

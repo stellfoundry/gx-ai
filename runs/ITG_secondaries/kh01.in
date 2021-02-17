@@ -23,7 +23,7 @@
  nsave  = 100000
 
  beta = 0.0
- TiTe = 1.0
+ tau_fac = 1.0
 
  igeo = 0
  rhoc = 0.0
@@ -81,6 +81,7 @@ Pspectra.kx               = true
 Pspectra.ky               = true
 Pspectra.kxky             = true
 Pspectra.kperp            = true
+Pspectra.z                = true
 
 write_spec_v_time = false
 
