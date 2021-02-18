@@ -8,7 +8,7 @@
  nx = 4
  y0 = 10.0
  x0 = 20.0
- boundary = "linked"
+ boundary = "periodic"
  forcing_amp = 0.0
  forcing_init = false
  
@@ -63,7 +63,7 @@
  ikx_single = 0
 
  init_amp = 1.0
- iphi00 = 2 
+ iphi00 = 2
 
  nspecies = 1
 
@@ -73,14 +73,17 @@ Wspectra.laguerre         = true
 Wspectra.hermite_laguerre = true
 Wspectra.kx               = true
 Wspectra.ky               = true
+Wspectra.kz               = true
 Wspectra.kxky             = true
-Wspectra.kperp            = true
+Wspectra.kperp            = false
 Wspectra.z                = true
 
+Pspectra.species          = true
 Pspectra.kx               = true
 Pspectra.ky               = true
+Pspectra.kz               = true
 Pspectra.kxky             = true
-Pspectra.kperp            = true
+Pspectra.kperp            = false
 Pspectra.z                = true
 
 write_spec_v_time = false

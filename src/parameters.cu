@@ -241,6 +241,7 @@ void Parameters::get_nml_vars(char* filename)
     wspectra [WSPECTRA_species] = (toml::find_or <bool> (tomlW, "species",          true )) == true ? 1 : 0;
     wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tomlW, "kx",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tomlW, "ky",               false)) == true ? 1 : 0;
+    wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tomlW, "kz",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_z]       = (toml::find_or <bool> (tomlW, "z",                false)) == true ? 1 : 0;
     wspectra [WSPECTRA_l]       = (toml::find_or <bool> (tomlW, "laguerre",         false)) == true ? 1 : 0;
     wspectra [WSPECTRA_m]       = (toml::find_or <bool> (tomlW, "hermite",          false)) == true ? 1 : 0;
@@ -253,6 +254,7 @@ void Parameters::get_nml_vars(char* filename)
     pspectra [PSPECTRA_species] = (toml::find_or <bool> (tomlP, "species",          false)) == true ? 1 : 0;
     pspectra [PSPECTRA_kx]      = (toml::find_or <bool> (tomlP, "kx",               false)) == true ? 1 : 0;
     pspectra [PSPECTRA_ky]      = (toml::find_or <bool> (tomlP, "ky",               false)) == true ? 1 : 0;
+    pspectra [PSPECTRA_kz]      = (toml::find_or <bool> (tomlP, "kz",               false)) == true ? 1 : 0;
     pspectra [PSPECTRA_z]       = (toml::find_or <bool> (tomlP, "z",                false)) == true ? 1 : 0;
     pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tomlP, "kperp",            false)) == true ? 1 : 0;
     pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tomlP, "kxky",             false)) == true ? 1 : 0;
@@ -262,6 +264,7 @@ void Parameters::get_nml_vars(char* filename)
     aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
     aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
     aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
+    aspectra [ ASPECTRA_kz      ] = wspectra [ WSPECTRA_kz      ];
     aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
     aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
     aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
@@ -295,6 +298,11 @@ void Parameters::get_nml_vars(char* filename)
   diagnosing_spectra = false;
   if (ksize > 0) diagnosing_spectra = true;
 
+  diagnosing_kzspec = false;
+  if ((wspectra[ WSPECTRA_kz ] == 1) || (pspectra[ PSPECTRA_kz ] == 1) || (aspectra[ ASPECTRA_kz ] == 1)) {
+    diagnosing_kzspec = true;
+  }
+  
   diagnosing_moments = false;
   if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   

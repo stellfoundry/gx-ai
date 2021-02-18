@@ -579,6 +579,11 @@ __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *k
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;    
 }
 
+__device__ void zinv(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr)
+{
+  ((cuComplex*)dataOut)[offset] = element/nz;    
+}
+
 __device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -594,6 +599,7 @@ __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
+__managed__ cufftCallbackStoreC zinv_callbackPtr = zinv;
 __managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
 __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
@@ -1304,6 +1310,14 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
   ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
 }
 
+__device__ void zinv_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz  = (float*) kzData;
+  int nLinks = (int) lrintf(1./(zp*kz[1]));
+  float normalization = (float) 1./(nz*nLinks);
+  ((cuComplex*)dataOut)[offset] = element*normalization;
+}
+
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -1324,6 +1338,7 @@ __global__ void init_kzLinked(float* kz, int nLinks)
   }
 }
 
+__managed__ cufftCallbackStoreC zinv_Linked_callbackPtr = zinv_Linked;
 __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr = i_kzLinked;
 __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 

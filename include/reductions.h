@@ -76,18 +76,22 @@ private:
 					  {'m', 's'},
 					  {'l', 'm', 's'},
 					  {'y', 'x', 's'},
-					  {'y', 'x', 's'}};
+					  {'y', 'x', 's'},
+					  {'z', 's'},
+					  {'z', 's'}};
   std::vector<std::vector<int32_t>> pModes{{'s'},
 					   {'x', 's'},
 					   {'y', 's'},
 					   {'y', 'x', 's'},
 					   {'y', 'x', 's'},
+					   {'z', 's'},
 					   {'z', 's'}};							       
   std::vector<std::vector<int32_t>> iModes{{},
 					   {'x'},
 					   {'y'},
 					   {'y', 'x'},
 					   {'y', 'x'},
+					   {'z'},
 					   {'z'}};
 							       
     

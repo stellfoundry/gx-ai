@@ -5,9 +5,11 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   grids_(grids)
 {
   // (ky, kx, theta) <-> (ky, kx, kpar)
+  cufftCreate(&zft_plan_forward);
+  cufftCreate(&zft_plan_inverse);
   cufftCreate(&dz_plan_forward);
-  cufftCreate(&abs_dz_plan_forward);
   cufftCreate(&dz_plan_inverse);
+  cufftCreate(&abs_dz_plan_forward);
 
   int n = grids_->Nz; 			// size of FFT
   int isize = grids_->NxNycNz;		// size of input data
@@ -22,31 +24,61 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   int batchsize = grids_->NxNyc;	// number of consecutive transforms
   size_t workSize;
 
-  cufftMakePlanMany(dz_plan_forward, dim, &n, &isize, istride, idist,
-      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
-  cufftMakePlanMany(abs_dz_plan_forward, dim, &n, &isize, istride, idist,
-      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
-  cufftMakePlanMany(dz_plan_inverse, dim, &n, &isize, istride, idist,
-      	      &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
-
-  //cufftCallbackStoreC i_kz_callbackPtr_host;
-  //cufftCallbackStoreC abs_kz_callbackPtr_host;
-
-  //cudaMemcpyFromSymbol(&i_kz_callbackPtr_host, i_kz_callbackPtr, sizeof(i_kz_callbackPtr_host));
-  //cudaMemcpyFromSymbol(&abs_kz_callbackPtr_host, abs_kz_callbackPtr, sizeof(abs_kz_callbackPtr_host));
+  cufftMakePlanMany(zft_plan_forward, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany(zft_plan_inverse, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany( dz_plan_forward, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany( dz_plan_inverse, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+  cufftMakePlanMany(abs_dz_plan_forward,
+		                     dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
 
   // set up callback functions
   cudaDeviceSynchronize();
+  cufftXtSetCallback(   zft_plan_inverse, (void**)   &zinv_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(    dz_plan_forward, (void**)   &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(abs_dz_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cudaDeviceSynchronize();
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {
-  cufftDestroy(dz_plan_forward);
+  cufftDestroy(zft_plan_forward);
+  cufftDestroy(zft_plan_inverse);
+  cufftDestroy( dz_plan_forward);
+  cufftDestroy( dz_plan_inverse);
   cufftDestroy(abs_dz_plan_forward);
-  cufftDestroy(dz_plan_inverse);
 }
+
+// Fourier transform all moments 
+void GradParallelPeriodic::zft(MomentsG* G)
+{
+  // for now, loop over all l and m because cannot batch 
+  // eventually could optimize by first transposing so that z is fastest index
+  for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
+    cufftExecC2C(zft_plan_forward, G->G(i), G->G(i), CUFFT_FORWARD);
+  }
+}
+
+void GradParallelPeriodic::zft_inverse(MomentsG* G)
+{
+  // for now, loop over all l and m because cannot batch 
+  // eventually could optimize by first transposing so that z is fastest index
+  for(int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) {
+    cufftExecC2C(zft_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);
+  }
+}
+
+// Fourier transform for a single moment
+void GradParallelPeriodic::zft(cuComplex* mom, cuComplex* res)
+{
+  cufftExecC2C(zft_plan_forward, mom, res, CUFFT_FORWARD);
+}
+
+/*
+// inverse Fourier transform for a single moment
+void GradParallelPeriodic::zft_inverse(cuComplex* mom, cuComplex* res)
+{
+  cufftExecC2C(zft_plan_inverse, mom, res, CUFFT_INVERSE);
+}
+*/
 
 // FFT and derivative for all moments
 void GradParallelPeriodic::dz(MomentsG* G)
@@ -79,7 +111,7 @@ void GradParallelPeriodic::abs_dz(cuComplex* mom, cuComplex* res)
   cufftExecC2C(dz_plan_inverse, res, res, CUFFT_INVERSE);
 }
 
-// FFT only for a single moment
+// FFT only for a single moment -- deprecated. Should change to zft, dropping dir parameter
 void GradParallelPeriodic::fft_only(cuComplex* mom, cuComplex* res, int dir)
 {
   // use dz_plan_inverse since it does not multiply by i kz via callback 
@@ -98,6 +130,10 @@ void GradParallelLocal::dz(MomentsG *G)
   G->scale(make_cuComplex(0.,1.));
 }
 
+void GradParallelLocal::zft(MomentsG *G) {return;}
+void GradParallelLocal::zft_inverse(MomentsG *G) {return;}
+void GradParallelLocal::zft(cuComplex* mom, cuComplex* res) {scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));}
+
 // single moment
 void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
   scale_singlemom_kernel GGP (res, mom, make_cuComplex(0.,1.));
@@ -106,6 +142,7 @@ void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
 void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) {
   scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));
 }
+
 
 GradParallel1D::GradParallel1D(Grids* grids) :
   grids_(grids)

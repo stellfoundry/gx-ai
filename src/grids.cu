@@ -75,7 +75,12 @@ Grids::Grids(Parameters* pars) :
     kx_outh[i + Nx/3 ] = kx_h[i];
   }
 
-  for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
+  if (Nz>1) {
+    for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
+  } else {
+    for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ i ];
+  }
+    
 }
 
 Grids::~Grids() {

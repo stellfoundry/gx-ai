@@ -7,6 +7,7 @@
 #include "fields.h"
 #include "ncdf.h"
 #include "reductions.h"
+#include "grad_parallel.h"
 
 class Diagnostics {
  public:
@@ -25,7 +26,8 @@ private:
   bool checkstop();
  
   float fluxDenom; float * flux_fac; 
-  float  volDenom; float * vol_fac ; 
+  float  volDenom; float * vol_fac ;
+  float * kvol_fac;
  
   cuComplex valphi;
 
@@ -33,6 +35,7 @@ private:
   Grids        * grids_        ;
   Geometry     * geo_          ;  
 
+  GradParallel * grad_par      ;
   Fields       * fields_old    ;
   NetCDF_ids   * id            ;
   
@@ -45,7 +48,7 @@ private:
   cuComplex    * t_bar         ;
   cuComplex    * favg          ;
   cuComplex    * df            ;
-  
+  cuComplex    * amom_d        ; 
   //  void write_omg (cuComplex *W, bool endrun);
   void print_omg (cuComplex *W);
   void get_rh    (Fields* f);

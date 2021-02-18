@@ -45,7 +45,7 @@ Red::Red(Grids *grids, std::vector<int> spectra) : grids_(grids), spectra_(spect
   for (int j = 0; j < J; j++) {
     if (spectra_[j] == 1) {
       for (auto mode : Modes[j]) extents[j].push_back(extent[mode]);
-      
+
       HANDLE_ERROR( cutensorInit(&handle));
       HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(),
 						 NULL, cfloat, CUTENSOR_OP_ABS));

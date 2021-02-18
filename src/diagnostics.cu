@@ -9,10 +9,9 @@
 #define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>>	  
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo),
-  fields_old(nullptr), id(nullptr)
+  pars_(pars), grids_(grids), geo_(geo), 
+  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr)
 {
-
   printf(ANSI_COLOR_BLUE);
   
   int nL  = grids_->Nl;
@@ -42,8 +41,23 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
   for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
 
-  if (pars_->diagnosing_spectra) cudaMalloc (&G2, sizeof(float) * nG); 
+  if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
 
+  if (pars_->diagnosing_kzspec) {
+    cudaMallocHost (&kvol_fac, sizeof(float) * nZ);
+    for (int i=0; i < nZ; i++) kvol_fac[i] = 1.0;
+
+    cudaMalloc (&amom_d, sizeof(cuComplex) * nR * nS); 
+    if (pars_->local_limit) {
+      // nothing, this is not defined, or could be defined as an identity.
+    }
+    else if(pars_->boundary_option_periodic) {
+      grad_par = new GradParallelPeriodic(grids_);
+    }
+    else {
+      grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    }
+  }
   cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
   if (id->rh.write) cudaMallocHost(&val, sizeof(float)*2);
@@ -149,6 +163,34 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       id->write_Q(P2s); 
     }      
 
+    if (pars_->diagnosing_kzspec) {
+      grad_par->zft(G); // get G = G(kz)
+      W_summand GALL (G2, G->G(), kvol_fac, pars_->species_h); // get G2 = |G(kz)**2|
+      grad_par->zft_inverse(G); // restore G
+
+      grad_par->zft(fields->phi, amom_d); // get amom_d = phi(kz)
+      
+      for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+	Wphi_summand GSPEC (P2(is), amom_d, kvol_fac, geo_->kperp2, pars_->species_h[is].rho2);	
+	Wphi_scale GSPEC   (P2(is), pars_->species_h[is].qneut);
+      }
+
+      if (pars_->add_Boltzmann_species) {
+	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac);
+	
+	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
+	  fieldlineaverage GFLA (favg, df, fields->phi, kvol_fac);
+	  grad_par->zft(df, amom_d); // get df = df(kz)
+	  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac); 	
+	}
+
+	float fac = 1./pars_->tau_fac;
+	Wphi_scale GSPEC (Phi2, fac);
+      }
+      
+      id->write_Wkz   (G2);    id->write_Pkz   (P2());    id->write_Akz   (Phi2);      
+    }
+    
     if (pars_->diagnosing_spectra) {                                        // Various spectra
       W_summand GALL (G2, G->G(), vol_fac, pars_->species_h);
       
@@ -169,10 +211,10 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 	Wphi_scale GSPEC (Phi2, fac);
       }
       
-      id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );
+      id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    
       id->write_Wz    (G2   );    id->write_Wky   (G2   );    id->write_Wkx   (G2   );    id->write_Wkxky (G2  );    
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
-      id->write_Az    (Phi2 );    id->write_Aky   (Phi2 );    id->write_Akx   (Phi2 );    id->write_Akxky (Phi2);    
+      id->write_Az    (Phi2 );    id->write_Aky   (Phi2 );    id->write_Akx   (Phi2 );    id->write_Akxky (Phi2);
       /*
       float *dum;
       cudaMallocHost (&dum, sizeof(float)*grids_->NxNycNz);

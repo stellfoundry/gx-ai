@@ -56,6 +56,7 @@
 #define WSPECTRA_lm 6
 #define WSPECTRA_kperp 7
 #define WSPECTRA_kxky 8
+#define WSPECTRA_kz 9
 
 #define PSPECTRA_species 0
 #define PSPECTRA_kx 1
@@ -63,6 +64,7 @@
 #define PSPECTRA_kperp 3
 #define PSPECTRA_kxky 4
 #define PSPECTRA_z 5
+#define PSPECTRA_kz 6
 
 #define ASPECTRA_species 0
 #define ASPECTRA_kx 1
@@ -70,6 +72,7 @@
 #define ASPECTRA_kperp 3
 #define ASPECTRA_kxky 4
 #define ASPECTRA_z 5
+#define ASPECTRA_kz 6
 
 #define BOLTZMANN_IONS 1
 #define BOLTZMANN_ELECTRONS 2
@@ -80,9 +83,9 @@ class Parameters {
   Parameters(void);
   ~Parameters(void);
   
-  const int nw_spectra = 9;
-  const int np_spectra = 6;
-  const int na_spectra = 6;
+  const int nw_spectra = 10;
+  const int np_spectra = 7;
+  const int na_spectra = 7;
   void get_nml_vars(char* file);
 
   void set_externalpars(external_parameters_struct* externalpars);
@@ -132,7 +135,7 @@ class Parameters {
   bool nlpm_test, new_nlpm, hammett_nlpm_interference, nlpm_abs_sgn, nlpm_hilbert;
   bool low_b, low_b_all, higher_order_moments, nlpm_zonal_only, nlpm_vol_avg;
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
-  bool zero_order_nonlin_flr_only, no_zonal_nlpm;
+  bool zero_order_nonlin_flr_only, no_zonal_nlpm, diagnosing_kzspec;
   bool write_l_spectrum, write_h_spectrum, write_lh_spectrum;
   bool write_phi_kpar, write_moms, write_fluxes, diagnosing_spectra;
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;

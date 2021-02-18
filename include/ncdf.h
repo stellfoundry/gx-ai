@@ -21,18 +21,21 @@ class NetCDF_ids {
 
   void write_Ws    (float * G2, bool endrun = false);
   void write_Wz    (float * G2, bool endrun = false);
+  void write_Wkz   (float * G2, bool endrun = false);
   void write_Wky   (float * G2, bool endrun = false);
   void write_Wkx   (float * G2, bool endrun = false);
   void write_Wkxky (float * G2, bool endrun = false);
   
   void write_Ps    (float * P2, bool endrun = false);
   void write_Pz    (float * P2, bool endrun = false);
+  void write_Pkz   (float * P2, bool endrun = false);
   void write_Pky   (float * P2, bool endrun = false);
   void write_Pkx   (float * P2, bool endrun = false);  
   void write_Pkxky (float * P2, bool endrun = false);
   
   void write_As    (float * P2, bool endrun = false);
   void write_Az    (float * P2, bool endrun = false);
+  void write_Akz   (float * G2, bool endrun = false);
   void write_Aky   (float * P2, bool endrun = false);
   void write_Akx   (float * P2, bool endrun = false);
   void write_Akxky (float * P2, bool endrun = false);
@@ -48,9 +51,9 @@ class NetCDF_ids {
   nca rh, omg, den, wphi, denk, wphik, den0, wphi0, qs; 
   nca Wm, Wl, Wlm;
   nca Pzt, pZt, pzT, Wtot;
-  nca Ps, Pky, Pkx, Pkxky, Pz;
-  nca Ws, Wky, Wkx, Wkxky, Wz;
-  nca As, Aky, Akx, Akxky, Az;
+  nca Ps, Pky, Pkx, Pkxky, Pz, Pkz;
+  nca Ws, Wky, Wkx, Wkxky, Wz, Wkz;
+  nca As, Aky, Akx, Akxky, Az, Akz;
   nca time;
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
@@ -106,6 +109,9 @@ class NetCDF_ids {
   float *Pkx_d, *Pkx_h, *tmp_Pkx_h;
   float *Aky_d, *Aky_h, *tmp_Aky_h;
   float *Akx_d, *Akx_h, *tmp_Akx_h;
+  float *Pkz_d, *Pkz_h, *tmp_Pkz_h;
+  float *Wkz_d, *Wkz_h, *tmp_Wkz_h;
+  float *Akz_d, *Akz_h, *tmp_Akz_h;
 
   float *Wkxky_d, *Wkxky_h, *tmp_Wkxky_h;
   float *Pkxky_d, *Pkxky_h, *tmp_Pkxky_h;
