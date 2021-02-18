@@ -157,7 +157,11 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  for (int js=0; js < 2; js++) {
-	    idx = (js==0) ? i : grids_->Nx-i;
+	    if (i==0) {
+	      idx = i;
+	    } else {
+	      idx = (js==0) ? i : grids_->Nx-i;
+	    }
 	    for(int k=0; k<grids_->Nz; k++) {
 	      int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
 	      if (js == 0) {
