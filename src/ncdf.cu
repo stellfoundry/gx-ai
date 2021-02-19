@@ -1615,6 +1615,7 @@ void NetCDF_ids::reduce2k(float *fk, cuComplex* f) {
   int Nyc  = grids_->Nyc;
 
   for(int i=0; i < 1+(Nx-1)/3 ; i++) {
+    //    printf("i= %d \t iout = %d\n",i,i+Nx/3);
     for(int j=0; j<Naky; j++) {
       int index     = j + Nyc * i; 
       int index_out = i+Nx/3 + Nakx * j;
@@ -1624,6 +1625,7 @@ void NetCDF_ids::reduce2k(float *fk, cuComplex* f) {
   }
   
   for(int i = 1+2*Nx/3; i < Nx; i++) {
+    //    printf("i= %d \t iout = %d\n",i,i-2*Nx/3-1);
     for(int j=0; j<Naky; j++) {
       int index = j + Nyc *i;
       int index_out = i - 2*Nx/3 - 1 + Nakx * j;

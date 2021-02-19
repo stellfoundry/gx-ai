@@ -39,11 +39,14 @@ void Parameters::get_nml_vars(char* filename)
   debug = toml::find_or <bool> (nml, "debug",    false);
   nz_in = toml::find_or <int> (nml, "ntheta",    32);
   ny_in = toml::find_or <int> (nml, "ny",        32);
-  nx_in = toml::find_or <int> (nml, "nx",        1);
+  nx_in = toml::find_or <int> (nml, "nx",        4);
   nm_in = toml::find_or <int> (nml, "nhermite",  4);
   nl_in = toml::find_or <int> (nml, "nlaguerre", 2);
   nspec_in = toml::find_or <int> (nml, "nspecies", 1);
 
+  if (nx_in<4) {printf("Warning: Behavior is not guaranteed for nx = %d \n",nx_in);}
+  if (ny_in<4) {printf("Warning: Behavior is not guaranteed for ny = %d \n",ny_in);}
+  
   dt = toml::find_or <float> (nml, "dt", 0.05);
   y0 = toml::find_or <float> (nml, "y0", 10.0);
   x0 = toml::find_or <float> (nml, "x0", 10.0);

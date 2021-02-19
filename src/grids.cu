@@ -70,11 +70,15 @@ Grids::Grids(Parameters* pars) :
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
 
-  for (int i = 0; i < 1 + (Nx-1)/3 ; i++) {
-    kx_outh[i]         = kx_h[i + 2*Nx/3 + 1];    
-    kx_outh[i + Nx/3 ] = kx_h[i];
+  if (Nx<4) {
+    for (int i=0; i<Nx; i++) kx_outh[i] = kx_h[i];
+  } else {    
+    kx_outh[0] = kx_h[2*Nx/3+1];
+    for (int i = 1; i < 1 + (Nx-1)/3 ; i++) {
+      kx_outh[i]         = kx_h[i + 2*Nx/3 + 1];    
+      kx_outh[i + Nx/3 ] = kx_h[i];
+    }
   }
-
   if (Nz>1) {
     for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
   } else {
