@@ -179,7 +179,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac);
 	
 	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
-	  fieldlineaverage GFLA (favg, df, fields->phi, kvol_fac);
+	  fieldlineaverage GFLA (favg, df, fields->phi, kvol_fac); // favg is a dummy variable
 	  grad_par->zft(df, amom_d); // get df = df(kz)
 	  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac); 	
 	}
@@ -203,7 +203,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
 	
 	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
-	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac);
+	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
 	  Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
 	}
 
@@ -290,43 +290,6 @@ void Diagnostics::finish(MomentsG* G, Fields* fields)
 
   id->close_nc_file();  fflush(NULL);
 
-  /*
-  cuComplex *favg;
-  cudaMalloc((void**) &favg, sizeof(cuComplex)*grids_->Nx);
-  
-  cuComplex *df;
-  cudaMalloc((void**) &df, sizeof(cuComplex)*grids_->NxNycNz);
-
-  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac);
-
-  cuComplex *favg_h;
-  cudaMallocHost((void**) &favg_h, sizeof(cuComplex)*grids_->Nx);
-
-  cuComplex *df_h;
-  cudaMallocHost((void**) &df_h, sizeof(cuComplex)*grids_->NxNycNz);
-  
-  cuComplex *phi_h;
-  cudaMallocHost((void**) &phi_h, sizeof(cuComplex)*grids_->NxNycNz);
-  
-  
-  CP_TO_CPU (df_h, df, sizeof(cuComplex)*grids_->NxNycNz);
-  CP_TO_CPU (phi_h, fields->phi, sizeof(cuComplex)*grids_->NxNycNz);
-  CP_TO_CPU (favg_h, favg, sizeof(cuComplex)*grids_->Nx);
-
-  for (int iz = 0; iz < grids_->Nz; iz++) {
-    for (int idx = 0; idx < grids_->Nx; idx++) {
-      for (int idy = 0; idy < grids_->Nyc; idy++) {
-	int ig = idy + idx*grids_->Nyc + iz*grids_->Nyc*grids_->Nx;
-	printf("phi(%d, %d, %d) = (%e, %e) \t <<phi>> = (%e, %e) \t df = (%e, %e) \n", idy, idx, iz,
-	       phi_h[ig].x,   phi_h[ig].y, 
-	       favg_h[idx].x, favg_h[idx].y, 
-	       df_h[ig].x,     df_h[ig].y);
-      }
-      printf("\n");
-    }
-    printf("\n");
-  }
-  */  
 }
 /*
 void Diagnostics::write_init(MomentsG* G, Fields* fields) {

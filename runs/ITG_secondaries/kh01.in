@@ -21,7 +21,7 @@
  nwrite = 1
  navg   = 1
  nsave  = 100000
-
+ 
  beta = 0.0
  tau_fac = 1.0
 

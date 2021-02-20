@@ -413,12 +413,29 @@ __device__ bool unmasked(int idx, int idy) {
 // not the opposite of unmasked b/c indices could simply be out of range
 __device__ bool masked(int idx, int idy) {
   int ikx = get_ikx(idx);
-  if ( ( (idx==0 && idy==0) || idy > (ny-1)/3  || ikx > (nx-1)/3 || ikx < -(nx-1)/3 )
-       && idx < nx  // index should be in range to be actively masked
-       && idy < ny) // index should be in range to be actively masked
+  if ( idx < nx           // index should be in range to be actively masked
+    && idy < ny           // index should be in range to be actively masked
+       && ( (idx==0 && idy==0) || idy > (ny-1)/3  || ikx > (nx-1)/3 || ikx < -(nx-1)/3 ))
     return true;
   else
     return false;
+}
+
+__global__ void maskG(cuComplex* g)
+{
+  unsigned int idxy = get_id1();
+  if (idxy < nx*nyc) {
+    unsigned int idy = idxy % nyc;
+    unsigned int idx = idxy / nyc; 
+    if (masked(idx, idy)) {
+      unsigned int idz = get_id2();
+      unsigned int idslm = get_id3();
+      if ((idz < nz) && (idslm < nl*nm*nspecies)) {
+	unsigned int globalIdx = idxy + nyc*nx*(idz + nz*idslm);
+	g[globalIdx] = make_cuComplex(0., 0.);
+      }
+    }
+  }  
 }
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale)
@@ -502,8 +519,8 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   if (idxy < J) {
     int IG = (int) nz/2 ;
     
-    int idx = idxy / nyc % nx;
     int idy = idxy % nyc;
+    int idx = idxy / nyc; // % nx;
     
     if (unmasked(idx, idy)) {
       if (abs(phi[idxy+J*IG].x)!=0 && abs(phi[idxy+J*IG].y)!=0) {
@@ -579,7 +596,7 @@ __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *k
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;    
 }
 
-__device__ void zinv(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr)
+__device__ void zfts(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr)
 {
   ((cuComplex*)dataOut)[offset] = element/nz;    
 }
@@ -599,7 +616,7 @@ __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
-__managed__ cufftCallbackStoreC zinv_callbackPtr = zinv;
+__managed__ cufftCallbackStoreC zfts_callbackPtr = zfts;
 __managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
 __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
 __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
@@ -705,7 +722,7 @@ __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex
     unsigned int idy = idxy % nyc;
     unsigned int idx = idxy / nyc;
 
-    favg[idx] = make_cuComplex(0., 0.);
+    favg[idx] = make_cuComplex(0., 0.); 
 
     // calculate <<f>> 
     if (idy == 0 && unmasked(idx, idy)) {
@@ -978,22 +995,20 @@ __global__ void ampere(cuComplex* Apar,
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species) 
 {
-  unsigned int idxyz = get_id1();
-
-  if (idxyz < nx*nyc*nz) {
-    nbar[idxyz] = make_cuComplex(0., 0.);
-    int idy = idxyz % nyc;
-    int idx = idxyz / nyc % nx;
-    if ( unmasked(idx, idy) ) {
-      for (int is=0; is < nspecies; is++) {
-	const float b_s = kperp2[idxyz] * species[is].rho2;
-	for (int l=0; l < nl; l++) {
-	  unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
-	  // sum over l and s for m=0
-	  // Each thread does this double sum for a particular (kx, ky, z) 
-	  //
-	  nbar[idxyz] = nbar[idxyz] + Jflr(l,b_s) * g[ig] * species[is].nz;
-	}	
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      if (unmasked(idx, idy)) {
+	unsigned int idz = get_id3();
+	unsigned int idxyz = idy + nyc*(idx + nx*idz);
+	for (int is=0; is < nspecies; is++) {
+	  const float b_s = kperp2[idxyz] * species[is].rho2;	  
+	  for (int l=0; l < nl; l++) {
+	    unsigned int ig = idxyz + nx*nyc*nz*(l + nl*nm*is);
+	    nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * species[is].nz;
+	  }
+	}
       }
     }
   }
@@ -1310,7 +1325,7 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
   ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
 }
 
-__device__ void zinv_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+__device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz  = (float*) kzData;
   int nLinks = (int) lrintf(1./(zp*kz[1]));
@@ -1338,8 +1353,8 @@ __global__ void init_kzLinked(float* kz, int nLinks)
   }
 }
 
-__managed__ cufftCallbackStoreC zinv_Linked_callbackPtr = zinv_Linked;
-__managed__ cufftCallbackStoreC i_kzLinked_callbackPtr = i_kzLinked;
+__managed__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
+__managed__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
 __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
 __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
@@ -1373,13 +1388,65 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
+__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const float* kperp2,
+			      const float gradpar, const specie* species, cuComplex* rhs_par)
+{
+  unsigned int idy  = get_id1();
+  unsigned int idx  = get_id2();
+  unsigned int idzl = get_id3();
+  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idzl < nz*nl)) {
+
+    int m = 0;       // m = 0 case
+    for (int is = 0; is < nspecies; is++) {
+      const float vt_ = species[is].vt;
+      unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
+      unsigned int mp1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m+1 + nm * is)));
+      rhs_par[globalIdx] = -vt_ * sqrtf(m+1) * g[mp1] * gradpar;
+    }
+        
+    m = nm - 1;     // m = nm-1 case
+    for (int is = 0; is < nspecies; is++) {
+      const float vt_ = species[is].vt;
+      unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
+      unsigned int mm1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m-1 + nm * is)));
+      rhs_par[globalIdx] = -vt_ * sqrtf(m) * g[mm1]  * gradpar;
+    }
+    
+    for (int m = 1; m < nm-1; m++) {
+      for (int is = 0; is < nspecies; is++) {
+	const float vt_ = species[is].vt;
+	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));	
+	unsigned int mp1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m+1 + nm * is)));
+	unsigned int mm1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m-1 + nm * is)));
+	
+	rhs_par[globalIdx] = -vt_ * (sqrtf(m+1)*g[mp1] + sqrtf(m)*g[mm1]) * gradpar;
+      }
+    }
+
+    m = 1;          // m = 1 has Phi term
+    if (nm > 1) {
+      unsigned int idz = idzl % nz;     
+      unsigned int l   = idzl / nz;
+      unsigned int idxyz = idy + nyc*(idx + nx*idz);
+      const cuComplex phi_ = phi[idxyz];
+
+      for (int is = 0; is < nspecies; is++) {
+	const float vt_ = species[is].vt;
+	const float zt_ = species[is].zt;
+	const float b_s = species[is].rho2 * kperp2[idxyz];
+	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
+	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
+      }
+    }    
+  }
+}
+
 // main kernel function for calculating RHS
 # define S_G(L, M) s_g[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
-			   const float* ky, const specie* species,
-			   cuComplex* rhs_par, cuComplex* rhs)
+			   const float* ky, const specie* species, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
   
@@ -1477,15 +1544,11 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      // blockIdx for y and z are unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	 int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; // nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; 
 	 int sl = l + 1; // offset to get past ghosts
 	 int sm = m + 2; // offset to get past ghosts
-
-	 // need to calculate parallel terms separately because need to take derivative via fft 
-	 rhs_par[globalIdx] = -vt_*( sqrtf(m+1)*S_G(sl,sm+1) + sqrtf(m)*S_G(sl,sm-1) );
   
-	 // remaining terms
-	 rhs[globalIdx] = 
+	 rhs[globalIdx] = rhs[globalIdx] 
 	   - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)* l   *S_G(sl-1,sm+1)  
                               + sqrtf(m  )* l   *S_G(sl,sm-1) + sqrtf(m  )*(l+1)*S_G(sl+1,sm-1) )
   
@@ -1507,8 +1570,6 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 }
 
 	 if (m==1) {
-	   rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l,b_s)*phi_ * zt_ * vt_;
-	   
 	   rhs[globalIdx] = rhs[globalIdx] - phi_ * (
 	            l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
       		  + nu_ * Jflr(l,b_s) * upar_bar_;

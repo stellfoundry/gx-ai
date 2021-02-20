@@ -563,27 +563,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     cudaMalloc     (&Ws_d,        sizeof(float) * nS);
     cudaMallocHost (&Ws_h,        sizeof(float) * nS);    
   }
-  
-  ////////////////////////////
-  //                        //
-  // W (adiabatic species)  //
-  //                        //
-  ////////////////////////////
 
- 
-  As.write_v_time = (pars_->aspectra[ASPECTRA_species] > 0);
-
-  if (As.write_v_time) {
-    As.time_dims[0] = time_dim;
-    
-    if (retval = nc_def_var(file, "W_adiabatic", NC_FLOAT, 1, As.time_dims, &As.time))  ERR(retval);
-    As.time_start[0] = 0;
-    As.time_count[0] = 1;
-
-    cudaMalloc     (&As_d,        sizeof(float)*2); // bd bug chase back to as.write
-    cudaMallocHost (&As_h,        sizeof(float));      
-  }
-  
   ////////////////////////////
   //                        //
   //   W (ky, species)      //
@@ -610,30 +590,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     cudaMallocHost (&tmp_Wky_h,   sizeof(float) * nY * nS); 
     cudaMallocHost (&Wky_h,       sizeof(float) * nYk * nS);
     
-  }   
-
-  ////////////////////////////
-  //                        //
-  //   W (ky) adiabatic     //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->aspectra[ASPECTRA_ky] > 0) Aky.write_v_time = true;
-
-  if (Aky.write_v_time) {
-    Aky.time_dims[0] = time_dim;
-    Aky.time_dims[1] = ky_dim;
-    
-    if (retval = nc_def_var(file, "Akyst", NC_FLOAT, 2, Aky.time_dims, &Aky.time))  ERR(retval);
-    Aky.time_start[0] = 0;
-    Aky.time_start[1] = 0;
-    
-    Aky.time_count[0] = 1;
-    Aky.time_count[1] = grids_->Naky;      
-
-    cudaMalloc     (&Aky_d,       sizeof(float) * nY); 
-    cudaMallocHost (&tmp_Aky_h,   sizeof(float) * nY); 
-    cudaMallocHost (&Aky_h,       sizeof(float) * nYk);
   }   
   
   ////////////////////////////
@@ -662,87 +618,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     cudaMallocHost (&tmp_Wkx_h,   sizeof(float) * nX * nS);
     cudaMallocHost (&Wkx_h,       sizeof(float) * nXk * nS);    
   }
-  
-  ////////////////////////////
-  //                        //
-  //   W (kx) adiabatic     //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->aspectra[ASPECTRA_kx] > 0) Akx.write_v_time = true;
-
-  if (Akx.write_v_time) {
-    Akx.time_dims[0] = time_dim;
-    Akx.time_dims[1] = kx_dim;
-    
-    if (retval = nc_def_var(file, "Akxst", NC_FLOAT, 2, Akx.time_dims, &Akx.time))  ERR(retval);
-    Akx.time_start[0] = 0;
-    Akx.time_start[1] = 0;
-    
-    Akx.time_count[0] = 1;
-    Akx.time_count[1] = grids_->Nakx;      
-
-    cudaMalloc     (&Akx_d,       sizeof(float) * nX);
-    cudaMallocHost (&tmp_Akx_h,   sizeof(float) * nX);
-    cudaMallocHost (&Akx_h,       sizeof(float) * nXk);
-  }   
-  
-  ////////////////////////////
-  //                        //
-  //   W (kx,ky,  species)  //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->wspectra[WSPECTRA_kxky] > 0) Wkxky.write_v_time = true;
-
-  if (Wkxky.write_v_time) {
-    Wkxky.time_dims[0] = time_dim;
-    Wkxky.time_dims[1] = s_dim;
-    Wkxky.time_dims[2] = ky_dim;
-    Wkxky.time_dims[3] = kx_dim;
-    
-    if (retval = nc_def_var(file, "Wkxkyst", NC_FLOAT, 4, Wkxky.time_dims, &Wkxky.time))  ERR(retval);
-    Wkxky.time_start[0] = 0;
-    Wkxky.time_start[1] = 0;
-    Wkxky.time_start[2] = 0;
-    Wkxky.time_start[3] = 0;
-    
-    Wkxky.time_count[0] = 1;
-    Wkxky.time_count[1] = grids_->Nspecies;
-    Wkxky.time_count[2] = grids_->Naky;      
-    Wkxky.time_count[3] = grids_->Nakx;
-
-    cudaMalloc     (&Wkxky_d,     sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&tmp_Wkxky_h, sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&Wkxky_h,     sizeof(float) * nXk * nYk * nS);    
-  }   
-
-  ////////////////////////////
-  //                        //
-  //   W (kx,ky) adiabatic  //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->aspectra[ASPECTRA_kxky] > 0) Akxky.write_v_time = true;
-
-  if (Akxky.write_v_time) {
-    Akxky.time_dims[0] = time_dim;
-    Akxky.time_dims[1] = ky_dim;
-    Akxky.time_dims[2] = kx_dim;
-    
-    if (retval = nc_def_var(file, "Akxkyst", NC_FLOAT, 3, Akxky.time_dims, &Akxky.time))  ERR(retval);
-    Akxky.time_start[0] = 0;
-    Akxky.time_start[1] = 0;
-    Akxky.time_start[2] = 0;
-    
-    Akxky.time_count[0] = 1;
-    Akxky.time_count[1] = grids_->Naky;      
-    Akxky.time_count[2] = grids_->Nakx;
-
-    cudaMalloc     (&Akxky_d,     sizeof(float) * nX * nY);
-    cudaMallocHost (&tmp_Akxky_h, sizeof(float) * nX * nY);
-    cudaMallocHost (&Akxky_h,     sizeof(float) * nXk * nYk);
-  }   
   
   ////////////////////////////
   //                        //
@@ -795,6 +670,131 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     
     cudaMalloc     (&Wz_d,        sizeof(float) * nZ * nS);
     cudaMallocHost (&Wz_h,        sizeof(float) * nZ * nS);    
+  }   
+  
+  ////////////////////////////
+  //                        //
+  //   W (kx,ky,  species)  //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->wspectra[WSPECTRA_kxky] > 0) Wkxky.write_v_time = true;
+
+  if (Wkxky.write_v_time) {
+    Wkxky.time_dims[0] = time_dim;
+    Wkxky.time_dims[1] = s_dim;
+    Wkxky.time_dims[2] = ky_dim;
+    Wkxky.time_dims[3] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Wkxkyst", NC_FLOAT, 4, Wkxky.time_dims, &Wkxky.time))  ERR(retval);
+    Wkxky.time_start[0] = 0;
+    Wkxky.time_start[1] = 0;
+    Wkxky.time_start[2] = 0;
+    Wkxky.time_start[3] = 0;
+    
+    Wkxky.time_count[0] = 1;
+    Wkxky.time_count[1] = grids_->Nspecies;
+    Wkxky.time_count[2] = grids_->Naky;      
+    Wkxky.time_count[3] = grids_->Nakx;
+
+    cudaMalloc     (&Wkxky_d,     sizeof(float) * nX * nY * nS);
+    cudaMallocHost (&tmp_Wkxky_h, sizeof(float) * nX * nY * nS);
+    cudaMallocHost (&Wkxky_h,     sizeof(float) * nXk * nYk * nS);    
+  }   
+
+  ////////////////////////////
+  //                        //
+  // W (adiabatic species)  //
+  //                        //
+  ////////////////////////////
+
+ 
+  As.write_v_time = (pars_->aspectra[ASPECTRA_species] > 0);
+
+  if (As.write_v_time) {
+    As.time_dims[0] = time_dim;
+    
+    if (retval = nc_def_var(file, "At", NC_FLOAT, 1, As.time_dims, &As.time))  ERR(retval);
+    As.time_start[0] = 0;
+    As.time_count[0] = 1;
+
+    cudaMalloc     (&As_d,        sizeof(float));
+    cudaMallocHost (&As_h,        sizeof(float));      
+  }  
+
+  ////////////////////////////
+  //                        //
+  //   W (ky) adiabatic     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_ky] > 0) Aky.write_v_time = true;
+
+  if (Aky.write_v_time) {
+    Aky.time_dims[0] = time_dim;
+    Aky.time_dims[1] = ky_dim;
+    
+    if (retval = nc_def_var(file, "Akyst", NC_FLOAT, 2, Aky.time_dims, &Aky.time))  ERR(retval);
+    Aky.time_start[0] = 0;
+    Aky.time_start[1] = 0;
+    
+    Aky.time_count[0] = 1;
+    Aky.time_count[1] = grids_->Naky;      
+
+    cudaMalloc     (&Aky_d,       sizeof(float) * nY); 
+    cudaMallocHost (&tmp_Aky_h,   sizeof(float) * nY); 
+    cudaMallocHost (&Aky_h,       sizeof(float) * nYk);
+  }   
+  
+  ////////////////////////////
+  //                        //
+  //   W (kx) adiabatic     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_kx] > 0) Akx.write_v_time = true;
+
+  if (Akx.write_v_time) {
+    Akx.time_dims[0] = time_dim;
+    Akx.time_dims[1] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Akxst", NC_FLOAT, 2, Akx.time_dims, &Akx.time))  ERR(retval);
+    Akx.time_start[0] = 0;
+    Akx.time_start[1] = 0;
+    
+    Akx.time_count[0] = 1;
+    Akx.time_count[1] = grids_->Nakx;      
+
+    cudaMalloc     (&Akx_d,       sizeof(float) * nX);
+    cudaMallocHost (&tmp_Akx_h,   sizeof(float) * nX);
+    cudaMallocHost (&Akx_h,       sizeof(float) * nXk);
+  }   
+  
+  ////////////////////////////
+  //                        //
+  //   W (kx,ky) adiabatic  //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->aspectra[ASPECTRA_kxky] > 0) Akxky.write_v_time = true;
+
+  if (Akxky.write_v_time) {
+    Akxky.time_dims[0] = time_dim;
+    Akxky.time_dims[1] = ky_dim;
+    Akxky.time_dims[2] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Akxkyst", NC_FLOAT, 3, Akxky.time_dims, &Akxky.time))  ERR(retval);
+    Akxky.time_start[0] = 0;
+    Akxky.time_start[1] = 0;
+    Akxky.time_start[2] = 0;
+    
+    Akxky.time_count[0] = 1;
+    Akxky.time_count[1] = grids_->Naky;      
+    Akxky.time_count[2] = grids_->Nakx;
+
+    cudaMalloc     (&Akxky_d,     sizeof(float) * nX * nY);
+    cudaMallocHost (&tmp_Akxky_h, sizeof(float) * nX * nY);
+    cudaMallocHost (&Akxky_h,     sizeof(float) * nXk * nYk);
   }   
   
   ////////////////////////////

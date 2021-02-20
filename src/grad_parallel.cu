@@ -33,7 +33,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
 
   // set up callback functions
   cudaDeviceSynchronize();
-  cufftXtSetCallback(   zft_plan_inverse, (void**)   &zinv_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
+  cufftXtSetCallback(   zft_plan_forward, (void**)   &zfts_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(    dz_plan_forward, (void**)   &i_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cufftXtSetCallback(abs_dz_plan_forward, (void**) &abs_kz_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&grids_->kz);
   cudaDeviceSynchronize();
@@ -122,7 +122,7 @@ GradParallelLocal::GradParallelLocal(Grids* grids) :
   grids_(grids)
 {
   dB = 512;
-  dG = grids_->NxNycNz/dB.x+1;
+  dG = 1 + (grids_->NxNycNz-1)/dB.x;
 }
 
 void GradParallelLocal::dz(MomentsG *G)
@@ -132,8 +132,9 @@ void GradParallelLocal::dz(MomentsG *G)
 
 void GradParallelLocal::zft(MomentsG *G) {return;}
 void GradParallelLocal::zft_inverse(MomentsG *G) {return;}
-void GradParallelLocal::zft(cuComplex* mom, cuComplex* res) {scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));}
-
+void GradParallelLocal::zft(cuComplex* mom, cuComplex* res) {
+  scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));
+}
 // single moment
 void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
   scale_singlemom_kernel GGP (res, mom, make_cuComplex(0.,1.));

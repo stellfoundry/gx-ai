@@ -119,9 +119,7 @@ void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 
   //  f->print_phi();
   
-  EulerStep (G1, G, GRhs, f, true); 
-  solver_->fieldSolve(G1, f);
-
+  EulerStep (G1, G , GRhs, f, true);     solver_->fieldSolve(G1, f);
   EulerStep (G2, G1, GRhs, f, false);
 
   G2->add_scaled((1.-w1), G, (w1-1.), G1, 1., G2);
@@ -132,7 +130,7 @@ void SSPx3::advance(double *t, MomentsG* G, Fields* f)
   G->add_scaled((1.-w2-w3), G, w3, G1, (w2-1.), G2, 1., G3);
   
   if (forcing_ != nullptr) forcing_->stir(G);  
-
+  G->mask();
   solver_->fieldSolve(G, f);
 
   *t += dt_;

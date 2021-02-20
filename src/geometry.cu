@@ -412,9 +412,8 @@ void Geometry::calculate_bgrad(Grids* grids)
 
   //bgrad = d/dz ln(B(z)) = 1/B dB/dz
   grad_par->dz1D(bgrad_temp); // FFT and k-space derivative
-  float scale = gradpar;
-  //  calc_bgrad <<< 1, grids->Nz >>> (bgrad, bgrad_temp, bmag, scale);
-  calc_bgrad <<< 1 + (grids->Nz-1)/512, 512 >>> (bgrad, bgrad_temp, bmag, scale);  
+
+  calc_bgrad <<< 1 + (grids->Nz-1)/512, 512 >>> (bgrad, bgrad_temp, bmag, gradpar);
 
   CP_TO_CPU (bgrad_h, bgrad, size);
   if (bgrad_temp) cudaFree(bgrad_temp);

@@ -128,9 +128,20 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
     // initialize kzLinked
     init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c]);
+
+    int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
+
+    nn1 = grids_->Nz;                   nt1 = min( nn1, 32 );    nb1 = 1 + (nn1-1)/nt1;
+    nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  4 );    nb2 = 1 + (nn2-1)/nt2; 
+    nn3 = grids_->Nmoms;                nt3 = min( nn3,  4 );    nb3 = 1 + (nn3-1)/nt3;
     
-    dB[c] = dim3(32,4,4);
-    dG[c] = dim3(grids_->Nz/dB[c].x+1, nLinks[c]*nChains[c]/dB[c].y+1, grids_->Nmoms/dB[c].z+1);
+    dB[c] = dim3(nt1, nt2, nt3);
+    dG[c] = dim3(nb1, nb2, nb3);
+
+    //    dB[c] = dim3(32,4,4);
+    //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
+    //		 1 + (nLinks[c]*nChains[c]-1)/dB[c].y,
+    //		 1 + (grids_->Nmoms-1)/dB[c].z);
   }
 
   set_callbacks();
@@ -547,11 +558,8 @@ void GradParallelLinked::set_callbacks()
   for(int c=0; c<nClasses; c++) {
     // set up callback functions
     cudaDeviceSynchronize();
-    cufftXtSetCallback(    zft_plan_inverse[c],
-		       (void**)   &zinv_Linked_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]);
-
-    //    cufftXtSetCallback(    zft_plan_inverse_singlemom[c],
-    //		       (void**)   &zinv_Linked_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]);
+    cufftXtSetCallback(    zft_plan_forward[c],
+		       (void**)   &zfts_Linked_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]);
 
     cufftXtSetCallback(    dz_plan_forward[c],
 		       (void**)   &i_kzLinked_callbackPtr, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]);

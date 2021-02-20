@@ -9,8 +9,6 @@
 #include "species.h"
 #include "cuda_constants.h"
 
-
-
 class Linear {
 public:
   Linear(Parameters* pars, Grids* grids, Geometry* geo); 
@@ -22,7 +20,7 @@ public:
 
   //  int zderiv(MomentsG *G);
 
-  dim3 dimGrid, dimBlock, dG, dB;
+  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs;
   int sharedSize;
   
  private:

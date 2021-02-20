@@ -2,13 +2,11 @@
 
 Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  GRhs_par(nullptr), closures(nullptr), grad_par(nullptr)
+  closures(nullptr), grad_par(nullptr)
 {
   ks = false;
   upar_bar  = nullptr;           uperp_bar = nullptr;            t_bar     = nullptr;
   
-  GRhs_par = new MomentsG(pars_, grids_);
-
   // set up parallel ffts
   if(pars_->local_limit) {
     DEBUGPRINT("Using local limit for grad parallel.\n");
@@ -42,18 +40,37 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
 
-  // set up CUDA grids for main linear kernel.  
-  // NOTE: dimBlock.x = sharedSize.x = 32 gives best performance, but using 8 is only 5% worse.
-  // this allows use of 4x more LH resolution without changing shared memory layouts.
-  // dimBlock = dim3(8, min(4, grids_->Nl), min(4, grids_->Nm));
+  int nn1 = grids_->Nyc;             int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
+  int nn2 = grids_->Nx;              int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
+  int nn3 = grids_->Nz*grids_->Nl;   int nt3 = min(nn3,  4);   int nb3 = 1 + (nn3-1)/nt3;
+  
+  dBs = dim3(nt1, nt2, nt3);
+  dGs = dim3(nb1, nb2, nb3);
 
-  dimBlock = dim3(pars_->i_share, min(4, grids_->Nl), min(4, grids_->Nm));
-  dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
-  sharedSize = dimBlock.x*(grids_->Nl+2)*(grids_->Nm+4)*sizeof(cuComplex);
+  // set up CUDA grids for main linear kernel.  
+  // NOTE: nt1 = sharedSize = 32 gives best performance, but using 8 is only 5% worse.
+  // this allows use of 4x more LH resolution without changing shared memory layouts
+  // so i_share = 8 is used by default.
+
+  nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
+
+  dimBlock = dim3(nt1, nt2, nt3);
+  dimGrid  = dim3(nb1, nb2, nb3);
+  
+  sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
+
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
   if(sharedSize/1024.>96.) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
-    printf("size of shared memory block must be less than 96 KB, so make sure (nm+4)*(nlaguerre+2)<%d.\n", 96*1024/8/dimBlock.x);
+    printf("If you wish to try to keep this velocity resolution, ");
+    printf("you can try lowering i_share in your input file.\n");
+    printf("You are using i_share = %d now, perhaps by default.\n", pars_->i_share);
+    printf("The size of the shared memory block should be less than 96 KB ");
+    printf("which means i_share*(nhermite+4)*(nlaguerre+2) < %d. \n", 12*1024);
+    printf("Presently, you have set i_share*(nhermite+4)*(nlaguerre+2) = %d. \n",
+	   pars_->i_share*(grids_->Nm+4)*(grids_->Nl+2));
     exit(1);
   }
 }
@@ -64,14 +81,13 @@ Linear::Linear(Parameters* pars, Grids* grids) :
   ks = true;
   
   dB = dim3(min(128, grids_->Naky), 1, 1);
-  dG = dim3((grids_->Naky-1)/dB.x + 1, 1, 1);
+  dG = dim3(1+(grids_->Naky-1)/dB.x, 1, 1);
 }
 
 Linear::~Linear()
 {
   if (closures) delete closures;
   if (grad_par) delete grad_par;
-  if (GRhs_par) delete GRhs_par;
 
   if (upar_bar)   cudaFree(upar_bar);
   if (uperp_bar)  cudaFree(uperp_bar);
@@ -89,23 +105,20 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   if (pars_->collisions)  conservation_terms <<<(grids_->NxNycNz-1)/256+1, 256>>>
       (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
-  
-  // Moving streaming here. Get rhs_par, then d/dz of it. save as rhs.
 
-  // change this to add to rhs that exists
+  // to be safe, start with zeros on RHS
+  cudaMemset(GRhs, 0., grids_->size_G);
+
+  // Free-streaming requires parallel FFTs, so do that first
+  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, geo_->gradpar, pars_->species, GRhs->G());
+  grad_par->dz(GRhs);
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
-       	grids_->ky, pars_->species, GRhs_par->G(), GRhs->G());
-
-  // calculate streaming terms
-  grad_par->dz(GRhs_par);
-
-  // combine
-  GRhs->add_scaled(1., GRhs, (float) geo_->gradpar, GRhs_par);
+       	grids_->ky, pars_->species, GRhs->G());
 
   // closures
   if(pars_->closure_model_opt>0) closures->apply_closures(G, GRhs);

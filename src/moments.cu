@@ -46,32 +46,34 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
     if(l<Nl && m<Nm) qprp_ptr[s] = G(l,m,s);
   }
 
+  int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
+  
   if (pars_->ks) {
-    int nbx = 128;
-    int ngx = (grids_->Nyc-1)/nbx + 1;
+    nn1 = grids_->Nyc;                 nt1 = min(nn1, 128);    nb1 = 1 + (nn1-1)/nt1;
+    nn2 = 1;                           nt2 = min(nn2,   1);    nb2 = 1 + (nn2-1)/nt2;
+    nn3 = 1;                           nt3 = min(nn3,   1);    nb3 = 1 + (nn3-1)/nt3;
     
-    dB_all = dim3(nbx, 1, 1);
-    dG_all = dim3(ngx, 1, 1);
-
-    dimBlock = dim3(nbx, 1, 1);
-    dimGrid  = dim3(ngx, 1, 1);
+    dB_all   = dim3(nt1, nt2, nt3);    dG_all   = dim3(nb1, nb2, nb3);
+    dimBlock = dim3(nt1, nt2, nt3);    dimGrid  = dim3(nb1, nb2, nb3);
     
   } else {
 
-    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
-    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
+    //    nn1 = grids_->NxNycNz;      nt1 = min(32, nn1);  nb1 = 1 + (nn1-1)/nt1;
+    //    nn2 = 1;                    nt2 = min( 4, Nl);   nb2 = 1 + (nn2-1)/nt2;
+    //    nn3 = 1;                    nt3 = min( 4, Nm);   nb3 = 1 + (nn3-1)/nt3;
     
-    int nyx = grids_->Nyc*grids_->Nx;
-    int nslm =  grids_->Nspecies*grids_->Nm*grids_->Nl;
+    //    dimBlock = dim3(nt1, nt2, nt3);
+    //    dimGrid  = dim3(nb1, nb2, nb3);
     
-    int nbx = 32;
-    int ngx = (nyx-1)/nbx + 1;
+    //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
+    //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
+
+    nn1 = grids_->Nyc*grids_->Nx;                   nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
+    nn2 = grids_->Nz;                               nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
+    nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
     
-    int nby = 32;
-    int ngy = (grids_->Nz-1)/nby + 1;
-    
-    dB_all = dim3(nbx, nby, 1);
-    dG_all = dim3(ngx, ngy, nslm);	 
+    dB_all = dim3(nt1, nt2, nt3);
+    dG_all = dim3(nb1, nb2, nb3);	 
   }
 }
 
@@ -206,6 +208,7 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 
 void MomentsG::scale(double    scalar) {scale_kernel GALL (G_lm, scalar);}
 void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G_lm, scalar);}
+void MomentsG::mask(void) {maskG GALL (this->G_lm);}
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2) {
@@ -503,16 +506,16 @@ void MomentsG::restart_read(double* time)
 void MomentsG::qvar(int N)
 {
   cuComplex* G_h;
-  int Nk = grids_->Nyc;
+  //  int Nk = grids_->Nyc;
   //  Nk = 1;
-  //  int Nk = grids_->NxNycNz;
+  int Nk = grids_->NxNycNz;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
   for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G_lm, N*sizeof(cuComplex));
   printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  // for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
   //  for (int i=N-20; i<N; i++) printf("var(%d) = (%e, %e) \n", i, G_h[i].x, G_h[i].y);
-  //for (int i=0; i<5; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  for (int i=0; i<N; i++) printf("m var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
   printf("\n");
 
   free (G_h);

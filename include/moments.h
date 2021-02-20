@@ -36,6 +36,7 @@ class MomentsG {
 
   void scale(double scalar);
   void scale(cuComplex scalar);
+  void mask(void);
 
   //  void dz(MomentsG* G);
   void reality(int ngz);

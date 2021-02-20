@@ -11,8 +11,8 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
   } else {
     
     size_t cgrid = sizeof(cuComplex)*grids_->NxNycNz;
-    cudaMalloc((void**) &nbar, cgrid); cudaMemset(nbar, 0., cgrid);
-    cudaMalloc((void**) &tmp,  cgrid); cudaMemset(tmp,  0., cgrid);
+    cudaMalloc((void**) &nbar, cgrid); zero(nbar);
+    cudaMalloc((void**) &tmp,  cgrid); zero(tmp);
     
     // set up phiavgdenom, which is stored for quasineutrality calculation
     cudaMalloc((void**) &phiavgdenom, sizeof(float)*grids_->Nx);
@@ -30,12 +30,21 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
 					      pars_->tau_fac);
     }
   
-    // cuda dims for qneut calculation
-    dB = dim3(32, 4, 4);
-    dG = dim3((grids_->Nyc-1)/dB.x+1, (grids_->Nx-1)/dB.y+1, (grids_->Nz-1)/dB.z+1);  
+    int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
     
-    db = dim3(32, 32, 1);
-    dg = dim3((grids_->Nyc-1)/db.x+1, (grids_->Nx-1)/db.y+1, 1);
+    nn1 = grids_->Nyc;        nt1 = min(nn1, 32 );   nb1 = 1 + (nn1-1)/nt1;
+    nn2 = grids_->Nx;         nt2 = min(nn2,  4 );   nb2 = 1 + (nn2-1)/nt2;
+    nn3 = grids_->Nz;         nt3 = min(nn3,  4 );   nb3 = 1 + (nn3-1)/nt3;
+    
+    dB = dim3(nt1, nt2, nt3);
+    dG = dim3(nb1, nb2, nb3);
+
+    nn1 = grids_->Nyc;        nt1 = min(nn1, 32 );   nb1 = 1 + (nn1-1)/nt1;
+    nn2 = grids_->Nx;         nt2 = min(nn2, 32 );   nb2 = 1 + (nn2-1)/nt2;
+    nn3 = 1;                  nt3 = min(nn3,  1 );   nb3 = 1 + (nn3-1)/nt3;
+        
+    db = dim3(nt1, nt2, nt3);
+    dg = dim3(nb1, nb2, nb3);
   }
 }
 
@@ -50,10 +59,7 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
 {
   if (pars_->ks) return;
   
-  if (pars_->no_fields) {
-    cudaMemset (fields->phi, 0., sizeof(cuComplex)*grids_->NxNycNz);
-    return;
-  }
+  if (pars_->no_fields) { zero(fields->phi); return; }
   
   bool em = pars_->beta > 0. ? true : false;
   
@@ -65,20 +71,15 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
 
   } else {
 
-    int nts = 512;
-    nts = min(nts, grids_->Nyc*grids_->Nx);
-    int nbs = (grids_->NxNycNz-1)/nts + 1;
-
-    real_space_density <<< nbs, nts >>> (nbar, G->G(), geo_->kperp2, pars_->species);
+    zero(nbar);
+    real_space_density GQN (nbar, G->G(), geo_->kperp2, pars_->species);
 
     // In these routines there is inefficiency because multiple threads
     // calculate the same field line averages. It is correct but inefficient.
 
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      zero(fields->phi);
       qneutAdiab_part1 GQN (tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->tau_fac);
-      
-      cudaMemset(fields->phi, 0., sizeof(cuComplex)*grids_->NxNycNz);
-
       qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, pars_->species, pars_->tau_fac);
     } 
     
@@ -114,4 +115,9 @@ void Solver::svar (float* f, int N)
   printf("\n");
   
   cudaFreeHost (f_h);
+}
+
+void Solver::zero (cuComplex* f)
+{
+  cudaMemset(f, 0., sizeof(cuComplex)*grids_->NxNycNz);
 }

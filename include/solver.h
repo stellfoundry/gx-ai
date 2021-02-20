@@ -21,6 +21,8 @@ class Solver {
 
 private:
 
+  void zero(cuComplex* f);
+  
   dim3 dG, dB, dg, db;
 
   float * phiavgdenom ;
