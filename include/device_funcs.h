@@ -34,6 +34,8 @@ __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) ;
 __host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) ;
 
 __global__ void maskG(cuComplex* g);
+__global__ void Hkernel (cuComplex* g, cuComplex* f);
+__global__ void Gkernel (cuComplex* h, cuComplex* f);
 
 __global__ void acc_scaled_kernel(cuComplex* res,
 				  double c1, const cuComplex* m1);

@@ -210,6 +210,9 @@ void MomentsG::scale(double    scalar) {scale_kernel GALL (G_lm, scalar);}
 void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G_lm, scalar);}
 void MomentsG::mask(void) {maskG GALL (this->G_lm);}
 
+void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G_lm, J0phi);}
+void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G_lm, J0phi);}
+
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2) {
   bool neqfix = !pars_->eqfix;

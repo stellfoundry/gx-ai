@@ -421,6 +421,17 @@ __device__ bool masked(int idx, int idy) {
     return false;
 }
 
+__global__ void Hkernel (cuComplex *G, cuComplex* J0phi)
+{
+  // For the m=0 components (all values of ky, kx, z, l, s) add J0phi * zt_
+  // G = G + J0phi*zt_   ... if m = 0
+}
+__global__ void Gkernel (cuComplex *G, cuComplex* J0phi)
+{
+  // For the m=0 components (all values of ky, kx, z, l, s) subtract J0phi * zt_
+  // G = G - J0phi*zt_   ... if m = 0
+}
+
 __global__ void maskG(cuComplex* g)
 {
   unsigned int idxy = get_id1();
@@ -496,7 +507,7 @@ __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi,
     cuComplex phi_ = phi[idxyz];
     //    int index = idxyz;
     t_bar[idxyz] = make_cuComplex(0., 0.);
-    float b_s = kperp2[idxyz]; // only species=0, assumes zt, rho2 = 1
+    float b_s = kperp2[idxyz]; // only species=0, assumes zt, rho2 = 1 !! bug
     for (int l=0; l < nl; l++) {
       // energy conservation correction for nlaguerre = 1
       if (nl == 1) {

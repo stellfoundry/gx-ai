@@ -43,7 +43,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
   if (pars_->beta > 0.) {
-    // we do not actually need memory for J0_Apar; could simply point to J0phi and reuse that array
     checkCuda(cudaMalloc(&J0_Apar,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0_Apar_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0_Apar_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
@@ -187,6 +186,8 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     
     J0phiToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
 
+    // G->getH(J0phi); // Now G holds H
+    
     grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
     grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
 
@@ -200,8 +201,119 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     
     // loop over m to save memory. also makes it easier to parallelize later...
     // no extra computation: just no batching in m in FFTs and in the matrix multiplies
-    for(int m=0; m<grids_->Nm; m++) {
 
+    // Handle m=0 separately because it will be different electromagnetically
+
+    // ES: [ <phi>, g ] for each m -- there is no mixing of m's.
+    // v_par <A> projects onto every equation. The first couple are special
+    // EM, the bracket is [ (<phi> - v_par <A>), h ]
+    //                  = [ (<phi> - v_par <A>), g + <phi> ]
+    //                  = [ <phi>, g ] - v_par [ <A>, g ] - v_par [ <A>, <phi> ]
+    //
+    // With respect to the Hermite polynomials, the last term projects only onto the m=1 time evolution equation.
+    //   The contribution is - v_t [<A>, <phi>], to the m=1 equation set only (ie, for all l values)
+    // 
+    // We already have the first term.
+    //
+    // The middle term contributes -v_t [ <A>, G(m=1) ] to the m=0 time evolution equation
+    // The middle term contributes -v_t ( sqrt(m+1) [ <A>, G(m+1) ] + sqrt(m) [ <A>, G(m-1) ] ) to the mth equation
+    // The middle term contributes -v_t sqrt(Nm-1) [ <A>, G(Nm-2) ] to the last m equation (m = Nm-1).
+    //
+    // So the m=0 equation should have [ <phi>, G(m=0) ] - v_t [ <A>, G(m=1) ] 
+    //
+    //////////////////////////////////////////////////////////////////////////////////
+    //
+    // And the m=1 equation should have
+    //  [ <phi>, G(m=1) ] - v_t [ sqrt(2) <A>, G(m=2) ] - v_t [ <A>, G(m=0) ] - v_t [ <A>, <phi> ]
+    //
+    //////////////////////////////////////////////////////////////////////////////////
+    // 
+    //  [ <phi>, H(m=0) ] - v_t [ <A>, H(m=1) ]               [[[  m = 0 time evol. eqn ]]]
+    // 
+    //////////////////////////////////////////////////////////////////////////////////
+    //
+    //  [ <phi>, H(m=1) ] - v_t [ sqrt(2) <A>, H(m=2) ] - v_t [ <A>, H(m=0) ]      [[[ m = 1 time evol. eqn ]]]
+    //
+    //////////////////////////////////////////////////////////////////////////////////
+    //
+    //  [ <phi>, H(m=M) ] - v_t [ sqrt(M+1) <A>, H(M+1) ] - v_t sqrt(M) [ <A>, H(M-1) ]  [[[ m = M time evol. eqn ]]]
+    //
+    ///////////////////////////////////////////////////////////////////////////////////
+    // 
+    //  [ <phi>, H(m=Nm-1) ] - v_t sqrt(Nm-1) [ <A>, H(Nm-2) ]  [[[ m = Nm-1 time evol. eqn ]]]
+    // 
+    //////////////////////////////////////////////////////////////////////////////////
+    //
+    // Note that H = G + <phi> for m=0, and H = G otherwise. So we can write the whole bracket 
+    // directly as [ <chi>, H ] for convenience, just as we deal with other parts of the system.
+    //
+    ////////////////////////////////////////////
+    //
+    // m=0: 
+    // calculate [ <phi>, H(0) ] and [ <A>, H(1) ] .... and [ <A>, H(0) ] , too?
+    //
+    // m=1: 
+    // calculate [ <phi>, H(1) ] and [ <A>, H(2) ] and [ <A>, H(0) ] if not saved
+    //
+    // m=2:
+    // calculate [ <phi>, H(2) ] and [ <A>, H(3) ] and [ <A>, H(1) ] if not saved
+    //
+    // m=3:
+    // calculate [ <phi>, H(3) ] and [ <A>, H(4) ] and [ <A>, H(2) ] if not saved
+
+
+        ////////////////////////////////////////////
+
+    // Before starting the m loops:
+    // calculate <phi>, <A>, all their d/dx, d/dy derivatives
+    // call them dphi/dx, dphi/dy, dA/dx, dA/dy
+    // get phi, A
+    //
+    // get H = H(0), H_x, H_y, etc. 
+    // put (phi, H) into M=0
+    // put (-A,  H) into M=1
+    //
+    // get H = H(1), H_x, H_y, etc.
+    // put (-A,  H) into M=0  (with multiplier)
+    // put (phi, H) into M=1
+    // put (-A,  H) into M=2  (with multiplier)
+    //
+    // H = H(2)
+    // put (-A,  H) into M=1  (with multiplier)
+    // put (phi, H) into M=2
+    // put (-A,  H) into M=3  (with multiplier)
+    //
+    // H = H(3)
+    // put (-A,  H) into M=2  (with multiplier)
+    // put (phi, H) into M=3
+    // put (-A,  H) into M=4  (with multiplier)
+    // 
+    //...
+    // 
+    // H = H(Nm-2)
+    // put (-A,  H) into M=Nm-3   (with multiplier)
+    // put (phi, H) into M=Nm-2
+    // put (-A,  H) into M=Nm-1   (with multiplier)
+    //
+    // H = H(Nm-1)
+    // put (-A,  H) into M=Nm-2   (with multiplier)
+    // put (phi, H) into M=Nm-1
+    
+
+    int m=0;
+    grad_perp_G -> dxC2R(G->Gm(m,s), dG);
+    laguerre    -> transformToGrid(dG, dg_dx);
+    
+    grad_perp_G -> dyC2R(G->Gm(m,s), dG);      
+    laguerre    -> transformToGrid(dG, dg_dy);
+    
+    bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+    
+    laguerre->transformToSpectral(g_res, dG);
+    grad_perp_G->R2C(dG, G_res->Gm(m,s));
+      
+    for(int m=1; m<grids_->Nm-1; m++) {
+      
       grad_perp_G -> dxC2R(G->Gm(m,s), dG);
       laguerre    -> transformToGrid(dG, dg_dx);
     
@@ -213,6 +325,23 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, G_res->Gm(m,s));
     }
+
+    // Handle m=Nm-1 separately because it will be different electromagnetically
+    if (grids_->Nm > 1) {
+
+      int m=grids_->Nm-1;
+      grad_perp_G -> dxC2R(G->Gm(m,s), dG);
+      laguerre    -> transformToGrid(dG, dg_dx);
+      
+      grad_perp_G -> dyC2R(G->Gm(m,s), dG);      
+      laguerre    -> transformToGrid(dG, dg_dy);
+      
+      bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+      
+      laguerre->transformToSpectral(g_res, dG);
+      grad_perp_G->R2C(dG, G_res->Gm(m,s));
+    }
+    //    G->getG(J0phi); // now G is back to being G
   }
 }
 double Nonlinear::cfl(Fields *f, double dt_max)

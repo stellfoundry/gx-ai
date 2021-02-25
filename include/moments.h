@@ -27,6 +27,9 @@ class MomentsG {
   void restart_write(double* time);
   void restart_read(double* time);
   
+  void getH(cuComplex* J0phi);
+  void getG(cuComplex* J0phi);
+
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,
