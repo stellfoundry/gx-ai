@@ -63,14 +63,21 @@ Grids::Grids(Parameters* pars) :
 
   // initialize k arrays
   int Nmax = max(max(Nx, Nyc), Nz);
-
-  kInit<<<1, Nmax>>>(kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
+  int nt = min(32, Nmax);
+  int nb = 1 + (Nmax-1)/nt;
+  
+  kInit<<<nb, nt>>>(kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
 
   CP_TO_CPU (kx_h, kx, sizeof(float)*Nx);
+  checkCuda(cudaGetLastError());
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
+  checkCuda(cudaGetLastError());
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
+  checkCuda(cudaGetLastError());
 
   if (Nx<4) {
+    //    printf("Nx, Nakx = %d, %d \n",Nx, Nakx);
+    //    printf("kx_h = %f \n",kx_h[0]);
     for (int i=0; i<Nx; i++) kx_outh[i] = kx_h[i];
   } else {    
     kx_outh[0] = kx_h[2*Nx/3+1];

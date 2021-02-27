@@ -309,7 +309,7 @@ void Parameters::get_nml_vars(char* filename)
   diagnosing_moments = false;
   if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
-  cudaMallocHost((void**) &species_h, sizeof(specie)*nspec_in);
+  species_h = (specie *) calloc(nspec_in, sizeof(specie));
   for (int is=0; is < nspec_in; is++) {
     species_h[is].z = toml::find <float> (nml, "species", "z", is);
     species_h[is].mass = toml::find <float> (nml, "species", "mass", is);
@@ -795,6 +795,15 @@ void Parameters::init_species(specie* species)
     species[s].nt   = species[s].dens * species[s].temp;
     species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
     species[s].nz   = species[s].dens * species[s].z;
+    if (debug) {
+      printf("species = %d \n",s);
+      printf("mass, z, temp, dens = %f, %f, %f, %f \n",
+	     species[s].mass, species[s].z, species[s].temp, species[s].dens);
+      printf("vt, zstm, tz, zt = %f, %f, %f, %f \n",
+	     species[s].vt, species[s].zstm, species[s].tz, species[s].zt);
+      printf("rho, rho2, nt, qneut, nz = %f, %f, %f, %f, %f \n \n",
+	     species[s].rho, species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
+    }
   }
 }
 

@@ -183,8 +183,8 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     //    printf("Phi:\n");
     //    qvar(f->phi, grids_->NxNycNz);
 
-    
-    J0phiToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+    float rho2s = pars_->species_h[s].rho2;    
+    J0phiToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s);
 
     // G->getH(J0phi); // Now G holds H
     
@@ -193,7 +193,8 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 
     // electromagnetic terms will couple different Hermites together. Accumulate bracket results.
     if (pars_->beta > 0.) {
-      J0phiToGrid GBK (J0_Apar, f->apar, geo_->kperp2, laguerre->get_roots(), pars_->species_h[s].rho2);
+
+      J0phiToGrid GBK (J0_Apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s);
       
       grad_perp_J0phi -> dxC2R(J0_Apar, dJ0_Apar_dx);
       grad_perp_J0phi -> dyC2R(J0_Apar, dJ0_Apar_dy);

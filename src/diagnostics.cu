@@ -157,22 +157,25 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     if (id->qs.write_v_time) {                                                                 // heat flux
       
       for(int is=0; is<grids_->Nspecies; is++) {
+	float rho2s = pars_->species_h[is].rho2;
 	heat_flux_summand GSPEC (P2(is), fields->phi, G->G(0,0,is),
-				 grids_->ky, flux_fac, geo_->kperp2, pars_->species_h[is].rho2);	
+				 grids_->ky, flux_fac, geo_->kperp2, rho2s);
       }
       id->write_Q(P2s); 
     }      
 
     if (pars_->diagnosing_kzspec) {
       grad_par->zft(G); // get G = G(kz)
-      W_summand GALL (G2, G->G(), kvol_fac, pars_->species_h); // get G2 = |G(kz)**2|
+      W_summand GALL (G2, G->G(), kvol_fac, pars_->species); // get G2 = |G(kz)**2|
       grad_par->zft_inverse(G); // restore G
 
       grad_par->zft(fields->phi, amom_d); // get amom_d = phi(kz)
       
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	Wphi_summand GSPEC (P2(is), amom_d, kvol_fac, geo_->kperp2, pars_->species_h[is].rho2);	
-	Wphi_scale GSPEC   (P2(is), pars_->species_h[is].qneut);
+	float rho2s = pars_->species_h[is].rho2;
+	Wphi_summand GSPEC (P2(is), amom_d, kvol_fac, geo_->kperp2, rho2s);
+	float qfac =  pars_->species_h[is].qneut;
+	Wphi_scale GSPEC   (P2(is), qfac);
       }
 
       if (pars_->add_Boltzmann_species) {
@@ -192,11 +195,13 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     }
     
     if (pars_->diagnosing_spectra) {                                        // Various spectra
-      W_summand GALL (G2, G->G(), vol_fac, pars_->species_h);
+      W_summand GALL (G2, G->G(), vol_fac, pars_->species);
       
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, pars_->species_h[is].rho2);	
-	Wphi_scale GSPEC   (P2(is), pars_->species_h[is].qneut);
+	float rho2s = pars_->species_h[is].rho2;
+	Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
+	float qnfac = pars_->species_h[is].qneut;
+	Wphi_scale GSPEC   (P2(is), qnfac);
       }
 
       if (pars_->add_Boltzmann_species) {
