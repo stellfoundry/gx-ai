@@ -6,7 +6,6 @@
 #include "device_funcs.h"
 #include "cufft.h"
 #include "get_error.h"
-#include "species.h"
 #include "cuda_constants.h"
 
 class Linear {

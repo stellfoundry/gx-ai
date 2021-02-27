@@ -120,7 +120,7 @@ class Parameters {
 
   cuComplex phi_test, smith_perp_w0;
 
-  specie *species, *species_h;
+  specie *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species;

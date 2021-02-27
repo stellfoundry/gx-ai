@@ -10,7 +10,7 @@
 
 class Solver {
  public:
-  Solver(Parameters* pars, Grids* grids, Geometry* geo);
+  Solver(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G);
   ~Solver();
   
   void fieldSolve(MomentsG* G, Fields* fields);

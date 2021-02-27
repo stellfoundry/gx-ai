@@ -17,7 +17,18 @@ class MomentsG {
     return &G_lm[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m + grids_->NxNycNz*grids_->Nmoms*s];
     // glm[ky, kx, z]
   }
-
+  float* tz(int s=0) {return &tzs[s];}
+  float* zt(int s=0) {return &zts[s];}
+  float* nt(int s=0) {return &nts[s];}
+  float* as(int s=0) {return &aps[s];}
+  float* r2(int s=0) {return &r2s[s];}
+  float* nz(int s=0) {return &nzs[s];}
+  float* qn(int s=0) {return &qns[s];}
+  float* nu(int s=0) {return &nu_ss[s];}
+  float* vt(int s=0) {return &vts[s];}
+  float* tp(int s=0) {return &tps[s];}
+  float* fp(int s=0) {return &fps[s];}
+  
   cuComplex * Gm(int m, int s=0) {   return G(0,m,s);   }
 
   void qvar (int N);
@@ -61,4 +72,15 @@ class MomentsG {
   cuComplex  * G_lm;
   Grids      * grids_;
   Parameters * pars_;
+  float      * tzs;
+  float      * zts;
+  float      * nts;
+  float      * aps;
+  float      * r2s;
+  float      * nzs;
+  float      * qns;
+  float      * nu_ss;
+  float      * vts;
+  float      * tps;
+  float      * fps;
 };

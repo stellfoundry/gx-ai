@@ -18,7 +18,6 @@ Parameters::Parameters() {
 Parameters::~Parameters() {
   cudaDeviceSynchronize();
   if(initialized) {
-    cudaFree(species);
     cudaFreeHost(species_h);
   }
 }
@@ -749,8 +748,6 @@ void Parameters::get_nml_vars(char* filename)
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
 
-  cudaMalloc((void**)     &species,   sizeof(specie)*nspec_in);
-
   nspec = nspec_in;
   /*
   int ionspec = 0;   
@@ -776,7 +773,6 @@ void Parameters::get_nml_vars(char* filename)
 
 */
   init_species(species_h);
-  CP_TO_GPU (species, species_h, sizeof(specie)*nspec_in);
   initialized = true;
   cudaDeviceSynchronize();
   printf(ANSI_COLOR_RESET);    
@@ -787,23 +783,22 @@ void Parameters::init_species(specie* species)
 {
   for(int s=0; s<nspec_in; s++) {
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
-    species[s].zstm = species[s].z / sqrt(species[s].temp * species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
-    species[s].rho  = sqrt(species[s].temp * species[s].mass) / species[s].z;
-    species[s].rho2 = species[s].rho * species[s].rho;
+    species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z);
     species[s].nt   = species[s].dens * species[s].temp;
     species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
     species[s].nz   = species[s].dens * species[s].z;
+    species[s].as   = species[s].nz * species[s].vt;
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
 	     species[s].mass, species[s].z, species[s].temp, species[s].dens);
-      printf("vt, zstm, tz, zt = %f, %f, %f, %f \n",
-	     species[s].vt, species[s].zstm, species[s].tz, species[s].zt);
-      printf("rho, rho2, nt, qneut, nz = %f, %f, %f, %f, %f \n \n",
-	     species[s].rho, species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
-    }
+      printf("vt, tz, zt = %f, %f, %f \n",
+	     species[s].vt, species[s].tz, species[s].zt);
+      printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n \n",
+	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
+    }      
   }
 }
 
@@ -936,7 +931,6 @@ void Parameters::import_externalpars(external_parameters_struct* externalpars) {
     species_h[i].tprim = externalpars->tprim[i] ;
     species_h[i].nu_ss = externalpars->nu[i] ;
   }
-  cudaMemcpy(species, species_h, sizeof(specie)*nspec_in, cudaMemcpyHostToDevice);
 
   //jtwist should never be < 0. If we set jtwist < 0 in the input file,
   // this triggers the use of jtwist_square... i.e. jtwist is 

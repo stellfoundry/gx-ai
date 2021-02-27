@@ -103,14 +103,15 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   }
 
   // calculate conservation terms for collision operator
-  if (pars_->collisions)  conservation_terms <<<(grids_->NxNycNz-1)/256+1, 256>>>
-      (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, pars_->species);
+  int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
+  if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
+			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, G->zt(), G->r2());
 
   // to be safe, start with zeros on RHS
   cudaMemset(GRhs, 0., grids_->size_G);
 
   // Free-streaming requires parallel FFTs, so do that first
-  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, geo_->gradpar, pars_->species, GRhs->G());
+  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
@@ -118,7 +119,8 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
-       	grids_->ky, pars_->species, GRhs->G());
+	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->fp(), G->r2(), 
+	 GRhs->G());
 
   // closures
   if(pars_->closure_model_opt>0) closures->apply_closures(G, GRhs);

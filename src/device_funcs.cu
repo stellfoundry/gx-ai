@@ -657,7 +657,7 @@ __global__ void bracket(float* g_res, const float* dg_dx, const float* dJ0phi_dy
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
 				       const float* omegad,
 				       const cuComplex* nu,
-				       const specie *species)
+				       const float* tz)
 {
   unsigned int idxyz = get_id1();
 
@@ -666,8 +666,8 @@ __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
     const float abs_omegad = abs(omegad[idxyz]);
 
     for (int is=0; is < nspecies; is++) {
-      const float tz_ = species[is].tz;
-
+      const float tz_ = tz[is];
+      
       const cuComplex iwd_s = iomegad * tz_;
       const float awd_s = abs_omegad * tz_;
 
@@ -692,7 +692,7 @@ __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
 }
 
 __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-					     const float* omegad, const cuComplex* Aclos, int q, specie *species)
+					     const float* omegad, const cuComplex* Aclos, int q, const float* tz)
 {
   unsigned int idxyz = get_id1();
   
@@ -702,7 +702,7 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
     const float     abs_omegad = abs(omegad[idxyz]);
     
     for (int is=0; is < nspecies; is++) {
-      const float tz_ = species[is].tz;
+      const float tz_ = tz[is];
 
       const cuComplex iwd_s =    iomegad * tz_;
       const float     awd_s = abs_omegad * tz_;
@@ -755,7 +755,7 @@ __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex
   }
 }
 
-__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const specie *species) 
+__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const float *nts) 
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -767,13 +767,14 @@ __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, co
 
       unsigned int idy = idxy % nyc;
       unsigned int idx = idxy / nyc;// % nx;
+      const float nt_ = nts[is];
       cuComplex fg;
       if (unmasked(idx, idy)) {
 
 	float fac = 2.0;
 	if (idy==0) fac = 1.0;
 	fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
-	G2[ig] = 0.5 * fg.x * species[is].nt;
+	G2[ig] = 0.5 * fg.x * nt_;
       } else {
 	G2[ig] = 0.;
       }
@@ -979,7 +980,8 @@ __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const flo
 __global__ void ampere(cuComplex* Apar,
 		       const cuComplex* gu,
 		       const float* kperp2,
-		       const specie* species,
+		       const float* rho2s,
+		       const float* as,
 		       float beta)
 {
   unsigned int idy = get_id1();
@@ -992,9 +994,9 @@ __global__ void ampere(cuComplex* Apar,
     cuComplex jpar;    jpar = make_cuComplex(0., 0.);
         
     for (int is=0 ; is < nspecies; is++) {
-      const specie s = species[is];
-      const float b_s = kperp2[idxyz] * s.rho2;
-      const float j_s = s.nz * s.vt * beta; // This must be beta_ref
+      const float b_s = kperp2[idxyz] * rho2s[is];
+      const float j_s = as[is] * beta; // This must be beta_ref
+      //      const float j_s = s.nz * s.vt * beta; // This must be beta_ref
       for (int l=0; l < nl; l++) {
 	int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	jpar = jpar + Jflr(l, b_s) * gu[ig] * j_s;
@@ -1004,7 +1006,8 @@ __global__ void ampere(cuComplex* Apar,
   }
 }
 
-__global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species) 
+__global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2,
+				   const float *rho2s, const float *nzs)
 {
   unsigned int idy = get_id1();
   if (idy < nyc) {
@@ -1014,10 +1017,10 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
 	unsigned int idz = get_id3();
 	unsigned int idxyz = idy + nyc*(idx + nx*idz);
 	for (int is=0; is < nspecies; is++) {
-	  const float b_s = kperp2[idxyz] * species[is].rho2;	  
+	  const float b_s = kperp2[idxyz] * rho2s[is];
 	  for (int l=0; l < nl; l++) {
 	    unsigned int ig = idxyz + nx*nyc*nz*(l + nl*nm*is);
-	    nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * species[is].nz;
+	    nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * nzs[is];
 	  }
 	}
       }
@@ -1025,7 +1028,8 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
   }
 }
 
-__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const specie* species)
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1038,14 +1042,15 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, c
     float denom = 0.;
         
     for (int is=0 ; is < nspecies; is++) {
-      const specie s = species[is];
-      const float b_s = kperp2[idxyz] * s.rho2;
+      const float b_s = kperp2[idxyz] * rho2s[is];
+      const float qn_ = qn[is];
+      const float nz_ = nzs[is];
 
       for (int l=0; l < nl; l++) {
 	unsigned int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
-	nbar = nbar + Jflr(l, b_s) * g[ig] * s.nz;
+	nbar = nbar + Jflr(l, b_s) * g[ig] * nz_;
       }
-      denom += s.dens * s.z * s.zt * ( 1. - g0(kperp2[idxyz]*s.rho2) );
+      denom += qn_ * ( 1. - g0(b_s) );
     }    
     
     Phi[idxyz] = nbar / denom;    
@@ -1183,7 +1188,7 @@ __global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, c
 */
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* kperp2, const float* jacobian,
-				 const specie* species, const float tau_fac)
+				 const float* rho2s, const float* qns, float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1191,12 +1196,12 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 
   if ( unmasked(idx, idy) && idz < nz) {
   
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     float pfilter2 = 0.;
     
     for (int is=0; is < nspecies; is++) {
-      specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
+      float b_s = kperp2[idxyz] * rho2s[is]; 
+      pfilter2 += qns[is] * ( 1. - g0(b_s) );
     }
     
     PhiAvgNum_tmp[idxyz] = ( nbar[idxyz] / (tau_fac + pfilter2 ) ) * jacobian[idz];
@@ -1205,8 +1210,8 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
-				 const float* PhiAvgDenom, const float* kperp2, 
-				 const specie* species, const float tau_fac)
+				 const float* PhiAvgDenom, const float* kperp2,
+				 const float* rho2s, const float* qns, float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1220,8 +1225,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
     float pfilter2 = 0.;
     
     for (int is=0; is < nspecies; is++) {
-      specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
+      float b_s = kperp2[idxyz] * rho2s[is]; 
+      pfilter2 += qns[is]*( 1. - g0(b_s) );
     }
 
     // This is okay because PhiAvgNum_zSum is local to each thread
@@ -1248,8 +1253,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
   }
 }
 
-__global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
-				 const float* jacobian, const specie* species, const float tau_fac)
+__global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2, const float* jacobian,
+				 const float* rho2s, const float* qns, float tau_fac)
 {   
   unsigned int idx = get_id1();
   
@@ -1260,13 +1265,15 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
       float pfilter2;
       PhiAvgDenom[idx] = 0.;  
 
-      for (int i=0; i < nz; i++) {
+      for (int idz=0; idz < nz; idz++) {
 	pfilter2 = 0.;
 	for (int is=0; is < nspecies; is++) {
-	  specie s = species[is];
-	  pfilter2 += s.dens*s.z*s.zt*(1. - g0(kperp2[(idx + i*nx)*nyc]*s.rho2));
+	  int idy = 0;
+	  int idxyz = idy + nyc*(idx + idz*nx);
+	  float b_s = kperp2[idxyz] * rho2s[is];
+	  pfilter2 += qns[is] * (1. - g0(b_s));
 	}	
-	PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[i] * pfilter2 / (tau_fac + pfilter2);
+	PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[idz] * pfilter2 / (tau_fac + pfilter2);
       }
     }
   }
@@ -1286,8 +1293,8 @@ __global__ void add_source(cuComplex* f, const float source)
 }
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
-			   const float* kperp2, 
-			   const specie* species, float tau_fac)
+			   const float* kperp2, const float* rho2s, const float* qns, 
+			   float tau_fac)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1295,12 +1302,12 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 
   if ( unmasked(idx, idy) && idz < nz) {
     
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     float pfilter2 = 0.;
     
     for (int is=0; is < nspecies; is++) {
-      specie s = species[is];
-      pfilter2 += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxyz]*s.rho2) );
+      float b_s = kperp2[idxyz] * rho2s[is] ; 
+      pfilter2 += qns[is] * ( 1. - g0(b_s));
     }
     
     Phi[idxyz].x = ( nbar[idxyz].x / (tau_fac + pfilter2 ) );  
@@ -1399,8 +1406,8 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const float* kperp2,
-			      const float gradpar, const specie* species, cuComplex* rhs_par)
+__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
+			      const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par)
 {
   unsigned int idy  = get_id1();
   unsigned int idx  = get_id2();
@@ -1409,7 +1416,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
 
     int m = 0;       // m = 0 case
     for (int is = 0; is < nspecies; is++) {
-      const float vt_ = species[is].vt;
+      const float vt_ = vt[is];
       unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
       unsigned int mp1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m+1 + nm * is)));
       rhs_par[globalIdx] = -vt_ * sqrtf(m+1) * g[mp1] * gradpar;
@@ -1417,7 +1424,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
         
     m = nm - 1;     // m = nm-1 case
     for (int is = 0; is < nspecies; is++) {
-      const float vt_ = species[is].vt;
+      const float vt_ = vt[is];
       unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
       unsigned int mm1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m-1 + nm * is)));
       rhs_par[globalIdx] = -vt_ * sqrtf(m) * g[mm1]  * gradpar;
@@ -1425,7 +1432,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
     
     for (int m = 1; m < nm-1; m++) {
       for (int is = 0; is < nspecies; is++) {
-	const float vt_ = species[is].vt;
+	const float vt_ = vt[is];
 	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));	
 	unsigned int mp1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m+1 + nm * is)));
 	unsigned int mm1       = idy + nyc*( idx + nx*(idzl + nz*nl*(m-1 + nm * is)));
@@ -1442,9 +1449,9 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
       const cuComplex phi_ = phi[idxyz];
 
       for (int is = 0; is < nspecies; is++) {
-	const float vt_ = species[is].vt;
-	const float zt_ = species[is].zt;
-	const float b_s = species[is].rho2 * kperp2[idxyz];
+	const float vt_ = vt[is];
+	const float zt_ = zt[is]; 
+	const float b_s = rho2s[is] * kperp2[idxyz];
 	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m   + nm * is)));
 	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
       }
@@ -1457,7 +1464,9 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
-			   const float* ky, const specie* species, cuComplex* rhs)
+			   const float* ky, const float* vt, const float* zt, const float* tz,
+			   const float* nu_ss, const float* tprim, const float* fprim, const float* rho2s,
+			   cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
   
@@ -1490,18 +1499,21 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
     unsigned int nR = nyc * nx * nz;
     
    for (int is=0; is < nspecies; is++) { // might be a better way to handle species loop here...
-     specie s = species[is];
+     //     specie s = species[is];
      
      // species-specific constants
-     const float vt_ = s.vt;
-     const float zt_ = s.zt;
-     const float nu_ = s.nu_ss; 
-     const float tprim_ = s.tprim;
-     const float fprim_ = s.fprim;
-     const float b_s = kperp2[idxyz] * s.rho2;
-     const cuComplex icv_d_s = 2. * s.tz * make_cuComplex(0., cv_d[idxyz]);
-     const cuComplex igb_d_s = 2. * s.tz * make_cuComplex(0., gb_d[idxyz]);
-      // conservation terms (species-specific)
+     const float vt_ = vt[is];
+     const float zt_ = zt[is];
+     const float tz_ = tz[is];
+     const float nu_ = nu_ss[is]; 
+     const float tprim_ = tprim[is];
+     const float fprim_ = fprim[is];
+     const float b_s = kperp2[idxyz] * rho2s[is];
+     
+     const cuComplex icv_d_s = 2. * tz_ * make_cuComplex(0., cv_d[idxyz]);
+     const cuComplex igb_d_s = 2. * tz_ * make_cuComplex(0., gb_d[idxyz]);
+
+     // conservation terms (species-specific)
      cuComplex upar_bar_  =  upar_bar[idxyz + is * nR]; 
      cuComplex uperp_bar_ = uperp_bar[idxyz + is * nR];
      cuComplex t_bar_     =     t_bar[idxyz + is * nR];
@@ -1625,21 +1637,22 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-				   const cuComplex* g, const cuComplex* phi, const float *kperp2, const specie* species)
+				   const cuComplex* g, const cuComplex* phi, const float *kperp2,
+				   const float* zt, const float* rho2s)
 {
   unsigned int idxyz = get_id1();
 
   if (idxyz < nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
     for (int is=0; is < nspecies; is++) {
-      const float zt_ = species[is].zt;
+      const float zt_ = zt[is];
       unsigned int index = idxyz + nx*nyc*nz*is;
 
       upar_bar[index]  = make_cuComplex(0., 0.);
       uperp_bar[index] = make_cuComplex(0., 0.);
       t_bar[index]     = make_cuComplex(0., 0.);
       
-      float b_s = kperp2[idxyz]*species[is].rho2;
+      float b_s = kperp2[idxyz] * rho2s[is];
       // sum over l
       for (int l=0; l < nl; l++) {
 

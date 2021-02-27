@@ -1,7 +1,6 @@
 #pragma once
 #include "cufft.h"
 #include "cufftXt.h"
-#include "species.h"
 
 __device__ unsigned int get_id1(void);
 __device__ unsigned int get_id2(void);
@@ -125,16 +124,16 @@ __global__ void bracket(float* g_res,
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size);
 
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-				       const float* omegad, const cuComplex* nu, const specie *species);
+				       const float* omegad, const cuComplex* nu, const float* tz);
 
 __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
-					     const float* omegad, const cuComplex* Aclos, int q, specie *species);
+					     const float* omegad, const cuComplex* Aclos, int q, const float* tz);
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac);
 
-__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const specie *species);
+__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const float* nt);
 
 __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac);
 
@@ -178,29 +177,34 @@ extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const float Y0, const int Zp);
 
-__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const specie* species);
-__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const specie* species, float beta);
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s,
+		      const float* qn, const float* nzs);
 
-__global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie *species);
+__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* rho2s,
+		       const float* as, float beta);
+
+__global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2,
+				   const float *rho2s, const float *nzs);
 
 //__global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
 //					const float *kperp2, const float *jacobian,
 //					const specie *species, const float ti_ov_te, float *work);
 
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
-				 const float* kperp2, const float* jacobian, const specie* species, const float ti_ov_te);
+				 const float* kperp2, const float* jacobian,
+				 const float* rho2s, const float* qns, float tau_fac);
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* PhiAvgDenom, const float* kperp2, 
-				 const specie* species, const float ti_ov_te);
+				 const float* rho2s, const float* qns, float tau_fac);
 
-__global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2,
-				 const float* jacobian, const specie* species, const float ti_ov_te);
+__global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2, const float* jacobian,
+				 const float* rho2s, const float* qns, float tau_fac);
 
 __global__ void add_source(cuComplex* f, const float source);
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
-			   const float* kperp2, const specie* species, float ti_ov_te);
+			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac);
 
 __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked, int nLinks, int nChains,
 			   const int* ikx, const int* iky, int nMoms);
@@ -219,16 +223,19 @@ extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky);
-__global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const float* kperp2,
-			       const float gradpar, const specie* species, cuComplex* rhs_par);
+__global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
+			       const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par);
+
 __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
-			   const float* ky, const specie* s, cuComplex* rhs);
+			   const float* ky, const float* vt, const float* zt, const float* tz, 
+			   const float* nu_ss, const float* tprim, const float* fprim, const float* rho2s,
+			   cuComplex* rhs);
 
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,
 				   cuComplex* t_bar, const cuComplex* G, const cuComplex* phi,
-				   const float *b, const specie* species);
+				   const float *b, const float *zt, const float *rho2s);
 
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs);

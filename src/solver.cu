@@ -1,7 +1,7 @@
 #include "solver.h"
 #define GQN <<< dG, dB >>>
 
-Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
+Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
   pars_(pars), grids_(grids), geo_(geo),
   tmp(nullptr), nbar(nullptr), phiavgdenom(nullptr)
 {
@@ -26,7 +26,7 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo) :
       calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom,
 					      geo_->kperp2,
 					      geo_->jacobian,
-					      pars_->species,
+					      G->r2(), G->qn(), 
 					      pars_->tau_fac);
     }
   
@@ -65,26 +65,33 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
   
   if (pars_->all_kinetic) {
 
-    qneut GQN (fields->phi, G->G(), geo_->kperp2, pars_->species);
+    qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz());
+    //    qneut GQN (fields->phi, G->G(), geo_->kperp2, pars_->species);
 
-    if (em) ampere GQN (fields->apar, G->G(0,1,0), geo_->kperp2, pars_->species, pars_->beta);
+    if (em) ampere GQN (fields->apar, G->G(0,1,0), geo_->kperp2, G->r2(), G->as(), pars_->beta);
+    //    if (em) ampere GQN (fields->apar, G->G(0,1,0), geo_->kperp2, pars_->species, pars_->beta);
 
   } else {
 
     zero(nbar);
-    real_space_density GQN (nbar, G->G(), geo_->kperp2, pars_->species);
+    real_space_density GQN (nbar, G->G(), geo_->kperp2, G->r2(), G->nz());
+    //    real_space_density GQN (nbar, G->G(), geo_->kperp2, pars_->species);
 
     // In these routines there is inefficiency because multiple threads
     // calculate the same field line averages. It is correct but inefficient.
 
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
       zero(fields->phi);
-      qneutAdiab_part1 GQN (tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->tau_fac);
-      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, pars_->species, pars_->tau_fac);
+      //      qneutAdiab_part1 GQN (tmp, nbar, geo_->kperp2, geo_->jacobian, pars_->species, pars_->tau_fac);
+      //      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, pars_->species, pars_->tau_fac);
+      qneutAdiab_part1 GQN (tmp, nbar, geo_->kperp2, geo_->jacobian, G->r2(), G->qn(), pars_->tau_fac);
+      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2, G->r2(), G->qn(), pars_->tau_fac);
     } 
     
+    //    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar,
+    //							       geo_->kperp2, pars_->species, pars_->tau_fac);
     if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar,
-							       geo_->kperp2, pars_->species, pars_->tau_fac);
+							       geo_->kperp2, G->r2(), G->qn(), pars_->tau_fac);
   }
   
   if(pars_->source_option==PHIEXT) add_source GQN (fields->phi, pars_->phi_ext);

@@ -100,7 +100,7 @@ void SSPx3::advance(double *t, MomentsG* G, Fields* f)
   if (pars_->tp_t0 > -0.5) { // check to see if this hacky feature is turned on
     if (*t < (double) pars_->tp_t0) {
       float tp = pars_->tprim0;
-      CP_TO_GPU (&pars_->species[0].tprim, &tp, sizeof(float));
+      CP_TO_GPU (G->tp(), &tp, sizeof(float)); // this may be broken with the new approach to species
     } else {
       if (*t < (double) pars_->tp_tf) {
 	float tfac = (float) *t;
@@ -109,10 +109,10 @@ void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 	float t0 = pars_->tp_t0;
 	float tf = pars_->tp_tf;
 	float tp = tprim0 + (tprim0-tprimf)/(t0-tf)*(tfac-t0);
-	CP_TO_GPU (&pars_->species[0].tprim, &tp, sizeof(float));
+	CP_TO_GPU (G->tp(), &tp, sizeof(float));
       } else {
 	float tp = pars_->tprimf;
-	CP_TO_GPU (&pars_->species[0].tprim, &tp, sizeof(float));
+	CP_TO_GPU (G->tp(), &tp, sizeof(float));
       }
     }
   }

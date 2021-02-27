@@ -12,6 +12,33 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc((void**) &G_lm, lhsize));
   cudaMemset(G_lm, 0., lhsize);
   
+  checkCuda(cudaMalloc((void**) &vts, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &zts, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &tzs, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &nts, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &nzs, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &aps, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &r2s, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &qns, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &tps, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &fps, sizeof(float)*grids_->Nspecies));
+  checkCuda(cudaMalloc((void**) &nu_ss, sizeof(float)*grids_->Nspecies));
+  for (int is=0; is<grids_->Nspecies; is++) {
+    CP_TO_GPU(vts, &(pars_->species_h[is].vt),    sizeof(float));
+    CP_TO_GPU(tzs, &(pars_->species_h[is].tz),    sizeof(float));
+    CP_TO_GPU(zts, &(pars_->species_h[is].zt),    sizeof(float));
+    CP_TO_GPU(nts, &(pars_->species_h[is].nt),    sizeof(float));
+    CP_TO_GPU(nzs, &(pars_->species_h[is].nz),    sizeof(float));
+    CP_TO_GPU(r2s, &(pars_->species_h[is].rho2),  sizeof(float));
+    CP_TO_GPU(tps, &(pars_->species_h[is].tprim), sizeof(float));
+    CP_TO_GPU(fps, &(pars_->species_h[is].fprim), sizeof(float));
+    CP_TO_GPU(nu_ss, &(pars_->species_h[is].nu_ss), sizeof(float));
+    CP_TO_GPU(aps, &(pars_->species_h[is].as),    sizeof(float));
+    CP_TO_GPU(qns, &(pars_->species_h[is].qneut), sizeof(float));
+    //    printf("tz, nt, nz, rho2 = %f, %f, %f, %f \n", pars_->species_h[is].tz, pars_->species_h[is].nt,
+    //	   pars_->species_h[is].nz, pars_->species_h[is].rho2);
+  }
+  
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   tpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);

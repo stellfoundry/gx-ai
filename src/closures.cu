@@ -72,7 +72,8 @@ void Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
   }
   
   // toroidal terms.  
-  beer_toroidal_closures GB (G->G(), GRhs->G(), omegad_, nu, pars_->species);
+  //  beer_toroidal_closures GB (G->G(), GRhs->G(), omegad_, nu, pars_->species);
+  beer_toroidal_closures GB (G->G(), GRhs->G(), omegad_, nu, G->tz());
 }
 
 SmithPerp::SmithPerp(Parameters* pars, Grids* grids, Geometry* geo): 
@@ -175,7 +176,7 @@ SmithPerp::~SmithPerp() {
 void SmithPerp::apply_closures(MomentsG* G, MomentsG* GRhs) 
 {
   // perp closure terms are only toroidal
-  smith_perp_toroidal_closures GB (G->G(), GRhs->G(), omegad_, Aclos_, q_, pars_->species);
+  smith_perp_toroidal_closures GB (G->G(), GRhs->G(), omegad_, Aclos_, q_, G->tz());
 }
 
 

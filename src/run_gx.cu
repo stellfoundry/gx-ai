@@ -14,7 +14,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   Forcing   * forcing   = nullptr;
   
   G         = new MomentsG (pars, grids);
-  solver    = new Solver   (pars, grids, geo);    
+  solver    = new Solver   (pars, grids, geo, G);    
   
   /////////////////////////////////
   //                             //

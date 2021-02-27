@@ -166,7 +166,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
     if (pars_->diagnosing_kzspec) {
       grad_par->zft(G); // get G = G(kz)
-      W_summand GALL (G2, G->G(), kvol_fac, pars_->species); // get G2 = |G(kz)**2|
+      W_summand GALL (G2, G->G(), kvol_fac, G->nt());
+      //      W_summand GALL (G2, G->G(), kvol_fac, pars_->species); // get G2 = |G(kz)**2|
       grad_par->zft_inverse(G); // restore G
 
       grad_par->zft(fields->phi, amom_d); // get amom_d = phi(kz)
@@ -195,7 +196,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     }
     
     if (pars_->diagnosing_spectra) {                                        // Various spectra
-      W_summand GALL (G2, G->G(), vol_fac, pars_->species);
+      W_summand GALL (G2, G->G(), vol_fac, G->nt());
+      //      W_summand GALL (G2, G->G(), vol_fac, pars_->species);
       
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
 	float rho2s = pars_->species_h[is].rho2;
