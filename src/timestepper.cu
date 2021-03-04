@@ -60,10 +60,10 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 {
   
   // new objects for temporaries
-  GRhs  = new MomentsG (pars, grids);
-  G1    = new MomentsG (pars, grids);
-  G2    = new MomentsG (pars, grids);
-  G3    = new MomentsG (pars, grids);
+  GRhs  = new MomentsG (pars_, grids_);
+  G1    = new MomentsG (pars_, grids_);
+  G2    = new MomentsG (pars_, grids_);
+  G3    = new MomentsG (pars_, grids_);
 }
 
 SSPx3::~SSPx3()

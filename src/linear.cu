@@ -108,7 +108,7 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, G->zt(), G->r2());
 
   // to be safe, start with zeros on RHS
-  cudaMemset(GRhs, 0., grids_->size_G);
+  GRhs->set_zero();
 
   // Free-streaming requires parallel FFTs, so do that first
   streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());

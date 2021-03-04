@@ -25,17 +25,17 @@ Grids::Grids(Parameters* pars) :
 {
   ky              = nullptr;  kx              = nullptr;  kz              = nullptr;
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
-  kx_outh         = nullptr;  theta0_h        = nullptr;  kz_outh         = nullptr;
+  kx_outh         = nullptr;//  theta0_h        = nullptr;
+  kz_outh         = nullptr;
   //  kx_mask         = nullptr;  kx_shift        = nullptr;  jump            = nullptr;
   //  nLinks          = nullptr;  nChains         = nullptr;
   //  kxCover         = nullptr;  kyCover         = nullptr;  kz_covering     = nullptr; 
   //  kxCover_d       = nullptr;  kyCover_d       = nullptr;  kz_covering_d   = nullptr;
   //  covering_scaler = nullptr;
-  
-  cudaDeviceSynchronize();
-  //  cudaMallocHost((void**) &theta0_h, sizeof(float)*Nakx);
 
-  cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx ); 
+  checkCuda(cudaDeviceSynchronize());
+
+  checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 
   cudaMallocHost ( (void**) &kz_outh, sizeof(float) * Nz   );
   cudaMallocHost ( (void**) &kx_h,    sizeof(float) * Nx   ); 
   cudaMallocHost ( (void**) &ky_h,    sizeof(float) * Nyc  );
@@ -43,37 +43,24 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc     ( (void**) &kx,      sizeof(float) * Nx   );
   cudaMalloc     ( (void**) &ky,      sizeof(float) * Nyc  );
   cudaMalloc     ( (void**) &kz,      sizeof(float) * Nz   );
+  checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
   
-  // copy some parameters to device constant memory 
-  cudaMemcpyToSymbol ( nx,        &Nx,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( ny,        &Ny,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nyc,       &Nyc,              sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nz,        &Nz,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nspecies,  &Nspecies,         sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nm,        &Nm,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nl,        &Nl,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( nj,        &Nj,               sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( zp,        &pars_->Zp,        sizeof(int),  0, cudaMemcpyHostToDevice);  
-  cudaMemcpyToSymbol ( ikx_fixed, &pars_->ikx_fixed, sizeof(int),  0, cudaMemcpyHostToDevice);
-  cudaMemcpyToSymbol ( iky_fixed, &pars_->iky_fixed, sizeof(int),  0, cudaMemcpyHostToDevice);
+  setdev_constants(Nx, Ny, Nyc, Nz, Nspecies, Nm, Nl, Nj, pars_->Zp, pars_->ikx_fixed, pars_->iky_fixed);
 
-  cudaDeviceSynchronize();
+  checkCuda(cudaDeviceSynchronize());
 
   // initialize k arrays
   int Nmax = max(max(Nx, Nyc), Nz);
   int nt = min(32, Nmax);
   int nb = 1 + (Nmax-1)/nt;
-  
-  kInit<<<nb, nt>>>(kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
+
+  kInit <<<nb, nt>>> (kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
 
   CP_TO_CPU (kx_h, kx, sizeof(float)*Nx);
-  checkCuda(cudaGetLastError());
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
-  checkCuda(cudaGetLastError());
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
-  checkCuda(cudaGetLastError());
 
   if (Nx<4) {
     //    printf("Nx, Nakx = %d, %d \n",Nx, Nakx);
@@ -85,6 +72,14 @@ Grids::Grids(Parameters* pars) :
       kx_outh[i]         = kx_h[i + 2*Nx/3 + 1];    
       kx_outh[i + Nx/3 ] = kx_h[i];
     }
+    /*
+    for (int i=0; i<Nx; i++) {
+      printf("kx_h[%d] = %f \n",i,kx_h[i]);
+    }
+    for (int i = 0; i < Nakx; i++) {
+      printf("kx_outh[%d] = %f \n",i, kx_outh[i]);
+    }
+    */
   }
   if (Nz>1) {
     for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];

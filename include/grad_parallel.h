@@ -1,5 +1,4 @@
 #pragma once
-#include "cuda_constants.h"
 #include "grids.h"
 #include "moments.h"
 #include "cufftXt.h"

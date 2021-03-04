@@ -1,6 +1,23 @@
-#include "device_funcs.h"
-#include "cuda_constants.h"
 #include <stdio.h>
+#include "device_funcs.h"
+
+__device__ __constant__ int nx, ny, nyc, nz, nspecies, nm, nl, nj, zp, ikx_fixed, iky_fixed;
+
+void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int Nl, int Nj, int Zp, int ikxf, int ikyf)
+{
+  cudaMemcpyToSymbol ( nx,        &Nx,        sizeof(int));
+  cudaMemcpyToSymbol ( ny,        &Ny,        sizeof(int));
+  cudaMemcpyToSymbol ( nyc,       &Nyc,       sizeof(int));
+  cudaMemcpyToSymbol ( nz,        &Nz,        sizeof(int));
+  cudaMemcpyToSymbol ( nspecies,  &Nspecies,  sizeof(int));
+  cudaMemcpyToSymbol ( nm,        &Nm,        sizeof(int));
+  cudaMemcpyToSymbol ( nl,        &Nl,        sizeof(int));
+  cudaMemcpyToSymbol ( nj,        &Nj,        sizeof(int));
+  cudaMemcpyToSymbol ( zp,        &Zp,        sizeof(int));
+  cudaMemcpyToSymbol ( ikx_fixed, &ikxf,      sizeof(int));
+  cudaMemcpyToSymbol ( iky_fixed, &ikyf,      sizeof(int));
+  
+}
 
 // threadIdx == ithread
 // blockDim == nthread
@@ -962,18 +979,19 @@ __global__ void kInit(float* kx, float* ky, float* kz, const float X0, const flo
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
   if (id < nyc) {
-    ky[id] = (float) id/Y0;
+    ky[id] = (float) id/Y0; if (false) printf("ky[%d] = %f \t ",id, ky[id]);
   }
   if (id < nx/2+1) {
-    kx[id] = (float) id/X0;
+    kx[id] = (float) id/X0; if (false) printf("kx[%d] = %f \t ",id, kx[id]);
   } else if (id < nx) {
-    kx[id] = (float) (id - nx)/X0;
+    kx[id] = (float) (id - nx)/X0; if (false) printf("kx[%d] = %f \t ",id, kx[id]);
   }
   if (id < (nz/2+1)) {
-    kz[id] = (float) id/Zp;
+    kz[id] = (float) id/Zp; if (false) printf("kz[%d] = %f \t ",id, kz[id]);
   } else if (id < nz) {
-    kz[id] = (float) (id - nz)/Zp;
+    kz[id] = (float) (id - nz)/Zp; if (false) printf("kz[%d] = %f \t ",id, kz[id]);
   }
+  if (false) printf("\n");
 }
 
 
@@ -1047,7 +1065,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
       const float nz_ = nzs[is];
 
       for (int l=0; l < nl; l++) {
-	unsigned int ig = idxyz * nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
 	nbar = nbar + Jflr(l, b_s) * g[ig] * nz_;
       }
       denom += qn_ * ( 1. - g0(b_s) );

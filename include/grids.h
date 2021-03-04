@@ -1,8 +1,7 @@
 #pragma once
-#include "parameters.h"
-#include "cuda_constants.h"
-#include "get_error.h"
 #include "device_funcs.h"
+#include "parameters.h"
+#include "get_error.h"
 
 class Grids {
 
@@ -10,29 +9,29 @@ class Grids {
   Grids(Parameters* pars);
   ~Grids();
 
-  const int Nx;
-  const int Ny;
-  const int Nz;
-  const int Nspecies; 
-  const int Nm;
-  const int Nl;
-  const int Nj;
-  const int Nyc;
-  const int Naky;
-  const int Nakx;
-  const int NxNyc;
-  const int NxNy;
-  const int NxNycNz;
-  const int NxNyNz;
-  const int NxNz;
-  const int NycNz;
-  const int Nmoms;
+  int Nx;
+  int Ny;
+  int Nz;
+  int Nspecies; 
+  int Nm;
+  int Nl;
+  int Nj;
+  int Nyc;
+  int Naky;
+  int Nakx;
+  int NxNyc;
+  int NxNy;
+  int NxNycNz;
+  int NxNyNz;
+  int NxNz;
+  int NycNz;
+  int Nmoms;
   size_t size_G;
   
   float * ky;       float * kx;    float * kz;
   float * ky_h;     float * kx_h;  float * kz_h;
   float * kx_outh;  float * kz_outh; 
-  float * theta0_h ;
+  //  float * theta0_h ;
 
   /* Flow shear arrays*/
   //  float * kx_shift ;

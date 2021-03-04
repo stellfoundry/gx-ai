@@ -1,6 +1,4 @@
 #include "diagnostics.h"
-// #include "device_funcs.h"
-#include "cuda_constants.h"
 #include "get_error.h"
 #include "netcdf.h"
 #include <sys/stat.h>

@@ -8,24 +8,6 @@
 #include <iterator>
 #include "grids.h"
 
-// Handle cuTENSOR errors
-#define HANDLE_ERROR(x) {                                                              \
-  const auto err = x;                                                                  \
-  if( err != CUTENSOR_STATUS_SUCCESS )                                                 \
-  { printf("Error: %s in line %d\n", cutensorGetErrorString(err), __LINE__); exit(-1); } \
-}
-
-/*
-struct CustomMax
-{
-  template <typename T>
-  __device__ __forceinline__
-  T operator()(const T &a, const T &b) const {
-    return (abs(b) > abs(a)) ? abs(b) : abs(a);
-  }
-};
-*/
-
 class Red {
 public:
   Red(Grids *grids, std::vector<int> s, bool potential);
@@ -39,7 +21,7 @@ public:
   void sSum(float* Q, float* R); // d^3 r, species by species
   void aSum(float* A2, float* val); // sum over all elements
   void  Max(float* A2, float* val); // CFL
-  
+
 private:
 
   int N_;
@@ -107,8 +89,9 @@ private:
   std::vector<int64_t> extent_W, extent_P, extent_A, extent_B, extent_Q, extent_R, extent_I;
   std::vector<std::vector<int64_t>> extents;
   char version_red;
-  cutensorHandle_t handle;
-  
+  static cutensorHandle_t handle;
+  static bool isCuTensorInitialised;
+
   std::vector<cutensorTensorDescriptor_t> desc; // for WSPECTRA, PSPECTRA, ASPECTRA
   cutensorTensorDescriptor_t dW; // for data like G**2 
   cutensorTensorDescriptor_t dP;
@@ -122,8 +105,8 @@ private:
   const cutensorOperator_t opMax = CUTENSOR_OP_MAX;
 
   std::vector<uint64_t> sAdd;
-  uint64_t sizeWork = 0;  
-  uint64_t sizeAddT = 0;  void * AddworkT = nullptr;
-  uint64_t sizeAdd = 0;   void * Addwork  = nullptr;
-  uint64_t sizeMax = 0;   void * Maxwork  = nullptr;
+  uint64_t sizeWork;  
+  uint64_t sizeAddT;  void * AddworkT ;
+  uint64_t sizeAdd;   void * Addwork  ;
+  uint64_t sizeMax;   void * Maxwork  ;
 };  

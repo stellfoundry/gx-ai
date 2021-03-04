@@ -1,10 +1,9 @@
 #pragma once
 #include "netcdf.h"
-#include "grids.h"
 #include "parameters.h"
+#include "grids.h"
 #include "device_funcs.h"
 #include "get_error.h"
-#include "cuda_constants.h"
 
 class MomentsG {
  public:
@@ -51,8 +50,9 @@ class MomentsG {
   void scale(double scalar);
   void scale(cuComplex scalar);
   void mask(void);
+  void set_zero(void);
 
-  //  void dz(MomentsG* G);
+ //  void dz(MomentsG* G);
   void reality(int ngz);
   
   inline void copyFrom(MomentsG* source) {
@@ -69,18 +69,19 @@ class MomentsG {
   cuComplex ** qprp_ptr;
  
  private:
-  cuComplex  * G_lm;
-  Grids      * grids_;
-  Parameters * pars_;
-  float      * tzs;
-  float      * zts;
-  float      * nts;
-  float      * aps;
-  float      * r2s;
-  float      * nzs;
-  float      * qns;
-  float      * nu_ss;
-  float      * vts;
-  float      * tps;
-  float      * fps;
+  cuComplex  * G_lm   ;
+  Grids      * grids_ ;
+  Parameters * pars_  ;
+
+  float * tzs = nullptr;
+  float * zts = nullptr;
+  float * nts = nullptr;
+  float * aps = nullptr;
+  float * r2s = nullptr;
+  float * nzs = nullptr;
+  float * qns = nullptr;
+  float * nu_ss = nullptr;
+  float * vts = nullptr;
+  float * tps = nullptr;
+  float * fps = nullptr;
 };

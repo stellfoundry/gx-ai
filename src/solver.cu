@@ -14,15 +14,15 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
     cudaMalloc((void**) &nbar, cgrid); zero(nbar);
     cudaMalloc((void**) &tmp,  cgrid); zero(tmp);
     
-    // set up phiavgdenom, which is stored for quasineutrality calculation
-    cudaMalloc((void**) &phiavgdenom, sizeof(float)*grids_->Nx);
-    cudaMemset(phiavgdenom, 0., sizeof(float)*grids_->Nx);
-    
     int threads, blocks;
     threads = 128;
     blocks = 1 + (grids_->Nx-1)/threads;
     
     if (!pars_->all_kinetic && (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) && !pars_->no_fields) {     
+      // set up phiavgdenom, which is stored for quasineutrality calculation
+      cudaMalloc(&phiavgdenom,    sizeof(float)*grids_->Nx);
+      cudaMemset(phiavgdenom, 0., sizeof(float)*grids_->Nx);
+    
       calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom,
 					      geo_->kperp2,
 					      geo_->jacobian,
@@ -64,7 +64,7 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
   bool em = pars_->beta > 0. ? true : false;
   
   if (pars_->all_kinetic) {
-
+    
     qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz());
     //    qneut GQN (fields->phi, G->G(), geo_->kperp2, pars_->species);
 

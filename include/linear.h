@@ -1,12 +1,11 @@
 #pragma once
+#include "cufft.h"
+#include "device_funcs.h"
 #include "fields.h"
 #include "moments.h"
 #include "grad_parallel.h"
 #include "closures.h"
-#include "device_funcs.h"
-#include "cufft.h"
 #include "get_error.h"
-#include "cuda_constants.h"
 
 class Linear {
 public:

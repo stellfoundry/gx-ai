@@ -23,17 +23,17 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   /////////////////////////////////
   if (pars->gx) {
 
-    linear = new Linear(pars, grids, geo);    
-    fields = new Fields(pars, grids);
-    G      -> initialConditions(geo->z_h, &time);
-    solver -> fieldSolve(G, fields);    
+    linear = new Linear(pars, grids, geo);          
+    fields = new Fields(pars, grids);               
+    G      -> initialConditions(geo->z_h, &time);   
+    solver -> fieldSolve(G, fields);                
     
-    if (!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);
-    
+    if (!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);    
+
     if (pars->forcing_init) {
-      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
-      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
-      if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
+      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars); 
+      if (pars->forcing_type == "general")   forcing = new genForcing(pars);       
     }
   }
 
@@ -57,7 +57,6 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   if(pars->scheme_opt == SSPX2) timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
   if(pars->scheme_opt == SSPX3) timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
     //    if (timestep == nullptr) {bail out}
-  
   getDeviceMemoryUsage();
   
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);

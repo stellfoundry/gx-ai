@@ -8,21 +8,22 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
 
   size_t lhsize = grids_->size_G;
-  
-  checkCuda(cudaMalloc((void**) &G_lm, lhsize));
+  //  printf("nspecies = %d and size_G = %d \n",grids_->Nspecies, (int) grids_->size_G);
+  checkCuda(cudaMalloc((void**) &G_lm, lhsize)); 
   cudaMemset(G_lm, 0., lhsize);
-  
-  checkCuda(cudaMalloc((void**) &vts, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &zts, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &tzs, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &nts, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &nzs, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &aps, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &r2s, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &qns, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &tps, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &fps, sizeof(float)*grids_->Nspecies));
-  checkCuda(cudaMalloc((void**) &nu_ss, sizeof(float)*grids_->Nspecies));
+
+  checkCuda(cudaMalloc( &vts,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &zts,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &tzs,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &nts,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &nzs,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &aps,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &r2s,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &qns,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &tps,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &fps,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &nu_ss, sizeof(float) * grids_->Nspecies ) );
+
   for (int is=0; is<grids_->Nspecies; is++) {
     CP_TO_GPU(vts, &(pars_->species_h[is].vt),    sizeof(float));
     CP_TO_GPU(tzs, &(pars_->species_h[is].tz),    sizeof(float));
@@ -114,6 +115,10 @@ MomentsG::~MomentsG() {
   if ( G_lm     ) cudaFree ( G_lm );
 }
 
+void MomentsG::set_zero(void) {
+  cudaMemset(G_lm, 0., grids_->size_G);
+}
+
 void MomentsG::initialConditions(double *time) {
 
   size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
@@ -148,10 +153,13 @@ void MomentsG::initialConditions(double *time) {
 
 void MomentsG::initialConditions(float* z_h, double* time) {
  
+  checkCuda(cudaGetLastError());
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
 
   size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
-  cuComplex *init_h = nullptr;  cudaMallocHost((void**) &init_h, momsize); 
+  cuComplex *init_h = nullptr;
+  cudaMallocHost(&init_h, momsize);   checkCuda(cudaGetLastError());
+
   for (int idx=0; idx<grids_->NxNycNz; idx++) {
     init_h[idx].x = 0.;
     init_h[idx].y = 0.;
@@ -210,15 +218,14 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 
   // copy initial condition into device memory
   for (int is=0; is<grids_->Nspecies; is++) {
-    if(pars_->init == DENS) CP_TO_GPU(dens_ptr[is], init_h, momsize);
-    if(pars_->init == UPAR) CP_TO_GPU(upar_ptr[is], init_h, momsize);
-    if(pars_->init == TPAR) CP_TO_GPU(tpar_ptr[is], init_h, momsize);
-    if(pars_->init == QPAR) CP_TO_GPU(qpar_ptr[is], init_h, momsize);
-    if(pars_->init == TPRP) CP_TO_GPU(tprp_ptr[is], init_h, momsize);
-    if(pars_->init == QPRP) CP_TO_GPU(qprp_ptr[is], init_h, momsize);
+    if(pars_->init == DENS) CP_TO_GPU(dens_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    if(pars_->init == UPAR) CP_TO_GPU(upar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    if(pars_->init == TPAR) CP_TO_GPU(tpar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    if(pars_->init == QPAR) CP_TO_GPU(qpar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    if(pars_->init == TPRP) CP_TO_GPU(tprp_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    if(pars_->init == QPRP) CP_TO_GPU(qprp_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
   }
-  cudaFree(init_h);
-
+  cudaFreeHost(init_h);     
   // restart_read goes here, if restart == T
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
   // that has happened above and also move the value of time up to the end of the previous run
@@ -226,11 +233,8 @@ void MomentsG::initialConditions(float* z_h, double* time) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
   }
-
-  cudaDeviceSynchronize();
-  //  checkCuda(cudaGetLastError());
-
-  //  return cudaGetLastError();
+  cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
+  DEBUG_PRINT("initial conditions set \n");  
 }
 
 void MomentsG::scale(double    scalar) {scale_kernel GALL (G_lm, scalar);}

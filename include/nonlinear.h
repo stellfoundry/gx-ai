@@ -1,5 +1,4 @@
 #pragma once
-
 #include "laguerre_transform.h"
 #include "grids.h"
 #include "geometry.h"
@@ -7,7 +6,6 @@
 #include "moments.h"
 #include "fields.h"
 #include "reductions.h"
-#include "cuda_constants.h"
 #include "device_funcs.h"
 #include "species.h"
 

@@ -1,11 +1,17 @@
 #include "reductions.h"
 #include <iostream>
 
+// static member to hold `global' handle to cuTensor library
+cutensorHandle_t Red::handle;
+// Before any instances of Red have been constructed nobody has called init.
+bool Red::isCuTensorInitialised = false; 
+
 // catch-all reduction to a scalar, for any block of N contiguous floats
 Red::Red(int N, int nspecies) : N_(N)
 {
   version_red = 'N';
   Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+  sizeWork = 0;         sizeAddT = 0;         sizeAdd = 0;           sizeMax = 0;
   
   extent['a'] = N_;
   extent['s'] = nspecies;
@@ -14,13 +20,15 @@ Red::Red(int N, int nspecies) : N_(N)
   for (auto mode : Qmode) extent_Q.push_back(extent[mode]); // incoming tensor without abs value
   for (auto mode : Rmode) extent_R.push_back(extent[mode]); // target species scalar output
 
-  //  for (auto mode : Amode) cout << Amode[mode] << '\n';
+  if (!isCuTensorInitialised) {
+    cutensorInit(&handle);
+    isCuTensorInitialised = true;
+  }
   
-  HANDLE_ERROR( cutensorInit(&handle));
-  HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, cfloat, CUTENSOR_OP_ABS));
-  HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, cfloat, CUTENSOR_OP_ABS));
-  HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dQ, nQmode, extent_Q.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
-  HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dR, nRmode, extent_R.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
+  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &dQ, nQmode, extent_Q.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dR, nRmode, extent_R.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
 }
 
 // Reduction methods for WSPECTRA integrations (G**2 -> G**2(kx), for example)
@@ -28,6 +36,7 @@ Red::Red(Grids *grids, std::vector<int> spectra) : grids_(grids), spectra_(spect
 {
   version_red = 'W';
   Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+  sizeWork = 0;         sizeAddT = 0;         sizeAdd = 0;           sizeMax = 0;
 
   int J;  J = spectra_.size();
   initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
@@ -46,11 +55,13 @@ Red::Red(Grids *grids, std::vector<int> spectra) : grids_(grids), spectra_(spect
     if (spectra_[j] == 1) {
       for (auto mode : Modes[j]) extents[j].push_back(extent[mode]);
 
-      HANDLE_ERROR( cutensorInit(&handle));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(),
-						 NULL, cfloat, CUTENSOR_OP_ABS));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &desc[j], Modes[j].size(),
-						 extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS));
+      if (!isCuTensorInitialised) {
+	cutensorInit(&handle);
+	isCuTensorInitialised = true;
+      }
+
+      cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+      cutensorInitTensorDescriptor(&handle, &desc[j], Modes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
     }
   }
 }
@@ -60,6 +71,7 @@ Red::Red(Grids *grids, std::vector<int> spectra, bool potential) : grids_(grids)
 {  
   version_red = 'P';
   Addwork = nullptr;    Maxwork = nullptr;    AddworkT = nullptr;
+  sizeWork = 0;         sizeAddT = 0;         sizeAdd = 0;           sizeMax = 0;
 
   int J;  J = spectra_.size();
   initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
@@ -79,10 +91,13 @@ Red::Red(Grids *grids, std::vector<int> spectra, bool potential) : grids_(grids)
     if (spectra_[j] == 1) {
       for (auto mode : pModes[j]) extents[j].push_back(extent[mode]);
       
-      HANDLE_ERROR( cutensorInit(&handle));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dP, nPmode, extent_P.data(), NULL, cfloat, CUTENSOR_OP_ABS));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &desc[j], pModes[j].size(),
-						 extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS));
+      if (!isCuTensorInitialised) {
+	cutensorInit(&handle);
+	isCuTensorInitialised = true;
+      }
+
+      cutensorInitTensorDescriptor(&handle, &dP, nPmode, extent_P.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+      cutensorInitTensorDescriptor(&handle, &desc[j], pModes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
 
     }
   }
@@ -94,6 +109,7 @@ Red::Red(Grids *grids, std::vector<int> spectra, float dum) : grids_(grids), spe
   version_red = 'I';
   int J;  J = spectra_.size();
   initialized.assign(J, 0);   desc.resize(J);   sAdd.assign(J, 0);  extents.resize(J);
+  sizeWork = 0;               sizeAddT = 0;         sizeAdd = 0;           sizeMax = 0;
 
   extent['y'] = grids_->Nyc;
   extent['x'] = grids_->Nx;
@@ -106,10 +122,13 @@ Red::Red(Grids *grids, std::vector<int> spectra, float dum) : grids_(grids), spe
 
       //      printf("0 =? %d \n",iModes[0].size());
       
-      HANDLE_ERROR( cutensorInit(&handle));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_ABS));
-      HANDLE_ERROR( cutensorInitTensorDescriptor(&handle, &desc[j], iModes[j].size(),
-						 extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS));
+      if (!isCuTensorInitialised) {
+	cutensorInit(&handle);
+	isCuTensorInitialised = true;
+      }
+
+      cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+      cutensorInitTensorDescriptor(&handle, &desc[j], iModes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
 
     }
   }
@@ -128,10 +147,10 @@ void Red::pSum(float* P2, float* res, int ispec)
 
   if (initialized[ispec] == 0) {
   
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, P2, &dP, Pmode.data(),
-					       res, &desc[ispec], pModes[ispec].data(),
-					       res, &desc[ispec], pModes[ispec].data(),
-					       opAdd, typeCompute, &sizeAdd));;
+    cutensorReductionGetWorkspace(&handle, P2, &dP, Pmode.data(),
+				  res, &desc[ispec], pModes[ispec].data(),
+				  res, &desc[ispec], pModes[ispec].data(),
+				  opAdd, typeCompute, &sizeAdd);
     if (sizeAdd > sizeWork) {
       sizeWork = sizeAdd;
       if (Addwork) cudaFree (Addwork);
@@ -143,11 +162,11 @@ void Red::pSum(float* P2, float* res, int ispec)
     initialized[ispec]  = 1;
   }
   
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, P2, &dP, Pmode.data(),
-				 (const void*) &beta,  res,  &desc[ispec], pModes[ispec].data(),
-				                       res,  &desc[ispec], pModes[ispec].data(),
-				 opAdd, typeCompute, Addwork, sizeWork, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, P2, &dP, Pmode.data(),
+		    (const void*) &beta,  res,  &desc[ispec], pModes[ispec].data(),
+		    res,  &desc[ispec], pModes[ispec].data(),
+		    opAdd, typeCompute, Addwork, sizeWork, 0);
 }
 void Red::iSum(float* I2, float* res, int ispec)
 {
@@ -155,10 +174,10 @@ void Red::iSum(float* I2, float* res, int ispec)
 
   if (initialized[ispec] == 0) {
   
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, I2, &dI, Imode.data(),
-					       res, &desc[ispec], iModes[ispec].data(),
-					       res, &desc[ispec], iModes[ispec].data(),
-					       opAdd, typeCompute, &sizeAdd));;
+    cutensorReductionGetWorkspace(&handle, I2, &dI, Imode.data(),
+				  res, &desc[ispec], iModes[ispec].data(),
+				  res, &desc[ispec], iModes[ispec].data(),
+				  opAdd, typeCompute, &sizeAdd);
     if (sizeAdd > sizeWork) {
       sizeWork = sizeAdd;
       if (Addwork) cudaFree (Addwork);
@@ -170,11 +189,11 @@ void Red::iSum(float* I2, float* res, int ispec)
     initialized[ispec]  = 1;
   } 
 
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, I2, &dI, Imode.data(),
-				 (const void*) &beta,  res,  &desc[ispec], iModes[ispec].data(),
-				                       res,  &desc[ispec], iModes[ispec].data(),
-				 opAdd, typeCompute, Addwork, sizeWork, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, I2, &dI, Imode.data(),
+		    (const void*) &beta,  res,  &desc[ispec], iModes[ispec].data(),
+		    res,  &desc[ispec], iModes[ispec].data(),
+		    opAdd, typeCompute, Addwork, sizeWork, 0);
 }
 
 void Red::Max(float* A2, float* B)
@@ -185,11 +204,11 @@ void Red::Max(float* A2, float* B)
   if (first_Max) {
     
     // get workspace (sizeMax) for a max (opMax) over |P2|
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle,
-					       A2, &dA, Amode.data(),
-					       B,  &dB, Bmode.data(),
-					       B,  &dB, Bmode.data(),
-					       opMax, typeCompute, &sizeMax));
+    cutensorReductionGetWorkspace(&handle,
+				  A2, &dA, Amode.data(),
+				  B,  &dB, Bmode.data(),
+				  B,  &dB, Bmode.data(),
+				  opMax, typeCompute, &sizeMax);
     
     if (cudaSuccess != cudaMalloc(&Maxwork, sizeMax)) {
       Maxwork = nullptr;
@@ -198,11 +217,11 @@ void Red::Max(float* A2, float* B)
     first_Max = false;
   }
 
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, A2, &dA, Amode.data(),
-				 (const void*) &beta,  B,  &dB, Bmode.data(),
-				                       B,  &dB, Bmode.data(),
-				 opMax, typeCompute, Maxwork, sizeMax, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, A2, &dA, Amode.data(),
+		    (const void*) &beta,  B,  &dB, Bmode.data(),
+		    B,  &dB, Bmode.data(),
+		    opMax, typeCompute, Maxwork, sizeMax, 0);
 }
 
 void Red::sSum(float* Q, float* R)
@@ -213,11 +232,11 @@ void Red::sSum(float* Q, float* R)
   if (first_Sum) {
     
     // get workspace (sizeWork) for a sum (opSum) over Q
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle,
-					       Q,  &dQ, Qmode.data(),
-					       R,  &dR, Rmode.data(),
-					       R,  &dR, Rmode.data(),
-					       opAdd, typeCompute, &sizeAdd));
+    cutensorReductionGetWorkspace(&handle,
+				  Q,  &dQ, Qmode.data(),
+				  R,  &dR, Rmode.data(),
+				  R,  &dR, Rmode.data(),
+				  opAdd, typeCompute, &sizeAdd);
     
     if (cudaSuccess != cudaMalloc(&Addwork, sizeAdd)) {
       Addwork = nullptr;
@@ -226,11 +245,11 @@ void Red::sSum(float* Q, float* R)
     first_Sum = false;
   }
 
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, Q, &dQ, Qmode.data(),
-				 (const void*) &beta,  R, &dR, Rmode.data(),
-				                       R, &dR, Rmode.data(),
-				 opAdd, typeCompute, Addwork, sizeAdd, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, Q, &dQ, Qmode.data(),
+		    (const void*) &beta,  R, &dR, Rmode.data(),
+		    R, &dR, Rmode.data(),
+		    opAdd, typeCompute, Addwork, sizeAdd, 0);
 }
 
 void Red::aSum(float* A, float* B)
@@ -240,11 +259,11 @@ void Red::aSum(float* A, float* B)
 
   if (first_SumT) {
     
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle,
-					       A,  &dA, Amode.data(),
-					       B,  &dB, Bmode.data(),
-					       B,  &dB, Bmode.data(),
-					       opAdd, typeCompute, &sizeAddT));
+    cutensorReductionGetWorkspace(&handle,
+				  A,  &dA, Amode.data(),
+				  B,  &dB, Bmode.data(),
+				  B,  &dB, Bmode.data(),
+				  opAdd, typeCompute, &sizeAddT);
     
     if (cudaSuccess != cudaMalloc(&AddworkT, sizeAddT)) {
       AddworkT = nullptr;
@@ -253,11 +272,11 @@ void Red::aSum(float* A, float* B)
     first_SumT = false;
   }
 
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, A, &dA, Amode.data(),
-				 (const void*) &beta,  B, &dB, Bmode.data(),
-				                       B, &dB, Bmode.data(),
-				 opAdd, typeCompute, AddworkT, sizeAddT, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, A, &dA, Amode.data(),
+		    (const void*) &beta,  B, &dB, Bmode.data(),
+		    B, &dB, Bmode.data(),
+		    opAdd, typeCompute, AddworkT, sizeAddT, 0);
 }
 
 // res = Sum_appropriately W
@@ -267,11 +286,11 @@ void Red::Sum(float* W, float* res, int ispec)
   if (initialized[ispec] == 0) {
 
     // Get size of workspace that will be used, stored in sizeAdd (sizeWork)
-    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, W, &dW, Wmode.data(),
-					       res, &desc[ispec], Modes[ispec].data(),
-					       res, &desc[ispec], Modes[ispec].data(),
-					       opAdd, typeCompute, &sizeAdd));
-    
+    cutensorReductionGetWorkspace(&handle, W, &dW, Wmode.data(),
+				  res, &desc[ispec], Modes[ispec].data(),
+				  res, &desc[ispec], Modes[ispec].data(),
+				  opAdd, typeCompute, &sizeAdd);
+  
     // if the size is larger than currently allocated (starting with unallocated) space, free
     // the old one (if it is allocated) and allocate the larger space
     // Assume it is fine to use the larger work space freely. 
@@ -289,11 +308,11 @@ void Red::Sum(float* W, float* res, int ispec)
   } 
 
   //  printf("Reduction: %d \n",ispec);
-  HANDLE_ERROR(cutensorReduction(&handle,
-				 (const void*) &alpha, W,   &dW,          Wmode.data(),
-				 (const void*) &beta,  res, &desc[ispec], Modes[ispec].data(),
-				 res,  &desc[ispec], Modes[ispec].data(),
-				 opAdd, typeCompute, Addwork, sizeWork, 0));
+  cutensorReduction(&handle,
+		    (const void*) &alpha, W,   &dW,          Wmode.data(),
+		    (const void*) &beta,  res, &desc[ispec], Modes[ispec].data(),
+		    res,  &desc[ispec], Modes[ispec].data(),
+		    opAdd, typeCompute, Addwork, sizeWork, 0);
   // The final argument in this call is the stream used for the calculation
 }
 

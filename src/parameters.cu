@@ -11,8 +11,7 @@ Parameters::Parameters() {
   // some cuda parameters (not from input file)
   int dev; 
   cudaGetDevice(&dev);
-  cudaGetDeviceProperties(&prop, dev);
-  maxThreadsPerBlock = prop.maxThreadsPerBlock;
+  if (false) printf("device id = %d \n",dev);
 }
 
 Parameters::~Parameters() {
@@ -673,10 +672,7 @@ void Parameters::get_nml_vars(char* filename)
   // record the values of jtwist and x0 used in runname.nc
   putint (ncid, "jtwist", jtwist);
   putfloat (ncid, "x0", x0);
-  
-  //   if (retval = nc_close(ncid)) ERR(retval); 
-  //   exit(1);
-   
+     
   //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = 0;
   if( closure_model == "beer4+2") {
@@ -749,34 +745,12 @@ void Parameters::get_nml_vars(char* filename)
   if(debug) printf("nspec_in = %i \n",nspec_in);
 
   nspec = nspec_in;
-  /*
-  int ionspec = 0;   
-  int ispec = 1;
-  float mass;
-  bool main_ion_species_found = false;
-  for(int s=1; s<nspec_in+1; s++) {    
-    
-    char namelist[100];
-    sprintf(namelist,"species_parameters_%d",s); 
-    char* type;
-    fnr_get_string(&namelist_struct, namelist, "type", &type); 
-    
-    // main ion mass assumed to be 1. main ion indexed 0.
-    if(strcmp(type,"ion") == 0) {
-      fnr_get_float(&namelist_struct, namelist, "mass", &mass);
-      if((mass == 1. && !main_ion_species_found) || nspec_in==1) {ionspec=0; main_ion_species_found=true;} 
-      else {ionspec = ispec; ispec++;}
-
-      // kinetic electrons will always be last indexed species
-      
-      fnr_get_float(&namelist_struct, namelist, "z",     &species_h[nspec_in-1].z);
-
-*/
   init_species(species_h);
   initialized = true;
-  cudaDeviceSynchronize();
+  //  cudaDeviceSynchronize();
   printf(ANSI_COLOR_RESET);    
-
+  //  if (retval = nc_close(ncid)) ERR(retval); 
+  //  exit(1);
 }
 
 void Parameters::init_species(specie* species)
@@ -800,155 +774,6 @@ void Parameters::init_species(specie* species)
 	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
     }      
   }
-}
-
-// this function copies elements of parameters object into external_parameters_struct externalpars
-void Parameters::set_externalpars(external_parameters_struct* externalpars) {
-  externalpars->equilibrium_type = equilibrium_type;
-  
-  //Defaults if we are not using Trinity
-  externalpars->trinity_timestep = -1;
-  externalpars->trinity_iteration = -1;
-  externalpars->trinity_conv_count = -1;
-  
-  if (restart) externalpars->restart  = 1;
-  else externalpars->restart = 0;
-  
-  externalpars->nstep = nstep;
-  externalpars->navg = navg;
-  // We increase the margin_cpu_time to make it stricter than gs2
-  externalpars->end_time = time(NULL) + avail_cpu_time - margin_cpu_time*1.2;
-  
-  externalpars->irho    = irho;
-  externalpars->rhoc    = rhoc;
-  externalpars->eps     = eps;
-  externalpars->bishop  = bishop;
-  externalpars->nperiod = nperiod;
-  externalpars->ntheta  = nz_in;
-  //    printf("nz_in is %d\n", externalpars->ntheta);
-  
-  /* Miller parameters*/
-  externalpars->rgeo_local = rmaj;
-  externalpars->rgeo_lcfs  = rmaj;
-  externalpars->akappa     = akappa;
-  externalpars->akappri    = akappri;
-  externalpars->tri        = tri;
-  externalpars->tripri     = tripri;
-  externalpars->shift      = shift;
-  externalpars->qinp       = qsf;
-  externalpars->shat       = shat;
-  
-  // EGH These appear to be redundant
-  //externalpars->asym = asym;
-  //externalpars->asympri = asympri;
-  
-  /* Other geometry parameters - Bishop/Greene & Chance*/
-  externalpars->beta_prime_input  = beta_prime_input;
-  externalpars->s_hat_input       = s_hat_input;
-  
-  /*Flow shear*/
-  externalpars->g_exb = g_exb;
-  
-  /* Species parameters... I think allowing 20 species should be enough!*/
-  
-  externalpars->ntspec = nspec_in;
-  
-  for (int i=0;i<nspec_in;i++){
-    externalpars->dens[i]  = species_h[i].dens;
-    externalpars->temp[i]  = species_h[i].temp;
-    externalpars->fprim[i] = species_h[i].fprim;
-    externalpars->tprim[i] = species_h[i].tprim;
-    externalpars->nu[i]    = species_h[i].nu_ss;
-  }
-}
-
-// this function copies elements of external_parameters_struct externalpars into parameters object
-void Parameters::import_externalpars(external_parameters_struct* externalpars) {
-  equilibrium_type = externalpars->equilibrium_type ;
-  if (externalpars->restart==1) restart  = true;
-  else if (externalpars->restart==2){
-    restart  = true;
-    zero_restart_avg = true;
-  }
-  else restart = false;
-  
-  if (externalpars->nstep > nstep) {
-    printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file");
-    abort();
-  }
-  trinity_timestep   = externalpars->trinity_timestep;
-  trinity_iteration  = externalpars->trinity_iteration;
-  trinity_conv_count = externalpars->trinity_conv_count;
-
-  nstep    = externalpars->nstep;
-  navg     = externalpars->navg;
-  end_time = externalpars->end_time;
-  irho     = externalpars->irho ;
-  rhoc     = externalpars->rhoc ;
-  eps      = externalpars->eps;
-  bishop   = externalpars->bishop ;
-  nperiod  = externalpars->nperiod ;
-  nz_in    = externalpars->ntheta ;
-  // NB NEED TO SET EPS IN TRINITY!!!
-  //eps = rhoc/rmaj;
-  
-  /* Miller parameters*/
-  rmaj     = externalpars->rgeo_local ;
-  r_geo    = externalpars->rgeo_lcfs ;
-  akappa   = externalpars->akappa ;
-  akappri  = externalpars->akappri ;
-  tri      = externalpars->tri ;
-  tripri   = externalpars->tripri ;
-  shift    = externalpars->shift ;
-  qsf      = externalpars->qinp ;
-  shat     = externalpars->shat ;
-
-  // EGH These appear to be redundant
-  //asym = externalpars->asym ;
-  //asympri = externalpars->asympri ;
-  
-  /* Other geometry parameters - Bishop/Greene & Chance*/
-  beta_prime_input = externalpars->beta_prime_input ;
-  s_hat_input      = externalpars->s_hat_input ;
-  
-  /*Flow shear*/
-  g_exb = externalpars->g_exb ;
-  
-  /* Species parameters... I think allowing 20 species should be enough!*/
-  int oldnSpecies = nspec_in;
-  nspec_in = externalpars->ntspec ;
-  
-  if (nspec_in!=oldnSpecies){
-    printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec_in);
-    printf("Number of species set in get_fluxes must equal number of species in gx input file\n");
-    exit(1);
-  }
-  if (debug) printf("nSpecies was set to %d \n", nspec_in);
-  for (int i=0;i<nspec_in;i++){
-    species_h[i].dens = externalpars->dens[i] ;
-    species_h[i].temp = externalpars->temp[i] ;
-    species_h[i].fprim = externalpars->fprim[i] ;
-    species_h[i].tprim = externalpars->tprim[i] ;
-    species_h[i].nu_ss = externalpars->nu[i] ;
-  }
-
-  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
-  // this triggers the use of jtwist_square... i.e. jtwist is 
-  // set to what it needs to make the box square at the outboard midplane
-  //  printf("jtwist = %i \n \n", jtwist);
-  if (jtwist < 0) {
-    int jtwist_square;
-    // determine value of jtwist needed to make X0~Y0
-    jtwist_square = (int) round(2*M_PI*abs(shat)*Zp); // Use Zp here or Z0?
-    if (jtwist_square == 0) jtwist_square = 1;
-    jtwist = jtwist_square;
-  }
-  if (abs(shat)>1.e-6) {
-    if (jtwist!=0) x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
-  } else {
-    // just use the x0 and y0 values directly
-  }
-  // BD This is only setting x0 (and adjusting jtwist) when running within Trinity
 }
 
 int Parameters::getint (int ncid, const char varname[]) {
@@ -1034,8 +859,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   
   is_start[0] = 0;
   is_count[0] = nspec;
-
-  // convert array of struct variables to species arrays
 
   // this stuff should all be in species itself!
   // reason for all this is basically legacy + cuda does not support <vector>

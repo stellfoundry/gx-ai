@@ -36,6 +36,8 @@ __global__ void maskG(cuComplex* g);
 __global__ void Hkernel (cuComplex* g, cuComplex* f);
 __global__ void Gkernel (cuComplex* h, cuComplex* f);
 
+void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int Nl, int Nj, int Zp, int ikxf, int ikyf);
+
 __global__ void acc_scaled_kernel(cuComplex* res,
 				  double c1, const cuComplex* m1);
 

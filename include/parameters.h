@@ -12,7 +12,6 @@
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 #include "species.h"
-#include "external_parameters.h"
 #include <cufft.h>
 #include <string>
 #include <vector>
@@ -88,8 +87,6 @@ class Parameters {
   const int na_spectra = 7;
   void get_nml_vars(char* file);
 
-  void set_externalpars(external_parameters_struct* externalpars);
-  void import_externalpars(external_parameters_struct* externalpars);
   void init_species(specie* species);
 
   int ncid;
