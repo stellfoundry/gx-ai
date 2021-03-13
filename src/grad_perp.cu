@@ -92,13 +92,13 @@ void GradPerp::qvar (float* G, int N)
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;  
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
   cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG);
 }
 
 void GradPerp::C2R(cuComplex* G, float* Gy)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;  
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
   cufftExecC2R(gradperp_plan_C2R, tmp, Gy);
 }
 
