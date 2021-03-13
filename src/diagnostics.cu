@@ -197,23 +197,25 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       W_summand GALL (G2, G->G(), vol_fac, G->nt());
       //      W_summand GALL (G2, G->G(), vol_fac, pars_->species);
       
-      for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	float rho2s = pars_->species_h[is].rho2;
-	Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
-	float qnfac = pars_->species_h[is].qneut;
-	Wphi_scale GSPEC   (P2(is), qnfac);
-      }
-
-      if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
-	
-	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
-	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
-	  Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
+      if (pars_->gx) {
+	for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+	  float rho2s = pars_->species_h[is].rho2;
+	  Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
+	  float qnfac = pars_->species_h[is].qneut;
+	  Wphi_scale GSPEC   (P2(is), qnfac);
 	}
 
-	float fac = 1./pars_->tau_fac;
-	Wphi_scale GSPEC (Phi2, fac);
+	if (pars_->add_Boltzmann_species) {
+	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
+	  
+	  if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
+	    fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
+	    Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
+	  }
+	  
+	  float fac = 1./pars_->tau_fac;
+	  Wphi_scale GSPEC (Phi2, fac);
+	}
       }
       
       id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    

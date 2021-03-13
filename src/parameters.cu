@@ -239,7 +239,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (nml.contains("Wspectra")) {
     const auto tomlW = toml::find (nml, "Wspectra");
-    wspectra [WSPECTRA_species] = (toml::find_or <bool> (tomlW, "species",          true )) == true ? 1 : 0;
+    wspectra [WSPECTRA_species] = (toml::find_or <bool> (tomlW, "species",          false)) == true ? 1 : 0;
     wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tomlW, "kx",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tomlW, "ky",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tomlW, "kz",               false)) == true ? 1 : 0;

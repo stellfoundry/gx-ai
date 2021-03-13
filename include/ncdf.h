@@ -75,6 +75,7 @@ class NetCDF_ids {
   int density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;
 
+  int v_z[1];            // dims for a scalar as a function of z
   int v_kz[1];           // dims for a scalar as a function of kz 
   int v_kx[1];           // dims for a scalar as a function of kx 
   int v_ky[1];           // dims for a scalar as a function of ky 
@@ -86,6 +87,7 @@ class NetCDF_ids {
   size_t ky_start[1], ky_count[1];
   size_t kx_start[1], kx_count[1];
   size_t kz_start[1], kz_count[1];
+  size_t z_start[1], z_count[1];
   
   float * theta_extended ;
 

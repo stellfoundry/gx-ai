@@ -76,7 +76,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 }
 
 Linear::Linear(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids)
+  pars_(pars), grids_(grids), closures(nullptr), grad_par(nullptr)
 {
   ks = true;
   

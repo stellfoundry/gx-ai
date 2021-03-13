@@ -44,9 +44,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   //////////////////////////////  
   if (pars->ks) {
     linear    = new Linear(pars, grids);    
-
     G -> initialConditions(&time);
-    G -> qvar(grids->Naky);
+    //    G -> qvar(grids->Naky);
     if (!pars->linear) nonlinear = new Nonlinear(pars, grids);
   }    
 

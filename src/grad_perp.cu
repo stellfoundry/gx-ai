@@ -60,6 +60,36 @@ void GradPerp::dxC2R(cuComplex* G, float* dxG)
   cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG);
 }
 
+void GradPerp::qvar (cuComplex* G, int N)
+{
+  cuComplex* G_h;
+  int Nk = grids_->Nyc*grids_->Nx;
+  G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
+  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
+  CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
+
+  printf("\n");
+  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  printf("\n");
+
+  free (G_h);
+}
+
+void GradPerp::qvar (float* G, int N)
+{
+  float* G_h;
+  int Nx = grids_->Ny*grids_->Nx;
+  G_h = (float*) malloc (sizeof(float)*N);
+  for (int i=0; i<N; i++) G_h[i] = 0.;
+  CP_TO_CPU (G_h, G, N*sizeof(float));
+
+  printf("\n");
+  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = %e \n", i%Nx, i/Nx, G_h[i]);
+  printf("\n");
+
+  free (G_h);
+}
+
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
 {
   CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;  

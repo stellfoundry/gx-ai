@@ -316,3 +316,4 @@ void Red::Sum(float* W, float* res, int ispec)
   // The final argument in this call is the stream used for the calculation
 }
 
+// __host__ ​cudaError_t cudaPointerGetAttributes ( cudaPointerAttributes* attributes, const void* ptr )

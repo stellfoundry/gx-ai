@@ -13,6 +13,8 @@ class GradPerp {
   void dyC2R(cuComplex* G, float* g);
   void C2R  (cuComplex* G, float* Gy);
   void R2C  (float* G, cuComplex* res);
+  void qvar (cuComplex* G, int N);
+  void qvar (float* G, int N);
   
  private:
   const int batch_size_;

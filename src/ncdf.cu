@@ -91,6 +91,17 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   v_kz[0] = nkz;
   if (retval = nc_def_var(file, "kz",       NC_FLOAT, 1, v_kz, &kz))              ERR(retval);
+
+  v_z[0] = nz;
+  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_kz[0], &z_h))          ERR(retval);
+
+  // z_h needs to be defined.
+  // Z0 would typically be q R
+  // and then z_h would run from - (2 pi q R)/2 : + (2 pi q R)/2
+  // but there are complications to get right:
+  // normalization of R?
+  // Allow for Z0 to be specified directly
+  // Allow nperiod > 1 
   
   geo_v_theta[0] = nz;
   if (retval = nc_def_var(file, "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
@@ -982,6 +993,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   if (retval = nc_enddef(file)) ERR(retval);
   
+  ///////////////////////////////////
+  //                               //
+  //         z                     //
+  //                               //
+  ///////////////////////////////////
+  z_start[0] = 0;
+  z_count[0] = grids_->Nz;
+
+  //  if (retval = nc_put_vara(file, z, z_start, z_count, z_h))      ERR(retval);
+
   ///////////////////////////////////
   //                               //
   //        kz                     //

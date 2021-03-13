@@ -89,14 +89,14 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
   red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
 {
   ks = true;
-  
+
   dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
   Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
   dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
   vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
 
   nBatch = 1;
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Ny);
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Nyc);
   
   checkCuda(cudaMalloc(&Gy,    sizeof(float)*grids_->Ny));
   checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->Ny));
@@ -107,6 +107,16 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
   
   dt_cfl = 0.;
 
+  int nbx = min(128, grids_->Nyc);
+  int ngx = 1 + (grids_->Nyc-1)/nbx;
+  dBk = dim3(nbx, 1, 1);
+  dGk = dim3(ngx, 1, 1);
+    
+  nbx = min(128, grids_->Ny);
+  ngx = 1 + (grids_->Ny-1)/nbx;
+  dBx = dim3(nbx, 1, 1);
+  dGx = dim3(ngx, 1, 1);
+  
   cudaMallocHost((void**) &vmax_y, sizeof(float));
 }
 
@@ -169,10 +179,15 @@ void Nonlinear::qvar (float* G, int N)
 void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
   if (ks) {
+    //    G->qvar(grids_->Nyc);
     grad_perp_G -> dyC2R(G->G(), dg_dy);
+    //    qvar(dg_dy, grids_->Ny);
+    //    exit(1);
     grad_perp_G -> C2R(G->G(), Gy);
-    nlks <<< (grids_->Ny-1)/128+1, 128 >>> (g_res, Gy, dg_dy);
+    nlks GBX (g_res, Gy, dg_dy);
     grad_perp_G -> R2C(g_res, G_res->G());
+    //    G_res->qvar(grids_->Nyc);
+    //    exit(1);
     return;
   }
   

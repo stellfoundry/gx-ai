@@ -33,6 +33,8 @@ Grids::Grids(Parameters* pars) :
   //  kxCover_d       = nullptr;  kyCover_d       = nullptr;  kz_covering_d   = nullptr;
   //  covering_scaler = nullptr;
 
+  // kz is defined without the factor of gradpar
+  
   checkCuda(cudaDeviceSynchronize());
 
   checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 

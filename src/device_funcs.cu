@@ -277,7 +277,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
       if (idz < nz) {
 	
 	unsigned int idslm = get_id3(); 
-	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	unsigned int ig = idxy + nx*nyc*(idz + nz*idslm);
 	
 	res[ig] = c1 * m1[ig] + c2 * m2[ig];
       }
@@ -298,7 +298,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
       if (idz < nz) {
 	
 	unsigned int idslm = get_id3(); 
-	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	unsigned int ig = idxy + nx*nyc*(idz + nz*idslm);
 	
 	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig];
       }
@@ -320,7 +320,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
       if (idz < nz) {
 	
 	unsigned int idslm = get_id3(); 
-	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	unsigned int ig = idxy + nx*nyc*(idz + nz*idslm);
 	
 	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig] + c4 * m4[ig];
       }
@@ -343,7 +343,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
       if (idz < nz) {
 	
 	unsigned int idslm = get_id3(); 
-	unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+	unsigned int ig = idxy + nx*nyc*(idz + nz*idslm);
 	
 	res[ig] = c1 * m1[ig] + c2 * m2[ig] + c3 * m3[ig] + c4 * m4[ig] + c5 * m5[ig];
       }
@@ -376,7 +376,7 @@ __global__ void scale_kernel(cuComplex* res, const cuComplex scalar)
     if (idz < nz) {
       
       unsigned int idslm = get_id3(); 
-      unsigned int ig = idxy + nx*nyc*idz + nx*nyc*nz*idslm;
+      unsigned int ig = idxy + nx*nyc*(idz + nz*idslm);
       
       res[ig] = scalar*res[ig];
     }
@@ -483,7 +483,7 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
   float shatInv = 1./shat; // Needs a test for zero
 
   if (unmasked(idx, idy) && idz < nz) { 
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
                       + 2. * kx[idx] * shatInv * gds21[idz]) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
@@ -504,15 +504,16 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
   // cv0/gb0 is the part proportional to the theta_0, aka the x-directed component
 
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
     gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
     omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
   }
 }
 
-# define H_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_)
-# define G_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
+# define H_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_)
+# define G_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
+// H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
@@ -532,7 +533,6 @@ __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi,
       } else {
 	t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)/3.*Jflr(l,b_s)*G_(idxyz, l, 2, 0)
 	  + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*H_(idxyz, l, 0, 0);
-
       }
     }
   }
@@ -670,7 +670,7 @@ __global__ void bracket(float* g_res, const float* dg_dx, const float* dJ0phi_dy
   }
 }
 
-# define LM(L, M, S) idxyz + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)
+# define LM(L, M, S) idxyz + nx*nyc*nz*((L) + nl*((M) + nm*(S)))
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
 				       const float* omegad,
 				       const cuComplex* nu,
@@ -1054,7 +1054,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
   unsigned int idz = get_id3();
 
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz; // spatial index
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
     cuComplex nbar;    nbar = make_cuComplex(0., 0.);
     float denom = 0.;
@@ -1065,7 +1065,8 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
       const float nz_ = nzs[is];
 
       for (int l=0; l < nl; l++) {
-	unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	int m = 0; // only m=0 components are needed here
+	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
 	nbar = nbar + Jflr(l, b_s) * g[ig] * nz_;
       }
       denom += qn_ * ( 1. - g0(b_s) );
@@ -1237,7 +1238,7 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
   
   if ( unmasked(idx, idy) && idz < nz) {
 
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     unsigned int idxy  = idy + nyc*idx;
 
     float pfilter2 = 0.;
@@ -1305,7 +1306,7 @@ __global__ void add_source(cuComplex* f, const float source)
   unsigned int idz = get_id3();
   
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
     f[idxyz].x = f[idxyz].x + source;
   }
 }
@@ -1401,7 +1402,7 @@ __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
   unsigned int idlm = get_id3();
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + nyc*nx*idz + nyc*nx*nz*idlm;
 
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
@@ -1417,8 +1418,9 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   unsigned int idlm = get_id3();
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idlink = idz + nz*idk + nz*nLinks*nChains*idlm;
-    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
     G[globalIdx] = G_linked[idlink];
   }
@@ -1541,7 +1543,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      // blockIdx for y and z and both of size unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; 
+	 unsigned int globalIdx = idxyz + nR*(l + nl*(m + nm*is));
 	 int sl = l + 1;
 	 int sm = m + 2;
 	 S_G(sl, sm) = g[globalIdx];
@@ -1585,7 +1587,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      // blockIdx for y and z are unity in the kernel invocation
      for (int m = threadIdx.z; m < nm; m += blockDim.z) {
        for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	 unsigned int globalIdx = idxyz + l*nR + m*nl*nR + is*nm*nl*nR; 
+	 unsigned int globalIdx = idxyz + nR*(l + nl*(m + nm*is));
 	 int sl = l + 1; // offset to get past ghosts
 	 int sm = m + 2; // offset to get past ghosts
   
@@ -1637,7 +1639,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
     // blockIdx for y and z are unity in the kernel invocation      
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
 	for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-	  int globalIdx = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*m + nx*nyc*nz*nl*nm*is; 
+	  int globalIdx = idxyz + nx*nyc*nz*(l + nl*(m + nm*is)); 
 	  if (m>2 || l>1) {
 	    rhs[globalIdx] = rhs[globalIdx] -
 	      (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
@@ -1649,8 +1651,9 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
   }
 }
 
-# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] + Jflr(L,b_s)*phi_*zt_)
-# define Gc_(XYZ, L, M, S) g[(XYZ) + nx*nyc*nz*(L) + nx*nyc*nz*nl*(M) + nx*nyc*nz*nl*nm*(S)] // H = G, except for m = 0
+# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_)
+# define Gc_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
+// H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
