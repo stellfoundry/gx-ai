@@ -6,7 +6,7 @@
 #include "moments.h"
 #include "fields.h"
 #include "ncdf.h"
-#include "reductions.h"
+//#include "reductions.h"
 #include "grad_parallel.h"
 
 class Diagnostics {

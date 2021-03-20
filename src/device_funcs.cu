@@ -1054,7 +1054,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
   unsigned int idz = get_id3();
 
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz; // spatial index
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); // spatial index
     
     cuComplex nbar;    nbar = make_cuComplex(0., 0.);
     float denom = 0.;
@@ -1065,7 +1065,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
       const float nz_ = nzs[is];
 
       for (int l=0; l < nl; l++) {
-	unsigned int ig = idxyz + nx*nyc*nz*l + nx*nyc*nz*nl*nm*is;
+	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(0 + nm*is));
 	nbar = nbar + Jflr(l, b_s) * g[ig] * nz_;
       }
       denom += qn_ * ( 1. - g0(b_s) );

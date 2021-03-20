@@ -36,9 +36,9 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;
-    red = new Red(grids_, pars_->wspectra);       cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n"); // G**2
-    pot = new Red(grids_, pars_->pspectra, true); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2
-    ph2 = new Red(grids_, pars_->aspectra,  dum); cudaDeviceSynchronize(); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
+    red = new          All_Reduce(grids_, pars_->wspectra); CUDA_DEBUG("Reductions: %s \n"); // G**2
+    pot = new Grid_Species_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2 keeping track of species
+    ph2 = new         Grid_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
   }
 
   int nS  = grids_->Nspecies;
@@ -975,7 +975,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     //    cudaMallocHost(&pflux,  sizeof(float) * nS);
     cudaMallocHost(&qs_h,   sizeof(float) * nS);
     cudaMalloc    (&qs_d,   sizeof(float) * nS);
-    all_red = new Red(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
+    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   }
 
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
@@ -1211,7 +1211,7 @@ void NetCDF_ids::write_Pky(float* P2, bool endrun)
   if (Pky.write_v_time || (Pky.write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    pot->pSum(P2, Pky_d, PSPECTRA_ky);               CP_TO_CPU(tmp_Pky_h, Pky_d, sizeof(float)*i);
+    pot->Sum(P2, Pky_d, PSPECTRA_ky);               CP_TO_CPU(tmp_Pky_h, Pky_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
@@ -1227,7 +1227,7 @@ void NetCDF_ids::write_Pkx(float* P2, bool endrun)
   if (Pkx.write_v_time || (Pkx.write && endrun)) {
     int i = grids_->Nx*grids_->Nspecies;             int NK = (grids_->Nx-1)/3+1;
     
-    pot->pSum(P2, Pkx_d, PSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
+    pot->Sum(P2, Pkx_d, PSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
@@ -1250,7 +1250,7 @@ void NetCDF_ids::write_Pz(float* P2, bool endrun)
   if (Pz.write_v_time || (Pz.write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;
     
-    pot->pSum(P2, Pz_d, PSPECTRA_z);         CP_TO_CPU(Pz_h, Pz_d, sizeof(float)*i);
+    pot->Sum(P2, Pz_d, PSPECTRA_z);         CP_TO_CPU(Pz_h, Pz_d, sizeof(float)*i);
     write_nc(file, Pz, Pz_h, endrun);        Pz.increment_ts();
   }
 }
@@ -1260,7 +1260,7 @@ void NetCDF_ids::write_Pkz(float* P2, bool endrun)
   if (Pkz.write_v_time || (Pkz.write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;     int Nz = grids_->Nz;
     
-    pot->pSum(P2, Pkz_d, PSPECTRA_kz);       CP_TO_CPU(tmp_Pkz_h, Pkz_d, sizeof(float)*i);
+    pot->Sum(P2, Pkz_d, PSPECTRA_kz);       CP_TO_CPU(tmp_Pkz_h, Pkz_d, sizeof(float)*i);
 
     for (int is = 0; is < grids_->Nspecies; is++) {
       if (Nz>1) {
@@ -1279,7 +1279,7 @@ void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
   if (Pkxky.write_v_time || (Pkxky.write && endrun)) {
 
     int i = grids_->Nyc*grids_->Nx*grids_->Nspecies; int NK = (grids_->Nx-1)/3+1;
-    pot->pSum(P2, Pkxky_d, PSPECTRA_kxky);
+    pot->Sum(P2, Pkxky_d, PSPECTRA_kxky);
     CP_TO_CPU(tmp_Pkxky_h, Pkxky_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
@@ -1461,7 +1461,7 @@ void NetCDF_ids::write_Ps(float* P2, bool endrun)
 {
   if (Ps.write_v_time) {
     
-    pot->pSum(P2, Ps_d, PSPECTRA_species);     CP_TO_CPU(Ps_h, Ps_d, sizeof(float)*grids_->Nspecies);
+    pot->Sum(P2, Ps_d, PSPECTRA_species);     CP_TO_CPU(Ps_h, Ps_d, sizeof(float)*grids_->Nspecies);
     write_nc(file, Ps, Ps_h, endrun);          Ps.increment_ts();
 
     if (Wtot.write_v_time) {
@@ -1477,7 +1477,7 @@ void NetCDF_ids::write_Aky(float* P2, bool endrun)
   if (Aky.write_v_time || (Aky.write && endrun)) {
     int i = grids_->Naky;
     
-    ph2->iSum(P2, Aky_d, ASPECTRA_ky);       CP_TO_CPU(Aky_h, Aky_d, sizeof(float)*i);
+    ph2->Sum(P2, Aky_d, ASPECTRA_ky);       CP_TO_CPU(Aky_h, Aky_d, sizeof(float)*i);
     write_nc(file, Aky, Aky_h, endrun);      Aky.increment_ts();  
   }
 }
@@ -1487,7 +1487,7 @@ void NetCDF_ids::write_Az(float* P2, bool endrun)
   if (Az.write_v_time || (Az.write && endrun)) {
     int i = grids_->Nz;
     
-    ph2->iSum(P2, Az_d, ASPECTRA_z);         CP_TO_CPU(Az_h, Az_d, sizeof(float)*i);
+    ph2->Sum(P2, Az_d, ASPECTRA_z);         CP_TO_CPU(Az_h, Az_d, sizeof(float)*i);
     write_nc(file, Az, Az_h, endrun);        Az.increment_ts();
   }
 }
@@ -1497,7 +1497,7 @@ void NetCDF_ids::write_Akz(float* P2, bool endrun)
   if (Akz.write_v_time || (Akz.write && endrun)) {
     int Nz = grids_->Nz;
     
-    ph2->iSum(P2, Akz_d, ASPECTRA_kz);       CP_TO_CPU(tmp_Akz_h, Akz_d, sizeof(float)*Nz);
+    ph2->Sum(P2, Akz_d, ASPECTRA_kz);       CP_TO_CPU(tmp_Akz_h, Akz_d, sizeof(float)*Nz);
 
     if (Nz>1) {
       for (int i = 0; i < Nz; i++) Akz_h[i] = tmp_Akz_h[ (i + Nz/2 + 1) % Nz ];
@@ -1513,7 +1513,7 @@ void NetCDF_ids::write_Akx(float* P2, bool endrun)
   if (Akx.write_v_time || (Akx.write && endrun)) {
     int i = grids_->Nx;                              int NK = (grids_->Nx-1)/3+1;
     
-    ph2->iSum(P2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*i);
+    ph2->Sum(P2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*i);
     
     int it = 0;
     int itp = it +   grids_->Nx/3;
@@ -1535,7 +1535,7 @@ void NetCDF_ids::write_Akxky(float* P2, bool endrun)
   if (Akxky.write_v_time || (Akxky.write && endrun)) {
     int i = grids_->Nyc*grids_->Nx; int NK = (grids_->Nx-1)/3+1;
     
-    ph2->iSum(P2, Akxky_d, ASPECTRA_kxky);    CP_TO_CPU(tmp_Akxky_h, Akxky_d, sizeof(float)*i);
+    ph2->Sum(P2, Akxky_d, ASPECTRA_kxky);    CP_TO_CPU(tmp_Akxky_h, Akxky_d, sizeof(float)*i);
     
     int it = 0;
     int itp = it +   grids_->Nx/3;
@@ -1568,7 +1568,7 @@ void NetCDF_ids::write_Akxky(float* P2, bool endrun)
 void NetCDF_ids::write_As(float *P2, bool endrun)
 {
   if (As.write_v_time) {  
-    ph2->iSum(P2, As_d, ASPECTRA_species);    CP_TO_CPU (As_h, As_d, sizeof(float));
+    ph2->Sum(P2, As_d, ASPECTRA_species);    CP_TO_CPU (As_h, As_d, sizeof(float));
     write_nc(file, As, As_h, endrun);         As.increment_ts();
 
     if (Wtot.write_v_time) totW += *As_h;
@@ -1578,7 +1578,7 @@ void NetCDF_ids::write_As(float *P2, bool endrun)
 void NetCDF_ids::write_Q (float* Q, bool endrun)
 {
   if (qs.write_v_time) {
-    all_red->sSum(Q, qs_d);                   CP_TO_CPU (qs_h, qs_d, sizeof(float)*grids_->Nspecies);
+    all_red->Sum(Q, qs_d);                   CP_TO_CPU (qs_h, qs_d, sizeof(float)*grids_->Nspecies);
     write_nc(file, qs, qs_h, endrun);         qs.increment_ts();
 
     for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs_h[is]);

@@ -24,9 +24,11 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
 
   laguerre =        new LaguerreTransform(grids_, 1);
   //  printf("gridsize = %d \n",grids_->NxNyNz);
-  int nR = grids_->NxNyNz; int nS = 1;
-  red =             new Red(nR, nS); cudaDeviceSynchronize();
-
+  int nR = grids_->NxNyNz;
+  //  int nS = 1;
+  //  red =             new Red(nR, nS); cudaDeviceSynchronize();
+  red = new Block_Reduce(nR); cudaDeviceSynchronize();
+  
   nBatch = grids_->Nz*grids_->Nl; 
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
   
