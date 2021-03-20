@@ -8,6 +8,7 @@
 #include "ncdf.h"
 //#include "reductions.h"
 #include "grad_parallel.h"
+#include "grad_perp.h"
 
 class Diagnostics {
  public:
@@ -35,6 +36,7 @@ private:
   Grids        * grids_        ;
   Geometry     * geo_          ;  
 
+  GradPerp     * grad_perp     ; 
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
   NetCDF_ids   * id            ;
@@ -48,7 +50,12 @@ private:
   cuComplex    * t_bar         ;
   cuComplex    * favg          ;
   cuComplex    * df            ;
-  cuComplex    * amom_d        ; 
+  cuComplex    * amom_d        ;
+
+  float        * gy_d          ;
+  float        * gy_h          ; 
+  
+  
   //  void write_omg (cuComplex *W, bool endrun);
   void print_omg (cuComplex *W);
   void get_rh    (Fields* f);

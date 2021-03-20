@@ -62,6 +62,7 @@ void Parameters::get_nml_vars(char* filename)
   ikx_fixed = toml::find_or <int> (nml, "ikx_fixed", -1);
   iky_fixed = toml::find_or <int> (nml, "iky_fixed", -1);
   ks                = toml::find_or <bool> (nml, "ks", false);
+  write_ks          = toml::find_or <bool> (nml, "write_ks", false);
   eqfix             = toml::find_or <bool> (nml, "eqfix", false);
   restart           = toml::find_or <bool> (nml, "restart", false);
   save_for_restart  = toml::find_or <bool> (nml, "save_for_restart", true);
@@ -239,7 +240,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (nml.contains("Wspectra")) {
     const auto tomlW = toml::find (nml, "Wspectra");
-    wspectra [WSPECTRA_species] = (toml::find_or <bool> (tomlW, "species",          true )) == true ? 1 : 0;
+    wspectra [WSPECTRA_species] = (toml::find_or <bool> (tomlW, "species",          false)) == true ? 1 : 0;
     wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tomlW, "kx",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tomlW, "ky",               false)) == true ? 1 : 0;
     wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tomlW, "kz",               false)) == true ? 1 : 0;
@@ -347,6 +348,7 @@ void Parameters::get_nml_vars(char* filename)
   
   int ri = 2;
   if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
+  if (retval = nc_def_dim (ncid, "y",       ny_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "m",       nm_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "l",       nl_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "s",       nspec_in,      &sdim)) ERR(retval);

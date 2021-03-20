@@ -27,12 +27,15 @@ Grids::Grids(Parameters* pars) :
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;//  theta0_h        = nullptr;
   kz_outh         = nullptr;
+  y_h             = nullptr; 
   //  kx_mask         = nullptr;  kx_shift        = nullptr;  jump            = nullptr;
   //  nLinks          = nullptr;  nChains         = nullptr;
   //  kxCover         = nullptr;  kyCover         = nullptr;  kz_covering     = nullptr; 
   //  kxCover_d       = nullptr;  kyCover_d       = nullptr;  kz_covering_d   = nullptr;
   //  covering_scaler = nullptr;
 
+  // kz is defined without the factor of gradpar
+  
   checkCuda(cudaDeviceSynchronize());
 
   checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 
@@ -43,6 +46,7 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc     ( (void**) &kx,      sizeof(float) * Nx   );
   cudaMalloc     ( (void**) &ky,      sizeof(float) * Nyc  );
   cudaMalloc     ( (void**) &kz,      sizeof(float) * Nz   );
+  cudaMallocHost ( (void**) &y_h,     sizeof(float) * Ny   );
   checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
@@ -86,7 +90,11 @@ Grids::Grids(Parameters* pars) :
   } else {
     for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ i ];
   }
-    
+  
+  // define the y coordinate
+  y_h[0] = 0.;
+  for (int i = 1; i < Ny ; i++) y_h[i] = y_h[i-1] + (float) 2*M_PI*(pars_->y0)/Ny;
+ 
 }
 
 Grids::~Grids() {
@@ -99,6 +107,7 @@ Grids::~Grids() {
   if (kx_h)            cudaFreeHost(kx_h);
   if (ky_h)            cudaFreeHost(ky_h);
   if (kz_h)            cudaFreeHost(kz_h);
+  if (y_h)             cudaFreeHost(y_h);
 }
 
 

@@ -7,8 +7,8 @@
 #define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>>	  
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo), 
-  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr)
+  pars_(pars), grids_(grids), geo_(geo),
+  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)
 {
   printf(ANSI_COLOR_BLUE);
   
@@ -27,7 +27,8 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
   G2          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
-
+  gy_d        = nullptr;  gy_h        = nullptr;
+  
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
@@ -56,8 +57,14 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
       grad_par = new GradParallelLinked(grids_, pars_->jtwist);
     }
   }
+  // need if (pars_->write_flux || "diagnosing potential) {
   cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
+  if (id->g_y.write_v_time) {
+    int nbatch = 1;
+    grad_perp = new GradPerp(grids_, nbatch, grids_->Nyc);
+  }
+      
   if (id->rh.write) cudaMallocHost(&val, sizeof(float)*2);
 
   if (!pars_->all_kinetic) {
@@ -74,7 +81,11 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
     cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY);
   }  
-
+  if (id->g_y.write_v_time) {
+    cudaMalloc     (&gy_d,       sizeof(float) * grids_->Ny);
+    cudaMallocHost (&gy_h,       sizeof(float) * grids_->Ny);
+  }
+  
   /*
   if (pars_->diagnosing_pzt) {
     cudaMallocHost (&primary,   sizeof(float));    primary[0] = 0.;  
@@ -123,6 +134,10 @@ Diagnostics::~Diagnostics()
   if (val)        cudaFreeHost  ( val       );
   if (omg_d)      cudaFree      ( omg_d     );
   if (tmp_omg_h)  cudaFreeHost  ( tmp_omg_h );
+
+  if (gy_h)       cudaFreeHost  ( gy_h      );
+  if (gy_d)       cudaFree      ( gy_d      );
+  
 }
 
 bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, double time) 
@@ -197,23 +212,25 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       W_summand GALL (G2, G->G(), vol_fac, G->nt());
       //      W_summand GALL (G2, G->G(), vol_fac, pars_->species);
       
-      for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	float rho2s = pars_->species_h[is].rho2;
-	Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
-	float qnfac = pars_->species_h[is].qneut;
-	Wphi_scale GSPEC   (P2(is), qnfac);
-      }
-
-      if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
-	
-	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
-	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
-	  Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
+      if (pars_->gx) {
+	for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+	  float rho2s = pars_->species_h[is].rho2;
+	  Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
+	  float qnfac = pars_->species_h[is].qneut;
+	  Wphi_scale GSPEC   (P2(is), qnfac);
 	}
 
-	float fac = 1./pars_->tau_fac;
-	Wphi_scale GSPEC (Phi2, fac);
+	if (pars_->add_Boltzmann_species) {
+	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
+	  
+	  if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
+	    fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
+	    Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
+	  }
+	  
+	  float fac = 1./pars_->tau_fac;
+	  Wphi_scale GSPEC (Phi2, fac);
+	}
       }
       
       id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    
@@ -238,7 +255,6 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       // Do not change the order of these four calls because totW is accumulated in order when it is requested:
       id->write_Ps(P2s);    id->write_Ws(G2);    id->write_As(Phi2);    id->write_Wtot();
     }
-
     
     // Rosenbluth-Hinton diagnostic
     if(id->rh.write) {
@@ -259,7 +275,18 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       id->pZt.increment_ts();
       }
     */
-    if (counter%nw == 0)  nc_sync(id->file);
+
+    // calculate g(y) for this timestep if appropriate
+    if (id->g_y.write_v_time) {
+      grad_perp -> C2R (G->G(), gy_d);
+      CP_TO_CPU(gy_h, gy_d, sizeof(float)*grids_->Ny);
+
+      id->write_gy(gy_h); 
+    }
+      
+    // write g(y)
+    
+    nc_sync(id->file);
   }
 
   // check to see if we should stop simulation

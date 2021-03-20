@@ -310,3 +310,4 @@ void Species_Reduce::Sum(float* Q, float* R, int i)
 
 
 
+// __host__ ​cudaError_t cudaPointerGetAttributes ( cudaPointerAttributes* attributes, const void* ptr )

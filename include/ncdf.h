@@ -41,7 +41,9 @@ class NetCDF_ids {
   void write_Akxky (float * P2, bool endrun = false);
 
   void write_Q     (float * Q,   bool endrun = false);
-  void write_omg  (cuComplex *W, bool endrun = false);
+  void write_omg   (cuComplex *W, bool endrun = false);
+
+  void write_gy    (float * gy_d, bool endrun = false);
 
   void write_nc(int ncid, nca D, const float *data, bool endrun = false);
   void write_nc(int ncid, nca D, const double data, bool endrun = false);
@@ -54,10 +56,11 @@ class NetCDF_ids {
   nca Ps, Pky, Pkx, Pkxky, Pz, Pkz;
   nca Ws, Wky, Wkx, Wkxky, Wz, Wkz;
   nca As, Aky, Akx, Akxky, Az, Akz;
+  nca g_y; 
   nca time;
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
-  int m_dim, l_dim, s_dim;
+  int m_dim, l_dim, s_dim, y, y_dim;
   int theta, theta_x, bmag, bgrad, gbdrift, gbdrift0, periodic;
   int cvdrift, cvdrift0, gds2, gds21, gds22, grho, jacobian;
   int nstep, dt, restart, time_dim, nspec, char16_dim;
@@ -75,6 +78,7 @@ class NetCDF_ids {
   int density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;
 
+  int v_z[1];            // dims for a scalar as a function of z
   int v_kz[1];           // dims for a scalar as a function of kz 
   int v_kx[1];           // dims for a scalar as a function of kx 
   int v_ky[1];           // dims for a scalar as a function of ky 
@@ -86,6 +90,8 @@ class NetCDF_ids {
   size_t ky_start[1], ky_count[1];
   size_t kx_start[1], kx_count[1];
   size_t kz_start[1], kz_count[1];
+  size_t z_start[1], z_count[1];
+  size_t y_start[1], y_count[1];
   
   float * theta_extended ;
 

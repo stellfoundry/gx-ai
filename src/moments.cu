@@ -122,7 +122,8 @@ void MomentsG::set_zero(void) {
 void MomentsG::initialConditions(double *time) {
 
   size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
-  cuComplex *init_h;  cudaMallocHost((void**) &init_h, momsize); 
+  cuComplex *init_h = nullptr;
+  cudaMallocHost((void**) &init_h, momsize); 
   
   for (int idy = 0; idy<grids_->Nyc; idy++) {
     init_h[idy].x = 0.0;
@@ -134,7 +135,7 @@ void MomentsG::initialConditions(double *time) {
   
   CP_TO_GPU(G_lm, init_h, momsize);
   
-  cudaFree(init_h);
+  cudaFreeHost(init_h);
 
   // restart_read goes here, if restart == T
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything

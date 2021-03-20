@@ -74,6 +74,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_dim(file, "kx",        grids_->Nakx,  &kx_dim))    ERR(retval);
   if (retval = nc_def_dim(file, "z",         grids_->Nz,    &nz))        ERR(retval);  
 
+  if (retval = nc_inq_dimid(file, "y",       &y_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "m",       &m_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "l",       &l_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "s",       &s_dim))    ERR(retval);
@@ -91,6 +92,20 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   v_kz[0] = nkz;
   if (retval = nc_def_var(file, "kz",       NC_FLOAT, 1, v_kz, &kz))              ERR(retval);
+
+  v_ky[0] = y_dim;
+  if (retval = nc_def_var(file, "y",        NC_FLOAT, 1, v_ky, &y))               ERR(retval);  
+  
+  v_z[0] = nz;
+  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_kz[0], &z_h))          ERR(retval);
+
+  // z_h needs to be defined.
+  // Z0 would typically be q R
+  // and then z_h would run from - (2 pi q R)/2 : + (2 pi q R)/2
+  // but there are complications to get right:
+  // normalization of R?
+  // Allow for Z0 to be specified directly
+  // Allow nperiod > 1 
   
   geo_v_theta[0] = nz;
   if (retval = nc_def_var(file, "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
@@ -112,6 +127,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   time.time_dims[0] = time_dim;
   if (retval = nc_def_var(file, "time",     NC_DOUBLE, 1, time.time_dims, &time.time))    ERR(retval);
 
+  
   ////////////////////////////
   //                        //
   //       DENSITY          //
@@ -937,6 +953,27 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   ////////////////////////////
   //                        //
+  //   g(y) for K-S eqn     // 
+  //                        //
+  ////////////////////////////
+
+  if (pars_->ks && pars_->write_ks)  g_y.write_v_time = true;
+
+  if (g_y.write_v_time) {
+    g_y.time_dims[0] = time_dim;
+    g_y.time_dims[1] = y_dim;
+    
+    if (retval = nc_def_var(file, "g_yt", NC_FLOAT, 2, g_y.time_dims, &g_y.time))  ERR(retval);
+    g_y.time_start[0] = 0;
+    g_y.time_start[1] = 0;
+    
+    g_y.time_count[0] = 1;
+    g_y.time_count[1] = grids_->Ny;      
+
+  }   
+
+  ////////////////////////////
+  //                        //
   //   Free energy          //
   //                        //
   ////////////////////////////
@@ -984,6 +1021,26 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   ///////////////////////////////////
   //                               //
+  //        y                      //
+  //                               //
+  ///////////////////////////////////
+  y_start[0] = 0;
+  y_count[0] = grids_->Ny;
+
+  if (retval = nc_put_vara(file, y, y_start, y_count, grids_->y_h))         ERR(retval);
+
+  ///////////////////////////////////
+  //                               //
+  //         z                     //
+  //                               //
+  ///////////////////////////////////
+  z_start[0] = 0;
+  z_count[0] = grids_->Nz;
+
+  //  if (retval = nc_put_vara(file, z, z_start, z_count, z_h))      ERR(retval);
+
+  ///////////////////////////////////
+  //                               //
   //        kz                     //
   //                               //
   ///////////////////////////////////
@@ -1001,7 +1058,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   ky_count[0] = grids_->Naky;
 
   if (retval = nc_put_vara(file, ky, ky_start, ky_count, grids_->ky_h))         ERR(retval);
-
+  
   ///////////////////////////////////
   //                               //
   //        kx                     //
@@ -1598,6 +1655,13 @@ void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 void NetCDF_ids::write_Wtot()
 {
   if (Wtot.write_v_time) {  write_nc(file, Wtot, &totW);        Wtot.increment_ts();     totW = 0.;}
+}
+
+void NetCDF_ids::write_gy(float* gy_h, bool endrun)
+{
+  if (g_y.write_v_time || (g_y.write && endrun)) {
+    write_nc(file, g_y, gy_h, endrun);          g_y.increment_ts();
+  }
 }
 
 void NetCDF_ids::close_nc_file() {
