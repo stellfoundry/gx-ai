@@ -252,31 +252,17 @@ void Reservoir::add_data(float* G)
  For no particular reason, W_out is stored as the matrix P for use in the 
  prediction phase. 
 
- Most of the complexity in this conclude_training procedure is associated 
- with precision issues. V and W are double precision, but the P matrix is 
- only single precision. I used double precision for calculating V and W 
- because the calculation of the inverse of B = (W + beta I) in single precision
- was not working well, and then the multiplication of V with B**-1
- using different precisions was not working the way I expected. 
-
  I use the cusolver library to calculate B**-1 with an LU-decomposition, 
  including pivots. I first tried a Cholesky-based solver but while B was 
- symmetric with positive elements, it  was not positive-definite. 
+ symmetric with positive elements, it was not positive-definite. It might be useful to 
+ go back and verify that there were not other problems when I ran those tests.
 
- A temporary double precision matrix X = V B**-1 is calculated 
- and then stored in single precision as P for use in the prediction phase. 
-
- I use the cutensor library to contract V B**-1 to form X. I expected the cutensor
+ I use the cutensor library to calculate P = V B**-1. I expected the cutensor
  library to work easily with mixed precision, but there are evidently subtleties. 
  For now, as noted above, I am using double precision here instead of mixed precision.
 
  Finally, the cutensor API specifies that the inputs (V and B**-1 here) are assumed to 
  be constants, so I am not trying to reuse the space with something like V = V B**-1. 
-
- Because of the libraries, which I selected for performance reasons, there are two
- large temporary arrays: X and B**-1. 
-
- P is the only single precision quantity in this procedure. 
 */
 void Reservoir::conclude_training(void)
 {  
