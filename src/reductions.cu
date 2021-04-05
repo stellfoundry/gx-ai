@@ -193,7 +193,7 @@ Block_Reduce::Block_Reduce(int N) : N_(N)
 {
   Addwork = nullptr;      sizeAdd = 0;
   Maxwork = nullptr;      sizeMax = 0;
-  
+
   extent['a'] = N_;
   extent['s'] = 1;
   for (auto mode : Amode) extent_A.push_back(extent[mode]); // incoming tensor assuming data is contiguous
@@ -307,7 +307,96 @@ void Species_Reduce::Sum(float* Q, float* R, int i)
 		    opAdd, typeCompute, Addwork, sizeAdd, 0);
 }
 
+//============ DenseM ==============
+DenseM::DenseM(int N, int M) : N_(N), M_(M)
+{ 
+  Multwork = nullptr;      sizeWork = 0;
 
+  extent['g'] = M_;
+  extent['r'] = N_;
+  extent['s'] = N_;
+  for (auto mode : Mmode) extent_M.push_back(extent[mode]); 
+  for (auto mode : Vmode) extent_V.push_back(extent[mode]); 
+  for (auto mode : Ymode) extent_Y.push_back(extent[mode]); 
+  for (auto mode : Zmode) extent_Z.push_back(extent[mode]); 
+  for (auto mode : Wmode) extent_W.push_back(extent[mode]); 
+  for (auto mode : Xmode) extent_X.push_back(extent[mode]); 
 
+  cutensorInit(&handle);
+  cutensorInitTensorDescriptor(&handle, &dM, nMmode, extent_M.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dV, nVmode, extent_V.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dY, nYmode, extent_Y.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dZ, nZmode, extent_Z.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dX, nXmode, extent_X.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
 
-// __host__ ​cudaError_t cudaPointerGetAttributes ( cudaPointerAttributes* attributes, const void* ptr )
+  cutensorInitContractionFind(&handle, &find, CUTENSOR_ALGO_DEFAULT);
+}
+
+DenseM::~DenseM()
+{
+  if (Multwork) cudaFree(Multwork);  
+}
+
+void DenseM::MatMat(double* Res, double* M1, double* M2)
+{
+  if (first_MM) {
+    
+    uint32_t alignM1, alignM2, alignRes;
+    cutensorGetAlignmentRequirement(&handle, M1,  &dW, &alignM1);
+    cutensorGetAlignmentRequirement(&handle, M2,  &dZ, &alignM2);
+    cutensorGetAlignmentRequirement(&handle, Res, &dX, &alignRes);
+
+    cutensorInitContractionDescriptor (&handle, &dMM, 
+				       &dW, Wmode.data(), alignM1,
+				       &dZ, Zmode.data(), alignM2,
+				       &dX, Xmode.data(), alignRes,
+				       &dX, Xmode.data(), alignRes,
+				       typeCompute64);
+
+    cutensorContractionGetWorkspace(&handle, &dMM, &find, CUTENSOR_WORKSPACE_RECOMMENDED, &sizeMM );
+    if (sizeMM > 0) {
+      if (cudaSuccess != cudaMalloc(&MMwork, sizeMM)) {MMwork = nullptr; sizeMM = 0;}
+    }
+    first_MM = false;
+
+    cutensorInitContractionPlan(&handle, &MMplan, &dMM, &find, sizeMM);
+  }
+  
+  cutensorContraction(&handle,
+		      &MMplan, (void*) &alpha64, M1, M2, (void*) &beta64, Res, Res, MMwork, sizeMM, 0);
+  
+}
+
+// Res[M] = Mat[M x N] * Vec[N]
+// and in terms of these tensor descriptors Y = M V
+void DenseM::MatVec(double* Res, double* Mat, double* Vec)
+{
+  if (first_MV) {
+    
+    uint32_t alignVec, alignMat, alignRes;
+    cutensorGetAlignmentRequirement(&handle, Res, &dY, &alignRes);
+    cutensorGetAlignmentRequirement(&handle, Mat, &dM, &alignMat);
+    cutensorGetAlignmentRequirement(&handle, Vec, &dV, &alignVec);
+
+    cutensorInitContractionDescriptor (&handle, &dMV, 
+				       &dM, Mmode.data(), alignMat,
+				       &dV, Vmode.data(), alignVec,
+				       &dY, Ymode.data(), alignRes,
+				       &dY, Ymode.data(), alignRes,
+				       typeCompute64);
+
+    cutensorContractionGetWorkspace(&handle, &dMV, &find, CUTENSOR_WORKSPACE_RECOMMENDED, &sizeWork);
+    if (sizeWork > 0) {
+      if (cudaSuccess != cudaMalloc(&Multwork, sizeWork)) {Multwork = nullptr; sizeWork = 0;}
+    }
+    first_MV = false;
+
+    cutensorInitContractionPlan(&handle, &MVplan, &dMV, &find, sizeWork);
+  }
+  
+  cutensorContraction(&handle, &MVplan, (void*) &alpha64, Mat, Vec,
+		      (void*) &beta64, Res, Res, Multwork, sizeWork, 0);
+  
+}
+

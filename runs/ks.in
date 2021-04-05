@@ -1,15 +1,15 @@
 
  debug = false
- scheme = "sspx3"
+ scheme = "k10"
 
  ks = true
  write_ks = true
  
  ntheta = 1
  nperiod = 1
- ny = 128
+ ny = 64
  nx = 1
- y0 = 16.0
+ y0 = 3.5
  x0 = 1.0
  boundary = "periodic"
  
@@ -18,8 +18,8 @@
  closure_model = "none"
  
  dt = 0.01
- nstep  = 20000
- nwrite = 100
+ nstep  = 1750000
+ nwrite = 25
 
  slab = true
  const_curv = false
@@ -65,3 +65,13 @@
  vnewk = [ 0.0,         0.0     ]
  type  = [ "ion",  "electron"  ]
 
+[Reservoir]
+ Use_reservoir = true
+ Q = 46
+ K = 3
+ prediction_steps = 300
+ spectral_radius = 0.6
+ regularization = 1.0e-4
+ input_sigma = 0.5
+
+ 

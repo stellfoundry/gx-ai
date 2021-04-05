@@ -5,6 +5,7 @@
 #define GSPEC <<< dG_spectra, dB_spectra >>>
 #define GALL <<< dG_all, dB_all >>>
 #define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>>	  
+#define loop_y <<< dgp, dbp >>> 
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
@@ -32,6 +33,8 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
+  if (pars_->Reservoir) rc = new Reservoir(pars_, grids_->NxNyNz*grids->Nmoms);  
+  
   volDenom = 0. ;  cudaMallocHost (&vol_fac, sizeof(float) * nZ);
   for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i]; 
   for (int i=0; i < nZ; i++) vol_fac[i]  = geo_->jacobian_h[i] / volDenom;
@@ -78,8 +81,10 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   }
   
   if (id->omg.write_v_time) {
-    cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
+    cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
     cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY);
+    int nn = nX*nY; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
+    setval <<< nb, nt >>> (omg_d, zero, nn);
   }  
   if (id->g_y.write_v_time) {
     cudaMalloc     (&gy_d,       sizeof(float) * grids_->Ny);
@@ -120,6 +125,12 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 
   if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
 
+  nbx = min(grids_->Ny, 512);
+  ngx = 1 + (grids_->Ny-1)/nbx;
+
+  dbp = dim3(nbx, 1, 1);
+  dgp = dim3(ngx, 1, 1);
+  
   printf(ANSI_COLOR_RESET);
 }
 
@@ -278,24 +289,43 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
     // calculate g(y) for this timestep if appropriate
     if (id->g_y.write_v_time) {
-      grad_perp -> C2R (G->G(), gy_d);
+      grad_perp->C2R(G->G(), gy_d);
       CP_TO_CPU(gy_h, gy_d, sizeof(float)*grids_->Ny);
-
-      id->write_gy(gy_h); 
-    }
       
-    // write g(y)
-    
+      id->write_gy(gy_h);
+    }
     nc_sync(id->file);
   }
-
+  if (pars_->Reservoir && counter%pars_->ResTrainingDelta == 0) {
+    grad_perp->C2R(G->G(), gy_d);    rc->add_data(gy_d); 
+  }
+  
   // check to see if we should stop simulation
   stop = checkstop();
   return stop;
 }
 
-void Diagnostics::finish(MomentsG* G, Fields* fields) 
+void Diagnostics::finish(MomentsG* G, Fields* fields, double time) 
 {
+  if (pars_->Reservoir && rc->predicting()) {
+    grad_perp -> C2R (G->G(), gy_d);
+    double *gy_double;
+    cudaMalloc(&gy_double, sizeof(double)*grids_->Ny);
+    promote loop_y (gy_double, gy_d, grids_->Ny);
+    
+    for (int i=0; i<pars_->ResPredict_Steps; i++) {
+      rc->predict(gy_double);
+      time += pars_->dt * pars_->ResTrainingDelta;
+      demote loop_y (gy_d, gy_double, grids_->Ny); 
+      if (id->g_y.write_v_time) {      
+	id->write_nc(id->file, id->time, time);
+	id->time.increment_ts();
+	CP_TO_CPU(gy_h, gy_d, sizeof(float)*grids_->Ny);
+	id->write_gy(gy_h);
+      }
+      
+    }
+  }
   //
   //
   // could put some real space figure data here, or some other one-point-in-time diagnostics
@@ -319,7 +349,6 @@ void Diagnostics::finish(MomentsG* G, Fields* fields)
     }
   }
   */
-
   id->close_nc_file();  fflush(NULL);
 
 }

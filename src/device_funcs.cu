@@ -56,8 +56,6 @@ void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int
 // idx3 (for the .z loops)
 // 
 
-
-
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
@@ -351,6 +349,150 @@ __global__ void add_scaled_kernel(cuComplex* res,
   }
 }
 
+__global__ void setval(float* f, float val, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) f[n] = val;
+}
+
+__global__ void setval(double* f, double val, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) f[n] = val;
+}
+
+__global__ void setval(cuComplex* f, cuComplex val, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) f[n] = val;
+}
+
+__global__ void demote(float* G, double* dG, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) G[n] = (float) dG[n];
+}
+
+__global__ void promote(double* dG, float* G, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) dG[n] = (double) G[n];
+}
+
+__global__ void getr2(double* r2, double* r, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) r2[n] = (n%2 == 0) ? r[n] : r[n]*r[n];
+}
+
+__global__ void getV(double* V, float* G, double* r2, int M, int N) 
+{
+  unsigned int m = get_id1();
+  if (m<M) {
+    unsigned int n = get_id2();
+    if (n<N) V[m + M*n] +=  (double) G[m] * r2[n];
+  }
+}
+
+__global__ void getB(double* W, double beta, int N)
+{
+  int n = get_id1();
+  if (n<N) W[n+N*n] += beta;
+}
+
+__global__ void setI(double* Id, int N)
+{
+  int n = get_id1();
+  if (n<N) Id[n + N*n] = 1.;
+}
+
+__global__ void setA(double* A, float fac, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) A[n] *= (double) fac;
+}
+
+__global__ void getW(double* W, double* r2, int N) 
+{
+  int n1 = get_id1();
+  if (n1<N) {
+    int n2 = get_id2();
+    if (n2<n1+1) {
+      double r2n1 = r2[n1];
+      double r2n2 = r2[n2];
+      W[n1 + N*n2] += r2n1 * r2n2;
+      if (n2<n1) W[n2 + N*n1] = W[n1 + N*n2];
+    }
+  }
+}
+
+__global__ void copyV(float* P, double* V, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) P[n] = (float) V[n];
+}
+
+__global__ void WinG(double* res, double* Win, double* G, int Q, int M)
+{
+  unsigned int q = get_id1();
+  if (q<Q) {
+    unsigned int m = get_id2();
+    if (m<M) {
+      unsigned int n = q + Q*m;
+      res[n] = Win[n] * G[m];
+    }
+  }
+}
+
+__global__ void update_state(double* res, double* A, double* x, int K, int N)
+{
+  unsigned int n = get_id1();
+  if (n<N) {
+    for (int k=0; k<K; k++) res[n] +=  A[k + K*n] * x[k + K*n];
+    res[n] = tanh(res[n]);
+  }
+}
+
+__global__ void myPrep(double* x, double* r, int* col, int NK)
+{
+  unsigned int i = get_id1();
+  if (i < NK) x[i] = r[ col[i] ];
+}
+
+__global__ void mySpMV(float* x2, float* xy, float* y2,
+		       double* y, double* x, double* A, double* r, int K, int N)
+{
+  unsigned int n = get_id1();
+  if (n < N) {
+    y[n] = A[K*n] * x[K*n];
+    for (int k=1; k<K; k++) y[n] += A[k + K*n] * x[k + K*n];
+    y2[n] = (float) y[n] * y[n];
+    xy[n] = (float) r[n] * y[n];
+    x2[n] = (float) r[n] * r[n];
+  }
+}
+
+__global__ void eig_residual(double* y, double* A, double* x, double* R,
+			     float* r2, float eval, int K, int N)
+{
+  unsigned int n = get_id1();
+  if (n < N) {
+    y[n] = A[K*n] * x[K*n];
+    for (int k=1; k<K; k++) y[n] += A[k + K*n] * x[k + K*n];
+    double res = eval*R[n] - y[n];
+    r2[n] = (float) pow(res,2);
+  }
+}
+
+__global__ void est_eval(float eval, float *fLf, float* f2) {eval = fLf[0]/f2[0];}
+
+
+__global__ void inv_scale_kernel(double* res, const double* f, const float* scalar, int N)
+{
+  unsigned int n = get_id1();
+  double sinv = (double) 1./sqrt(scalar[0]);
+  if (n < N) res[n] = f[n]*sinv;
+}
 
 __global__ void scale_kernel(cuComplex* res, double scalar)
 {
@@ -366,7 +508,6 @@ __global__ void scale_kernel(cuComplex* res, double scalar)
     }
   }
 }
-
 
 __global__ void scale_kernel(cuComplex* res, const cuComplex scalar)
 {

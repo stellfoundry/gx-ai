@@ -12,6 +12,7 @@
 #include "timestepper.h"
 #include "linear.h"
 #include "nonlinear.h"
+#include "reservoir.h"
 #include "get_error.h"
 
 void run_gx(Parameters * parameters, Grids* grids, Geometry* geo, Diagnostics* diagnostics);

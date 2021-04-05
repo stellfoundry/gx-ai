@@ -24,54 +24,39 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-#define PHI 0                                                                            
-#define DENS 1
-#define FORCE 2 
+enum class inits {density, upar, tpar, tperp, qpar, qperp};
+enum class stirs {density, upar, tpar, tperp, qpar, qperp, ppar, pperp};
+enum class Tmethod {sspx2, sspx3, rk2, rk4, k10}; 
+enum class Closure {none, beer42, smithperp, smithpar};
+enum WSpectra {WSPECTRA_species,
+	       WSPECTRA_kx,
+	       WSPECTRA_ky,
+	       WSPECTRA_z,
+	       WSPECTRA_l,
+	       WSPECTRA_m,
+	       WSPECTRA_lm,
+	       WSPECTRA_kperp,
+	       WSPECTRA_kxky,
+	       WSPECTRA_kz};
+
+enum PSpectra {PSPECTRA_species,
+	       PSPECTRA_kx,
+	       PSPECTRA_ky,
+	       PSPECTRA_kperp,
+	       PSPECTRA_kxky,
+	       PSPECTRA_z,	       
+	       PSPECTRA_kz};
+	       
+enum ASpectra {ASPECTRA_species,
+	       ASPECTRA_kx,
+	       ASPECTRA_ky,
+	       ASPECTRA_kperp,
+	       ASPECTRA_kxky,
+	       ASPECTRA_z,	       
+	       ASPECTRA_kz};
+	       
 #define RH_equilibrium 3
-#define TPRP 4
-#define UPAR 5
-#define TPAR 6
-#define QPAR 7
-#define QPRP 8
-#define PPRP 10
-#define PPAR 11
-#define ODD 9
-#define SSPX2 1
-#define SSPX3 2
-#define RK2 3
-#define RK4 5
-#define K10 6
-#define BEER42 1
-#define SMITHPERP 2
-#define SMITHPAR 3
 #define PHIEXT 1
-
-#define WSPECTRA_species 0
-#define WSPECTRA_kx 1
-#define WSPECTRA_ky 2
-#define WSPECTRA_z  3
-#define WSPECTRA_l  4
-#define WSPECTRA_m  5
-#define WSPECTRA_lm 6
-#define WSPECTRA_kperp 7
-#define WSPECTRA_kxky 8
-#define WSPECTRA_kz 9
-
-#define PSPECTRA_species 0
-#define PSPECTRA_kx 1
-#define PSPECTRA_ky 2
-#define PSPECTRA_kperp 3
-#define PSPECTRA_kxky 4
-#define PSPECTRA_z 5
-#define PSPECTRA_kz 6
-
-#define ASPECTRA_species 0
-#define ASPECTRA_kx 1
-#define ASPECTRA_ky 2
-#define ASPECTRA_kperp 3
-#define ASPECTRA_kxky 4
-#define ASPECTRA_z 5
-#define ASPECTRA_kz 6
 
 #define BOLTZMANN_IONS 1
 #define BOLTZMANN_ELECTRONS 2
@@ -82,9 +67,9 @@ class Parameters {
   Parameters(void);
   ~Parameters(void);
   
-  const int nw_spectra = 10;
-  const int np_spectra = 7;
-  const int na_spectra = 7;
+  const int nw_spectra = 10; // should match # of elements in WSpectra
+  const int np_spectra = 7;  // should match # of elements in PSpectra
+  const int na_spectra = 7;  // should match # of elements in ASpectra
   void get_nml_vars(char* file);
 
   void init_species(specie* species);
@@ -93,15 +78,21 @@ class Parameters {
   int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
-  int closure_model_opt, forcing_index, smith_par_q, smith_perp_q;
+  int forcing_index, smith_par_q, smith_perp_q;
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
-  int dorland_phase_ifac, ivarenna, iflr, i_share, stirf;
-  int init, iky_single, ikx_single, iky_fixed, ikx_fixed;
+  int dorland_phase_ifac, ivarenna, iflr, i_share;
+  int iky_single, ikx_single, iky_fixed, ikx_fixed;
   int Boltzmann_opt; 
   //  int lh_ikx, lh_iky;
-  int zonal_dens_switch, q0_dens_switch, scheme_opt;
+  int zonal_dens_switch, q0_dens_switch;
   // formerly part of time struct
   int trinity_timestep, trinity_iteration, trinity_conv_count, end_time;   
+  int ResQ, ResK, ResTrainingSteps, ResTrainingDelta, ResPredict_Steps; 
+  
+  inits initf;
+  stirs stirf;
+  Tmethod scheme_opt;
+  Closure closure_model_opt;
   
   float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
@@ -114,7 +105,8 @@ class Parameters {
   float avail_cpu_time, margin_cpu_time;
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
   float tp_t0, tp_tf, tprim0, tprimf;
-
+  float ResSpectralRadius, ResReg, ResSigma; 
+  
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;
@@ -138,6 +130,7 @@ class Parameters {
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
+  bool Reservoir;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
     

@@ -6,13 +6,18 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   phi(nullptr), phi_h(nullptr), apar(nullptr), apar_h(nullptr)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
-  cudaMemset(phi, 0., size_);
+
+  int nn = grids->NxNycNz; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
+  setval <<< nb, nt >>> (phi, zero, nn);
+
+  //  cudaMemset(phi, 0., size_);
 
   cudaMallocHost((void**) &phi_h, size_);
 
   if (pars_->beta > 0.) {
     checkCuda(cudaMalloc((void**) &apar, size_));
-    cudaMemset(apar, 0., size_);
+
+    cudaMemset(apar, 0., size_); setval <<< nb, nt >>> (apar, zero, nn);
 
     cudaMallocHost((void**) &apar_h, size_);
   }

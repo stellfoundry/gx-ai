@@ -21,16 +21,24 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
  
-  if(pars_->closure_model_opt > 0) {
-    if(pars_->closure_model_opt == BEER42) {                                 DEBUGPRINT("Initializing Beer 4+2 closures\n");
+  switch (pars_->closure_model_opt)
+    {
+    case Closure::none      :
+      break;
+    case Closure::beer42    :
+      DEBUGPRINT("Initializing Beer 4+2 closures\n");
       closures = new Beer42(pars_, grids_, geo_, grad_par);
-    } else if (pars_->closure_model_opt == SMITHPERP) {                      DEBUGPRINT("Initializing Smith perpendicular toroidal closures\n");
+      break;
+    case Closure::smithperp :
+      DEBUGPRINT("Initializing Smith perpendicular toroidal closures\n");
       closures = new SmithPerp(pars_, grids_, geo_);
-    } else if (pars_->closure_model_opt == SMITHPAR) {                       DEBUGPRINT("Initializing Smith parallel closures\n");
+      break;
+    case Closure::smithpar  :
+      DEBUGPRINT("Initializing Smith parallel closures\n");
       closures = new SmithPar(pars_, grids_, geo_, grad_par);
+      break;
     }
-  }
-
+  
   // allocate conservation terms for collision operator
   size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
   cudaMalloc((void**) &upar_bar, size);
@@ -123,8 +131,8 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 	 GRhs->G());
 
   // closures
-  if(pars_->closure_model_opt>0) closures->apply_closures(G, GRhs);
-
+  switch (pars_->closure_model_opt) {case Closure::none : break; closures->apply_closures(G, GRhs);}
+  
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
 								   pars_->nu_hyper_l,

@@ -94,7 +94,7 @@ class NetCDF_ids {
   size_t y_start[1], y_count[1];
   
   float * theta_extended ;
-
+  
  private:   
 
   Parameters * pars_   ;
@@ -104,7 +104,7 @@ class NetCDF_ids {
   Red        * pot     ;
   Red        * ph2     ;
   Red        * all_red ;
-
+  
   float *Wm_d, *Wm_h, *Wl_d, *Wl_h, *Wlm_d, *Wlm_h;
   float *Wz_d, *Wz_h, *Ws_d, *Ws_h;
   float *Pz_d, *Pz_h, *Ps_d, *Ps_h;

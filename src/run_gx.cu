@@ -50,12 +50,15 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   }    
 
   Timestepper * timestep;
-  if(pars->scheme_opt == K10)   timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-  if(pars->scheme_opt == RK4)   timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-  if(pars->scheme_opt == RK2)   timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-  if(pars->scheme_opt == SSPX2) timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-  if(pars->scheme_opt == SSPX3) timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt);
-    //    if (timestep == nullptr) {bail out}
+  switch (pars->scheme_opt)
+    {
+    case Tmethod::k10   : timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    }
+
   getDeviceMemoryUsage();
   
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);
@@ -80,7 +83,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
   if (pars->save_for_restart) G->restart_write(&time);
 
-  if (pars->eqfix && (pars->scheme_opt == K10)) {
+  if (pars->eqfix && (pars->scheme_opt == Tmethod::k10)) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -99,7 +102,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
   printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
 
-  diagnostics->finish(G, fields);
+  diagnostics->finish(G, fields, time);
 
   if (G)         delete G;
   if (solver)    delete solver;

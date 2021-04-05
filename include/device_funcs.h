@@ -85,6 +85,28 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c4, const cuComplex* m4,
 				  double c5, const cuComplex* m5, bool bdum);
 
+__global__ void promote(double* dG, float* G, int N);
+__global__ void demote(float* G, double* dG, int N);
+__global__ void getr2(double* r2, double* r, int N);
+__global__ void copyV(double* P, double* V, int N);
+__global__ void getV(double* V, float* G, double* R2, int M, int N);
+__global__ void getW(double* W, double* r2, int N);
+__global__ void setI(double* Id, int N);
+__global__ void getB(double* W, double beta_, int N);
+__global__ void setval(float* f, float val, int N);
+__global__ void setval(double* f, double val, int N);
+__global__ void setval(cuComplex* f, cuComplex val, int N);
+__global__ void WinG(double* res, double* Win, double* G, int Q, int M);
+__global__ void update_state(double* res, double* A, double* x, int K, int N);
+__global__ void myPrep(double* x, double* r, int* col, int NK);
+__global__ void mySpMV(float* x2, float* xy, float* y2,
+		       double* y, double* x, double* A, double* r, int K, int N);
+__global__ void est_eval(float e, float* fLf, float * f2);
+__global__ void setA(double* A, float fac, int N);
+__global__ void inv_scale_kernel(double* res, const double* f, const float* scalar, int N);
+__global__ void eig_residual(double* y, double* A, double* x, double* R,
+			     float* r2, float eval, int K, int N);
+  
 __global__ void scale_kernel(cuComplex* res, double s);
 __global__ void scale_kernel(cuComplex* res, cuComplex s);
 __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, cuComplex s);

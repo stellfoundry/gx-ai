@@ -53,9 +53,15 @@ void Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
 
     const float vt_ = pars_->species_h[is].vt;
 
+    int nn = grids_->NxNycNz; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;
+    cuComplex zero = make_cuComplex(0.,0.);
+
     // mask unevolved moments
-    cudaMemset(GRhs->G(1, 2, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
-    cudaMemset(GRhs->G(1, 3, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
+    setval <<< nb, nt >>> (GRhs->G(1, 2, is), zero, nn);
+    setval <<< nb, nt >>> (GRhs->G(1, 3, is), zero, nn);
+					   
+    //    cudaMemset(GRhs->G(1, 2, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
+    //    cudaMemset(GRhs->G(1, 3, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
 
     // parallel streaming
     grad_par_->dz(G->G(0, 2, is), tmp); // roughly d/dz T_par
@@ -221,10 +227,15 @@ void SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
     // apply closure to mth hermite equation for all laguerre moments
     for(int l = 0; l < grids_->Nl; l++) {
       
-      // reset closure array every time step
-      cudaMemset(clos, 0, sizeof(cuComplex)*grids_->NxNycNz);
+      //      cudaMemset(clos, 0, sizeof(cuComplex)*grids_->NxNycNz);
       
-      // write m+1 moment as a sum of lower order moments
+      int nn = grids_->NxNycNz; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;
+      cuComplex zero = make_cuComplex(0.,0.);
+      
+      // reset closure array every time step
+      setval <<< nb, nt >>> (clos, zero, nn); 
+
+    // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
 
 	grad_par_->dz(G->G(l, m, is), tmp);

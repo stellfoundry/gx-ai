@@ -1,14 +1,13 @@
 #pragma once
 #include "device_funcs.h"
-// #include "gx_lib.h"
 #include "parameters.h"
 #include "grids.h"
 #include "moments.h"
 #include "fields.h"
 #include "ncdf.h"
-//#include "reductions.h"
 #include "grad_parallel.h"
 #include "grad_perp.h"
+#include "reservoir.h"
 
 class Diagnostics {
  public:
@@ -16,14 +15,14 @@ class Diagnostics {
   ~Diagnostics();
 
   bool loop(MomentsG* G, Fields* fields, double dt, int counter, double time) ;
-  void finish(MomentsG* G, Fields* fields);  
+  void finish(MomentsG* G, Fields* fields, double time);  
   void write_init(MomentsG* G, Fields* f);
 
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
 
   int ikx_local, iky_local, iz_local;;
-  dim3 dG_spectra, dB_spectra, dG_all, dB_all; //, dG_scale, dB_scale;
+  dim3 dG_spectra, dB_spectra, dG_all, dB_all, dbp, dgp; //, dG_scale, dB_scale;
   bool checkstop();
  
   float fluxDenom; float * flux_fac; 
@@ -40,6 +39,7 @@ private:
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
   NetCDF_ids   * id            ;
+  Reservoir    * rc            ;
   
   float        * G2            ;
   float        * P2s           ;

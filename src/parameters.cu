@@ -180,24 +180,19 @@ void Parameters::get_nml_vars(char* filename)
   ///////////////////////////////////////////////////////////////////////
 
   if (all_kinetic) {
-    if (iphi00 > 0) {
-      printf("all_kinetic = true and iphi00 > 0 not both allowed.\n");                      exit(1);
-    }
-    if (add_Boltzmann_species) {
-      printf("all_kinetic = true and add_Boltzmann_species = true not both allowed.\n");    exit(1);
-    }
+    assert( (iphi00 <= 0)
+	    && "Specifying all species are kinetic and also iphi00 > 0 is not allowed");
+    assert( !add_Boltzmann_species
+	    && "Specifying all species are kinetic and also add_Boltzmann_species is not allowed");
   }
-  
+
   if (!all_kinetic) {
-    if (tau_fac < 0.) {
-      printf("all_kinetic == false and tau_fac < 0. not both allowed.\n");                   exit(1);
-    }
-    if ( !(Boltzmann_opt == BOLTZMANN_ELECTRONS) && !(Boltzmann_opt == BOLTZMANN_IONS) ) {
-      printf("all_kinetic == false but no legal Boltzmann_type specified.\n");               exit(1);
-    }
-    if ( !add_Boltzmann_species ) {
-      printf("Cannot accept all_kinetic == false AND all_Boltzmann_species == false.\n");    exit(1);
-    }
+    assert( (tau_fac >= 0.)
+	    && "Specifying all_kinetic == false and also tau_fac < 0. is not allowed");
+    assert( ( (Boltzmann_opt==BOLTZMANN_ELECTRONS) || (Boltzmann_opt==BOLTZMANN_IONS) )
+	    && "If all_kinetic == false then a legal Boltzmann_opt must be specified");
+    assert( add_Boltzmann_species
+	    && "If all_kinetic == false then add_Boltzmann_species should be true");
   }
       
   smith_par_q = toml::find_or <int> (nml, "smith_par_q", 3);
@@ -326,7 +321,7 @@ void Parameters::get_nml_vars(char* filename)
   collisions = false;
   for (int i=0; i<nspec_in; i++) {numax = max(numax, species_h[i].nu_ss);}
   if (numax > 0.) collisions = true;
-
+  
   fphi = toml::find_or <float> (nml, "fphi", 1.0);
   fapar = toml::find_or <float> (nml, "fapar", 0.0);
   fbpar = toml::find_or <float> (nml, "fbpar", 0.0);
@@ -335,7 +330,24 @@ void Parameters::get_nml_vars(char* filename)
   tp_tf = toml::find_or <float> (nml, "tf", -1.0);
   tprim0 = toml::find_or <float> (nml, "tprim0", -1.0);
   tprimf = toml::find_or <float> (nml, "tprimf", -1.0);
+
+  Reservoir = false;
   
+  if (nml.contains("Reservoir")) {
+    const auto tomlRes = toml::find (nml, "Reservoir");
+    Reservoir          = toml::find_or <bool>  (tomlRes, "Use_reservoir", false);
+    ResQ               = toml::find_or <int>   (tomlRes, "Q", 20);
+    ResK               = toml::find_or <int>   (tomlRes, "K", 3);
+    ResTrainingSteps   = toml::find_or <int>   (tomlRes, "training_steps", 0);
+    ResPredict_Steps   = toml::find_or <int>   (tomlRes, "prediction_steps", 200);
+    ResTrainingDelta   = toml::find_or <int>   (tomlRes, "training_delta", 0);
+    ResSpectralRadius  = toml::find_or <float> (tomlRes, "spectral_radius", 0.6);
+    ResReg             = toml::find_or <float> (tomlRes, "regularization", 1.0e-4);
+    ResSigma           = toml::find_or <float> (tomlRes, "input_sigma", 0.5);
+
+    if (ResTrainingSteps == 0) ResTrainingSteps = nstep/nwrite;
+    if (ResTrainingDelta == 0) ResTrainingDelta = nwrite;
+  }  
   // open the netcdf4 file for this run
   // store all inputs for future reference
 
@@ -676,14 +688,14 @@ void Parameters::get_nml_vars(char* filename)
   putfloat (ncid, "x0", x0);
      
   //  if(strcmp(closure_model, "beer4+2")==0) {
-  closure_model_opt = 0;
+  closure_model_opt = Closure::none   ;
   if( closure_model == "beer4+2") {
     printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
     nm_in = 4;
     nl_in = 2;
-    closure_model_opt = BEER42;
-  } else if (closure_model == "smith_perp") { closure_model_opt = SMITHPERP;
-  } else if (closure_model == "smith_par")  { closure_model_opt = SMITHPAR;
+    closure_model_opt = Closure::beer42;
+  } else if (closure_model == "smith_perp") { closure_model_opt = Closure::smithperp;
+  } else if (closure_model == "smith_par")  { closure_model_opt = Closure::smithpar; 
   }
 
   if( boundary == "periodic") { boundary_option_periodic = true;
@@ -692,35 +704,29 @@ void Parameters::get_nml_vars(char* filename)
   local_limit = false;
   if(qsf < 0  &&  nz_in == 1) { local_limit=true; }
 
-  if     ( init_field == "density") { init = DENS;  }
-  //  else if( init_field == "phi") { init = PHI;   }
-  else if( init_field == "force"  ) { init = FORCE; }
-  else if( init_field == "qperp"  ) { init = QPRP;  }
-  else if( init_field == "tperp"  ) { init = TPRP;  }
-  else if( init_field == "tpar"   ) { init = TPAR;  }
-  else if( init_field == "qpar"   ) { init = QPAR;  }
-  else if( init_field == "upar"   ) { init = UPAR;  }
-  else if( init_field == "ppar"   ) { init = PPAR;  }
-  else if( init_field == "pperp"  ) { init = PPRP;  }
-  //  else if( init_field == "odd"  ) { init = ODD;   }
-  //  else if( init_field == "RH_eq" ) { init = RH_equilibrium; new_varenna = true; }
-
-  if     ( stir_field == "density") { stirf = DENS; }
-  else if( stir_field == "qperp"  ) { stirf = QPRP;  }
-  else if( stir_field == "tperp"  ) { stirf = TPRP;  }
-  else if( stir_field == "tpar"   ) { stirf = TPAR;  }
-  else if( stir_field == "qpar"   ) { stirf = QPAR;  }
-  else if( stir_field == "upar"   ) { stirf = UPAR;  }
-  else if( stir_field == "ppar"   ) { stirf = PPAR;  }
-  else if( stir_field == "pperp"  ) { stirf = PPRP;  }
+  if     ( init_field == "density") { initf = inits::density; }
+  else if( init_field == "upar"   ) { initf = inits::upar   ; }
+  else if( init_field == "tpar"   ) { initf = inits::tpar   ; }
+  else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
+  else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
+  else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
   
-  if (scheme == "sspx2") scheme_opt = SSPX2;
-  if (scheme == "sspx3") scheme_opt = SSPX3;
-  if (scheme == "rk2")   scheme_opt = RK2;
-  if (scheme == "rk4")   scheme_opt = RK4;
-  if (scheme == "k10")   scheme_opt = K10;
+  if     ( stir_field == "density") { stirf = stirs::density; }
+  else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }
+  else if( stir_field == "tpar"   ) { stirf = stirs::tpar   ; }
+  else if( stir_field == "tperp"  ) { stirf = stirs::tperp  ; }
+  else if( stir_field == "qpar"   ) { stirf = stirs::qpar   ; }
+  else if( stir_field == "qperp"  ) { stirf = stirs::qperp  ; }
+  else if( stir_field == "ppar"   ) { stirf = stirs::ppar   ; }
+  else if( stir_field == "pperp"  ) { stirf = stirs::pperp  ; }
+  
+  if (scheme == "sspx3") scheme_opt = Tmethod::sspx3;
+  if (scheme == "k10")   scheme_opt = Tmethod::k10;
+  if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
+  if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
+  if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
-  if (eqfix && (scheme_opt == K10)) {
+  if (eqfix && (scheme_opt == Tmethod::k10)) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);

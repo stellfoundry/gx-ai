@@ -16,7 +16,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 
   int maxthreads = 1024; 
   int nthreads = min(maxthreads, mem_size_);
-  int nblocks = (mem_size_-1)/nthreads + 1;
+  int nblocks = 1 + (mem_size_-1)/nthreads;
 
   dB = dim3(nthreads, 1, 1);
   dG = dim3(nblocks,  1, 1);

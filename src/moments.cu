@@ -219,12 +219,16 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 
   // copy initial condition into device memory
   for (int is=0; is<grids_->Nspecies; is++) {
-    if(pars_->init == DENS) CP_TO_GPU(dens_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
-    if(pars_->init == UPAR) CP_TO_GPU(upar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
-    if(pars_->init == TPAR) CP_TO_GPU(tpar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
-    if(pars_->init == QPAR) CP_TO_GPU(qpar_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
-    if(pars_->init == TPRP) CP_TO_GPU(tprp_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
-    if(pars_->init == QPRP) CP_TO_GPU(qprp_ptr[is], init_h, momsize);  checkCuda(cudaGetLastError());
+    switch (pars_->initf)
+      {
+      case inits::density : CP_TO_GPU(dens_ptr[is], init_h, momsize); break;
+      case inits::upar    : CP_TO_GPU(upar_ptr[is], init_h, momsize); break;
+      case inits::tpar    : CP_TO_GPU(tpar_ptr[is], init_h, momsize); break;
+      case inits::tperp   : CP_TO_GPU(tprp_ptr[is], init_h, momsize); break; 
+      case inits::qpar    : CP_TO_GPU(qpar_ptr[is], init_h, momsize); break;
+      case inits::qperp   : CP_TO_GPU(qprp_ptr[is], init_h, momsize); break;
+      }
+    checkCuda(cudaGetLastError());    
   }
   cudaFreeHost(init_h);     
   // restart_read goes here, if restart == T
