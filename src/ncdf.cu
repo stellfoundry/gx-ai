@@ -5,7 +5,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   grids_(grids), pars_(pars), geo_(geo),
   red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr)
 {
-
   Ws_d        = nullptr;  Ws_h        = nullptr;    Wz_d        = nullptr;  Wz_h        = nullptr;  
   Ps_d        = nullptr;  Ps_h        = nullptr;    Pz_d        = nullptr;  Pz_h        = nullptr;
   As_d        = nullptr;  As_h        = nullptr;    Az_d        = nullptr;  Az_h        = nullptr;
@@ -1135,10 +1134,10 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_put_vara(file, jacobian, geo_start, geo_count, geo_->jacobian_h))  ERR(retval);
 
   idum = pars_->boundary_option_periodic ? 1 : 0;
-  if (retval = nc_put_var(file, periodic,      &idum))                   ERR(retval);
+  if (retval = nc_put_var(file, periodic,      &idum))     ERR(retval);
 
   idum = pars_->local_limit ? 1 : 0;
-  if (retval = nc_put_var(file, local_limit,   &pars_->local_limit))     ERR(retval);
+  if (retval = nc_put_var(file, local_limit,   &idum))     ERR(retval);
 }
 
 NetCDF_ids::~NetCDF_ids() {

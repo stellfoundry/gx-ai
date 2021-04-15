@@ -1,6 +1,7 @@
 #pragma once
 #include "cufft.h"
 #include "cufftXt.h"
+#include "precision_types.h"
 
 __device__ unsigned int get_id1(void);
 __device__ unsigned int get_id2(void);
@@ -180,11 +181,19 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
 			    const float* cv, const float* gb, const float* cv0, const float* gb0, float shat);
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale);
+__global__ void init_kxs(float* kxs, float* kx);
+__global__ void update_kxs(float* kxs, float* dth0);
+__global__ void update_theta0(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
+			      float* cv, float* cv0, float* gb, float* gb0, float* omegad,  			      
+			      float* gds2, float* gds21, float* gds22, float* bmagInv, float shat);
+  
+__device__ cuComplex i_kxs(void *dataIn, size_t offset, void *kxsData, void *sharedPtr);
 
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr);
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
 
+extern __managed__ cufftCallbackLoadC i_kxs_callbackPtr;
 extern __managed__ cufftCallbackLoadC i_kx_callbackPtr;
 extern __managed__ cufftCallbackLoadC i_ky_callbackPtr;
 extern __managed__ cufftCallbackStoreC mask_and_scale_callbackPtr;
@@ -254,8 +263,8 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, 
-			   const float* nu_ss, const float* tprim, const float* fprim, const float* rho2s,
-			   cuComplex* rhs);
+			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
+			   const float* rho2s, cuComplex* rhs);
 
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,
 				   cuComplex* t_bar, const cuComplex* G, const cuComplex* phi,

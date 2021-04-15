@@ -22,6 +22,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc( &qns,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &tps,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &fps,   sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &ups,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &nu_ss, sizeof(float) * grids_->Nspecies ) );
 
   for (int is=0; is<grids_->Nspecies; is++) {
@@ -33,6 +34,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
     CP_TO_GPU(r2s, &(pars_->species_h[is].rho2),  sizeof(float));
     CP_TO_GPU(tps, &(pars_->species_h[is].tprim), sizeof(float));
     CP_TO_GPU(fps, &(pars_->species_h[is].fprim), sizeof(float));
+    CP_TO_GPU(ups, &(pars_->species_h[is].uprim), sizeof(float));
     CP_TO_GPU(nu_ss, &(pars_->species_h[is].nu_ss), sizeof(float));
     CP_TO_GPU(aps, &(pars_->species_h[is].as),    sizeof(float));
     CP_TO_GPU(qns, &(pars_->species_h[is].qneut), sizeof(float));

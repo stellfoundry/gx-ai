@@ -613,6 +613,48 @@ __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* b
   if (idz < nz) bgrad[idz] = ( bgrad_temp[idz] / bmag[idz] ) * scale;
 }
 
+__global__ void init_kxs(float* kxs, float* kx)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  if (unmasked(idx, idy)) {
+    kxs[idy+nyc*idx] = kx[idx]; // should read this from a file if this is a restarted case
+  }
+}
+
+__global__ void update_kxs(float* kxs, float* dth0)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  if (unmasked(idx, idy)) {
+    //    kxs[idy + nyc*idx]  =
+  }
+}
+
+__global__ void update_theta0(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
+			      float* cv, float* cv0, float* gb, float* gb0, float* omegad, 
+			      float* gds2, float* gds21, float* gds22, float* bmagInv, float shat)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  float shatInv = 1./shat; // Needs a test for zero
+
+  if (idy>0 && unmasked(idx, idy) && idz < nz) { 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+                      + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz]) 
+                      + pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) 
+                      * pow( bmagInv[idz], 2);
+
+    cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
+    gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
+    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+  }
+}
+
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
@@ -731,6 +773,14 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
   return Ikx*((cuComplex*)dataIn)[offset];
 }
 
+__device__ cuComplex i_kxs(void *dataIn, size_t offset, void *kxsData, void *sharedPtr)
+{
+  float *kxs = (float*) kxsData;
+  unsigned int idxy = offset % (nyc*nx);
+  cuComplex Ikxs = make_cuComplex(0., kxs[idxy]);
+  return Ikxs*((cuComplex*)dataIn)[offset];
+}
+
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr)
 {
   float *ky = (float*) kyData;
@@ -738,6 +788,8 @@ __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *share
   cuComplex Iky = make_cuComplex(0., ky[idy]);
   return Iky*((cuComplex*)dataIn)[offset];
 }
+
+// for ExB shear, still need to take care of the phase factors associated with kx grid misses
 
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
 {
@@ -752,6 +804,7 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   }
 }
 
+__managed__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
 __managed__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
 __managed__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
 __managed__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
@@ -1626,8 +1679,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz,
-			   const float* nu_ss, const float* tprim, const float* fprim, const float* rho2s,
-			   cuComplex* rhs)
+			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
+			   const float* rho2s, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
   
@@ -1668,6 +1721,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      const float tz_ = tz[is];
      const float nu_ = nu_ss[is]; 
      const float tprim_ = tprim[is];
+     const float uprim_ = uprim[is];
      const float fprim_ = fprim[is];
      const float b_s = kperp2[idxyz] * rho2s[is];
      
@@ -1756,7 +1810,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 if (m==1) {
 	   rhs[globalIdx] = rhs[globalIdx] - phi_ * (
 	            l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
-      		  + nu_ * Jflr(l,b_s) * upar_bar_;
+      		  + nu_ * Jflr(l,b_s) * upar_bar_
+                  + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {
 	   rhs[globalIdx] = rhs[globalIdx] + phi_ *

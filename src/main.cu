@@ -19,10 +19,11 @@ int main(int argc, char* argv[])
   int iproc;
   MPI_Comm_rank(mpcom, &iproc);
   
-  int devid = 1; // This should be determined (optionally) on the command line
+  int devid = 0; // This should be determined (optionally) on the command line
   checkCuda(cudaSetDevice(devid));
   cudaDeviceSynchronize();
 
+  
   /*
   int N = 5000;
   int K = 3;

@@ -27,7 +27,8 @@ Grids::Grids(Parameters* pars) :
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;//  theta0_h        = nullptr;
   kz_outh         = nullptr;
-  y_h             = nullptr; 
+  y_h             = nullptr;  kxs             = nullptr;
+  
   //  kx_mask         = nullptr;  kx_shift        = nullptr;  jump            = nullptr;
   //  nLinks          = nullptr;  nChains         = nullptr;
   //  kxCover         = nullptr;  kyCover         = nullptr;  kz_covering     = nullptr; 
@@ -39,14 +40,15 @@ Grids::Grids(Parameters* pars) :
   checkCuda(cudaDeviceSynchronize());
 
   checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 
-  cudaMallocHost ( (void**) &kz_outh, sizeof(float) * Nz   );
-  cudaMallocHost ( (void**) &kx_h,    sizeof(float) * Nx   ); 
-  cudaMallocHost ( (void**) &ky_h,    sizeof(float) * Nyc  );
-  cudaMallocHost ( (void**) &kz_h,    sizeof(float) * Nz   );
-  cudaMalloc     ( (void**) &kx,      sizeof(float) * Nx   );
-  cudaMalloc     ( (void**) &ky,      sizeof(float) * Nyc  );
-  cudaMalloc     ( (void**) &kz,      sizeof(float) * Nz   );
-  cudaMallocHost ( (void**) &y_h,     sizeof(float) * Ny   );
+  cudaMallocHost ( (void**) &kz_outh, sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &kx_h,    sizeof(float) * Nx       ); 
+  cudaMallocHost ( (void**) &ky_h,    sizeof(float) * Nyc      );
+  cudaMallocHost ( (void**) &kz_h,    sizeof(float) * Nz       );
+  cudaMalloc     ( (void**) &kx,      sizeof(float) * Nx       );
+  cudaMalloc     ( (void**) &ky,      sizeof(float) * Nyc      );
+  cudaMalloc     ( (void**) &kz,      sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &y_h,     sizeof(float) * Ny       );
+  cudaMalloc     ( (void**) &kxs,     sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
@@ -66,6 +68,12 @@ Grids::Grids(Parameters* pars) :
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
 
+  // If this is a restarted run, should get kxs from the restart file
+  // otherwise:
+  //  if (ExBshear) {
+  //    init_kxs <<< >>> (kxs, kx);
+  //  }
+  
   if (Nx<4) {
     //    printf("Nx, Nakx = %d, %d \n",Nx, Nakx);
     //    printf("kx_h = %f \n",kx_h[0]);
@@ -98,6 +106,7 @@ Grids::Grids(Parameters* pars) :
 }
 
 Grids::~Grids() {
+  if (kxs)             cudaFree(kxs);
   if (kx)              cudaFree(kx);
   if (ky)              cudaFree(ky);
   if (kz)              cudaFree(kz);

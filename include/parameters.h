@@ -12,7 +12,7 @@
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 #include "species.h"
-#include <cufft.h>
+// #include <cufft.h>
 #include <string>
 #include <vector>
 
@@ -26,7 +26,7 @@
 
 enum class inits {density, upar, tpar, tperp, qpar, qperp};
 enum class stirs {density, upar, tpar, tperp, qpar, qperp, ppar, pperp};
-enum class Tmethod {sspx2, sspx3, rk2, rk4, k10}; 
+enum class Tmethod {sspx2, sspx3, rk2, rk4, k10, g3, k2}; 
 enum class Closure {none, beer42, smithperp, smithpar};
 enum WSpectra {WSPECTRA_species,
 	       WSPECTRA_kx,
@@ -82,7 +82,8 @@ class Parameters {
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
   int dorland_phase_ifac, ivarenna, iflr, i_share;
   int iky_single, ikx_single, iky_fixed, ikx_fixed;
-  int Boltzmann_opt; 
+  int Boltzmann_opt;
+  int stages;
   //  int lh_ikx, lh_iky;
   int zonal_dens_switch, q0_dens_switch;
   // formerly part of time struct
@@ -174,11 +175,11 @@ class Parameters {
 
  private:
 
-  float getfloat (int ncid, const char varname[]); 
+  float get_real (int ncid, const char varname[]); 
   int   getint   (int ncid, const char varname[]); 
   bool  getbool  (int ncid, const char varname[]); 
   void  putint   (int ncid, const char varname[], int val);
-  void  putfloat (int ncid, const char varname[], float val); 
+  void  put_real (int ncid, const char varname[], float val); 
   void  putbool  (int ncid, const char varname[], bool val);
   void  putspec (int ncid, int m, specie* val);
   void  put_wspectra (int ncid, std::vector<int> s);

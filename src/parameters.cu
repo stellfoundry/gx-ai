@@ -44,7 +44,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (nx_in<4) {printf("Warning: Behavior is not guaranteed for nx = %d \n",nx_in);}
   if (ny_in<4) {printf("Warning: Behavior is not guaranteed for ny = %d \n",ny_in);}
-  
+
   dt = toml::find_or <float> (nml, "dt", 0.05);
   y0 = toml::find_or <float> (nml, "y0", 10.0);
   x0 = toml::find_or <float> (nml, "x0", 10.0);
@@ -88,13 +88,14 @@ void Parameters::get_nml_vars(char* filename)
   nu_hyper_m = toml::find_or <float> (nml, "nu_hyper_m", 1.0);
   p_hyper    = toml::find_or <int> (nml, "p_hyper", 2);
   p_hyper_l  = toml::find_or <int> (nml, "p_hyper_l", 6);
-  p_hyper_m  = toml::find_or <int> (nml, "p_hyper_m", 1);
+  p_hyper_m  = toml::find_or <int> (nml, "p_hyper_m", 1);  
+  stages     = toml::find_or <int> (nml, "stages", 10);
+  //  printf("in parameters, stages = %d \n",stages);
   
   scheme       = toml::find_or <string> (nml, "scheme", "sspx2");
   forcing_type = toml::find_or <string> (nml, "forcing_type", "Kz");
   init_field   = toml::find_or <string> (nml, "init_field", "density");
   stir_field   = toml::find_or <string> (nml, "stir_field", "density");
-
   forcing_amp = toml::find_or <float> (nml, "forcing_amp", 1.0);
   scale       = toml::find_or <float> (nml, "scale", 1.0);
 
@@ -305,6 +306,9 @@ void Parameters::get_nml_vars(char* filename)
   
   species_h = (specie *) calloc(nspec_in, sizeof(specie));
   for (int is=0; is < nspec_in; is++) {
+    species_h[is].uprim = 0.;
+    species_h[is].nu_ss = 0.;
+    species_h[is].temp = 1.;
     species_h[is].z = toml::find <float> (nml, "species", "z", is);
     species_h[is].mass = toml::find <float> (nml, "species", "mass", is);
     species_h[is].dens = toml::find <float> (nml, "species", "dens", is);
@@ -357,7 +361,7 @@ void Parameters::get_nml_vars(char* filename)
 
   int retval, idim, sdim, wdim, pdim, adim;
   if (retval = nc_create(strb, NC_CLOBBER, &ncid)) ERR(retval);
-  
+
   int ri = 2;
   if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "y",       ny_in,         &idim)) ERR(retval);
@@ -409,6 +413,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "jtwist",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "i_share",               NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "nreal",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "stages",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   // diagnostics
   if (retval = nc_def_var (ncid, "nwrite",                NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -546,9 +551,9 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "nlaguerre", nl_in);
   putint   (ncid, "nspecies",  nspec_in);
 
-  putfloat (ncid, "dt", dt);
-  putfloat (ncid, "y0", y0);
-  putfloat (ncid, "x0", x0);
+  put_real (ncid, "dt", dt);
+  put_real (ncid, "y0", y0);
+  put_real (ncid, "x0", x0);
   putint   (ncid, "zp", Zp);
   
   putint   (ncid, "nperiod", nperiod);
@@ -559,6 +564,7 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "nsave",   nsave);
   putint   (ncid, "nreal",   nreal);
   putint   (ncid, "i_share", i_share);
+  putint   (ncid, "stages",  stages);
 
   putint   (ncid, "ikx_fixed", ikx_fixed);
   putint   (ncid, "iky_fixed", iky_fixed);
@@ -577,26 +583,26 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (ncid, "write_phi_kpar", write_phi_kpar);
   putbool  (ncid, "init_single", init_single);
 
-  putfloat (ncid, "cfl", cfl);
-  putfloat (ncid, "init_amp", init_amp);
-  putfloat (ncid, "d_hyper", D_hyper);
-  putfloat (ncid, "nu_hyper", nu_hyper);
-  putfloat (ncid, "nu_hyper_l", nu_hyper_l);
-  putfloat (ncid, "nu_hyper_m", nu_hyper_m);
+  put_real (ncid, "cfl", cfl);
+  put_real (ncid, "init_amp", init_amp);
+  put_real (ncid, "d_hyper", D_hyper);
+  put_real (ncid, "nu_hyper", nu_hyper);
+  put_real (ncid, "nu_hyper_l", nu_hyper_l);
+  put_real (ncid, "nu_hyper_m", nu_hyper_m);
 
   putint   (ncid, "p_hyper", p_hyper);
   putint   (ncid, "p_hyper_l", p_hyper_l);
   putint   (ncid, "p_hyper_m", p_hyper_m);
   
-  putfloat (ncid, "forcing_amp", forcing_amp);
-  putfloat (ncid, "scale", scale);
+  put_real (ncid, "forcing_amp", forcing_amp);
+  put_real (ncid, "scale", scale);
   
   putint   (ncid, "forcing_index", forcing_index);
   putbool  (ncid, "forcing_init", forcing_init);
   putbool  (ncid, "no_fields", no_fields);
   
-  putfloat (ncid, "phi_ext", phi_ext);
-  putfloat (ncid, "kpar_init", kpar_init);
+  put_real (ncid, "phi_ext", phi_ext);
+  put_real (ncid, "kpar_init", kpar_init);
   putint   (ncid, "ikx_single", ikx_single);
   putint   (ncid, "iky_single", iky_single);
 
@@ -614,37 +620,37 @@ void Parameters::get_nml_vars(char* filename)
   //  putbool  (ncid, "snyder_electrons", snyder_electrons);
 
   putint   (ncid, "igeo", igeo);
-  putfloat (ncid, "drhodpsi", drhodpsi);
-  putfloat (ncid, "kxfac", kxfac);
-  putfloat (ncid, "Rmaj", rmaj);
-  putfloat (ncid, "shift", shift);
-  putfloat (ncid, "eps", eps);
-  putfloat (ncid, "rhoc", rhoc);
-  putfloat (ncid, "q", qsf);
-  putfloat (ncid, "shat", shat);  // is this always consistent with geometry inputs? should force it. BD
-  putfloat (ncid, "kappa", akappa);
-  putfloat (ncid, "kappa_prime", akappri);
-  putfloat (ncid, "tri", tri);
-  putfloat (ncid, "tri_prime", tripri);
-  putfloat (ncid, "beta", beta);
-  putfloat (ncid, "beta_prime_input", beta_prime_input);
-  putfloat (ncid, "s_hat_input", s_hat_input);
+  put_real (ncid, "drhodpsi", drhodpsi);
+  put_real (ncid, "kxfac", kxfac);
+  put_real (ncid, "Rmaj", rmaj);
+  put_real (ncid, "shift", shift);
+  put_real (ncid, "eps", eps);
+  put_real (ncid, "rhoc", rhoc);
+  put_real (ncid, "q", qsf);
+  put_real (ncid, "shat", shat);  // is this always consistent with geometry inputs? should force it. BD
+  put_real (ncid, "kappa", akappa);
+  put_real (ncid, "kappa_prime", akappri);
+  put_real (ncid, "tri", tri);
+  put_real (ncid, "tri_prime", tripri);
+  put_real (ncid, "beta", beta);
+  put_real (ncid, "beta_prime_input", beta_prime_input);
+  put_real (ncid, "s_hat_input", s_hat_input);
 
   put_wspectra (ncid, wspectra); 
   put_pspectra (ncid, pspectra); 
   put_aspectra (ncid, aspectra); 
   putspec (ncid, nspec_in, species_h);
   
-  putfloat (ncid, "tau_fac", tau_fac);
+  put_real (ncid, "tau_fac", tau_fac);
   
-  putfloat (ncid, "fphi", fphi);
-  putfloat (ncid, "fapar", fapar);
-  putfloat (ncid, "fbpar", fbpar);
+  put_real (ncid, "fphi", fphi);
+  put_real (ncid, "fapar", fapar);
+  put_real (ncid, "fbpar", fbpar);
 
-  putfloat (ncid, "t0", tp_t0);
-  putfloat (ncid, "tf", tp_tf);
-  putfloat (ncid, "tprim0", tprim0);
-  putfloat (ncid, "tprimf", tprimf);
+  put_real (ncid, "t0", tp_t0);
+  put_real (ncid, "tf", tp_tf);
+  put_real (ncid, "tprim0", tprim0);
+  put_real (ncid, "tprimf", tprimf);
   
   if(nz_in != 1) {
     int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
@@ -685,7 +691,7 @@ void Parameters::get_nml_vars(char* filename)
 
   // record the values of jtwist and x0 used in runname.nc
   putint (ncid, "jtwist", jtwist);
-  putfloat (ncid, "x0", x0);
+  put_real (ncid, "x0", x0);
      
   //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = Closure::none   ;
@@ -721,22 +727,24 @@ void Parameters::get_nml_vars(char* filename)
   else if( stir_field == "pperp"  ) { stirf = stirs::pperp  ; }
   
   if (scheme == "sspx3") scheme_opt = Tmethod::sspx3;
+  if (scheme == "g3")    scheme_opt = Tmethod::g3;
   if (scheme == "k10")   scheme_opt = Tmethod::k10;
+  if (scheme == "k2")    scheme_opt = Tmethod::k2;
   if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
   if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
   if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
-  if (eqfix && (scheme_opt == Tmethod::k10)) {
+  if (eqfix && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_GREEN);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_RED);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_BLUE);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_RESET);    
     printf("\n");
     printf("\n");
@@ -816,7 +824,7 @@ bool Parameters::getbool (int ncid, const char varname[]) {
   return res;
 }
 
-float Parameters::getfloat (int ncid, const char varname[]) {
+float Parameters::get_real (int ncid, const char varname[]) {
   int idum, retval;
   float res;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
@@ -825,7 +833,7 @@ float Parameters::getfloat (int ncid, const char varname[]) {
   return res;
 }
 
-void Parameters::putfloat (int ncid, const char varname[], float val) {
+void Parameters::put_real (int ncid, const char varname[], float val) {
   int idum, retval;
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_put_var  (ncid, idum, &val)) ERR(retval);

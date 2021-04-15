@@ -1,6 +1,6 @@
 #pragma once
-#include "device_funcs.h"
 #include "parameters.h"
+#include "device_funcs.h"
 #include "get_error.h"
 
 class Grids {
@@ -28,7 +28,7 @@ class Grids {
   int Nmoms;
   size_t size_G;
   
-  float * ky;       float * kx;    float * kz;
+  float * ky;       float * kx;    float * kz;    float * kxs;
   float * ky_h;     float * kx_h;  float * kz_h;
   float * kx_outh;  float * kz_outh;
   float * y_h;

@@ -7,6 +7,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_C2R);
   cufftCreate(&gradperp_plan_dxC2R);
+  cufftCreate(&gradperp_plan_dxC2Rs);
   cufftCreate(&gradperp_plan_dyC2R);
 
   // Use MakePlanMany to enable callbacks
@@ -23,15 +24,20 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   
   int NLPSfftdims[2] = {grids->Nx, grids->Ny};
   size_t workSize;
-  cufftMakePlanMany(gradperp_plan_C2R,   2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
-  cufftMakePlanMany(gradperp_plan_R2C,   2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_, &workSize);
-  cufftMakePlanMany(gradperp_plan_dxC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
-  cufftMakePlanMany(gradperp_plan_dyC2R, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
+  cufftMakePlanMany(gradperp_plan_C2R,    2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
+  cufftMakePlanMany(gradperp_plan_R2C,    2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_, &workSize);
+  cufftMakePlanMany(gradperp_plan_dxC2R,  2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
+  cufftMakePlanMany(gradperp_plan_dxC2Rs, 2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
+  cufftMakePlanMany(gradperp_plan_dyC2R,  2, NLPSfftdims, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_, &workSize);
 
   cudaDeviceSynchronize();
   cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kx_callbackPtr, 
                      CUFFT_CB_LD_COMPLEX, 
                      (void**)&grids_->kx);
+
+  cufftXtSetCallback(gradperp_plan_dxC2Rs, (void**) &i_kxs_callbackPtr, 
+                     CUFFT_CB_LD_COMPLEX, 
+                     (void**)&grids_->kxs);
 
   cufftXtSetCallback(gradperp_plan_dyC2R, (void**) &i_ky_callbackPtr, 
                      CUFFT_CB_LD_COMPLEX, 
@@ -46,10 +52,11 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 GradPerp::~GradPerp()
 {
   if (tmp)      cudaFree (tmp);
-  cufftDestroy ( gradperp_plan_R2C   );
-  cufftDestroy ( gradperp_plan_C2R   );
-  cufftDestroy ( gradperp_plan_dxC2R );
-  cufftDestroy ( gradperp_plan_dyC2R );
+  cufftDestroy ( gradperp_plan_R2C    );
+  cufftDestroy ( gradperp_plan_C2R    );
+  cufftDestroy ( gradperp_plan_dxC2R  );
+  cufftDestroy ( gradperp_plan_dxC2Rs );
+  cufftDestroy ( gradperp_plan_dyC2R  );
 }
 
 // Out-of-place 2D transforms in cufft now overwrite the input data. 
@@ -58,6 +65,12 @@ void GradPerp::dxC2R(cuComplex* G, float* dxG)
 {
   CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
   cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG);
+}
+
+void GradPerp::dxC2Rs(cuComplex* G, float* dxG)
+{
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
+  cufftExecC2R(gradperp_plan_dxC2Rs, tmp, dxG);
 }
 
 void GradPerp::qvar (cuComplex* G, int N)

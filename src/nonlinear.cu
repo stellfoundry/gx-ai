@@ -23,10 +23,7 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   laguerre =        new LaguerreTransform(grids_, 1);
-  //  printf("gridsize = %d \n",grids_->NxNyNz);
   int nR = grids_->NxNyNz;
-  //  int nS = 1;
-  //  red =             new Red(nR, nS); cudaDeviceSynchronize();
   red = new Block_Reduce(nR); cudaDeviceSynchronize();
   
   nBatch = grids_->Nz*grids_->Nl; 
@@ -181,15 +178,10 @@ void Nonlinear::qvar (float* G, int N)
 void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
   if (ks) {
-    //    G->qvar(grids_->Nyc);
     grad_perp_G -> dyC2R(G->G(), dg_dy);
-    //    qvar(dg_dy, grids_->Ny);
-    //    exit(1);
     grad_perp_G -> C2R(G->G(), Gy);
     nlks GBX (g_res, Gy, dg_dy);
     grad_perp_G -> R2C(g_res, G_res->G());
-    //    G_res->qvar(grids_->Nyc);
-    //    exit(1);
     return;
   }
   

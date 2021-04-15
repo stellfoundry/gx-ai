@@ -514,25 +514,25 @@ void Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
 K2::K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
        Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in),
-  G_q1(nullptr), G_q2(nullptr), GRhs(nullptr), GStar(nullptr)
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in), 
+  G_q1(nullptr), G_q2(nullptr)
 {
+  stages_ = pars_->stages;
+  sm1inv = (double) 1./((double) stages_-1);
+  sinv   = (double) 1./((double) stages_);
+  
   // new objects for temporaries
   G_q1  = new MomentsG (pars_, grids_);
   G_q2  = new MomentsG (pars_, grids_);
-  GRhs  = new MomentsG (pars_, grids_);
-  GStar = new MomentsG (pars_, grids_);
 }
 
 K2::~K2()
 {
   if (G_q1)  delete G_q1;
   if (G_q2)  delete G_q2;
-  if (GRhs)  delete GRhs;
-  if (GStar) delete GStar;
 }
 
-void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt)
+void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, bool setdt)
 {  
   linear_->rhs(G_q1, f, GRhs);
 
@@ -541,8 +541,18 @@ void K2::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, b
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
 
-  G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
+  G_q1->add_scaled(1., G_q1, dt_*sm1inv, GRhs);
   solver_->fieldSolve(G_q1, f);    
+}
+
+void K2::FinalStep(MomentsG* G_q1, MomentsG* G_q2, MomentsG* GRhs, Fields* f)
+{  
+  linear_->rhs(G_q1, f, GRhs);
+  if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, GRhs);
+
+  double sm1 = (double) stages_ - 1;  
+  GRhs->add_scaled(sm1*sinv, G_q1, sinv, G_q2, dt_*sinv, GRhs);
+  // no field solve required here
 }
 
 void K2::advance(double *t, MomentsG* G, Fields* f)
@@ -552,25 +562,71 @@ void K2::advance(double *t, MomentsG* G, Fields* f)
 
   bool setdt = true;
   
-  for(int i=1; i<6; i++) {
-    EulerStep(G_q1, GRhs, f, GStar, setdt);
+  for(int i=1; i<stages_; i++) {
+    EulerStep(G_q1, G, f, setdt);
     setdt = false;
   }
 
-  G_q2->add_scaled(0.04, G_q2, 0.36, G_q1);
-  G_q1->add_scaled(15, G_q2, -5, G_q1);
-  solver_->fieldSolve(G_q1, f);
-  
-  for(int i=6; i<10; i++) EulerStep(G_q1, GRhs, f, GStar, setdt);
-
-  linear_->rhs(G_q1, f, GRhs);
-
-  if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, GRhs);    
-
-  G->add_scaled(1., G_q2, 0.6, G_q1, 0.1*dt_, GRhs);
-  
+  FinalStep(G_q1, G_q2, G, f); // returns G 
   if (forcing_ != nullptr) forcing_->stir(G);
   
   solver_->fieldSolve(G, f);
   *t += dt_;
+}
+
+G3::G3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+       Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
+  linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
+  forcing_(forcing), dt_max(dt_in), dt_(dt_in),
+  G_u1(nullptr), G_u2(nullptr)
+{
+  // new objects for temporaries
+  G_u1  = new MomentsG (pars_, grids_);
+  G_u2  = new MomentsG (pars_, grids_);
+}
+
+G3::~G3()
+{
+  if (G_u1)  delete G_u1;
+  if (G_u2)  delete G_u2;
+}
+
+void G3::EulerStep(MomentsG* G_u, MomentsG* GRhs, Fields* f, bool setdt)
+{
+  linear_->rhs(G_u, f, GRhs);
+
+  if(nonlinear_ != nullptr) {
+    nonlinear_->nlps(G_u, f, GRhs);
+    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
+  }
+
+  G_u->add_scaled(1., G_u, dt_, GRhs);
+  solver_->fieldSolve(G_u, f);    
+}
+
+void G3::advance(double *t, MomentsG* G, Fields* f)
+{
+  G_u1->copyFrom(G);
+  G_u2->copyFrom(G);
+
+  float onethird = 1./3.;
+  float twothirds = 2./3.;  
+  bool setdt = true;
+  
+  EulerStep(G_u1, G, f, setdt);
+  setdt = false;
+
+  EulerStep(G_u1, G, f, setdt);
+
+  G_u1->add_scaled(0.75, G_u2, 0.25, G_u1);
+  solver_->fieldSolve(G_u1, f);
+  
+  EulerStep(G_u1, G, f, setdt);
+  G->add_scaled(onethird, G_u2, twothirds, G_u1);
+
+  if (forcing_ != nullptr) forcing_->stir(G);
+  
+  solver_->fieldSolve(G, f);
+  *t += dt_;
+  
 }

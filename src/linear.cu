@@ -127,7 +127,7 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
-	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->fp(), G->r2(), 
+	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), 
 	 GRhs->G());
 
   // closures

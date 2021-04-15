@@ -1,6 +1,6 @@
 #pragma once
-#define ION 0
- 
+#include "precision_types.h"
+
 typedef struct {
   float z; 
   float mass;

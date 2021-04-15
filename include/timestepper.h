@@ -119,10 +119,14 @@ class K2 : public Timestepper {
   double get_dt() {return dt_;};
 
  private:
-  void EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar, bool setdt);
+  void EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, bool setdt);
+  void FinalStep(MomentsG* G_q1, MomentsG* G_q2, MomentsG* GRhs, Fields* f);
   const double dt_max;
   double dt_;
-
+  int stages_;
+  double sm1inv;
+  double sinv;
+  
   Linear     * linear_    ;
   Nonlinear  * nonlinear_ ;
   Solver     * solver_    ;
@@ -130,8 +134,6 @@ class K2 : public Timestepper {
   Grids      * grids_     ;
   Forcing    * forcing_   ;
 
-  MomentsG   * GRhs       ;
-  MomentsG   * GStar      ;
   MomentsG   * G_q1       ;
   MomentsG   * G_q2       ;
 };
@@ -191,3 +193,25 @@ class SSPx3 : public Timestepper {
   double dt_;
 };
 
+class G3 : public Timestepper {
+ public:
+  G3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+     Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~G3();
+  void advance(double* t, MomentsG* G, Fields* fields);
+  double get_dt() {return dt_;};
+
+ private:
+  void EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f,  bool setdt);
+  const double dt_max;
+  double dt_;
+
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG   * G_u1       ;
+  MomentsG   * G_u2       ;
+};

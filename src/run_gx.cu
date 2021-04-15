@@ -53,6 +53,8 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   switch (pars->scheme_opt)
     {
     case Tmethod::k10   : timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::k2    : timestep = new K2          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::g3    : timestep = new G3          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
@@ -83,17 +85,17 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
   if (pars->save_for_restart) G->restart_write(&time);
 
-  if (pars->eqfix && (pars->scheme_opt == Tmethod::k10)) {
+  if (pars->eqfix && ((pars->scheme_opt == Tmethod::k10) || (pars->scheme_opt == Tmethod::g3) || (pars->scheme_opt == Tmethod::k2))) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_GREEN);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_RED);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_BLUE);
-    printf("The eqfix option is not compatible with the k10 algorithm. \n");
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_RESET);    
     printf("\n");
     printf("\n");
