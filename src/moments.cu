@@ -209,9 +209,16 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 	      } else {
 		init_h[index].x = rb;		init_h[index].y = ra;
 	      }
-	      init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
-	      init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
-	      //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
+	      if (pars_->kpar_init < 0.) {
+		init_h[index].x *= (cos( pars_->kpar_init    *z_h[k]/pars_->Zp)
+				  + cos((pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
+		init_h[index].y *= (sin( pars_->kpar_init    *z_h[k]/pars_->Zp)
+				  + sin((pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
+	      } else {
+		init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+		init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+	      }
+		//	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
 	}

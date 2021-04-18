@@ -970,7 +970,29 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     g_y.time_count[1] = grids_->Ny;      
 
   }   
+  /*
+  ////////////////////////////
+  //                        //
+  //   Tperp(y) for GK eqns // 
+  //                        //
+  ////////////////////////////
 
+  if (pars_->gx && pars_->write_Tperp)  g_y.write_v_time = true;
+
+  if (g_y.write_v_time) {
+    g_y.time_dims[0] = time_dim;
+    g_y.time_dims[1] = y_dim;
+    
+    if (retval = nc_def_var(file, "Tperp_yt", NC_FLOAT, 2, g_y.time_dims, &g_y.time))  ERR(retval);
+    g_y.time_start[0] = 0;
+    g_y.time_start[1] = 0;
+    
+    g_y.time_count[0] = 1;
+    g_y.time_count[1] = grids_->Ny;      
+
+  }   
+  */
+  
   ////////////////////////////
   //                        //
   //   Free energy          //

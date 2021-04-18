@@ -73,6 +73,7 @@ void Parameters::get_nml_vars(char* filename)
   write_moms        = toml::find_or <bool> (nml, "write_moms", false);
   write_rh          = toml::find_or <bool> (nml, "write_rh", false);
   write_pzt         = toml::find_or <bool> (nml, "write_pzt", false);
+  write_Tperp       = toml::find_or <bool> (nml, "write_Tperp", false);
   write_phi         = toml::find_or <bool> (nml, "write_phi", false);
   write_phi_kpar    = toml::find_or <bool> (nml, "write_phi_kpar", false);
   write_h_spectrum  = toml::find_or <bool> (nml, "write_h_spectrum", false);
@@ -436,6 +437,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (retval = nc_def_var (ncid, "write_free_energy",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_phi",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_Tperp",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_phi_kpar",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_rh",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_pzt",             NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -579,6 +581,7 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (ncid, "write_moms", write_moms);
   putbool  (ncid, "write_rh", write_rh);
   putbool  (ncid, "write_pzt", write_pzt);
+  putbool  (ncid, "write_Tperp", write_Tperp);
   putbool  (ncid, "write_phi", write_phi);
   putbool  (ncid, "write_phi_kpar", write_phi_kpar);
   putbool  (ncid, "init_single", init_single);

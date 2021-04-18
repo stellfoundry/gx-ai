@@ -289,7 +289,11 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
     // calculate g(y) for this timestep if appropriate
     if (id->g_y.write_v_time) {
-      grad_perp->C2R(G->G(), gy_d);
+      //      if (pars_->gx) {
+      //	grad_perp->C2R(G->tprp_ptr[0], gy_d);
+      //      } else {
+	grad_perp->C2R(G->G(), gy_d);
+	//      }
       CP_TO_CPU(gy_h, gy_d, sizeof(float)*grids_->Ny);
       
       id->write_gy(gy_h);
