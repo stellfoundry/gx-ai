@@ -79,17 +79,18 @@ Grids::Grids(Parameters* pars) :
     //    printf("kx_h = %f \n",kx_h[0]);
     for (int i=0; i<Nx; i++) kx_outh[i] = kx_h[i];
   } else {    
-    kx_outh[0] = kx_h[2*Nx/3+1];
-    for (int i = 1; i < 1 + (Nx-1)/3 ; i++) {
-      kx_outh[i]         = kx_h[i + 2*Nx/3 + 1];    
-      kx_outh[i + Nx/3 ] = kx_h[i];
+    kx_outh[Nakx/2] = 0.;
+    for (int i=1; i<Nakx/2+1; i++) {
+      kx_outh[Nakx/2 + i] = kx_h[i];
+      kx_outh[Nakx/2 - i] = kx_h[Nx-i];
     }
     /*
     for (int i=0; i<Nx; i++) {
-      printf("kx_h[%d] = %f \n",i,kx_h[i]);
+      printf("kx_h[%d] = %f \t",i,kx_h[i]);
     }
+    printf("\n");
     for (int i = 0; i < Nakx; i++) {
-      printf("kx_outh[%d] = %f \n",i, kx_outh[i]);
+      printf("kx_outh[%d] = %f \t",i, kx_outh[i]);
     }
     */
   }

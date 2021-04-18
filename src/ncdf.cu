@@ -1303,20 +1303,23 @@ void NetCDF_ids::write_Pky(float* P2, bool endrun)
 void NetCDF_ids::write_Pkx(float* P2, bool endrun)
 {
   if (Pkx.write_v_time || (Pkx.write && endrun)) {
-    int i = grids_->Nx*grids_->Nspecies;             int NK = (grids_->Nx-1)/3+1;
+    int i = grids_->Nx*grids_->Nspecies;
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx;
     
     pot->Sum(P2, Pkx_d, PSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
-      int it = 0;
-      int itp = it +   grids_->Nx/3;
+      int it  = 0;
+      int itp = it + NK;
       Pkx_h[itp + is*grids_->Nakx] = tmp_Pkx_h[it  + is*grids_->Nx];
       
-      for (int it = 1; it < NK; it++) {
-	int itp = it +   grids_->Nx/3;
-	int itm = it + 2*grids_->Nx/3;
-	Pkx_h[itp  + is*grids_->Nakx] = tmp_Pkx_h[it  + is*grids_->Nx];
-	Pkx_h[it-1 + is*grids_->Nakx] = tmp_Pkx_h[itm + is*grids_->Nx];	
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	Pkx_h[itp + is*grids_->Nakx] = tmp_Pkx_h[it  + is*grids_->Nx];
+	Pkx_h[itn + is*grids_->Nakx] = tmp_Pkx_h[itm + is*grids_->Nx];	
       }
     }  
     write_nc(file, Pkx, Pkx_h, endrun);      Pkx.increment_ts();  
@@ -1356,32 +1359,37 @@ void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
 {
   if (Pkxky.write_v_time || (Pkxky.write && endrun)) {
 
-    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies; int NK = (grids_->Nx-1)/3+1;
+    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;
+
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    
     pot->Sum(P2, Pkxky_d, PSPECTRA_kxky);
     CP_TO_CPU(tmp_Pkxky_h, Pkxky_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
-      int itp = it +   grids_->Nx/3;
+      int itp = it + NK;
       for (int ik = 0; ik < grids_->Naky; ik++) {
 	int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
 	Pkxky_h[Qp] = tmp_Pkxky_h[Rp];
       }	
-      for (int it = 1; it < NK; it++) {
-	int itp = it +   grids_->Nx/3;
-	int itm = it + 2*grids_->Nx/3;
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
 	
 	for (int ik = 0; ik < grids_->Naky; ik++) {
 
 	  int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
 
-	  int Qm = it-1 + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-	  int Rm = ik   + itm*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	  int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
 
 	  Pkxky_h[Qp] = tmp_Pkxky_h[Rp];
-	  Pkxky_h[Qm] = tmp_Pkxky_h[Rm];
+	  Pkxky_h[Qn] = tmp_Pkxky_h[Rm];
 	}
       }
     }
@@ -1449,20 +1457,24 @@ void NetCDF_ids::write_Wky(float* G2, bool endrun)
 void NetCDF_ids::write_Wkx(float* G2, bool endrun)
 {  
   if (Wkx.write_v_time || (Wkx.write && endrun)) {
-    int i = grids_->Nx*grids_->Nspecies;             int NK = (grids_->Nx-1)/3+1;
-    
+    int i = grids_->Nx*grids_->Nspecies; 
+    int NX = grids_->Nx;
+    int NK = grids_->Nakx/2;
+        
     red->Sum(G2, Wkx_d, WSPECTRA_kx);                CP_TO_CPU(tmp_Wkx_h, Wkx_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
-      int itp = it +   grids_->Nx/3;
+      int itp = it + NK;
       Wkx_h[itp + is*grids_->Nakx] = tmp_Wkx_h[it  + is*grids_->Nx];
       
-      for (int it = 1; it < NK; it++) {
-	int itp = it +   grids_->Nx/3;
-	int itm = it + 2*grids_->Nx/3;
-	Wkx_h[itp  + is*grids_->Nakx] = tmp_Wkx_h[it  + is*grids_->Nx];
-	Wkx_h[it-1 + is*grids_->Nakx] = tmp_Wkx_h[itm + is*grids_->Nx];
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+
+	Wkx_h[itp + is*grids_->Nakx] = tmp_Wkx_h[it  + is*grids_->Nx];
+	Wkx_h[itn + is*grids_->Nakx] = tmp_Wkx_h[itm + is*grids_->Nx];
       }
     }
     write_nc(file, Wkx, Wkx_h, endrun);      Wkx.increment_ts();  
@@ -1472,32 +1484,36 @@ void NetCDF_ids::write_Wkx(float* G2, bool endrun)
 void NetCDF_ids::write_Wkxky(float* G2, bool endrun)
 {
   if (Wkxky.write_v_time || (Wkxky.write && endrun)) {
-    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies; int NK = (grids_->Nx-1)/3+1;
+    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;  // int NK = (grids_->Nx-1)/3+1;
+
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
     
     red->Sum(G2, Wkxky_d, WSPECTRA_kxky);            CP_TO_CPU(tmp_Wkxky_h, Wkxky_d, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
-      int itp = it +   grids_->Nx/3;
+      int itp = it + NK;
       for (int ik = 0; ik < grids_->Naky; ik++) {     
 	int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
 	Wkxky_h[Qp] = tmp_Wkxky_h[Rp];
       }
       
-      for (int it = 1; it < NK; it++) {
-	int itp = it +   grids_->Nx/3;
-	int itm = it + 2*grids_->Nx/3;
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it; 
+	int itn = NK - it; 
+	int itm = NX - it; 
 	for (int ik = 0; ik < grids_->Naky; ik++) {     
 
 	  int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
 
-	  int Qm = it-1  + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-	  int Rm = ik    + itm*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	  int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
 
 	  Wkxky_h[Qp] = tmp_Wkxky_h[Rp];
-	  Wkxky_h[Qm] = tmp_Wkxky_h[Rm];
+	  Wkxky_h[Qn] = tmp_Wkxky_h[Rm];
 	}
       }
     }
@@ -1589,20 +1605,22 @@ void NetCDF_ids::write_Akz(float* P2, bool endrun)
 void NetCDF_ids::write_Akx(float* P2, bool endrun)
 {
   if (Akx.write_v_time || (Akx.write && endrun)) {
-    int i = grids_->Nx;                              int NK = (grids_->Nx-1)/3+1;
+    int NX = grids_->Nx;
+    int NK = grids_->Nakx/2;
     
-    ph2->Sum(P2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*i);
+    ph2->Sum(P2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*NX);
     
     int it = 0;
-    int itp = it +   grids_->Nx/3;
+    int itp = it + NK;
     Akx_h[itp] = tmp_Akx_h[it ];;
     
-    for (int it = 1; it < NK; it++) {
-      int itp = it +   grids_->Nx/3;
-      int itm = it + 2*grids_->Nx/3;
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
       
       Akx_h[itp] = tmp_Akx_h[it ];;
-      Akx_h[it-1] = tmp_Akx_h[itm];;
+      Akx_h[itn] = tmp_Akx_h[itm];;
     }
     write_nc(file, Akx, Akx_h, endrun);      Akx.increment_ts();  
   }
@@ -1611,32 +1629,33 @@ void NetCDF_ids::write_Akx(float* P2, bool endrun)
 void NetCDF_ids::write_Akxky(float* P2, bool endrun)
 {
   if (Akxky.write_v_time || (Akxky.write && endrun)) {
-    int i = grids_->Nyc*grids_->Nx; int NK = (grids_->Nx-1)/3+1;
+    int i = grids_->Nyc*grids_->Nx; int NK = grids_->Nakx/2;  int NX = grids_->Nx;
     
     ph2->Sum(P2, Akxky_d, ASPECTRA_kxky);    CP_TO_CPU(tmp_Akxky_h, Akxky_d, sizeof(float)*i);
     
     int it = 0;
-    int itp = it +   grids_->Nx/3;
+    int itp = it + NK;
     for (int ik = 0; ik < grids_->Naky; ik++) {
       int Qp = itp + ik*grids_->Nakx ;
       int Rp = ik  + it*grids_->Nyc  ;
       Akxky_h[Qp] = tmp_Akxky_h[Rp];
     }
     
-    for (int it = 1; it < NK; it++) {
-      int itp = it +   grids_->Nx/3;
-      int itm = it + 2*grids_->Nx/3;
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
 
       for (int ik = 0; ik < grids_->Naky; ik++) {
 
 	int Qp = itp + ik*grids_->Nakx ;
 	int Rp = ik  + it*grids_->Nyc  ;
 	
-	int Qm = it-1 + ik *grids_->Nakx ;
-	int Rm = ik   + itm*grids_->Nyc  ;
+	int Qn = itn + ik *grids_->Nakx ;
+	int Rm = ik  + itm*grids_->Nyc  ;
 
 	Akxky_h[Qp] = tmp_Akxky_h[Rp];
-	Akxky_h[Qm] = tmp_Akxky_h[Rm];
+	Akxky_h[Qn] = tmp_Akxky_h[Rm];
       }
     }
     write_nc(file, Akxky, Akxky_h, endrun);  Akxky.increment_ts();  
@@ -1699,25 +1718,34 @@ void NetCDF_ids::reduce2k(float *fk, cuComplex* f) {
   int Naky = grids_->Naky;
   int Nyc  = grids_->Nyc;
 
-  for(int i=0; i < 1+(Nx-1)/3 ; i++) {
-    //    printf("i= %d \t iout = %d\n",i,i+Nx/3);
-    for(int j=0; j<Naky; j++) {
-      int index     = j + Nyc * i; 
-      int index_out = i+Nx/3 + Nakx * j;
-      fk[2*index_out]   = f[index].x;
-      fk[2*index_out+1] = f[index].y;
-    }
-  }
+  int NK = grids_->Nakx/2;
   
-  for(int i = 1+2*Nx/3; i < Nx; i++) {
-    //    printf("i= %d \t iout = %d\n",i,i-2*Nx/3-1);
-    for(int j=0; j<Naky; j++) {
-      int index = j + Nyc *i;
-      int index_out = i - 2*Nx/3 - 1 + Nakx * j;
-      fk[2*index_out]   = f[index].x;
-      fk[2*index_out+1] = f[index].y;
+  int it = 0;
+  int itp = it + NK;
+  for (int ik=0; ik<Naky; ik++) {
+    int Qp = itp + ik*Nakx;
+    int Rp = ik  + it*Nyc;
+    fk[2*Qp  ] = f[Rp].x;
+    fk[2*Qp+1] = f[Rp].y;
+  }
+
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = Nx - it;
+    for (int ik=0; ik<Naky; ik++) {
+      int Qp = itp + ik*Nakx;
+      int Rp = ik  + it*Nyc;
+
+      int Qn = itn + ik*Nakx;
+      int Rm = ik  + itm*Nyc;
+      fk[2*Qp  ] = f[Rp].x;
+      fk[2*Qp+1] = f[Rp].y;
+
+      fk[2*Qn  ] = f[Rm].x;
+      fk[2*Qn+1] = f[Rm].y;
     }
-  }	  
+  }  
 }
 
 
