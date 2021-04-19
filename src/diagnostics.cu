@@ -132,6 +132,8 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   dgp = dim3(ngx, 1, 1);
   
   printf(ANSI_COLOR_RESET);
+  ndiag = 1;
+  Dks = 0.;
 }
 
 Diagnostics::~Diagnostics()
@@ -141,13 +143,18 @@ Diagnostics::~Diagnostics()
 
   if (G2)         cudaFree      ( G2        );
   if (P2s)        cudaFree      ( P2s       );
+  if (Phi2)       cudaFree      ( Phi2      );
   if (t_bar)      cudaFree      ( t_bar     );
-  if (val)        cudaFreeHost  ( val       );
   if (omg_d)      cudaFree      ( omg_d     );
-  if (tmp_omg_h)  cudaFreeHost  ( tmp_omg_h );
-
-  if (gy_h)       cudaFreeHost  ( gy_h      );
   if (gy_d)       cudaFree      ( gy_d      );
+  if (amom_d)     cudaFree      ( amom_d    );
+  
+  if (vol_fac)    cudaFreeHost  ( vol_fac   );
+  if (flux_fac)   cudaFreeHost  ( flux_fac  );
+  if (kvol_fac)   cudaFreeHost  ( kvol_fac  );
+  if (val)        cudaFreeHost  ( val       );
+  if (tmp_omg_h)  cudaFreeHost  ( tmp_omg_h );
+  if (gy_h)       cudaFreeHost  ( gy_h      );
   
 }
 
@@ -242,6 +249,20 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 	  float fac = 1./pars_->tau_fac;
 	  Wphi_scale GSPEC (Phi2, fac);
 	}
+      }
+
+      if (pars_->ks) {
+	cuComplex * g_h;
+	cudaMallocHost (&g_h, sizeof(cuComplex)*grids_->Nyc);
+	CP_TO_CPU(g_h, G->G(), sizeof(cuComplex)*grids_->Nyc);
+	float Dtmp = 0.;
+	for (int i=0; i<grids_->Naky; i++) {
+	  Dtmp += (g_h[i].x*g_h[i].x + g_h[i].y*g_h[i].y)*grids_->ky_h[i]*grids_->ky_h[i];
+	}
+	Dks += Dtmp;
+	printf("<D> = %f \t",Dks/((float) ndiag));
+	ndiag += 1;
+	cudaFreeHost  (g_h);
       }
       
       id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    

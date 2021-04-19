@@ -18,7 +18,7 @@ public:
 
   //  int zderiv(MomentsG *G);
 
-  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs;
+  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs, dimGridh, dimBlockh;
   int sharedSize;
   
  private:

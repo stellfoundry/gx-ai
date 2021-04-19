@@ -255,7 +255,7 @@ extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void nlks(float *res, const float *Gy, const float *dG);
-__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky);
+__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps_ks);
 __global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
 			       const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par);
 
@@ -269,6 +269,9 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,
 				   cuComplex* t_bar, const cuComplex* G, const cuComplex* phi,
 				   const float *b, const float *zt, const float *rho2s);
+
+__global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
+			  float nu_hyper, float D_hyper, cuComplex* rhs);
 
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs);

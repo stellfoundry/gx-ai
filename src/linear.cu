@@ -81,6 +81,15 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 	   pars_->i_share*(grids_->Nm+4)*(grids_->Nl+2));
     exit(1);
   }
+
+  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, 32) ;   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = grids_->Nl;              nt2 = min(grids_->Nl, 4 )      ;   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = grids_->Nm;              nt3 = min(grids_->Nm, 4 )      ;   nb3 = 1 + (nn3-1)/nt3;
+
+  dimBlockh = dim3(nt1, nt2, nt3);
+  dimGridh  = dim3(nb1, nb2, nb3);
+  
+  
 }
 
 Linear::Linear(Parameters* pars, Grids* grids) :
@@ -106,7 +115,7 @@ Linear::~Linear()
 void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   if (ks) {
-    rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky);
+    rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky, pars_->eps_ks);
     return;
   }
 
@@ -139,6 +148,9 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,
 								   pars_->p_hyper_m, GRhs->G());
+  // hyper in k-space
+  if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
+						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
 }
 
 

@@ -81,12 +81,13 @@ void Parameters::get_nml_vars(char* filename)
   write_lh_spectrum = toml::find_or <bool> (nml, "write_lh_spectrum", false);
   init_single       = toml::find_or <bool> (nml, "init_single", false);
 
+  eps_ks     = toml::find_or <float> (nml, "eps_ks", 0.0);
   cfl        = toml::find_or <float> (nml, "cfl", 0.1);
   init_amp   = toml::find_or <float> (nml, "init_amp", 1.0e-5);
-  D_hyper    = toml::find_or <float> (nml, "d_hyper", 0.1);
-  nu_hyper   = toml::find_or <float> (nml, "nu_hyper", 1.0);
+  D_hyper    = toml::find_or <float> (nml, "D_hyper", 0.1);
   nu_hyper_l = toml::find_or <float> (nml, "nu_hyper_l", 1.0);
   nu_hyper_m = toml::find_or <float> (nml, "nu_hyper_m", 1.0);
+  nu_hyper   = toml::find_or <int> (nml, "nu_hyper", 2);
   p_hyper    = toml::find_or <int> (nml, "p_hyper", 2);
   p_hyper_l  = toml::find_or <int> (nml, "p_hyper_l", 6);
   p_hyper_m  = toml::find_or <int> (nml, "p_hyper_m", 1);  
@@ -445,13 +446,14 @@ void Parameters::get_nml_vars(char* filename)
   // numerical parameters
   if (retval = nc_def_var (ncid, "cfl",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "init_amp",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "d_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "nu_hyper",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "D_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "nu_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "nu_hyper_l",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "nu_hyper_m",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "p_hyper",               NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "p_hyper_l",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "p_hyper_m",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "eps_ks",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   // model flags
   if (retval = nc_def_var (ncid, "scheme_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -588,11 +590,12 @@ void Parameters::get_nml_vars(char* filename)
 
   put_real (ncid, "cfl", cfl);
   put_real (ncid, "init_amp", init_amp);
-  put_real (ncid, "d_hyper", D_hyper);
-  put_real (ncid, "nu_hyper", nu_hyper);
+  put_real (ncid, "D_hyper", D_hyper);
   put_real (ncid, "nu_hyper_l", nu_hyper_l);
   put_real (ncid, "nu_hyper_m", nu_hyper_m);
+  put_real (ncid, "eps_ks", eps_ks);
 
+  putint   (ncid, "nu_hyper", nu_hyper);
   putint   (ncid, "p_hyper", p_hyper);
   putint   (ncid, "p_hyper_l", p_hyper_l);
   putint   (ncid, "p_hyper_m", p_hyper_m);
@@ -760,6 +763,7 @@ void Parameters::get_nml_vars(char* filename)
   }
 
   if(hypercollisions) printf("Using hypercollisions.\n");
+  if(hyper) printf("Using hyperdiffusion.\n");
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
 

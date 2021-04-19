@@ -107,6 +107,7 @@ class Parameters {
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
   float tp_t0, tp_tf, tprim0, tprimf;
   float ResSpectralRadius, ResReg, ResSigma; 
+  float eps_ks;
   
   cuComplex phi_test, smith_perp_w0;
 

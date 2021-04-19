@@ -212,11 +212,11 @@ __device__ bool not_fixed_eq(int idxyz) {
     return true;
 }
 
-__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky)
+__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps)
 {
   unsigned int idy = get_id1();
   if (idy < (ny-1)/3 + 1) {
-    float k2 = ky[idy]*ky[idy];    float lin = k2 - k2*k2;
+    float k2 = ky[idy]*ky[idy];    float lin = (1.0+eps)*k2 - k2*k2;
 
     GRhs[idy] = lin * G[idy];
   }
@@ -1822,6 +1822,34 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
   
    } // species loop
   } // idxyz < NxNycNz
+}
+
+__global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
+			  float nu_hyper, float D_hyper, cuComplex* rhs) {
+
+  unsigned int idxyz = get_id1();
+
+  if (idxyz < nx*nyc*nz) {
+    unsigned int idy = idxyz % nyc;
+    unsigned int idx = (idxyz / nyc) % nx;
+    if (unmasked(idx, idy)) {	
+      float kxmax = kx[(nx-1)/3];
+      float kymax = ky[(ny-1)/3];
+      float k2s = 1./pow((kxmax*kxmax + kymax*kymax), nu_hyper);      
+      float Dfac = D_hyper*k2s*pow((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
+      
+      unsigned int l = get_id2();
+      if (l<nl) {
+	unsigned int m = get_id3();
+	if (m<nm) {
+	  for (int is=0; is < nspecies; is++) {
+	    unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
+	    rhs[ig] = rhs[ig] - Dfac * g[ig];
+	  }
+	}
+      }
+    }
+  }
 }
 
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,

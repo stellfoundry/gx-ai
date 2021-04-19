@@ -21,10 +21,12 @@ class Diagnostics {
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
 
-  int ikx_local, iky_local, iz_local;;
+  int ndiag; 
+  int ikx_local, iky_local, iz_local;
   dim3 dG_spectra, dB_spectra, dG_all, dB_all, dbp, dgp; //, dG_scale, dB_scale;
   bool checkstop();
  
+  float Dks; 
   float fluxDenom; float * flux_fac; 
   float  volDenom; float * vol_fac ;
   float * kvol_fac;
