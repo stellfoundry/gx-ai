@@ -255,6 +255,8 @@ extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void nlks(float *res, const float *Gy, const float *dG);
+__global__ void nlks1(float *res, const float *Gy);
+__global__ void nlks2(cuComplex *res, const float *ky);
 __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps_ks);
 __global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
 			       const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par);

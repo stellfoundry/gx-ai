@@ -1794,7 +1794,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + (2*l+1)*S_G(sl,sm)              + l*S_G(sl-1,sm) )
 	   
 	   - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
-  
+
 	 // add potential, drive, and conservation terms in low hermite moments
 	 if (m==0) {
 	   rhs[globalIdx] = rhs[globalIdx] + phi_ * (

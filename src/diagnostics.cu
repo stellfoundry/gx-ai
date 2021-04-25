@@ -499,16 +499,16 @@ void Diagnostics::print_growth_rates_to_screen(cuComplex* w)
   for(int j=0; j<Naky; j++) {
     for(int i= 1 + 2*Nx/3; i<Nx; i++) {
       int index = j + Nyc*i;
-      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_outh[i], w[index].x, w[index].y);
+      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
       printf("\n");
     }
     for(int i=0; i < 1 + (Nx-1)/3; i++) {
       int index = j + Nyc*i;
       if(index!=0) {
-	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_outh[i], w[index].x, w[index].y);
+	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
 	printf("\n");
       } else {
-	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_outh[i]);
+	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
       }
     }
     if (Nx>1) printf("\n");

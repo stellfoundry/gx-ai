@@ -70,7 +70,7 @@ obj/%.o: %.cpp $(HEADERS)
 obj/version.o: src/version.c
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
 
-src/version.c: .git/COMMIT_EDITMSG .git/HEAD 
+src/version.c: 
 	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
 	date | awk 'BEGIN {} {print "const char * build_git_time = \""$$0"\";"} END {} ' >> src/version.c
 	whoami | awk 'BEGIN {} {print "const char * build_user = \""$$0"\";"} END {} ' >> src/version.c

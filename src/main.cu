@@ -129,7 +129,7 @@ int main(int argc, char* argv[])
     run_name = argv[1];
     printf("Running %s \n",run_name);
   }
-  
+   
   printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
   Parameters * pars         = nullptr;

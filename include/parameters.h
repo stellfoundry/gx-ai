@@ -78,6 +78,8 @@ class Parameters {
   int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
+  int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
+  int nm_add, nl_add, ns_add; 
   int forcing_index, smith_par_q, smith_perp_q;
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
   int dorland_phase_ifac, ivarenna, iflr, i_share;
@@ -106,6 +108,7 @@ class Parameters {
   float avail_cpu_time, margin_cpu_time;
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
   float tp_t0, tp_tf, tprim0, tprimf;
+  float ks_t0, ks_tf, ks_eps0, ks_epsf;
   float ResSpectralRadius, ResReg, ResSigma; 
   float eps_ks;
   
@@ -118,7 +121,7 @@ class Parameters {
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
-  bool append_old, no_omegad, eqfix, write_pzt, collisions;
+  bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex;
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;
@@ -127,7 +130,7 @@ class Parameters {
   bool low_b, low_b_all, higher_order_moments, nlpm_zonal_only, nlpm_vol_avg;
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
   bool zero_order_nonlin_flr_only, no_zonal_nlpm, diagnosing_kzspec;
-  bool write_l_spectrum, write_h_spectrum, write_lh_spectrum;
+  bool write_l_spectrum, write_h_spectrum, write_lh_spectrum, repeat;
   bool write_phi_kpar, write_moms, write_fluxes, diagnosing_spectra;
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;

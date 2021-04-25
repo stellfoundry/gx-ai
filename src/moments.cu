@@ -12,6 +12,34 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc((void**) &G_lm, lhsize)); 
   cudaMemset(G_lm, 0., lhsize);
 
+  float * vts_h; cudaMallocHost( &vts_h, sizeof(float) * grids_->Nspecies );
+  float * tzs_h; cudaMallocHost( &tzs_h, sizeof(float) * grids_->Nspecies );
+  float * zts_h; cudaMallocHost( &zts_h, sizeof(float) * grids_->Nspecies );
+  float * nts_h; cudaMallocHost( &nts_h, sizeof(float) * grids_->Nspecies );  
+  float * nzs_h; cudaMallocHost( &nzs_h, sizeof(float) * grids_->Nspecies );
+  float * r2s_h; cudaMallocHost( &r2s_h, sizeof(float) * grids_->Nspecies );
+  float * tps_h; cudaMallocHost( &tps_h, sizeof(float) * grids_->Nspecies );
+  float * fps_h; cudaMallocHost( &fps_h, sizeof(float) * grids_->Nspecies );
+  float * ups_h; cudaMallocHost( &ups_h, sizeof(float) * grids_->Nspecies );
+  float * aps_h; cudaMallocHost( &aps_h, sizeof(float) * grids_->Nspecies );
+  float * qns_h; cudaMallocHost( &qns_h, sizeof(float) * grids_->Nspecies );
+  float * nu_ss_h; cudaMallocHost( &nu_ss_h, sizeof(float) * grids_->Nspecies );
+  
+  for (int is=0; is<grids_->Nspecies; is++) {
+    vts_h[is] = pars_->species_h[is].vt;
+    tzs_h[is] = pars_->species_h[is].tz;
+    zts_h[is] = pars_->species_h[is].zt;
+    nts_h[is] = pars_->species_h[is].nt;
+    nzs_h[is] = pars_->species_h[is].nz;
+    r2s_h[is] = pars_->species_h[is].rho2;
+    tps_h[is] = pars_->species_h[is].tprim;
+    fps_h[is] = pars_->species_h[is].fprim;     
+    ups_h[is] = pars_->species_h[is].uprim;
+    aps_h[is] = pars_->species_h[is].as;
+    qns_h[is] = pars_->species_h[is].qneut;
+    nu_ss_h[is] = pars_->species_h[is].nu_ss;
+  }    
+
   checkCuda(cudaMalloc( &vts,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &zts,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &tzs,   sizeof(float) * grids_->Nspecies ) );
@@ -25,22 +53,22 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc( &ups,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &nu_ss, sizeof(float) * grids_->Nspecies ) );
 
-  for (int is=0; is<grids_->Nspecies; is++) {
-    CP_TO_GPU(vts, &(pars_->species_h[is].vt),    sizeof(float));
-    CP_TO_GPU(tzs, &(pars_->species_h[is].tz),    sizeof(float));
-    CP_TO_GPU(zts, &(pars_->species_h[is].zt),    sizeof(float));
-    CP_TO_GPU(nts, &(pars_->species_h[is].nt),    sizeof(float));
-    CP_TO_GPU(nzs, &(pars_->species_h[is].nz),    sizeof(float));
-    CP_TO_GPU(r2s, &(pars_->species_h[is].rho2),  sizeof(float));
-    CP_TO_GPU(tps, &(pars_->species_h[is].tprim), sizeof(float));
-    CP_TO_GPU(fps, &(pars_->species_h[is].fprim), sizeof(float));
-    CP_TO_GPU(ups, &(pars_->species_h[is].uprim), sizeof(float));
-    CP_TO_GPU(nu_ss, &(pars_->species_h[is].nu_ss), sizeof(float));
-    CP_TO_GPU(aps, &(pars_->species_h[is].as),    sizeof(float));
-    CP_TO_GPU(qns, &(pars_->species_h[is].qneut), sizeof(float));
-    //    printf("tz, nt, nz, rho2 = %f, %f, %f, %f \n", pars_->species_h[is].tz, pars_->species_h[is].nt,
-    //	   pars_->species_h[is].nz, pars_->species_h[is].rho2);
-  }
+  CP_TO_GPU(vts, vts_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(tzs, tzs_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(zts, zts_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(nts, nts_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(nzs, nzs_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(r2s, r2s_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(tps, tps_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(fps, fps_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(ups, ups_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(aps, aps_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(qns, qns_h, sizeof(float)*grids_->Nspecies);
+  CP_TO_GPU(nu_ss, nu_ss_h, sizeof(float)*grids_->Nspecies);
+
+  cudaFreeHost(vts_h);  cudaFreeHost(tzs_h);  cudaFreeHost(zts_h);  cudaFreeHost(nts_h);
+  cudaFreeHost(nzs_h);  cudaFreeHost(r2s_h);  cudaFreeHost(tps_h);  cudaFreeHost(fps_h);
+  cudaFreeHost(ups_h);  cudaFreeHost(aps_h);  cudaFreeHost(qns_h);  cudaFreeHost(nu_ss_h);  
   
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
@@ -383,12 +411,11 @@ void MomentsG::restart_write(double* time)
   for (int is=0; is < nspec; is++) {
     for (int m=0; m < Nm; m++) {
       for (int l=0; l < Nl; l++) {
-	for (int k=0; k < Nz; k++) {
-	  
-	  for (int i=0; i < (Nx-1)/3+1; i++) {
+	for (int k=0; k < Nz; k++) {	  
+	  for (int i=0; i < 1 + (Nx-1)/3; i++) {
 	    for (int j=0; j < Naky; j++) {
-	      unsigned int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      unsigned int index_out = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
+	      unsigned int index     = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*(m + Nm*is))));
+	      unsigned int index_out = j + Naky*(i + Nakx*(k + Nz*(l + Nl*(m + Nm*is))));
 	      G_out[2*index_out]   = G_h[index].x; 
 	      G_out[2*index_out+1] = G_h[index].y;
 	    }
@@ -396,11 +423,9 @@ void MomentsG::restart_write(double* time)
 	  
 	  for (int i=2*Nx/3+1; i < Nx; i++) {
 	    for (int j=0; j < Naky; j++) {
-	      unsigned int index     = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      
-	      unsigned int index_out = j + Naky*(i-2*Nx/3+(Nx-1)/3)
-		+ Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
-	      
+	      int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
+	      unsigned int index     = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*(m + Nm*is))));
+	      unsigned int index_out = j + Naky*(it + Nakx*(k + Nz*(l + Nl*(m + Nm*is))));
 	      G_out[2*index_out]   = G_h[index].x;
 	      G_out[2*index_out+1] = G_h[index].y;
 	    }
@@ -433,6 +458,7 @@ void MomentsG::restart_read(double* time)
   int Nx   = grids_->Nx;
   int Nakx = grids_->Nakx;
   int Naky = grids_->Naky;
+  int Ny   = grids_->Ny;
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
   int nspec = pars_->nspec;
@@ -461,50 +487,61 @@ void MomentsG::restart_read(double* time)
   if (retval = nc_inq_varid(ncres, "time", &id_time)) ERR(retval);
   
   if (retval = nc_inq_dim(ncres, id_ns, stra, &ldum))  ERR(retval);
-  if (nspec!=ldum) {
+  if (nspec-pars_->ns_add != (int) ldum) {
     printf("Cannot restart because of nspec mismatch: %d \t %zu \n", nspec, ldum);
     exit (1);
   }
 
   if (retval = nc_inq_dim(ncres, id_nh, stra, &ldum))  ERR(retval);
-  if (Nm!=ldum) {
+  if (Nm-pars_->nm_add != (int) ldum) {
     printf("Cannot restart because of Nm mismatch: %d \t %zu \n", Nm, ldum);
     exit (1);
   }
 
   if (retval = nc_inq_dim(ncres, id_nl, stra, &ldum))  ERR(retval);
-  if (Nl!=ldum) {
+  if (Nl-pars_->nl_add != (int) ldum) {
     printf("Cannot restart because of Nl mismatch: %d \t %zu \n", Nl, ldum);
     exit (1);
   }
 
   if (retval = nc_inq_dim(ncres, id_nz, stra, &ldum))  ERR(retval);
-  if (Nz!=ldum) {
-    printf("Cannot restart because of nz mismatch: %d \t %zu \n", Nz, ldum);
+  if (Nz != (int) ldum*pars_->ntheta_mult) {
+    printf("Cannot restart because of nz mismatch: %d \t %zu \n", Nz, ldum*pars_->ntheta_mult);
     exit (1);
   }
-
+  
   if (retval = nc_inq_dim(ncres, id_Nkx, stra, &ldum))  ERR(retval);
-  if (Nakx!=ldum) {
+  if (1 + 2*((Nx/pars_->nx_mult-1)/3) != (int) ldum) {
     printf("Cannot restart because of Nkx mismatch: %d \t %zu \n", Nakx, ldum);
     exit (1);
   }
   
   if (retval = nc_inq_dim(ncres, id_Nky, stra, &ldum))  ERR(retval);
-  if (Naky!=ldum) {
+  if (1 + (Ny/pars_->ny_mult-1)/3 != (int) ldum) {
     printf("Cannot restart because of Nky mismatch: %d \t %zu \n", Naky, ldum);
     exit (1);
   }
-
+  
   unsigned int itot;
   itot = Nakx * Naky * Nz * Nm * Nl * nspec;
+
+  unsigned int iitot = itot;
+  if (pars_->domain_change) {
+    int old_Nakx = 1 + 2 * ((Nx/pars_->nx_mult - 1)/3);
+    int old_Naky = 1 +     ((Ny/pars_->ny_mult - 1)/3);
+    int old_Nz = Nz/pars_->ntheta_mult;
+    int old_Nl = Nl - pars_->nl_add;
+    int old_Nm = Nm - pars_->nm_add;
+    int old_ns = nspec - pars_->ns_add;
+    iitot = old_Nakx * old_Naky * old_Nz * old_Nm * old_Nl * old_ns;
+  }
   cudaMallocHost((void**) &G_hold, lhsize);
   cudaMallocHost((void**) &G_h,    lhsize);
-  cudaMallocHost((void**) &G_in,   sizeof(float) * itot * 2);
+  cudaMallocHost((void**) &G_in,   sizeof(float) * iitot * 2);
   
-  for (unsigned int index=0; index < itot; index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
-  for (unsigned int index=0; index < itot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
-  for (unsigned int index=0; index<2*itot; index++) {G_in[index] = 0.;}
+  for (unsigned int index=0; index < itot;  index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
+  for (unsigned int index=0; index < itot;  index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
+  for (unsigned int index=0; index<2*iitot; index++) {G_in[index] = 0.;}
   CP_TO_CPU(G_hold, G_lm, sizeof(cuComplex)*itot);
   
   if (retval = nc_get_var(ncres, id_G, G_in)) ERR(retval);
@@ -512,45 +549,101 @@ void MomentsG::restart_read(double* time)
   if (retval = nc_close(ncres)) ERR(retval);
 
   scale = pars_->scale;
-  for (int is=0; is < nspec; is++) {
-    for (int m=0; m < Nm; m++) {
-      for (int l=0; l < Nl; l++) {
-	for (int k=0; k < Nz; k++) {
-	  
-	  for (int i=0; i < ((Nx-1)/3+1); i++) {
-	    for (int j=0; j < Naky; j++) {
-	      unsigned int index    = j + Nyc*i  + Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      unsigned int index_in = j + Naky*i + Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
-	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+
+  if (!pars_->domain_change) {
+    for (int is=0; is < nspec; is++) {
+      for (int m=0; m < Nm; m++) {
+	for (int l=0; l < Nl; l++) {
+	  for (int k=0; k < Nz; k++) {
+	    for (int i=0; i < 1 + (Nx-1)/3; i++) {
+	      for (int j=0; j < Naky; j++) {
+		
+		unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*(m + Nm*is))));
+		unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*(m + Nm*is))));
+		
+		G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+		G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      }
+	    }
+	    
+	    for (int i=2*Nx/3+1; i < Nx; i++) {
+	      for (int j=0; j < Naky; j++) {
+		int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
+		unsigned int index    = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*(m + Nm*is))));
+		unsigned int index_in = j + Naky*(it + Nakx*(k + Nz*(l + Nl*(m + Nm*is))));
+		G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+		G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      }
 	    }
 	  }
-	  
-	  for (int i=2*Nx/3+1; i < Nx; i++) {
-	    for (int j=0; j < Naky; j++) {
-	      unsigned int index    = j + Nyc*i
-		+ Nyc*Nx*k    + Nyc*Nx*Nz*l    + Nyc*Nx*Nz*Nl*m    + Nyc*Nx*Nz*Nl*Nm*is;
-	      
-	      unsigned int index_in = j + Naky*(i-2*Nx/3+(Nx-1)/3)
-		+ Naky*Nakx*k + Naky*Nakx*Nz*l + Naky*Nakx*Nz*Nl*m + Naky*Nakx*Nz*Nl*Nm*is;
-	      
-	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	}
+      }
+    }
+  } else {
+    int old_Naky = 1 +    (Ny/pars_->ny_mult - 1)/3;    int jj; 
+    int old_Nakx = 1 + 2*((Nx/pars_->nx_mult - 1)/3);   int ii; 
+    int old_Nx = Nx/pars_->nx_mult;
+    int old_Nz = Nz/pars_->ntheta_mult; // not yet implemented
+    int old_Nm = Nm - pars_->nm_add;
+    int old_Nl = Nl - pars_->nl_add;
+    int old_ns = nspec - pars_->ns_add;
+    
+    for (int is=0; is < min(old_ns, nspec); is++) {
+      for (int m=0; m < min(old_Nm, Nm); m++) {
+	for (int l=0; l < min(old_Nl, Nl); l++) {
+	  for (int k=0; k < Nz; k++) {
+	    
+	    for (int i=0; i < 1 + old_Nakx/2; i++) {
+	      ii = i * pars_->x0_mult;
+	      if (ii < 1 + Nakx/2) {
+		
+		for (int j=0; j < old_Naky; j++) {
+		  jj = j * pars_->y0_mult;
+		  if (jj < Naky) {
+		    
+		    unsigned int index    = jj +     Nyc *(ii +     Nx  *(k + Nz*(l +     Nl*(m +     Nm*is))));
+		    unsigned int index_in = j  + old_Naky*(i  + old_Nakx*(k + Nz*(l + old_Nl*(m + old_Nm*is))));
+		    
+		    G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+		    G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+		    
+		  }
+		}
+	      }
+	    }
+	    
+	    for (int i=2*old_Nx/3+1; i < old_Nx; i++) {
+	      ii =(i-old_Nx) * pars_->x0_mult + Nx;
+	      if ((i-old_Nx) * pars_->x0_mult + 1 + Nakx/2 > 0) {
+		
+		for (int j=0; j < old_Naky; j++) {
+		  jj = j * pars_->y0_mult;
+		  if (jj < Naky) {
+		    
+		    int it = i-2*old_Nx/3+(old_Nx-1)/3; // not very clear, depends on arcane integer math rules
+		    
+		    unsigned int index    = jj +     Nyc *(ii +     Nx  *(k + Nz*(l +     Nl*(m +     Nm*is))));
+		    unsigned int index_in = j  + old_Naky*(it + old_Nakx*(k + Nz*(l + old_Nl*(m + old_Nm*is))));
+		    G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+		    G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+		  }
+		}
+	      }
 	    }
 	  }
 	}
       }
     }
   }
-
   cudaFreeHost(G_in);
   cudaFreeHost(G_hold);
-
+  
   unsigned int jtot = Nx * Nyc * Nz * Nm * Nl * nspec;
   CP_TO_GPU(G_lm, G_h, sizeof(cuComplex)*jtot);
   
   cudaFreeHost(G_h);
 }
+
 void MomentsG::qvar(int N)
 {
   cuComplex* G_h;
@@ -569,3 +662,35 @@ void MomentsG::qvar(int N)
   free (G_h);
 }
 
+void MomentsG::update_tprim(double time) {
+
+  // this is a proof-of-principle hack. typically nothing will happen here
+  
+  // for one species (or the first species in the species list):
+  // adjust tprim according to the function 
+  // if t < t0:
+  // tprim = tprim_0
+  // if t > t0: 
+  //    if (t < tf) tprim = tprim_0 + (tprim_0 - tprim_f)/(t0-tf)*(t-t0)
+  //    else tprim = tprim_f
+
+  if (pars_->tp_t0 > -0.5) {
+    if (time < (double) pars_->tp_t0) {
+      float tp = pars_->tprim0;
+      CP_TO_GPU (tps, &tp, sizeof(float)); 
+    } else {
+      if (time < (double) pars_->tp_tf) {
+	float tfac = (float) time;
+	float tprim0 = pars_->tprim0;
+	float tprimf = pars_->tprimf;
+	float t0 = pars_->tp_t0;
+	float tf = pars_->tp_tf;
+	float tp = tprim0 + (tprim0-tprimf)/(t0-tf)*(tfac-t0);
+	CP_TO_GPU (tps, &tp, sizeof(float));
+      } else {
+	float tp = pars_->tprimf;
+	CP_TO_GPU (tps, &tp, sizeof(float));
+      }
+    }
+  }
+}

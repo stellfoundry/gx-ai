@@ -31,6 +31,7 @@ class MomentsG {
   
   cuComplex * Gm(int m, int s=0) {   return G(0,m,s);   }
 
+  void update_tprim(double time);
   void qvar (int N);
   void apply_mask(void);
   void initialConditions(float* z_h, double* time);

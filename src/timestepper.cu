@@ -89,36 +89,6 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 
 void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 {
-
-  // adjust tprim according to the function 
-  // if t < t0:
-  // tprim = tprim_0
-  // if t > t0: 
-  //    if (t < tf) tprim = tprim_0 + (tprim_0 - tprim_f)/(t0-tf)*(t-t0)
-  //    else tprim = tprim_f
-
-  if (pars_->tp_t0 > -0.5) { // check to see if this hacky feature is turned on
-    if (*t < (double) pars_->tp_t0) {
-      float tp = pars_->tprim0;
-      CP_TO_GPU (G->tp(), &tp, sizeof(float)); // this may be broken with the new approach to species
-    } else {
-      if (*t < (double) pars_->tp_tf) {
-	float tfac = (float) *t;
-	float tprim0 = pars_->tprim0;
-	float tprimf = pars_->tprimf;
-	float t0 = pars_->tp_t0;
-	float tf = pars_->tp_tf;
-	float tp = tprim0 + (tprim0-tprimf)/(t0-tf)*(tfac-t0);
-	CP_TO_GPU (G->tp(), &tp, sizeof(float));
-      } else {
-	float tp = pars_->tprimf;
-	CP_TO_GPU (G->tp(), &tp, sizeof(float));
-      }
-    }
-  }
-
-  //  f->print_phi();
-  
   EulerStep (G1, G , GRhs, f, true);     solver_->fieldSolve(G1, f);
   EulerStep (G2, G1, GRhs, f, false);
 

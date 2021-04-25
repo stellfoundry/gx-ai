@@ -25,7 +25,8 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   beta_      = (double) pars_->ResReg;
   nT_        = pars_->ResTrainingSteps;
   iT_        = 0;
-
+  //  sigNoise_  = (double) pars_->ResSigmaNoise;
+  
   int N = N_;    // size of reservoir
   int K = K_;    // number of non-zero columns in each row of A
   int M = M_;    // number of floats in the solution vector 
@@ -115,11 +116,11 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
 
   checkCuda(cudaMalloc((void**) &W_in,  sizeof(double) * N) );   
   checkCuda(cudaMalloc((void**) &A_in,  sizeof(double)*nnz) ); 
-  checkCuda(cudaMalloc((void**) &A_col, sizeof(int)  *nnz) ); 
+  checkCuda(cudaMalloc((void**) &A_col, sizeof(int)   *nnz) ); 
 
   CP_TO_GPU (W_in,  W_h, sizeof(double) * N  );
   CP_TO_GPU (A_in,  A_h, sizeof(double) * nnz);
-  CP_TO_GPU (A_col, A_j, sizeof(int)   * nnz);
+  CP_TO_GPU (A_col, A_j, sizeof(int)    * nnz);
   
   cudaFreeHost(W_h);
   cudaFreeHost(A_h);

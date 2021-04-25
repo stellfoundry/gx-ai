@@ -34,6 +34,8 @@ void Parameters::get_nml_vars(char* filename)
 
   const auto nml = toml::parse(nml_file);
     
+  repeat = toml::find_or <bool> (nml, "repeat",  false);
+  
   debug = toml::find_or <bool> (nml, "debug",    false);
   nz_in = toml::find_or <int> (nml, "ntheta",    32);
   ny_in = toml::find_or <int> (nml, "ny",        32);
@@ -81,6 +83,45 @@ void Parameters::get_nml_vars(char* filename)
   write_lh_spectrum = toml::find_or <bool> (nml, "write_lh_spectrum", false);
   init_single       = toml::find_or <bool> (nml, "init_single", false);
 
+  domain_change = toml::find_or <bool> (nml, "domain_change", false);
+  z0_mult = toml::find_or <int> (nml, "z0_mult", 1);  assert( (z0_mult > 0) && "z0_mult must be an integer >= 1");
+  y0_mult = toml::find_or <int> (nml, "y0_mult", 1);  assert( (y0_mult > 0) && "y0_mult must be an integer >= 1");
+  x0_mult = toml::find_or <int> (nml, "x0_mult", 1);  assert( (x0_mult > 0) && "x0_mult must be an integer >= 1");
+  ny_mult = toml::find_or <int> (nml, "ny_mult", 1);  assert( (ny_mult > 0) && "ny_mult must be an integer >= 1");
+  nx_mult = toml::find_or <int> (nml, "nx_mult", 1);  assert( (nx_mult > 0) && "nx_mult must be an integer >= 1");
+  nm_add  = toml::find_or <int> (nml, "nm_add" , 0);  
+  nl_add  = toml::find_or <int> (nml, "nl_add" , 0);  
+  ns_add  = toml::find_or <int> (nml, "ns_add" , 0);  assert( (ns_add >= 0) && "ns_add must be an integer >= 0");
+  
+  ntheta_mult = toml::find_or <int> (nml, "nz_mult", 1);
+  assert( (ntheta_mult > 0) && "ntheta_mult must be an integer >= 1");
+
+  if (!domain_change) {
+    assert ((nx_mult == 1) && "When domain_change is false, nx_mult must be 1");
+    assert ((ny_mult == 1) && "When domain_change is false, ny_mult must be 1");
+    assert ((ntheta_mult == 1) && "When domain_change is false, ntheta_mult must be 1");
+    assert ((x0_mult == 1) && "When domain_change is false, x0_mult must be 1");
+    assert ((y0_mult == 1) && "When domain_change is false, y0_mult must be 1");
+    assert ((z0_mult == 1) && "When domain_change is false, z0_mult must be 1");
+    assert ((nl_add == 0) && "When domain_change is false, nl_add must be 0");
+    assert ((nm_add == 0) && "When domain_change is false, nm_add must be 0");
+  }
+
+  if (domain_change) {
+    printf( "You are changing the simulation domain with this input file. \n");
+    if (x0_mult > 1) printf("Compared to the restart file, you have increased x0 by a factor of %d \n",x0_mult);
+    if (y0_mult > 1) printf("Compared to the restart file, you have increased y0 by a factor of %d \n",y0_mult);
+    if (z0_mult > 1) printf("Compared to the restart file, you have increased z0 by a factor of %d \n",z0_mult);
+    if (nx_mult > 1) printf("Compared to the restart file, you have increased nx by a factor of %d \n",nx_mult);
+    if (ny_mult > 1) printf("Compared to the restart file, you have increased ny by a factor of %d \n",ny_mult);
+    if (ntheta_mult > 1) printf("Compared to the restart file, you have increased nx ntheta a factor of %d \n",ntheta_mult);
+    if (nl_add > 0) printf("Compared to the restart file, you have added %d Laguerre basis elements. \n",nl_add);
+    if (nl_add < 0) printf("Compared to the restart file, you have removed %d Laguerre basis elements. \n",-nl_add);
+    if (nm_add > 0) printf("Compared to the restart file, you have added %d Hermite basis elements. \n",nm_add);
+    if (nm_add < 0) printf("Compared to the restart file, you have removed %d Hermite basis elements. \n",-nm_add);
+    if (ns_add > 0) printf("Compared to the restart file, you have added %d species. \n",ns_add);
+  }    
+  
   eps_ks     = toml::find_or <float> (nml, "eps_ks", 0.0);
   cfl        = toml::find_or <float> (nml, "cfl", 0.1);
   init_amp   = toml::find_or <float> (nml, "init_amp", 1.0e-5);
@@ -94,6 +135,11 @@ void Parameters::get_nml_vars(char* filename)
   stages     = toml::find_or <int> (nml, "stages", 10);
   //  printf("in parameters, stages = %d \n",stages);
   
+  ks_t0 = toml::find_or <float> (nml, "ks_t0", -1.0);
+  ks_tf = toml::find_or <float> (nml, "ks_tf", -1.0);
+  ks_eps0 = toml::find_or <float> (nml, "ks_eps0", -1.0);
+  ks_epsf = toml::find_or <float> (nml, "ks_epsf", -1.0);
+
   scheme       = toml::find_or <string> (nml, "scheme", "sspx2");
   forcing_type = toml::find_or <string> (nml, "forcing_type", "Kz");
   init_field   = toml::find_or <string> (nml, "init_field", "density");
@@ -151,14 +197,6 @@ void Parameters::get_nml_vars(char* filename)
     add_Boltzmann_species = true;
   }
   
-  all_kinetic = true;
-  if (add_Boltzmann_species) all_kinetic = false;
-
-  if (all_kinetic && nspec_in == 1) {
-    printf("You have chosen to treat all species as kinetic, but with only one species. This is very unusual and likely wrong.\n");
-    printf("You have chosen to treat all species as kinetic, but with only one species. This is very unusual and likely wrong.\n");
-  }
-
   // allow some sloppiness here:
   
   if (Btype == "Electrons") Boltzmann_opt = BOLTZMANN_ELECTRONS;
@@ -181,6 +219,9 @@ void Parameters::get_nml_vars(char* filename)
   // Testing that we have working options                              //
   //                                                                   //
   ///////////////////////////////////////////////////////////////////////
+
+  all_kinetic = true;
+  if (add_Boltzmann_species) all_kinetic = false;
 
   if (all_kinetic) {
     assert( (iphi00 <= 0)
@@ -423,6 +464,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "nsave",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "debug",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
 
+  if (retval = nc_def_var (ncid, "repeat",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "restart",               NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "save_for_restart",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "secondary",             NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -531,6 +573,11 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "tprim0",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "tprimf",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
+  if (retval = nc_def_var (ncid, "ks_t0",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "ks_tf",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "ks_eps0",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "ks_epsf",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
   if (retval = nc_def_var (ncid, "code_info",             NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   std::string hash(build_git_sha);                       
@@ -544,7 +591,6 @@ void Parameters::get_nml_vars(char* filename)
 
   if (retval = nc_enddef (ncid)) ERR(retval);
   
-
   putbool  (ncid, "all_kinetic", all_kinetic);
   putbool  (ncid, "add_Boltzmann_species", add_Boltzmann_species);
   putbool  (ncid, "debug",     debug);
@@ -574,6 +620,7 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "iky_fixed", iky_fixed);
   putbool  (ncid, "eqfix",     eqfix);
   
+  putbool  (ncid, "repeat",         repeat);
   putbool  (ncid, "restart",        restart);
   putbool  (ncid, "save_for_restart", save_for_restart);
   putbool  (ncid, "secondary", secondary);
@@ -657,6 +704,11 @@ void Parameters::get_nml_vars(char* filename)
   put_real (ncid, "tf", tp_tf);
   put_real (ncid, "tprim0", tprim0);
   put_real (ncid, "tprimf", tprimf);
+  
+  put_real (ncid, "ks_t0", ks_t0);
+  put_real (ncid, "ks_tf", ks_tf);
+  put_real (ncid, "ks_eps0", ks_eps0);
+  put_real (ncid, "ks_epsf", ks_epsf);
   
   if(nz_in != 1) {
     int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
@@ -938,5 +990,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_inq_varid(ncid, "species_type", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
+
 
 
