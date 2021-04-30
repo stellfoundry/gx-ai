@@ -3,13 +3,13 @@
 #include <vector>
 #include "reservoir.h"
 
-#define loop_N   <<< blocks_n,  threads_n  >>>
 #define loop_MN  <<< blocks_mn, threads_mn >>> 
 #define loop_N2  <<< blocks_n2, threads_n2 >>>
 #define loop_NK  <<< blocks_nk, threads_nk >>>
 #define loops_MN <<< blocks_MN, threads_MN >>>
 #define loops_NN <<< blocks_NN, threads_NN >>>
 #define loops_QM <<< blocks_QM, threads_QM >>>
+#define loop_N   <<< blocks_n,  threads_n  >>>
 
 
 Reservoir::Reservoir(Parameters* pars, int Min) :
@@ -25,7 +25,8 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   beta_      = (double) pars_->ResReg;
   nT_        = pars_->ResTrainingSteps;
   iT_        = 0;
-  //  sigNoise_  = (double) pars_->ResSigmaNoise;
+  sigNoise_  = pars_->ResSigmaNoise;
+  addNoise_  = pars_->add_noise;
   
   int N = N_;    // size of reservoir
   int K = K_;    // number of non-zero columns in each row of A
@@ -194,7 +195,29 @@ void Reservoir::add_data(float* G)
 {
   int M = M_;  int N = N_;
   if (iT_ < nT_) {
-    promote loop_N (dG, G, M);
+    // add the option to add some noise in the course of the promotion.
+    if (addNoise_) {
+      float *Gnoise_h, *Gnoise;
+      checkCuda(cudaMalloc(    (void**) &Gnoise,   sizeof(float)*M ));
+      checkCuda(cudaMallocHost((void**) &Gnoise_h, sizeof(float)*M ));
+      // specialize to KS for now
+      // get a normally-distributed random number with mean = 1 and sigma=sigNoise_, 
+      // make sure k=0 component has no noise;
+      std::random_device rd;      std::mt19937 gen(rd()); std::normal_distribution<float> noise(0.0, sigNoise_);
+      for (int m=0; m<M; m++) Gnoise_h[m] = noise(gen);
+      float sum = 0.;
+      for (int m=0; m<M; m++) sum += Gnoise_h[m];
+      sum = sum/((float) M);
+      for (int m=0; m<M; m++) Gnoise_h[m] = 1. + Gnoise_h[m] - sum;
+      
+      CP_TO_GPU(Gnoise, Gnoise_h, sizeof(cuComplex)*M);
+      cudaFreeHost(Gnoise_h);
+      promote loop_N (dG, G, Gnoise, M);
+      cudaFree(Gnoise);      
+    } else {
+      promote loop_N (dG, G, M);
+    }
+
     update_reservoir (dG);
 
     getV loops_MN (V, G, R2, M, N); 

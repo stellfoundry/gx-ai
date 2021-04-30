@@ -379,6 +379,7 @@ void Parameters::get_nml_vars(char* filename)
   tprimf = toml::find_or <float> (nml, "tprimf", -1.0);
 
   Reservoir = false;
+  add_noise = false;
   
   if (nml.contains("Reservoir")) {
     const auto tomlRes = toml::find (nml, "Reservoir");
@@ -391,9 +392,11 @@ void Parameters::get_nml_vars(char* filename)
     ResSpectralRadius  = toml::find_or <float> (tomlRes, "spectral_radius", 0.6);
     ResReg             = toml::find_or <float> (tomlRes, "regularization", 1.0e-4);
     ResSigma           = toml::find_or <float> (tomlRes, "input_sigma", 0.5);
-
+    ResSigmaNoise      = toml::find_or <float> (tomlRes, "noise", -1.0);
+    
     if (ResTrainingSteps == 0) ResTrainingSteps = nstep/nwrite;
     if (ResTrainingDelta == 0) ResTrainingDelta = nwrite;
+    if (ResSigmaNoise > 0.) add_noise = true;
   }  
   // open the netcdf4 file for this run
   // store all inputs for future reference

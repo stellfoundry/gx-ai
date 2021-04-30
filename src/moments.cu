@@ -1,3 +1,6 @@
+#include <random>
+#include <algorithm>
+#include <vector>
 #include "moments.h"
 #define GALL <<< dG_all, dB_all >>>
 
@@ -155,13 +158,22 @@ void MomentsG::initialConditions(double *time) {
   cuComplex *init_h = nullptr;
   cudaMallocHost((void**) &init_h, momsize); 
   
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::normal_distribution<float> ramp(0., 0.1);
+
   for (int idy = 0; idy<grids_->Nyc; idy++) {
-    init_h[idy].x = 0.0;
-    init_h[idy].y = 0.0;
+    init_h[idy].x = 0.;
+    init_h[idy].y = 0.;
+  }
+  
+  for (int idy = 1; idy<grids_->Naky; idy++) {
+    init_h[idy].x = ramp(gen);
+    init_h[idy].y = ramp(gen);
   }
 
-  init_h[1].x =  0.5;
-  init_h[2].y = -0.25;
+  //  init_h[1].x =  0.5;
+  //  init_h[2].y = -0.25;
   
   CP_TO_GPU(G_lm, init_h, momsize);
   
@@ -231,7 +243,7 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 	      idx = (js==0) ? i : grids_->Nx-i;
 	    }
 	    for(int k=0; k<grids_->Nz; k++) {
-	      int index = j + grids_->Nyc*idx + grids_->NxNyc*k;
+	      int index = j + grids_->Nyc*(idx + grids_->Nx*k);
 	      if (js == 0) {
 		init_h[index].x = ra;		init_h[index].y = rb;
 	      } else {

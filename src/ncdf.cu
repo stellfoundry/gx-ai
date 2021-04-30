@@ -71,8 +71,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_dim(file, "kz",        grids_->Nz,    &nkz))       ERR(retval);  
   if (retval = nc_def_dim(file, "ky",        grids_->Naky,  &ky_dim))    ERR(retval);
   if (retval = nc_def_dim(file, "kx",        grids_->Nakx,  &kx_dim))    ERR(retval);
-  if (retval = nc_def_dim(file, "z",         grids_->Nz,    &nz))        ERR(retval);  
-
+  if (retval = nc_def_dim(file, "theta",     grids_->Nz,    &nz))        ERR(retval);  
+  
   if (retval = nc_inq_dimid(file, "y",       &y_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "m",       &m_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "l",       &l_dim))    ERR(retval);
@@ -95,9 +95,9 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   v_ky[0] = y_dim;
   if (retval = nc_def_var(file, "y",        NC_FLOAT, 1, v_ky, &y))               ERR(retval);  
   
-  v_z[0] = nz;
-  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_kz[0], &z_h))          ERR(retval);
-
+  //  v_z[0] = nz;
+  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
+  
   // z_h needs to be defined.
   // Z0 would typically be q R
   // and then z_h would run from - (2 pi q R)/2 : + (2 pi q R)/2
@@ -1068,7 +1068,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   kz_start[0] = 0;
   kz_count[0] = grids_->Nz;
 
-  if (retval = nc_put_vara(file, kz, kz_start, kz_count, grids_->kz_outh))      ERR(retval);
+  for (int i=0; i<grids_->Nz; i++) grids_->kpar_outh[i] = geo_->gradpar*grids_->kz_outh[i];
+  if (retval = nc_put_vara(file, kz, kz_start, kz_count, grids_->kpar_outh))      ERR(retval);
 
   ///////////////////////////////////
   //                               //
@@ -1142,7 +1143,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (theta_extended) cudaFreeHost(theta_extended);
   }
 
-  if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
+  //  if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
   if (retval = nc_put_vara(file, bmag,     geo_start, geo_count, geo_->bmag_h))      ERR(retval);
   if (retval = nc_put_vara(file, bgrad,    geo_start, geo_count, geo_->bgrad_h))     ERR(retval);
   if (retval = nc_put_vara(file, gbdrift,  geo_start, geo_count, geo_->gbdrift_h))   ERR(retval);

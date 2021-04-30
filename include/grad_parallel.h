@@ -14,7 +14,9 @@ class GradParallel {
   virtual void dz(cuComplex* m, cuComplex* res)=0;
   virtual void zft(MomentsG* G)=0;
   virtual void zft(cuComplex* m, cuComplex* res)=0;
-
+  virtual void dealias(MomentsG* G) {};
+  virtual void dealias(cuComplex* f) {};
+  
   virtual void zft_inverse(MomentsG* G)=0;
   //  virtual void zft_inverse(cuComplex* m, cuComplex* res)=0;
   virtual void abs_dz(cuComplex* m, cuComplex* res)=0;
@@ -26,6 +28,8 @@ class GradParallelPeriodic : public GradParallel {
   GradParallelPeriodic(Grids* grids);
   ~GradParallelPeriodic();
 
+  void dealias(MomentsG* G);
+  void dealias(cuComplex* f);
   void  dz(MomentsG* G);   void dz(cuComplex* m, cuComplex* res);
   void zft(MomentsG* G);  void zft(cuComplex* m, cuComplex* res);
 
@@ -34,6 +38,7 @@ class GradParallelPeriodic : public GradParallel {
   
   void abs_dz(cuComplex* m, cuComplex* res);
   void fft_only(cuComplex* m, cuComplex* res, int dir);
+  dim3 dGd, dBd, dGf, dBf;
   
  private:
   Grids * grids_ ;
@@ -84,8 +89,8 @@ class GradParallelLinked : public GradParallel {
   cufftHandle * dz_plan_forward_singlemom;
   cufftHandle * dz_plan_inverse_singlemom;
   cufftHandle * abs_dz_plan_forward_singlemom;
-  dim3 * dG ;
-  dim3 * dB ;
+  dim3 * dG;
+  dim3 * dB;
 };
 
 class GradParallelLocal : public GradParallel {

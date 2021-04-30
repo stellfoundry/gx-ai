@@ -26,7 +26,7 @@ Grids::Grids(Parameters* pars) :
   ky              = nullptr;  kx              = nullptr;  kz              = nullptr;
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;//  theta0_h        = nullptr;
-  kz_outh         = nullptr;
+  kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
   y_h             = nullptr;  kxs             = nullptr;
   
   //  kx_mask         = nullptr;  kx_shift        = nullptr;  jump            = nullptr;
@@ -40,15 +40,18 @@ Grids::Grids(Parameters* pars) :
   checkCuda(cudaDeviceSynchronize());
 
   checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 
-  cudaMallocHost ( (void**) &kz_outh, sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &kx_h,    sizeof(float) * Nx       ); 
-  cudaMallocHost ( (void**) &ky_h,    sizeof(float) * Nyc      );
-  cudaMallocHost ( (void**) &kz_h,    sizeof(float) * Nz       );
-  cudaMalloc     ( (void**) &kx,      sizeof(float) * Nx       );
-  cudaMalloc     ( (void**) &ky,      sizeof(float) * Nyc      );
-  cudaMalloc     ( (void**) &kz,      sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &y_h,     sizeof(float) * Ny       );
-  cudaMalloc     ( (void**) &kxs,     sizeof(float) * Nx * Nyc );
+  cudaMalloc     ( (void**) &kzm,       sizeof(int) * Nz       );
+  cudaMalloc     ( (void**) &kzp,       sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &kz_outh,   sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &kpar_outh, sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &kx_h,      sizeof(float) * Nx       ); 
+  cudaMallocHost ( (void**) &ky_h,      sizeof(float) * Nyc      );
+  cudaMallocHost ( (void**) &kz_h,      sizeof(float) * Nz       );
+  cudaMalloc     ( (void**) &kx,        sizeof(float) * Nx       );
+  cudaMalloc     ( (void**) &ky,        sizeof(float) * Nyc      );
+  cudaMalloc     ( (void**) &kz,        sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &y_h,       sizeof(float) * Ny       );
+  cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
@@ -62,7 +65,7 @@ Grids::Grids(Parameters* pars) :
   int nt = min(32, Nmax);
   int nb = 1 + (Nmax-1)/nt;
 
-  kInit <<<nb, nt>>> (kx, ky, kz, pars_->x0, pars_->y0, pars_->Zp);
+  kInit <<<nb, nt>>> (kx, ky, kz, kzm, kzp, pars_->x0, pars_->y0, pars_->Zp);
 
   CP_TO_CPU (kx_h, kx, sizeof(float)*Nx);
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
@@ -94,6 +97,7 @@ Grids::Grids(Parameters* pars) :
     }
     */
   }
+
   if (Nz>1) {
     for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
   } else {
@@ -111,7 +115,10 @@ Grids::~Grids() {
   if (kx)              cudaFree(kx);
   if (ky)              cudaFree(ky);
   if (kz)              cudaFree(kz);
+  if (kzm)             cudaFree(kzm);
+  if (kzp)             cudaFree(kzp);
    
+  if (kpar_outh)       cudaFreeHost(kpar_outh);
   if (kz_outh)         cudaFreeHost(kz_outh);
   if (kx_outh)         cudaFreeHost(kx_outh);
   if (kx_h)            cudaFreeHost(kx_h);

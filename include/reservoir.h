@@ -31,14 +31,16 @@ private:
   dim3 blocks_NN, threads_NN;
   dim3 blocks_QM, threads_QM;
   
+  bool addNoise_;
   unsigned int N_, M_, K_;
   unsigned int nW;
   unsigned int ResQ_, nT_, iT_;
+  float sigNoise_;
   double beta_, ResRadius_, sigma_;
 
   double *invWork, *B, *V, *W, *R, *R2, *x, *P, *A_in, *W_in, *dG;
   int *A_col, *info;
-    
+
   // local private copies
   Parameters * pars_  ;
   Grids      * grids_ ;

@@ -238,7 +238,7 @@ void SmithPar::apply_closures(MomentsG* G, MomentsG* GRhs)
     // write m+1 moment as a sum of lower order moments
       for (int m = M; m >= grids_->Nm - q_; m--) {
 
-	grad_par_->dz(G->G(l, m, is), tmp);
+	grad_par_->dz(G->G(l, m, is), tmp);              // Aha. This is where the difference between kzp and kz comes in
 	grad_par_->abs_dz(G->G(l, m, is), tmp_abs);
 	
 	add_scaled_singlemom_kernel GB (clos, 1., clos, -a_coefficients_[M - m].y, tmp_abs, a_coefficients_[M - m].x, tmp);

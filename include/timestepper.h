@@ -7,6 +7,7 @@
 #include "nonlinear.h"
 #include "solver.h"
 #include "forcing.h"
+#include "grad_parallel.h"
 
 class Timestepper {
  public:
@@ -100,14 +101,15 @@ class Ketcheson10 : public Timestepper {
   const double dt_max;
   double dt_;
 
-  Linear     * linear_    ;
-  Nonlinear  * nonlinear_ ;
-  Solver     * solver_    ;
-  Parameters * pars_      ;
-  Grids      * grids_     ;
-  Forcing    * forcing_   ;
-  MomentsG   * G_q1       ;
-  MomentsG   * G_q2       ;
+  Linear       * linear_    ;
+  Nonlinear    * nonlinear_ ;
+  Solver       * solver_    ;
+  Parameters   * pars_      ;
+  Grids        * grids_     ;
+  GradParallel * grad_par   ;
+  Forcing      * forcing_   ;
+  MomentsG     * G_q1       ;
+  MomentsG     * G_q2       ;
 };
 
 class K2 : public Timestepper {
@@ -180,16 +182,17 @@ class SSPx3 : public Timestepper {
   const double w2 = 0.5 * (pow(6.,2./3.) - 1 - wgtfac);
   const double w3 = 1./adt - 1. - w2*(w1+1.);
  
-  Linear      * linear_    ;
-  Nonlinear   * nonlinear_ ;
-  Solver      * solver_    ;
-  Parameters  * pars_      ;
-  Grids       * grids_     ;
-  Forcing     * forcing_   ;
-  MomentsG    * G1         ;
-  MomentsG    * G2         ;
-  MomentsG    * G3         ;
-  MomentsG    * GRhs       ;
+  Linear       * linear_    ;
+  Nonlinear    * nonlinear_ ;
+  Solver       * solver_    ;
+  Parameters   * pars_      ;
+  Grids        * grids_     ;
+  Forcing      * forcing_   ;
+  GradParallel * grad_par   ;
+  MomentsG     * G1         ;
+  MomentsG     * G2         ;
+  MomentsG     * G3         ;
+  MomentsG     * GRhs       ;
   double dt_;
 };
 

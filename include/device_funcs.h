@@ -87,6 +87,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
 				  double c5, const cuComplex* m5, bool bdum);
 
 __global__ void promote(double* dG, float* G, int N);
+__global__ void promote(double* dG, float* G, float* noise, int N);
 __global__ void demote(float* G, double* dG, int N);
 __global__ void getr2(double* r2, double* r, int N);
 __global__ void copyV(double* P, double* V, int N);
@@ -208,8 +209,7 @@ extern __managed__ cufftCallbackStoreC i_kz_callbackPtr;
 extern __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
-__global__ void kInit(float* kx, float* ky, float* kz, const float X0, const float Y0, const int Zp);
-
+__global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp);  
 __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s,
 		      const float* qn, const float* nzs);
 
@@ -254,6 +254,7 @@ extern __managed__ cufftCallbackStoreC zfts_Linked_callbackPtr;
 extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
+__global__ void kz_dealias (cuComplex *G, int *kzm, int LMS);
 __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void nlks1(float *res, const float *Gy);
 __global__ void nlks2(cuComplex *res, const float *ky);

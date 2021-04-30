@@ -235,7 +235,6 @@ void GradParallelLinked::zft(cuComplex* m, cuComplex* res)
     linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
-
 /*
 // for a single moment m 
 void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)

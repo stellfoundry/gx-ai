@@ -109,7 +109,7 @@ class Parameters {
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
   float tp_t0, tp_tf, tprim0, tprimf;
   float ks_t0, ks_tf, ks_eps0, ks_epsf;
-  float ResSpectralRadius, ResReg, ResSigma; 
+  float ResSpectralRadius, ResReg, ResSigma, ResSigmaNoise; 
   float eps_ks;
   
   cuComplex phi_test, smith_perp_w0;
@@ -122,7 +122,7 @@ class Parameters {
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;
-  bool const_curv, varenna, varenna_fsa, dorland_phase_complex;
+  bool const_curv, varenna, varenna_fsa, dorland_phase_complex, add_noise;
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;
   bool debug, init_single, boundary_option_periodic, forcing_init, no_fields; 
