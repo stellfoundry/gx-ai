@@ -147,6 +147,8 @@ __global__ void bracket(float* g_res,
 			const float* dg_dx, const float* dJ0phi_dy,
 			const float* dg_dy, const float* dJ0Phi_dx, float kxfac);
 
+__global__ void ddx (cuComplex *res, cuComplex *f, float *kx);
+
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size);
 
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
@@ -157,6 +159,8 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 
+__global__ void zavg(float *vE, float *vEavg, float adj);
+__global__ void yavg(float *vE, float *vEavg, float adj);
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac);
 
 __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const float* nt);
@@ -254,7 +258,11 @@ extern __managed__ cufftCallbackStoreC zfts_Linked_callbackPtr;
 extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
+__global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky);
+__global__ void rhs_lin_vp(const cuComplex *G, const cuComplex* phi, cuComplex* GRhs, float* ky,
+			   bool closure, float nu, float nuh, int alpha, int alpha_h);
 __global__ void kz_dealias (cuComplex *G, int *kzm, int LMS);
+__global__ void nlvp(float *res, const float *Gy, const float *dphi);
 __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void nlks1(float *res, const float *Gy);
 __global__ void nlks2(cuComplex *res, const float *ky);

@@ -53,16 +53,13 @@ private:
   cuComplex    * favg          ;
   cuComplex    * df            ;
   cuComplex    * amom_d        ;
+  cuComplex    * vEk           ;
 
-  float        * gy_d          ;
-  float        * gy_h          ; 
+  float *gy_d, *gy_h;
   
-  
-  //  void write_omg (cuComplex *W, bool endrun);
   void print_omg (cuComplex *W);
   void get_rh    (Fields* f);
   //  void reduce2z  (float* fk, cuComplex* f);
-  //  void writeMomOrField(cuComplex* m, nca lid);
   void print_growth_rates_to_screen (cuComplex *w);
 
   void write_Wtot  (float   Wh, bool endrun);

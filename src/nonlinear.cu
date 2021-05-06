@@ -9,11 +9,12 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
 {
 
   ks = false;
-
+  vp = false;
+  
   dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
   Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
   dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
-  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
+  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr;  dphi_dy     = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -58,18 +59,16 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   int nxyz = grids_->NxNyNz;
   int nlag = grids_->Nj;
 
-  int nbx = 32;
-  int ngx = (nxyz-1)/nbx + 1;
- 
-  int nby = 8;
-  int ngy = (nlag-1)/nby + 1;
+  int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
+  int nby = min(16, nlag);  int ngy = 1 + (nlag-1)/nby;
 
   dBx = dim3(nbx, nby, 1);
   dGx = dim3(ngx, ngy, 1);
 
-  nxyz = grids_->NxNycNz;
-  nbx = 32;
-  ngx = (nxyz-1)/nbx + 1;
+  int nxkyz = grids_->NxNycNz;
+  
+  nbx = min(32, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
+  nby = min(16, nlag);       ngy = 1 + (nlag-1)/nby;
 
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
@@ -87,36 +86,63 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
   pars_(pars), grids_(grids), geo_(nullptr),
   red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
 {
-  ks = true;
+  if (pars_->ks) ks = true;
+  if (!ks && pars_->vp) vp = true;
 
   dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
   Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
   dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
   vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
 
-  nBatch = 1;
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Nyc);
-  
-  checkCuda(cudaMalloc(&Gy,    sizeof(float)*grids_->Ny));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->Ny));
-
-  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->Ny));
-
-  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
-  
-  dt_cfl = 0.;
-
-  int nbx = min(128, grids_->Nyc);
-  int ngx = 1 + (grids_->Nyc-1)/nbx;
-  dBk = dim3(nbx, 1, 1);
-  dGk = dim3(ngx, 1, 1);
+  if (ks) {
+    nBatch = 1;
+    grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Nyc);
     
-  nbx = min(128, grids_->Ny);
-  ngx = 1 + (grids_->Ny-1)/nbx;
-  dBx = dim3(nbx, 1, 1);
-  dGx = dim3(ngx, 1, 1);
+    checkCuda(cudaMalloc(&Gy,    sizeof(float)*grids_->Ny));
+    checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->Ny));
+    
+    checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->Ny));
+    
+    cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
   
-  cudaMallocHost((void**) &vmax_y, sizeof(float));
+    dt_cfl = 0.;
+
+    //    int nbx = min(128, grids_->Nyc);
+    //    int ngx = 1 + (grids_->Nyc-1)/nbx;
+    //    dBk = dim3(nbx, 1, 1);
+    //    dGk = dim3(ngx, 1, 1);
+    
+    int nbx = min(128, grids_->Ny);
+    int ngx = 1 + (grids_->Ny-1)/nbx;
+    dBx = dim3(nbx, 1, 1);
+    dGx = dim3(ngx, 1, 1);
+    
+    cudaMallocHost((void**) &vmax_y, sizeof(float));
+  }
+
+  if (vp) {
+    nBatch = grids_->Nm;
+    grad_perp_G =    new GradPerp(grids_, nBatch, grids_->Nyc*grids_->Nm);
+
+    nBatch = 1;
+    grad_perp_phi =  new GradPerp(grids_, nBatch, grids_->Nyc);
+
+    checkCuda(cudaMalloc(&Gy,      sizeof(float)*grids_->Ny*grids_->Nm)); 
+    checkCuda(cudaMalloc(&dphi_dy, sizeof(float)*grids_->Ny));            
+
+    checkCuda(cudaMalloc(&g_res,   sizeof(float)*grids_->Ny*grids_->Nm));
+
+    dt_cfl = 0.;
+
+    int nnx = grids_->Ny;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
+    int nny = grids_->Nm;    int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
+    
+    dBx = dim3(nbx, nby, 1);
+    dGx = dim3(ngx, ngy, 1);
+
+    cudaMallocHost((void**) &vmax_y, sizeof(float));
+    
+  }
 }
 
 Nonlinear::~Nonlinear() 
@@ -181,6 +207,14 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     grad_perp_G -> dyC2R(G->G(), dg_dy);
     grad_perp_G -> C2R(G->G(), Gy);
     nlks GBX (g_res, Gy, dg_dy);
+    grad_perp_G -> R2C(g_res, G_res->G());
+    return;
+  }
+
+  if (vp) {
+    grad_perp_G -> C2R(G->G(), Gy);
+    grad_perp_phi -> dyC2R(f->phi, dphi_dy);
+    nlvp GBX (g_res, Gy, dphi_dy);
     grad_perp_G -> R2C(g_res, G_res->G());
     return;
   }
@@ -358,14 +392,14 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 }
 double Nonlinear::cfl(Fields *f, double dt_max)
 {
-  if (pars_->ks) {
-    return dt_max;
-  } else {
-    grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
-    grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
-    // need em evaluation if beta > 0
-    float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
-    dt_cfl = min(dt_max, 1./vmax);
-    return dt_cfl;
-  }
+  if (pars_->ks) return dt_max;
+  if (pars_->vp) return dt_max;
+  
+  grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
+  grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
+  // need em evaluation if beta > 0
+  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
+  dt_cfl = min(dt_max, 1./vmax);
+  return dt_cfl;
+
 }

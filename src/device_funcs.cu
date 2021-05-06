@@ -212,7 +212,59 @@ __device__ bool not_fixed_eq(int idxyz) {
     return true;
 }
 
-__global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps)
+__global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky)
+{
+  unsigned int idy = get_id1();
+  if (idy > 0 && idy < 1 + (ny-1)/3) {
+
+    float ky2inv = 1./(ky[idy]*ky[idy]);
+
+    phi[idy] = G[idy]*ky2inv;
+  }
+  if (idy == 0) {
+    phi[idy].x = 0.; phi[idy].y = 0.;
+  }
+}
+
+__global__ void rhs_lin_vp(const cuComplex *G, const cuComplex* phi, cuComplex* GRhs, float* ky,
+			   bool closure, float nu, float nuh, int alpha, int alpha_h)
+{
+  unsigned int idy = get_id1();
+  if (idy < 1 + (ny-1)/3) {
+    unsigned int m = get_id2();
+    if (m < nm) {
+      unsigned int ig  = idy + nyc*m;
+      unsigned int mm1 = idy + nyc*(m-1);
+      unsigned int mp1 = idy + nyc*(m+1);
+      cuComplex Iky = make_cuComplex(0., ky[idy]);
+      float k2 =    ky[idy]     *ky[idy];
+      float k2max = ky[(ny-1)/3]*ky[(ny-1)/3];
+      float k2norm = k2/k2max; 
+      
+      if (m < nm-1) {GRhs[ig] =            G[mp1] * sqrtf(m+1);
+	if (m >  0)  GRhs[ig] = GRhs[ig] + G[mm1] * sqrtf(m);
+	if (m == 1)  GRhs[ig] = GRhs[ig] + phi[idy];
+	
+          	     GRhs[ig] = - Iky * GRhs[ig];
+	
+      } else {
+	             GRhs[ig] =            G[mm1] * sqrtf(m); 
+        if (closure) GRhs[ig] = GRhs[ig] + G[mm1] * sqrtf(m+1);
+
+	             GRhs[ig] = - Iky * GRhs[ig];
+		     
+        if (closure) GRhs[ig] = GRhs[ig] - ky[idy] * 2. * sqrtf(nm) * G[ig];
+      }
+      
+      if ((nu > 0) && (m > 2)) {
+	             GRhs[ig] = GRhs[ig] - nu  * pow(m, alpha) * G[ig];
+      }
+      if (nuh > 0)   GRhs[ig] = GRhs[ig] - nuh * pow(k2norm, alpha_h) * G[ig];
+    }
+  }
+}
+
+__global__ void rhs_ks(const cuComplex *G, cuComplex *GRhs, float *ky, float eps)
 {
   unsigned int idy = get_id1();
   if (idy < (ny-1)/3 + 1) {
@@ -771,6 +823,20 @@ __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *ar
   for (unsigned int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }
 
+__global__ void ddx (cuComplex *res, cuComplex *f, float *kx)
+{
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    for (int idx = 0; idx < nx; idx++) {
+      cuComplex Ikx = make_cuComplex(0., kx[idx]);
+      for (int idz = 0; idz < nz; idz++) {
+	unsigned int ig = idy + nyc*(idx + nx*idz);
+	res[ig] = Ikx*f[ig];
+      }
+    }
+  }
+}
+
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr)
 {
   float *kx = (float*) kxData;
@@ -852,6 +918,19 @@ __managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 __global__ void acc(float *a, const float *b)
 {a[0] = a[0] + b[0];}
 
+__global__ void nlvp(float *res, const float *Gy, const float *dphi)
+{
+  unsigned int idy = get_id1();
+  if (idy < ny) {
+    unsigned int m = get_id2();
+    if (m > 0 && m < nm) {
+      unsigned int ig  = idy + ny*m;
+      unsigned int mm1 = idy + ny*(m-1);
+      res[ig] = - sqrtf(m) * dphi[idy] * Gy[mm1];
+    }
+  }
+}
+
 __global__ void nlks(float *res, const float *Gy, const float *dG)
 {
   unsigned int idy = get_id1();
@@ -926,8 +1005,7 @@ __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,
       gRhs[LM(1,1,is)] = gRhs[LM(1,1,is)]
 	- awd_s * ( nu[8].x*g[LM(0,1,is)] + nu[9].x*sqrtf(6)*g[LM(0,3,is)] + nu[10].x*g[LM(1,1,is)] )
 	- iwd_s * ( nu[8].y*g[LM(0,1,is)] + nu[9].y*sqrtf(6)*g[LM(0,3,is)] + nu[10].y*g[LM(1,1,is)] );
-    }
-    
+    }    
   }
 }
 
@@ -963,8 +1041,42 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 }
  
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index)
-{ moments[forcing_index] = moments[forcing_index] + force; }
+{
+  moments[forcing_index] = moments[forcing_index] + force; }
 
+__global__ void yavg(float *vE, float *vEavg, float adj) // not a proper field-line average yet
+{
+  unsigned int idx = get_id1();
+  if (idx < nx) {
+    float avg = 0.;
+    for (int idy = 0; idy<ny; idy++) {
+      for (int idz = 0; idz<nz; idz++) {
+	unsigned int ig = idy + ny*(idx + nx*idz);
+	avg += vE[ig];
+      }
+    }
+    float fac = 1./((float) ny * (float) nz);
+    vEavg[idx] = avg*fac*adj;
+  }
+}
+
+__global__ void zavg(float *vE, float *vEavg, float adj)
+{
+  // Transpose to accommodate ncview
+  unsigned int idy = get_id1();
+  if (idy < ny) {
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      float avg = 0.;
+      for (int idz = 0; idz<nz; idz++) {
+	unsigned int ig = idy + ny*(idx + nx*idz);
+	avg += vE[ig];
+      }
+      float fac = 1./((float) nz);
+      vEavg[idx + nx*idy] = avg*fac*adj; // Transposing here
+    }
+  }
+}
 
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac)
 {

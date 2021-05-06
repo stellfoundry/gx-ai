@@ -24,7 +24,7 @@ class Nonlinear {
 
   int nBatch;
   size_t Size; 
-  bool ks;
+  bool ks, vp;
   dim3 dGk, dBk, dGx, dBx;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
@@ -46,6 +46,7 @@ class Nonlinear {
   float * Gy          ;
   float * dJ0phi_dx   ;
   float * dJ0phi_dy   ;
+  float * dphi_dy     ;
   float * dJ0_Apar_dx ;
   float * dJ0_Apar_dy ;
   float * dphi        ;

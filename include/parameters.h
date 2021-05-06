@@ -111,13 +111,19 @@ class Parameters {
   float ks_t0, ks_tf, ks_eps0, ks_epsf;
   float ResSpectralRadius, ResReg, ResSigma, ResSigmaNoise; 
   float eps_ks;
+  float vp_nu, vp_nuh;
+  int vp_alpha, vp_alpha_h;
   
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
-  bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, write_Tperp; 
+  bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks;
+  bool vp, vp_closure;
+  bool write_kmom, write_xymom;
+  bool write_vE, write_kvE, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
+  bool write_xyvE, write_xykvE, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;

@@ -1,38 +1,17 @@
 #include "netcdf.h"
 #include "ncdf.h"
+#define loop_R  <<< dGr,  dBr  >>>
+#define loop_xy <<< dgxy, dbxy >>> 
+#define loop_x  <<< dgx,  dbx  >>> 
+#define loop_y  <<< dgp,  dbp  >>> 
 
 NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   grids_(grids), pars_(pars), geo_(geo),
-  red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr)
+  red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
 {
-  Ws_d        = nullptr;  Ws_h        = nullptr;    Wz_d        = nullptr;  Wz_h        = nullptr;  
-  Ps_d        = nullptr;  Ps_h        = nullptr;    Pz_d        = nullptr;  Pz_h        = nullptr;
-  As_d        = nullptr;  As_h        = nullptr;    Az_d        = nullptr;  Az_h        = nullptr;
 
-  Wm_d        = nullptr;  Wm_h        = nullptr;
-  Wl_d        = nullptr;  Wl_h        = nullptr;
-  Wlm_d       = nullptr;  Wlm_h       = nullptr;
+  primary     = nullptr;  secondary   = nullptr;  tertiary    = nullptr;   vEk = nullptr;
 
-  Pkz_d       = nullptr;  Pkz_h       = nullptr;  tmp_Pkz_h   = nullptr;
-  Pky_d       = nullptr;  Pky_h       = nullptr;  tmp_Pky_h   = nullptr; 
-  Pkx_d       = nullptr;  Pkx_h       = nullptr;  tmp_Pkx_h   = nullptr;
-  Pkxky_d     = nullptr;  Pkxky_h     = nullptr;  tmp_Pkxky_h = nullptr;
-  
-  Wkz_d       = nullptr;  Wkz_h       = nullptr;  tmp_Wkz_h   = nullptr;
-  Wky_d       = nullptr;  Wky_h       = nullptr;  tmp_Wky_h   = nullptr;
-  Wkx_d       = nullptr;  Wkx_h       = nullptr;  tmp_Wkx_h   = nullptr;
-  Wkxky_d     = nullptr;  Wkxky_h     = nullptr;  tmp_Wkxky_h = nullptr;
-
-  Akz_d       = nullptr;  Akz_h       = nullptr;  tmp_Akz_h   = nullptr;
-  Aky_d       = nullptr;  Aky_h       = nullptr;  tmp_Aky_h   = nullptr;
-  Akx_d       = nullptr;  Akx_h       = nullptr;  tmp_Akx_h   = nullptr;
-  Akxky_d     = nullptr;  Akxky_h     = nullptr;  tmp_Akxky_h = nullptr;
-
-  primary     = nullptr;  secondary   = nullptr;  tertiary    = nullptr;
-
-  qs_h        = nullptr;  qs_d        = nullptr;  
-  omg_h       = nullptr;  tmp_omg_h   = nullptr;  
-  
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;
     red = new          All_Reduce(grids_, pars_->wspectra); CUDA_DEBUG("Reductions: %s \n"); // G**2
@@ -52,15 +31,47 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   int nK  = nXk * nYk * nZ;
   int nG  = nR * grids_->Nmoms * nS;
 
+  theta_extended = nullptr;
   char strb[263];
   strcpy(strb, pars_->run_name); 
   strcat(strb, ".nc");
 
   int retval, idum;
 
-  theta_extended = nullptr;
+  int nbx = min(grids_->NxNyNz, 1024);
+  int ngx = 1 + (grids_->NxNyNz-1)/nbx;
+
+  dBr = dim3(nbx, 1, 1);
+  dGr = dim3(ngx, 1, 1);
   
-  //  if (retval = nc_open(strb, NC_NETCDF4|NC_WRITE, &file)) ERR(retval);
+  nbx = min(grids_->Nx, 512);
+  ngx = 1 + (grids_->Nx-1)/nbx;
+
+  dbx = dim3(nbx, 1, 1);
+  dgx = dim3(ngx, 1, 1);
+  
+  nbx = min(grids_->Ny, 512);
+  ngx = 1 + (grids_->Ny-1)/nbx;
+
+  dbp = dim3(nbx, 1, 1);
+  dgp = dim3(ngx, 1, 1);
+
+  nbx = min(32, grids_->Ny);
+  ngx = 1 + (grids_->Ny-1)/nbx;
+
+  int nby = min(32, grids_->Nx);
+  int ngy = 1 + (grids_->Nx-1)/nbx;
+  
+  dbxy = dim3(nbx, nby, 1);
+  dgxy = dim3(ngx, ngy, 1);
+
+  if (pars_->write_kmom || pars_->write_xymom) {
+    int nbatch = grids_->Nz;
+    grad_phi = new GradPerp(grids_, nbatch, grids_->NxNycNz);
+
+    cudaMalloc     (&vEk,  sizeof(cuComplex)*grids_->NxNycNz);
+  } 
+  
   file = pars_->ncid;
   if (retval = nc_redef(file));
   
@@ -73,13 +84,13 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_dim(file, "kx",        grids_->Nakx,  &kx_dim))    ERR(retval);
   if (retval = nc_def_dim(file, "theta",     grids_->Nz,    &nz))        ERR(retval);  
   
+  if (retval = nc_inq_dimid(file, "x",       &x_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "y",       &y_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "m",       &m_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "l",       &l_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "s",       &s_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "time",    &time_dim)) ERR(retval);
 
-  //  if (retval = nc_def_var(file, "time",       NC_DOUBLE, 1, &time_dim, &time))    ERR(retval);
   if (retval = nc_def_var(file, "periodic",       NC_INT, 0, 0, &periodic))        ERR(retval);
   if (retval = nc_def_var(file, "local_limit",    NC_INT, 0, 0, &local_limit))     ERR(retval);
 
@@ -94,7 +105,10 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   v_ky[0] = y_dim;
   if (retval = nc_def_var(file, "y",        NC_FLOAT, 1, v_ky, &y))               ERR(retval);  
-  
+
+  v_kx[0] = x_dim;
+  if (retval = nc_def_var(file, "x",        NC_FLOAT, 1, v_kx, &x))               ERR(retval);  
+
   //  v_z[0] = nz;
   //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
   
@@ -120,12 +134,17 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_def_var(file, "grho",     NC_FLOAT, 1, geo_v_theta, &grho))     ERR(retval);
   if (retval = nc_def_var(file, "jacobian", NC_FLOAT, 1, geo_v_theta, &jacobian)) ERR(retval);
   
-  //  time.dims[0] = 
-  time.time_start[0] = 0;
-  time.time_count[0] = 1;
-  time.time_dims[0] = time_dim;
-  if (retval = nc_def_var(file, "time",     NC_DOUBLE, 1, time.time_dims, &time.time))    ERR(retval);
+  ////////////////////////////
+  //                        //
+  //       TIME             //
+  //                        //
+  ////////////////////////////
 
+  time = new nca(0); 
+  time -> write_v_time = true;
+
+  time -> time_dims[0] = time_dim;
+  if (retval = nc_def_var(file, "time",     NC_DOUBLE, 1, time -> time_dims, &time -> time))    ERR(retval);
   
   ////////////////////////////
   //                        //
@@ -133,30 +152,31 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  den.write = pars_->write_moms;
+  den = new nca(0);
+  den -> write = pars_->write_moms;
 
-  if (den.write) {
-    den.dims[0] = s_dim;
-    den.dims[1] = nz;
-    den.dims[2] = kx_dim;
-    den.dims[3] = ky_dim;
-    den.dims[4] = ri;
+  if (den -> write) {
+    den -> dims[0] = s_dim;
+    den -> dims[1] = nz;
+    den -> dims[2] = kx_dim;
+    den -> dims[3] = ky_dim;
+    den -> dims[4] = ri;
 
-    if (retval = nc_def_var(file, "density",  NC_FLOAT, 5, den.dims, &den.idx )) ERR(retval);
+    if (retval = nc_def_var(file, "density",  NC_FLOAT, 5, den->dims, &den->idx )) ERR(retval);
     
-    den.start[0] = 0;
-    den.start[1] = 0;
-    den.start[2] = 0;
-    den.start[3] = 0; 
-    den.start[4] = 0; 
+    den -> start[0] = 0;
+    den -> start[1] = 0;
+    den -> start[2] = 0;
+    den -> start[3] = 0; 
+    den -> start[4] = 0; 
     
-    den.count[0] = grids_->Nspecies;
-    den.count[1] = grids_->Nz;
-    den.count[2] = grids_->Nakx;
-    den.count[3] = grids_->Naky;
-    den.count[4] = 2;
+    den -> count[0] = grids_->Nspecies;
+    den -> count[1] = grids_->Nz;
+    den -> count[2] = grids_->Nakx;
+    den -> count[3] = grids_->Naky;
+    den -> count[4] = 2;
 
-    den.ns = grids_->Nspecies;
+    den -> ns = grids_->Nspecies;
   }
   
   ////////////////////////////
@@ -165,30 +185,31 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  den0.write = pars_->write_moms;
+  den0 = new nca(0); 
+  den0 -> write = pars_->write_moms;
 
-  if (den0.write) {
-    den0.dims[0] = s_dim;
-    den0.dims[1] = nz;
-    den0.dims[2] = kx_dim;
-    den0.dims[3] = ky_dim;
-    den0.dims[4] = ri;
+  if (den0 -> write) {
+    den0 -> dims[0] = s_dim;
+    den0 -> dims[1] = nz;
+    den0 -> dims[2] = kx_dim;
+    den0 -> dims[3] = ky_dim;
+    den0 -> dims[4] = ri;
 
-    if (retval = nc_def_var(file, "density0",  NC_FLOAT, 5, den0.dims, &den0.idx )) ERR(retval);
+    if (retval = nc_def_var(file, "density0",  NC_FLOAT, 5, den0 -> dims, &den0 -> idx )) ERR(retval);
     
-    den0.start[0] = 0;
-    den0.start[1] = 0;
-    den0.start[2] = 0;
-    den0.start[3] = 0; 
-    den0.start[4] = 0; 
+    den0 -> start[0] = 0;
+    den0 -> start[1] = 0;
+    den0 -> start[2] = 0;
+    den0 -> start[3] = 0; 
+    den0 -> start[4] = 0; 
     
-    den0.count[0] = grids_->Nspecies;
-    den0.count[1] = grids_->Nz;
-    den0.count[2] = grids_->Nakx;
-    den0.count[3] = grids_->Naky;
-    den0.count[4] = 2;
+    den0 -> count[0] = grids_->Nspecies;
+    den0 -> count[1] = grids_->Nz;
+    den0 -> count[2] = grids_->Nakx;
+    den0 -> count[3] = grids_->Naky;
+    den0 -> count[4] = 2;
 
-    den0.ns = grids_->Nspecies;
+    den0 -> ns = grids_->Nspecies;
   }
   
   ////////////////////////////
@@ -197,27 +218,28 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  wphi.write = pars_->write_phi;
+  wphi = new nca(0); 
+  wphi -> write = pars_->write_phi;
 
-  if (wphi.write) {
-    wphi.dims[0] = nz;
-    wphi.dims[1] = kx_dim;
-    wphi.dims[2] = ky_dim;
-    wphi.dims[3] = ri;
+  if (wphi -> write) {
+    wphi -> dims[0] = nz;
+    wphi -> dims[1] = kx_dim;
+    wphi -> dims[2] = ky_dim;
+    wphi -> dims[3] = ri;
     
-    if (retval = nc_def_var(file, "phi",      NC_FLOAT, 4, wphi.dims, &wphi.idx ))      ERR(retval);
+    if (retval = nc_def_var(file, "phi",      NC_FLOAT, 4, wphi -> dims, &wphi -> idx ))      ERR(retval);
 
-    wphi.start[0] = 0;
-    wphi.start[1] = 0;
-    wphi.start[2] = 0;
-    wphi.start[3] = 0; 
+    wphi -> start[0] = 0;
+    wphi -> start[1] = 0;
+    wphi -> start[2] = 0;
+    wphi -> start[3] = 0; 
     
-    wphi.count[0] = grids_->Nz;
-    wphi.count[1] = grids_->Nakx;
-    wphi.count[2] = grids_->Naky;
-    wphi.count[3] = 2;
+    wphi -> count[0] = grids_->Nz;
+    wphi -> count[1] = grids_->Nakx;
+    wphi -> count[2] = grids_->Naky;
+    wphi -> count[3] = 2;
 
-    wphi.ns = 1; 
+    wphi -> ns = 1; 
   }
 
   ////////////////////////////
@@ -226,27 +248,28 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  wphi0.write = pars_->write_phi;
+  wphi0 = new nca(0); 
+  wphi0 -> write = pars_->write_phi;
 
-  if (wphi0.write) {
-    wphi0.dims[0] = nz;
-    wphi0.dims[1] = kx_dim;
-    wphi0.dims[2] = ky_dim;
-    wphi0.dims[3] = ri;
+  if (wphi0 -> write) {
+    wphi0 -> dims[0] = nz;
+    wphi0 -> dims[1] = kx_dim;
+    wphi0 -> dims[2] = ky_dim;
+    wphi0 -> dims[3] = ri;
     
-    if (retval = nc_def_var(file, "phi0",      NC_FLOAT, 4, wphi0.dims, &wphi0.idx ))      ERR(retval);
+    if (retval = nc_def_var(file, "phi0",      NC_FLOAT, 4, wphi0 -> dims, &wphi0 -> idx ))      ERR(retval);
 
-    wphi0.start[0] = 0;
-    wphi0.start[1] = 0;
-    wphi0.start[2] = 0;
-    wphi0.start[3] = 0; 
+    wphi0 -> start[0] = 0;
+    wphi0 -> start[1] = 0;
+    wphi0 -> start[2] = 0;
+    wphi0 -> start[3] = 0; 
     
-    wphi0.count[0] = grids_->Nz;
-    wphi0.count[1] = grids_->Nakx;
-    wphi0.count[2] = grids_->Naky;
-    wphi0.count[3] = 2;
+    wphi0 -> count[0] = grids_->Nz;
+    wphi0 -> count[1] = grids_->Nakx;
+    wphi0 -> count[2] = grids_->Naky;
+    wphi0 -> count[3] = 2;
 
-    wphi0.ns = 1;
+    wphi0 -> ns = 1;
   }
 
   ////////////////////////////
@@ -255,30 +278,31 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  denk.write = (pars_->write_phi_kpar and pars_->write_moms);
+  denk = new nca(0); 
+  denk -> write = (pars_->write_phi_kpar and pars_->write_moms);
 
-  if (denk.write) {
-    denk.dims[0] = s_dim;
-    denk.dims[1] = nkz;
-    denk.dims[2] = kx_dim;
-    denk.dims[3] = ky_dim;
-    denk.dims[4] = ri;
+  if (denk -> write) {
+    denk -> dims[0] = s_dim;
+    denk -> dims[1] = nkz;
+    denk -> dims[2] = kx_dim;
+    denk -> dims[3] = ky_dim;
+    denk -> dims[4] = ri;
 
-    if (retval = nc_def_var(file, "density_kpar", NC_FLOAT, 5, denk.dims, &denk.idx)) ERR(retval);    
+    if (retval = nc_def_var(file, "density_kpar", NC_FLOAT, 5, denk -> dims, &denk -> idx)) ERR(retval);    
 
-    denk.start[0] = 0;
-    denk.start[1] = 0;
-    denk.start[2] = 0;
-    denk.start[3] = 0; 
-    denk.start[4] = 0; 
+    denk -> start[0] = 0;
+    denk -> start[1] = 0;
+    denk -> start[2] = 0;
+    denk -> start[3] = 0; 
+    denk -> start[4] = 0; 
     
-    denk.count[0] = grids_->Nspecies;
-    denk.count[1] = grids_->Nz;
-    denk.count[2] = grids_->Nakx;
-    denk.count[3] = grids_->Naky;
-    denk.count[4] = 2;
+    denk -> count[0] = grids_->Nspecies;
+    denk -> count[1] = grids_->Nz;
+    denk -> count[2] = grids_->Nakx;
+    denk -> count[3] = grids_->Naky;
+    denk -> count[4] = 2;
 
-    denk.ns = 1;
+    denk -> ns = 1;
   }
 
   ////////////////////////////
@@ -287,27 +311,28 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  wphik.write = pars_->write_phi_kpar;
+  wphik = new nca(0); 
+  wphik -> write = pars_->write_phi_kpar;
 
-  if (wphik.write) {
-    wphik.dims[0] = nkz;
-    wphik.dims[1] = kx_dim;
-    wphik.dims[2] = ky_dim;
-    wphik.dims[3] = ri;
+  if (wphik -> write) {
+    wphik -> dims[0] = nkz;
+    wphik -> dims[1] = kx_dim;
+    wphik -> dims[2] = ky_dim;
+    wphik -> dims[3] = ri;
     
-    if (retval = nc_def_var(file, "phi2_kz",    NC_FLOAT, 4, wphik.dims, &wphik.idx))     ERR(retval);
+    if (retval = nc_def_var(file, "phi2_kz",    NC_FLOAT, 4, wphik -> dims, &wphik -> idx))     ERR(retval);
 
-    wphik.start[0] = 0;
-    wphik.start[1] = 0;
-    wphik.start[2] = 0;
-    wphik.start[3] = 0; 
+    wphik -> start[0] = 0;
+    wphik -> start[1] = 0;
+    wphik -> start[2] = 0;
+    wphik -> start[3] = 0; 
     
-    wphik.count[0] = grids_->Nz;
-    wphik.count[1] = grids_->Nakx;
-    wphik.count[2] = grids_->Naky;
-    wphik.count[3] = 2;
+    wphik -> count[0] = grids_->Nz;
+    wphik -> count[1] = grids_->Nakx;
+    wphik -> count[2] = grids_->Naky;
+    wphik -> count[3] = 2;
 
-    wphi.ns = 1;
+    wphik -> ns = 1;
   }
 
   ////////////////////////////
@@ -316,30 +341,24 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  omg.write_v_time = pars_->write_omega;
+  omg = new nca(-nX * nY, 2 * nXk * nYk);
+  omg -> write_v_time = pars_->write_omega;
   
-  if (omg.write_v_time) {
-    omg.time_dims[0] = time_dim; 
-    omg.time_dims[1] = ky_dim; 
-    omg.time_dims[2] = kx_dim;
-    omg.time_dims[3] = ri;
+  if (omg -> write_v_time) {
+    omg -> time_dims[0] = time_dim; 
+    omg -> time_dims[1] = ky_dim; 
+    omg -> time_dims[2] = kx_dim;
+    omg -> time_dims[3] = ri;
     
-    if (retval = nc_def_var(file, "omega_v_time", NC_FLOAT, 4, omg.time_dims, &omg.time)) ERR(retval);
+    if (retval = nc_def_var(file, "omega_v_time", NC_FLOAT, 4, omg -> time_dims, &omg -> time)) ERR(retval);
 
-    omg.time_start[0] = 1;
-    omg.time_start[1] = 0;
-    omg.time_start[2] = 0;
-    omg.time_start[3] = 0;
+    omg -> time_start[0] = 1;
     
-    omg.time_count[0] = 1;
-    omg.time_count[1] = grids_->Naky;
-    omg.time_count[2] = grids_->Nakx;
-    omg.time_count[3] = 2;
+    omg -> time_count[1] = grids_->Naky;
+    omg -> time_count[2] = grids_->Nakx;
+    omg -> time_count[3] = 2;
 
-    cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY); 
-    cudaMallocHost (    &omg_h,   sizeof(cuComplex) * nXk * nYk);
-
-    for (int i=0; i < nXk * nYk * 2; i++) omg_h[i] = 0.;    
+    for (int i=0; i < nXk * nYk * 2; i++) omg->cpu[i] = 0.;
   }
 
   ////////////////////////////
@@ -348,19 +367,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  rh.write = pars_->write_rh;
+  rh = new nca(0); 
+  rh -> write = pars_->write_rh;
 
-  if (rh.write) {
-    rh.time_dims[0] = time_dim;
-    rh.time_dims[1] = ri;
+  if (rh -> write) {
+    rh -> time_dims[0] = time_dim;
+    rh -> time_dims[1] = ri;
     
-    if (retval = nc_def_var(file, "phi_rh", NC_FLOAT, 2, rh.time_dims, &rh.time)) ERR(retval);
+    if (retval = nc_def_var(file, "phi_rh", NC_FLOAT, 2, rh -> time_dims, &rh -> time)) ERR(retval);
 
-    rh.time_start[0] = 0;
-    rh.time_start[1] = 0;
-
-    rh.time_count[0] = 1;
-    rh.time_count[1] = 2;
+    rh -> time_count[1] = 2;
   }
 
   ////////////////////////////
@@ -369,27 +385,21 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  Pzt.write_v_time = pars_->write_pzt;
+  Pzt = new nca(0);
+  pZt = new nca(0);
+  pzT = new nca(0);
+  Pzt -> write_v_time = pars_->write_pzt;
   
-  if (Pzt.write_v_time) {
+  if (Pzt -> write_v_time) {
 
-    Pzt.time_dims[0] = time_dim;
-    pZt.time_dims[0] = time_dim;
-    pzT.time_dims[0] = time_dim;
+    Pzt -> time_dims[0] = time_dim;
+    pZt -> time_dims[0] = time_dim;
+    pzT -> time_dims[0] = time_dim;
 
-    if (retval = nc_def_var(file, "prim", NC_FLOAT, 1, Pzt.time_dims, &Pzt.idx)) ERR(retval);
-    if (retval = nc_def_var(file, "sec",  NC_FLOAT, 1, pZt.time_dims, &pZt.idx)) ERR(retval);
-    if (retval = nc_def_var(file, "tert", NC_FLOAT, 1, pzT.time_dims, &pzT.idx)) ERR(retval);
+    if (retval = nc_def_var(file, "prim", NC_FLOAT, 1, Pzt -> time_dims, &Pzt -> idx)) ERR(retval);
+    if (retval = nc_def_var(file, "sec",  NC_FLOAT, 1, pZt -> time_dims, &pZt -> idx)) ERR(retval);
+    if (retval = nc_def_var(file, "tert", NC_FLOAT, 1, pzT -> time_dims, &pzT -> idx)) ERR(retval);
 
-    Pzt.time_start[0] = 0;
-    Pzt.time_count[0] = 1; 
-
-    pZt.time_start[0] = 0;
-    pZt.time_count[0] = 1; 
-
-    pzT.time_start[0] = 0;
-    pzT.time_count[0] = 1; 
-  
     cudaMallocHost (&primary,   sizeof(float));    primary[0] = 0.;  
     cudaMallocHost (&secondary, sizeof(float));    secondary[0] = 0.;
     cudaMallocHost (&tertiary,  sizeof(float));    tertiary[0] = 0.;
@@ -402,48 +412,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->pspectra[PSPECTRA_species] > 0) Ps.write_v_time = true;
+  Ps = new nca(nS); 
+  if (pars_->pspectra[PSPECTRA_species] > 0) Ps -> write_v_time = true;
 
-  if (Ps.write_v_time) {
-    Ps.time_dims[0] = time_dim;
-    Ps.time_dims[1] = s_dim;
+  if (Ps -> write_v_time) {
+    Ps -> time_dims[0] = time_dim;
+    Ps -> time_dims[1] = s_dim;
     
-    if (retval = nc_def_var(file, "Pst", NC_FLOAT, 2, Ps.time_dims, &Ps.time))  ERR(retval);
-    Ps.time_start[0] = 0;
-    Ps.time_start[1] = 0;
+    if (retval = nc_def_var(file, "Pst", NC_FLOAT, 2, Ps -> time_dims, &Ps -> time))  ERR(retval);
     
-    Ps.time_count[0] = 1;
-    Ps.time_count[1] = grids_->Nspecies;
-
-    cudaMalloc     (&Ps_d,        sizeof(float) * nS);
-    cudaMallocHost (&Ps_h,        sizeof(float) * nS);
-  }
-  
-  ////////////////////////////
-  //                        //
-  //   P (ky, species)      //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->pspectra[PSPECTRA_ky] > 0) Pky.write_v_time = true;
-
-  if (Pky.write_v_time) {
-    Pky.time_dims[0] = time_dim;
-    Pky.time_dims[1] = s_dim;
-    Pky.time_dims[2] = ky_dim;
-    
-    if (retval = nc_def_var(file, "Pkyst", NC_FLOAT, 3, Pky.time_dims, &Pky.time))  ERR(retval);
-    Pky.time_start[0] = 0;
-    Pky.time_start[1] = 0;
-    Pky.time_start[2] = 0;
-    
-    Pky.time_count[0] = 1;
-    Pky.time_count[1] = grids_->Nspecies;
-    Pky.time_count[2] = grids_->Naky;
-    
-    cudaMalloc     (&Pky_d,       sizeof(float) * nY * nS);
-    cudaMallocHost (&tmp_Pky_h,   sizeof(float) * nY * nS);
-    cudaMallocHost (&Pky_h,       sizeof(float) * nYk * nS);    
+    Ps -> time_count[1] = grids_->Nspecies;
   }
   
   ////////////////////////////
@@ -452,25 +430,39 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->pspectra[PSPECTRA_kx] > 0) Pkx.write_v_time = true;
+  Pkx = new nca(nX*nS, nXk*nS); 
+  if (pars_->pspectra[PSPECTRA_kx] > 0) Pkx -> write_v_time = true;
 
-  if (Pkx.write_v_time) {
-    Pkx.time_dims[0] = time_dim;
-    Pkx.time_dims[1] = s_dim;
-    Pkx.time_dims[2] = kx_dim;
+  if (Pkx -> write_v_time) {
+    Pkx -> time_dims[0] = time_dim;
+    Pkx -> time_dims[1] = s_dim;
+    Pkx -> time_dims[2] = kx_dim;
     
-    if (retval = nc_def_var(file, "Pkxst", NC_FLOAT, 3, Pkx.time_dims, &Pkx.time))  ERR(retval);
-    Pkx.time_start[0] = 0;
-    Pkx.time_start[1] = 0;
-    Pkx.time_start[2] = 0;
-    
-    Pkx.time_count[0] = 1;
-    Pkx.time_count[1] = grids_->Nspecies;
-    Pkx.time_count[2] = grids_->Nakx;      
+    if (retval = nc_def_var(file, "Pkxst", NC_FLOAT, 3, Pkx -> time_dims, &Pkx -> time))  ERR(retval);
 
-    cudaMalloc     (&Pkx_d,       sizeof(float) * nX * nS); 
-    cudaMallocHost (&tmp_Pkx_h,   sizeof(float) * nX * nS); 
-    cudaMallocHost (&Pkx_h,       sizeof(float) * nXk * nS);     
+    Pkx -> time_count[1] = grids_->Nspecies;
+    Pkx -> time_count[2] = grids_->Nakx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   P (ky, species)      //
+  //                        //
+  ////////////////////////////
+
+  Pky = new nca(nY*nS, nYk*nS);
+  if (pars_->pspectra[PSPECTRA_ky] > 0) Pky -> write_v_time = true;
+
+  if (Pky -> write_v_time) {
+    Pky -> time_dims[0] = time_dim;
+    Pky -> time_dims[1] = s_dim;
+    Pky -> time_dims[2] = ky_dim;
+    
+    if (retval = nc_def_var(file, "Pkyst", NC_FLOAT, 3, Pky->time_dims, &Pky->time))  ERR(retval);
+
+    Pky -> time_count[1] = grids_->Nspecies;
+    Pky -> time_count[2] = grids_->Naky;
+    
   }
   
   ////////////////////////////
@@ -479,25 +471,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->pspectra[PSPECTRA_kz] > 0) Pkz.write_v_time = true;
+  Pkz = new nca(nZ*nS, nZ*nS); 
+  if (pars_->pspectra[PSPECTRA_kz] > 0) Pkz -> write_v_time = true;
 
-  if (Pkz.write_v_time) {
-    Pkz.time_dims[0] = time_dim;
-    Pkz.time_dims[1] = s_dim;
-    Pkz.time_dims[2] = nkz;
+  if (Pkz -> write_v_time) {
+    Pkz -> time_dims[0] = time_dim;
+    Pkz -> time_dims[1] = s_dim;
+    Pkz -> time_dims[2] = nkz;
     
-    if (retval = nc_def_var(file, "Pkzst", NC_FLOAT, 3, Pkz.time_dims, &Pkz.time))  ERR(retval);
-    Pkz.time_start[0] = 0;
-    Pkz.time_start[1] = 0;
-    Pkz.time_start[2] = 0;
-    
-    Pkz.time_count[0] = 1;
-    Pkz.time_count[1] = grids_->Nspecies;
-    Pkz.time_count[2] = grids_->Nz;
-  
-    cudaMalloc     (&Pkz_d,        sizeof(float) * nZ * nS); 
-    cudaMallocHost (&Pkz_h,        sizeof(float) * nZ * nS);     
-    cudaMallocHost (&tmp_Pkz_h,    sizeof(float) * nZ * nS);     
+    if (retval = nc_def_var(file, "Pkzst", NC_FLOAT, 3, Pkz -> time_dims, &Pkz -> time))  ERR(retval);
+
+    Pkz -> time_count[1] = grids_->Nspecies;
+    Pkz -> time_count[2] = grids_->Nz;
   }
   
   ////////////////////////////
@@ -506,24 +491,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->pspectra[PSPECTRA_z] > 0) Pz.write_v_time = true;
+  Pz = new nca(nZ*nS); 
+  if (pars_->pspectra[PSPECTRA_z] > 0) Pz -> write_v_time = true;
 
-  if (Pz.write_v_time) {
-    Pz.time_dims[0] = time_dim;
-    Pz.time_dims[1] = s_dim;
-    Pz.time_dims[2] = nz;
+  if (Pz -> write_v_time) {
+    Pz -> time_dims[0] = time_dim;
+    Pz -> time_dims[1] = s_dim;
+    Pz -> time_dims[2] = nz;
     
-    if (retval = nc_def_var(file, "Pzst", NC_FLOAT, 3, Pz.time_dims, &Pz.time))  ERR(retval);
-    Pz.time_start[0] = 0;
-    Pz.time_start[1] = 0;
-    Pz.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Pzst", NC_FLOAT, 3, Pz -> time_dims, &Pz -> time))  ERR(retval);
     
-    Pz.time_count[0] = 1;
-    Pz.time_count[1] = grids_->Nspecies;
-    Pz.time_count[2] = grids_->Nz;
-  
-    cudaMalloc     (&Pz_d,        sizeof(float) * nZ * nS); 
-    cudaMallocHost (&Pz_h,        sizeof(float) * nZ * nS);     
+    Pz -> time_count[1] = grids_->Nspecies;
+    Pz -> time_count[2] = grids_->Nz;
   }
   
   ////////////////////////////
@@ -532,28 +511,21 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->pspectra[PSPECTRA_kxky] > 0) Pkxky.write_v_time = true;
+  Pkxky = new nca(nX * nY * nS, nXk * nYk * nS); 
 
-  if (Pkxky.write_v_time) {
-    Pkxky.time_dims[0] = time_dim;
-    Pkxky.time_dims[1] = s_dim;
-    Pkxky.time_dims[2] = ky_dim;
-    Pkxky.time_dims[3] = kx_dim;
-    
-    if (retval = nc_def_var(file, "Pkxkyst", NC_FLOAT, 4, Pkxky.time_dims, &Pkxky.time))  ERR(retval);
-    Pkxky.time_start[0] = 0;
-    Pkxky.time_start[1] = 0;
-    Pkxky.time_start[2] = 0;
-    Pkxky.time_start[3] = 0;
-    
-    Pkxky.time_count[0] = 1;
-    Pkxky.time_count[1] = grids_->Nspecies;
-    Pkxky.time_count[2] = grids_->Naky;
-    Pkxky.time_count[3] = grids_->Nakx;
+  if (pars_->pspectra[PSPECTRA_kxky] > 0) Pkxky -> write_v_time = true;
 
-    cudaMalloc     (&Pkxky_d,     sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&tmp_Pkxky_h, sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&Pkxky_h,     sizeof(float) * nXk * nYk * nS);    
+  if (Pkxky -> write_v_time) {
+    Pkxky -> time_dims[0] = time_dim;
+    Pkxky -> time_dims[1] = s_dim;
+    Pkxky -> time_dims[2] = ky_dim;
+    Pkxky -> time_dims[3] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Pkxkyst", NC_FLOAT, 4, Pkxky -> time_dims, &Pkxky -> time))  ERR(retval);
+    
+    Pkxky -> time_count[1] = grids_->Nspecies;
+    Pkxky -> time_count[2] = grids_->Naky;
+    Pkxky -> time_count[3] = grids_->Nakx;
   }   
 
   ////////////////////////////
@@ -562,77 +534,57 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_species] > 0) Ws.write_v_time = true;
+  Ws = new nca(nS); 
+  if (pars_->wspectra[WSPECTRA_species] > 0) Ws -> write_v_time = true;
 
-  if (Ws.write_v_time) {
-    Ws.time_dims[0] = time_dim;
-    Ws.time_dims[1] = s_dim;
+  if (Ws -> write_v_time) {
+    Ws -> time_dims[0] = time_dim;
+    Ws -> time_dims[1] = s_dim;
     
-    if (retval = nc_def_var(file, "Wst", NC_FLOAT, 2, Ws.time_dims, &Ws.time))  ERR(retval);
-    Ws.time_start[0] = 0;
-    Ws.time_start[1] = 0;
+    if (retval = nc_def_var(file, "Wst", NC_FLOAT, 2, Ws -> time_dims, &Ws -> time))  ERR(retval);
     
-    Ws.time_count[0] = 1;
-    Ws.time_count[1] = grids_->Nspecies;
-
-    cudaMalloc     (&Ws_d,        sizeof(float) * nS);
-    cudaMallocHost (&Ws_h,        sizeof(float) * nS);    
+    Ws -> time_count[1] = grids_->Nspecies;
   }
 
-  ////////////////////////////
-  //                        //
-  //   W (ky, species)      //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->wspectra[WSPECTRA_ky] > 0) Wky.write_v_time = true;
-
-  if (Wky.write_v_time) {
-    Wky.time_dims[0] = time_dim;
-    Wky.time_dims[1] = s_dim;
-    Wky.time_dims[2] = ky_dim;
-    
-    if (retval = nc_def_var(file, "Wkyst", NC_FLOAT, 3, Wky.time_dims, &Wky.time))  ERR(retval);
-    Wky.time_start[0] = 0;
-    Wky.time_start[1] = 0;
-    Wky.time_start[2] = 0;
-    
-    Wky.time_count[0] = 1;
-    Wky.time_count[1] = grids_->Nspecies;
-    Wky.time_count[2] = grids_->Naky;      
-
-    cudaMalloc     (&Wky_d,       sizeof(float) * nY * nS); 
-    cudaMallocHost (&tmp_Wky_h,   sizeof(float) * nY * nS); 
-    cudaMallocHost (&Wky_h,       sizeof(float) * nYk * nS);
-    
-  }   
-  
   ////////////////////////////
   //                        //
   //   W (kx, species)      //
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_kx] > 0) Wkx.write_v_time = true;
+  Wkx = new nca(nX*nS, nXk*nS); 
+  if (pars_->wspectra[WSPECTRA_kx] > 0) Wkx -> write_v_time = true;
 
-  if (Wkx.write_v_time) {
-    Wkx.time_dims[0] = time_dim;
-    Wkx.time_dims[1] = s_dim;
-    Wkx.time_dims[2] = kx_dim;
+  if (Wkx -> write_v_time) {
+    Wkx -> time_dims[0] = time_dim;
+    Wkx -> time_dims[1] = s_dim;
+    Wkx -> time_dims[2] = kx_dim;
     
-    if (retval = nc_def_var(file, "Wkxst", NC_FLOAT, 3, Wkx.time_dims, &Wkx.time))  ERR(retval);
-    Wkx.time_start[0] = 0;
-    Wkx.time_start[1] = 0;
-    Wkx.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Wkxst", NC_FLOAT, 3, Wkx -> time_dims, &Wkx -> time))  ERR(retval);
     
-    Wkx.time_count[0] = 1;
-    Wkx.time_count[1] = grids_->Nspecies;
-    Wkx.time_count[2] = grids_->Nakx;      
-
-    cudaMalloc     (&Wkx_d,       sizeof(float) * nX * nS);
-    cudaMallocHost (&tmp_Wkx_h,   sizeof(float) * nX * nS);
-    cudaMallocHost (&Wkx_h,       sizeof(float) * nXk * nS);    
+    Wkx -> time_count[1] = grids_->Nspecies;
+    Wkx -> time_count[2] = grids_->Nakx;      
   }
+  
+  ////////////////////////////
+  //                        //
+  //   W (ky, species)      //
+  //                        //
+  ////////////////////////////
+
+  Wky = new nca(nY*nS, nYk*nS); 
+  if (pars_->wspectra[WSPECTRA_ky] > 0) Wky -> write_v_time = true;
+
+  if (Wky -> write_v_time) {
+    Wky -> time_dims[0] = time_dim;
+    Wky -> time_dims[1] = s_dim;
+    Wky -> time_dims[2] = ky_dim;
+    
+    if (retval = nc_def_var(file, "Wkyst", NC_FLOAT, 3, Wky -> time_dims, &Wky -> time))  ERR(retval);
+    
+    Wky -> time_count[1] = grids_->Nspecies;
+    Wky -> time_count[2] = grids_->Naky;      
+  }   
   
   ////////////////////////////
   //                        //
@@ -640,25 +592,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_kz] > 0) Wkz.write_v_time = true;
+  Wkz = new nca(nZ * nS, nZ * nS); 
+  if (pars_->wspectra[WSPECTRA_kz] > 0) Wkz -> write_v_time = true;
 
-  if (Wkz.write_v_time) {
-    Wkz.time_dims[0] = time_dim;
-    Wkz.time_dims[1] = s_dim;
-    Wkz.time_dims[2] = nkz;
+  if (Wkz -> write_v_time) {
+    Wkz -> time_dims[0] = time_dim;
+    Wkz -> time_dims[1] = s_dim;
+    Wkz -> time_dims[2] = nkz;
     
-    if (retval = nc_def_var(file, "Wkzst", NC_FLOAT, 3, Wkz.time_dims, &Wkz.time))  ERR(retval);
-    Wkz.time_start[0] = 0;
-    Wkz.time_start[1] = 0;
-    Wkz.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Wkzst", NC_FLOAT, 3, Wkz -> time_dims, &Wkz -> time))  ERR(retval);
     
-    Wkz.time_count[0] = 1;
-    Wkz.time_count[1] = grids_->Nspecies;
-    Wkz.time_count[2] = grids_->Nz;
-    
-    cudaMalloc     (&Wkz_d,        sizeof(float) * nZ * nS);
-    cudaMallocHost (&Wkz_h,        sizeof(float) * nZ * nS);    
-    cudaMallocHost (&tmp_Wkz_h,    sizeof(float) * nZ * nS);     
+    Wkz -> time_count[1] = grids_->Nspecies;
+    Wkz -> time_count[2] = grids_->Nz;
   }   
 
   ////////////////////////////
@@ -667,24 +612,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_z] > 0) Wz.write_v_time = true;
+  Wz = new nca(nZ*nS); 
+  if (pars_->wspectra[WSPECTRA_z] > 0) Wz -> write_v_time = true;
 
-  if (Wz.write_v_time) {
-    Wz.time_dims[0] = time_dim;
-    Wz.time_dims[1] = s_dim;
-    Wz.time_dims[2] = nz;
+  if (Wz -> write_v_time) {
+    Wz -> time_dims[0] = time_dim;
+    Wz -> time_dims[1] = s_dim;
+    Wz -> time_dims[2] = nz;
     
-    if (retval = nc_def_var(file, "Wzst", NC_FLOAT, 3, Wz.time_dims, &Wz.time))  ERR(retval);
-    Wz.time_start[0] = 0;
-    Wz.time_start[1] = 0;
-    Wz.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Wzst", NC_FLOAT, 3, Wz -> time_dims, &Wz -> time))  ERR(retval);
     
-    Wz.time_count[0] = 1;
-    Wz.time_count[1] = grids_->Nspecies;
-    Wz.time_count[2] = grids_->Nz;
-    
-    cudaMalloc     (&Wz_d,        sizeof(float) * nZ * nS);
-    cudaMallocHost (&Wz_h,        sizeof(float) * nZ * nS);    
+    Wz -> time_count[1] = grids_->Nspecies;
+    Wz -> time_count[2] = grids_->Nz;
   }   
   
   ////////////////////////////
@@ -693,28 +632,20 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_kxky] > 0) Wkxky.write_v_time = true;
+  Wkxky = new nca(nX * nY * nS, nXk * nYk * nS); 
+  if (pars_->wspectra[WSPECTRA_kxky] > 0) Wkxky -> write_v_time = true;
 
-  if (Wkxky.write_v_time) {
-    Wkxky.time_dims[0] = time_dim;
-    Wkxky.time_dims[1] = s_dim;
-    Wkxky.time_dims[2] = ky_dim;
-    Wkxky.time_dims[3] = kx_dim;
+  if (Wkxky -> write_v_time) {
+    Wkxky -> time_dims[0] = time_dim;
+    Wkxky -> time_dims[1] = s_dim;
+    Wkxky -> time_dims[2] = ky_dim;
+    Wkxky -> time_dims[3] = kx_dim;
     
-    if (retval = nc_def_var(file, "Wkxkyst", NC_FLOAT, 4, Wkxky.time_dims, &Wkxky.time))  ERR(retval);
-    Wkxky.time_start[0] = 0;
-    Wkxky.time_start[1] = 0;
-    Wkxky.time_start[2] = 0;
-    Wkxky.time_start[3] = 0;
+    if (retval = nc_def_var(file, "Wkxkyst", NC_FLOAT, 4, Wkxky -> time_dims, &Wkxky -> time))  ERR(retval);
     
-    Wkxky.time_count[0] = 1;
-    Wkxky.time_count[1] = grids_->Nspecies;
-    Wkxky.time_count[2] = grids_->Naky;      
-    Wkxky.time_count[3] = grids_->Nakx;
-
-    cudaMalloc     (&Wkxky_d,     sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&tmp_Wkxky_h, sizeof(float) * nX * nY * nS);
-    cudaMallocHost (&Wkxky_h,     sizeof(float) * nXk * nYk * nS);    
+    Wkxky -> time_count[1] = grids_->Nspecies;
+    Wkxky -> time_count[2] = grids_->Naky;      
+    Wkxky -> time_count[3] = grids_->Nakx;
   }   
 
   ////////////////////////////
@@ -723,93 +654,50 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
- 
-  As.write_v_time = (pars_->aspectra[ASPECTRA_species] > 0);
+  As = new nca(1); 
+  As -> write_v_time = (pars_->aspectra[ASPECTRA_species] > 0);
 
-  if (As.write_v_time) {
-    As.time_dims[0] = time_dim;
+  if (As -> write_v_time) {
+    As -> time_dims[0] = time_dim;
     
-    if (retval = nc_def_var(file, "At", NC_FLOAT, 1, As.time_dims, &As.time))  ERR(retval);
-    As.time_start[0] = 0;
-    As.time_count[0] = 1;
+    if (retval = nc_def_var(file, "At", NC_FLOAT, 1, As -> time_dims, &As -> time))  ERR(retval);
 
-    cudaMalloc     (&As_d,        sizeof(float));
-    cudaMallocHost (&As_h,        sizeof(float));      
   }  
 
-  ////////////////////////////
-  //                        //
-  //   W (ky) adiabatic     //
-  //                        //
-  ////////////////////////////
-
-  if (pars_->aspectra[ASPECTRA_ky] > 0) Aky.write_v_time = true;
-
-  if (Aky.write_v_time) {
-    Aky.time_dims[0] = time_dim;
-    Aky.time_dims[1] = ky_dim;
-    
-    if (retval = nc_def_var(file, "Akyst", NC_FLOAT, 2, Aky.time_dims, &Aky.time))  ERR(retval);
-    Aky.time_start[0] = 0;
-    Aky.time_start[1] = 0;
-    
-    Aky.time_count[0] = 1;
-    Aky.time_count[1] = grids_->Naky;      
-
-    cudaMalloc     (&Aky_d,       sizeof(float) * nY); 
-    cudaMallocHost (&tmp_Aky_h,   sizeof(float) * nY); 
-    cudaMallocHost (&Aky_h,       sizeof(float) * nYk);
-  }   
-  
   ////////////////////////////
   //                        //
   //   W (kx) adiabatic     //
   //                        //
   ////////////////////////////
 
-  if (pars_->aspectra[ASPECTRA_kx] > 0) Akx.write_v_time = true;
+  Akx = new nca(nX, nXk); 
+  if (pars_->aspectra[ASPECTRA_kx] > 0) Akx -> write_v_time = true;
 
-  if (Akx.write_v_time) {
-    Akx.time_dims[0] = time_dim;
-    Akx.time_dims[1] = kx_dim;
+  if (Akx -> write_v_time) {
+    Akx -> time_dims[0] = time_dim;
+    Akx -> time_dims[1] = kx_dim;
     
-    if (retval = nc_def_var(file, "Akxst", NC_FLOAT, 2, Akx.time_dims, &Akx.time))  ERR(retval);
-    Akx.time_start[0] = 0;
-    Akx.time_start[1] = 0;
+    if (retval = nc_def_var(file, "Akxst", NC_FLOAT, 2, Akx -> time_dims, &Akx -> time))  ERR(retval);
     
-    Akx.time_count[0] = 1;
-    Akx.time_count[1] = grids_->Nakx;      
-
-    cudaMalloc     (&Akx_d,       sizeof(float) * nX);
-    cudaMallocHost (&tmp_Akx_h,   sizeof(float) * nX);
-    cudaMallocHost (&Akx_h,       sizeof(float) * nXk);
+    Akx -> time_count[1] = grids_->Nakx;      
   }   
   
   ////////////////////////////
   //                        //
-  //   W (kx,ky) adiabatic  //
+  //   W (ky) adiabatic     //
   //                        //
   ////////////////////////////
 
-  if (pars_->aspectra[ASPECTRA_kxky] > 0) Akxky.write_v_time = true;
+  Aky = new nca(nY, nYk); 
+  if (pars_->aspectra[ASPECTRA_ky] > 0) Aky -> write_v_time = true;
 
-  if (Akxky.write_v_time) {
-    Akxky.time_dims[0] = time_dim;
-    Akxky.time_dims[1] = ky_dim;
-    Akxky.time_dims[2] = kx_dim;
+  if (Aky -> write_v_time) {
+    Aky -> time_dims[0] = time_dim;
+    Aky -> time_dims[1] = ky_dim;
     
-    if (retval = nc_def_var(file, "Akxkyst", NC_FLOAT, 3, Akxky.time_dims, &Akxky.time))  ERR(retval);
-    Akxky.time_start[0] = 0;
-    Akxky.time_start[1] = 0;
-    Akxky.time_start[2] = 0;
-    
-    Akxky.time_count[0] = 1;
-    Akxky.time_count[1] = grids_->Naky;      
-    Akxky.time_count[2] = grids_->Nakx;
+    if (retval = nc_def_var(file, "Akyst", NC_FLOAT, 2, Aky -> time_dims, &Aky -> time))  ERR(retval);
 
-    cudaMalloc     (&Akxky_d,     sizeof(float) * nX * nY);
-    cudaMallocHost (&tmp_Akxky_h, sizeof(float) * nX * nY);
-    cudaMallocHost (&Akxky_h,     sizeof(float) * nXk * nYk);
+    Aky -> time_count[1] = grids_->Naky;      
   }   
   
   ////////////////////////////
@@ -818,22 +706,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->aspectra[ASPECTRA_kz] > 0) Akz.write_v_time = true;
+  Akz = new nca(nZ, nZ); 
+  if (pars_->aspectra[ASPECTRA_kz] > 0) Akz -> write_v_time = true;
 
-  if (Akz.write_v_time) {
-    Akz.time_dims[0] = time_dim;
-    Akz.time_dims[1] = nkz;
+  if (Akz -> write_v_time) {
+    Akz -> time_dims[0] = time_dim;
+    Akz -> time_dims[1] = nkz;
     
-    if (retval = nc_def_var(file, "Akzst", NC_FLOAT, 2, Akz.time_dims, &Akz.time))  ERR(retval);
-    Akz.time_start[0] = 0;
-    Akz.time_start[1] = 0;
+    if (retval = nc_def_var(file, "Akzst", NC_FLOAT, 2, Akz -> time_dims, &Akz -> time))  ERR(retval);
     
-    Akz.time_count[0] = 1;
-    Akz.time_count[1] = grids_->Nz;      
-
-    cudaMalloc     (&Akz_d,        sizeof(float) * nZ);
-    cudaMallocHost (&Akz_h,        sizeof(float) * nZ);
-    cudaMallocHost (&tmp_Akz_h,    sizeof(float) * nZ * nS);     
+    Akz -> time_count[1] = grids_->Nz;      
   }   
   
   ////////////////////////////
@@ -842,21 +724,36 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->aspectra[ASPECTRA_z] > 0) Az.write_v_time = true;
+  Az = new nca(nZ); 
+  if (pars_->aspectra[ASPECTRA_z] > 0) Az -> write_v_time = true;
 
-  if (Az.write_v_time) {
-    Az.time_dims[0] = time_dim;
-    Az.time_dims[1] = nz;
+  if (Az -> write_v_time) {
+    Az -> time_dims[0] = time_dim;
+    Az -> time_dims[1] = nz;
     
-    if (retval = nc_def_var(file, "Azst", NC_FLOAT, 2, Az.time_dims, &Az.time))  ERR(retval);
-    Az.time_start[0] = 0;
-    Az.time_start[1] = 0;
+    if (retval = nc_def_var(file, "Azst", NC_FLOAT, 2, Az -> time_dims, &Az -> time))  ERR(retval);
     
-    Az.time_count[0] = 1;
-    Az.time_count[1] = grids_->Nz;      
+    Az -> time_count[1] = grids_->Nz;      
+  }   
+  
+  ////////////////////////////
+  //                        //
+  //   W (kx,ky) adiabatic  //
+  //                        //
+  ////////////////////////////
 
-    cudaMalloc     (&Az_d,        sizeof(float) * nZ);
-    cudaMallocHost (&Az_h,        sizeof(float) * nZ);
+  Akxky = new nca(nX * nY, nXk * nYk); 
+  if (pars_->aspectra[ASPECTRA_kxky] > 0) Akxky -> write_v_time = true;
+
+  if (Akxky -> write_v_time) {
+    Akxky -> time_dims[0] = time_dim;
+    Akxky -> time_dims[1] = ky_dim;
+    Akxky -> time_dims[2] = kx_dim;
+    
+    if (retval = nc_def_var(file, "Akxkyst", NC_FLOAT, 3, Akxky -> time_dims, &Akxky -> time))  ERR(retval);
+    
+    Akxky -> time_count[1] = grids_->Naky;      
+    Akxky -> time_count[2] = grids_->Nakx;
   }   
   
   ////////////////////////////
@@ -865,27 +762,20 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_lm] > 0) Wlm.write_v_time = true;
+  Wlm = new nca(nL*nM*nS); 
+  if (pars_->wspectra[WSPECTRA_lm] > 0) Wlm -> write_v_time = true;
   
-  if (Wlm.write_v_time) {
-    Wlm.time_dims[0] = time_dim;
-    Wlm.time_dims[1] = s_dim;
-    Wlm.time_dims[2] = m_dim;
-    Wlm.time_dims[3] = l_dim;
+  if (Wlm -> write_v_time) {
+    Wlm -> time_dims[0] = time_dim;
+    Wlm -> time_dims[1] = s_dim;
+    Wlm -> time_dims[2] = m_dim;
+    Wlm -> time_dims[3] = l_dim;
     
-    if (retval = nc_def_var(file, "Wlmst", NC_FLOAT, 4, Wlm.time_dims, &Wlm.time))  ERR(retval);
-    Wlm.time_start[0] = 0;
-    Wlm.time_start[1] = 0;
-    Wlm.time_start[2] = 0;
-    Wlm.time_start[3] = 0;
+    if (retval = nc_def_var(file, "Wlmst", NC_FLOAT, 4, Wlm -> time_dims, &Wlm -> time))  ERR(retval);
     
-    Wlm.time_count[0] = 1;
-    Wlm.time_count[1] = grids_->Nspecies;
-    Wlm.time_count[2] = grids_->Nm;
-    Wlm.time_count[3] = grids_->Nl;      
-
-    cudaMalloc     (&Wlm_d,       sizeof(float) * nL * nM * nS);
-    cudaMallocHost (&Wlm_h,       sizeof(float) * nL * nM * nS);    
+    Wlm -> time_count[1] = grids_->Nspecies;
+    Wlm -> time_count[2] = grids_->Nm;
+    Wlm -> time_count[3] = grids_->Nl;      
   }
     
   ////////////////////////////
@@ -894,24 +784,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_l] > 0) Wl.write_v_time = true;
+  Wl = new nca(nL*nS); 
+  if (pars_->wspectra[WSPECTRA_l] > 0) Wl -> write_v_time = true;
 
-  if (Wl.write_v_time) {
-    Wl.time_dims[0] = time_dim;
-    Wl.time_dims[1] = s_dim;
-    Wl.time_dims[2] = l_dim;
+  if (Wl -> write_v_time) {
+    Wl -> time_dims[0] = time_dim;
+    Wl -> time_dims[1] = s_dim;
+    Wl -> time_dims[2] = l_dim;
     
-    if (retval = nc_def_var(file, "Wlst", NC_FLOAT, 3, Wl.time_dims, &Wl.time))  ERR(retval);
-    Wl.time_start[0] = 0;
-    Wl.time_start[1] = 0;
-    Wl.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Wlst", NC_FLOAT, 3, Wl -> time_dims, &Wl -> time))  ERR(retval);
     
-    Wl.time_count[0] = 1;
-    Wl.time_count[1] = grids_->Nspecies;
-    Wl.time_count[2] = grids_->Nl;
-
-    cudaMalloc     (&Wl_d,        sizeof(float) * nL * nS); 
-    cudaMallocHost (&Wl_h,        sizeof(float) * nL * nS);     
+    Wl -> time_count[1] = grids_->Nspecies;
+    Wl -> time_count[2] = grids_->Nl;
   }
   
   ////////////////////////////
@@ -920,34 +804,310 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->wspectra[WSPECTRA_m] > 0) Wm.write_v_time = true;
+  Wm = new nca(nM*nS); 
+  if (pars_->wspectra[WSPECTRA_m] > 0) Wm -> write_v_time = true;
   
-  if (Wm.write_v_time) {
-    Wm.time_dims[0] = time_dim;
-    Wm.time_dims[1] = s_dim;
-    Wm.time_dims[2] = m_dim;
+  if (Wm -> write_v_time) {
+    Wm -> time_dims[0] = time_dim;
+    Wm -> time_dims[1] = s_dim;
+    Wm -> time_dims[2] = m_dim;
     
-    if (retval = nc_def_var(file, "Wmst", NC_FLOAT, 3, Wm.time_dims, &Wm.time))  ERR(retval);
-    Wm.time_start[0] = 0;
-    Wm.time_start[1] = 0;
-    Wm.time_start[2] = 0;
+    if (retval = nc_def_var(file, "Wmst", NC_FLOAT, 3, Wm -> time_dims, &Wm -> time))  ERR(retval);
     
-    Wm.time_count[0] = 1;    
-    Wm.time_count[1] = grids_->Nspecies;    
-    Wm.time_count[2] = grids_->Nm;          
-
-    cudaMalloc     (&Wm_d,        sizeof(float) * nM * nS);
-    cudaMallocHost (&Wm_h,        sizeof(float) * nM * nS);
+    Wm -> time_count[1] = grids_->Nspecies;    
+    Wm -> time_count[2] = grids_->Nm;          
   }
 
   bool linked = (not pars_->local_limit && not pars_->boundary_option_periodic);
 
+  /*
   if (linked && false) {
     zkxky[0] = nz;
     zkxky[1] = kx_dim; 
     zkxky[2] = ky_dim;
     
     if (retval = nc_def_var(file, "theta_x",  NC_FLOAT, 3, zkxky, &theta_x))  ERR(retval);
+  }
+  */
+  
+  ////////////////////////////
+  //                        //
+  //  <v_ExB>_y,z (x)       // 
+  //                        //
+  ////////////////////////////
+
+  vE = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_vE) vE -> write_v_time = true;
+
+  if (vE -> write_v_time) {
+    vE -> time_dims[0] = time_dim;
+    vE -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "vE_xt", NC_FLOAT, 2, vE->time_dims, &vE->time))  ERR(retval);
+    
+    vE -> time_count[1] = grids_->Nx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  //  <d/dx v_ExB>_y,z (x)  // 
+  //                        //
+  ////////////////////////////
+
+  kvE = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kvE) kvE -> write_v_time = true;
+
+  if (kvE -> write_v_time) {
+    kvE -> time_dims[0] = time_dim;
+    kvE -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kvE_xt", NC_FLOAT, 2, kvE -> time_dims, &kvE -> time))  ERR(retval);
+    
+    kvE -> time_count[1] = grids_->Nx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <d/dx denh>_y,z (x)    // 
+  //                        //
+  ////////////////////////////
+
+  kden = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kden) kden -> write_v_time = true;
+
+  if (kden -> write_v_time) {
+    kden -> time_dims[0] = time_dim;
+    kden -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kden_xt", NC_FLOAT, 2, kden->time_dims, &kden->time))  ERR(retval);
+    
+    kden -> time_count[1] = grids_->Nx;      
+  }
+
+  ////////////////////////////
+  //                        //
+  // <d/dx uparh>_y,z (x)   // 
+  //                        //
+  ////////////////////////////
+
+  kUpar = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kUpar) kUpar -> write_v_time = true;
+
+  if (kUpar -> write_v_time) {
+    kUpar -> time_dims[0] = time_dim;
+    kUpar -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kUpar_xt", NC_FLOAT, 2, kUpar->time_dims, &kUpar->time))  ERR(retval);
+    
+    kUpar->time_count[1] = grids_->Nx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <d/dx Tparh>_y,z (x)   // 
+  //                        //
+  ////////////////////////////
+
+  kTpar = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kTpar) kTpar->write_v_time = true;
+
+  if (kTpar -> write_v_time) {
+    kTpar -> time_dims[0] = time_dim;
+    kTpar -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kTpar_xt", NC_FLOAT, 2, kTpar->time_dims, &kTpar->time))  ERR(retval);
+    
+    kTpar -> time_count[1] = grids_->Nx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <d/dx Tperph>_y,z (x)  // 
+  //                        //
+  ////////////////////////////
+
+  kTperp = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kTperp) kTperp -> write_v_time = true;
+
+  if (kTperp -> write_v_time) {
+    kTperp -> time_dims[0] = time_dim;
+    kTperp -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kTperp_xt", NC_FLOAT, 2, kTperp->time_dims, &kTperp->time))  ERR(retval);
+    
+    kTperp -> time_count[1] = grids_->Nx;      
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <d/dx qparh>_y,z (x)   // 
+  //                        //
+  ////////////////////////////
+
+  kqpar = new nca(grids_->NxNyNz, grids_->Nx);
+  if (pars_->write_kqpar) kqpar -> write_v_time = true;
+
+  if (kqpar -> write_v_time) {
+    kqpar -> time_dims[0] = time_dim;
+    kqpar -> time_dims[1] = x_dim;
+    
+    if (retval = nc_def_var(file, "kqpar_xt", NC_FLOAT, 2, kqpar -> time_dims, &kqpar->time))  ERR(retval);
+    
+    kqpar -> time_count[1] = grids_->Nx;      
+  }
+
+  ////////////////////////////
+  //                        //
+  // <v_ExB>_z (x, y)       // 
+  //                        //
+  ////////////////////////////
+
+  xyvE = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyvE) xyvE->write_v_time = true;
+  
+  if (xyvE -> write_v_time) {
+    xyvE -> time_dims[0] = time_dim;
+    xyvE -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyvE -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "vE_xyt", NC_FLOAT, 3, xyvE -> time_dims, &xyvE->time)) ERR(retval);
+    
+    xyvE -> time_count[1] = grids_->Ny;      
+    xyvE -> time_count[2] = grids_->Nx;          
+
+    xyvE -> xydata = true;
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <d/dx v_ExB>_z (x, y)  // 
+  //                        //
+  ////////////////////////////
+
+  xykvE = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_ -> write_xykvE) xykvE -> write_v_time = true;
+  
+  if (xykvE -> write_v_time) {
+    xykvE -> time_dims[0] = time_dim;
+    xykvE -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xykvE -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "kvE_xyt", NC_FLOAT, 3, xykvE -> time_dims, &xykvE->time)) ERR(retval);
+    
+    xykvE -> time_count[1] = grids_->Ny;      
+    xykvE -> time_count[2] = grids_->Nx;
+
+    xykvE -> xydata = true;
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <denh>_z (x, y)        // 
+  //                        //
+  ////////////////////////////
+
+  xyden = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyden) xyden->write_v_time = true;
+  
+  if (xyden -> write_v_time) {
+    xyden -> time_dims[0] = time_dim;
+    xyden -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyden -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "den_xyt", NC_FLOAT, 3, xyden -> time_dims, &xyden->time)) ERR(retval);
+    
+    xyden -> time_count[1] = grids_->Ny;      
+    xyden -> time_count[2] = grids_->Nx;
+
+    xyden -> xydata = true;
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <Uparh>_z (x, y)       // 
+  //                        //
+  ////////////////////////////
+
+  xyUpar = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyUpar) xyUpar->write_v_time = true;
+  
+  if (xyUpar -> write_v_time) {
+    xyUpar -> time_dims[0] = time_dim;
+    xyUpar -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyUpar -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "upar_xyt", NC_FLOAT, 3, xyUpar -> time_dims, &xyUpar->time)) ERR(retval);
+    
+    xyUpar -> time_count[1] = grids_->Ny;      
+    xyUpar -> time_count[2] = grids_->Nx;
+
+    xyUpar -> xydata = true;
+  }  
+  
+  ////////////////////////////
+  //                        //
+  // <Tparh>_z (x, y)       // 
+  //                        //
+  ////////////////////////////
+
+  xyTpar = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyTpar) xyTpar->write_v_time = true;
+  
+  if (xyTpar -> write_v_time) {
+    xyTpar -> time_dims[0] = time_dim;
+    xyTpar -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyTpar -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "Tpar_xyt", NC_FLOAT, 3, xyTpar -> time_dims, &xyTpar->time)) ERR(retval);
+    
+    xyTpar -> time_count[1] = grids_->Ny;      
+    xyTpar -> time_count[2] = grids_->Nx;
+
+    xyTpar -> xydata = true;
+  }
+  
+  ////////////////////////////
+  //                        //
+  // <Tperph>_z (x, y)      // 
+  //                        //
+  ////////////////////////////
+
+  xyTperp = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyTperp) xyTperp -> write_v_time = true;
+
+  if (xyTperp -> write_v_time) {
+    xyTperp -> time_dims[0] = time_dim;
+    xyTperp -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyTperp -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "Tperp_xyt", NC_FLOAT, 3, xyTperp -> time_dims, &xyTperp->time))  ERR(retval);
+    
+    xyTperp -> time_count[1] = grids_->Ny;      
+    xyTperp -> time_count[2] = grids_->Nx;
+
+    xyTperp -> xydata = true;
+  }
+
+  ////////////////////////////
+  //                        //
+  // <qparh>_z (x, y)       // 
+  //                        //
+  ////////////////////////////
+
+  xyqpar = new nca(grids_->NxNyNz, grids_->NxNy);
+  if (pars_->write_xyqpar) xyqpar->write_v_time = true;
+  
+  if (xyqpar -> write_v_time) {
+    xyqpar -> time_dims[0] = time_dim;
+    xyqpar -> time_dims[1] = y_dim;  // Transpose to accommodate ncview
+    xyqpar -> time_dims[2] = x_dim;
+    
+    if (retval = nc_def_var(file, "qpar_xyt", NC_FLOAT, 3, xyqpar -> time_dims, &xyqpar->time)) ERR(retval);
+    
+    xyqpar -> time_count[1] = grids_->Ny;      
+    xyqpar -> time_count[2] = grids_->Nx;
+
+    xyqpar -> xydata = true;
   }
 
   ////////////////////////////
@@ -956,42 +1116,20 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->ks && pars_->write_ks)  g_y.write_v_time = true;
+  g_y = new nca(grids_->Ny); 
+  if (pars_->ks && pars_->write_ks)  g_y -> write_v_time = true;
 
-  if (g_y.write_v_time) {
-    g_y.time_dims[0] = time_dim;
-    g_y.time_dims[1] = y_dim;
+  if (g_y -> write_v_time) {
+    g_y -> time_dims[0] = time_dim;
+    g_y -> time_dims[1] = y_dim;
     
-    if (retval = nc_def_var(file, "g_yt", NC_FLOAT, 2, g_y.time_dims, &g_y.time))  ERR(retval);
-    g_y.time_start[0] = 0;
-    g_y.time_start[1] = 0;
-    
-    g_y.time_count[0] = 1;
-    g_y.time_count[1] = grids_->Ny;      
+    if (retval = nc_def_var(file, "g_yt", NC_FLOAT, 2, g_y -> time_dims, &g_y -> time))  ERR(retval);
 
+    g_y -> time_count[1] = grids_->Ny;
+
+    int nbatch = 1;
+    grad_perp = new GradPerp(grids_, nbatch, grids_->Nyc);    
   }   
-  /*
-  ////////////////////////////
-  //                        //
-  //   Tperp(y) for GK eqns // 
-  //                        //
-  ////////////////////////////
-
-  if (pars_->gx && pars_->write_Tperp)  g_y.write_v_time = true;
-
-  if (g_y.write_v_time) {
-    g_y.time_dims[0] = time_dim;
-    g_y.time_dims[1] = y_dim;
-    
-    if (retval = nc_def_var(file, "Tperp_yt", NC_FLOAT, 2, g_y.time_dims, &g_y.time))  ERR(retval);
-    g_y.time_start[0] = 0;
-    g_y.time_start[1] = 0;
-    
-    g_y.time_count[0] = 1;
-    g_y.time_count[1] = grids_->Ny;      
-
-  }   
-  */
   
   ////////////////////////////
   //                        //
@@ -999,15 +1137,14 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  Wtot.write_v_time = pars_->write_free_energy;
+  Wtot = new nca(0); 
+  Wtot -> write_v_time = pars_->write_free_energy;
   
-  if (Wtot.write_v_time) {
-    Wtot.time_dims[0] = time_dim;
+  if (Wtot -> write_v_time) {
+    Wtot -> time_dims[0] = time_dim;
 
-    if (retval = nc_def_var(file, "W", NC_FLOAT, 1, Wtot.time_dims, &Wtot.time)) ERR(retval);
+    if (retval = nc_def_var(file, "W", NC_FLOAT, 1, Wtot -> time_dims, &Wtot -> time)) ERR(retval);
 
-    Wtot.time_start[0] = 0;
-    Wtot.time_count[0] = 1;
     totW = 0.;
   }
 
@@ -1016,23 +1153,17 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //    Heat fluxes         //
   //                        //
   ////////////////////////////
-
-  qs.write_v_time = pars_->write_fluxes;
+  qs = new nca(nS); 
+  qs -> write_v_time = pars_->write_fluxes;
   
-  if (qs.write_v_time) {
-    qs.time_dims[0] = time_dim;
-    qs.time_dims[1] = s_dim;
+  if (qs -> write_v_time) {
+    qs -> time_dims[0] = time_dim;
+    qs -> time_dims[1] = s_dim;
     
-    if (retval = nc_def_var(file, "qflux", NC_FLOAT, 2, qs.time_dims, &qs.time)) ERR(retval);
-    qs.time_start[0] = 0;
-    qs.time_start[1] = 0;
+    if (retval = nc_def_var(file, "qflux", NC_FLOAT, 2, qs -> time_dims, &qs -> time)) ERR(retval);
 
-    qs.time_count[0] = 1;
-    qs.time_count[1] = grids_->Nspecies;
+    qs -> time_count[1] = grids_->Nspecies;
 
-    //    cudaMallocHost(&pflux,  sizeof(float) * nS);
-    cudaMallocHost(&qs_h,   sizeof(float) * nS);
-    cudaMalloc    (&qs_d,   sizeof(float) * nS);
     all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   }
 
@@ -1040,6 +1171,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   if (retval = nc_enddef(file)) ERR(retval);
   
+  ///////////////////////////////////
+  //                               //
+  //        x                      //
+  //                               //
+  ///////////////////////////////////
+  x_start[0] = 0;
+  x_count[0] = grids_->Nx;
+
+  if (retval = nc_put_vara(file, x, x_start, x_count, grids_->x_h))         ERR(retval);
+
   ///////////////////////////////////
   //                               //
   //        y                      //
@@ -1165,87 +1306,9 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
 NetCDF_ids::~NetCDF_ids() {
 
-  if (Wm_d)         cudaFree     ( Wm_d     );
-  if (Wm_h)         cudaFreeHost ( Wm_h     );
-
-  if (Wl_d)         cudaFree     ( Wl_d     );
-  if (Wl_h)         cudaFreeHost ( Wl_h     );
-
-  if (Wlm_d)        cudaFree     ( Wlm_d     );
-  if (Wlm_h)        cudaFreeHost ( Wlm_h     );
-
-  if (Ws_d)         cudaFree     ( Ws_d      );
-  if (Ws_h)         cudaFreeHost ( Ws_h      );
-  if (Wz_d)         cudaFree     ( Wz_d      );
-  if (Wz_h)         cudaFreeHost ( Wz_h      );
-
-  if (Ps_d)         cudaFree     ( Ps_d      );
-  if (Ps_h)         cudaFreeHost ( Ps_h      );
-  if (Pz_d)         cudaFree     ( Pz_d      );
-  if (Pz_h)         cudaFreeHost ( Pz_h      );
-
-  if (As_d)         cudaFree     ( As_d      );
-  if (As_h)         cudaFreeHost ( As_h      );
-  if (Az_d)         cudaFree     ( Az_d      );
-  if (Az_h)         cudaFreeHost ( Az_h      );
-
-  if (Wkz_d)        cudaFree     ( Wkz_d     );
-  if (tmp_Wkz_h)    cudaFreeHost ( tmp_Wkz_h );
-  if (Wkz_h)        cudaFreeHost ( Wkz_h     );
-
-  if (Wky_d)        cudaFree     ( Wky_d     );
-  if (tmp_Wky_h)    cudaFreeHost ( tmp_Wky_h );
-  if (Wky_h)        cudaFreeHost ( Wky_h     );
-
-  if (Wkx_d)        cudaFree     ( Wkx_d     );
-  if (tmp_Wkx_h)    cudaFreeHost ( tmp_Wkx_h );
-  if (Wkx_h)        cudaFreeHost ( Wkx_h     );
-
-  if (Pkz_d)        cudaFree     ( Pkz_d     );
-  if (tmp_Pkz_h)    cudaFreeHost ( tmp_Pkz_h );
-  if (Pkz_h)        cudaFreeHost ( Pkz_h     );
-
-  if (Pky_d)        cudaFree     ( Pky_d     );
-  if (tmp_Pky_h)    cudaFreeHost ( tmp_Pky_h );
-  if (Pky_h)        cudaFreeHost ( Pky_h     );
-
-  if (Pkx_d)        cudaFree     ( Pkx_d     );
-  if (tmp_Pkx_h)    cudaFreeHost ( tmp_Pkx_h );
-  if (Pkx_h)        cudaFreeHost ( Pkx_h     );
-
-  if (Akz_d)        cudaFree     ( Akz_d     );
-  if (tmp_Akz_h)    cudaFreeHost ( tmp_Akz_h );
-  if (Akz_h)        cudaFreeHost ( Akz_h     );
-
-  if (Aky_d)        cudaFree     ( Aky_d     );
-  if (tmp_Aky_h)    cudaFreeHost ( tmp_Aky_h );
-  if (Aky_h)        cudaFreeHost ( Aky_h     );
-
-  if (Akx_d)        cudaFree     ( Akx_d     );
-  if (tmp_Akx_h)    cudaFreeHost ( tmp_Akx_h );
-  if (Akx_h)        cudaFreeHost ( Akx_h     );
-
-  if (Wkxky_d)      cudaFree     ( Wkxky_d     );
-  if (Wkxky_h)      cudaFreeHost ( Wkxky_h     );
-  if (tmp_Wkxky_h)  cudaFreeHost ( tmp_Wkxky_h );
-
-  if (Pkxky_d)      cudaFree     ( Pkxky_d     );
-  if (tmp_Pkxky_h)  cudaFreeHost ( tmp_Pkxky_h );
-  if (Pkxky_h)      cudaFreeHost ( Pkxky_h     );
-
-  if (Akxky_d)      cudaFree     ( Akxky_d     );
-  if (tmp_Akxky_h)  cudaFreeHost ( tmp_Akxky_h );
-  if (Akxky_h)      cudaFreeHost ( Akxky_h     );
-
   if (primary)      cudaFreeHost ( primary   );
   if (secondary)    cudaFreeHost ( secondary );
   if (tertiary)     cudaFreeHost ( tertiary  );
-
-  if (qs_d)         cudaFree     ( qs_d      );
-  if (qs_h)         cudaFreeHost ( qs_h      );
-  
-  if (tmp_omg_h)    cudaFreeHost ( tmp_omg_h );
-  if (omg_h)        cudaFreeHost ( omg_h     );
 
   if (red)          delete red;
   if (pot)          delete pot;
@@ -1253,25 +1316,30 @@ NetCDF_ids::~NetCDF_ids() {
   if (all_red)      delete all_red;
 }
 
-void NetCDF_ids::write_nc(int ncid, nca D, const float *data, bool endrun) {
+void NetCDF_ids::write_nc(nca *D, bool endrun) {
   int retval;
 
-  if (endrun) {
-    if (retval=nc_put_vara(ncid, D.idx, D.start, D.count, data)) ERR(retval);
-  } else {   
-    if (retval=nc_put_vara(ncid, D.time, D.time_start, D.time_count, data)) ERR(retval);
-  }
+  if (D->write && endrun) {if (retval=nc_put_vara(file, D->idx,  D->start,      D->count,      D->cpu)) ERR(retval);} 
+  if (D->write_v_time)    {if (retval=nc_put_vara(file, D->time, D->time_start, D->time_count, D->cpu)) ERR(retval);}
+  D->increment_ts(); 
 }
 
-void NetCDF_ids::write_nc(int ncid, nca D, const double data, bool endrun) {
+void NetCDF_ids::write_nc(nca *D, double data, bool endrun) {
   int retval;
 
-  if (endrun) {
-    if (retval=nc_put_vara(ncid, D.idx, D.start, D.count, &data)) ERR(retval);
-  } else {   
-    if (retval=nc_put_vara(ncid, D.time, D.time_start, D.time_count, &data)) ERR(retval);
-  }
+  if (D->write && endrun) {if (retval=nc_put_vara(file, D->idx,  D->start,      D->count,      &data)) ERR(retval);} 
+  if (D->write_v_time)    {if (retval=nc_put_vara(file, D->time, D->time_start, D->time_count, &data)) ERR(retval);}
+  D->increment_ts(); 
 }
+
+void NetCDF_ids::write_nc(nca *D, float data, bool endrun) {
+  int retval;
+
+  if (D->write && endrun) {if (retval=nc_put_vara(file, D->idx,  D->start,      D->count,      &data)) ERR(retval);} 
+  if (D->write_v_time)    {if (retval=nc_put_vara(file, D->time, D->time_start, D->time_count, &data)) ERR(retval);}
+  D->increment_ts(); 
+}
+
 /*
 void NetCDF_ids::pzt(MomentsG* G, Fields* f)
 {
@@ -1287,86 +1355,86 @@ void NetCDF_ids::pzt(MomentsG* G, Fields* f)
 
 void NetCDF_ids::write_Pky(float* P2, bool endrun)
 {
-  if (Pky.write_v_time || (Pky.write && endrun)) {
+  if (Pky -> write_v_time || (Pky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    pot->Sum(P2, Pky_d, PSPECTRA_ky);               CP_TO_CPU(tmp_Pky_h, Pky_d, sizeof(float)*i);
+    pot->Sum(P2, Pky->data, PSPECTRA_ky);               CP_TO_CPU(Pky->tmp, Pky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
-	Pky_h[ik + is*grids_->Naky] = tmp_Pky_h[ik + is*grids_->Nyc];
+	Pky->cpu[ik + is*grids_->Naky] = Pky->tmp[ik + is*grids_->Nyc];
       }
     }
-    write_nc(file, Pky, Pky_h, endrun);      Pky.increment_ts();  
+    write_nc(Pky, endrun);      
   }
 }
 
 void NetCDF_ids::write_Pkx(float* P2, bool endrun)
 {
-  if (Pkx.write_v_time || (Pkx.write && endrun)) {
+  if (Pkx -> write_v_time || (Pkx -> write && endrun)) {
     int i = grids_->Nx*grids_->Nspecies;
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx;
     
-    pot->Sum(P2, Pkx_d, PSPECTRA_kx);               CP_TO_CPU(tmp_Pkx_h, Pkx_d, sizeof(float)*i);
+    pot->Sum(P2, Pkx->data, PSPECTRA_kx);               CP_TO_CPU(Pkx->tmp, Pkx->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it  = 0;
       int itp = it + NK;
-      Pkx_h[itp + is*grids_->Nakx] = tmp_Pkx_h[it  + is*grids_->Nx];
+      Pkx->cpu[itp + is*grids_->Nakx] = Pkx->tmp[it  + is*grids_->Nx];
       
       for (int it = 1; it < NK+1; it++) {
 	int itp = NK + it;
 	int itn = NK - it;
 	int itm = NX - it;
-	Pkx_h[itp + is*grids_->Nakx] = tmp_Pkx_h[it  + is*grids_->Nx];
-	Pkx_h[itn + is*grids_->Nakx] = tmp_Pkx_h[itm + is*grids_->Nx];	
+	Pkx->cpu[itp + is*grids_->Nakx] = Pkx->tmp[it  + is*grids_->Nx];
+	Pkx->cpu[itn + is*grids_->Nakx] = Pkx->tmp[itm + is*grids_->Nx];	
       }
     }  
-    write_nc(file, Pkx, Pkx_h, endrun);      Pkx.increment_ts();  
+    write_nc(Pkx, endrun);     
   }
 }
 
 void NetCDF_ids::write_Pz(float* P2, bool endrun)
 {
-  if (Pz.write_v_time || (Pz.write && endrun)) {
+  if (Pz -> write_v_time || (Pz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;
     
-    pot->Sum(P2, Pz_d, PSPECTRA_z);         CP_TO_CPU(Pz_h, Pz_d, sizeof(float)*i);
-    write_nc(file, Pz, Pz_h, endrun);        Pz.increment_ts();
+    pot->Sum(P2, Pz->data, PSPECTRA_z);         CP_TO_CPU(Pz->cpu, Pz->data, sizeof(float)*i);
+    write_nc(Pz, endrun);        
   }
 }
 
 void NetCDF_ids::write_Pkz(float* P2, bool endrun)
 {
-  if (Pkz.write_v_time || (Pkz.write && endrun)) {
+  if (Pkz -> write_v_time || (Pkz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;     int Nz = grids_->Nz;
     
-    pot->Sum(P2, Pkz_d, PSPECTRA_kz);       CP_TO_CPU(tmp_Pkz_h, Pkz_d, sizeof(float)*i);
+    pot->Sum(P2, Pkz->data, PSPECTRA_kz);       CP_TO_CPU(Pkz->tmp, Pkz->data, sizeof(float)*i);
 
     for (int is = 0; is < grids_->Nspecies; is++) {
       if (Nz>1) {
-	for (int i = 0; i < Nz; i++) Pkz_h[i + is*Nz] = tmp_Pkz_h[ (i + Nz/2 + 1) % Nz + is*Nz ];
+	for (int i = 0; i < Nz; i++) Pkz->cpu[i + is*Nz] = Pkz->tmp[ (i + Nz/2 + 1) % Nz + is*Nz ];
       } else {
-	for (int i = 0; i < Nz; i++) Pkz_h[i + is*Nz] = tmp_Pkz_h[ i + is*Nz ];
+	for (int i = 0; i < Nz; i++) Pkz->cpu[i + is*Nz] = Pkz->tmp[ i + is*Nz ];
       }
     }
     
-    write_nc(file, Pkz, Pkz_h, endrun);      Pkz.increment_ts();
+    write_nc(Pkz, endrun);      
   }
 }
 
 void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
 {
-  if (Pkxky.write_v_time || (Pkxky.write && endrun)) {
+  if (Pkxky -> write_v_time || (Pkxky -> write && endrun)) {
 
     int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;
 
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx; 
     
-    pot->Sum(P2, Pkxky_d, PSPECTRA_kxky);
-    CP_TO_CPU(tmp_Pkxky_h, Pkxky_d, sizeof(float)*i);
+    pot->Sum(P2, Pkxky->data, PSPECTRA_kxky);
+    CP_TO_CPU(Pkxky->tmp, Pkxky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
@@ -1374,7 +1442,7 @@ void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
       for (int ik = 0; ik < grids_->Naky; ik++) {
 	int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
-	Pkxky_h[Qp] = tmp_Pkxky_h[Rp];
+	Pkxky->cpu[Qp] = Pkxky->tmp[Rp];
       }	
       for (int it = 1; it < NK+1; it++) {
 	int itp = NK + it;
@@ -1389,108 +1457,108 @@ void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
 	  int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
 
-	  Pkxky_h[Qp] = tmp_Pkxky_h[Rp];
-	  Pkxky_h[Qn] = tmp_Pkxky_h[Rm];
+	  Pkxky->cpu[Qp] = Pkxky->tmp[Rp];
+	  Pkxky->cpu[Qn] = Pkxky->tmp[Rm];
 	}
       }
     }
-    write_nc(file, Pkxky, Pkxky_h, endrun);     Pkxky.increment_ts();  
+    write_nc(Pkxky, endrun);     
   }
 }
 
 void NetCDF_ids::write_Wz(float *G2, bool endrun)
 {
-  if (Wz.write_v_time || (Wz.write && endrun)) {
+  if (Wz -> write_v_time || (Wz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;
     
-    red->Sum(G2, Wz_d, WSPECTRA_z);          CP_TO_CPU(Wz_h, Wz_d, sizeof(float)*i);
-    write_nc(file, Wz, Wz_h, endrun);        Wz.increment_ts();
+    red->Sum(G2, Wz->data, WSPECTRA_z);          CP_TO_CPU(Wz->cpu, Wz->data, sizeof(float)*i);
+    write_nc(Wz, endrun);        
   }
 }
 
 void NetCDF_ids::write_Wkz(float *G2, bool endrun)
 {
-  if (Wkz.write_v_time || (Wkz.write && endrun)) {
+  if (Wkz -> write_v_time || (Wkz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;     int Nz = grids_->Nz;
     
-    red->Sum(G2, Wkz_d, WSPECTRA_kz);        CP_TO_CPU(tmp_Wkz_h, Wkz_d, sizeof(float)*i);
+    red->Sum(G2, Wkz->data, WSPECTRA_kz);        CP_TO_CPU(Wkz->tmp, Wkz->data, sizeof(float)*i);
 
     for (int is = 0; is < grids_->Nspecies; is++) {
       if (Nz>1) {
-	for (int i = 0; i < Nz; i++) Wkz_h[i+is*Nz] = tmp_Wkz_h[ (i + Nz/2 + 1) % Nz + is*Nz ];
+	for (int i = 0; i < Nz; i++) Wkz->cpu[i+is*Nz] = Wkz->tmp[ (i + Nz/2 + 1) % Nz + is*Nz ];
       } else {
-	for (int i = 0; i < Nz; i++) Wkz_h[i+is*Nz] = tmp_Wkz_h[ i + is*Nz ];
+	for (int i = 0; i < Nz; i++) Wkz->cpu[i+is*Nz] = Wkz->tmp[ i + is*Nz ];
       }
     }
     
-    write_nc(file, Wkz, Wkz_h, endrun);      Wkz.increment_ts();
+    write_nc (Wkz, endrun);      
   }
 }
 
 void NetCDF_ids::write_Ws(float* G2, bool endrun)
 {
-  if (Ws.write_v_time) {
-    red->Sum(G2, Ws_d, WSPECTRA_species);    CP_TO_CPU(Ws_h, Ws_d, sizeof(float)*grids_->Nspecies);
-    write_nc(file, Ws, Ws_h, endrun);        Ws.increment_ts();
+  if (Ws -> write_v_time) {
+    red->Sum(G2, Ws->data, WSPECTRA_species);    CP_TO_CPU(Ws->cpu, Ws->data, sizeof(float)*grids_->Nspecies);
+    write_nc(Ws, endrun);        
 
-    if (Wtot.write_v_time) {
-      for (int is=0; is < grids_->Nspecies; is++) totW += Ws_h[is];
+    if (Wtot -> write_v_time) {
+      for (int is=0; is < grids_->Nspecies; is++) totW += Ws->cpu[is];
     }
   }
 }
 
 void NetCDF_ids::write_Wky(float* G2, bool endrun)
 {
-  if (Wky.write_v_time || (Wky.write && endrun)) {
+  if (Wky -> write_v_time || (Wky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
     
-    red->Sum(G2, Wky_d, WSPECTRA_ky);                CP_TO_CPU(tmp_Wky_h, Wky_d, sizeof(float)*i);
+    red->Sum(G2, Wky->data, WSPECTRA_ky);                CP_TO_CPU(Wky->tmp, Wky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
-	Wky_h[ik + is*grids_->Naky] = tmp_Wky_h[ik + is*grids_->Nyc];
+	Wky->cpu[ik + is*grids_->Naky] = Wky->tmp[ik + is*grids_->Nyc];
       }
     }
-    write_nc(file, Wky, Wky_h, endrun);      Wky.increment_ts();
+    write_nc(Wky, endrun);      
   }
 }
 
 void NetCDF_ids::write_Wkx(float* G2, bool endrun)
 {  
-  if (Wkx.write_v_time || (Wkx.write && endrun)) {
+  if (Wkx -> write_v_time || (Wkx -> write && endrun)) {
     int i = grids_->Nx*grids_->Nspecies; 
     int NX = grids_->Nx;
     int NK = grids_->Nakx/2;
         
-    red->Sum(G2, Wkx_d, WSPECTRA_kx);                CP_TO_CPU(tmp_Wkx_h, Wkx_d, sizeof(float)*i);
+    red->Sum(G2, Wkx->data, WSPECTRA_kx);                CP_TO_CPU(Wkx->tmp, Wkx->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
       int itp = it + NK;
-      Wkx_h[itp + is*grids_->Nakx] = tmp_Wkx_h[it  + is*grids_->Nx];
+      Wkx->cpu[itp + is*grids_->Nakx] = Wkx->tmp[it  + is*grids_->Nx];
       
       for (int it = 1; it < NK+1; it++) {
 	int itp = NK + it;
 	int itn = NK - it;
 	int itm = NX - it;
 
-	Wkx_h[itp + is*grids_->Nakx] = tmp_Wkx_h[it  + is*grids_->Nx];
-	Wkx_h[itn + is*grids_->Nakx] = tmp_Wkx_h[itm + is*grids_->Nx];
+	Wkx->cpu[itp + is*grids_->Nakx] = Wkx->tmp[it  + is*grids_->Nx];
+	Wkx->cpu[itn + is*grids_->Nakx] = Wkx->tmp[itm + is*grids_->Nx];
       }
     }
-    write_nc(file, Wkx, Wkx_h, endrun);      Wkx.increment_ts();  
+    write_nc(Wkx, endrun);      
   }
 }
 
 void NetCDF_ids::write_Wkxky(float* G2, bool endrun)
 {
-  if (Wkxky.write_v_time || (Wkxky.write && endrun)) {
+  if (Wkxky -> write_v_time || (Wkxky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;  // int NK = (grids_->Nx-1)/3+1;
 
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx; 
     
-    red->Sum(G2, Wkxky_d, WSPECTRA_kxky);            CP_TO_CPU(tmp_Wkxky_h, Wkxky_d, sizeof(float)*i);
+    red->Sum(G2, Wkxky->data, WSPECTRA_kxky);            CP_TO_CPU(Wkxky->tmp, Wkxky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it = 0;
@@ -1498,7 +1566,7 @@ void NetCDF_ids::write_Wkxky(float* G2, bool endrun)
       for (int ik = 0; ik < grids_->Naky; ik++) {     
 	int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
-	Wkxky_h[Qp] = tmp_Wkxky_h[Rp];
+	Wkxky->cpu[Qp] = Wkxky->tmp[Rp];
       }
       
       for (int it = 1; it < NK+1; it++) {
@@ -1513,55 +1581,55 @@ void NetCDF_ids::write_Wkxky(float* G2, bool endrun)
 	  int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
 	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
 
-	  Wkxky_h[Qp] = tmp_Wkxky_h[Rp];
-	  Wkxky_h[Qn] = tmp_Wkxky_h[Rm];
+	  Wkxky->cpu[Qp] = Wkxky->tmp[Rp];
+	  Wkxky->cpu[Qn] = Wkxky->tmp[Rm];
 	}
       }
     }
-    write_nc(file, Wkxky, Wkxky_h, endrun);  Wkxky.increment_ts();  
+    write_nc(Wkxky, endrun);  
   }
 }
 
 void NetCDF_ids::write_Wm(float* G2, bool endrun)
 {
-  if (Wm.write_v_time || (Wm.write && endrun)) {  
+  if (Wm -> write_v_time || (Wm -> write && endrun)) {  
     int i = grids_->Nm*grids_->Nspecies;
 
-    red-> Sum(G2, Wm_d, WSPECTRA_m);         CP_TO_CPU(Wm_h, Wm_d, sizeof(float)*i);
-    write_nc(file, Wm,  Wm_h, endrun);       Wm.increment_ts();
+    red-> Sum(G2, Wm -> data, WSPECTRA_m);         CP_TO_CPU(Wm->cpu, Wm->data, sizeof(float)*i);
+    write_nc(Wm, endrun);       
   }
 }
 
 void NetCDF_ids::write_Wlm(float* G2, bool endrun)
 {
-  if (Wlm.write_v_time || (Wlm.write && endrun)) {  
+  if (Wlm -> write_v_time || (Wlm -> write && endrun)) {  
     int i = grids_->Nmoms*grids_->Nspecies;
     
-    red->Sum(G2, Wlm_d, WSPECTRA_lm);        CP_TO_CPU(Wlm_h, Wlm_d, sizeof(float)*i);
-    write_nc(file, Wlm, Wlm_h, endrun);      Wlm.increment_ts();
+    red->Sum(G2, Wlm->data, WSPECTRA_lm);        CP_TO_CPU(Wlm->cpu, Wlm->data, sizeof(float)*i);
+    write_nc(Wlm, endrun);      
   }
 }
 
 void NetCDF_ids::write_Wl(float* G2, bool endrun)
 {
-  if (Wl.write_v_time || (Wl.write && endrun)) {  
+  if (Wl -> write_v_time || (Wl -> write && endrun)) {  
     int i = grids_->Nl*grids_->Nspecies;
     
-    red->Sum(G2, Wl_d, WSPECTRA_l);          CP_TO_CPU(Wl_h, Wl_d, sizeof(float)*i);
-    write_nc(file, Wl, Wl_h, endrun);        Wl.increment_ts();
+    red->Sum(G2, Wl->data, WSPECTRA_l);          CP_TO_CPU(Wl->cpu, Wl->data, sizeof(float)*i);
+    write_nc(Wl, endrun);        
   }
 }
 
 void NetCDF_ids::write_Ps(float* P2, bool endrun)
 {
-  if (Ps.write_v_time) {
+  if (Ps -> write_v_time) {
     
-    pot->Sum(P2, Ps_d, PSPECTRA_species);     CP_TO_CPU(Ps_h, Ps_d, sizeof(float)*grids_->Nspecies);
-    write_nc(file, Ps, Ps_h, endrun);          Ps.increment_ts();
+    pot->Sum(P2, Ps->data, PSPECTRA_species);     CP_TO_CPU(Ps->cpu, Ps->data, sizeof(float)*grids_->Nspecies);
+    write_nc(Ps, endrun);          
 
-    if (Wtot.write_v_time) {
+    if (Wtot -> write_v_time) {
       totW = 0.;
-      for (int is=0; is < grids_->Nspecies; is++) totW += Ps_h[is];
+      for (int is=0; is < grids_->Nspecies; is++) totW += Ps->cpu[is];
     }
   }
     
@@ -1569,77 +1637,77 @@ void NetCDF_ids::write_Ps(float* P2, bool endrun)
 
 void NetCDF_ids::write_Aky(float* P2, bool endrun)
 {
-  if (Aky.write_v_time || (Aky.write && endrun)) {
+  if (Aky -> write_v_time || (Aky -> write && endrun)) {
     int i = grids_->Naky;
     
-    ph2->Sum(P2, Aky_d, ASPECTRA_ky);       CP_TO_CPU(Aky_h, Aky_d, sizeof(float)*i);
-    write_nc(file, Aky, Aky_h, endrun);      Aky.increment_ts();  
+    ph2->Sum(P2, Aky->data, ASPECTRA_ky);       CP_TO_CPU(Aky->cpu, Aky->data, sizeof(float)*i);
+    write_nc(Aky, endrun);     
   }
 }
 
 void NetCDF_ids::write_Az(float* P2, bool endrun)
 {
-  if (Az.write_v_time || (Az.write && endrun)) {
+  if (Az -> write_v_time || (Az -> write && endrun)) {
     int i = grids_->Nz;
     
-    ph2->Sum(P2, Az_d, ASPECTRA_z);         CP_TO_CPU(Az_h, Az_d, sizeof(float)*i);
-    write_nc(file, Az, Az_h, endrun);        Az.increment_ts();
+    ph2->Sum(P2, Az->data, ASPECTRA_z);         CP_TO_CPU(Az->cpu, Az->data, sizeof(float)*i);
+    write_nc(Az, endrun);       
   }
 }
 
 void NetCDF_ids::write_Akz(float* P2, bool endrun)
 {
-  if (Akz.write_v_time || (Akz.write && endrun)) {
+  if (Akz -> write_v_time || (Akz -> write && endrun)) {
     int Nz = grids_->Nz;
     
-    ph2->Sum(P2, Akz_d, ASPECTRA_kz);       CP_TO_CPU(tmp_Akz_h, Akz_d, sizeof(float)*Nz);
+    ph2->Sum(P2, Akz->data, ASPECTRA_kz);       CP_TO_CPU(Akz->tmp, Akz->data, sizeof(float)*Nz);
 
     if (Nz>1) {
-      for (int i = 0; i < Nz; i++) Akz_h[i] = tmp_Akz_h[ (i + Nz/2 + 1) % Nz ];
+      for (int i = 0; i < Nz; i++) Akz->cpu[i] = Akz->tmp[ (i + Nz/2 + 1) % Nz ];
     } else {
-      for (int i = 0; i < Nz; i++) Akz_h[i] = tmp_Akz_h[ i ];
+      for (int i = 0; i < Nz; i++) Akz->cpu[i] = Akz->tmp[ i ];
     }    
-    write_nc(file, Akz, Akz_h, endrun);      Akz.increment_ts();
+    write_nc(Akz, endrun);      
   }
 }
 
 void NetCDF_ids::write_Akx(float* P2, bool endrun)
 {
-  if (Akx.write_v_time || (Akx.write && endrun)) {
+  if (Akx -> write_v_time || (Akx -> write && endrun)) {
     int NX = grids_->Nx;
     int NK = grids_->Nakx/2;
     
-    ph2->Sum(P2, Akx_d, ASPECTRA_kx);               CP_TO_CPU(tmp_Akx_h, Akx_d, sizeof(float)*NX);
+    ph2->Sum(P2, Akx->data, ASPECTRA_kx);               CP_TO_CPU(Akx->tmp, Akx->data, sizeof(float)*NX);
     
     int it = 0;
     int itp = it + NK;
-    Akx_h[itp] = tmp_Akx_h[it ];;
+    Akx->cpu[itp] = Akx->tmp[it ];;
     
     for (int it = 1; it < NK+1; it++) {
       int itp = NK + it;
       int itn = NK - it;
       int itm = NX - it;
       
-      Akx_h[itp] = tmp_Akx_h[it ];;
-      Akx_h[itn] = tmp_Akx_h[itm];;
+      Akx->cpu[itp] = Akx->tmp[it ];;
+      Akx->cpu[itn] = Akx->tmp[itm];;
     }
-    write_nc(file, Akx, Akx_h, endrun);      Akx.increment_ts();  
+    write_nc(Akx, endrun);      
   }
 }
 
 void NetCDF_ids::write_Akxky(float* P2, bool endrun)
 {
-  if (Akxky.write_v_time || (Akxky.write && endrun)) {
+  if (Akxky -> write_v_time || (Akxky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nx; int NK = grids_->Nakx/2;  int NX = grids_->Nx;
     
-    ph2->Sum(P2, Akxky_d, ASPECTRA_kxky);    CP_TO_CPU(tmp_Akxky_h, Akxky_d, sizeof(float)*i);
+    ph2->Sum(P2, Akxky->data, ASPECTRA_kxky);    CP_TO_CPU(Akxky->tmp, Akxky->data, sizeof(float)*i);
     
     int it = 0;
     int itp = it + NK;
     for (int ik = 0; ik < grids_->Naky; ik++) {
       int Qp = itp + ik*grids_->Nakx ;
       int Rp = ik  + it*grids_->Nyc  ;
-      Akxky_h[Qp] = tmp_Akxky_h[Rp];
+      Akxky->cpu[Qp] = Akxky->tmp[Rp];
     }
     
     for (int it = 1; it < NK+1; it++) {
@@ -1655,59 +1723,87 @@ void NetCDF_ids::write_Akxky(float* P2, bool endrun)
 	int Qn = itn + ik *grids_->Nakx ;
 	int Rm = ik  + itm*grids_->Nyc  ;
 
-	Akxky_h[Qp] = tmp_Akxky_h[Rp];
-	Akxky_h[Qn] = tmp_Akxky_h[Rm];
+	Akxky->cpu[Qp] = Akxky->tmp[Rp];
+	Akxky->cpu[Qn] = Akxky->tmp[Rm];
       }
     }
-    write_nc(file, Akxky, Akxky_h, endrun);  Akxky.increment_ts();  
+    write_nc(Akxky, endrun);  
   }
 }
 
 void NetCDF_ids::write_As(float *P2, bool endrun)
 {
-  if (As.write_v_time) {  
-    ph2->Sum(P2, As_d, ASPECTRA_species);    CP_TO_CPU (As_h, As_d, sizeof(float));
-    write_nc(file, As, As_h, endrun);         As.increment_ts();
+  if (As -> write_v_time) {  
+    ph2->Sum(P2, As->data, ASPECTRA_species);    CP_TO_CPU (As->cpu, As->data, sizeof(float));
+    write_nc(As, endrun);         
 
-    if (Wtot.write_v_time) totW += *As_h;
+    if (Wtot -> write_v_time) totW += *As->cpu;
   }
 }
 
 void NetCDF_ids::write_Q (float* Q, bool endrun)
 {
-  if (qs.write_v_time) {
-    all_red->Sum(Q, qs_d);                   CP_TO_CPU (qs_h, qs_d, sizeof(float)*grids_->Nspecies);
-    write_nc(file, qs, qs_h, endrun);         qs.increment_ts();
+  if (qs -> write_v_time) {
+    all_red->Sum(Q, qs->data);                   CP_TO_CPU (qs->cpu, qs->data, sizeof(float)*grids_->Nspecies);
+    write_nc(qs, endrun);       
 
-    for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs_h[is]);
+    for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs->cpu[is]);
     printf("\n");
   }
 }
 
 void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 {
-  CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
+  CP_TO_CPU (omg->z_tmp, W, sizeof(cuComplex)*grids_->NxNyc);
 
-  reduce2k(omg_h, tmp_omg_h);
-  write_nc(file, omg, omg_h, endrun);
-  omg.increment_ts();
+  reduce2k(omg->cpu, omg->z_tmp);
+  write_nc(omg, endrun);
 }
 
 void NetCDF_ids::write_Wtot()
 {
-  if (Wtot.write_v_time) {  write_nc(file, Wtot, &totW);        Wtot.increment_ts();     totW = 0.;}
-}
-
-void NetCDF_ids::write_gy(float* gy_h, bool endrun)
-{
-  if (g_y.write_v_time || (g_y.write && endrun)) {
-    write_nc(file, g_y, gy_h, endrun);          g_y.increment_ts();
-  }
+  if (Wtot -> write_v_time) {  write_nc(Wtot, totW);        totW = 0.;}
 }
 
 void NetCDF_ids::close_nc_file() {
   int retval;
   if (retval = nc_close(file)) ERR(retval);
+}
+
+void NetCDF_ids::write_moment(nca *D, cuComplex *f, bool shear, float adj) {
+
+  if (!D->write_v_time) return;
+
+  if (shear) {
+    ddx loop_y (vEk, f, grids_->kx); // this also depends on Nyc and Nz
+  } else {
+    CP_ON_GPU (vEk, f, sizeof(cuComplex)*grids_->NxNycNz); // dependence on NxNycNz is unfortunate
+  }
+  setval loop_R (D->data, 0., D->N_);
+  grad_phi -> dxC2R(vEk, D->data);
+  if (D->xydata) {
+    zavg loop_xy (D->data, D->tmp, adj);
+  } else {
+    yavg loop_x (D->data, D->tmp, adj);
+  }
+  CP_TO_CPU(D->cpu, D->tmp, sizeof(float)*D->Nwrite_);
+
+  write_nc(D);
+}
+
+void NetCDF_ids::write_ks_data(nca *D, cuComplex *G) {
+  if (!D->write_v_time) return;
+
+  grad_perp->C2R(G, D->data);
+  CP_TO_CPU (D->cpu, D->data, sizeof(float)*D->N_);
+  write_nc(D);
+}
+
+void NetCDF_ids::write_ks_data(nca *D, float *G) {
+  if (!D->write_v_time) return;
+
+  CP_TO_CPU (D->cpu, G, sizeof(float)*D->N_);
+  write_nc(D);
 }
 
 // condense a (ky,kx) object for netcdf output, taking into account the mask

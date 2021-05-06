@@ -5,6 +5,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   closures(nullptr), grad_par(nullptr)
 {
   ks = false;
+  vp = false;
   upar_bar  = nullptr;           uperp_bar = nullptr;            t_bar     = nullptr;
   
   // set up parallel ffts
@@ -95,10 +96,21 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
 Linear::Linear(Parameters* pars, Grids* grids) :
   pars_(pars), grids_(grids), closures(nullptr), grad_par(nullptr)
 {
-  ks = true;
+  if (pars_->ks) ks = true;
+  if (!pars_->ks && pars_->vp) vp = true;
   
-  dB = dim3(min(128, grids_->Naky), 1, 1);
-  dG = dim3(1+(grids_->Naky-1)/dB.x, 1, 1);
+  if (ks) {
+    dB = dim3(min(128, grids_->Naky), 1, 1);
+    dG = dim3(1+(grids_->Naky-1)/dB.x, 1, 1);
+  }
+
+  if (vp) {
+    int nnx = grids_->Nyc;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
+    int nny = grids_->Nm;     int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
+    
+    dB = dim3(nbx, nby, 1);
+    dG = dim3(ngx, ngy, 1);
+  }
 }
 
 Linear::~Linear()
@@ -111,21 +123,27 @@ Linear::~Linear()
   if (t_bar)      cudaFree(t_bar);
 }
 
-
 void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+
+  // to be safe, start with zeros on RHS
+  GRhs->set_zero();
 
   if (ks) {
     rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky, pars_->eps_ks);
     return;
   }
 
+  if (vp) {
+    rhs_lin_vp <<< dG, dB >>> (G->G(), f->phi, GRhs->G(), grids_->ky,
+			       pars_->vp_closure, pars_->vp_nu,       pars_->vp_nuh,
+			       pars_->vp_alpha,   pars_->vp_alpha_h);
+    return;
+  }
+  
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
   if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
 			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, G->zt(), G->r2());
-
-  // to be safe, start with zeros on RHS
-  GRhs->set_zero();
 
   // Free-streaming requires parallel FFTs, so do that first
   streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());

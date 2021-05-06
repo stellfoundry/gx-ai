@@ -110,32 +110,44 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   
   if (pars_->ks) {
+
+    printf("initializing Kuramoto-Sivashinsky\n");
     nn1 = grids_->Nyc;                 nt1 = min(nn1, 128);    nb1 = 1 + (nn1-1)/nt1;
     nn2 = 1;                           nt2 = min(nn2,   1);    nb2 = 1 + (nn2-1)/nt2;
     nn3 = 1;                           nt3 = min(nn3,   1);    nb3 = 1 + (nn3-1)/nt3;
     
     dB_all   = dim3(nt1, nt2, nt3);    dG_all   = dim3(nb1, nb2, nb3);
     dimBlock = dim3(nt1, nt2, nt3);    dimGrid  = dim3(nb1, nb2, nb3);
-    
-  } else {
+    return;
+  } 
 
-    //    nn1 = grids_->NxNycNz;      nt1 = min(32, nn1);  nb1 = 1 + (nn1-1)/nt1;
-    //    nn2 = 1;                    nt2 = min( 4, Nl);   nb2 = 1 + (nn2-1)/nt2;
-    //    nn3 = 1;                    nt3 = min( 4, Nm);   nb3 = 1 + (nn3-1)/nt3;
+  if (pars_->vp) {
+    printf("initializing Vlasov-Poisson\n");
+    nn1 = grids_->Nyc;                 nt1 = min(nn1, 128);    nb1 = 1 + (nn1-1)/nt1;
+    nn2 = 1;                           nt2 = min(nn2,   1);    nb2 = 1 + (nn2-1)/nt2;
+    nn3 = 1;                           nt3 = min(nn3,   1);    nb3 = 1 + (nn3-1)/nt3;
     
-    //    dimBlock = dim3(nt1, nt2, nt3);
-    //    dimGrid  = dim3(nb1, nb2, nb3);
-    
-    //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
-    //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
-
-    nn1 = grids_->Nyc*grids_->Nx;                   nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
-    nn2 = grids_->Nz;                               nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
-    nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
-    
-    dB_all = dim3(nt1, nt2, nt3);
-    dG_all = dim3(nb1, nb2, nb3);	 
+    dB_all   = dim3(nt1, nt2, nt3);
+    dG_all   = dim3(nb1, nb2, nb3);
+    return;
   }
+  
+  //    nn1 = grids_->NxNycNz;      nt1 = min(32, nn1);  nb1 = 1 + (nn1-1)/nt1;
+  //    nn2 = 1;                    nt2 = min( 4, Nl);   nb2 = 1 + (nn2-1)/nt2;
+  //    nn3 = 1;                    nt3 = min( 4, Nm);   nb3 = 1 + (nn3-1)/nt3;
+  
+  //    dimBlock = dim3(nt1, nt2, nt3);
+  //    dimGrid  = dim3(nb1, nb2, nb3);
+  
+  //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
+  //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
+  
+  nn1 = grids_->Nyc*grids_->Nx;                   nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nz;                               nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
+  nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
+  
+  dB_all = dim3(nt1, nt2, nt3);
+  dG_all = dim3(nb1, nb2, nb3);	 
 }
 
 MomentsG::~MomentsG() {
@@ -150,6 +162,29 @@ MomentsG::~MomentsG() {
 
 void MomentsG::set_zero(void) {
   cudaMemset(G_lm, 0., grids_->size_G);
+}
+
+void MomentsG::initVP(double *time) {
+
+  cuComplex *init_h = nullptr;
+  cudaMallocHost((void**) &init_h, sizeof(cuComplex)*grids_->Nyc*grids_->Nm);
+
+  for (int ig = 0; ig<grids_->Nyc*grids_->Nm; ig++) {
+    init_h[ig].x = 0.;
+    init_h[ig].y = 0.;
+  }
+  
+  // start with something simple:
+
+  if (!pars_->restart) init_h[0].x = 1.; // This is the Maxwellian background
+  init_h[1 + grids_->Nyc * 2].x = pars_->init_amp; // This is a temperature perturbation (up to a factor of sqrt(2)).
+  
+  CP_TO_GPU(G_lm, init_h, sizeof(cuComplex)*grids_->Nyc*grids_->Nm);
+  cudaFreeHost(init_h);
+
+  if (pars_->restart) this->restart_read(time);
+
+  cudaDeviceSynchronize();
 }
 
 void MomentsG::initialConditions(double *time) {
@@ -231,7 +266,8 @@ void MomentsG::initialConditions(float* z_h, double* time) {
       srand(22);
       float samp;
       int idx;
-      for(int i=0; i < 1 + (grids_->Nx - 1)/3; i++) { 
+      //      printf("Hacking the initial condition! \n");
+      for(int i=0; i < 1 + (grids_->Nx - 1)/3; i++) {
 	for(int j=1; j < 1 + (grids_->Ny - 1)/3; j++) {
 	  samp = pars_->init_amp;
 	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
@@ -258,14 +294,33 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 		init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 		init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 	      }
-		//	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
+	      //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
+	  /*
+	  for (int k=0; k<grids_->Nz; k++) {
+	    int index = j + grids_->Nyc*(idx + grids_->Nx*k);
+	    init_h[index].x = 0.;
+	    init_h[index].y = 0.;
+	  }
+	  for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
+	    float ka = (float) (samp * rand() / RAND_MAX);
+	    float pa = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	    float kb = (float) (samp * rand() / RAND_MAX);
+	    float pb = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	    for (int k=0; k<grids_->Nz; k++) {
+	      int index = j + grids_->Nyc*(idx + grids_->Nx*k);
+	      
+	      init_h[index].x += ka*sin((float) jj*z_h[k] + pa);
+	      init_h[index].y += kb*sin((float) jj*z_h[k] + pb);
+	    }
+	  }
+	  */
 	}
       }
     }
   }
-
+  
   // copy initial condition into device memory
   for (int is=0; is<grids_->Nspecies; is++) {
     switch (pars_->initf)

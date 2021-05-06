@@ -79,7 +79,7 @@ src/version.c:
 #######################################
 # Rules for building gx
 ####################################
-OBJS = device_funcs.o parameters.o grids.o reductions.o reservoir.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o laguerre_transform.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o timestepper.o diagnostics.o run_gx.o version.o main.o 
+OBJS = device_funcs.o parameters.o grids.o reductions.o reservoir.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o laguerre_transform.o nca.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o timestepper.o diagnostics.o run_gx.o version.o main.o 
 
 # main program
 $(TARGET): $(addprefix obj/, $(OBJS))

@@ -63,6 +63,14 @@ void Parameters::get_nml_vars(char* filename)
   
   ikx_fixed = toml::find_or <int> (nml, "ikx_fixed", -1);
   iky_fixed = toml::find_or <int> (nml, "iky_fixed", -1);
+
+  vp                = toml::find_or <bool> (nml, "vp", false);
+  vp_closure        = toml::find_or <bool> (nml, "vp_closure", true);
+  vp_nu             = toml::find_or <float> (nml, "vp_nu", -1.0);
+  vp_nuh            = toml::find_or <float> (nml, "vp_nuh", -1.0);
+  vp_alpha          = toml::find_or <int> (nml, "vp_alpha", 1);
+  vp_alpha_h        = toml::find_or <int> (nml, "vp_alpha_h", 2);
+
   ks                = toml::find_or <bool> (nml, "ks", false);
   write_ks          = toml::find_or <bool> (nml, "write_ks", false);
   eqfix             = toml::find_or <bool> (nml, "eqfix", false);
@@ -75,7 +83,25 @@ void Parameters::get_nml_vars(char* filename)
   write_moms        = toml::find_or <bool> (nml, "write_moms", false);
   write_rh          = toml::find_or <bool> (nml, "write_rh", false);
   write_pzt         = toml::find_or <bool> (nml, "write_pzt", false);
-  write_Tperp       = toml::find_or <bool> (nml, "write_Tperp", false);
+  write_vE          = toml::find_or <bool> (nml, "write_vE", false);
+  write_kvE         = toml::find_or <bool> (nml, "write_kvE", false);
+  write_kden        = toml::find_or <bool> (nml, "write_kden", false);
+  write_kUpar       = toml::find_or <bool> (nml, "write_kUpar", false);
+  write_kTpar       = toml::find_or <bool> (nml, "write_kTpar", false);
+  write_kTperp      = toml::find_or <bool> (nml, "write_kTperp", false);
+  write_kqpar       = toml::find_or <bool> (nml, "write_kqpar", false);
+
+  write_xyvE        = toml::find_or <bool> (nml, "write_xyvE", false);
+  write_xykvE       = toml::find_or <bool> (nml, "write_xykvE", false);
+  write_xyTperp     = toml::find_or <bool> (nml, "write_xyTperp", false);
+  write_xyTpar      = toml::find_or <bool> (nml, "write_xyTpar", false);
+  write_xyUpar      = toml::find_or <bool> (nml, "write_xyUpar", false);
+  write_xyden       = toml::find_or <bool> (nml, "write_xyden", false);
+  write_xyqpar      = toml::find_or <bool> (nml, "write_xyqpar", false);
+
+  write_kmom = (write_vE || write_kvE || write_kden || write_kUpar || write_kTpar || write_kTperp || write_kqpar);
+  write_xymom = (write_xyvE || write_xykvE || write_xyden || write_xyUpar || write_xyTpar || write_xyTperp || write_xyqpar);
+  
   write_phi         = toml::find_or <bool> (nml, "write_phi", false);
   write_phi_kpar    = toml::find_or <bool> (nml, "write_phi_kpar", false);
   write_h_spectrum  = toml::find_or <bool> (nml, "write_h_spectrum", false);
@@ -327,7 +353,9 @@ void Parameters::get_nml_vars(char* filename)
     if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
-  gx = not ks;
+  gx = (!ks && !vp);
+  assert (!(ks && vp));
+  assert (ks || vp || gx);
 
   int ksize = 0;
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
@@ -410,6 +438,7 @@ void Parameters::get_nml_vars(char* filename)
 
   int ri = 2;
   if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
+  if (retval = nc_def_dim (ncid, "x",       nx_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "y",       ny_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "m",       nm_in,         &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "l",       nl_in,         &idim)) ERR(retval);
@@ -430,7 +459,10 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "nlaguerre",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "nspecies",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "dt",                    NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-
+  if (retval = nc_def_var (ncid, "ks",                    NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "vp",                    NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "vp_closure",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   specs[0] = wdim;
   if (retval = nc_def_var (ncid, "wspectra",              NC_INT,   1, specs, &ivar)) ERR(retval);
 
@@ -477,13 +509,26 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_put_att_text (ncid, ivar, "value", restart_to_file.size(), restart_to_file.c_str())) ERR(retval);
   if (retval = nc_def_var (ncid, "eqfix",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
 
+  if (retval = nc_def_var (ncid, "write_vE",              NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kvE",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kden",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kUpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kTpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kqpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_kTperp",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyvE",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xykvE",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyden",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyUpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyTpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyTperp",         NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "write_xyqpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_omega",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_fluxes",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_moms",            NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (ncid, "write_free_energy",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_phi",             NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "write_Tperp",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_phi_kpar",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_rh",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_pzt",             NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -500,6 +545,12 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "p_hyper_m",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "eps_ks",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
+  if (retval = nc_def_var (ncid, "vp_nu",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "vp_nuh",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (ncid, "vp_alpha",              NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (ncid, "vp_alpha_h",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   // model flags
   if (retval = nc_def_var (ncid, "scheme_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", scheme.size(), scheme.c_str())) ERR(retval);
@@ -619,21 +670,37 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "i_share", i_share);
   putint   (ncid, "stages",  stages);
 
-  putint   (ncid, "ikx_fixed", ikx_fixed);
-  putint   (ncid, "iky_fixed", iky_fixed);
-  putbool  (ncid, "eqfix",     eqfix);
+  putint   (ncid, "ikx_fixed",  ikx_fixed);
+  putint   (ncid, "iky_fixed",  iky_fixed);
+  putbool  (ncid, "eqfix",      eqfix);
+  putbool  (ncid, "ks",         ks);
+  putbool  (ncid, "vp",         vp);
+  putbool  (ncid, "vp_closure", vp_closure);
   
   putbool  (ncid, "repeat",         repeat);
   putbool  (ncid, "restart",        restart);
   putbool  (ncid, "save_for_restart", save_for_restart);
   putbool  (ncid, "secondary", secondary);
+  putbool  (ncid, "write_vE", write_vE);
+  putbool  (ncid, "write_kvE", write_kvE);
+  putbool  (ncid, "write_kden", write_kden);
+  putbool  (ncid, "write_kUpar", write_kUpar);
+  putbool  (ncid, "write_kTpar", write_kTpar);
+  putbool  (ncid, "write_kTperp", write_kTperp);
+  putbool  (ncid, "write_kqpar", write_kqpar);
+  putbool  (ncid, "write_xyvE", write_xyvE);
+  putbool  (ncid, "write_xykvE", write_xykvE);
+  putbool  (ncid, "write_xyden", write_xyden);
+  putbool  (ncid, "write_xyUpar", write_xyUpar);
+  putbool  (ncid, "write_xyTpar", write_xyTpar);
+  putbool  (ncid, "write_xyTperp", write_xyTperp);
+  putbool  (ncid, "write_xyqpar", write_xyqpar);
   putbool  (ncid, "write_omega", write_omega);
   putbool  (ncid, "write_free_energy", write_free_energy);
   putbool  (ncid, "write_fluxes", write_fluxes);
   putbool  (ncid, "write_moms", write_moms);
   putbool  (ncid, "write_rh", write_rh);
   putbool  (ncid, "write_pzt", write_pzt);
-  putbool  (ncid, "write_Tperp", write_Tperp);
   putbool  (ncid, "write_phi", write_phi);
   putbool  (ncid, "write_phi_kpar", write_phi_kpar);
   putbool  (ncid, "init_single", init_single);
@@ -649,6 +716,12 @@ void Parameters::get_nml_vars(char* filename)
   putint   (ncid, "p_hyper", p_hyper);
   putint   (ncid, "p_hyper_l", p_hyper_l);
   putint   (ncid, "p_hyper_m", p_hyper_m);
+
+  putint   (ncid, "vp_alpha",   vp_alpha);
+  putint   (ncid, "vp_alpha_h", vp_alpha_h);
+
+  put_real (ncid, "vp_nu",      vp_nu);
+  put_real (ncid, "vp_nuh",     vp_nuh);
   
   put_real (ncid, "forcing_amp", forcing_amp);
   put_real (ncid, "scale", scale);

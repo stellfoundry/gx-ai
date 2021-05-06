@@ -27,7 +27,7 @@ Grids::Grids(Parameters* pars) :
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;//  theta0_h        = nullptr;
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
-  y_h             = nullptr;  kxs             = nullptr;
+  y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
   
   //  kx_mask         = nullptr;  kx_shift        = nullptr;  jump            = nullptr;
   //  nLinks          = nullptr;  nChains         = nullptr;
@@ -50,6 +50,7 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc     ( (void**) &kx,        sizeof(float) * Nx       );
   cudaMalloc     ( (void**) &ky,        sizeof(float) * Nyc      );
   cudaMalloc     ( (void**) &kz,        sizeof(float) * Nz       );
+  cudaMallocHost ( (void**) &x_h,       sizeof(float) * Nx       );
   cudaMallocHost ( (void**) &y_h,       sizeof(float) * Ny       );
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
@@ -107,6 +108,10 @@ Grids::Grids(Parameters* pars) :
   // define the y coordinate
   y_h[0] = 0.;
   for (int i = 1; i < Ny ; i++) y_h[i] = y_h[i-1] + (float) 2*M_PI*(pars_->y0)/Ny;
+ 
+  // define the x coordinate
+  x_h[0] = 0.;
+  for (int i = 1; i < Nx ; i++) x_h[i] = x_h[i-1] + (float) 2*M_PI*(pars_->x0)/Nx;
  
 }
 

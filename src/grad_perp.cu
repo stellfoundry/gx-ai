@@ -115,7 +115,7 @@ void GradPerp::C2R(cuComplex* G, float* Gy)
   cufftExecC2R(gradperp_plan_C2R, tmp, Gy);
 }
 
-// overload an R2C that accumulates -- will be very useful
+// An R2C that accumulates -- will be very useful
 void GradPerp::R2C(float* G, cuComplex* res)
 {
   cufftExecR2C(gradperp_plan_R2C, G, tmp);

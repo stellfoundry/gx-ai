@@ -194,7 +194,7 @@ Reservoir::~Reservoir()
 void Reservoir::add_data(float* G)
 {
   int M = M_;  int N = N_;
-  if (iT_ < nT_) {
+  if (iT_ < nT_+1) {
     // add the option to add some noise in the course of the promotion.
     if (addNoise_) {
       float *Gnoise_h, *Gnoise;
@@ -223,7 +223,7 @@ void Reservoir::add_data(float* G)
     getV loops_MN (V, G, R2, M, N); 
     getW loops_NN (W,    R2,    N);
     
-    if (iT_ == nT_-1) {
+    if (iT_ == nT_) {
       this->conclude_training();
       printf("Training phase completed. \n");
     }

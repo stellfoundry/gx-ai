@@ -18,7 +18,7 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   
   /////////////////////////////////
   //                             //
-  // Initialize gyrokinetic eqs  // 
+  // Initialize eqs              // 
   //                             //
   /////////////////////////////////
   if (pars->gx) {
@@ -44,9 +44,24 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
   //////////////////////////////  
   if (pars->ks) {
     linear    = new Linear(pars, grids);    
+    fields = new Fields(pars, grids);
     G -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
     if (!pars->linear) nonlinear = new Nonlinear(pars, grids);
+  }    
+
+  //////////////////////////////
+  //                          //
+  // Vlasov-Poisson           // 
+  //                          //
+  //////////////////////////////  
+  if (pars->vp) {
+    linear    = new Linear(pars, grids);    
+    fields = new Fields(pars, grids);
+    G -> initVP(&time);
+    solver -> fieldSolve(G, fields);
+
+    if (!pars->linear) nonlinear = new Nonlinear(pars, grids, geo);
   }    
 
   Timestepper * timestep;
@@ -77,7 +92,6 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
     G->update_tprim(time);
 
     timestep -> advance(&time, G, fields);
-    //    G -> qvar(grids->NxNycNz);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     if (checkstop) break;
     if (counter % pars->nreal == 0)  {

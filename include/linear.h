@@ -23,6 +23,7 @@ public:
   
  private:
   bool ks;
+  bool vp;
 
   Geometry       * geo_     ;
   Parameters     * pars_    ;
