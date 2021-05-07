@@ -845,9 +845,18 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     
     if (retval = nc_def_var(file, "vE_xt", NC_FLOAT, 2, vE->time_dims, &vE->time))  ERR(retval);
     
-    vE -> time_count[1] = grids_->Nx;      
+    vE -> time_count[1] = grids_->Nx;
   }
-  
+
+  vE2 = new nca(grids_->NxNyNz, grids_->Nx); 
+  if (pars_->write_vE2) vE2 -> write_v_time = true;
+
+  if (vE2 -> write_v_time) {
+    vE2 -> time_dims[0] = time_dim;
+    
+    if (retval = nc_def_var(file, "vE2_t", NC_FLOAT, 1, vE2->time_dims, &vE2->time))  ERR(retval);
+  }
+
   ////////////////////////////
   //                        //
   //  <d/dx v_ExB>_y,z (x)  // 
@@ -1316,6 +1325,14 @@ NetCDF_ids::~NetCDF_ids() {
   if (all_red)      delete all_red;
 }
 
+void NetCDF_ids::write_zonal_nc(nca *D, bool endrun) {
+  int retval;
+
+  if (D->write && endrun) {if (retval=nc_put_vara(file, D->idx,  D->start,      D->count,      &D->zonal)) ERR(retval);} 
+  if (D->write_v_time)    {if (retval=nc_put_vara(file, D->time, D->time_start, D->time_count, &D->zonal)) ERR(retval);}
+  D->increment_ts(); 
+}
+
 void NetCDF_ids::write_nc(nca *D, bool endrun) {
   int retval;
 
@@ -1768,6 +1785,31 @@ void NetCDF_ids::write_Wtot()
 void NetCDF_ids::close_nc_file() {
   int retval;
   if (retval = nc_close(file)) ERR(retval);
+}
+
+void NetCDF_ids::write_zonal(nca *D, cuComplex* f, bool shear, float adj) {
+  if (!D->write_v_time) return;
+
+  if (shear) {
+    ddx loop_y (vEk, f, grids_->kx); // this also depends on Nyc and Nz
+  } else {
+    CP_ON_GPU (vEk, f, sizeof(cuComplex)*grids_->NxNycNz); // dependence on NxNycNz is unfortunate
+  }
+  setval loop_R (D->data, 0., D->N_);
+  grad_phi -> dxC2R(vEk, D->data);
+  if (D->xydata) {
+    zavg loop_xy (D->data, D->tmp, adj);
+  } else {
+    yavg loop_x (D->data, D->tmp, adj);
+  }
+  CP_TO_CPU(D->cpu, D->tmp, sizeof(float)*D->Nwrite_);
+
+  D->zonal = 0;
+  for (int idx = 0; idx<grids_->Nx; idx++) {
+    D->zonal += D->cpu[idx] * D->cpu[idx];
+  }
+  write_zonal_nc(D);
+  
 }
 
 void NetCDF_ids::write_moment(nca *D, cuComplex *f, bool shear, float adj) {

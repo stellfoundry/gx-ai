@@ -122,6 +122,7 @@ class Parameters {
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks;
   bool vp, vp_closure;
   bool write_kmom, write_xymom;
+  bool write_vE2;
   bool write_vE, write_kvE, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
   bool write_xyvE, write_xykvE, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;

@@ -15,6 +15,7 @@ class nca {
   size_t time_count[6];
   int    dims[5];
   int    time_dims[6];
+  float zonal;
   float * data;
   float * cpu;
   float * tmp;

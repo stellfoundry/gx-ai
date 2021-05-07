@@ -48,6 +48,8 @@ class NetCDF_ids {
 
   void write_gy    (float * gy_d,     bool endrun = false);
   
+  void write_zonal(nca *D, cuComplex* f, bool shear, float adj);
+  void write_zonal_nc(nca *D, bool endrun = false);
   void write_nc(nca *D, bool endrun = false);
   void write_nc(nca *D, double data, bool endrun = false);
   void write_nc(nca *D, float data, bool endrun = false);
@@ -63,6 +65,7 @@ class NetCDF_ids {
   nca *g_y, *time;
   nca *xyvE, *xykvE, *xyden, *xyUpar, *xyTpar, *xyTperp, *xyqpar;
   nca *vE, *kvE, *kden, *kUpar, *kTpar, *kTperp, *kqpar;
+  nca *vE2;
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;

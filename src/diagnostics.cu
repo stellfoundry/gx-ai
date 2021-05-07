@@ -300,6 +300,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     id -> write_moment ( id -> kTperp,  G->tprp_ptr[0], false, 1.0);
     id -> write_moment ( id -> kqpar,   G->qpar_ptr[0], false, sqrtf(6.0));
      
+    id -> write_zonal  ( id -> vE2,     fields->phi,    false, 1.0);
+
     id -> write_moment ( id -> xykvE,   fields->phi,    true,  1.0);    
     id -> write_moment ( id -> xyvE,    fields->phi,    false, 1.0);
     id -> write_moment ( id -> xyden,   G->dens_ptr[0], false, 1.0);

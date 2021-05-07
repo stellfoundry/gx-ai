@@ -83,6 +83,7 @@ void Parameters::get_nml_vars(char* filename)
   write_moms        = toml::find_or <bool> (nml, "write_moms", false);
   write_rh          = toml::find_or <bool> (nml, "write_rh", false);
   write_pzt         = toml::find_or <bool> (nml, "write_pzt", false);
+  write_vE2         = toml::find_or <bool> (nml, "write_vE2", false);
   write_vE          = toml::find_or <bool> (nml, "write_vE", false);
   write_kvE         = toml::find_or <bool> (nml, "write_kvE", false);
   write_kden        = toml::find_or <bool> (nml, "write_kden", false);
@@ -100,6 +101,7 @@ void Parameters::get_nml_vars(char* filename)
   write_xyqpar      = toml::find_or <bool> (nml, "write_xyqpar", false);
 
   write_kmom = (write_vE || write_kvE || write_kden || write_kUpar || write_kTpar || write_kTperp || write_kqpar);
+  write_kmom = (write_kmom || write_vE2);
   write_xymom = (write_xyvE || write_xykvE || write_xyden || write_xyUpar || write_xyTpar || write_xyTperp || write_xyqpar);
   
   write_phi         = toml::find_or <bool> (nml, "write_phi", false);
@@ -508,7 +510,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (ncid, "restart_to_file_dum",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (ncid, ivar, "value", restart_to_file.size(), restart_to_file.c_str())) ERR(retval);
   if (retval = nc_def_var (ncid, "eqfix",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
-
+ 
+  if (retval = nc_def_var (ncid, "write_vE2",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_vE",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_kvE",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "write_kden",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -681,6 +684,7 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (ncid, "restart",        restart);
   putbool  (ncid, "save_for_restart", save_for_restart);
   putbool  (ncid, "secondary", secondary);
+  putbool  (ncid, "write_vE2", write_vE2);
   putbool  (ncid, "write_vE", write_vE);
   putbool  (ncid, "write_kvE", write_kvE);
   putbool  (ncid, "write_kden", write_kden);
