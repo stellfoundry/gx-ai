@@ -458,7 +458,7 @@ void MomentsG::restart_write(double* time)
   moments_out[6] = id_ri;  count[6] = ri;
 
   start[0] = 0; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
-  if (retval = nc_def_var(ncres, "G", NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
+  if (retval = nc_def_var(ncres, "G",    NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
   if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
   if (retval = nc_enddef(ncres)) ERR(retval);
 

@@ -95,6 +95,8 @@ __global__ void getV(double* V, float* G, double* R2, int M, int N);
 __global__ void getW(double* W, double* r2, int N);
 __global__ void setI(double* Id, int N);
 __global__ void getB(double* W, double beta_, int N);
+__global__ void update_Fake_G (float* g, int i);
+__global__ void init_Fake_G (float* g);
 __global__ void setval(float* f, float val, int N);
 __global__ void setval(double* f, double val, int N);
 __global__ void setval(cuComplex* f, cuComplex val, int N);

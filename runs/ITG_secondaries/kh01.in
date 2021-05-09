@@ -1,95 +1,96 @@
-
  debug = false
- scheme = "k10"
 
- ntheta = 1
- nperiod = 1
- ny = 4
- nx = 4
- y0 = 10.0
- x0 = 20.0
- boundary = "periodic"
- forcing_amp = 0.0
- forcing_init = false
+[Restart]
+ restart            = false
+ restart_from_file  = "none.nc"
  
- nhermite = 8
- nlaguerre = 3
+ save_for_restart   = true
+ restart_to_file    = "kh01_restart.nc"
+
+[Controls]
+ scheme = "k10"
  closure_model = "none"
+ nonlinear_mode = true 
+ cfl = 1.0
+ kpar_init = 0.0
+ init_field = "density"
+ init_amp = 1.0
  
- dt = 1.0
+[Dimensions]
+ ntheta    = 1
+ ny        = 4
+ nx        = 4
+ 
+ nhermite  = 8
+ nlaguerre = 3
+
+ nspecies  = 1
+ nperiod   = 1
+
+[Domain]
+ y0            = 10.0
+ x0            = 20.0
+ boundary      = "periodic"
+
+[Time]
+ dt     = 1.0
  nstep  = 0
  nwrite = 1
  navg   = 1
  nsave  = 100000
+
+[Geometry]
+ igeo       = 0
+ shat       = 1.0e-8
+ Rmaj       = 1.0
+ qinp       = 1.0
+ akappa     = 1.0
  
- beta = 0.0
- tau_fac = 1.0
-
- igeo = 0
- rhoc = 0.0
- eps = 0.0
- shat = 1.0e-8
- Rmaj = 1.0
- shift = 0.0
- qinp = 1.0
- akappa = 1.0
- akappri = 0.0
- tri = 0.0
- tripri = 0.0
-
- slab = true
+ slab       = true
  const_curv = false
 
- nonlinear_mode = true 
- cfl = 1.0
-
- kpar_init = 0.0
- write_fluxes = false
- write_omega  = false
- write_phi    = true
-
-
- write_phi_kpar = false
- write_moms = true
- write_rh = false
- restart = false
- restart_from_file = "none.nc"
- save_for_restart = true
- restart_to_file = "kh01_restart.nc"
- init_field = "density"
-
+[Diagnostics]
+ fluxes      = false
+ omega       = false
+ free_energy = true
+ 
+[Expert]
  init_single = true
  iky_single = 1
  ikx_single = 0
 
- init_amp = 1.0
+[Boltzmann]
  iphi00 = 2
+ tau_fac = 1.0
 
- nspecies = 1
+[Wspectra]
+ species          = true
+ hermite          = true
+ laguerre         = true
+ hermite_laguerre = true
+ kx               = true
+ ky               = true
+ kz               = true
+ kxky             = true
+ kperp            = false
+ z                = true
 
-Wspectra.species          = true
-Wspectra.hermite          = true
-Wspectra.laguerre         = true
-Wspectra.hermite_laguerre = true
-Wspectra.kx               = true
-Wspectra.ky               = true
-Wspectra.kz               = true
-Wspectra.kxky             = true
-Wspectra.kperp            = false
-Wspectra.z                = true
+[Pspectra]
+ species          = true
+ kx               = true
+ ky               = true
+ kz               = true
+ kxky             = true
+ kperp            = false
+ z                = true
 
-Pspectra.species          = true
-Pspectra.kx               = true
-Pspectra.ky               = true
-Pspectra.kz               = true
-Pspectra.kxky             = true
-Pspectra.kperp            = false
-Pspectra.z                = true
-
-write_spec_v_time = false
-
+[Forcing]
+ forcing_amp = 0.0
+ forcing_init = false
+ 
 
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
+
 [species]
  z     = [ 1.0,      -1.0     ]
  mass  = [ 1.0,       2.7e-4  ]

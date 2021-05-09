@@ -66,9 +66,12 @@ class NetCDF_ids {
   nca *xyvE, *xykvE, *xyden, *xyUpar, *xyTpar, *xyTperp, *xyqpar;
   nca *vE, *kvE, *kden, *kUpar, *kTpar, *kTperp, *kqpar;
   nca *vE2;
+  nca *vE_nz; 
+  nca *z_time, *nz_time;
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;
+  int zy, zx, nzy, nzx;
   int theta, theta_x, bmag, bgrad, gbdrift, gbdrift0, periodic;
   int cvdrift, cvdrift0, gds2, gds21, gds22, grho, jacobian;
   int nstep, dt, restart, time_dim, nspec, char16_dim;
@@ -83,7 +86,9 @@ class NetCDF_ids {
   int source_opt;
   int density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;
-
+  int z_file, zx_dim, zy_dim, ztime_dim;
+  int nz_file, nzx_dim, nzy_dim, nztime_dim;
+  
   int v_z[1];            // dims for a scalar as a function of z
   int v_kz[1];           // dims for a scalar as a function of kz 
   int v_kx[1];           // dims for a scalar as a function of kx 

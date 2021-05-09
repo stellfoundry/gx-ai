@@ -44,13 +44,11 @@
  nspecies = 1
 
  kpar_init = 0.0
- write_fluxes = true
- write_omega  = true
- write_free_energy = true
+
+ Diagnostics.fluxes = true
+ Diagnostics.omega  = true
+ Diagnostics.free_energy = true
  
- write_phi_kpar = false
- write_moms = false
- write_rh = false
  restart = true
  restart_from_file = "kh01_restart.nc"
 

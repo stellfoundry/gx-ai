@@ -15,6 +15,8 @@ class Reservoir {
   void add_data(float* G);
   void predict (double* G);
   bool predicting(void);
+
+  void fake_data(float* G);
   
 private:
   
@@ -23,6 +25,7 @@ private:
   
   void update_reservoir(double* G);
   
+  dim3 blocks_m, threads_m;
   dim3 blocks_n, threads_n;
   dim3 blocks_mn, threads_mn;
   dim3 blocks_n2, threads_n2;
@@ -38,6 +41,7 @@ private:
   float sigNoise_;
   double beta_, ResRadius_, sigma_;
 
+  float *fake_G;
   double *invWork, *B, *V, *W, *R, *R2, *x, *P, *A_in, *W_in, *dG;
   int *A_col, *info;
 

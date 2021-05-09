@@ -401,6 +401,24 @@ __global__ void add_scaled_kernel(cuComplex* res,
   }
 }
 
+__global__ void init_Fake_G (float* g)
+{
+  unsigned int idy = get_id1();
+  if (idy < ny) {
+    float theta = 2.*M_PI*idy/((float) ny);
+    g[idy] = cosf(theta);
+  }
+}
+
+__global__ void update_Fake_G (float* g, int i)
+{
+  unsigned int idy = get_id1();
+  if (idy < ny) {
+    float theta = 2.*M_PI*idy/((float) ny);
+    g[idy] = cosf(2.*theta - 2.*M_PI*i/32.);
+  }
+}
+
 __global__ void setval(float* f, float val, int N)
 {
   unsigned int n = get_id1();
@@ -1077,6 +1095,8 @@ __global__ void zavg(float *vE, float *vEavg, float adj)
     }
   }
 }
+
+//Are all of the elements of volJac making it into this routine?
 
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac)
 {

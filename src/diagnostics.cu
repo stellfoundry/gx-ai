@@ -4,7 +4,7 @@
 #include <sys/stat.h>
 #define GSPEC <<< dG_spectra, dB_spectra >>>
 #define GALL <<< dG_all, dB_all >>>
-#define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>>	  
+#define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>> 
 #define loop_y <<< dgp, dbp >>> 
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
@@ -178,6 +178,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
     fflush(NULL);
     id -> write_nc(id -> time, time);
+    if (pars_->write_xymom)     id -> write_nc(id ->  z_time, time);
+    if (pars_->write_xy_nz)     id -> write_nc(id -> nz_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
 
@@ -302,6 +304,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
      
     id -> write_zonal  ( id -> vE2,     fields->phi,    false, 1.0);
 
+    id -> write_moment ( id -> vE_nz,   fields->phi,    false, 1.0);
+
     id -> write_moment ( id -> xykvE,   fields->phi,    true,  1.0);    
     id -> write_moment ( id -> xyvE,    fields->phi,    false, 1.0);
     id -> write_moment ( id -> xyden,   G->dens_ptr[0], false, 1.0);
@@ -310,12 +314,17 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     id -> write_moment ( id -> xyTperp, G->tprp_ptr[0], false, 1.0);
     id -> write_moment ( id -> xyqpar,  G->qpar_ptr[0], false, sqrtf(6.0));
 
-    id -> write_ks_data ( id -> g_y, G->G());
+    if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G->G());
 
     nc_sync(id->file);
   }
   if (pars_->Reservoir && counter%pars_->ResTrainingDelta == 0) {
-    grad_perp->C2R(G->G(), gy_d);    rc->add_data(gy_d); 
+    grad_perp->C2R(G->G(), gy_d);
+    if (pars_->ResFakeData) {
+      rc->fake_data(gy_d);
+      //      id -> write_ks_data( id -> g_y, gy_d);
+    }
+    rc->add_data(gy_d); 
   }
   
   // check to see if we should stop simulation
@@ -326,7 +335,11 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 void Diagnostics::finish(MomentsG* G, Fields* fields, double time) 
 {
   if (pars_->Reservoir && rc->predicting()) {
-    grad_perp -> C2R (G->G(), gy_d);
+    if (pars_->ResFakeData) {
+      rc->fake_data(gy_d);
+    } else {
+      grad_perp -> C2R (G->G(), gy_d);
+    }
     double *gy_double;
     cudaMalloc(&gy_double, sizeof(double)*grids_->Ny);
     promote loop_y (gy_double, gy_d, grids_->Ny);
@@ -335,6 +348,7 @@ void Diagnostics::finish(MomentsG* G, Fields* fields, double time)
       rc->predict(gy_double);
       time += pars_->dt * pars_->ResTrainingDelta;
       demote loop_y (gy_d, gy_double, grids_->Ny);
+      id -> write_nc(id -> time, time);
       id -> write_ks_data (id -> g_y, gy_d);
     }
   }
@@ -347,9 +361,6 @@ void Diagnostics::print_omg(cuComplex *W)
   CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
   print_growth_rates_to_screen(tmp_omg_h);
 }
-
-
-
 
   // For each kx, z, l and m, sum the moments of G**2 + Phi**2 (1-Gamma_0) with weights:
   //

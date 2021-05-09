@@ -7,8 +7,9 @@ class nca {
   ~nca();
   void increment_ts(void);
 
+  int    file;
   int    idx, time, ikx, iky, ns;
-  bool   write, write_v_time, xydata;
+  bool   write, write_v_time, xydata, non_zonal;
   size_t start[5];
   size_t count[5];
   size_t time_start[6];

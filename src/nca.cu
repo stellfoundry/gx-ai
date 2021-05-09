@@ -7,6 +7,7 @@ nca::nca(int N, int Nwrite) :
   write = false;
   write_v_time = false;
   xydata = false;
+  non_zonal = false;
   time_start[0] = 0;
   time_start[1] = 0;
   time_start[2] = 0;
@@ -15,7 +16,7 @@ nca::nca(int N, int Nwrite) :
   time_start[5] = 0;
 
   time_count[0] = 1;
-
+  
   if (N == 0) return;
   
   if (N > 0) {

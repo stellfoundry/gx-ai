@@ -10,11 +10,12 @@
 #define loops_NN <<< blocks_NN, threads_NN >>>
 #define loops_QM <<< blocks_QM, threads_QM >>>
 #define loop_N   <<< blocks_n,  threads_n  >>>
+#define loop_M   <<< blocks_m,  threads_m  >>>
 
 
 Reservoir::Reservoir(Parameters* pars, int Min) :
   pars_(pars), R(nullptr), V(nullptr), W(nullptr), W_in(nullptr), A_in(nullptr), A_col(nullptr),
-  R2(nullptr), x(nullptr), invWork(nullptr), B(nullptr), info(nullptr), P(nullptr)
+  R2(nullptr), x(nullptr), invWork(nullptr), B(nullptr), info(nullptr), P(nullptr), fake_G(nullptr)
 {
 
   M_         = Min;
@@ -78,6 +79,14 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   
   threads_QM = dim3(nt1, nt2, 1);
   blocks_QM  = dim3(nb1, nb2, 1);
+
+  threads_m = dim3(nt2, 1, 1);
+  blocks_m  = dim3(nb2, 1, 1);
+  
+  if (pars_->ResFakeData) {
+    checkCuda(cudaMalloc((void**) &fake_G, sizeof(double)*M  ) );
+    init_Fake_G loop_M (fake_G);
+  }
 
   checkCuda(cudaMalloc((void**) &dG, sizeof(double)*M  ) );  
   checkCuda(cudaMalloc((void**) &R,  sizeof(double)*N  ) );  
@@ -191,6 +200,12 @@ Reservoir::~Reservoir()
   if (A_col) cudaFree(A_col);
 }
   
+void Reservoir::fake_data(float* G)
+{
+  update_Fake_G loop_M (G, iT_);
+  printf("iT_ = %d \t",iT_);
+}
+
 void Reservoir::add_data(float* G)
 {
   int M = M_;  int N = N_;

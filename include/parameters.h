@@ -74,7 +74,9 @@ class Parameters {
 
   void init_species(specie* species);
 
-  int ncid;
+  int ncid, nczid, nzid;
+  int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
+  int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
@@ -121,7 +123,8 @@ class Parameters {
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks;
   bool vp, vp_closure;
-  bool write_kmom, write_xymom;
+  bool write_kmom, write_xymom, write_xy_nz;
+  bool write_vE_nz, write_kvE_nz, write_den_nz, write_Upar_nz, write_Tpar_nz, write_Tperp_nz, write_qpar_nz;
   bool write_vE2;
   bool write_vE, write_kvE, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
   bool write_xyvE, write_xykvE, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
@@ -138,11 +141,12 @@ class Parameters {
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;
   bool zero_order_nonlin_flr_only, no_zonal_nlpm, diagnosing_kzspec;
   bool write_l_spectrum, write_h_spectrum, write_lh_spectrum, repeat;
+  bool new_style;
   bool write_phi_kpar, write_moms, write_fluxes, diagnosing_spectra;
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
-  bool Reservoir;
+  bool Reservoir, ResFakeData;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
     
