@@ -77,11 +77,11 @@ class Parameters {
   int ncid, nczid, nzid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
-  int p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
+  int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
-  int nm_add, nl_add, ns_add; 
+  int nm_add, nl_add, ns_add;
   int forcing_index, smith_par_q, smith_perp_q;
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
   int dorland_phase_ifac, ivarenna, iflr, i_share;
@@ -105,6 +105,7 @@ class Parameters {
   float x0, y0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
+  float D_HB, w_osc;
   float low_cutoff, high_cutoff, nlpm_max, tau_nlpm;
   float ion_z, ion_mass, ion_dens, ion_fprim, ion_uprim, ion_temp, ion_tprim, ion_vnewk;
   float avail_cpu_time, margin_cpu_time;
@@ -123,12 +124,16 @@ class Parameters {
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks;
   bool vp, vp_closure;
-  bool write_kmom, write_xymom, write_xy_nz;
-  bool write_vE_nz, write_kvE_nz, write_den_nz, write_Upar_nz, write_Tpar_nz, write_Tperp_nz, write_qpar_nz;
-  bool write_vE2;
+  bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;
+
+  bool write_avg_zvE, write_avg_zkvE, write_avg_zkden, write_avg_zkUpar;
+  bool write_avg_zkTpar, write_avg_zkTperp, write_avg_zkqpar;
+
   bool write_vE, write_kvE, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
+
   bool write_xyvE, write_xykvE, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
-  bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper;
+
+  bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;

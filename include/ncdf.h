@@ -44,7 +44,7 @@ class NetCDF_ids {
 
   void write_Q     (float * Q,   bool endrun = false);
   void write_omg   (cuComplex *W, bool endrun = false);
-  void write_moment(nca *D, cuComplex *f, bool shear, float adj);
+  void write_moment(nca *D, cuComplex *f, float* vol_fac);
 
   void write_gy    (float * gy_d,     bool endrun = false);
   
@@ -62,12 +62,17 @@ class NetCDF_ids {
   nca *Ps, *Pky, *Pkx, *Pkxky, *Pz, *Pkz;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
-  nca *g_y, *time;
-  nca *xyvE, *xykvE, *xyden, *xyUpar, *xyTpar, *xyTperp, *xyqpar;
-  nca *vE, *kvE, *kden, *kUpar, *kTpar, *kTperp, *kqpar;
-  nca *vE2;
-  nca *vE_nz; 
-  nca *z_time, *nz_time;
+  nca *g_y;
+
+  nca *vE,     *xyvE,     *avg_zvE;
+  nca *kvE,    *xykvE,    *avg_zkvE;
+  nca *kden,   *xyden,    *avg_zkden;
+  nca *kUpar,  *xyUpar,   *avg_zkUpar;
+  nca *kTpar,  *xyTpar,   *avg_zkTpar;
+  nca *kTperp, *xyTperp,  *avg_zkTperp;
+  nca *kqpar,  *xyqpar,   *avg_zkqpar;
+
+  nca *time, *z_time, *nz_time;
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;
@@ -121,8 +126,10 @@ class NetCDF_ids {
   
   float *primary, *secondary, *tertiary;
   cuComplex * t_bar     ;
-  cuComplex * vEk       ;
+  cuComplex * amom      ;
+  cuComplex * df        ;
+  cuComplex * favg      ; 
   float totW;
 
-  dim3 dgx, dbx, dgxy, dbxy, dGr, dBr, dbp, dgp; 
+  dim3 dgx, dbx, dgxy, dbxy, dGr, dBr, dbp, dgp, dbfla, dgfla, dball, dgall; 
 };

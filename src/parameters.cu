@@ -103,36 +103,68 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
   write_omega       = toml::find_or <bool> (tnml, "omega",       false );
-  write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  );
+  write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  ); if (ks) write_free_energy = false;
   write_fluxes      = toml::find_or <bool> (tnml, "fluxes",      false );
   write_moms        = toml::find_or <bool> (tnml, "moms",        false );
   write_rh          = toml::find_or <bool> (tnml, "rh",          false );
   write_pzt         = toml::find_or <bool> (tnml, "pzt",         false );
 
-  write_vE_nz       = toml::find_or <bool> (tnml, "vE_nz",       false );
-  write_kvE_nz      = toml::find_or <bool> (tnml, "kvE_nz",      false );
-  write_den_nz      = toml::find_or <bool> (tnml, "den_nz",      false );
-  write_Upar_nz     = toml::find_or <bool> (tnml, "Upar_nz",     false );
-  write_Tpar_nz     = toml::find_or <bool> (tnml, "Tpar_nz",     false );
-  write_Tperp_nz    = toml::find_or <bool> (tnml, "Tperp_nz",    false );
-  write_qpar_nz     = toml::find_or <bool> (tnml, "qpar_nz",     false );
+  write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
 
-  write_vE2         = toml::find_or <bool> (tnml, "vE2",         false );
-  write_vE          = toml::find_or <bool> (tnml, "vE",          false );
-  write_kvE         = toml::find_or <bool> (tnml, "kvE",         false );
-  write_kden        = toml::find_or <bool> (tnml, "kden",        false );
-  write_kUpar       = toml::find_or <bool> (tnml, "kUpar",       false );
-  write_kTpar       = toml::find_or <bool> (tnml, "kTpar",       false );
-  write_kTperp      = toml::find_or <bool> (tnml, "kTperp",      false );
-  write_kqpar       = toml::find_or <bool> (tnml, "kqpar",       false );
+  if (write_all_avgz) {
+    write_avg_zvE = write_avg_zkvE = write_avg_zkden = true;
+    write_avg_zkUpar = write_avg_zkTpar = write_avg_zkqpar = write_avg_zkTperp = true;
+  } else {
+    write_avg_zvE     = toml::find_or <bool> (tnml, "avg_zvE",     false );
+    write_avg_zkvE    = toml::find_or <bool> (tnml, "avg_zkvE",    false );
+    write_avg_zkden   = toml::find_or <bool> (tnml, "avg_zkden",   false );
+    write_avg_zkUpar  = toml::find_or <bool> (tnml, "avg_zkUpar",  false );
+    write_avg_zkTpar  = toml::find_or <bool> (tnml, "avg_zkTpar",  false );
+    write_avg_zkTperp = toml::find_or <bool> (tnml, "avg_zkTperp", false );
+    write_avg_zkqpar  = toml::find_or <bool> (tnml, "avg_zkqpar",  false );
+  }
+  if (nm_in < 2) write_avg_zkUpar = false;
+  if (nm_in < 3) write_avg_zkTpar = false;
+  if (nm_in < 4) write_avg_zkqpar = false;
+  if (nl_in < 2) write_avg_zkTperp = false;
 
-  write_xyvE        = toml::find_or <bool> (tnml, "xyvE",        false );
-  write_xykvE       = toml::find_or <bool> (tnml, "xykvE",       false );
-  write_xyTperp     = toml::find_or <bool> (tnml, "xyTperp",     false );
-  write_xyTpar      = toml::find_or <bool> (tnml, "xyTpar",      false );
-  write_xyUpar      = toml::find_or <bool> (tnml, "xyUpar",      false );
-  write_xyden       = toml::find_or <bool> (tnml, "xyden",       false );
-  write_xyqpar      = toml::find_or <bool> (tnml, "xyqpar",      false );
+  write_all_kmom    = toml::find_or <bool> (tnml, "all_zonal", false );
+
+  if (write_all_kmom) {
+    write_vE = write_kvE = write_kden = write_kUpar = true;
+    write_kTpar = write_kTperp = write_kqpar = true;
+  } else { 
+    write_vE      = toml::find_or <bool> (tnml, "vE",     false );
+    write_kvE     = toml::find_or <bool> (tnml, "kvE",    false );
+    write_kden    = toml::find_or <bool> (tnml, "kden",   false );
+    write_kUpar   = toml::find_or <bool> (tnml, "kUpar",  false );
+    write_kTpar   = toml::find_or <bool> (tnml, "kTpar",  false );
+    write_kTperp  = toml::find_or <bool> (tnml, "kTperp", false );
+    write_kqpar   = toml::find_or <bool> (tnml, "kqpar",  false );
+  }
+  if (nm_in < 2) write_kUpar = false;
+  if (nm_in < 3) write_kTpar = false;
+  if (nm_in < 4) write_kqpar = false;
+  if (nl_in < 2) write_kTperp = false;
+  
+  write_all_xymom   = toml::find_or <bool> (tnml, "all_non_zonal", false );
+
+  if (write_all_xymom) {
+    write_xyvE = write_xykvE = write_xyTperp = write_xyTpar = true;
+    write_xyden = write_xyUpar = write_xyqpar = true;
+  } else {
+    write_xyvE     = toml::find_or <bool> (tnml, "xyvE",     false );
+    write_xykvE    = toml::find_or <bool> (tnml, "xykvE",    false );
+    write_xyden    = toml::find_or <bool> (tnml, "xyden",    false );
+    write_xyUpar   = toml::find_or <bool> (tnml, "xyUpar",   false );
+    write_xyTpar   = toml::find_or <bool> (tnml, "xyTpar",   false );
+    write_xyqpar   = toml::find_or <bool> (tnml, "xyqpar",   false );
+    write_xyTperp  = toml::find_or <bool> (tnml, "xyTperp",  false );
+  }
+  if (nm_in < 2) write_xyUpar = false;
+  if (nm_in < 3) write_xyTpar = false;
+  if (nm_in < 4) write_xyqpar = false;
+  if (nl_in < 2) write_xyTperp = false;
   
   write_phi         = toml::find_or <bool> (tnml, "phi",         false );
   write_phi_kpar    = toml::find_or <bool> (tnml, "phi_kpar",    false );
@@ -140,12 +172,15 @@ void Parameters::get_nml_vars(char* filename)
   write_l_spectrum  = toml::find_or <bool> (tnml, "l_spectrum",  false );
   write_lh_spectrum = toml::find_or <bool> (tnml, "lh_spectrum", false );
 
-  write_kmom = (write_vE || write_kvE || write_kden || write_kUpar || write_kTpar || write_kTperp || write_kqpar);
-  write_kmom = (write_kmom || write_vE2);
-  write_xymom = (write_xyvE || write_xykvE || write_xyden || write_xyUpar);
-  write_xymom = (write_xymom || write_xyTpar || write_xyTperp || write_xyqpar);
-  write_xy_nz = (write_vE_nz || write_kvE_nz || write_den_nz || write_Upar_nz);
-  write_xy_nz = (write_xy_nz || write_Tpar_nz || write_Tperp_nz || write_qpar_nz);
+  write_kmom  = (write_vE    || write_kvE         || write_kden        || write_kUpar);
+  write_kmom  = (write_kmom  || write_kTpar       || write_kTperp      || write_kqpar);
+
+  write_kmom  = (write_kmom  || write_avg_zvE    || write_avg_zkvE  || write_avg_zkTperp);
+  write_kmom  = (write_kmom  || write_avg_zkden  || write_avg_zkUpar || write_avg_zkTpar);
+  write_kmom  = (write_kmom  || write_avg_zkqpar );
+  
+  write_xymom = (write_xyvE  || write_xykvE     || write_xyden      || write_xyUpar);
+  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar);
   
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
@@ -225,6 +260,8 @@ void Parameters::get_nml_vars(char* filename)
   init_field = toml::find_or <string> (tnml, "init_field", "density");
   init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
+  D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   );
+  w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   );
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   );
   nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    1.0   );
   nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   );
@@ -232,7 +269,9 @@ void Parameters::get_nml_vars(char* filename)
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   );
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   );
   p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       1   );  
+  p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   );
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false );
+  HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false );
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
 
   tnml = nml;
@@ -339,18 +378,12 @@ void Parameters::get_nml_vars(char* filename)
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
-  rhoc        = toml::find_or <float> (tnml, "rhoc",   0.167 );
   qsf         = toml::find_or <float> (tnml, "qinp",     1.4 );
   shat        = toml::find_or <float> (tnml, "shat",     0.8 );
-  akappa      = toml::find_or <float> (tnml, "akappa",   1.0 );
-  akappri     = toml::find_or <float> (tnml, "akappri",  0.0 );
-  tri         = toml::find_or <float> (tnml, "tri",      0.0 );
-  tripri      = toml::find_or <float> (tnml, "tripri",   0.0 );
   beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
   
-  beta_prime_input = toml::find_or <float> (tnml, "beta_prime_input", 0.0 );
-  s_hat_input      = toml::find_or <float> (tnml, "s_hat_input",      0.8 );
-
+  if (igeo == 0 && abs(shat) < 1.e-6) boundary = "periodic";
+  
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
   aspectra.resize(na_spectra);
@@ -517,7 +550,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (write_xymom) {
     strcpy(strb, run_name); 
-    strcat(strb, "_zonal_xy.nc");
+    strcat(strb, "_nonZonal_xy.nc");
     
     if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &nczid)) ERR(retval);
     if (retval = nc_def_dim (nczid, "x",       nx_in,        &idim)) ERR(retval);
@@ -526,16 +559,6 @@ void Parameters::get_nml_vars(char* filename)
     if (retval = nc_enddef (nczid)) ERR(retval);
   }
 
-  if (write_xy_nz) {
-    strcpy(strb, run_name); 
-    strcat(strb, "_nonZonal_xy.nc");
-    
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &nzid)) ERR(retval);
-    if (retval = nc_def_dim (nzid, "x",       nx_in,        &idim)) ERR(retval);
-    if (retval = nc_def_dim (nzid, "y",       ny_in,        &idim)) ERR(retval);
-    if (retval = nc_def_dim (nzid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
-    if (retval = nc_enddef (nzid)) ERR(retval);
-  }
   int ri = 2;
   if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
   if (retval = nc_def_dim (ncid, "x",       nx_in,         &idim)) ERR(retval);
@@ -608,6 +631,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_dom, "zp",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "jtwist",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "boundary_dum",  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_put_att_text (nc_dom, ivar, "value", boundary.size(), boundary.c_str())) ERR(retval);
 
   if (retval = nc_def_var (nc_ml, "Use_reservoir",  NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ml, "Q",              NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -631,8 +655,19 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_rst, "restart_to_file_dum",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_rst, ivar, "value", restart_to_file.size(), restart_to_file.c_str())) ERR(retval);
 
-  if (retval = nc_def_var (nc_diag, "vE_nz",           NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "vE2",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "omega",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "fluxes",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_diag, "all_zonal_scalars", NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "avg_zvE",         NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "avg_zkvE",        NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "avg_zkden",       NC_INT,   0, NULL, &ivar)) ERR(retval); 
+  if (retval = nc_def_var (nc_diag, "avg_zkUpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
+  if (retval = nc_def_var (nc_diag, "avg_zkTpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
+  if (retval = nc_def_var (nc_diag, "avg_zkTperp",     NC_INT,   0, NULL, &ivar)) ERR(retval); 
+  if (retval = nc_def_var (nc_diag, "avg_zkqpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
+
+  if (retval = nc_def_var (nc_diag, "all_zonal",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "vE",              NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kvE",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kden",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -640,6 +675,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diag, "kTpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kqpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kTperp",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvE",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykvE",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyden",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -647,8 +684,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diag, "xyTpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyTperp",         NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyqpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "omega",           NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "fluxes",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+
   if (retval = nc_def_var (nc_diag, "moms",            NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_diag, "free_energy",     NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -676,7 +712,6 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_put_att_text (nc_con, ivar, "value", init_field.size(), init_field.c_str())) ERR(retval);
 
   if (retval = nc_def_var (nc_con, "kpar_init",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_put_att_text (nc_con, ivar, "value", boundary.size(), boundary.c_str())) ERR(retval);
     
   if (retval = nc_def_var (nc_diss, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "D_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
@@ -745,8 +780,6 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_geo, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "beta_prime_input",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "s_hat_input",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -839,30 +872,41 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (nc_rst, "save_for_restart",  save_for_restart );  
   put_real (nc_rst, "scale",             scale            );
 
-  putbool  (nc_diag, "vE_nz",       write_vE_nz       );
-  putbool  (nc_diag, "vE2",         write_vE2         );
-  putbool  (nc_diag, "vE",          write_vE          );
-  putbool  (nc_diag, "kvE",         write_kvE         );
-  putbool  (nc_diag, "kden",        write_kden        );
-  putbool  (nc_diag, "kUpar",       write_kUpar       );
-  putbool  (nc_diag, "kTpar",       write_kTpar       );
-  putbool  (nc_diag, "kTperp",      write_kTperp      );
-  putbool  (nc_diag, "kqpar",       write_kqpar       );
-  putbool  (nc_diag, "xyvE",        write_xyvE        );
-  putbool  (nc_diag, "xykvE",       write_xykvE       );
-  putbool  (nc_diag, "xyden",       write_xyden       );
-  putbool  (nc_diag, "xyUpar",      write_xyUpar      );
-  putbool  (nc_diag, "xyTpar",      write_xyTpar      );
-  putbool  (nc_diag, "xyTperp",     write_xyTperp     );
-  putbool  (nc_diag, "xyqpar",      write_xyqpar      );
-  putbool  (nc_diag, "omega",       write_omega       );
-  putbool  (nc_diag, "free_energy", write_free_energy );
-  putbool  (nc_diag, "fluxes",      write_fluxes      );
-  putbool  (nc_diag, "moms",        write_moms        );
-  putbool  (nc_diag, "rh",          write_rh          );
-  putbool  (nc_diag, "pzt",         write_pzt         );
-  putbool  (nc_diag, "phi",         write_phi         );
-  putbool  (nc_diag, "phi_kpar",    write_phi_kpar    );
+  putbool  (nc_diag, "all_zonal",    write_all_kmom    );
+  putbool  (nc_diag, "vE",           write_vE          );
+  putbool  (nc_diag, "kvE",          write_kvE         );
+  putbool  (nc_diag, "kden",         write_kden        );
+  putbool  (nc_diag, "kUpar",        write_kUpar       );
+  putbool  (nc_diag, "kTpar",        write_kTpar       );
+  putbool  (nc_diag, "kTperp",       write_kTperp      );
+  putbool  (nc_diag, "kqpar",        write_kqpar       );
+
+  putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
+  putbool  (nc_diag, "xyvE",         write_xyvE        );
+  putbool  (nc_diag, "xykvE",        write_xykvE       );
+  putbool  (nc_diag, "xyden",        write_xyden       );
+  putbool  (nc_diag, "xyUpar",       write_xyUpar      );
+  putbool  (nc_diag, "xyTpar",       write_xyTpar      );
+  putbool  (nc_diag, "xyTperp",      write_xyTperp     );
+  putbool  (nc_diag, "xyqpar",       write_xyqpar      );
+
+  putbool  (nc_diag, "all_zonal_scalars", write_all_avgz);
+  putbool  (nc_diag, "avg_zvE",      write_avg_zvE     );
+  putbool  (nc_diag, "avg_zkvE",     write_avg_zkvE    );
+  putbool  (nc_diag, "avg_zkden",    write_avg_zkden   );
+  putbool  (nc_diag, "avg_zkUpar",   write_avg_zkUpar  );
+  putbool  (nc_diag, "avg_zkTpar",   write_avg_zkTpar  );
+  putbool  (nc_diag, "avg_zkTperp",  write_avg_zkTperp );
+  putbool  (nc_diag, "avg_zkqpar",   write_avg_zkqpar  );
+
+  putbool  (nc_diag, "omega",        write_omega        );
+  putbool  (nc_diag, "free_energy",  write_free_energy  );
+  putbool  (nc_diag, "fluxes",       write_fluxes       );
+  putbool  (nc_diag, "moms",         write_moms         );
+  putbool  (nc_diag, "rh",           write_rh           );
+  putbool  (nc_diag, "pzt",          write_pzt          );
+  putbool  (nc_diag, "phi",          write_phi          );
+  putbool  (nc_diag, "phi_kpar",     write_phi_kpar     );
 
   putint   (nc_expert, "nreal",   nreal);
   putint   (nc_expert, "i_share", i_share);
@@ -916,16 +960,9 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_geo, "Rmaj",        rmaj       );
   put_real (nc_geo, "shift",       shift      );
   put_real (nc_geo, "eps",         eps        );
-  put_real (nc_geo, "rhoc",        rhoc       );
   put_real (nc_geo, "q",           qsf        );
-  put_real (nc_geo, "shat",        shat       );  // is this always consistent with geometry inputs? should force it. BD
-  put_real (nc_geo, "kappa",       akappa     );
-  put_real (nc_geo, "kappa_prime", akappri    );
-  put_real (nc_geo, "tri",         tri        );
-  put_real (nc_geo, "tri_prime",   tripri     );
+  put_real (nc_geo, "shat",        shat       );
   put_real (nc_geo, "beta",        beta       );
-  put_real (nc_geo, "beta_prime_input", beta_prime_input );
-  put_real (nc_geo, "s_hat_input",      s_hat_input      );
 
   put_wspectra (nc_sp, wspectra); 
   put_pspectra (nc_sp, pspectra); 
@@ -1088,7 +1125,7 @@ void Parameters::putint (int ncid, const char varname[], int val) {
 void Parameters::putbool (int ncid, const char varname[], bool val) {
   int idum, retval;
   int b = val==true ? 1 : 0 ; 
-  if (debug) printf("%s = \n",varname);
+  if (debug) printf("%s = %d \n",varname, b);
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_put_var  (ncid, idum, &b))       ERR(retval);
 }

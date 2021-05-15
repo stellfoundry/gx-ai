@@ -2,7 +2,7 @@
 #include "get_error.h"
 #include "netcdf.h"
 #include <sys/stat.h>
-#define GSPEC <<< dG_spectra, dB_spectra >>>
+#define loop_R <<< dG_spectra, dB_spectra >>>
 #define GALL <<< dG_all, dB_all >>>
 #define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>> 
 #define loop_y <<< dgp, dbp >>> 
@@ -103,29 +103,32 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(16, 8, 8);
+  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
   int nslm = nL * nM * nS;
 
-  int nbx = 32;
-  int ngx = 1 + (nyx-1)/nbx;
+  int nt1 = 32;
+  int nb1 = 1 + (nyx-1)/nt1;
 
-  int nby = 32;
-  int ngy = 1 + (grids_->Nz-1)/nby;
+  int nt2 = 32;
+  int nb2 = 1 + (grids_->Nz-1)/nt2;
   
-  dB_all = dim3(nbx, nby, 1);
-  dG_all = dim3(ngx, ngy, nslm);
+  dB_all = dim3(nt1, nt2, 1);
+  dG_all = dim3(nb1, nb2, nslm);
   
   if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
 
-  nbx = min(grids_->Ny, 512);
-  ngx = 1 + (grids_->Ny-1)/nbx;
+  nt1 = min(grids_->Ny, 512);
+  nb1 = 1 + (grids_->Ny-1)/nt1;
 
-  dbp = dim3(nbx, 1, 1);
-  dgp = dim3(ngx, 1, 1);
+  dbp = dim3(nt1, 1, 1);
+  dgp = dim3(nb1, 1, 1);
 
+  
+
+  
   printf(ANSI_COLOR_RESET);
   ndiag = 1;
   Dks = 0.;
@@ -179,7 +182,6 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     fflush(NULL);
     id -> write_nc(id -> time, time);
     if (pars_->write_xymom)     id -> write_nc(id ->  z_time, time);
-    if (pars_->write_xy_nz)     id -> write_nc(id -> nz_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
 
@@ -197,7 +199,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       
       for(int is=0; is<grids_->Nspecies; is++) {
 	float rho2s = pars_->species_h[is].rho2;
-	heat_flux_summand GSPEC (P2(is), fields->phi, G->G(0,0,is),
+	heat_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
 				 grids_->ky, flux_fac, geo_->kperp2, rho2s);
       }
       id -> write_Q(P2s); 
@@ -212,22 +214,22 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
 	float rho2s = pars_->species_h[is].rho2;
-	Wphi_summand GSPEC (P2(is), amom_d, kvol_fac, geo_->kperp2, rho2s);
+	Wphi_summand loop_R (P2(is), amom_d, kvol_fac, geo_->kperp2, rho2s);
 	float qfac =  pars_->species_h[is].qneut;
-	Wphi_scale GSPEC   (P2(is), qfac);
+	Wphi_scale loop_R   (P2(is), qfac);
       }
 
       if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac);
+	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac);
 	
-	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
-	  fieldlineaverage GFLA (favg, df, fields->phi, kvol_fac); // favg is a dummy variable
+	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
 	  grad_par->zft(df, amom_d); // get df = df(kz)
-	  Wphi2_summand GSPEC (Phi2, amom_d, kvol_fac); 	
+	  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac); 	
 	}
 
 	float fac = 1./pars_->tau_fac;
-	Wphi_scale GSPEC (Phi2, fac);
+	Wphi_scale loop_R (Phi2, fac);
       }
       
       id -> write_Wkz(G2);    id -> write_Pkz(P2());    id -> write_Akz(Phi2);      
@@ -237,23 +239,23 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       W_summand GALL (G2, G->G(), vol_fac, G->nt());
       
       if (pars_->gx) {
-	for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+	for (int is=0; is < grids_->Nspecies; is++) {       // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
 	  float rho2s = pars_->species_h[is].rho2;
-	  Wphi_summand GSPEC (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
+	  Wphi_summand loop_R (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
 	  float qnfac = pars_->species_h[is].qneut;
-	  Wphi_scale GSPEC   (P2(is), qnfac);
+	  Wphi_scale loop_R   (P2(is), qnfac);
 	}
 
 	if (pars_->add_Boltzmann_species) {
-	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand GSPEC (Phi2, fields->phi, vol_fac);
+	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, fields->phi, vol_fac);
 	  
 	  if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
 	    fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
-	    Wphi2_summand GSPEC (Phi2, df, vol_fac); 	
+	    Wphi2_summand loop_R (Phi2, df, vol_fac); 	
 	  }
 	  
 	  float fac = 1./pars_->tau_fac;
-	  Wphi_scale GSPEC (Phi2, fac);
+	  Wphi_scale loop_R (Phi2, fac);
 	}
       }
 
@@ -294,25 +296,32 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       }
     */
 
-    id -> write_moment ( id -> kvE,     fields->phi,    true, 1.0);
-    id -> write_moment ( id -> vE,      fields->phi,    false, 1.0);
-    id -> write_moment ( id -> kden,    G->dens_ptr[0], false, 1.0);
-    id -> write_moment ( id -> kUpar,   G->upar_ptr[0], false, 1.0);
-    id -> write_moment ( id -> kTpar,   G->tpar_ptr[0], false, sqrtf(2.0));
-    id -> write_moment ( id -> kTperp,  G->tprp_ptr[0], false, 1.0);
-    id -> write_moment ( id -> kqpar,   G->qpar_ptr[0], false, sqrtf(6.0));
-     
-    id -> write_zonal  ( id -> vE2,     fields->phi,    false, 1.0);
+    // Plot ky=kz=0 components of various quantities as functions of x
+    id -> write_moment ( id -> vE,      fields->phi,    vol_fac);
+    id -> write_moment ( id -> kvE,     fields->phi,    vol_fac);
+    id -> write_moment ( id -> kden,    G->dens_ptr[0], vol_fac);
+    id -> write_moment ( id -> kUpar,   G->upar_ptr[0], vol_fac);
+    id -> write_moment ( id -> kTpar,   G->tpar_ptr[0], vol_fac);
+    id -> write_moment ( id -> kTperp,  G->tprp_ptr[0], vol_fac);
+    id -> write_moment ( id -> kqpar,   G->qpar_ptr[0], vol_fac);
 
-    id -> write_moment ( id -> vE_nz,   fields->phi,    false, 1.0);
+    // Plot some zonal scalars
+    id -> write_moment ( id -> avg_zvE,     fields->phi,    vol_fac);
+    id -> write_moment ( id -> avg_zkvE,    fields->phi,    vol_fac);
+    id -> write_moment ( id -> avg_zkden,   G->dens_ptr[0], vol_fac);
+    id -> write_moment ( id -> avg_zkUpar,  G->upar_ptr[0], vol_fac);
+    id -> write_moment ( id -> avg_zkTpar,  G->tpar_ptr[0], vol_fac);
+    id -> write_moment ( id -> avg_zkTperp, G->tprp_ptr[0], vol_fac);
+    id -> write_moment ( id -> avg_zkqpar,  G->qpar_ptr[0], vol_fac);
 
-    id -> write_moment ( id -> xykvE,   fields->phi,    true,  1.0);    
-    id -> write_moment ( id -> xyvE,    fields->phi,    false, 1.0);
-    id -> write_moment ( id -> xyden,   G->dens_ptr[0], false, 1.0);
-    id -> write_moment ( id -> xyUpar,  G->upar_ptr[0], false, 1.0);
-    id -> write_moment ( id -> xyTpar,  G->tpar_ptr[0], false, sqrtf(2.0));
-    id -> write_moment ( id -> xyTperp, G->tprp_ptr[0], false, 1.0);
-    id -> write_moment ( id -> xyqpar,  G->qpar_ptr[0], false, sqrtf(6.0));
+    // Plot the non-zonal components as functions of (x, y)
+    id -> write_moment ( id -> xykvE,   fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyvE,    fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyden,   G->dens_ptr[0], vol_fac);
+    id -> write_moment ( id -> xyUpar,  G->upar_ptr[0], vol_fac);
+    id -> write_moment ( id -> xyTpar,  G->tpar_ptr[0], vol_fac);
+    id -> write_moment ( id -> xyTperp, G->tprp_ptr[0], vol_fac);
+    id -> write_moment ( id -> xyqpar,  G->qpar_ptr[0], vol_fac);
 
     if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G->G());
 

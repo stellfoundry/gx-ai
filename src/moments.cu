@@ -252,15 +252,20 @@ void MomentsG::initialConditions(float* z_h, double* time) {
       //initialize single mode
       int iky = pars_->iky_single;
       int ikx = pars_->ikx_single;
-      DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
-      //    float fac;
-      //    if(pars_->nlpm_test && iky==0) fac = .5;
-      //    else fac = 1.;
-      //    DEBUG_PRINT("fac = %f \n",fac);
-      for(int iz=0; iz<grids_->Nz; iz++) {
-	int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
-	init_h[index].x = pars_->init_amp; //*fac;
-	init_h[index].y = 0.; //init_amp;
+      int NKX = 1;
+      if (iky == 0 && ikx<1+(grids_->Nx-1)/3) NKX = 2; // reality condition for tertiary tests
+      for (int j = 0; j<NKX; j++) {
+	if (j==1) ikx = grids_->Nx-ikx;
+	DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
+	//    float fac;
+	//    if(pars_->nlpm_test && iky==0) fac = .5;
+	//    else fac = 1.;
+	//    DEBUG_PRINT("fac = %f \n",fac);
+	for(int iz=0; iz<grids_->Nz; iz++) {
+	  int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
+	  init_h[index].x = pars_->init_amp; //*fac;
+	  init_h[index].y = 0.; //init_amp;
+	}
       }
     } else {
       srand(22);

@@ -114,7 +114,7 @@ __global__ void eig_residual(double* y, double* A, double* x, double* R,
 __global__ void scale_kernel(cuComplex* res, double s);
 __global__ void scale_kernel(cuComplex* res, cuComplex s);
 __global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, cuComplex s);
-
+__global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* m, float scalar);
 // Should we have some eqfix options in the singlemom_kernels? 
 
 __global__ void add_section(cuComplex *res, const cuComplex *tmp, int ntot);
@@ -149,6 +149,7 @@ __global__ void bracket(float* g_res,
 			const float* dg_dx, const float* dJ0phi_dy,
 			const float* dg_dy, const float* dJ0Phi_dx, float kxfac);
 
+__global__ void d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void ddx (cuComplex *res, cuComplex *f, float *kx);
 
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size);
@@ -161,8 +162,8 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
 
-__global__ void zavg(float *vE, float *vEavg, float adj);
-__global__ void yavg(float *vE, float *vEavg, float adj);
+__global__ void xytranspose(float *in, float *out);
+__global__ void yzavg(float *vE, float *vEavg, float *vol_fac);
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac);
 
 __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const float* nt);
@@ -278,6 +279,11 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const float* ky, const float* vt, const float* zt, const float* tz, 
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
 			   const float* rho2s, cuComplex* rhs);
+
+__global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);
+__global__ void get_s01 (float s01, const cuComplex* favg, const float* kx, const float w_osc);
+__global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10, const float* s11,
+			  const float* kx, const float* ky, const float D_HB, const int p_HB, cuComplex* RHS);
 
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,
 				   cuComplex* t_bar, const cuComplex* G, const cuComplex* phi,

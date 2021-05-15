@@ -7,6 +7,11 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   ks = false;
   vp = false;
   upar_bar  = nullptr;           uperp_bar = nullptr;            t_bar     = nullptr;
+  favg = nullptr;
+  df   = nullptr;
+  s10  = nullptr;
+  s11  = nullptr;
+  vol_fac = nullptr;
   
   // set up parallel ffts
   if(pars_->local_limit) {
@@ -40,6 +45,18 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
       break;
     }
   
+  if (pars_->HB_hyper) {
+    cudaMalloc((void**) &favg, sizeof(cuComplex)*grids_->Nx);
+    cudaMalloc((void**) &df,  sizeof(cuComplex)*grids_->NxNycNz);
+    cudaMalloc((void**) &s10, sizeof(float)*grids_->Nz);
+    cudaMalloc((void**) &s11, sizeof(float)*grids_->Nz);
+    cudaMalloc((void**) &vol_fac, sizeof(float)*grids_->Nz);
+    
+    volDenom = 0. ;  cudaMallocHost (&vol_fac, sizeof(float) * grids_->Nz);
+    for (int i=0; i < grids_->Nz; i++) volDenom   += geo_->jacobian_h[i]; 
+    for (int i=0; i < grids_->Nz; i++) vol_fac[i]  = geo_->jacobian_h[i] / volDenom;
+  }
+  
   // allocate conservation terms for collision operator
   size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nspecies;
   cudaMalloc((void**) &upar_bar, size);
@@ -55,6 +72,13 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
+
+  nn1 = grids_->Nyc;                              nt1 = min(nn1, 16);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nx*grids_->Nz;                    nt2 = min(nn2, 16);    nb2 = (nn2-1)/nt2 + 1;
+  nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  4);    nb3 = (nn3-1)/nt3 + 1;
+  
+  dB_all = dim3(nt1, nt2, nt3);
+  dG_all = dim3(nb1, nb2, nb3);	 
 
   // set up CUDA grids for main linear kernel.  
   // NOTE: nt1 = sharedSize = 32 gives best performance, but using 8 is only 5% worse.
@@ -118,6 +142,10 @@ Linear::~Linear()
   if (closures) delete closures;
   if (grad_par) delete grad_par;
 
+  if (favg)       cudaFree(favg);
+  if (df)         cudaFree(df);
+  if (s10)        cudaFree(s10);
+  if (s11)        cudaFree(s11);
   if (upar_bar)   cudaFree(upar_bar);
   if (uperp_bar)  cudaFree(uperp_bar);
   if (t_bar)      cudaFree(t_bar);
@@ -169,6 +197,26 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
+
+  if (pars_->HB_hyper) {
+    
+    int nt1 = min(128, grids_->Nx);
+    int nb1 = 1 + (grids_->Nx*grids_->Nyc-1)/nt1;
+    
+    fieldlineaverage <<< nb1, nt1 >>> (favg, df, f->phi, vol_fac);
+    
+    float s01; 
+    get_s01 <<< 1, 1 >>> (s01, favg, grids_->kx, pars_->w_osc);
+    
+    nt1 = min(128, grids_->Nz);
+    nb1 = 1 + (grids_->Nz-1)/nt1;
+    
+    get_s1 <<< nb1, nt1 >>> (s10, s11, grids_->kx, grids_->ky, df, pars_->w_osc);
+    
+    HB_hyper <<< dG_all, dB_all >>> (G->G(), s01, s10, s11,
+				     grids_->kx, grids_->ky, pars_->D_HB, pars_->p_HB, GRhs->G());
+    
+  }
 }
 
 

@@ -18,7 +18,7 @@ public:
 
   //  int zderiv(MomentsG *G);
 
-  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs, dimGridh, dimBlockh;
+  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs, dimGridh, dimBlockh, dB_all, dG_all;
   int sharedSize;
   
  private:
@@ -36,4 +36,14 @@ public:
   cuComplex * upar_bar      ;
   cuComplex * uperp_bar     ;
   cuComplex * t_bar         ;
+
+  // Hammett-Belli hyper
+  cuComplex * df            ;
+  cuComplex * favg          ;
+  float     * s10           ;
+  float     * s11           ;
+  float     * vol_fac       ; 
+
+  float volDenom;
+  
 };

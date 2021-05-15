@@ -600,7 +600,13 @@ __global__ void scale_kernel(cuComplex* res, const cuComplex scalar)
   }
 }
 
-__global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, const cuComplex scalar)
+__global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, cuComplex scalar)
+{
+  unsigned int idxyz = get_id1();
+  if (idxyz < nx*nyc*nz) res[idxyz] = scalar*mom[idxyz];
+}
+
+__global__ void scale_singlemom_kernel(cuComplex* res, cuComplex* mom, float scalar)
 {
   unsigned int idxyz = get_id1();
   if (idxyz < nx*nyc*nz) res[idxyz] = scalar*mom[idxyz];
@@ -845,11 +851,33 @@ __global__ void ddx (cuComplex *res, cuComplex *f, float *kx)
 {
   unsigned int idy = get_id1();
   if (idy < nyc) {
-    for (int idx = 0; idx < nx; idx++) {
-      cuComplex Ikx = make_cuComplex(0., kx[idx]);
-      for (int idz = 0; idz < nz; idz++) {
-	unsigned int ig = idy + nyc*(idx + nx*idz);
-	res[ig] = Ikx*f[ig];
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      if (unmasked(idx, idy)) {
+	unsigned int idz = get_id3();
+	if (idz < nz) {
+	  cuComplex Ikx = make_cuComplex(0., kx[idx]);
+	  unsigned int ig = idy + nyc*(idx + nx*idz);
+	  res[ig] = Ikx*f[ig];
+	}
+      }
+    }
+  }
+}
+
+__global__ void d2x (cuComplex *res, cuComplex *f, float *kx)
+{
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      if (unmasked(idx, idy)) {
+	unsigned int idz = get_id3();
+	if (idz < nz) {
+	  cuComplex Ikx = make_cuComplex(0., kx[idx]);
+	  unsigned int ig = idy + nyc*(idx + nx*idz);
+	  res[ig] = Ikx*Ikx*f[ig];
+	}
       }
     }
   }
@@ -1062,7 +1090,7 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
 {
   moments[forcing_index] = moments[forcing_index] + force; }
 
-__global__ void yavg(float *vE, float *vEavg, float adj) // not a proper field-line average yet
+__global__ void yzavg(float *vE, float *vEavg, float *vol_fac)
 {
   unsigned int idx = get_id1();
   if (idx < nx) {
@@ -1070,36 +1098,29 @@ __global__ void yavg(float *vE, float *vEavg, float adj) // not a proper field-l
     for (int idy = 0; idy<ny; idy++) {
       for (int idz = 0; idz<nz; idz++) {
 	unsigned int ig = idy + ny*(idx + nx*idz);
-	avg += vE[ig];
+	avg += vE[ig]*vol_fac[idz];
       }
     }
-    float fac = 1./((float) ny * (float) nz);
-    vEavg[idx] = avg*fac*adj;
+    float fac = 1./((float) ny);
+    vEavg[idx] = avg*fac;
   }
 }
 
-__global__ void zavg(float *vE, float *vEavg, float adj)
+__global__ void xytranspose(float *in, float *out)
 {
   // Transpose to accommodate ncview
   unsigned int idy = get_id1();
   if (idy < ny) {
     unsigned int idx = get_id2();
     if (idx < nx) {
-      float avg = 0.;
-      for (int idz = 0; idz<nz; idz++) {
-	unsigned int ig = idy + ny*(idx + nx*idz);
-	avg += vE[ig];
-      }
-      float fac = 1./((float) nz);
-      vEavg[idx + nx*idy] = avg*fac*adj; // Transposing here
+      out[idx + nx*idy] = in[idy + ny*idx];
     }
   }
 }
 
-//Are all of the elements of volJac making it into this routine?
-
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac)
 {
+
   unsigned int idxy = get_id1();
   if (idxy < nx*nyc) {
     unsigned int idy = idxy % nyc;
@@ -1118,11 +1139,11 @@ __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex
     }
     
     if (idy > 0 && unmasked(idx, idy)) {
-      for (int idz = 0; idz<nz; idz++) df[idxy + idz*nx*nyc] = f[idxy + idz*nx*nyc];
+      for (int idz = 0; idz<nz; idz++) df[idxy + nx*nyc*idz] = f[idxy + nx*nyc*idz];
     } 
 
     if (masked(idx, idy)) {
-      for (int idz = 0; idz<nz; idz++) df[idxy + idz*nx*nyc] = make_cuComplex(0., 0.);
+      for (int idz = 0; idz<nz; idz++) df[idxy + nx*nyc*idz] = make_cuComplex(0., 0.);
     }
   }
 }
@@ -2021,7 +2042,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs) {
   unsigned int idxyz = get_id1();
-
+  
   if (idxyz < nx*nyc*nz) {
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
     float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
@@ -2035,6 +2056,75 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 	      (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
 	       +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
 	  }
+	}
+      }
+    }
+  }
+}
+
+__global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc)
+{
+  // non-zonal shearing zonal:    
+  // S10(z) = { << sum_(kx, ky!=0) 2 ky**4 |phi_1|**2 >> }          (sums ky!=0, so * 2)
+  //                            
+  // non-zonal shearing non-zonal:
+  // S11(z) = { sum_(kx, ky!=0) 2 [(kx**2 + ky**2)**2 |phi_1|**2] } (sums ky!=0, so * 2)
+  //
+  unsigned int idz = get_id1();
+  if (idz < nz) {
+    s10[idz] = 0.;
+    s11[idz] = 0.;
+    for (int idy = 1; idy < nyc; idy++) {
+      for (int idx = 0; idx < nx; idx++) {
+	if (unmasked(idx, idy)) {
+	  unsigned int idxy = idy + nyc*idx;
+
+	  float kp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+	  float df2 = df[idxy].x*df[idxy].x + df[idxy].y*df[idxy].y;
+
+	  s10[idz] += 2. * powf(ky[idy], 4) * df2; 
+	  s11[idz] += 2. * powf(kp2, 2)     * df2;
+	}
+      }      
+    }
+    s10[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s10[idz]));
+    s11[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s11[idz]));
+  }
+}
+
+__global__ void get_s01 (float s01, const cuComplex* favg, const float* kx, const float w_osc) {
+  s01 = 0.;
+  for (int idx = 0; idx < nx; idx++) {
+    s01 += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
+  }
+  s01 = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01));
+}
+
+__global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10, const float* s11,
+			  const float* kx, const float* ky, const float D_HB, const int p_HB, cuComplex* RHS)
+{
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    unsigned int idxz = get_id2();
+    if (idxz < nx*nz) {
+      unsigned int idx = idxz % nx;
+      unsigned int idz = idxz / nx;
+      if (unmasked(idx, idy)) {
+	unsigned int idlms = get_id3();
+	if (idlms < nl*nm*nspecies) {
+	  unsigned int ig = idy + nyc*(idxz + nx*nz*idlms);
+	  
+	  float kxmax = kx[(nx-1)/3];
+	  float kymax = ky[(ny-1)/3];
+	  float kpmax2 = kxmax*kxmax + kymax*kymax;
+	  float kp2 = (kx[idx]*kx[idx] + ky[idy]*ky[idy])/kpmax2;
+	  
+	  float D10 = D_HB * powf(kx[idx]/kxmax, 4);
+	  float D01 = D_HB * powf(kx[idx]/kxmax, 4) * ky[idy]/kymax;
+	  float D11 = D_HB * powf(kp2, p_HB);
+	  
+	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01 * D01;
+	  RHS[ig] = RHS[ig] - sfac * G[ig];
 	}
       }
     }

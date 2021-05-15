@@ -9,19 +9,19 @@ class nca {
 
   int    file;
   int    idx, time, ikx, iky, ns;
-  bool   write, write_v_time, xydata, non_zonal;
+  bool   write, write_v_time, xydata, scalar, xdata, dx, d2x;
   size_t start[5];
   size_t count[5];
   size_t time_start[6];
   size_t time_count[6];
   int    dims[5];
   int    time_dims[6];
-  float zonal;
+  float zonal, adj;
   float * data;
   float * cpu;
   float * tmp;
+  float * tmp_d;
   cuComplex * z_tmp;
-  cuComplex * z_cpu;
   int N_;
   int Nwrite_;
 };

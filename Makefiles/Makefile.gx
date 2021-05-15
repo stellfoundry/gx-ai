@@ -6,7 +6,7 @@ export MAKEFLAGS='-I Makefiles'\n
 USE_LOCAL_SPFUNC=on
 
 NETCDF_INC = -I/usr/include
-NETCDF_LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdff -lnetcdf
+NETCDF_LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdf
 
 ifdef USE_LAPACK
 	LAPACK_LIB = -L/usr/lib/x86_64-linux-gnu -llapack
