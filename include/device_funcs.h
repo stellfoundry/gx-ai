@@ -278,11 +278,11 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, 
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
-			   const float* rho2s, cuComplex* rhs);
+			   const float* rho2s, const int* typs, cuComplex* rhs);
 
 __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);
-__global__ void get_s01 (float s01, const cuComplex* favg, const float* kx, const float w_osc);
-__global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10, const float* s11,
+__global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc);
+__global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
 			  const float* kx, const float* ky, const float D_HB, const int p_HB, cuComplex* RHS);
 
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar,

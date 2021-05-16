@@ -28,6 +28,7 @@ class MomentsG {
   float* tp(int s=0) {return &tps[s];}
   float* up(int s=0) {return &ups[s];}
   float* fp(int s=0) {return &fps[s];}
+  int*   ty(int s=0) {return &typ[s];}
   
   cuComplex * Gm(int m, int s=0) {   return G(0,m,s);   }
 
@@ -88,4 +89,5 @@ class MomentsG {
   float * tps = nullptr;
   float * ups = nullptr;
   float * fps = nullptr;
+  int   * typ = nullptr;
 };

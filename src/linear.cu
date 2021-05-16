@@ -9,6 +9,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   upar_bar  = nullptr;           uperp_bar = nullptr;            t_bar     = nullptr;
   favg = nullptr;
   df   = nullptr;
+  s01  = nullptr;
   s10  = nullptr;
   s11  = nullptr;
   vol_fac = nullptr;
@@ -48,6 +49,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   if (pars_->HB_hyper) {
     cudaMalloc((void**) &favg, sizeof(cuComplex)*grids_->Nx);
     cudaMalloc((void**) &df,  sizeof(cuComplex)*grids_->NxNycNz);
+    cudaMalloc((void**) &s01, sizeof(float));
     cudaMalloc((void**) &s10, sizeof(float)*grids_->Nz);
     cudaMalloc((void**) &s11, sizeof(float)*grids_->Nz);
     cudaMalloc((void**) &vol_fac, sizeof(float)*grids_->Nz);
@@ -182,9 +184,28 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
-	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), 
+	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
 	 GRhs->G());
 
+  // hyper model by Hammett and Belli
+  if (pars_->HB_hyper) {
+    
+    int nt1 = min(128, grids_->Nx);
+    int nb1 = 1 + (grids_->Nx*grids_->Nyc-1)/nt1;
+    
+    fieldlineaverage <<< nb1, nt1 >>> (favg, df, f->phi, vol_fac);
+
+    get_s01 <<< 1, 1 >>> (s01, favg, grids_->kx, pars_->w_osc);
+    nt1 = min(128, grids_->Nz);
+    nb1 = 1 + (grids_->Nz-1)/nt1;
+    
+    get_s1 <<< nb1, nt1 >>> (s10, s11, grids_->kx, grids_->ky, df, pars_->w_osc);
+    
+    HB_hyper <<< dG_all, dB_all >>> (G->G(), s01, s10, s11,
+				     grids_->kx, grids_->ky, pars_->D_HB, pars_->p_HB, GRhs->G());
+    
+  }
+  
   // closures
   switch (pars_->closure_model_opt) {case Closure::none : break; closures->apply_closures(G, GRhs);}
   
@@ -198,25 +219,6 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
 
-  if (pars_->HB_hyper) {
-    
-    int nt1 = min(128, grids_->Nx);
-    int nb1 = 1 + (grids_->Nx*grids_->Nyc-1)/nt1;
-    
-    fieldlineaverage <<< nb1, nt1 >>> (favg, df, f->phi, vol_fac);
-    
-    float s01; 
-    get_s01 <<< 1, 1 >>> (s01, favg, grids_->kx, pars_->w_osc);
-    
-    nt1 = min(128, grids_->Nz);
-    nb1 = 1 + (grids_->Nz-1)/nt1;
-    
-    get_s1 <<< nb1, nt1 >>> (s10, s11, grids_->kx, grids_->ky, df, pars_->w_osc);
-    
-    HB_hyper <<< dG_all, dB_all >>> (G->G(), s01, s10, s11,
-				     grids_->kx, grids_->ky, pars_->D_HB, pars_->p_HB, GRhs->G());
-    
-  }
 }
 
 

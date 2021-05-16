@@ -1867,7 +1867,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
-			   const float* rho2s, cuComplex* rhs)
+			   const float* rho2s, const int* typs, cuComplex* rhs)
 {
   extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
   
@@ -1911,6 +1911,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
      const float uprim_ = uprim[is];
      const float fprim_ = fprim[is];
      const float b_s = kperp2[idxyz] * rho2s[is];
+     const float nuei_ = (typs[is] == 1) ? nu_ : 0.0; 
      
      const cuComplex icv_d_s = 2. * tz_ * make_cuComplex(0., cv_d[idxyz]);
      const cuComplex igb_d_s = 2. * tz_ * make_cuComplex(0., gb_d[idxyz]);
@@ -1980,7 +1981,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + (2*m+1)*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
 	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + (2*l+1)*S_G(sl,sm)              + l*S_G(sl-1,sm) )
 	   
-	   - nu_ * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
+	   - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
 
 	 // add potential, drive, and conservation terms in low hermite moments
 	 if (m==0) {
@@ -1989,7 +1990,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	    + Jflr(l,  b_s)*( -(2*l+1)*igb_d_s * zt_ - icv_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
 	    + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
 	    + Jflr(l+1,b_s,false)*                                              tprim_*(l+1) * iky_ )
-	     - nu_ * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ 
+	     - (nu_ + nuei_) * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ 
 	     + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 	     + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
@@ -2077,10 +2078,9 @@ __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky
     for (int idy = 1; idy < nyc; idy++) {
       for (int idx = 0; idx < nx; idx++) {
 	if (unmasked(idx, idy)) {
-	  unsigned int idxy = idy + nyc*idx;
-
+	  unsigned int idxyz = idy + nyc*(idx + nx*idz);
 	  float kp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
-	  float df2 = df[idxy].x*df[idxy].x + df[idxy].y*df[idxy].y;
+	  float df2 = df[idxyz].x*df[idxyz].x + df[idxyz].y*df[idxyz].y;
 
 	  s10[idz] += 2. * powf(ky[idy], 4) * df2; 
 	  s11[idz] += 2. * powf(kp2, 2)     * df2;
@@ -2092,15 +2092,15 @@ __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky
   }
 }
 
-__global__ void get_s01 (float s01, const cuComplex* favg, const float* kx, const float w_osc) {
-  s01 = 0.;
+__global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc) {
+  s01[0] = 0.;
   for (int idx = 0; idx < nx; idx++) {
-    s01 += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
+    s01[0] += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
   }
-  s01 = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01));
+  s01[0] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01[0]));
 }
 
-__global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10, const float* s11,
+__global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
 			  const float* kx, const float* ky, const float D_HB, const int p_HB, cuComplex* RHS)
 {
   unsigned int idy = get_id1();
@@ -2113,7 +2113,7 @@ __global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10,
 	unsigned int idlms = get_id3();
 	if (idlms < nl*nm*nspecies) {
 	  unsigned int ig = idy + nyc*(idxz + nx*nz*idlms);
-	  
+
 	  float kxmax = kx[(nx-1)/3];
 	  float kymax = ky[(ny-1)/3];
 	  float kpmax2 = kxmax*kxmax + kymax*kymax;
@@ -2123,7 +2123,7 @@ __global__ void HB_hyper (const cuComplex* G, const float s01, const float* s10,
 	  float D01 = D_HB * powf(kx[idx]/kxmax, 4) * ky[idy]/kymax;
 	  float D11 = D_HB * powf(kp2, p_HB);
 	  
-	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01 * D01;
+	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01[0] * D01;
 	  RHS[ig] = RHS[ig] - sfac * G[ig];
 	}
       }

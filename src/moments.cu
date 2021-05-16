@@ -27,6 +27,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   float * aps_h; cudaMallocHost( &aps_h, sizeof(float) * grids_->Nspecies );
   float * qns_h; cudaMallocHost( &qns_h, sizeof(float) * grids_->Nspecies );
   float * nu_ss_h; cudaMallocHost( &nu_ss_h, sizeof(float) * grids_->Nspecies );
+  int   * typ_h; cudaMallocHost( &typ_h, sizeof(int) * grids_->Nspecies );
   
   for (int is=0; is<grids_->Nspecies; is++) {
     vts_h[is] = pars_->species_h[is].vt;
@@ -41,6 +42,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
     aps_h[is] = pars_->species_h[is].as;
     qns_h[is] = pars_->species_h[is].qneut;
     nu_ss_h[is] = pars_->species_h[is].nu_ss;
+    typ_h[is] = pars_->species_h[is].type;
   }    
 
   checkCuda(cudaMalloc( &vts,   sizeof(float) * grids_->Nspecies ) );
@@ -55,6 +57,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc( &fps,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &ups,   sizeof(float) * grids_->Nspecies ) );
   checkCuda(cudaMalloc( &nu_ss, sizeof(float) * grids_->Nspecies ) );
+  checkCuda(cudaMalloc( &typ,   sizeof(int)   * grids_->Nspecies ) );
 
   CP_TO_GPU(vts, vts_h, sizeof(float)*grids_->Nspecies);
   CP_TO_GPU(tzs, tzs_h, sizeof(float)*grids_->Nspecies);
@@ -68,10 +71,12 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   CP_TO_GPU(aps, aps_h, sizeof(float)*grids_->Nspecies);
   CP_TO_GPU(qns, qns_h, sizeof(float)*grids_->Nspecies);
   CP_TO_GPU(nu_ss, nu_ss_h, sizeof(float)*grids_->Nspecies);
-
+  CP_TO_GPU(typ, typ_h, sizeof(int)  *grids_->Nspecies);
+  
   cudaFreeHost(vts_h);  cudaFreeHost(tzs_h);  cudaFreeHost(zts_h);  cudaFreeHost(nts_h);
   cudaFreeHost(nzs_h);  cudaFreeHost(r2s_h);  cudaFreeHost(tps_h);  cudaFreeHost(fps_h);
   cudaFreeHost(ups_h);  cudaFreeHost(aps_h);  cudaFreeHost(qns_h);  cudaFreeHost(nu_ss_h);  
+  cudaFreeHost(typ_h);
   
   dens_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   upar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);

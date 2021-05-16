@@ -40,6 +40,7 @@ public:
   // Hammett-Belli hyper
   cuComplex * df            ;
   cuComplex * favg          ;
+  float     * s01           ;
   float     * s10           ;
   float     * s11           ;
   float     * vol_fac       ; 
