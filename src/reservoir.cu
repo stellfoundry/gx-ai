@@ -34,7 +34,7 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   int M = M_;    // number of floats in the solution vector 
   int Q = ResQ_; // number of reservoir elements for each element of solution
   
-  assert( (N=M*Q) && "Should be exactly Q reservoir elements for each element of G");
+  assert( (N==M*Q) && "Should be exactly Q reservoir elements for each element of G");
 							    
   unsigned int nnz = K * N;
 
@@ -43,7 +43,7 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   int nn1, nn2, nt1, nt2, nb1, nb2;
   
   nn1 = N;           nt1 = min(nn1, 512 );   nb1 = 1 + (nn1-1)/nt1;
-  
+
   threads_n = dim3(nt1, 1, 1);
   blocks_n  = dim3(nb1, 1, 1);
 
@@ -137,20 +137,20 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
   cudaFreeHost(A_j);
 
   if (false) {
-    red = new Block_Reduce(N); cudaDeviceSynchronize();
-    double *y;     cudaMalloc( &y,      sizeof(double)*N );
-    float *x2norm; cudaMalloc( &x2norm, sizeof(float)   );
-    float *y2norm; cudaMalloc( &y2norm, sizeof(float)   );
-    float *xynorm; cudaMalloc( &xynorm, sizeof(float)   );
-    float *x2;     cudaMalloc( &x2,     sizeof(float)*N );
-    float *y2;     cudaMalloc( &y2,     sizeof(float)*N );
-    float *xy;     cudaMalloc( &xy,     sizeof(float)*N );
+    red = new dBlock_Reduce(N); cudaDeviceSynchronize();
+    double *y;      cudaMalloc( &y,      sizeof(double)*N );
+    double *x2norm; cudaMalloc( &x2norm, sizeof(double)   );
+    double *y2norm; cudaMalloc( &y2norm, sizeof(double)   );
+    double *xynorm; cudaMalloc( &xynorm, sizeof(double)   );
+    double *x2;     cudaMalloc( &x2,     sizeof(double)*N );
+    double *y2;     cudaMalloc( &y2,     sizeof(double)*N );
+    double *xy;     cudaMalloc( &xy,     sizeof(double)*N );
     
     setval loop_N  (R, 1., N);
     setval loop_N  (y, 1., N);
     setval loop_NK (x, 1., nnz);    
 
-    float eval = 0.; float eval_old = 10.;  float tol = 1.e-6;  float ex = 0.;   float ey = 0.;
+    double eval = 0.; double eval_old = 10.;  double tol = 1.e-6;  double ex = 0.;   double ey = 0.;
     
     while (abs(eval-eval_old)/abs(eval_old) > tol) {    
       
@@ -161,8 +161,8 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
       red->Sum(y2, y2norm);    red->Sum(x2, x2norm);    red->Sum(xy, xynorm);
       
       inv_scale_kernel loop_N (R, y, y2norm, N); 
-      CP_TO_CPU(&ex, x2norm, sizeof(float));
-      CP_TO_CPU(&ey, xynorm, sizeof(float));
+      CP_TO_CPU(&ex, x2norm, sizeof(double));
+      CP_TO_CPU(&ey, xynorm, sizeof(double));
       eval_old  = ey/ex;
       
       printf("eval = %f \t",eval_old);
@@ -173,18 +173,19 @@ Reservoir::Reservoir(Parameters* pars, int Min) :
     myPrep loop_NK (x, R, A_col, nnz);
     mySpMV loop_N  (x2, xy, y2, y, x, A_in, R, K, N);  
     eig_residual loop_N (y, A_in, x, R, x2, eval_old, K, N);
-    red->Sum(x2, x2norm);  CP_TO_CPU(&ex, x2norm, sizeof(float));
-    printf(ANSI_COLOR_YELLOW);  printf("RMS residual = %f \n",sqrtf(ex));  printf(ANSI_COLOR_RESET);
+    red->Sum(x2, x2norm);  CP_TO_CPU(&ex, x2norm, sizeof(double));
+    printf(ANSI_COLOR_YELLOW);  printf("RMS residual = %f \n",sqrt(ex));  printf(ANSI_COLOR_RESET);
 
-    float factor = ResRadius_/eval_old;
+    double factor = ResRadius_/eval_old;
     setA loop_NK (A_in, factor, N*K);
     
     cudaFree(x2norm); cudaFree(y2norm); cudaFree(xynorm);
     cudaFree(x2); cudaFree(y2); cudaFree(xy); cudaFree(y);
     delete (red);
+    exit(1);
   }
   
-  setval loop_N (R, 0., N_);
+  setval loop_N (R, 1., N_);
   dense = new DenseM (N_, M_); // to calculate G = V r2 and also V = V W
 }
 
@@ -227,16 +228,45 @@ void Reservoir::add_data(float* G)
       
       CP_TO_GPU(Gnoise, Gnoise_h, sizeof(cuComplex)*M);
       cudaFreeHost(Gnoise_h);
-      promote loop_N (dG, G, Gnoise, M);
+      promote loop_M (dG, G, Gnoise, M);
       cudaFree(Gnoise);      
     } else {
-      promote loop_N (dG, G, M);
+      promote loop_M (dG, G, M);
     }
 
+    // Cannot predict initial condition. And R starts out = 0. 
+    // Need to have taken at least one timestep before beginning training. 
+    
+    // At the end of all other timesteps, use existing R and new G to build V, W
+    // Use new G to build new R
+
+    // when predicting:
+
+    // Use existing R to predict G
+    // use new G to build new R
+
+    // Skip a few steps to allow warm-up. The early fits are probably bad anyway. 
+    // After the first 10 timestep, prepare to predict new G from current R
+    if (iT_ > 10) {
+      getV loops_MN (V, dG, R2, M, N); 
+      getW loops_NN (W,     R2,    N);
+    }
+    // Use new G (from eqns) to get new R
     update_reservoir (dG);
 
-    getV loops_MN (V, G, R2, M, N); 
-    getW loops_NN (W,    R2,    N);
+    /*
+    double * W_h;
+    cudaMallocHost((void**) &W_h, sizeof(double) * M * N);
+    CP_TO_GPU (W_h,  V, sizeof(double) *M*N  );
+
+    for (int n1=0; n1<N; n1++) {
+      for (int n2=0; n2<M; n2++) {
+	printf("W[%d, %d] = %e \n", n2, n1, W_h[n2+M*n1]);
+      }
+    }
+    cudaFreeHost(W_h);
+    exit(1);
+    */
     
     if (iT_ == nT_) {
       this->conclude_training();
@@ -338,19 +368,21 @@ bool Reservoir::predicting(void)
 }
 
 // Use hidden reservoir information to update G
-void Reservoir::predict(double* G)
+void Reservoir::predict(double* dG)
 {
-  update_reservoir(G);     // Use G to find new values for R and R2 (both hidden)
-  dense->MatVec(G, P, R2); // Use hidden information R2 to find new G = P R2
+  dense->MatVec(dG, P, R2); // Use hidden information R2 to find new G = P R2
+  update_reservoir(dG);     // Use G to find new values for R and R2 (both hidden)
 }
 
 // Use current G to update R and R2
-void Reservoir::update_reservoir(double* G)
+void Reservoir::update_reservoir(double* dG)
 {
   int K = K_;  int M = M_;  int N = N_;  int NK = N*K;  int Q = ResQ_;
+
+  assert(N==M*Q);
   
   myPrep       loop_NK  (x,  R,    A_col, NK);   // Move current R to x for efficient use later
-  WinG         loops_QM (R,  W_in, G,     Q, M); // Set R = W_in G
+  WinG         loops_QM (R,  W_in, dG,    Q, M); // Set R = W_in G
   update_state loop_N   (R,  A_in, x,     K, N); // Set R = tanh(A_in x + R)
   getr2        loop_N   (R2, R,           N);    // Calculate R2 from R  
 

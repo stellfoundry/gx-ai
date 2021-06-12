@@ -13,6 +13,8 @@ public:
   virtual ~Red() {};
   virtual void Sum(float *f, float* res, int i=0) {};
   virtual void Max(float *f, float* res) {}; 
+  virtual void Sum(double *f, double* res, int i=0) {};
+  virtual void Max(double *f, double* res) {}; 
   virtual void MatVec(double* res, double* A, double* x) {};
   virtual void MatMat(double* res, double* M1, double* M2) {};
   
@@ -125,6 +127,31 @@ class Block_Reduce : public Red {
   ~Block_Reduce();
   void Sum(float *f, float* res, int i=0);
   void Max(float *f, float* res);
+
+ private:
+  int N_;    void * Maxwork;    uint64_t sizeMax;   
+
+  bool first_Max = true;
+  bool first_Sum = true;
+  
+  cutensorTensorDescriptor_t dA, dB;
+  std::unordered_map<int32_t, int64_t> extent;
+  std::vector<int64_t> extent_A, extent_B;
+
+  std::vector<int32_t> Amode{'a'};
+  std::vector<int32_t> Bmode{};
+
+  int32_t nAmode = Amode.size(); // for single-block data input (such as for CFL condition)
+  int32_t nBmode = Bmode.size(); // scalar output for contiguous data
+  
+};
+
+class dBlock_Reduce : public Red {
+ public:
+  dBlock_Reduce(int N);
+  ~dBlock_Reduce();
+  void Sum(double *f, double* res, int i=0);
+  void Max(double *f, double* res);
 
  private:
   int N_;    void * Maxwork;    uint64_t sizeMax;   

@@ -33,7 +33,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
-  if (pars_->Reservoir) rc = new Reservoir(pars_, grids_->NxNyNz*grids->Nmoms);  
+  if (pars_->Reservoir) rc = new Reservoir(pars_, grids_->NxNyNz*grids_->Nmoms);  
   
   volDenom = 0. ;  cudaMallocHost (&vol_fac, sizeof(float) * nZ);
   for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i]; 
@@ -126,9 +126,6 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   dbp = dim3(nt1, 1, 1);
   dgp = dim3(nb1, 1, 1);
 
-  
-
-  
   printf(ANSI_COLOR_RESET);
   ndiag = 1;
   Dks = 0.;
@@ -136,6 +133,10 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   if (pars_->ks) {
     cudaMalloc     (&gy_d, sizeof(float)*grids_->Ny);
     cudaMallocHost (&gy_h, sizeof(float)*grids_->Ny);
+
+    if (pars_->ResWrite) {
+      cudaMallocHost (&ry_h, sizeof(double)*pars_->ResQ*grids_->NxNyNz*grids_->Nmoms);
+    }
   }
   
   if (pars_->Reservoir) {
@@ -165,6 +166,7 @@ Diagnostics::~Diagnostics()
   if (val)        cudaFreeHost  ( val       );
   if (tmp_omg_h)  cudaFreeHost  ( tmp_omg_h );
   if (gy_h)       cudaFreeHost  ( gy_h      );
+  if (ry_h)       cudaFreeHost  ( ry_h      );
 }
 
 bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, double time) 
@@ -180,8 +182,15 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
   if(counter%nw == 0) {
 
     fflush(NULL);
-    id -> write_nc(id -> time, time);
-    if (pars_->write_xymom)     id -> write_nc(id ->  z_time, time);
+    if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
+      id -> write_nc(id -> time, time);
+      //      if (pars_->ResWrite) id -> write_nc( id -> r_time, time);
+    }
+    if (!pars_->Reservoir) {
+      id -> write_nc(id -> time, time);
+    }
+
+    if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
 
@@ -190,7 +199,6 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
-
 
     if ( id -> qs -> write_v_time) printf("Step %d: Time = %f \t Flux = ", counter, time);          // To screen
     if (!id -> qs -> write_v_time) printf("Step %d: Time = %f\n",          counter, time);
@@ -323,7 +331,12 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     id -> write_moment ( id -> xyTperp, G->tprp_ptr[0], vol_fac);
     id -> write_moment ( id -> xyqpar,  G->qpar_ptr[0], vol_fac);
 
-    if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G->G());
+    if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
+      if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G->G());
+    }
+    if (!pars_->Reservoir) {
+      id -> write_ks_data ( id -> g_y, G->G());
+    }
 
     nc_sync(id->file);
   }
@@ -331,9 +344,9 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     grad_perp->C2R(G->G(), gy_d);
     if (pars_->ResFakeData) {
       rc->fake_data(gy_d);
-      //      id -> write_ks_data( id -> g_y, gy_d);
+      id -> write_ks_data( id -> g_y, gy_d);
     }
-    rc->add_data(gy_d); 
+    rc->add_data(gy_d);
   }
   
   // check to see if we should stop simulation

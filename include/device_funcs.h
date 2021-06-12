@@ -91,7 +91,7 @@ __global__ void promote(double* dG, float* G, float* noise, int N);
 __global__ void demote(float* G, double* dG, int N);
 __global__ void getr2(double* r2, double* r, int N);
 __global__ void copyV(double* P, double* V, int N);
-__global__ void getV(double* V, float* G, double* R2, int M, int N);
+__global__ void getV(double* V, double* G, double* R2, int M, int N);
 __global__ void getW(double* W, double* r2, int N);
 __global__ void setI(double* Id, int N);
 __global__ void getB(double* W, double beta_, int N);
@@ -103,13 +103,13 @@ __global__ void setval(cuComplex* f, cuComplex val, int N);
 __global__ void WinG(double* res, double* Win, double* G, int Q, int M);
 __global__ void update_state(double* res, double* A, double* x, int K, int N);
 __global__ void myPrep(double* x, double* r, int* col, int NK);
-__global__ void mySpMV(float* x2, float* xy, float* y2,
+__global__ void mySpMV(double* x2, double* xy, double* y2,
 		       double* y, double* x, double* A, double* r, int K, int N);
-__global__ void est_eval(float e, float* fLf, float * f2);
-__global__ void setA(double* A, float fac, int N);
-__global__ void inv_scale_kernel(double* res, const double* f, const float* scalar, int N);
+__global__ void est_eval(double e, double* fLf, double * f2);
+__global__ void setA(double* A, double fac, int N);
+__global__ void inv_scale_kernel(double* res, const double* f, const double* scalar, int N);
 __global__ void eig_residual(double* y, double* A, double* x, double* R,
-			     float* r2, float eval, int K, int N);
+			     double* r2, double eval, int K, int N);
   
 __global__ void scale_kernel(cuComplex* res, double s);
 __global__ void scale_kernel(cuComplex* res, cuComplex s);
@@ -189,11 +189,12 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
 			    const float* cv, const float* gb, const float* cv0, const float* gb0, float shat);
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale);
-__global__ void init_kxs(float* kxs, float* kx);
+__global__ void init_kxs(float* kxs, float* kx, float* th0);
 __global__ void update_kxs(float* kxs, float* dth0);
-__global__ void update_theta0(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
-			      float* cv, float* cv0, float* gb, float* gb0, float* omegad,  			      
-			      float* gds2, float* gds21, float* gds22, float* bmagInv, float shat);
+__global__ void update_theta0(float* th0, double dt);
+__global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
+			   float* cv, float* cv0, float* gb, float* gb0, float* omegad,  			      
+			   float* gds2, float* gds21, float* gds22, float* bmagInv, float shat);
   
 __device__ cuComplex i_kxs(void *dataIn, size_t offset, void *kxsData, void *sharedPtr);
 

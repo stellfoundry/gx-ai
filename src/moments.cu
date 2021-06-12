@@ -200,7 +200,7 @@ void MomentsG::initialConditions(double *time) {
   
   std::random_device rd;
   std::mt19937 gen(rd());
-  std::normal_distribution<float> ramp(0., 0.1);
+  std::normal_distribution<float> ramp(0., pars_->init_amp);
 
   for (int idy = 0; idy<grids_->Nyc; idy++) {
     init_h[idy].x = 0.;
@@ -307,25 +307,25 @@ void MomentsG::initialConditions(float* z_h, double* time) {
 	      //	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
-	  /*
-	  for (int k=0; k<grids_->Nz; k++) {
-	    int index = j + grids_->Nyc*(idx + grids_->Nx*k);
-	    init_h[index].x = 0.;
-	    init_h[index].y = 0.;
-	  }
-	  for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
-	    float ka = (float) (samp * rand() / RAND_MAX);
-	    float pa = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
-	    float kb = (float) (samp * rand() / RAND_MAX);
-	    float pb = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	  if (pars_->random_init) {
 	    for (int k=0; k<grids_->Nz; k++) {
 	      int index = j + grids_->Nyc*(idx + grids_->Nx*k);
-	      
-	      init_h[index].x += ka*sin((float) jj*z_h[k] + pa);
-	      init_h[index].y += kb*sin((float) jj*z_h[k] + pb);
+	      init_h[index].x = 0.;
+	      init_h[index].y = 0.;
+	    }
+	    for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
+	      float ka = (float) (samp * rand() / RAND_MAX);
+	      float pa = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	      float kb = (float) (samp * rand() / RAND_MAX);
+	      float pb = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	      for (int k=0; k<grids_->Nz; k++) {
+		int index = j + grids_->Nyc*(idx + grids_->Nx*k);
+		
+		init_h[index].x += ka*sin((float) jj*z_h[k] + pa);
+		init_h[index].y += kb*sin((float) jj*z_h[k] + pb);
+	      }
 	    }
 	  }
-	  */
 	}
       }
     }
@@ -600,9 +600,10 @@ void MomentsG::restart_read(double* time)
   }
   
   unsigned int itot;
-  itot = Nakx * Naky * Nz * Nm * Nl * nspec;
+  //  itot = Nakx * Naky * Nz * Nm * Nl * nspec;
+  itot = Nx * Nyc * Nz * Nm * Nl * nspec;
 
-  unsigned int iitot = itot;
+  unsigned int iitot = Nakx * Naky * Nz * Nm * Nl * nspec;
   if (pars_->domain_change) {
     int old_Nakx = 1 + 2 * ((Nx/pars_->nx_mult - 1)/3);
     int old_Naky = 1 +     ((Ny/pars_->ny_mult - 1)/3);
@@ -634,10 +635,8 @@ void MomentsG::restart_read(double* time)
 	  for (int k=0; k < Nz; k++) {
 	    for (int i=0; i < 1 + (Nx-1)/3; i++) {
 	      for (int j=0; j < Naky; j++) {
-		
 		unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*(m + Nm*is))));
 		unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*(m + Nm*is))));
-		
 		G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
 		G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
 	      }

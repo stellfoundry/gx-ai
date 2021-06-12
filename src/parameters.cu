@@ -63,11 +63,13 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
 
-  y0       = toml::find_or <float>       (tnml, "y0",     10.0  );
-  x0       = toml::find_or <float>       (tnml, "x0",     10.0  );
-  jtwist   = toml::find_or <int>         (tnml, "jtwist",   -1  );
-  Zp       = toml::find_or <int>         (tnml, "zp",        1  );
-  boundary = toml::find_or <std::string> (tnml, "boundary", "linked");
+  y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
+  x0       = toml::find_or <float>       (tnml, "x0",          10.0  );
+  jtwist   = toml::find_or <int>         (tnml, "jtwist",        -1  );
+  Zp       = toml::find_or <int>         (tnml, "zp",             1  );
+  boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
+  ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
+  g_exb    = toml::find_or <float>       (tnml, "g_exb",         0.0 );
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -247,9 +249,9 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
 
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
-  closure_model  = toml::find_or <string> (tnml, "closure_model", "beer4+2" );
-  smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",           3 );
-  smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",          3 );
+  closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
+  smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",        3 );
+  smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",       3 );
 
   fphi       = toml::find_or <float>  (tnml, "fphi",      1.0 );
   fapar      = toml::find_or <float>  (tnml, "fapar",     0.0 );
@@ -273,7 +275,9 @@ void Parameters::get_nml_vars(char* filename)
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false );
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false );
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
-
+  random_init     = toml::find_or <bool> (tnml, "random_init",     false);
+  if (random_init) kpar_init = 0.0; 
+  
   tnml = nml;
   if (nml.contains("Forcing")) tnml = toml::find (nml, "Forcing");  
 
@@ -381,8 +385,16 @@ void Parameters::get_nml_vars(char* filename)
   qsf         = toml::find_or <float> (tnml, "qinp",     1.4 );
   shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
+  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false);
+
+  if (igeo == 0 && abs(shat) < 1.e-6) zero_shat = true;
   
-  if (igeo == 0 && abs(shat) < 1.e-6) boundary = "periodic";
+  if (igeo == 0 && zero_shat) {
+    boundary = "periodic";
+    shat = 1.e-8;
+    printf("Using no magnetic shear because zero_shat = true \n");
+  }
+  //  if (igeo == 0 && abs(shat) < 1.e-6) boundary = "periodic";
   
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
@@ -496,7 +508,8 @@ void Parameters::get_nml_vars(char* filename)
   Reservoir = false;
   add_noise = false;
   ResFakeData = false;
-
+  ResWrite = false;
+  
   tnml = nml;
   if (nml.contains("Reservoir")) tnml = toml::find (nml, "Reservoir");  
 
@@ -511,7 +524,8 @@ void Parameters::get_nml_vars(char* filename)
   ResSigma           = toml::find_or <float> (tnml, "input_sigma",      0.5  );
   ResSigmaNoise      = toml::find_or <float> (tnml, "noise",           -1.0  );
   ResFakeData        = toml::find_or <bool>  (tnml, "fake_data",      false  );
-    
+  ResWrite           = toml::find_or <bool>  (tnml, "write",          false  );
+  
   if (ResTrainingSteps == 0) ResTrainingSteps = nstep/nwrite;
   if (ResTrainingDelta == 0) ResTrainingDelta = nwrite;
   if (ResSigmaNoise > 0.) add_noise = true;
@@ -548,6 +562,16 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
   if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
 
+  if (ResWrite) {
+    strcpy(strb, run_name);
+    strcat(strb, "_ml.nc");
+
+    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &ncresid)) ERR(retval);
+    if (retval = nc_def_dim (ncresid, "r",     ResQ*nx_in*ny_in*nz_in*nm_in*nl_in, &idim)) ERR(retval);
+    if (retval = nc_def_dim (ncresid, "time",  NC_UNLIMITED, &idim)) ERR(retval);
+    if (retval = nc_enddef (ncresid)) ERR(retval);
+  }
+  
   if (write_xymom) {
     strcpy(strb, run_name); 
     strcat(strb, "_nonZonal_xy.nc");
@@ -644,6 +668,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_ml, "InputSigma",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ml, "SigmaNoise",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ml, "FakeData",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_ml, "ResWrite",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_rst, "scale",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_rst, "restart",          NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -712,7 +737,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_put_att_text (nc_con, ivar, "value", init_field.size(), init_field.c_str())) ERR(retval);
 
   if (retval = nc_def_var (nc_con, "kpar_init",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-    
+  if (retval = nc_def_var (nc_con, "random_init",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   if (retval = nc_def_var (nc_diss, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "D_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -722,7 +748,11 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diss, "p_hyper",               NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "p_hyper_l",             NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "p_hyper_m",             NC_INT,   0, NULL, &ivar)) ERR(retval);
-
+  if (retval = nc_def_var (nc_diss, "w_osc",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "D_HB",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "p_HB",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "HB_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   if (retval = nc_def_var (nc_frc, "forcing_init",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_frc, "forcing_type_dum",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_frc, ivar, "value", forcing_type.size(), forcing_type.c_str())) ERR(retval);
@@ -780,6 +810,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_geo, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -837,6 +868,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_ml, "InputSigma"   , ResSigma          );
   put_real (nc_ml, "SigmaNoise"   , ResSigmaNoise     );
   putbool  (nc_ml, "FakeData"     , ResFakeData       );
+  putbool  (nc_ml, "ResWrite"     , ResWrite          );
   
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
@@ -927,6 +959,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_con,  "cfl",             cfl             );
   put_real (nc_con,  "init_amp",        init_amp        );
   put_real (nc_con,  "kpar_init",       kpar_init       );
+  putbool  (nc_con,  "random_init",     random_init     );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
   putint   (nc_con,  "smith_par_q",     smith_par_q     );
   putint   (nc_con,  "smith_perp_q",    smith_perp_q    );
@@ -934,7 +967,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_con,  "fphi",            fphi            );
   put_real (nc_con,  "fapar",           fapar           );
   put_real (nc_con,  "fbpar",           fbpar           );
-
+  
   putbool  (nc_diss, "hyper",           hyper           );
   put_real (nc_diss, "D_hyper",         D_hyper         );
   putbool  (nc_diss, "hypercollisions", hypercollisions );
@@ -944,6 +977,10 @@ void Parameters::get_nml_vars(char* filename)
   putint   (nc_diss, "p_hyper",         p_hyper         );
   putint   (nc_diss, "p_hyper_l",       p_hyper_l       );
   putint   (nc_diss, "p_hyper_m",       p_hyper_m       );
+  put_real (nc_diss, "D_HB",            D_HB            );
+  putint   (nc_diss, "p_HB",            p_HB            );
+  putbool  (nc_diss, "HB_hyper",        HB_hyper        );
+  put_real (nc_diss, "w_osc",           w_osc           );
   
   put_real (nc_frc, "forcing_amp",      forcing_amp     );
   putint   (nc_frc, "forcing_index",    forcing_index   );
@@ -963,6 +1000,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_geo, "q",           qsf        );
   put_real (nc_geo, "shat",        shat       );
   put_real (nc_geo, "beta",        beta       );
+  putbool  (nc_geo, "zero_shat",   zero_shat  );
 
   put_wspectra (nc_sp, wspectra); 
   put_pspectra (nc_sp, pspectra); 
@@ -993,7 +1031,7 @@ void Parameters::get_nml_vars(char* filename)
   // set default jtwist to 2*pi*shat to get the x0 in the input file
   
   if (jtwist == -1) {
-    if (abs(shat)>1.e-6) {
+    if (!zero_shat) {
       jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
     } else {
       // no need to do anything here. x0 is set from input file and jtwist should not be used anywhere
@@ -1002,7 +1040,7 @@ void Parameters::get_nml_vars(char* filename)
   }   
 
   // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
-  if (abs(shat)>1.e-6) {
+  if (!zero_shat) {
     x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
   }
 

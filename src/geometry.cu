@@ -109,8 +109,9 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   float beta_e = pars->beta;
   float rmaj = pars->rmaj;
   specie* species = pars->species_h;
-
+  
   gradpar = (float) abs(1./(qsf*rmaj));
+  zero_shat_ = pars->zero_shat;
   shat = pars->shat;
   pars->drhodpsi = 1.; 
   pars->kxfac = 1.;

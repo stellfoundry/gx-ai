@@ -63,6 +63,7 @@ class NetCDF_ids {
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
   nca *g_y;
+  nca *r_y; 
 
   nca *vE,     *xyvE,     *avg_zvE;
   nca *kvE,    *xykvE,    *avg_zkvE;
@@ -73,10 +74,12 @@ class NetCDF_ids {
   nca *kqpar,  *xyqpar,   *avg_zkqpar;
 
   nca *time, *z_time, *nz_time;
+  nca *r_time; 
   
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;
   int zy, zx, nzy, nzx;
+  int state; 
   int theta, theta_x, bmag, bgrad, gbdrift, gbdrift0, periodic;
   int cvdrift, cvdrift0, gds2, gds21, gds22, grho, jacobian;
   int nstep, dt, restart, time_dim, nspec, char16_dim;
@@ -92,6 +95,7 @@ class NetCDF_ids {
   int density_kpar, phi_kpar;
   int eqfix, ikx_fixed, iky_fixed, prim, sec, tert;
   int z_file, zx_dim, zy_dim, ztime_dim;
+  int r_file, res_dim, rtime_dim; 
   int nz_file, nzx_dim, nzy_dim, nztime_dim;
   
   int v_z[1];            // dims for a scalar as a function of z

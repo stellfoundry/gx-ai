@@ -74,7 +74,7 @@ class Parameters {
 
   void init_species(specie* species);
 
-  int ncid, nczid, nzid;
+  int ncid, nczid, nzid, ncresid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
@@ -122,10 +122,11 @@ class Parameters {
   specie *species_h;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
-  bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks;
+  bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;
   bool vp, vp_closure;
   bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;
-
+  bool zero_shat;
+  
   bool write_avg_zvE, write_avg_zkvE, write_avg_zkden, write_avg_zkUpar;
   bool write_avg_zkTpar, write_avg_zkTperp, write_avg_zkqpar;
 
@@ -138,7 +139,7 @@ class Parameters {
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex, add_noise;
-  bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase;
+  bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase, ExBshear;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;
   bool debug, init_single, boundary_option_periodic, forcing_init, no_fields; 
   bool nlpm_test, new_nlpm, hammett_nlpm_interference, nlpm_abs_sgn, nlpm_hilbert;
@@ -151,7 +152,7 @@ class Parameters {
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
-  bool Reservoir, ResFakeData;
+  bool Reservoir, ResFakeData, ResWrite;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
     

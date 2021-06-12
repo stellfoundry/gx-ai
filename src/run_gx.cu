@@ -102,7 +102,10 @@ void run_gx(Parameters *pars, Grids* grids, Geometry* geo, Diagnostics* diagnost
 
   if (pars->save_for_restart) G->restart_write(&time);
 
-  if (pars->eqfix && ((pars->scheme_opt == Tmethod::k10) || (pars->scheme_opt == Tmethod::g3) || (pars->scheme_opt == Tmethod::k2))) {
+  if (pars->eqfix && (
+		      (pars->scheme_opt == Tmethod::k10) ||
+		      (pars->scheme_opt == Tmethod::g3) ||
+		      (pars->scheme_opt == Tmethod::k2))) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);

@@ -59,6 +59,7 @@ class Geometry {
   float bi;
   float aminor;
   float shat;
+  bool zero_shat_; 
   
   cuComplex * bmag_complex ;
   float * bgrad_temp ;

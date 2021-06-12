@@ -97,6 +97,16 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     cudaMalloc (&amom,   sizeof(cuComplex)*grids_->NxNycNz);
   } 
   
+  if (pars_->ResWrite) {
+    r_file = pars_->ncresid;
+    if (retval = nc_redef(r_file));
+    if (retval = nc_inq_dimid(r_file, "r",    &res_dim))   ERR(retval);
+    if (retval = nc_inq_dimid(r_file, "time", &rtime_dim)) ERR(retval);
+
+    //    v_ky[0] = res_dim;
+    //    if (retval = nc_def_var(r_file, "r",  NC_INT, 1, v_ky, &state)) ERR(retval);
+  }
+  
   if (pars_->write_xymom) {
     z_file = pars_->nczid;
     if (retval = nc_redef(z_file)); 
@@ -195,13 +205,22 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
+  if (pars_->ResWrite) {
+    r_time = new nca(0);
+    r_time -> write_v_time = true;
+
+    r_time -> file = r_file;
+    r_time -> time_dims[0] = rtime_dim;
+    if (retval = nc_def_var(r_file, "time", NC_DOUBLE, 1, r_time -> time_dims, &r_time -> time))   ERR(retval);
+  }
+  
   if (pars_->write_xymom) {
     z_time = new nca(0); 
     z_time -> write_v_time = true;
     
     z_time -> file = z_file;
     z_time -> time_dims[0] = ztime_dim;
-    if (retval = nc_def_var(z_file, "time", NC_DOUBLE, 1, z_time -> time_dims, &z_time -> time))    ERR(retval);
+    if (retval = nc_def_var(z_file, "time", NC_DOUBLE, 1, z_time -> time_dims, &z_time -> time))   ERR(retval);
   }
   
   time = new nca(0); 
@@ -1440,6 +1459,22 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     xyqpar = new nca(0);
   }    
 
+  if (pars_->ks && pars_->ResWrite) {
+    r_y = new nca(pars_->ResQ * grids_->NxNyNz * grids_->Nmoms);
+    r_y -> write_v_time = true;
+
+    r_y -> time_dims[0] = rtime_dim;
+    r_y -> time_dims[1] = res_dim; 
+
+    r_y -> file = r_file;
+    if (retval = nc_def_var(r_file, "r", NC_DOUBLE, 2, r_y -> time_dims, &r_y -> time))  ERR(retval);
+
+    r_y -> time_count[1] = pars_->ResQ * grids_->NxNyNz*grids_->Nmoms;
+
+  } else {
+    r_y = new nca(0);
+  }
+  
   ////////////////////////////
   //                        //
   //   g(y) for K-S eqn     // 
@@ -1515,6 +1550,10 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_enddef(z_file)) ERR(retval);
   }
 
+  if (pars_->ResWrite) {
+    if (retval = nc_enddef(r_file)) ERR(retval);
+  }
+  
   ///////////////////////////////////
   //                               //
   //        x                      //

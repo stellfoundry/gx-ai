@@ -23,32 +23,30 @@ int main(int argc, char* argv[])
   checkCuda(cudaSetDevice(devid));
   cudaDeviceSynchronize();
 
-  
-  /*
-  int N = 5000;
+  /*  
+  int N = 1000;
   int K = 3;
   
-  float radius = 0.6;
-  float *R;
-  float *y;
-  float *x;
-  float *A_in;
+  double radius = 0.6;
+  double *R;
+  double *y;
+  double *x;
+  double *A_in;
   int *A_col;
   
-  checkCuda(cudaMalloc((void**) &R,  sizeof(float)*N  ) ); 
-  checkCuda(cudaMalloc((void**) &y,  sizeof(float)*N  ) ); 
-  checkCuda(cudaMalloc((void**) &x,  sizeof(float)*N*K) ); 
+  checkCuda(cudaMalloc((void**) &R,  sizeof(double)*N  ) ); 
+  checkCuda(cudaMalloc((void**) &y,  sizeof(double)*N  ) ); 
+  checkCuda(cudaMalloc((void**) &x,  sizeof(double)*N*K) ); 
   
   // define the number of elements in a typical row of A to be ResDensity*N
   int nnz = K * N;
-  bool first = true;
-  float *A_h;
+  double *A_h;
   int * A_j;
-  cudaMallocHost((void**) &A_h, sizeof(float) * nnz);
-  cudaMallocHost((void**) &A_j, sizeof(int)   * nnz);
+  cudaMallocHost((void**) &A_h, sizeof(double) * nnz);
+  cudaMallocHost((void**) &A_j, sizeof(int)    * nnz);
   
   std::random_device rd;         std::mt19937 gen(rd()); 
-  std::uniform_real_distribution<> unif( 0., radius*2./((float) K));
+  std::uniform_real_distribution<double> unif( 0., radius*2./((double) K));
 
   std::vector<int> col(N);     std::iota(col.begin(), col.end(), 0);
   std::vector<int> cin(K);
@@ -62,63 +60,73 @@ int main(int argc, char* argv[])
     for (int k=0; k<K; k++) {
       A_j[k + K*n] = cin[k];
       A_h[k + K*n] = unif(gen);
-    }    
+      //      printf("A_j[%d] = %d \n",k+K*n, A_j[k+K*n]);
+      //      printf("A_h[%d] = %e \n",k+K*n, A_h[k+K*n]);      
+    }
+    //    printf("\n");
   }
  
-  checkCuda(cudaMalloc((void**) &A_in,  sizeof(float)*nnz) ); 
+  checkCuda(cudaMalloc((void**) &A_in,  sizeof(double)*nnz) ); 
   checkCuda(cudaMalloc((void**) &A_col, sizeof(int)  *nnz) ); 
 
-  CP_TO_GPU (A_in,  A_h, sizeof(float) * nnz);
-  CP_TO_GPU (A_col, A_j, sizeof(int)   * nnz);
+  CP_TO_GPU (A_in,  A_h, sizeof(double) * nnz);
+  CP_TO_GPU (A_col, A_j, sizeof(int)    * nnz);
 
+  for (int n=0; n<N; n++) {
+    A_h[n] = unif(gen);
+    //    printf("A_h[%d] = %e \n",n,A_h[n]);
+  }    
+  CP_TO_GPU (R, A_h, sizeof(double) * N);
+  
   cudaFreeHost(A_h);
   cudaFreeHost(A_j);
 
   Red *red;
   
-  red = new Block_Reduce(N); cudaDeviceSynchronize(); 
-  int nn0 = N;   int nt0 = min(N, 512);    int nb0 = 1 + (nn0-1)/nt0;
-  int kn0 = N*K; int kt0 = min(N*K, 512);  int kb0 = 1 + (kn0-1)/kt0;
-  float *x2norm;    cudaMalloc((void **) &x2norm, sizeof(float)   );
-  float *y2norm;    cudaMalloc((void **) &y2norm, sizeof(float)   );
-  float *xynorm;    cudaMalloc((void **) &xynorm, sizeof(float)   );
-  float *x2;        cudaMalloc((void **) &x2,     sizeof(float)*N );
-  float *y2;        cudaMalloc((void **) &y2,     sizeof(float)*N );
-  float *xy;        cudaMalloc((void **) &xy,     sizeof(float)*N );
+  red = new dBlock_Reduce(N); cudaDeviceSynchronize(); 
+  int nn0 = N;   int nt0 = min(nn0, 512);  int nb0 = 1 + (nn0-1)/nt0;
+  int kn0 = N*K; int kt0 = min(kn0, 512);  int kb0 = 1 + (kn0-1)/kt0;
+  double *x2norm;    cudaMalloc((void **) &x2norm, sizeof(double)   );
+  double *y2norm;    cudaMalloc((void **) &y2norm, sizeof(double)   );
+  double *xynorm;    cudaMalloc((void **) &xynorm, sizeof(double)   );
+  double *x2;        cudaMalloc((void **) &x2,     sizeof(double)*N );
+  double *y2;        cudaMalloc((void **) &y2,     sizeof(double)*N );
+  double *xy;        cudaMalloc((void **) &xy,     sizeof(double)*N );
 
-  setval <<< nb0, nt0 >>> (R, 1., N);
+  //  setval <<< nb0, nt0 >>> (R, 1., N);
   setval <<< nb0, nt0 >>> (y, 1., N);
   setval <<< kb0, kt0 >>> (x, 1., nnz);
   
-  float eval, eval_old, tol, ex, ey;
-  eval=0.;  eval_old = 10.;  tol = 1.e-7;  ex = 0.;  ey = 0.;
+  double eval, eval_old, tol, ex, ey;
+  eval=0.;  eval_old = 2.;  tol = 1.e-8;  ex = 0.;  ey = 0.;
   while (abs(eval-eval_old)/abs(eval_old) > tol) {    
     
     eval = eval_old;
     
-    myPrep <<< kb0, kt0 >>> (x, R, A_col, nnz, first); first = false;    
+    myPrep <<< kb0, kt0 >>> (x, R, A_col, nnz);
     mySpMV <<< nb0, nt0 >>> (x2, xy, y2, y, x, A_in, R, K, N);
     red->Sum(y2, y2norm);    red->Sum(x2, x2norm);    red->Sum(xy, xynorm);
     
     inv_scale_kernel <<< nb0, nt0 >>> (R, y, y2norm, N); 
-    CP_TO_CPU(&ex, x2norm, sizeof(float));
-    CP_TO_CPU(&ey, xynorm, sizeof(float));
+    CP_TO_CPU(&ex, x2norm, sizeof(double));
+    CP_TO_CPU(&ey, xynorm, sizeof(double));
     eval_old  = ey/ex;
     
-    //    printf("eval = %f \t",eval_old);
+    //    printf("eval = %e \t %e \t %e \n",eval_old,ey,ex);
+    printf("eval = %e \n",eval_old);
   }
   printf(ANSI_COLOR_GREEN);
-  printf("spectral radius is %f \n",eval_old);
+  printf("spectral radius is %e \n", eval_old);
   printf(ANSI_COLOR_RESET);
   
   // print the residual
-  myPrep <<< kb0, kt0 >>> (x, R, A_col, nnz, first);
+  myPrep <<< kb0, kt0 >>> (x, R, A_col, nnz);
   mySpMV <<< nb0, nt0 >>> (x2, xy, y2, y, x, A_in, R, K, N);  
   eig_residual <<< nb0, nt0 >>> (y, A_in, x, R, x2, eval_old, K, N);
-  red->Sum(x2, x2norm);  CP_TO_CPU(&ex, x2norm, sizeof(float));
-  printf(ANSI_COLOR_YELLOW);  printf("RMS residual = %f \n",sqrtf(ex));  printf(ANSI_COLOR_RESET);
+  red->Sum(x2, x2norm);  CP_TO_CPU(&ex, x2norm, sizeof(double));
+  printf(ANSI_COLOR_YELLOW);  printf("RMS residual = %e \n",sqrt(ex));  printf(ANSI_COLOR_RESET);
   
-  //  exit(1);
+  exit(1);
   */
 
   char *run_name;

@@ -461,12 +461,12 @@ __global__ void getr2(double* r2, double* r, int N)
   if (n<N) r2[n] = (n%2 == 0) ? r[n] : r[n]*r[n];
 }
 
-__global__ void getV(double* V, float* G, double* r2, int M, int N) 
+__global__ void getV(double* V, double* dG, double* r2, int M, int N) 
 {
   unsigned int m = get_id1();
   if (m<M) {
     unsigned int n = get_id2();
-    if (n<N) V[m + M*n] +=  (double) G[m] * r2[n];
+    if (n<N) V[m + M*n] +=  dG[m] * r2[n];
   }
 }
 
@@ -482,7 +482,7 @@ __global__ void setI(double* Id, int N)
   if (n<N) Id[n + N*n] = 1.;
 }
 
-__global__ void setA(double* A, float fac, int N)
+__global__ void setA(double* A, double fac, int N)
 {
   unsigned int n = get_id1();
   if (n<N) A[n] *= (double) fac;
@@ -508,14 +508,14 @@ __global__ void copyV(float* P, double* V, int N)
   if (n<N) P[n] = (float) V[n];
 }
 
-__global__ void WinG(double* res, double* Win, double* G, int Q, int M)
+__global__ void WinG(double* res, double* Win, double* dG, int Q, int M)
 {
   unsigned int q = get_id1();
   if (q<Q) {
     unsigned int m = get_id2();
     if (m<M) {
       unsigned int n = q + Q*m;
-      res[n] = Win[n] * G[m];
+      res[n] = Win[n] * dG[m];
     }
   }
 }
@@ -532,42 +532,48 @@ __global__ void update_state(double* res, double* A, double* x, int K, int N)
 __global__ void myPrep(double* x, double* r, int* col, int NK)
 {
   unsigned int i = get_id1();
-  if (i < NK) x[i] = r[ col[i] ];
+  if (i < NK) {
+    x[i] = r[ col[i] ];
+  }
 }
 
-__global__ void mySpMV(float* x2, float* xy, float* y2,
+__global__ void mySpMV(double* x2, double* xy, double* y2,
 		       double* y, double* x, double* A, double* r, int K, int N)
 {
   unsigned int n = get_id1();
   if (n < N) {
     y[n] = A[K*n] * x[K*n];
     for (int k=1; k<K; k++) y[n] += A[k + K*n] * x[k + K*n];
-    y2[n] = (float) y[n] * y[n];
-    xy[n] = (float) r[n] * y[n];
-    x2[n] = (float) r[n] * r[n];
-  }
+    y2[n] = y[n] * y[n];  //printf("y2[%d] = %e \n",n,y2[n]);
+    xy[n] = r[n] * y[n];  //printf("xy[%d] = %e \n",n,xy[n]);
+    x2[n] = r[n] * r[n];  //printf("x2[%d] = %e \n",n,x2[n]);
+  }  
 }
 
 __global__ void eig_residual(double* y, double* A, double* x, double* R,
-			     float* r2, float eval, int K, int N)
+			     double* r2, double eval, int K, int N)
 {
   unsigned int n = get_id1();
   if (n < N) {
     y[n] = A[K*n] * x[K*n];
     for (int k=1; k<K; k++) y[n] += A[k + K*n] * x[k + K*n];
+    //    printf("eval = %e \n", eval);
     double res = eval*R[n] - y[n];
-    r2[n] = (float) pow(res,2);
+    r2[n] = pow(res,2);
+    //    printf("r2[%d] = %e \n",n,r2[n]);
   }
 }
 
-__global__ void est_eval(float eval, float *fLf, float* f2) {eval = fLf[0]/f2[0];}
+__global__ void est_eval(double eval, double *fLf, double* f2) {eval = fLf[0]/f2[0];}
 
 
-__global__ void inv_scale_kernel(double* res, const double* f, const float* scalar, int N)
+__global__ void inv_scale_kernel(double* res, const double* f, const double* scalar, int N)
 {
   unsigned int n = get_id1();
-  double sinv = (double) 1./sqrt(scalar[0]);
-  if (n < N) res[n] = f[n]*sinv;
+  if (n < N) {
+    res[n] = f[n]/sqrt(scalar[0]);
+    //    printf("scalar = %e \t res[%d] = %e \n",scalar[0], n, res[n]);
+  }
 }
 
 __global__ void scale_kernel(cuComplex* res, double scalar)
@@ -695,7 +701,7 @@ __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* b
   if (idz < nz) bgrad[idz] = ( bgrad_temp[idz] / bmag[idz] ) * scale;
 }
 
-__global__ void init_kxs(float* kxs, float* kx)
+__global__ void init_kxs(float* kxs, float* kx, float* th0)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -713,9 +719,9 @@ __global__ void update_kxs(float* kxs, float* dth0)
   }
 }
 
-__global__ void update_theta0(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
-			      float* cv, float* cv0, float* gb, float* gb0, float* omegad, 
-			      float* gds2, float* gds21, float* gds22, float* bmagInv, float shat)
+__global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, float* kperp2,
+			   float* cv, float* cv0, float* gb, float* gb0, float* omegad, 
+			   float* gds2, float* gds21, float* gds22, float* bmagInv, float shat)
 {
 
   unsigned int idy = get_id1();
@@ -723,14 +729,12 @@ __global__ void update_theta0(float* kxs, float* ky, float* cv_d, float* gb_d, f
   unsigned int idz = get_id3();
 
   float shatInv = 1./shat; // Needs a test for zero
-
+  
   if (idy>0 && unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
-                      + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz]) 
-                      + pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) 
-                      * pow( bmagInv[idz], 2);
-
+    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz]) 		       
+			+ pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+    
     cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
     gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
     omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];

@@ -56,6 +56,7 @@ private:
   cuComplex    * vEk           ;
 
   float *gy_d, *gy_h;
+  double *ry_h;
   
   void print_omg (cuComplex *W);
   void get_rh    (Fields* f);

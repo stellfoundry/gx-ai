@@ -261,6 +261,91 @@ void Block_Reduce::Sum(float* A, float* B, int i)
 		    opAdd, typeCompute, Addwork, sizeAdd, 0);
 }
 
+//============ dBlock_Reduce (double precision) ==============
+dBlock_Reduce::dBlock_Reduce(int N) : N_(N)
+{
+  Addwork = nullptr;      sizeAdd = 0;
+  Maxwork = nullptr;      sizeMax = 0;
+
+  extent['a'] = N_;
+  extent['s'] = 1;
+  for (auto mode : Amode) extent_A.push_back(extent[mode]); // incoming tensor assuming data is contiguous
+  for (auto mode : Bmode) extent_B.push_back(extent[mode]); // target scalar output
+
+  cutensorInit(&handle);
+  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, dfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, dfloat, CUTENSOR_OP_ABS);
+}
+
+dBlock_Reduce::~dBlock_Reduce()
+{
+  if (Addwork) cudaFree(Addwork);
+  if (Maxwork) cudaFree(Maxwork);  
+}
+
+void dBlock_Reduce::Max(double* A2, double* B)
+{
+  // calculate reduction, B = max(|A2|), over first few indices
+
+  if (first_Max) {
+    
+    // get workspace (sizeMax) for a max (opMax) over |P2|
+    cutensorReductionGetWorkspace(&handle,
+				  A2, &dA, Amode.data(),
+				  B,  &dB, Bmode.data(),
+				  B,  &dB, Bmode.data(),
+				  opMax, typeCompute64, &sizeMax);
+    
+    if (cudaSuccess != cudaMalloc(&Maxwork, sizeMax)) {
+      Maxwork = nullptr;      sizeMax = 0;
+    }
+    first_Max = false;
+  }
+
+  cutensorReduction(&handle,
+		    (const void*) &alpha64, A2, &dA, Amode.data(),
+		    (const void*) &beta64,  B,  &dB, Bmode.data(),
+		    B,  &dB, Bmode.data(),
+		    opMax, typeCompute64, Maxwork, sizeMax, 0);
+}
+
+void dBlock_Reduce::Sum(double* A, double* B, int i)
+{
+  // calculate full reduction, B = sum A
+
+  if (first_Sum) {
+    
+    cutensorReductionGetWorkspace(&handle,
+				  A,  &dA, Amode.data(),
+				  B,  &dB, Bmode.data(),
+				  B,  &dB, Bmode.data(),
+				  opAdd, typeCompute64, &sizeAdd);
+    
+    if (cudaSuccess != cudaMalloc(&Addwork, sizeAdd)) {
+      Addwork = nullptr;      sizeAdd = 0;
+    }
+    first_Sum = false;
+  }
+
+  cutensorReduction(&handle,
+		    (const void*) &alpha64, A, &dA, Amode.data(),
+		    (const void*) &beta64,  B, &dB, Bmode.data(),
+		    B, &dB, Bmode.data(),
+		    opAdd, typeCompute64, Addwork, sizeAdd, 0);
+  /*
+  double * vec;
+  cudaMallocHost((void **) &vec, sizeof(double)*N_);
+  CP_TO_CPU(vec, A, sizeof(double)*N_);
+  for (int n=0; n<N_; n++) {
+    printf("A[%d] = %e \n",n,vec[n]);
+  }
+
+  CP_TO_CPU(vec, B, sizeof(double));
+  printf("B = %e \n",vec[0]);
+  cudaFreeHost(vec);
+  */
+}
+
 //============ Species_Reduce ==============
 Species_Reduce::Species_Reduce(int N, int nspecies) : N_(N)
 {
@@ -323,12 +408,12 @@ DenseM::DenseM(int N, int M) : N_(N), M_(M)
   for (auto mode : Xmode) extent_X.push_back(extent[mode]); 
 
   cutensorInit(&handle);
+  cutensorInitTensorDescriptor(&handle, &dY, nYmode, extent_Y.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
   cutensorInitTensorDescriptor(&handle, &dM, nMmode, extent_M.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
   cutensorInitTensorDescriptor(&handle, &dV, nVmode, extent_V.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
-  cutensorInitTensorDescriptor(&handle, &dY, nYmode, extent_Y.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
-  cutensorInitTensorDescriptor(&handle, &dZ, nZmode, extent_Z.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
-  cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
   cutensorInitTensorDescriptor(&handle, &dX, nXmode, extent_X.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dZ, nZmode, extent_Z.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
 
   cutensorInitContractionFind(&handle, &find, CUTENSOR_ALGO_DEFAULT);
 }
@@ -375,9 +460,9 @@ void DenseM::MatVec(double* Res, double* Mat, double* Vec)
   if (first_MV) {
     
     uint32_t alignVec, alignMat, alignRes;
-    cutensorGetAlignmentRequirement(&handle, Res, &dY, &alignRes);
     cutensorGetAlignmentRequirement(&handle, Mat, &dM, &alignMat);
     cutensorGetAlignmentRequirement(&handle, Vec, &dV, &alignVec);
+    cutensorGetAlignmentRequirement(&handle, Res, &dY, &alignRes);
 
     cutensorInitContractionDescriptor (&handle, &dMV, 
 				       &dM, Mmode.data(), alignMat,
