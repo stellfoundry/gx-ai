@@ -156,6 +156,55 @@ The length of simulated time and the timestep are set in the **Time** group:
      - **Not yet implemented.** Write a restart file every nsave timesteps. 
      - **2000000**
 
+The properties for each kinetic species are specified in the **species** group.
+For the most part, there are mostly no default values provided:
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **species**
+     - z
+     - The charge
+     -
+   * - **species**
+     - mass
+     - The mass
+     -
+   * - **species**
+     - dens
+     - The density
+     -
+   * - **species**
+     - temp
+     - The temperature
+     - **1.0**
+   * - **species**
+     - tprim
+     - L/LT
+     -
+   * - **species**
+     - fprim
+     - L/Ln
+     - 
+   * - **species**
+     - uprim
+     - L/Lu
+     - **0.0**
+   * - **species**
+     - vnewk
+     - The collision frequency
+     - **0.0**
+   * - **species**
+     - type
+     - The type of species, such as ion or electron
+     - **"ion"**
+    
 The **Controls** group contains switches and variables that determine both the physics model
 and various numerical parameters.
 
@@ -401,5 +450,413 @@ Diagnostic information is written in NetCDF format, to a file that uses the inpu
      - Write the non-zonal component of the guiding center parallel-parallel heat flux as a function of *x* and time.
      - **false**
 
+The **Expert** group is for expert users: 
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Expert**
+     - i_share
+     - An integer related to the shared memory block used for the inner loop of the linear solver.
+     - **8**
+   * - **Expert**
+     - nreal 
+     - Enforce the reality condition every nreal timesteps. 
+     - **1**
+   * - **Expert**
+     - init_single
+     - Only initialize a single Fourier mode if true
+     - **false**
+   * - **Expert**
+     - ikx_single
+     - Index of the kx mode to be initialized if init_single is true
+     - **0**
+   * - **Expert**
+     - iky_single
+     - Index of the ky mode to be initialized if init_single is true
+     - **1**
+   * - **Expert**
+     - eqfix
+     - Do not evolve some particular Fourier harmonic
+     - **false**
+   * - **Expert**
+     - ikx_fixed
+     - Index of the kx mode to be fixed in time if eqfix is true
+     - **-1**
+   * - **Expert**
+     - iky_fixed
+     - Index of the ky mode to be fixed in time if eqfix is true
+     - **-1**
+   * - **Expert**
+     - secondary
+     - Set things up for a secondary instability calculation
+     - **false**
+   * - **Expert**
+     - phi_ext
+     - Value of phi to use for a Rosenbluth-Hinton test
+     - **0.0**
+   * - **Expert**
+     - source
+     - Used to specify various kinds of tests
+     - **"default"**
+   * - **Expert**
+     - tp_t0
+     - The time at which to start changing tprim
+     - **-1.0**
+   * - **Expert**
+     - tp_tf
+     - The time at which to stop changing tprim
+     - **-1.0**
+   * - **Expert**
+     - tprim0
+     - The value of tprim to start with 
+     - **-1.0**
+   * - **Expert**
+     - tprimf
+     - The value of tprim to end with 
+     - **-1.0**
+       
+The size and resolution of the simulation domain can be changed in
+certain ways in a restarted run. These are new options that have not
+been used much. The group is **Resize**:
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Resize**
+     - domain_change
+     - Allow the functionality of this group to be used if domain_change is true
+     - **false**
+   * - **Resize**
+     - x0_mult
+     - Multiply Lx by x0_mult. Must be an integer >= 1.
+     - **1**
+   * - **Resize**
+     - y0_mult
+     - Multiply Ly by y0_mult. Must be an integer >= 1.
+     - **1**
+   * - **Resize**
+     - z0_mult
+     - Multiply the parallel box length by z0_mult. Must be an integer >= 1. Only valid for unsheared slab for now.
+     - **1**
+   * - **Resize**
+     - nx_mult
+     - Multiply the number of grid points in the x-direction by nx_mult. Must be an integer >= 1. 
+     - **1**
+   * - **Resize**
+     - ny_mult
+     - Multiply the number of grid points in the y-direction by ny_mult. Must be an integer >= 1. 
+     - **1**
+   * - **Resize**
+     - ntheta_mult
+     - Multiply the number of grid points in the z-direction by ntheta_mult. Must be an integer >= 1. 
+     - **1**
+   * - **Resize**
+     - nm_add
+     - Add nm_add Hermite moments. Must be integer, can be positive, negative or zero. 
+     - **0**
+   * - **Resize**
+     - nl_add
+     - Add nl_add Laguerre moments. Must be integer, can be positive, negative or zero. 
+     - **0**
+   * - **Resize**
+     - ns_add
+     - Add ns_add species.  Must be integer >= 0.
+     - **0**
+
+Add forcing with the **Forcing** group. Not generally implemented. 
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Forcing**
+     - forcing_type
+     - Picks among the forcing options
+     - **"Kz"**
+   * - **Forcing**
+     - stir_field
+     - Determines which moment of the GK equation is forced
+     - **"density"**
+   * - **Forcing**
+     - forcing_amp
+     - Amplitude of the forcing
+     - **1.0**
+   * - **Forcing**
+     - forcing_index
+     - Index of the forcing
+     - **1**
+   * - **Forcing**
+     - no_fields
+     - Turn off the field terms in the GK equation if this is true
+     - **false**
+
+One component of the plasma can be assumed to have a Boltzmann response. This is controlled with
+the **Boltzmann** group:
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Boltzmann**
+     - add_Boltzmann_species
+     - Include a species with a Boltzmann response if true
+     - **false**
+   * - **Boltzmann**
+     - Boltzmann_type
+     - Choose either "electrons" or "ions"
+     - **"electrons"**
+   * - **Boltzmann**
+     - tau_fac
+     - Set the value of tau for the Boltzmann species.
+       Actual default value is -1.0, but this is for obscure reasons. 
+       Use 1.0 as the default value and always choose a positive value. 
+     - **-1.0**
+       
+The geometry of the simulation domain is controlled through the **Geometry** group:
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Geometry**
+     - igeo 
+     - Integer. To get an analytic form of the equilibrium, use igeo = 0.
+       To read the geometric information from a file, use igeo = 1. No other options are implemented for now. 
+     - **0**
+   * - **Geometry**
+     - geofilename
+     - If igeo = 1, the geometric information is read from geofilename. 
+     - **"eik.out"**
+   * - **Geometry**
+     - slab
+     - If true, and if igeo = 0, the geometry is that of a slab.
+     - **false**
+   * - **Geometry**
+     - const_curv
+     - If true, and if igeo = 0, the curvature is assumed to a constant, as in a Z-pinch. 
+     - **false**
+   * - **Geometry**
+     - drhodpsi
+     - Not used.
+     - **1.0**
+   * - **Geometry**
+     - kxfac
+     - Not used.
+     - **1.0**
+   * - **Geometry**
+     - Rmaj
+     - If igeo = 0, Rmaj is the ratio of the major radius to the equilibrium-scale reference length.
+       Typically one should use Rmaj = 1.0 
+     - **1.0**
+   * - **Geometry**
+     - shift
+     - If igeo = 0, shift should normally be a non-negative number. It characterizes the
+       Shafranov shift and is sometimes called alpha.
+     - **0.0**
+   * - **Geometry**
+     - eps
+     - This is the inverse aspect ratio of the surface in question. Used if igeo = 0.
+     - **0.167**
+   * - **Geometry**
+     - qsf
+     - This is the safety factor. Used if igeo = 0.
+     - **1.4**
+   * - **Geometry**
+     - shat
+     - This is the global magnetic shear. Used if igeo = 0.
+     - **0.8**
+   * - **Geometry**
+     - beta
+     - This is the reference beta value. Typically it would be approximately
+       half of the total beta. If beta < 0., it is ignored. Only used for electromagnetic
+       calculations. Not yet implemented. 
+     - **-1.0**
+   * - **Geometry**
+     - zero_shat
+     - If shat = 0 and igeo = 0, set zero_shat = true and choose shat itself to be positive and
+       smaller than 1.0e-6
+     - **false**
+       
+The **Wspectra** determines controls writes of various slices of the free energy.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Wspectra**
+     - species
+     - W as a function of species
+     - **false**
+   * - **Wspectra**
+     - kx
+     - W as a function of kx
+     - **false**
+   * - **Wspectra**
+     - ky
+     - W as a function of ky
+     - **false**
+   * - **Wspectra**
+     - kz
+     - W as a function of kz
+     - **false**
+   * - **Wspectra**
+     - z
+     - W as a function of z
+     - **false**
+   * - **Wspectra**
+     - laguerre
+     - W as a function of the Laguerre index
+     - **false**
+   * - **Wspectra**
+     - hermite
+     - W as a function of the Hermite index
+     - **false**
+   * - **Wspectra**
+     - hermite_laguerre
+     - W as a function of both Hermite and Laguerre indices
+     - **false**
+   * - **Wspectra**
+     - kperp
+     - W as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - **Wspectra**
+     - kxky
+     - W as a function of the magnitude of kx and ky.
+     - **false**
+
+The **Pspectra** determines controls writes of various slices of (1-Gamma_0) Phi**2
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Pspectra**
+     - species
+     - P as a function of species
+     - **false**
+   * - **Pspectra**
+     - kx
+     - P as a function of kx
+     - **false**
+   * - **Pspectra**
+     - ky
+     - P as a function of ky
+     - **false**
+   * - **Pspectra**
+     - kz
+     - P as a function of kz
+     - **false**
+   * - **Pspectra**
+     - z
+     - P as a function of z
+     - **false**
+   * - **Pspectra**
+     - kperp
+     - P as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - **Pspectra**
+     - kxky
+     - P as a function of the magnitude of kx and ky.
+     - **false**
+
+The **Reservoir** group controls the reservoir computing toolset:
+       
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - **Reservoir**
+     - Use_reservoir
+     - If true, train a predictor for the dynamics. Presently only set up for the Kuramoto-Sivashinsky equation.
+     - **false**
+   * - **Reservoir**
+     - Q
+     - For each real element of the quantity to be predicted, use Q reservoir elements. 
+     - **20** 
+   * - **Reservoir**
+     - training_steps
+     - Sets the number of training steps to use. If zero, defaults to nstep/nwrite.
+     - **0**
+   * - **Reservoir**
+     - prediction_steps
+     - Sets the number of prediction timesteps.
+     - **200**
+   * - **Reservoir**
+     - training_delta
+     - Sets the reservoir timestep. If training_delta = zero, defaults to nwrite
+     - **0**
+   * - **Reservoir**
+     - spectral_radius
+     - Spectral radius of A
+     - **0.6**
+   * - **Reservoir**
+     - regularization
+     - beta parameter in the Tikhonov regularization used to calculated the weights for the output layer
+     - **1.0e-4**
+   * - **Reservoir**
+     - input_sigma
+     - Each value of the signal is multiplied by input_sigma.
+       Useful for getting more dynamic range out of the tanh function. 
+     - **0.5**
+   * - **Reservoir**
+     - noise
+     - Amplitude of random noise added to the signal in the training phase.
+       Default value is negative, which means no noise will be added. 
+     - **-1.0**
+   * - **Reservoir**
+     - fake_data
+     - Train on manufactured data, such as a traveling wave. 
+     - **false**
+   * - **Reservoir**
+     - write
+     - If true, write out the reservoir data, including the weights in the output layer,
+       the current values in the hidden layer, the matrix A, and the input layer. Not yet implemented.
+     - **false**
+       
+       
+       
 Auxiliary files
 ---------------
