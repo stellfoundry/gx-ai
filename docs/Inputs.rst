@@ -817,6 +817,10 @@ The **Reservoir** group controls the reservoir computing toolset:
      - For each real element of the quantity to be predicted, use Q reservoir elements. 
      - **20** 
    * - **Reservoir**
+     - K
+     - The number of elements for each row of A. 
+     - **3** 
+   * - **Reservoir**
      - training_steps
      - Sets the number of training steps to use. If zero, defaults to nstep/nwrite.
      - **0**
