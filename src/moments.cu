@@ -363,6 +363,10 @@ void MomentsG::mask(void) {maskG GALL (this->G_lm);}
 void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G_lm, J0phi);}
 void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G_lm, J0phi);}
 
+void MomentsG::rescale(float * phi_max) {
+  rescale_kernel GALL (G_lm, phi_max, grids_->Nspecies*grids_->Nm*grids_->Nl);
+}
+
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2) {
   bool neqfix = !pars_->eqfix;

@@ -24,13 +24,14 @@ private:
   int ndiag; 
   int ikx_local, iky_local, iz_local;
   dim3 dG_spectra, dB_spectra, dG_all, dB_all, dbp, dgp; //, dG_scale, dB_scale;
+  dim3 dGk, dBk;
   bool checkstop();
  
   float Dks; 
   float fluxDenom; float * flux_fac; 
   float  volDenom; float * vol_fac ;
   float * kvol_fac;
- 
+  
   cuComplex valphi;
 
   Parameters   * pars_         ;
@@ -54,6 +55,7 @@ private:
   cuComplex    * df            ;
   cuComplex    * amom_d        ;
   cuComplex    * vEk           ;
+  float        * phi_max       ; 
 
   float *gy_d, *gy_h;
   double *ry_h;

@@ -2,7 +2,7 @@
  debug = false
  scheme = "sspx3"
 
- ntheta = 1
+ ntheta = 8
  nperiod = 1
  ny = 4
  nx = 4

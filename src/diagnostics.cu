@@ -5,6 +5,7 @@
 #define loop_R <<< dG_spectra, dB_spectra >>>
 #define GALL <<< dG_all, dB_all >>>
 #define GFLA <<< 1 + (grids_->Nx*grids_->Nyc - 1)/grids_->Nakx, grids_->Nakx >>> 
+#define KXKY <<< dGk, dBk >>>
 #define loop_y <<< dgp, dbp >>> 
 
 Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
@@ -21,17 +22,19 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   int nY  = grids_->Nyc;
   int nYk = grids_->Naky;
   int nZ  = grids_->Nz;
-  int nR  = nX  * nY  * nZ;
+  int nR  = nX  * nY  * nZ; // nY is *not* the number of grid points in the y-direction. 
   int nK  = nXk * nYk * nZ;
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
   G2          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
-  vEk         = nullptr;
+  vEk         = nullptr;  phi_max     = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
+
+  if (pars_->fixed_amplitude) cudaMalloc (&phi_max, sizeof(float) * nX * nY);
 
   if (pars_->Reservoir) rc = new Reservoir(pars_, grids_->NxNyNz*grids_->Nmoms);  
   
@@ -118,6 +121,15 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   dB_all = dim3(nt1, nt2, 1);
   dG_all = dim3(nb1, nb2, nslm);
   
+  nt1 = min(32, grids_->Nyc);
+  nb1 = 1 + (grids_->Nyc-1)/nt1;
+
+  nt2 = min(32, grids_->Nx);
+  nb2 = 1 + (grids_->Nx-1)/nt2;
+
+  dBk = dim3(nt1, nt2, 1);
+  dGk = dim3(nb1, nb2, 1);
+  
   if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
 
   nt1 = min(grids_->Ny, 512);
@@ -159,7 +171,8 @@ Diagnostics::~Diagnostics()
   if (amom_d)     cudaFree      ( amom_d    );
 
   if (vEk)        cudaFree      ( vEk       );
-
+  if (phi_max)    cudaFree      ( phi_max   );
+  
   if (vol_fac)    cudaFreeHost  ( vol_fac   );
   if (flux_fac)   cudaFreeHost  ( flux_fac  );
   if (kvol_fac)   cudaFreeHost  ( kvol_fac  );
@@ -347,6 +360,12 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
       id -> write_ks_data( id -> g_y, gy_d);
     }
     rc->add_data(gy_d);
+  }
+
+  if (pars_->fixed_amplitude && (counter % nw == nw-2)) {
+    maxPhi KXKY (phi_max, fields->phi);
+    G->rescale(phi_max);
+    fields->rescale(phi_max);
   }
   
   // check to see if we should stop simulation

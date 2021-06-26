@@ -171,7 +171,9 @@ __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, co
 __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac);
 
 __global__ void get_pzt (float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar);
-  
+__global__ void rescale_kernel(cuComplex* f, float* phi_max, int N);
+__global__ void maxPhi(float* phi_max, const cuComplex *phi);
+
 __global__ void Wphi_scale(float* p2, float alpha);
 
 __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJac);

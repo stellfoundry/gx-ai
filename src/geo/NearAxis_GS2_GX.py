@@ -32,8 +32,8 @@ phiEDGE = 0.5 # toroidal flux at the boundary divided by 2*pi
 ## Resolution
 Nphi     = 250 # resolution along the axis
 nlambda  = 10 # GS2 quantity: resolution in the pitch-angle variable
-tgridmax = 2*pi # maximum (and -1*minumum) of the field line coordinate
-ntgrid   = 100 # resolution along the field line  
+tgridmax = pi # maximum (and -1*minumum) of the field line coordinate
+ntgrid   = 129 # resolution along the field line  
 
 ## Geometry and normalizations
 alpha = 0.0 # field line label
@@ -43,7 +43,7 @@ normalizedtorFlux = 0.01 # normalization for the toroidal flux
 
 ## Output files
 gs2gridNA = "gs2input.out"
-gxgridNA  = "gxinput.out"
+gxgridNA  = "gx_near_axis.out"
 
 #################################
 ############## RUN ##############

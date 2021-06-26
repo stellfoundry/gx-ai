@@ -44,6 +44,8 @@ class MomentsG {
   void getH(cuComplex* J0phi);
   void getG(cuComplex* J0phi);
 
+  void rescale(float * phi_max);  
+  
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3);
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2, double c3, MomentsG* G3,

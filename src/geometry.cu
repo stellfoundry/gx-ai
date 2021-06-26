@@ -126,8 +126,10 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   }
   float shift = pars->shift;
  
+  DEBUGPRINT("\n\n Using s-alpha geometry: \n\n");
   for(int k=0; k<Nz; k++) {
-    z_h[k] = 2.*M_PI *pars->Zp *(k-Nz/2)/Nz;         
+    z_h[k] = 2.*M_PI *pars->Zp *(k-Nz/2)/Nz;
+    DEBUGPRINT("theta[%d] = %f \n",k,z_h[k]);
     if(pars->local_limit) {z_h[k] = 0.;} // outboard-midplane
     theta = z_h[k];
     

@@ -104,6 +104,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
+  fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
   write_omega       = toml::find_or <bool> (tnml, "omega",       false );
   write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  ); if (ks) write_free_energy = false;
   write_fluxes      = toml::find_or <bool> (tnml, "fluxes",      false );
@@ -278,6 +279,10 @@ void Parameters::get_nml_vars(char* filename)
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   if (random_init) kpar_init = 0.0; 
   
+  if (write_omega && fixed_amplitude) {
+    if (nonlinear_mode || nwrite < 3) fixed_amplitude = false;
+  }
+
   tnml = nml;
   if (nml.contains("Forcing")) tnml = toml::find (nml, "Forcing");  
 
@@ -680,6 +685,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_rst, "restart_to_file_dum",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_rst, ivar, "value", restart_to_file.size(), restart_to_file.c_str())) ERR(retval);
 
+  if (retval = nc_def_var (nc_diag, "fixed_amp",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "omega",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "fluxes",          NC_INT,   0, NULL, &ivar)) ERR(retval);
 
@@ -931,14 +937,15 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (nc_diag, "avg_zkTperp",  write_avg_zkTperp );
   putbool  (nc_diag, "avg_zkqpar",   write_avg_zkqpar  );
 
-  putbool  (nc_diag, "omega",        write_omega        );
-  putbool  (nc_diag, "free_energy",  write_free_energy  );
-  putbool  (nc_diag, "fluxes",       write_fluxes       );
-  putbool  (nc_diag, "moms",         write_moms         );
-  putbool  (nc_diag, "rh",           write_rh           );
-  putbool  (nc_diag, "pzt",          write_pzt          );
-  putbool  (nc_diag, "phi",          write_phi          );
-  putbool  (nc_diag, "phi_kpar",     write_phi_kpar     );
+  putbool  (nc_diag, "omega",       write_omega        );
+  putbool  (nc_diag, "fixed_amp",   fixed_amplitude    );
+  putbool  (nc_diag, "free_energy", write_free_energy  );
+  putbool  (nc_diag, "fluxes",      write_fluxes       );
+  putbool  (nc_diag, "moms",        write_moms         );
+  putbool  (nc_diag, "rh",          write_rh           );
+  putbool  (nc_diag, "pzt",         write_pzt          );
+  putbool  (nc_diag, "phi",         write_phi          );
+  putbool  (nc_diag, "phi_kpar",    write_phi_kpar     );
 
   putint   (nc_expert, "nreal",   nreal);
   putint   (nc_expert, "i_share", i_share);

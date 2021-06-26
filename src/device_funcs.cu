@@ -1202,7 +1202,7 @@ __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g,
   }
 }
 
-__global__ void get_pzt (float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar)
+__global__ void get_pzt(float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar)
 {
   float Psum = 0.;
   float Zsum = 0.;
@@ -1251,6 +1251,44 @@ __global__ void get_pzt (float* primary, float* secondary, float* tertiary, cons
       if (idy==0) {
 	Zsum = P2.x;   atomicAdd(secondary,Zsum);       // Z2
       }
+    }
+  }
+}
+
+__global__ void rescale_kernel(cuComplex* f, float* phi_max, int N)
+{
+  unsigned int idxy  = get_id1();
+  unsigned int idz   = get_id2();
+  unsigned int idlms = get_id3();
+  
+  if (idxy < nyc*nx && idz < nz && idlms < N) {
+    float fac = 1./phi_max[idxy];
+    unsigned int ig = idxy + nyc*nx*(idz + nz*idlms);
+    f[ig] = fac * f[ig];
+  }
+}
+
+// the following is only useful for linear runs
+__global__ void maxPhi(float* phi_max, const cuComplex *phi)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  cuComplex tmp;
+  float pmax = 0.0;
+  if (idy < nyc && idx < nx) {
+    if (unmasked(idx, idy)) {
+      if (idy == 0) {
+	phi_max[idy + nyc*idx] = 1.0;
+	return;
+      }
+      for (int idz = 0; idz<nz; idz++) {
+	unsigned int idxyz = idy + nyc*(idx + nx*idz);
+	tmp = cuConjf( phi[idxyz] ) * phi[idxyz];
+	pmax = max(pmax, tmp.x);
+      }
+      phi_max[idy + nyc*idx] = sqrtf(pmax);
+    } else {
+      phi_max[idy + nyc*idx] = 1.0; // avoid dumb problems with masked modes
     }
   }
 }
