@@ -294,17 +294,19 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 	getline( ss, element, ' '); z_h[idz]       = stof(element);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
-
-      
+     
       DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
       DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
       
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
 	getline (myfile, datline); stringstream ss(datline);
-	getline( ss, element, ' '); cvdrift_h[idz] = stof(element); cvdrift_h[idz] *= 0.25;
+	getline( ss, element, ' '); cvdrift_h[idz] = stof(element);
+	cvdrift_h[idz] *= 0.25;
         getline( ss, element, ' '); gds2_h[idz]    = stof(element);
-	getline( ss, element, ' '); bmag_h[idz]    = stof(element); bmagInv_h[idz] = 1./bmag_h[idz]; jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
+	getline( ss, element, ' '); bmag_h[idz]    = stof(element);
+	bmagInv_h[idz]  = 1./bmag_h[idz];
+	jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
