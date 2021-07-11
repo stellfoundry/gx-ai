@@ -85,7 +85,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
     setval <<< nb, nt >>> (omg_d, zero, nn);
   }  
 
-  if (id -> kvE -> write_v_time || id -> xykvE -> write_v_time) {
+  if (id -> kxvEy -> write_v_time || id -> xykxvEy -> write_v_time) {
     cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
   }
   
@@ -318,8 +318,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     */
 
     // Plot ky=kz=0 components of various quantities as functions of x
-    id -> write_moment ( id -> vE,      fields->phi,    vol_fac);
-    id -> write_moment ( id -> kvE,     fields->phi,    vol_fac);
+    id -> write_moment ( id -> vEy,     fields->phi,    vol_fac);
+    id -> write_moment ( id -> kxvEy,   fields->phi,    vol_fac);
     id -> write_moment ( id -> kden,    G->dens_ptr[0], vol_fac);
     id -> write_moment ( id -> kUpar,   G->upar_ptr[0], vol_fac);
     id -> write_moment ( id -> kTpar,   G->tpar_ptr[0], vol_fac);
@@ -328,7 +328,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
     // Plot some zonal scalars
     id -> write_moment ( id -> avg_zvE,     fields->phi,    vol_fac);
-    id -> write_moment ( id -> avg_zkvE,    fields->phi,    vol_fac);
+    id -> write_moment ( id -> avg_zkxvEy,  fields->phi,    vol_fac);
     id -> write_moment ( id -> avg_zkden,   G->dens_ptr[0], vol_fac);
     id -> write_moment ( id -> avg_zkUpar,  G->upar_ptr[0], vol_fac);
     id -> write_moment ( id -> avg_zkTpar,  G->tpar_ptr[0], vol_fac);
@@ -336,8 +336,8 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
     id -> write_moment ( id -> avg_zkqpar,  G->qpar_ptr[0], vol_fac);
 
     // Plot the non-zonal components as functions of (x, y)
-    id -> write_moment ( id -> xykvE,   fields->phi,    vol_fac);
-    id -> write_moment ( id -> xyvE,    fields->phi,    vol_fac);
+    id -> write_moment ( id -> xykxvEy, fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyvEy,   fields->phi,    vol_fac);
     id -> write_moment ( id -> xyden,   G->dens_ptr[0], vol_fac);
     id -> write_moment ( id -> xyUpar,  G->upar_ptr[0], vol_fac);
     id -> write_moment ( id -> xyTpar,  G->tpar_ptr[0], vol_fac);

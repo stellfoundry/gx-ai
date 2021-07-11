@@ -1015,21 +1015,21 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->write_vE) {
-    vE = new nca(grids_->NxNyNz, grids_->Nx);
-    vE -> write_v_time = true;
+  if (pars_->write_vEy) {
+    vEy = new nca(grids_->NxNyNz, grids_->Nx);
+    vEy -> write_v_time = true;
 
-    vE -> time_dims[0] = time_dim;
-    vE -> time_dims[1] = x_dim;
+    vEy -> time_dims[0] = time_dim;
+    vEy -> time_dims[1] = x_dim;
     
-    vE -> file = nc_zonal;  
-    if (retval = nc_def_var(nc_zonal, "vE_xt", NC_FLOAT, 2, vE->time_dims, &vE->time))  ERR(retval);
+    vEy -> file = nc_zonal;  
+    if (retval = nc_def_var(nc_zonal, "vEy_xt", NC_FLOAT, 2, vEy->time_dims, &vEy->time))  ERR(retval);
     
-    vE -> time_count[1] = grids_->Nx;
-    vE -> xdata = true;
-    vE -> dx = true;
+    vEy -> time_count[1] = grids_->Nx;
+    vEy -> xdata = true;
+    vEy -> dx = true;
   } else {
-    vE = new nca(0);
+    vEy = new nca(0);
   }
 
   if (pars_->write_avg_zvE) {
@@ -1047,19 +1047,19 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     avg_zvE = new nca(0); 
   }
 
-  if (pars_->write_avg_zkvE) {
-    avg_zkvE = new nca(grids_->NxNyNz, grids_->Nx); 
-    avg_zkvE -> write_v_time = true;
+  if (pars_->write_avg_zkxvEy) {
+    avg_zkxvEy = new nca(grids_->NxNyNz, grids_->Nx); 
+    avg_zkxvEy -> write_v_time = true;
 
-    avg_zkvE -> time_dims[0] = time_dim;
+    avg_zkxvEy -> time_dims[0] = time_dim;
     
-    avg_zkvE -> file = nc_flux;  
-    if (retval = nc_def_var(nc_flux, "avg_zkvE_t", NC_FLOAT, 1,
-			    avg_zkvE->time_dims, &avg_zkvE->time))  ERR(retval);
-    avg_zkvE -> scalar = true;
-    avg_zkvE -> d2x = true;
+    avg_zkxvEy -> file = nc_flux;  
+    if (retval = nc_def_var(nc_flux, "avg_zkxvEy_t", NC_FLOAT, 1,
+			    avg_zkxvEy->time_dims, &avg_zkxvEy->time))  ERR(retval);
+    avg_zkxvEy -> scalar = true;
+    avg_zkxvEy -> d2x = true;
   } else {
-    avg_zkvE = new nca(0); 
+    avg_zkxvEy = new nca(0); 
   }
 
   if (pars_->write_avg_zkden) {
@@ -1145,21 +1145,21 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->write_kvE) {
-    kvE = new nca(grids_->NxNyNz, grids_->Nx);    
-    kvE -> write_v_time = true;
+  if (pars_->write_kxvEy) {
+    kxvEy = new nca(grids_->NxNyNz, grids_->Nx);    
+    kxvEy -> write_v_time = true;
 
-    kvE -> time_dims[0] = time_dim;
-    kvE -> time_dims[1] = x_dim;
+    kxvEy -> time_dims[0] = time_dim;
+    kxvEy -> time_dims[1] = x_dim;
     
-    kvE -> file = nc_zonal;  
-    if (retval = nc_def_var(nc_zonal, "kvE_xt", NC_FLOAT, 2, kvE -> time_dims, &kvE -> time))  ERR(retval);
+    kxvEy -> file = nc_zonal;  
+    if (retval = nc_def_var(nc_zonal, "kxvEy_xt", NC_FLOAT, 2, kxvEy -> time_dims, &kxvEy -> time))  ERR(retval);
     
-    kvE -> time_count[1] = grids_->Nx;
-    kvE -> xdata = true;
-    kvE -> d2x = true;
+    kxvEy -> time_count[1] = grids_->Nx;
+    kxvEy -> xdata = true;
+    kxvEy -> d2x = true;
   } else {
-    kvE = new nca(0);    
+    kxvEy = new nca(0);    
   }
   
   ////////////////////////////
@@ -1285,50 +1285,50 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->write_xyvE) {
-    xyvE = new nca(grids_->NxNyNz, grids_->NxNy);
-    xyvE->write_v_time = true;
+  if (pars_->write_xyvEy) {
+    xyvEy = new nca(grids_->NxNyNz, grids_->NxNy);
+    xyvEy->write_v_time = true;
   
-    xyvE -> time_dims[0] = ztime_dim;
-    xyvE -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
-    xyvE -> time_dims[2] = zx_dim;
+    xyvEy -> time_dims[0] = ztime_dim;
+    xyvEy -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xyvEy -> time_dims[2] = zx_dim;
     
-    xyvE -> file = z_file;
-    if (retval = nc_def_var(z_file, "vE_xyt", NC_FLOAT, 3, xyvE -> time_dims, &xyvE->time)) ERR(retval);
+    xyvEy -> file = z_file;
+    if (retval = nc_def_var(z_file, "vEy_xyt", NC_FLOAT, 3, xyvEy -> time_dims, &xyvEy->time)) ERR(retval);
     
-    xyvE -> time_count[1] = grids_->Ny;      
-    xyvE -> time_count[2] = grids_->Nx;          
+    xyvEy -> time_count[1] = grids_->Ny;      
+    xyvEy -> time_count[2] = grids_->Nx;          
 
-    xyvE -> xydata = true;
-    xyvE -> dx = true;
+    xyvEy -> xydata = true;
+    xyvEy -> dx = true;
   } else {
-    xyvE = new nca(0);
+    xyvEy = new nca(0);
   }
   
   ////////////////////////////
   // Non-zonal              //
-  // <d/dx v_ExB> (x, y)    // 
+  // <d/dx v_ExB,y> (x, y)  // 
   //                        //
   ////////////////////////////
 
-  if (pars_ -> write_xykvE) {
-    xykvE = new nca(grids_->NxNyNz, grids_->NxNy);
-    xykvE -> write_v_time = true;
+  if (pars_ -> write_xykxvEy) {
+    xykxvEy = new nca(grids_->NxNyNz, grids_->NxNy);
+    xykxvEy -> write_v_time = true;
   
-    xykvE -> time_dims[0] = ztime_dim;
-    xykvE -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
-    xykvE -> time_dims[2] = zx_dim;
+    xykxvEy -> time_dims[0] = ztime_dim;
+    xykxvEy -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xykxvEy -> time_dims[2] = zx_dim;
     
-    xykvE -> file = z_file;
-    if (retval = nc_def_var(z_file, "kvE_xyt", NC_FLOAT, 3, xykvE -> time_dims, &xykvE->time)) ERR(retval);
+    xykxvEy -> file = z_file;
+    if (retval = nc_def_var(z_file, "kxvEy_xyt", NC_FLOAT, 3, xykxvEy -> time_dims, &xykxvEy->time)) ERR(retval);
     
-    xykvE -> time_count[1] = grids_->Ny;      
-    xykvE -> time_count[2] = grids_->Nx;
+    xykxvEy -> time_count[1] = grids_->Ny;      
+    xykxvEy -> time_count[2] = grids_->Nx;
 
-    xykvE -> xydata = true;
-    xykvE -> d2x = true;
+    xykxvEy -> xydata = true;
+    xykxvEy -> d2x = true;
   } else {
-    xykvE = new nca(0);
+    xykxvEy = new nca(0);
   }
   
   ////////////////////////////

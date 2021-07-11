@@ -127,12 +127,12 @@ class Parameters {
   bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;
   bool zero_shat;
   
-  bool write_avg_zvE, write_avg_zkvE, write_avg_zkden, write_avg_zkUpar;
+  bool write_avg_zvE, write_avg_zkxvEy, write_avg_zkden, write_avg_zkUpar;
   bool write_avg_zkTpar, write_avg_zkTperp, write_avg_zkqpar;
 
-  bool write_vE, write_kvE, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
+  bool write_vEy, write_kxvEy, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
 
-  bool write_xyvE, write_xykvE, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
+  bool write_xyvEy, write_xykxvEy, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;

@@ -115,11 +115,11 @@ void Parameters::get_nml_vars(char* filename)
   write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
 
   if (write_all_avgz) {
-    write_avg_zvE = write_avg_zkvE = write_avg_zkden = true;
+    write_avg_zvE = write_avg_zkxvEy = write_avg_zkden = true;
     write_avg_zkUpar = write_avg_zkTpar = write_avg_zkqpar = write_avg_zkTperp = true;
   } else {
     write_avg_zvE     = toml::find_or <bool> (tnml, "avg_zvE",     false );
-    write_avg_zkvE    = toml::find_or <bool> (tnml, "avg_zkvE",    false );
+    write_avg_zkxvEy  = toml::find_or <bool> (tnml, "avg_zkxvEy",  false );
     write_avg_zkden   = toml::find_or <bool> (tnml, "avg_zkden",   false );
     write_avg_zkUpar  = toml::find_or <bool> (tnml, "avg_zkUpar",  false );
     write_avg_zkTpar  = toml::find_or <bool> (tnml, "avg_zkTpar",  false );
@@ -134,11 +134,11 @@ void Parameters::get_nml_vars(char* filename)
   write_all_kmom    = toml::find_or <bool> (tnml, "all_zonal", false );
 
   if (write_all_kmom) {
-    write_vE = write_kvE = write_kden = write_kUpar = true;
+    write_vEy = write_kxvEy = write_kden = write_kUpar = true;
     write_kTpar = write_kTperp = write_kqpar = true;
   } else { 
-    write_vE      = toml::find_or <bool> (tnml, "vE",     false );
-    write_kvE     = toml::find_or <bool> (tnml, "kvE",    false );
+    write_vEy     = toml::find_or <bool> (tnml, "vEy",    false );
+    write_kxvEy   = toml::find_or <bool> (tnml, "kxvEy",  false );
     write_kden    = toml::find_or <bool> (tnml, "kden",   false );
     write_kUpar   = toml::find_or <bool> (tnml, "kUpar",  false );
     write_kTpar   = toml::find_or <bool> (tnml, "kTpar",  false );
@@ -153,11 +153,11 @@ void Parameters::get_nml_vars(char* filename)
   write_all_xymom   = toml::find_or <bool> (tnml, "all_non_zonal", false );
 
   if (write_all_xymom) {
-    write_xyvE = write_xykvE = write_xyTperp = write_xyTpar = true;
+    write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
     write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
-    write_xyvE     = toml::find_or <bool> (tnml, "xyvE",     false );
-    write_xykvE    = toml::find_or <bool> (tnml, "xykvE",    false );
+    write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
+    write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
     write_xyden    = toml::find_or <bool> (tnml, "xyden",    false );
     write_xyUpar   = toml::find_or <bool> (tnml, "xyUpar",   false );
     write_xyTpar   = toml::find_or <bool> (tnml, "xyTpar",   false );
@@ -175,14 +175,14 @@ void Parameters::get_nml_vars(char* filename)
   write_l_spectrum  = toml::find_or <bool> (tnml, "l_spectrum",  false );
   write_lh_spectrum = toml::find_or <bool> (tnml, "lh_spectrum", false );
 
-  write_kmom  = (write_vE    || write_kvE         || write_kden        || write_kUpar);
+  write_kmom  = (write_vEy   || write_kxvEy       || write_kden        || write_kUpar);
   write_kmom  = (write_kmom  || write_kTpar       || write_kTperp      || write_kqpar);
 
-  write_kmom  = (write_kmom  || write_avg_zvE    || write_avg_zkvE  || write_avg_zkTperp);
+  write_kmom  = (write_kmom  || write_avg_zvE    || write_avg_zkxvEy || write_avg_zkTperp);
   write_kmom  = (write_kmom  || write_avg_zkden  || write_avg_zkUpar || write_avg_zkTpar);
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
-  write_xymom = (write_xyvE  || write_xykvE     || write_xyden      || write_xyUpar);
+  write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar);
   write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar);
   
   tnml = nml;
@@ -691,7 +691,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if (retval = nc_def_var (nc_diag, "all_zonal_scalars", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "avg_zvE",         NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "avg_zkvE",        NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "avg_zkxvEy",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "avg_zkden",       NC_INT,   0, NULL, &ivar)) ERR(retval); 
   if (retval = nc_def_var (nc_diag, "avg_zkUpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
   if (retval = nc_def_var (nc_diag, "avg_zkTpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
@@ -699,8 +699,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diag, "avg_zkqpar",      NC_INT,   0, NULL, &ivar)) ERR(retval); 
 
   if (retval = nc_def_var (nc_diag, "all_zonal",       NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "vE",              NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "kvE",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "vEy",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "kxvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kden",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kUpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "kTpar",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -708,8 +708,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diag, "kTperp",          NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "xyvE",            NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diag, "xykvE",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyden",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyUpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyTpar",          NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -807,7 +807,6 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_geo, "Rmaj",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "shift",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "eps",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "rhoc",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "q",                     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "shat",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "kappa",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
@@ -911,8 +910,8 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_rst, "scale",             scale            );
 
   putbool  (nc_diag, "all_zonal",    write_all_kmom    );
-  putbool  (nc_diag, "vE",           write_vE          );
-  putbool  (nc_diag, "kvE",          write_kvE         );
+  putbool  (nc_diag, "vEy",          write_vEy         );
+  putbool  (nc_diag, "kxvEy",        write_kxvEy       );
   putbool  (nc_diag, "kden",         write_kden        );
   putbool  (nc_diag, "kUpar",        write_kUpar       );
   putbool  (nc_diag, "kTpar",        write_kTpar       );
@@ -920,8 +919,8 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (nc_diag, "kqpar",        write_kqpar       );
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
-  putbool  (nc_diag, "xyvE",         write_xyvE        );
-  putbool  (nc_diag, "xykvE",        write_xykvE       );
+  putbool  (nc_diag, "xyvEy",        write_xyvEy       );
+  putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );
   putbool  (nc_diag, "xyden",        write_xyden       );
   putbool  (nc_diag, "xyUpar",       write_xyUpar      );
   putbool  (nc_diag, "xyTpar",       write_xyTpar      );
@@ -930,7 +929,7 @@ void Parameters::get_nml_vars(char* filename)
 
   putbool  (nc_diag, "all_zonal_scalars", write_all_avgz);
   putbool  (nc_diag, "avg_zvE",      write_avg_zvE     );
-  putbool  (nc_diag, "avg_zkvE",     write_avg_zkvE    );
+  putbool  (nc_diag, "avg_zkxvEy",   write_avg_zkxvEy  );
   putbool  (nc_diag, "avg_zkden",    write_avg_zkden   );
   putbool  (nc_diag, "avg_zkUpar",   write_avg_zkUpar  );
   putbool  (nc_diag, "avg_zkTpar",   write_avg_zkTpar  );
