@@ -185,7 +185,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_inq_grp_ncid(file, "Geometry", &nc_geo)) ERR(retval);
   
   geo_v_theta[0] = nz; int ivar;
-  if (retval = nc_def_var (nc_geo, "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
+  if (retval = nc_def_var (file,   "theta",    NC_FLOAT, 1, geo_v_theta, &theta))    ERR(retval);
   if (retval = nc_def_var (nc_geo, "bmag",     NC_FLOAT, 1, geo_v_theta, &bmag))     ERR(retval);
   if (retval = nc_def_var (nc_geo, "bgrad",    NC_FLOAT, 1, geo_v_theta, &bgrad))    ERR(retval);
   if (retval = nc_def_var (nc_geo, "gbdrift",  NC_FLOAT, 1, geo_v_theta, &gbdrift))  ERR(retval);
@@ -1631,7 +1631,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   geo_start[0] = 0;
   geo_count[0] = grids_->Nz;
 
-  if (retval = nc_put_vara(nc_geo, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
+  if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
 
   if (linked && false) {
     

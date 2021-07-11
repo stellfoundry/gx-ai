@@ -19,5 +19,5 @@ To run GX, execute
 
 $ ./gx [path_to_inputfile]
 
-A sample linear input file is provided in tests/inputs/z.in
+A sample linear input file is provided in inputs/cyclone_linear/cyc_lin.in
 
