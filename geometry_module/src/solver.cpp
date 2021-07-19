@@ -1,10 +1,10 @@
 #include "solver.h"
 #include "vmec_variables.h"
 #include "geometric_coefficients.h"
-#include "gsl_roots.h"
-#include "gsl_math.h"
-#include "gsl_errno.h"
-#include "gsl_spline.h"
+#include <gsl/gsl_roots.h>
+#include <gsl/gsl_math.h>
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_spline.h>
 
 void solver_vmec_theta(double *theta_vmec, double *zeta, int nzgrid, double alpha, double iota, VMEC_variables *vmec, int *radial_index, double *radial_weight) {
 

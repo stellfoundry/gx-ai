@@ -12,7 +12,7 @@
 #include <fstream>
 #include <iomanip>
 #include <vector>
-#include "gsl_poly.h"
+#include <gsl/gsl_poly.h>
 
 using namespace std;
 
