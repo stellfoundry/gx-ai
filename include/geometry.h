@@ -93,6 +93,11 @@ class Gs2_geo : public Geometry {
   Gs2_geo();
 };
 
+class geo_nc : public Geometry {
+ public:
+  geo_nc(Parameters* pars, Grids* grids);
+};
+
 // MFM
 class File_geo : public Geometry {
  public:

@@ -199,6 +199,20 @@ Gs2_geo::Gs2_geo() {
 
 }
 
+geo_nc::geo_nc(Parameters *pars, Grids *grids)
+{
+  // open the netcdf file
+  // get the array dimensions
+  // do basic sanity checks
+  // allocate space for variables on the CPU
+  // allocate space for variables on the GPU
+  // read the data with nc_get_var, nc_get_vara
+  // close the netcdf file with nc_close
+  // move the data to the GPU
+  // synchronize memory
+  // initialize the arrays that GX actually uses
+}
+
 // MFM - 07/09/17
 File_geo::File_geo(Parameters *pars, Grids *grids)
 {
