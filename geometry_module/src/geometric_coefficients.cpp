@@ -14,6 +14,8 @@
 #include <vector>
 #include <gsl/gsl_poly.h>
 
+#define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
+
 using namespace std;
 
 Geometric_coefficients::Geometric_coefficients(VMEC_variables *vmec_vars) : vmec(vmec_vars) {
@@ -1491,33 +1493,34 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   count[0] = 2*nzgrid;
   
   int id_theta;
-  if (retval = nc_def_var(ncgeo, "theta", NC_DOUBLE, 1, &id_theta))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "theta", NC_DOUBLE, 1, geodim, &id_theta))   ERR(retval);
   int id_bmag;
-  if (retval = nc_def_var(ncgeo, "bmag", NC_DOUBLE, 1, &id_bmag))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "bmag", NC_DOUBLE, 1, geodim, &id_bmag))   ERR(retval);
   int id_gradpar;
-  if (retval = nc_def_var(ncgeo, "gradpar", NC_DOUBLE, 1, &id_gradpar))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gradpar", NC_DOUBLE, 1, geodim, &id_gradpar))   ERR(retval);
   int id_grho;
-  if (retval = nc_def_var(ncgeo, "grho", NC_DOUBLE, 1, &id_grho))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "grho", NC_DOUBLE, 1, geodim, &id_grho))   ERR(retval);
   int id_gbdrift;
-  if (retval = nc_def_var(ncgeo, "gbdrift", NC_DOUBLE, 1, &id_gbdrift))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gbdrift", NC_DOUBLE, 1, geodim, &id_gbdrift))   ERR(retval);
   int id_gbdrift0;
-  if (retval = nc_def_var(ncgeo, "gbdrift0", NC_DOUBLE, 1, &id_gbdrift0))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gbdrift0", NC_DOUBLE, 1, geodim, &id_gbdrift0))   ERR(retval);
   int id_cvdrift;
-  if (retval = nc_def_var(ncgeo, "cvdrift", NC_DOUBLE, 1, &id_cvdrift))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "cvdrift", NC_DOUBLE, 1, geodim, &id_cvdrift))   ERR(retval);
   int id_cvdrift0;
-  if (retval = nc_def_var(ncgeo, "cvdrift0", NC_DOUBLE, 1, &id_cvdrift0))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "cvdrift0", NC_DOUBLE, 1, geodim, &id_cvdrift0))   ERR(retval);
   int id_gds2;
-  if (retval = nc_def_var(ncgeo, "gds2", NC_DOUBLE, 1, &id_gds2))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gds2", NC_DOUBLE, 1, geodim, &id_gds2))   ERR(retval);
   int id_gds21;
-  if (retval = nc_def_var(ncgeo, "gds21", NC_DOUBLE, 1, &id_gds21))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gds21", NC_DOUBLE, 1, geodim, &id_gds21))   ERR(retval);
   int id_gds22;
-  if (retval = nc_def_var(ncgeo, "gds22", NC_DOUBLE, 1, &id_gds22))   ERR(retval);
+  if (retval = nc_def_var(ncgeo, "gds22", NC_DOUBLE, 1, geodim, &id_gds22))   ERR(retval);
   
   // end definition phase
   if (retval = nc_enddef(ncgeo)) ERR(retval);
   
   // write to file
   //  if (retval = nc_put_var(ncgeo, 2*nzgrid, &id_z))          ERR(retval);
+  double drhodpsi = 1.0;
   if (retval = nc_put_var(ncgeo, drhodpsi, &id_drhodpsi))               ERR(retval);
   double rmaj = 1.0;
   if (retval = nc_put_var(ncgeo, rmaj, &id_rmaj))                       ERR(retval);
