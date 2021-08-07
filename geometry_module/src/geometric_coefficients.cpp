@@ -1167,6 +1167,7 @@ Geometric_coefficients::Geometric_coefficients(VMEC_variables *vmec_vars) : vmec
     }
 
   write_geo_arrays_to_file(theta_grid, bmag, gradpar, grho, gds2, gds21, gds22, gbdrift, gbdrift0, cvdrift, cvdrift0);
+  write_geo_arrays_to_nc(theta_grid, bmag, gradpar, grho, gds2, gds21, gds22, gbdrift, gbdrift0, cvdrift, cvdrift0);
 
 
   std::cout << "Finished creating grid file\n";
@@ -1423,7 +1424,132 @@ void Geometric_coefficients::get_GX_geo_arrays(double *bmag_temp, double *gradpa
   interp_to_new_grid(cvdrift0_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
 }
   
-void Geometric_coefficients::write_geo_arrays_to_file(double *theta_grid, double* bmag, double* gradpar, double* grho, double* gds2, double* gds21, double* gds22, double* gbdrift, double* gbdrift0, double* cvdrift, double* cvdrift0) {
+void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* bmag,
+						    double* gradpar, double* grho,
+						    double* gds2, double* gds21,
+						    double* gds22, double* gbdrift,
+						    double* gbdrift0, double* cvdrift,
+						    double* cvdrift0) {
+
+  // set up filename
+  std::string out_name;
+  std::string tor_flux = std::to_string(normalized_toroidal_flux_used);
+  std::string custom_info = std::to_string(custom_length);
+  custom_info = custom_info.substr(0,5);
+  std::string theta_grid_points = std::to_string(2*nzgrid);
+  tor_flux = tor_flux.substr(0,5);
+  std::string vmec_name = vmec->vmec_file;
+  vmec_name = vmec_name.substr(0,vmec_name.size()-3);
+  if (flux_tube_cut == "custom") {
+    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_custom_[-" + custom_info + "," + custom_info + "]_nt_" + theta_grid_points + "_geo.nc";
+  }
+  else if (flux_tube_cut == "gds21") {
+    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_gds21" + "_nt_" + theta_grid_points + "_geo.nc";
+  }
+  else if (flux_tube_cut == "gbdrift0") {
+    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_gbdrift0" + "_nt_" + theta_grid_points + "_geo.nc";
+  }
+  else {
+    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_nt_" + theta_grid_points + "_geo.nc";
+  }  
+  
+  // create file for writing
+  int retval;
+  int ncgeo;
+  
+  if (retval = nc_open(out_name.c_str(), NC_WRITE, &ncgeo))  ERR(retval);
+
+  // define dimensions
+  int id_z; 
+  if (retval = nc_def_dim(ncgeo, "z", 2*nzgrid, &id_z))    ERR(retval);
+
+  // define scalars
+  int id_nperiod;
+  if (retval = nc_def_var(ncgeo, "nperiod", NC_INT, 0, 0, &id_nperiod))  ERR(retval);
+  int id_pol_turns;
+  if (retval = nc_def_var(ncgeo, "poloidal_turns", NC_DOUBLE, 0, 0, &id_pol_turns))  ERR(retval);
+  int id_drhodpsi;
+  if (retval = nc_def_var(ncgeo, "drhodpsi", NC_DOUBLE, 0, 0, &id_drhodpsi))         ERR(retval);
+  int id_rmaj;
+  if (retval = nc_def_var(ncgeo, "Rmaj", NC_DOUBLE, 0, 0, &id_rmaj))                 ERR(retval);
+  int id_shat;
+  if (retval = nc_def_var(ncgeo, "shat", NC_DOUBLE, 0, 0, &id_shat))                 ERR(retval);
+  int id_kxfac;
+  if (retval = nc_def_var(ncgeo, "kxfac", NC_DOUBLE, 0, 0, &id_kxfac))               ERR(retval);
+  int id_q;
+  if (retval = nc_def_var(ncgeo, "q", NC_DOUBLE, 0, 0, &id_q))                       ERR(retval);
+  int id_scale;
+  if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, 0, &id_scale))               ERR(retval);
+
+  // define arrays
+  int geodim[1];
+  size_t start[1];
+  size_t count[1];
+
+  geodim[0] = id_z;
+  start[0] = 0;
+  count[0] = 2*nzgrid;
+  
+  int id_theta;
+  if (retval = nc_def_var(ncgeo, "theta", NC_DOUBLE, 1, &id_theta))   ERR(retval);
+  int id_bmag;
+  if (retval = nc_def_var(ncgeo, "bmag", NC_DOUBLE, 1, &id_bmag))   ERR(retval);
+  int id_gradpar;
+  if (retval = nc_def_var(ncgeo, "gradpar", NC_DOUBLE, 1, &id_gradpar))   ERR(retval);
+  int id_grho;
+  if (retval = nc_def_var(ncgeo, "grho", NC_DOUBLE, 1, &id_grho))   ERR(retval);
+  int id_gbdrift;
+  if (retval = nc_def_var(ncgeo, "gbdrift", NC_DOUBLE, 1, &id_gbdrift))   ERR(retval);
+  int id_gbdrift0;
+  if (retval = nc_def_var(ncgeo, "gbdrift0", NC_DOUBLE, 1, &id_gbdrift0))   ERR(retval);
+  int id_cvdrift;
+  if (retval = nc_def_var(ncgeo, "cvdrift", NC_DOUBLE, 1, &id_cvdrift))   ERR(retval);
+  int id_cvdrift0;
+  if (retval = nc_def_var(ncgeo, "cvdrift0", NC_DOUBLE, 1, &id_cvdrift0))   ERR(retval);
+  int id_gds2;
+  if (retval = nc_def_var(ncgeo, "gds2", NC_DOUBLE, 1, &id_gds2))   ERR(retval);
+  int id_gds21;
+  if (retval = nc_def_var(ncgeo, "gds21", NC_DOUBLE, 1, &id_gds21))   ERR(retval);
+  int id_gds22;
+  if (retval = nc_def_var(ncgeo, "gds22", NC_DOUBLE, 1, &id_gds22))   ERR(retval);
+  
+  // end definition phase
+  if (retval = nc_enddef(ncgeo)) ERR(retval);
+  
+  // write to file
+  //  if (retval = nc_put_var(ncgeo, 2*nzgrid, &id_z))          ERR(retval);
+  if (retval = nc_put_var(ncgeo, drhodpsi, &id_drhodpsi))               ERR(retval);
+  double rmaj = 1.0;
+  if (retval = nc_put_var(ncgeo, rmaj, &id_rmaj))                       ERR(retval);
+  if (retval = nc_put_var(ncgeo, shat, &id_shat))                       ERR(retval);
+  double kxfac = 1.0;
+  if (retval = nc_put_var(ncgeo, kxfac, &id_kxfac))                     ERR(retval);
+  double q = 1.0;
+  if (retval = nc_put_var(ncgeo, q, &id_q))                             ERR(retval);
+  if (retval = nc_put_var(ncgeo, domain_scaling_factor, &id_scale))     ERR(retval);
+  
+  if (retval = nc_put_vara(ncgeo, id_theta,    start, count, theta_grid))  ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gradpar,  start, count, gradpar))     ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_grho,     start, count, grho))        ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gbdrift,  start, count, gbdrift))     ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gbdrift0, start, count, gbdrift0))    ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_cvdrift,  start, count, cvdrift))     ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_cvdrift0, start, count, cvdrift0))    ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gds2,     start, count, gds2))        ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gds21,    start, count, gds21))       ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_gds22,    start, count, gds22))       ERR(retval);
+  if (retval = nc_put_vara(ncgeo, id_bmag,     start, count, bmag))        ERR(retval);
+  
+  // close file
+  if (retval = nc_close(ncgeo)) ERR(retval);
+}
+
+void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double* bmag,
+						      double* gradpar, double* grho,
+						      double* gds2, double* gds21,
+						      double* gds22, double* gbdrift,
+						      double* gbdrift0, double* cvdrift,
+						      double* cvdrift0) {
 
   std::string out_name;
   std::string tor_flux = std::to_string(normalized_toroidal_flux_used);

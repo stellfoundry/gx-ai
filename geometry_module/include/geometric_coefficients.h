@@ -17,6 +17,7 @@ class Geometric_coefficients {
   void get_GX_geo_arrays(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
   void write_geo_arrays_to_file(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
+  void write_geo_arrays_to_nc(double*, double*, double*, double*, double*, double*, double*, double*, double*, double*, double*);
 
   void get_cut_indices_custom(std::vector<double>&, int&, int&, int&);
   void get_revised_theta_custom(std::vector<double>&, std::vector<double>&, std::vector<double>&);
