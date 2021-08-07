@@ -1,11 +1,17 @@
 #include "vmec_variables.h"
 #include "geometric_coefficients.h"
 #include "solver.h"
+#include <stdio.h>
+#include <string.h>
 
 int main(int argc, char* argv[]) {
 
-  VMEC_variables *vmec = new VMEC_variables(argv[1]);
-  Geometric_coefficients *geo = new Geometric_coefficients(vmec);
+  char nml_file[512];
+  strcpy (nml_file, argv[1]);
+  strcat (nml_file, ".ing");
+
+  VMEC_variables *vmec = new VMEC_variables(nml_file);
+  Geometric_coefficients *geo = new Geometric_coefficients(nml_file, vmec);
 
   delete vmec;
   delete geo;

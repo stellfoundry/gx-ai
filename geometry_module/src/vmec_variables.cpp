@@ -3,12 +3,24 @@
 #include <netcdf.h>
 #include "parameters.h"
 #include <cmath>
+#include "toml.hpp"
 
 #define ERRCODE 2
 #define ERR(e) {printf("Error: %s\n", nc_strerror(e)); exit(ERRCODE);}
 
-VMEC_variables::VMEC_variables(char *vmec) : vmec_file(vmec) {
+VMEC_variables::VMEC_variables(char *nml_file) {// : vmec_file(vdata) {
 
+  // read input file to find name of file with vmec data in it
+
+  const auto nml = toml::parse(nml_file); 
+
+  vmec_data = toml::find <std::string> (nml, "vmec_file");
+
+  vmec_file = vmec_data.c_str();
+  //  printf("vmec_file = %s \n",vmec_file);
+
+
+  
   // Read in VMEC data and allocate some arrays
   // check if .nc file exists........
   int ncid;

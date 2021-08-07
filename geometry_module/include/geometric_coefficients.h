@@ -10,7 +10,7 @@
 class Geometric_coefficients {
 
  public:
-  Geometric_coefficients(VMEC_variables*);
+  Geometric_coefficients(char*, VMEC_variables*);
   ~Geometric_coefficients();
   void test_arrays(double*, double*, int, double, const std::string&);
 

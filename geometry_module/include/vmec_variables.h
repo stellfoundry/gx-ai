@@ -1,11 +1,14 @@
 #pragma once
+#include <string>
 
 class VMEC_variables {
  public:
   VMEC_variables(char*);
   ~VMEC_variables();
   void sanity_check(double*, double*, int*, int*, int*, int*, double*);
-  char *vmec_file;
+  
+  std::string vmec_data;
+  char const* vmec_file;
   
   // variables to be read from VMEC file
   int lasym;

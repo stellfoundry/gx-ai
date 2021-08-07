@@ -13,32 +13,46 @@
 #include <iomanip>
 #include <vector>
 #include <gsl/gsl_poly.h>
+#include "toml.hpp"
 
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 using namespace std;
 
-Geometric_coefficients::Geometric_coefficients(VMEC_variables *vmec_vars) : vmec(vmec_vars) {
+Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *vmec_vars) :
+  vmec(vmec_vars) {
+
+  const auto nml = toml::parse(nml_file); 
+
+  alpha  = toml::find_or <double> (nml, "alpha", 0.0);
+  nzgrid = toml::find_or <int> (nml, "nzgrid", 16);
+  npol   = toml::find_or <int> (nml, "npol", 1);
+  desired_normalized_toroidal_flux =
+    toml::find_or <double> (nml, "desired_normalized_toroidal_flux", 0.25);
+  vmec_surface_option = toml::find_or <int> (nml, "vmec_surface_option", 2);
+  flux_tube_cut = toml::find_or <string> (nml, "flux_tube_cut", "none");
+  custom_length = toml::find_or <double> (nml, "custom_length", M_PI);
+  which_crossing = toml::find_or <int> (nml, "which_crossing", 4);
 
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
   // INPUT PARAMETERS
   // the following are literals for now, but should be input file parameters
-  alpha = 0.0;
-  nzgrid = 64;
-  npol = 2;
+  //  alpha = 0.0;
+  //  nzgrid = 64;
+  //  npol = 2;
   //  desired_normalized_toroidal_flux = 0.25;
   ////////////////////////
   // values for comparison with GIST files that are at surf=12
   //  desired_normalized_toroidal_flux = 0.12755; // W7-X
-  desired_normalized_toroidal_flux = 0.19531; // Quasdex
+  // desired_normalized_toroidal_flux = 0.19531; // Quasdex
   //  desired_normalized_toroidal_flux = 0.26042; // NCSX
   ////////////////////////
-  vmec_surface_option = 2;
-  flux_tube_cut = "gds21"; // default is "none"
+  //  vmec_surface_option = 2;
+  //  flux_tube_cut = "gds21"; // default is "none"
   // the following are used or ignored based on choice of flux_tube_cut
-  custom_length = 2.0; // default is [-pi, pi]
-  which_crossing = 4;
+  //  custom_length = 2.0; // default is [-pi, pi]
+  //  which_crossing = 4;
   
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
@@ -1564,6 +1578,9 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_file;
+  printf("\n\n\n");
+  printf("vmec_name = %s \n",vmec->vmec_file);
+  printf("\n\n\n");
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
   if (flux_tube_cut == "custom") {
     out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_custom_[-" + custom_info + "," + custom_info + "]_nt_" + theta_grid_points;
