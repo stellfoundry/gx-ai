@@ -1459,7 +1459,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   int retval;
   int ncgeo;
   
-  if (retval = nc_open(out_name.c_str(), NC_WRITE, &ncgeo))  ERR(retval);
+  if (retval = nc_create(out_name.c_str(), NC_CLOBBER, &ncgeo))  ERR(retval);
 
   // define dimensions
   int id_z; 
@@ -1467,21 +1467,21 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 
   // define scalars
   int id_nperiod;
-  if (retval = nc_def_var(ncgeo, "nperiod", NC_INT, 0, 0, &id_nperiod))  ERR(retval);
+  //  if (retval = nc_def_var(ncgeo, "nperiod", NC_INT, 0, NULL, &id_nperiod))  ERR(retval);
   int id_pol_turns;
-  if (retval = nc_def_var(ncgeo, "poloidal_turns", NC_DOUBLE, 0, 0, &id_pol_turns))  ERR(retval);
+  //  if (retval = nc_def_var(ncgeo, "poloidal_turns", NC_DOUBLE, 0, NULL, &id_pol_turns))  ERR(retval);
   int id_drhodpsi;
-  if (retval = nc_def_var(ncgeo, "drhodpsi", NC_DOUBLE, 0, 0, &id_drhodpsi))         ERR(retval);
+  if (retval = nc_def_var(ncgeo, "drhodpsi", NC_FLOAT, 0, NULL, &id_drhodpsi))         ERR(retval);
   int id_rmaj;
-  if (retval = nc_def_var(ncgeo, "Rmaj", NC_DOUBLE, 0, 0, &id_rmaj))                 ERR(retval);
+  if (retval = nc_def_var(ncgeo, "Rmaj", NC_DOUBLE, 0, NULL, &id_rmaj))                 ERR(retval);
   int id_shat;
-  if (retval = nc_def_var(ncgeo, "shat", NC_DOUBLE, 0, 0, &id_shat))                 ERR(retval);
+  if (retval = nc_def_var(ncgeo, "shat", NC_DOUBLE, 0, NULL, &id_shat))                 ERR(retval);
   int id_kxfac;
-  if (retval = nc_def_var(ncgeo, "kxfac", NC_DOUBLE, 0, 0, &id_kxfac))               ERR(retval);
+  if (retval = nc_def_var(ncgeo, "kxfac", NC_DOUBLE, 0, NULL, &id_kxfac))               ERR(retval);
   int id_q;
-  if (retval = nc_def_var(ncgeo, "q", NC_DOUBLE, 0, 0, &id_q))                       ERR(retval);
+  if (retval = nc_def_var(ncgeo, "q", NC_DOUBLE, 0, NULL, &id_q))                       ERR(retval);
   int id_scale;
-  if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, 0, &id_scale))               ERR(retval);
+  if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, NULL, &id_scale))               ERR(retval);
 
   // define arrays
   int geodim[1];
@@ -1520,16 +1520,19 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   
   // write to file
   //  if (retval = nc_put_var(ncgeo, 2*nzgrid, &id_z))          ERR(retval);
-  double drhodpsi = 1.0;
-  if (retval = nc_put_var(ncgeo, drhodpsi, &id_drhodpsi))               ERR(retval);
+  float drhodpsi =  1.0;
+  if (retval = nc_put_var(ncgeo, id_drhodpsi, &drhodpsi))               ERR(retval);
+
   double rmaj = 1.0;
-  if (retval = nc_put_var(ncgeo, rmaj, &id_rmaj))                       ERR(retval);
-  if (retval = nc_put_var(ncgeo, shat, &id_shat))                       ERR(retval);
+  if (retval = nc_put_var(ncgeo, id_rmaj, &rmaj))                       ERR(retval);
+  if (retval = nc_put_var(ncgeo, id_shat, &shat))                       ERR(retval);
+
   double kxfac = 1.0;
-  if (retval = nc_put_var(ncgeo, kxfac, &id_kxfac))                     ERR(retval);
+  if (retval = nc_put_var(ncgeo, id_kxfac, &kxfac))                     ERR(retval);
+
   double q = 1.0;
-  if (retval = nc_put_var(ncgeo, q, &id_q))                             ERR(retval);
-  if (retval = nc_put_var(ncgeo, domain_scaling_factor, &id_scale))     ERR(retval);
+  if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
+  if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
   
   if (retval = nc_put_vara(ncgeo, id_theta,    start, count, theta_grid))  ERR(retval);
   if (retval = nc_put_vara(ncgeo, id_gradpar,  start, count, gradpar))     ERR(retval);
