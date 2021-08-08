@@ -1578,9 +1578,9 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_file;
-  printf("\n\n\n");
-  printf("vmec_name = %s \n",vmec->vmec_file);
-  printf("\n\n\n");
+  //  printf("\n\n\n");
+  //  printf("vmec_name = %s \n",vmec->vmec_file);
+  //  printf("\n\n\n");
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
   if (flux_tube_cut == "custom") {
     out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_custom_[-" + custom_info + "," + custom_info + "]_nt_" + theta_grid_points;

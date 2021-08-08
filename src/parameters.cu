@@ -998,13 +998,15 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (nc_geo, "slab",        slab       );
   putbool  (nc_geo, "const_curv",  const_curv );
   putint   (nc_geo, "igeo",        igeo       );
-  put_real (nc_geo, "drhodpsi",    drhodpsi   );
-  put_real (nc_geo, "kxfac",       kxfac      );
-  put_real (nc_geo, "Rmaj",        rmaj       );
-  put_real (nc_geo, "shift",       shift      );
-  put_real (nc_geo, "eps",         eps        );
-  put_real (nc_geo, "q",           qsf        );
-  put_real (nc_geo, "shat",        shat       );
+  if (igeo == 0) {
+    put_real (nc_geo, "drhodpsi",    drhodpsi   );
+    put_real (nc_geo, "kxfac",       kxfac      );
+    put_real (nc_geo, "Rmaj",        rmaj       );
+    put_real (nc_geo, "shift",       shift      );
+    put_real (nc_geo, "eps",         eps        );
+    put_real (nc_geo, "q",           qsf        );
+    put_real (nc_geo, "shat",        shat       );
+  }
   put_real (nc_geo, "beta",        beta       );
   putbool  (nc_geo, "zero_shat",   zero_shat  );
 

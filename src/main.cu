@@ -167,14 +167,13 @@ int main(int argc, char* argv[])
     else if(igeo==1) {
       geo = new File_geo(pars, grids);
       printf("************************* \n \n \n");
-      printf("Warning: assumed grho = 1 \n \n \n");
+      printf("Warning: may have assumed grho = 1 \n \n \n");
       printf("************************* \n");
       CUDA_DEBUG("Initializing geometry from file: %s \n");
     } 
     else if(igeo==2) {
-      DEBUGPRINT("igeo = 2 not yet implemented!\n");
-      exit(1);
-      //geo = new Eik_geo();
+      geo = new geo_nc(pars, grids);
+      CUDA_DEBUG("Initializing geometry from NetCDF file: %s \n");
     } 
     else if(igeo==3) {
       DEBUGPRINT("igeo = 3 not yet implemented!\n");

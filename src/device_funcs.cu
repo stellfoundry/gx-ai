@@ -957,6 +957,7 @@ __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void
   float *kz = (float*) kzData;
   unsigned int idz = offset;
   cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  //  printf("kz[%d] = %f, %d \n",idz,kz[idz],nz);
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
@@ -1409,7 +1410,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
   } else if (id < nz) {
     kz[id] = (float) (id - nz)/Zp; if (false) printf("kz[%d] = %f \n ", id, kz[id]);
   }
-  
+
   if (id < (nz-1)/3+1)                     {kzm[id] = 1; kzp[id] = kz[id];}
   if (id > (nz-1)/3 && id < nz - (nz-1)/3) {kzm[id] = 0; kzp[id] = 0.;}
   if (id-nz > -(1 + (nz-1)/3) && id < nz)  {kzm[id] = 1; kzp[id] = kz[id];}

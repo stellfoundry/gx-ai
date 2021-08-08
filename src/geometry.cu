@@ -191,26 +191,164 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   initializeOperatorArrays(grids);
 }
 
-Eik_geo::Eik_geo() {
-
-}
-
 Gs2_geo::Gs2_geo() {
 
 }
 
 geo_nc::geo_nc(Parameters *pars, Grids *grids)
 {
-  // open the netcdf file
+  operator_arrays_allocated_=false;
+  size_t size = sizeof(float)*grids->Nz;
+
+  char stra[NC_MAX_NAME+1];
+  char strb[513];
+  strcpy(strb, pars->geofilename.c_str());
+
+    // open the netcdf file
+  int retval;
+  int ncgeo;
+  if (retval = nc_open(strb, NC_NOWRITE, &ncgeo)) { printf("file: %s \n",strb); ERR(retval);}
+
   // get the array dimensions
-  // do basic sanity checks
+  int id_z;
+  size_t N; 
+  if (retval = nc_inq_dimid(ncgeo, "z",  &id_z))       ERR(retval);
+  if (retval = nc_inq_dim  (ncgeo, id_z, stra, &N))    ERR(retval);
+
+  // do basic sanity check
+  if (grids->Nz != (int) N) {
+    printf("Number of points along the field line in geometry file %d does not match input %d \n", N, grids->Nz);
+    exit (1);
+  }
+
   // allocate space for variables on the CPU
-  // allocate space for variables on the GPU
-  // read the data with nc_get_var, nc_get_vara
+  double * dtmp;
+  cudaMallocHost ((void**) &dtmp, sizeof(double)*N);
+  
+  // read the data with nc_get_var
+  int id;
+  if (retval = nc_inq_varid(ncgeo, "theta", &id))       ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &z_h, size);
+  for (int n=0; n<N; n++) z_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "bmag", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &bmag_h, size);
+  cudaMallocHost ((void**) &bmagInv_h, size);
+  for (int n=0; n<N; n++) bmag_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) bmagInv_h[n] = 1./bmag_h[n];
+
+  if (retval = nc_inq_varid(ncgeo, "gradpar", &id))     ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  gradpar = (float) dtmp[0];
+
+  if (retval = nc_inq_varid(ncgeo, "grho", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &grho_h, size);
+  for (int n=0; n<N; n++) grho_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "gds2", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &gds2_h, size);
+  for (int n=0; n<N; n++) gds2_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &gds21_h, size);
+  for (int n=0; n<N; n++) gds21_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &gds22_h, size);
+  for (int n=0; n<N; n++) gds22_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &gbdrift_h, size);
+  for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &gbdrift0_h, size);
+  for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &cvdrift_h, size);
+  for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n];
+  
+  if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  cudaMallocHost ((void**) &cvdrift0_h, size);
+  for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n];
+  
+  cudaFreeHost(dtmp);
+
+  double stmp; 
+  if (retval = nc_inq_varid(ncgeo, "drhodpsi", &id))    ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->drhodpsi = (float) stmp;
+
+  cudaMallocHost ((void**) &jacobian_h, size);
+  for (int n=0; n<N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
+      
+  if (retval = nc_inq_varid(ncgeo, "shat", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->shat = (float) stmp;
+  
+  if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->kxfac = (float) stmp;
+  
+  if (retval = nc_inq_varid(ncgeo, "Rmaj", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->rmaj = (float) stmp;
+
+  if (retval = nc_inq_varid(ncgeo, "q", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->qsf = (float) stmp;
+
   // close the netcdf file with nc_close
+  if (retval = nc_close(ncgeo)) ERR(retval);
+
+  // allocate space for variables on the GPU
+  cudaMalloc ((void**) &z, size);
+  cudaMalloc ((void**) &bmag, size);
+  cudaMalloc ((void**) &bmagInv, size);
+  cudaMalloc ((void**) &gds2, size);
+  cudaMalloc ((void**) &gds21, size);
+  cudaMalloc ((void**) &gds22, size);
+  cudaMalloc ((void**) &gbdrift, size);
+  cudaMalloc ((void**) &gbdrift0, size);
+  cudaMalloc ((void**) &cvdrift, size);
+  cudaMalloc ((void**) &cvdrift0, size);
+  cudaMalloc ((void**) &grho, size);
+  cudaMalloc ((void**) &jacobian, size);
+  
   // move the data to the GPU
+  CP_TO_GPU (z,        z_h,        size);
+  CP_TO_GPU (gbdrift,  gbdrift_h,  size);
+  CP_TO_GPU (grho,     grho_h,     size);
+  CP_TO_GPU (cvdrift,  cvdrift_h,  size);
+  CP_TO_GPU (bmag,     bmag_h,     size);
+  CP_TO_GPU (bmagInv,  bmagInv_h,  size);
+  CP_TO_GPU (gds2,     gds2_h,     size);
+  CP_TO_GPU (gds21,    gds21_h,    size);
+  CP_TO_GPU (gds22,    gds22_h,    size);
+  CP_TO_GPU (cvdrift0, cvdrift0_h, size);
+  CP_TO_GPU (gbdrift0, gbdrift0_h, size);
+  CP_TO_GPU (jacobian, jacobian_h, size);
+
   // synchronize memory
-  // initialize the arrays that GX actually uses
+  cudaDeviceSynchronize();
+
+  // initialize omegad and kperp2
+  initializeOperatorArrays(grids);
+
+  // calculate bgrad
+  calculate_bgrad(grids);
+  CUDA_DEBUG("calc bgrad: %s \n");
 }
 
 // MFM - 07/09/17

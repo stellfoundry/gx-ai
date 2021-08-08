@@ -173,7 +173,6 @@ void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) {
   scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));
 }
 
-
 GradParallel1D::GradParallel1D(Grids* grids) :
   grids_(grids)
 {
