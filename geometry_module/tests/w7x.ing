@@ -1,9 +1,9 @@
 vmec_file = "wout_w7x_standardConfig.nc"
 
 alpha = 0.0
-nzgrid = 128
-npol = 4
+nzgrid = 64
+npol = 2
 desired_normalized_toroidal_flux = 0.12755
 flux_tube_cut = "gds21"
-custom_length = 6.0
-which_crossing = 2
+custom_length = 2.0
+which_crossing = 4

@@ -354,7 +354,7 @@ void Nonlinear::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     laguerre    -> transformToGrid(dG, dg_dy);
     
     bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
-    
+
     laguerre->transformToSpectral(g_res, dG);
     grad_perp_G->R2C(dG, G_res->Gm(m,s));
       

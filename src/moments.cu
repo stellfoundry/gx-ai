@@ -35,7 +35,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
     zts_h[is] = pars_->species_h[is].zt;
     nts_h[is] = pars_->species_h[is].nt;
     nzs_h[is] = pars_->species_h[is].nz;
-    r2s_h[is] = pars_->species_h[is].rho2;
+    r2s_h[is] = pars_->species_h[is].rho2; 
     tps_h[is] = pars_->species_h[is].tprim;
     fps_h[is] = pars_->species_h[is].fprim;     
     ups_h[is] = pars_->species_h[is].uprim;

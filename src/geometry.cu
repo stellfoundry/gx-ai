@@ -296,6 +296,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_inq_varid(ncgeo, "shat", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   pars->shat = (float) stmp;
+  shat = (float) stmp;
   
   if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
@@ -345,7 +346,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // initialize omegad and kperp2
   initializeOperatorArrays(grids);
-
+  
   // calculate bgrad
   calculate_bgrad(grids);
   CUDA_DEBUG("calc bgrad: %s \n");
@@ -534,10 +535,12 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   
   dim3 dimBlock (32, 4, 4);
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
- 
+
   init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
+
   /*
+  cudaMallocHost((void**) &kperp2_h, sizeof(float)*grids->NxNycNz);
   CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);
 
   for (int iz=0; iz < grids->Nz; iz++) {
@@ -549,7 +552,7 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
     }
     printf("\n");
   }
-  */  
+  */
 }
 
 // MFM - 07/25/17

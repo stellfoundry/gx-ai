@@ -1416,6 +1416,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
   if (id-nz > -(1 + (nz-1)/3) && id < nz)  {kzm[id] = 1; kzp[id] = kz[id];}
   
   if (false) printf("\n");
+
 }
 
 
