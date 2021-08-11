@@ -63,7 +63,7 @@ Grids::Grids(Parameters* pars) :
   int nt = min(32, Nmax);
   int nb = 1 + (Nmax-1)/nt;
 
-  kInit <<<nb, nt>>> (kx, ky, kz, kzm, kzp, pars_->x0, pars_->y0, pars_->Zp);
+  kInit <<<nb, nt>>> (kx, ky, kz, kzm, kzp, pars_->x0, pars_->y0, pars_->Zp, pars_->dealias_kz);
 
   CP_TO_CPU (kx_h, kx, sizeof(float)*Nx);
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);

@@ -979,16 +979,20 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     gradpar_pest[itheta] = ( L_reference * B_sup_zeta[itheta]*iota ) / B[itheta];
     //    std::cout << gradpar_pest[itheta] << ", ";
 
-    grho_pest[itheta] = (1. / (L_reference * B_reference * sqrt_s) ) * sqrt( grad_psi_X[itheta]*grad_psi_X[itheta] + grad_psi_Y[itheta]*grad_psi_Y[itheta] + grad_psi_Z[itheta]*grad_psi_Z[itheta] );
+    grho_pest[itheta] = (1. / (L_reference * B_reference * sqrt_s) ) *
+      sqrt( grad_psi_X[itheta]*grad_psi_X[itheta] + grad_psi_Y[itheta]*grad_psi_Y[itheta] + grad_psi_Z[itheta]*grad_psi_Z[itheta] );
     
-    gds2_pest[itheta] = (grad_alpha_X[itheta] * grad_alpha_X[itheta] + grad_alpha_Y[itheta] * grad_alpha_Y[itheta] + grad_alpha_Z[itheta] * grad_alpha_Z[itheta]) * L_reference * L_reference * normalized_toroidal_flux_used;
+    gds2_pest[itheta] = (grad_alpha_X[itheta] * grad_alpha_X[itheta] + grad_alpha_Y[itheta] * grad_alpha_Y[itheta] + grad_alpha_Z[itheta] * grad_alpha_Z[itheta])
+      * L_reference * L_reference * normalized_toroidal_flux_used;
 
     // Note that the gds21 value from GIST had the incorrect sign at some point. Thus, if comparing to GIST, it is possible that the signs will disagree
     // it seems like the sign needs to be flipped if the VMEC toroidal flux is positive, otherwise gds21 is incorrect (potentially related to signgs = -1?)
-    gds21_pest[itheta] = (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta]) * (shat / B_reference);
+    gds21_pest[itheta] = (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta])
+      * (shat / B_reference);
     //    gds21_pest[itheta] = (sign_psi * vmec->signgs) * (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta]) * (shat / B_reference);
     
-    gds22_pest[itheta] = (grad_psi_X[itheta] * grad_psi_X[itheta] + grad_psi_Y[itheta] * grad_psi_Y[itheta] + grad_psi_Z[itheta] * grad_psi_Z[itheta]) * ( (shat * shat) / (L_reference * L_reference * B_reference * B_reference * normalized_toroidal_flux_used) );
+    gds22_pest[itheta] = (grad_psi_X[itheta] * grad_psi_X[itheta] + grad_psi_Y[itheta] * grad_psi_Y[itheta] + grad_psi_Z[itheta] * grad_psi_Z[itheta])
+      * ( (shat * shat) / (L_reference * L_reference * B_reference * B_reference * normalized_toroidal_flux_used) );
 
 
     gbdrift_pest[itheta] = sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * B_cross_grad_B_dot_grad_alpha[itheta] / ( B[itheta] * B[itheta] * B[itheta] );
@@ -997,7 +1001,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       * ( (abs(edge_toroidal_flux_over_2pi) * 2 * shat) / (B[itheta] * B[itheta] * B[itheta] * sqrt_s) );
     // In the above expression for gbdrift0, the first line and the edge_toroidal_flux_over_2pi is \vec{B} \times \nabla B \cdot \nabla \psi
 
-    cvdrift_pest[itheta] = gbdrift_pest[itheta] + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);
+    cvdrift_pest[itheta] = gbdrift_pest[itheta] + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0
+      * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);
 
     cvdrift0_pest[itheta] = gbdrift0_pest[itheta];// + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);;
 
@@ -1485,7 +1490,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   int id_pol_turns;
   //  if (retval = nc_def_var(ncgeo, "poloidal_turns", NC_DOUBLE, 0, NULL, &id_pol_turns))  ERR(retval);
   int id_drhodpsi;
-  if (retval = nc_def_var(ncgeo, "drhodpsi", NC_FLOAT, 0, NULL, &id_drhodpsi))         ERR(retval);
+  if (retval = nc_def_var(ncgeo, "drhodpsi", NC_DOUBLE, 0, NULL, &id_drhodpsi))         ERR(retval);
   int id_rmaj;
   if (retval = nc_def_var(ncgeo, "Rmaj", NC_DOUBLE, 0, NULL, &id_rmaj))                 ERR(retval);
   int id_shat;
@@ -1534,7 +1539,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   
   // write to file
   //  if (retval = nc_put_var(ncgeo, 2*nzgrid, &id_z))          ERR(retval);
-  float drhodpsi =  1.0;
+  double drhodpsi =  1.0;
   if (retval = nc_put_var(ncgeo, id_drhodpsi, &drhodpsi))               ERR(retval);
 
   double rmaj = 1.0;

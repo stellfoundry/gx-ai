@@ -227,82 +227,84 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   
   // read the data with nc_get_var
   int id;
-  if (retval = nc_inq_varid(ncgeo, "theta", &id))       ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &z_h, size);
   for (int n=0; n<N; n++) z_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "bmag", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "bmag", &id))         ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &bmag_h, size);
   cudaMallocHost ((void**) &bmagInv_h, size);
   for (int n=0; n<N; n++) bmag_h[n] = (float) dtmp[n];
   for (int n=0; n<N; n++) bmagInv_h[n] = 1./bmag_h[n];
 
-  if (retval = nc_inq_varid(ncgeo, "gradpar", &id))     ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "gradpar", &id))      ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   gradpar = (float) dtmp[0];
 
-  if (retval = nc_inq_varid(ncgeo, "grho", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "grho", &id))         ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &grho_h, size);
   for (int n=0; n<N; n++) grho_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "gds2", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "gds2", &id))         ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &gds2_h, size);
   for (int n=0; n<N; n++) gds2_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &gds21_h, size);
   for (int n=0; n<N; n++) gds21_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &gds22_h, size);
   for (int n=0; n<N; n++) gds22_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &gbdrift_h, size);
   for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &gbdrift0_h, size);
   for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &cvdrift_h, size);
   for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n];
   
-  if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, dtmp))           ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
   cudaMallocHost ((void**) &cvdrift0_h, size);
   for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n];
   
   cudaFreeHost(dtmp);
 
   double stmp; 
-  if (retval = nc_inq_varid(ncgeo, "drhodpsi", &id))    ERR(retval);
+  
+  if (retval = nc_inq_varid(ncgeo, "drhodpsi", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   pars->drhodpsi = (float) stmp;
-
+  drhodpsi = pars->drhodpsi;
+  
   cudaMallocHost ((void**) &jacobian_h, size);
   for (int n=0; n<N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
       
-  if (retval = nc_inq_varid(ncgeo, "shat", &id))        ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  pars->kxfac = (float) stmp;
+
+  if (retval = nc_inq_varid(ncgeo, "shat", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   pars->shat = (float) stmp;
   shat = (float) stmp;
   
-  if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
-  pars->kxfac = (float) stmp;
-  
-  if (retval = nc_inq_varid(ncgeo, "Rmaj", &id))        ERR(retval);
+  if (retval = nc_inq_varid(ncgeo, "Rmaj", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   pars->rmaj = (float) stmp;
 

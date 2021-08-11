@@ -207,8 +207,13 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   }
   
   // closures
-  switch (pars_->closure_model_opt) {case Closure::none : break; closures->apply_closures(G, GRhs);}
-  
+  switch (pars_->closure_model_opt) {
+  case Closure::none : break;
+  case Closure::beer42 : closures->apply_closures(G, GRhs); break;
+  case Closure::smithperp : closures->apply_closures(G, GRhs); break;
+  case Closure::smithpar : closures->apply_closures(G, GRhs); break;
+  }
+
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
 								   pars_->nu_hyper_l,

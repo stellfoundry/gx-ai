@@ -53,6 +53,8 @@ class GradParallelLinked : public GradParallel {
   GradParallelLinked(Grids* grids, int jtwist);
   ~GradParallelLinked();
 
+  void dealias(MomentsG* G);
+  void dealias(cuComplex* f);
   void dz(MomentsG* G);     void dz(cuComplex* m, cuComplex* res);
   void zft(MomentsG* G);   void zft(cuComplex* m, cuComplex* res);
 

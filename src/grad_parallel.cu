@@ -31,7 +31,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   cufftMakePlanMany( dz_plan_forward, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
   cufftMakePlanMany( dz_plan_inverse, dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
   cufftMakePlanMany(abs_dz_plan_forward,
-		                     dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
+ 		                      dim, &n, &isize, istride, idist, &osize, ostride, odist, CUFFT_C2C, batchsize, &workSize);
 
   // set up callback functions
   cudaDeviceSynchronize();

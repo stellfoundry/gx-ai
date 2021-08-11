@@ -39,7 +39,7 @@ Beer42::Beer42(Parameters* pars, Grids* grids, Geometry* geo, GradParallel* grad
   // 1d thread blocks over xyz
   int nxyz = grids_->NxNycNz;
   dimBlock = 512;
-   dimGrid = (nxyz-1)/dimBlock.x + 1;
+  dimGrid = (nxyz-1)/dimBlock.x + 1;
 }
 
 Beer42::~Beer42() {
@@ -59,7 +59,7 @@ void Beer42::apply_closures(MomentsG* G, MomentsG* GRhs)
     // mask unevolved moments
     setval <<< nb, nt >>> (GRhs->G(1, 2, is), zero, nn);
     setval <<< nb, nt >>> (GRhs->G(1, 3, is), zero, nn);
-					   
+
     //    cudaMemset(GRhs->G(1, 2, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
     //    cudaMemset(GRhs->G(1, 3, is), 0., sizeof(cuComplex)*grids_->NxNycNz);
 

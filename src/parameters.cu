@@ -258,6 +258,7 @@ void Parameters::get_nml_vars(char* filename)
   fapar      = toml::find_or <float>  (tnml, "fapar",     0.0 );
   fbpar      = toml::find_or <float>  (tnml, "fbpar",     0.0 );
   scheme     = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
+  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
   stages     = toml::find_or <int>    (tnml, "stages",         10   );
   cfl        = toml::find_or <float>  (tnml, "cfl",           1.0   );
   init_field = toml::find_or <string> (tnml, "init_field", "density");
@@ -728,7 +729,8 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_put_att_text (nc_con, ivar, "value", scheme.size(), scheme.c_str())) ERR(retval);
   if (retval = nc_def_var (nc_con, "stages",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   
-  if (retval = nc_def_var (nc_con, "nonlinear_mode",      NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_con, "dealias_kz",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_con, "nonlinear_mode",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_con, "closure_model_dum",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_con, ivar, "value", closure_model.size(), closure_model.c_str())) ERR(retval);
   if (retval = nc_def_var (nc_con, "smith_par_q",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -966,6 +968,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_con,  "init_amp",        init_amp        );
   put_real (nc_con,  "kpar_init",       kpar_init       );
   putbool  (nc_con,  "random_init",     random_init     );
+  putbool  (nc_con,  "dealias_kz",      dealias_kz      );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
   putint   (nc_con,  "smith_par_q",     smith_par_q     );
   putint   (nc_con,  "smith_perp_q",    smith_perp_q    );

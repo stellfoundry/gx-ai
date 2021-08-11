@@ -89,14 +89,13 @@ SSPx3::~SSPx3()
 // ======== SSPx3  ==============
 void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool setdt)
 {
-  linear_->rhs(G, f, GRhs);
-  if (pars_->boundary_option_periodic) grad_par->dealias(GRhs);
+  linear_->rhs(G, f, GRhs);  if (pars_->dealias_kz) grad_par->dealias(GRhs);
 
   if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
-  if (pars_->boundary_option_periodic) grad_par->dealias(GRhs);
+  if (pars_->dealias_kz) grad_par->dealias(GRhs);
 
   if (pars_->eqfix) G1->copyFrom(G);   
   G1->add_scaled(1., G, adt*dt_, GRhs);
@@ -105,11 +104,11 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 {
   EulerStep (G1, G , GRhs, f, true);  
-  solver_->fieldSolve(G1, f);         if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G1, f);         if (pars_->dealias_kz) grad_par->dealias(f->phi);
   EulerStep (G2, G1, GRhs, f, false); 
 
   G2->add_scaled((1.-w1), G, (w1-1.), G1, 1., G2);
-  solver_->fieldSolve(G2, f);         if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G2, f);         if (pars_->dealias_kz) grad_par->dealias(f->phi);
 
   EulerStep (G3, G2, GRhs, f, false);
 
@@ -117,7 +116,7 @@ void SSPx3::advance(double *t, MomentsG* G, Fields* f)
   
   if (forcing_ != nullptr) forcing_->stir(G);  
   G->mask();
-  solver_->fieldSolve(G, f);          if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G, f);          if (pars_->dealias_kz) grad_par->dealias(f->phi);
 
   *t += dt_;
 }
@@ -468,17 +467,16 @@ Ketcheson10::~Ketcheson10()
 
 void Ketcheson10::EulerStep(MomentsG* G_q1, MomentsG* GRhs, Fields* f, bool setdt)
 {
-  linear_->rhs(G_q1, f, GRhs);
-  if (pars_->boundary_option_periodic) grad_par->dealias(GRhs);
+  linear_->rhs(G_q1, f, GRhs);   if (pars_->dealias_kz) grad_par->dealias(GRhs);
   
   if(nonlinear_ != nullptr) {
     nonlinear_->nlps(G_q1, f, GRhs);
     if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
   }
+  if (pars_->dealias_kz) grad_par->dealias(GRhs);
 
-  if (pars_->boundary_option_periodic) grad_par->dealias(GRhs);
   G_q1->add_scaled(1., G_q1, dt_/6., GRhs);
-  solver_->fieldSolve(G_q1, f);  if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G_q1, f);  if (pars_->dealias_kz) grad_par->dealias(f->phi);
 }
 
 void Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
@@ -496,21 +494,21 @@ void Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
   G_q2->add_scaled(0.04, G_q2, 0.36, G_q1);
   G_q1->add_scaled(15, G_q2, -5, G_q1);
 
-  solver_->fieldSolve(G_q1, f);  if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G_q1, f);  if (pars_->dealias_kz) grad_par->dealias(f->phi);
   
   for(int i=6; i<10; i++) EulerStep(G_q1, G, f, setdt);
   
   linear_->rhs(G_q1, f, G);
-  if (pars_->boundary_option_periodic) grad_par->dealias(G);
+  if (pars_->dealias_kz) grad_par->dealias(G);
   
   if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1, f, G);
-  if (pars_->boundary_option_periodic) grad_par->dealias(G);
+  if (pars_->dealias_kz) grad_par->dealias(G);
   
   G->add_scaled(1., G_q2, 0.6, G_q1, 0.1*dt_, G);
   
   if (forcing_ != nullptr) forcing_->stir(G);
   
-  solver_->fieldSolve(G, f);  if (pars_->boundary_option_periodic) grad_par->dealias(f->phi);
+  solver_->fieldSolve(G, f);  if (pars_->dealias_kz) grad_par->dealias(f->phi);
   *t += dt_;
 }
 

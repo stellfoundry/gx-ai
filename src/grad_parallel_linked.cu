@@ -196,6 +196,16 @@ GradParallelLinked::~GradParallelLinked()
   if (kzLinked)            cudaFreeHost(kzLinked);
 }
 
+void GradParallelLinked::dealias(MomentsG* G)
+{
+  // not yet implemented
+}
+
+void GradParallelLinked::dealias(cuComplex* f)
+{
+  // not yet implemented
+}
+
 void GradParallelLinked::zft(MomentsG* G) 
 {
   for (int is=0; is < grids_->Nspecies; is++) {

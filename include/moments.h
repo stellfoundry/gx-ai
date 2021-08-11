@@ -13,7 +13,8 @@ class MomentsG {
   // accessor function to get pointer to specific l,m,s of G array
   // calling with no arguments gives pointer to beginning of G_lm
   cuComplex* G(int l=0, int m=0, int s=0) {
-    return &G_lm[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m + grids_->NxNycNz*grids_->Nmoms*s];
+    //    return &G_lm[grids_->NxNycNz*l + grids_->NxNycNz*grids_->Nl*m + grids_->NxNycNz*grids_->Nmoms*s];
+    return &G_lm[grids_->NxNycNz*(l + grids_->Nl*(m + grids_->Nm*s))];
     // glm[ky, kx, z]
   }
   float* tz(int s=0) {return &tzs[s];}

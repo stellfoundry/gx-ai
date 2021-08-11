@@ -957,7 +957,6 @@ __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void
   float *kz = (float*) kzData;
   unsigned int idz = offset;
   cuComplex Ikz = make_cuComplex(0., kz[idz]);
-  //  printf("kz[%d] = %f, %d \n",idz,kz[idz],nz);
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
@@ -1393,7 +1392,7 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   }
 }
 
-__global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp) 
+__global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz) 
 {
   int id = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -1412,7 +1411,11 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
   }
 
   if (id < (nz-1)/3+1)                     {kzm[id] = 1; kzp[id] = kz[id];}
-  if (id > (nz-1)/3 && id < nz - (nz-1)/3) {kzm[id] = 0; kzp[id] = 0.;}
+  if (dealias_kz) {
+    if (id > (nz-1)/3 && id < nz - (nz-1)/3) {kzm[id] = 0; kzp[id] = 0.;}
+  } else {
+    if (id > (nz-1)/3 && id < nz - (nz-1)/3) {kzm[id] = 0; kzp[id] = kz[id];}
+  }
   if (id-nz > -(1 + (nz-1)/3) && id < nz)  {kzm[id] = 1; kzp[id] = kz[id];}
   
   if (false) printf("\n");

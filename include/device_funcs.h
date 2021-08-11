@@ -219,7 +219,7 @@ extern __managed__ cufftCallbackStoreC i_kz_callbackPtr;
 extern __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
-__global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp);  
+__global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
 __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s,
 		      const float* qn, const float* nzs);
 

@@ -10,9 +10,12 @@
 #include "helper_cuda.h"
 // #include "reservoir.h"
 #include "reductions.h"
+#include <fenv.h>
 
 int main(int argc, char* argv[])
 {
+
+  //  feenableexcept(FE_INVALID | FE_OVERFLOW);
 
   MPI_Init(&argc, &argv);
   MPI_Comm mpcom = MPI_COMM_WORLD;
