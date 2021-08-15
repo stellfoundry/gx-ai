@@ -104,7 +104,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     cufftCreate(    &dz_plan_forward[c]);
     cufftCreate(    &dz_plan_inverse[c]);
     cufftCreate(    &dz_plan_forward_singlemom[c]);
-    //    cufftCreate(    &dz_plan_inverse_singlemom[c]);
+    cufftCreate(    &dz_plan_inverse_singlemom[c]);
 
     cufftCreate(&abs_dz_plan_forward_singlemom[c]);
 
