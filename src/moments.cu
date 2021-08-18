@@ -757,7 +757,7 @@ void MomentsG::update_tprim(double time) {
   if (pars_->tp_t0 > -0.5) {
     if (time < (double) pars_->tp_t0) {
       float tp = pars_->tprim0;
-      CP_TO_GPU (tps, &tp, sizeof(float)); 
+      CP_TO_GPU (tps, &tp, sizeof(float));
     } else {
       if (time < (double) pars_->tp_tf) {
 	float tfac = (float) time;

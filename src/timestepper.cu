@@ -38,6 +38,11 @@ void SSPx2::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 void SSPx2::advance(double *t, MomentsG* G, Fields* f)
 {
 
+  // update the gradients if they are evolving
+  G -> update_tprim(*t); 
+  G1-> update_tprim(*t); 
+  // end updates
+  
   EulerStep (G1, G, GRhs, f, true); 
   solver_->fieldSolve(G1, f);
 
@@ -103,6 +108,12 @@ void SSPx3::EulerStep(MomentsG* G1, MomentsG* G, MomentsG* GRhs, Fields* f, bool
 
 void SSPx3::advance(double *t, MomentsG* G, Fields* f)
 {
+  // update the gradients if they are evolving
+  G -> update_tprim(*t); 
+  G1-> update_tprim(*t); 
+  G2-> update_tprim(*t); 
+  // end updates
+  
   EulerStep (G1, G , GRhs, f, true);  
   solver_->fieldSolve(G1, f);         if (pars_->dealias_kz) grad_par->dealias(f->phi);
   EulerStep (G2, G1, GRhs, f, false); 
@@ -156,6 +167,11 @@ void RungeKutta2::EulerStep(MomentsG* G1, MomentsG* G0, MomentsG* G, MomentsG* G
 
 void RungeKutta2::advance(double *t, MomentsG* G, Fields* f)
 {
+  // update the gradients if they are evolving
+  G -> update_tprim(*t); 
+  G1-> update_tprim(*t); 
+  // end updates
+
   EulerStep (G1, G, G, GRhs, f, 0.5, true);    solver_->fieldSolve(G1, f);
   EulerStep (G, G1, G, GRhs, f, 1.0, false);   
 
@@ -205,6 +221,12 @@ void RungeKutta4::partial(MomentsG* G, MomentsG* Gt, Fields *f, MomentsG* Rhs, M
 
 void RungeKutta4::advance(double *t, MomentsG* G, Fields* f)
 {
+
+  // update the gradients if they are evolving
+  G   -> update_tprim(*t); 
+  G_q1-> update_tprim(*t); 
+  G_q2-> update_tprim(*t); 
+  // end updates
 
   partial(G, G,    f, GRhs,  G_q1, 0.5, true);
   partial(G, G_q1, f, GStar, G_q2, 0.5, false);
@@ -483,6 +505,12 @@ void Ketcheson10::advance(double *t, MomentsG* G, Fields* f)
 {
   bool setdt = true;
 
+  // update the gradients if they are evolving
+  G   -> update_tprim(*t); 
+  G_q1-> update_tprim(*t); 
+  G_q2-> update_tprim(*t); 
+  // end updates
+
   G_q1->copyFrom(G);
   G_q2->copyFrom(G);
 
@@ -558,6 +586,12 @@ void K2::FinalStep(MomentsG* G_q1, MomentsG* G_q2, MomentsG* GRhs, Fields* f)
 
 void K2::advance(double *t, MomentsG* G, Fields* f)
 {
+  // update the gradients if they are evolving
+  G   -> update_tprim(*t); 
+  G_q1-> update_tprim(*t); 
+  G_q2-> update_tprim(*t); 
+  // end updates
+
   G_q1->copyFrom(G);
   G_q2->copyFrom(G);
 
@@ -607,6 +641,12 @@ void G3::EulerStep(MomentsG* G_u, MomentsG* GRhs, Fields* f, bool setdt)
 
 void G3::advance(double *t, MomentsG* G, Fields* f)
 {
+  // update the gradients if they are evolving
+  G   -> update_tprim(*t); 
+  G_u1-> update_tprim(*t); 
+  //  G_u2-> update_tprim(*t); 
+  // end updates
+
   G_u1->copyFrom(G);
   G_u2->copyFrom(G);
 

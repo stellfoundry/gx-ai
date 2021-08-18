@@ -203,7 +203,7 @@ void Parameters::get_nml_vars(char* filename)
   tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
   tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
-  
+
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
 
