@@ -43,10 +43,15 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   for (int i=0; i < nZ; i++) vol_fac[i]  = geo_->jacobian_h[i] / volDenom;
 
   fluxDenom = 0.;  cudaMallocHost (&flux_fac, sizeof(float) * nZ);
+  //  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
+  //  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
   for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
-  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
-
-  if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
+  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i] / fluxDenom;
+  
+  //  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i];
+  //  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i] / fluxDenom;
+  
+    if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
 
   if (pars_->diagnosing_kzspec) {
     cudaMallocHost (&kvol_fac, sizeof(float) * nZ);

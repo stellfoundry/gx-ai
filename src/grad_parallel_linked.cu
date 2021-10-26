@@ -93,7 +93,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     cudaMemset(G_linked[c], 0., sLClmz);
 
     cudaMalloc((void**) &kzLinked[c], sizeof(float)*grids_->Nz*nLinks[c]);
-    cudaMemset(kzLinked[c], 0., sizeof(float)*grids_->Nz*nLinks[c]);
+    cudaMemset(kzLinked[c], 0.,       sizeof(float)*grids_->Nz*nLinks[c]);
 
     // set up transforms
     cufftCreate(    &zft_plan_forward[c]);
@@ -137,7 +137,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
     
     dB[c] = dim3(nt1, nt2, nt3);
     dG[c] = dim3(nb1, nb2, nb3);
-
+    
     //    dB[c] = dim3(32,4,4);
     //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
     //		 1 + (nLinks[c]*nChains[c]-1)/dB[c].y,
@@ -210,6 +210,15 @@ void GradParallelLinked::zft(MomentsG* G)
 {
   for (int is=0; is < grids_->Nspecies; is++) {
     for(int c=0; c<nClasses; c++) {
+      /*
+      int nlin, nch;
+
+      int *ifac;
+      cudaMalloc((void**) &ifac, sizeof(int)*nlin*nch);
+      CP_TO_CPU(&ifac, ikxLinked[c], sizeof(int)*nlin*nch);
+      for (int j=0; j<nlin*nch; j++) printf("ikxLinked[%d] = %d \n", j, ifac[j]);
+      cudaFree(ifac);
+      */				       
       linkedCopy GCHAINS (G->G(0,0,is), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
 
       cufftExecC2C (zft_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
@@ -511,8 +520,8 @@ void fill(int *ky, int *kx, int idy, int idx, int *idxRight,
       kx[p + nLinks*n] = idxR;
     } else {
       kx[p + nLinks*n] = idxR+nshift;
-    }  
-  }
+    }
+  }  
 }   
   
 void GradParallelLinked::kFill(int nClasses, int *nChains, int *nLinks,
@@ -528,10 +537,9 @@ void GradParallelLinked::kFill(int nClasses, int *nChains, int *nLinks,
         kt2ki(idy, idx, &c, &p, linksL, linksR, nClasses, nLinks, naky);
      	if(c==ic) {	  
 	  if(p==0) {	 
-	      	    
 	    fill(ky[c], kx[c], idy, idx, idxRight, c, p, n, naky, nakx, nshift, nLinks[c]);
 	    
-	    n++;	     
+	    n++;
 	  }
 	}
       }
