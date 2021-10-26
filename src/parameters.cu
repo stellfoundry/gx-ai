@@ -393,14 +393,23 @@ void Parameters::get_nml_vars(char* filename)
   beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
   zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false);
 
-  if (igeo == 0 && abs(shat) < 1.e-6) zero_shat = true;
+  if (abs(shat) < 1.e-5) zero_shat = true;
   
-  if (igeo == 0 && zero_shat) {
+  if (zero_shat) {
     boundary = "periodic";
     shat = 1.e-8;
     printf("Using no magnetic shear because zero_shat = true \n");
   }
   //  if (igeo == 0 && abs(shat) < 1.e-6) boundary = "periodic";
+  /*  
+  if (igeo == 1 && abs(shat) < 1.e-5) zero_shat = true;
+  
+  if (igeo == 1 && zero_shat) {
+    boundary = "periodic";
+    shat = 1.e-8;
+    printf("Using no magnetic shear because zero_shat = true \n");
+  }
+  */
   
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
@@ -1052,7 +1061,8 @@ void Parameters::get_nml_vars(char* filename)
 
   // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
   if (!zero_shat) {
-    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
+    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+    //    printf("x0 = %e, %d, %e \n",x0,Zp,shat);
   }
 
   // record the values of jtwist and x0 used in runname.nc
