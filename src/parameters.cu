@@ -1050,7 +1050,8 @@ void Parameters::get_nml_vars(char* filename)
 
   // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
   if (!zero_shat) {
-    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));  
+    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+    //    printf("x0 = %e, %d, %e \n",x0,Zp,shat);
   }
 
   // record the values of jtwist and x0 used in runname.nc
