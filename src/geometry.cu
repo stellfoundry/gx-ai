@@ -391,7 +391,7 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   if (geoFile == NULL) {
     printf("Cannot open file %s \n", pars->geofilename.c_str());
     exit(0);
-  }
+  } else DEBUGPRINT("Using igeo = 1. Opened geo file %s \n", pars->geofilename.c_str());
 
   int nlines=0;
   fpos_t lineStartPos;
@@ -413,40 +413,42 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
       getline (myfile, datline);  // text
       getline (myfile, datline);  
       stringstream ss(datline);      string element;       
-      getline( ss, element, ' '); ntgrid         = stoi(element);    
-      getline( ss, element, ' '); pars->nperiod  = stoi(element);
-      getline( ss, element, ' '); newNz          = stoi(element);   
-      getline( ss, element, ' '); pars->drhodpsi = stof(element);
-      getline( ss, element, ' '); pars->rmaj     = stof(element);
-      getline( ss, element, ' '); pars->shat     = stof(element);
-      getline( ss, element, ' '); pars->kxfac    = stof(element);       
-      getline( ss, element, ' '); pars->qsf      = stof(element);       
+      ss >> element; ntgrid         = stoi(element);    
+      ss >> element; pars->nperiod  = stoi(element);
+      ss >> element; newNz          = stoi(element);   
+      ss >> element; pars->drhodpsi = stof(element);
+      ss >> element; pars->rmaj     = stof(element);
+      ss >> element; pars->shat     = stof(element);
+      ss >> element; pars->kxfac    = stof(element);       
+      ss >> element; pars->qsf      = stof(element);       
 
       shat       = pars->shat;
       drhodpsi   = pars->drhodpsi;
       oldnperiod = pars->nperiod;
       
       DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f, shat = %f\n\n\n",
-		 ntgrid, pars->nperiod, grids->Nz, pars->rmaj, shat);
-      
+		 ntgrid, pars->nperiod, newNz, pars->rmaj, pars->shat);
+
       if(oldNz != newNz) {
-	printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
-	printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
-	abort();
+        printf("old Nz = %d \t new Nz = %d \n",oldNz,newNz);
+        printf("You must set ntheta in the namelist equal to ntheta in the geofile. Exiting...\n");
+        fflush(stdout);
+        abort();
       }
       int Nz = newNz;
       if(oldnperiod != pars->nperiod) {
-	printf("You must set nperiod in the namelist equal to nperiod in the geofile. Exiting...\n");
-	abort();
+        printf("You must set nperiod in the namelist equal to nperiod in the geofile. Exiting...\n");
+        fflush(stdout);
+        abort();
       }
       
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
 	getline (myfile, datline); stringstream ss(datline);
-	getline( ss, element, ' '); gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.25;
-        getline( ss, element, ' '); gradpar        = stof(element);
-	getline( ss, element, ' '); grho_h[idz]    = stof(element);
-	getline( ss, element, ' '); z_h[idz]       = stof(element);
+        ss >> element; gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.25;
+        ss >> element; gradpar        = stof(element);
+        ss >> element; grho_h[idz]    = stof(element);
+        ss >> element; z_h[idz]       = stof(element);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
      
@@ -455,13 +457,13 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
       
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
-	getline (myfile, datline); stringstream ss(datline);
-	getline( ss, element, ' '); cvdrift_h[idz] = stof(element);
-	cvdrift_h[idz] *= 0.25;
-        getline( ss, element, ' '); gds2_h[idz]    = stof(element);
-	getline( ss, element, ' '); bmag_h[idz]    = stof(element);
-	bmagInv_h[idz]  = 1./bmag_h[idz];
-	jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
+        getline (myfile, datline); stringstream ss(datline);
+        ss >> element; cvdrift_h[idz] = stof(element);
+        cvdrift_h[idz] *= 0.25;
+        ss >> element; gds2_h[idz]    = stof(element);
+        ss >> element; bmag_h[idz]    = stof(element);
+        bmagInv_h[idz]  = 1./bmag_h[idz];
+        jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
@@ -471,9 +473,9 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 
       getline(myfile, datline); // text
       for (int idz=0; idz < newNz; idz++) {
-	getline (myfile, datline); stringstream ss(datline);
-	getline( ss, element, ' '); gds21_h[idz] = stof(element); 
-        getline( ss, element, ' '); gds22_h[idz] = stof(element);
+        getline (myfile, datline); stringstream ss(datline);
+        ss >> element; gds21_h[idz] = stof(element); 
+        ss >> element; gds22_h[idz] = stof(element);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
@@ -482,9 +484,9 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 
             getline(myfile, datline); // text
       for (int idz=0; idz < newNz; idz++) {
-	getline (myfile, datline); stringstream ss(datline);
-	getline( ss, element, ' '); cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.25;
-        getline( ss, element, ' '); gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.25;
+        getline (myfile, datline); stringstream ss(datline);
+        ss >> element; cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.25;
+        ss >> element; gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.25;
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
