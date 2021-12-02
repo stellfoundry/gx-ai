@@ -5,7 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
-#include "gx_lib.h"
+#include "run_gx.h"
 #include "version.h"
 #include "helper_cuda.h"
 // #include "reservoir.h"
@@ -143,9 +143,8 @@ int main(int argc, char* argv[])
    
   printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
-  Parameters * pars         = nullptr;
-  pars = new Parameters();
-  pars->iproc = iproc;
+  Parameters * pars = nullptr;
+  pars = new Parameters(mpcom);
   pars->get_nml_vars(run_name);
   
   Geometry    * geo         = nullptr;

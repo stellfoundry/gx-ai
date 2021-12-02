@@ -5,8 +5,10 @@
 #include "version.h"
 using namespace std;
 
-Parameters::Parameters() {
+Parameters::Parameters(MPI_Comm mpcom) {
   initialized = false;
+
+  MPI_Comm_rank(mpcom, &iproc);
 
   // some cuda parameters (not from input file)
   int dev; 
@@ -1130,6 +1132,10 @@ void Parameters::get_nml_vars(char* filename)
   init_species(species_h);
   initialized = true;
   printf(ANSI_COLOR_RESET);    
+}
+
+void Parameters::set_from_trinity(trin_parameters_struct *tpars)
+{
 }
 
 void Parameters::init_species(specie* species)

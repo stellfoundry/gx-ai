@@ -399,6 +399,10 @@ void Diagnostics::finish(MomentsG* G, Fields* fields, double time)
   id->close_nc_file();  fflush(NULL);
 }
 
+void Diagnostics::copy_fluxes_to_trinity(trin_fluxes_struct *tfluxes)
+{
+}
+
 void Diagnostics::print_omg(cuComplex *W)
 {
   CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);

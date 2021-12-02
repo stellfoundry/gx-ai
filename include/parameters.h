@@ -12,9 +12,11 @@
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 #include "species.h"
+#include "trinity_interface.h"
 // #include <cufft.h>
 #include <string>
 #include <vector>
+#include <mpi.h>
 
 #define ANSI_COLOR_RED     "\x1b[31m"
 #define ANSI_COLOR_GREEN   "\x1b[32m"
@@ -64,13 +66,14 @@ enum ASpectra {ASPECTRA_species,
 class Parameters {
 
  public:
-  Parameters(void);
+  Parameters(MPI_Comm mpcom);
   ~Parameters(void);
   
   const int nw_spectra = 10; // should match # of elements in WSpectra
   const int np_spectra = 7;  // should match # of elements in PSpectra
   const int na_spectra = 7;  // should match # of elements in ASpectra
   void get_nml_vars(char* file);
+  void set_from_trinity(trin_parameters_struct *tpars);
 
   void init_species(specie* species);
 

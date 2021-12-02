@@ -8,6 +8,7 @@
 #include "grad_parallel.h"
 #include "grad_perp.h"
 #include "reservoir.h"
+#include "trinity_interface.h"
 
 class Diagnostics {
  public:
@@ -17,6 +18,7 @@ class Diagnostics {
   bool loop(MomentsG* G, Fields* fields, double dt, int counter, double time) ;
   void finish(MomentsG* G, Fields* fields, double time);  
   void write_init(MomentsG* G, Fields* f);
+  void copy_fluxes_to_trinity(trin_fluxes_struct *tfluxes);
 
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
