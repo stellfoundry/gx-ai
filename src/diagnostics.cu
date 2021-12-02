@@ -38,21 +38,35 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
 
   if (pars_->Reservoir) rc = new Reservoir(pars_, grids_->NxNyNz*grids_->Nmoms);  
   
-  volDenom = 0. ;  cudaMallocHost (&vol_fac, sizeof(float) * nZ);
+  volDenom = 0.;  
+  float *vol_fac_h;
+  vol_fac_h = (float*) malloc (sizeof(float) * nZ);
+  cudaMalloc (&vol_fac, sizeof(float) * nZ);
   for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i]; 
-  for (int i=0; i < nZ; i++) vol_fac[i]  = geo_->jacobian_h[i] / volDenom;
+  for (int i=0; i < nZ; i++) vol_fac_h[i]  = geo_->jacobian_h[i] / volDenom;
+  CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*nZ);
+  free(vol_fac_h);
 
-  fluxDenom = 0.;  cudaMallocHost (&flux_fac, sizeof(float) * nZ);
+  fluxDenom = 0.;  
+  float *flux_fac_h;
+  flux_fac_h = (float*) malloc (sizeof(float) * nZ);
+  cudaMalloc(&flux_fac, sizeof(float)*nZ);
   //  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
-  //  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
+  //  for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
   for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
-  for (int i=0; i<grids_->Nz; i++) flux_fac[i]  = geo_->jacobian_h[i] / fluxDenom;
+  for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
+  CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);
+  free(flux_fac_h);
   
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
 
   if (pars_->diagnosing_kzspec) {
-    cudaMallocHost (&kvol_fac, sizeof(float) * nZ);
-    for (int i=0; i < nZ; i++) kvol_fac[i] = 1.0;
+    float *kvol_fac_h;
+    kvol_fac_h = (float*) malloc (sizeof(float) * nZ);
+    cudaMalloc (&kvol_fac, sizeof(float) * nZ);
+    for (int i=0; i < nZ; i++) kvol_fac_h[i] = 1.0;
+    CP_TO_GPU(kvol_fac, kvol_fac_h, sizeof(float)*nZ);
+    free(kvol_fac_h);
 
     cudaMalloc (&amom_d, sizeof(cuComplex) * nR * nS); 
     if (pars_->local_limit) {
@@ -82,7 +96,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   
   if (id -> omg -> write_v_time) {
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
-    cudaMallocHost (&tmp_omg_h,   sizeof(cuComplex) * nX * nY);
+    tmp_omg_h = (cuComplex*) malloc (sizeof(cuComplex) * nX * nY);
     int nn = nX*nY; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
     setval <<< nb, nt >>> (omg_d, zero, nn);
   }  
@@ -175,11 +189,11 @@ Diagnostics::~Diagnostics()
   if (vEk)        cudaFree      ( vEk       );
   if (phi_max)    cudaFree      ( phi_max   );
   
-  if (vol_fac)    cudaFreeHost  ( vol_fac   );
-  if (flux_fac)   cudaFreeHost  ( flux_fac  );
-  if (kvol_fac)   cudaFreeHost  ( kvol_fac  );
+  if (vol_fac)    cudaFree  ( vol_fac   );
+  if (flux_fac)   cudaFree  ( flux_fac  );
+  if (kvol_fac)   cudaFree  ( kvol_fac  );
   if (val)        cudaFreeHost  ( val       );
-  if (tmp_omg_h)  cudaFreeHost  ( tmp_omg_h );
+  if (tmp_omg_h)  free  ( tmp_omg_h );
   if (gy_h)       cudaFreeHost  ( gy_h      );
   if (ry_h)       cudaFreeHost  ( ry_h      );
 }
@@ -401,6 +415,7 @@ void Diagnostics::finish(MomentsG* G, Fields* fields, double time)
 
 void Diagnostics::copy_fluxes_to_trinity(trin_fluxes_struct *tfluxes)
 {
+  
 }
 
 void Diagnostics::print_omg(cuComplex *W)
