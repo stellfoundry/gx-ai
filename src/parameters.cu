@@ -1136,6 +1136,85 @@ void Parameters::get_nml_vars(char* filename)
 
 void Parameters::set_from_trinity(trin_parameters_struct *tpars)
 {
+   equilibrium_type = tpars->equilibrium_type;
+   if(tpars->restart>0) restart = true;
+
+   if (tpars->nstep > nstep) {
+     printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file");
+     abort();
+   }
+   trinity_timestep = tpars->trinity_timestep;
+   trinity_iteration = tpars->trinity_iteration;
+   trinity_conv_count = tpars->trinity_conv_count;
+   nstep = tpars->nstep;
+   navg = tpars->navg;
+   end_time = tpars->end_time;
+  /*char eqfile[800];*/
+   irho = tpars->irho ;
+   rhoc = tpars->rhoc ;
+   eps = tpars->eps;
+   // NB NEED TO SET EPS IN TRINITY!!!
+   //eps = rhoc/rmaj;
+   bishop = tpars->bishop ;
+   nperiod = tpars->nperiod ;
+   nz_in = tpars->ntheta ;
+
+ /* Miller parameters*/
+   rmaj = tpars->rgeo_local ;
+   r_geo = tpars->rgeo_lcfs ;
+   akappa  = tpars->akappa ;
+   akappri = tpars->akappri ;
+   tri = tpars->tri ;
+   tripri = tpars->tripri ;
+   shift = tpars->shift ;
+   qsf = tpars->qinp ;
+   shat = tpars->shat ;
+    // EGH These appear to be redundant
+   //asym = tpars->asym ;
+   //asympri = tpars->asympri ;
+
+  /* Other geometry parameters - Bishop/Greene & Chance*/
+   beta_prime_input = tpars->beta_prime_input ;
+   s_hat_input = tpars->s_hat_input ;
+
+  /*Flow shear*/
+   g_exb = tpars->g_exb ;
+
+  /* Species parameters... I think allowing 20 species should be enough!*/
+  int oldnSpecies = nspec;
+  nspec = tpars->ntspec ;
+
+  if (nspec!=oldnSpecies){
+          printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, nspec);
+          printf("Number of species set in get_fluxes must equal number of species in gx input file\n");
+          exit(1);
+  }
+  if (debug) printf("nSpecies was set to %d\n", nspec);
+  for (int i=0;i<nspec;i++){
+           species_h[i].dens = tpars->dens[i] ;
+           species_h[i].temp = tpars->temp[i] ;
+           species_h[i].fprim = tpars->fprim[i] ;
+           species_h[i].tprim = tpars->tprim[i] ;
+           species_h[i].nu_ss = tpars->nu[i] ;
+  }
+  init_species(species_h);
+
+  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
+  // this triggers the use of jtwist_square... i.e. jtwist is 
+  // set to what it needs to make the box square at the outboard midplane
+  if (jtwist < 0) {
+    int jtwist_square;
+    // determine value of jtwist needed to make X0~Y0
+    jtwist_square = (int) round(2*M_PI*abs(shat)*Zp);
+    if (jtwist_square == 0) jtwist_square = 1;
+    // as currently implemented, there is no way to manually set jtwist from input file
+    // there could be some switch here where we choose whether to use
+    // jtwist_in or jtwist_square
+    jtwist = jtwist_square*2;
+    //else use what is set in input file 
+  }
+  if(jtwist!=0 && abs(shat)>1.e-6) x0 = y0*jtwist/(2*M_PI*Zp*abs(shat));
+  //if(abs(shat)<1.e-6) x0 = y0;
 }
 
 void Parameters::init_species(specie* species)
