@@ -96,7 +96,7 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
 
 void Solver::svar (cuComplex* f, int N)
 {
-  cuComplex* f_h;  cudaMallocHost((void**) &f_h, sizeof(cuComplex)*N);
+  cuComplex* f_h = (cuComplex*) malloc(sizeof(cuComplex)*N);
 
   for (int i=0; i<N; i++) { f_h[i].x=0.; f_h[i].y=0.; }
 
@@ -105,20 +105,19 @@ void Solver::svar (cuComplex* f, int N)
   for (int i=0; i<N; i++) printf("solver: var(%d) = (%e, %e) \n", i, f_h[i].x, f_h[i].y);
   printf("\n");
 
-  cudaFreeHost (f_h);
+  free (f_h);
 }
 
 void Solver::svar (float* f, int N)
 {
-  float* f_h;
-  cudaMallocHost((void**) &f_h, sizeof(float)*N);
+  float* f_h = (float*) malloc(sizeof(float)*N);
 
   CP_TO_CPU (f_h, f, N*sizeof(float));
 
   for (int i=0; i<N; i++) printf("solver: var(%d) = %e \n", i, f_h[i]);
   printf("\n");
   
-  cudaFreeHost (f_h);
+  free (f_h);
 }
 
 void Solver::zero (cuComplex* f)

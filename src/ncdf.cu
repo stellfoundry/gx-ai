@@ -1646,7 +1646,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     zkxky_count[2] = 1;
     
     size_t size = sizeof(float)*Nz;
-    cudaMallocHost((void**) &theta_extended, size);
+    theta_extended = (float*) malloc(size);
     float th0;
     for (int i=0; i<(Nx-1)/3+1; i++) {
       for (int j=0; j<(Ny-1)/3+1; j++) {
@@ -1672,7 +1672,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 	if (retval = nc_put_vara(nc_geo, theta_x, zkxky_start, zkxky_count, theta_extended)) ERR(retval);
       }
     }
-    if (theta_extended) cudaFreeHost(theta_extended);
+    if (theta_extended) free(theta_extended);
   }
 
   //  if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);

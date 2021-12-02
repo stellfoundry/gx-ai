@@ -45,8 +45,8 @@ int main(int argc, char* argv[])
   int nnz = K * N;
   double *A_h;
   int * A_j;
-  cudaMallocHost((void**) &A_h, sizeof(double) * nnz);
-  cudaMallocHost((void**) &A_j, sizeof(int)    * nnz);
+  A_h = (double*) malloc(sizeof(double) * nnz);
+  A_j = (int*) malloc(sizeof(int) * nnz);
   
   std::random_device rd;         std::mt19937 gen(rd()); 
   std::uniform_real_distribution<double> unif( 0., radius*2./((double) K));
@@ -81,8 +81,8 @@ int main(int argc, char* argv[])
   }    
   CP_TO_GPU (R, A_h, sizeof(double) * N);
   
-  cudaFreeHost(A_h);
-  cudaFreeHost(A_j);
+  free(A_h);
+  free(A_j);
 
   Red *red;
   

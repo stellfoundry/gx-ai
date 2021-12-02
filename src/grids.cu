@@ -34,21 +34,21 @@ Grids::Grids(Parameters* pars) :
   
   checkCuda(cudaDeviceSynchronize());
 
-  checkCuda(cudaMallocHost ( (void**) &kx_outh, sizeof(float) * Nakx )); 
+  kx_outh   = (float*) malloc(sizeof(float) * Nakx       );
   cudaMalloc     ( (void**) &kzm,       sizeof(int)   * Nz       );
   cudaMalloc     ( (void**) &kzp,       sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &kz_outh,   sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &kpar_outh, sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &theta0_h,  sizeof(float) * Nx       ); 
-  cudaMallocHost ( (void**) &kx_h,      sizeof(float) * Nx       ); 
-  cudaMallocHost ( (void**) &ky_h,      sizeof(float) * Nyc      );
-  cudaMallocHost ( (void**) &kz_h,      sizeof(float) * Nz       );
+  kz_outh   = (float*) malloc(sizeof(float) * Nz       );
+  kpar_outh = (float*) malloc(sizeof(float) * Nz       );
+  theta0_h  = (float*) malloc(sizeof(float) * Nx       ); 
+  kx_h      = (float*) malloc(sizeof(float) * Nx       ); 
+  ky_h      = (float*) malloc(sizeof(float) * Nyc      );
+  kz_h      = (float*) malloc(sizeof(float) * Nz       );
   cudaMalloc     ( (void**) &kx,        sizeof(float) * Nx       );
   cudaMalloc     ( (void**) &th0,       sizeof(float) * Nx       );
   cudaMalloc     ( (void**) &ky,        sizeof(float) * Nyc      );
   cudaMalloc     ( (void**) &kz,        sizeof(float) * Nz       );
-  cudaMallocHost ( (void**) &x_h,       sizeof(float) * Nx       );
-  cudaMallocHost ( (void**) &y_h,       sizeof(float) * Ny       );
+  x_h      = (float*) malloc(sizeof(float) * Nx       ); 
+  y_h      = (float*) malloc(sizeof(float) * Ny       );
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
@@ -131,14 +131,14 @@ Grids::~Grids() {
   if (kzp)             cudaFree(kzp);
   if (th0)             cudaFree(th0);
   
-  if (kpar_outh)       cudaFreeHost(kpar_outh);
-  if (kz_outh)         cudaFreeHost(kz_outh);
-  if (kx_outh)         cudaFreeHost(kx_outh);
-  if (kx_h)            cudaFreeHost(kx_h);
-  if (ky_h)            cudaFreeHost(ky_h);
-  if (kz_h)            cudaFreeHost(kz_h);
-  if (y_h)             cudaFreeHost(y_h);
-  if (theta0_h)        cudaFreeHost(theta0_h); 
+  if (kpar_outh)       free(kpar_outh);
+  if (kz_outh)         free(kz_outh);
+  if (kx_outh)         free(kx_outh);
+  if (kx_h)            free(kx_h);
+  if (ky_h)            free(ky_h);
+  if (kz_h)            free(kz_h);
+  if (y_h)             free(y_h);
+  if (theta0_h)        free(theta0_h); 
  
 }
 

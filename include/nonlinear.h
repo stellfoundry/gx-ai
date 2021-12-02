@@ -51,8 +51,8 @@ class Nonlinear {
   float * dJ0_Apar_dy ;
   float * dphi        ;
   float * g_res       ;
-  float * vmax_x      ;
-  float * vmax_y      ;
+  float vmax_x[1]     ;
+  float vmax_y[1]     ;
   cuComplex * J0phi   ;
   cuComplex * J0_Apar ;
 };

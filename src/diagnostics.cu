@@ -82,7 +82,7 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   // need if (pars_->write_flux || "diagnosing potential) {
   cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
-  if (id -> rh -> write) cudaMallocHost(&val, sizeof(float)*2);
+  if (id -> rh -> write) val = (float*) malloc(sizeof(float)*2);
 
   if (!pars_->all_kinetic) {
 
@@ -107,9 +107,9 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   
   /*
   if (pars_->diagnosing_pzt) {
-    cudaMallocHost (&primary,   sizeof(float));    primary[0] = 0.;  
-    cudaMallocHost (&secondary, sizeof(float));    secondary[0] = 0.;
-    cudaMallocHost (&tertiary,  sizeof(float));    tertiary[0] = 0.;
+    primary = (float*) malloc (sizeof(float));    primary[0] = 0.;  
+    secondary = (float*) malloc (sizeof(float));  secondary[0] = 0.;  
+    tertiary = (float*) malloc (sizeof(float));    tertiary[0] = 0.;  
     cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
   }
   */
@@ -160,10 +160,10 @@ Diagnostics::Diagnostics(Parameters* pars, Grids* grids, Geometry* geo) :
   
   if (pars_->ks) {
     cudaMalloc     (&gy_d, sizeof(float)*grids_->Ny);
-    cudaMallocHost (&gy_h, sizeof(float)*grids_->Ny);
+    gy_h = (float*) malloc (sizeof(float)*grids_->Ny);
 
     if (pars_->ResWrite) {
-      cudaMallocHost (&ry_h, sizeof(double)*pars_->ResQ*grids_->NxNyNz*grids_->Nmoms);
+      ry_h = (double*) malloc(sizeof(double)*pars_->ResQ*grids_->NxNyNz*grids_->Nmoms);
     }
   }
   
@@ -192,10 +192,10 @@ Diagnostics::~Diagnostics()
   if (vol_fac)    cudaFree  ( vol_fac   );
   if (flux_fac)   cudaFree  ( flux_fac  );
   if (kvol_fac)   cudaFree  ( kvol_fac  );
-  if (val)        cudaFreeHost  ( val       );
+  if (val)        free  ( val       );
   if (tmp_omg_h)  free  ( tmp_omg_h );
-  if (gy_h)       cudaFreeHost  ( gy_h      );
-  if (ry_h)       cudaFreeHost  ( ry_h      );
+  if (gy_h)       free  ( gy_h      );
+  if (ry_h)       free  ( ry_h      );
 }
 
 bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, double time) 
@@ -298,7 +298,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 
       if (pars_->ks) {
 	cuComplex * g_h;
-	cudaMallocHost (&g_h, sizeof(cuComplex)*grids_->Nyc);
+	g_h = (cuComplex*) malloc (sizeof(cuComplex)*grids_->Nyc);
 	CP_TO_CPU(g_h, G->G(), sizeof(cuComplex)*grids_->Nyc);
 	float Dtmp = 0.;
 	for (int i=0; i<grids_->Naky; i++) {
@@ -307,7 +307,7 @@ bool Diagnostics::loop(MomentsG* G, Fields* fields, double dt, int counter, doub
 	Dks += Dtmp;
 	printf("<D> = %f \t",Dks/((float) ndiag));
 	ndiag += 1;
-	cudaFreeHost  (g_h);
+	free(g_h);
       }
       
       id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    

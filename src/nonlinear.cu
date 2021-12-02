@@ -13,8 +13,8 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   
   dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
   Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
-  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
-  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr;  dphi_dy     = nullptr;
+  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  
+  J0phi       = nullptr;  J0_Apar     = nullptr;  dphi_dy     = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -77,9 +77,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids, Geometry* geo) :
   cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
   
   dt_cfl = 0.;
-
-  cudaMallocHost((void**) &vmax_x, sizeof(float));
-  cudaMallocHost((void**) &vmax_y, sizeof(float));
 }
 
 Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
@@ -117,7 +114,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
     dBx = dim3(nbx, 1, 1);
     dGx = dim3(ngx, 1, 1);
     
-    cudaMallocHost((void**) &vmax_y, sizeof(float));
   }
 
   if (vp) {
@@ -140,7 +136,6 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
     dBx = dim3(nbx, nby, 1);
     dGx = dim3(ngx, ngy, 1);
 
-    cudaMallocHost((void**) &vmax_y, sizeof(float));
     
   }
 }
@@ -166,9 +161,6 @@ Nonlinear::~Nonlinear()
   if ( g_res       ) cudaFree ( g_res       );
   if ( J0phi       ) cudaFree ( J0phi       );
   if ( J0_Apar     ) cudaFree ( J0_Apar     );
-
-  if ( vmax_x    ) cudaFreeHost ( vmax_x );
-  if ( vmax_y    ) cudaFreeHost ( vmax_y );
 }
 
 void Nonlinear::qvar (cuComplex* G, int N)

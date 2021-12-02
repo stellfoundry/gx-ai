@@ -47,19 +47,19 @@ Geometry::~Geometry() {
   if (grho);     cudaFree(grho);	
   if (jacobian); cudaFree(jacobian);	
 
-  if (z_h)         cudaFreeHost(z_h);
-  if (bmag_h)      cudaFreeHost(bmag_h);
-  if (bmagInv_h)   cudaFreeHost(bmagInv_h);
-  if (bgrad_h)     cudaFreeHost(bgrad_h);
-  if (gds2_h);     cudaFreeHost(gds2_h);	
-  if (gds21_h);    cudaFreeHost(gds21_h);	
-  if (gds22_h);    cudaFreeHost(gds22_h);	
-  if (gbdrift_h);  cudaFreeHost(gbdrift_h);	
-  if (gbdrift0_h); cudaFreeHost(gbdrift0_h);	
-  if (cvdrift_h);  cudaFreeHost(cvdrift_h);	
-  if (cvdrift0_h); cudaFreeHost(cvdrift0_h);	
-  if (grho_h);     cudaFreeHost(grho_h);	
-  if (jacobian_h); cudaFreeHost(jacobian_h);	
+  if (z_h)         free(z_h);
+  if (bmag_h)      free(bmag_h);
+  if (bmagInv_h)   free(bmagInv_h);
+  if (bgrad_h)     free(bgrad_h);
+  if (gds2_h);     free(gds2_h);	
+  if (gds21_h);    free(gds21_h);	
+  if (gds22_h);    free(gds22_h);	
+  if (gbdrift_h);  free(gbdrift_h);	
+  if (gbdrift0_h); free(gbdrift0_h);	
+  if (cvdrift_h);  free(cvdrift_h);	
+  if (cvdrift0_h); free(cvdrift0_h);	
+  if (grho_h);     free(grho_h);	
+  if (jacobian_h); free(jacobian_h);	
 
   if(operator_arrays_allocated_) {
     if (kperp2) cudaFree(kperp2);
@@ -75,21 +75,21 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   float theta;
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*Nz;
-  cudaMallocHost ((void**) &z_h, size);
-  cudaMallocHost ((void**) &bmag_h, size);
-  cudaMallocHost ((void**) &bmagInv_h, size);
-  cudaMallocHost ((void**) &bgrad_h, size);
-  cudaMallocHost ((void**) &gds2_h, size);
-  cudaMallocHost ((void**) &gds21_h, size);
-  cudaMallocHost ((void**) &gds22_h, size);
-  cudaMallocHost ((void**) &gbdrift_h, size);
-  cudaMallocHost ((void**) &gbdrift0_h, size);
-  cudaMallocHost ((void**) &cvdrift_h, size);
-  cudaMallocHost ((void**) &cvdrift0_h, size);
-  cudaMallocHost ((void**) &grho_h, size);
-  cudaMallocHost ((void**) &jacobian_h, size);
+  z_h = (float*) malloc (size);
+  bmag_h = (float*) malloc (size);
+  bmagInv_h = (float*) malloc (size);
+  bgrad_h = (float*) malloc (size);
+  gds2_h = (float*) malloc (size);
+  gds21_h = (float*) malloc (size);
+  gds22_h = (float*) malloc (size);
+  gbdrift_h = (float*) malloc (size);
+  gbdrift0_h = (float*) malloc (size);
+  cvdrift_h = (float*) malloc (size);
+  cvdrift0_h = (float*) malloc (size);
+  grho_h = (float*) malloc (size);
+  jacobian_h = (float*) malloc (size);
 
-  //  cudaMallocHost((void**) &kperp2_h, sizeof(float)*grids->NxNycNz);
+  // kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);
   
   cudaMalloc ((void**) &z, size);
   cudaMalloc ((void**) &bmag, size);
@@ -223,19 +223,28 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // allocate space for variables on the CPU
   double * dtmp;
-  cudaMallocHost ((void**) &dtmp, sizeof(double)*N);
+  dtmp = (double*) malloc(sizeof(double)*N);
+  z_h = (float*) malloc (size);
+  bmag_h = (float*) malloc (size);
+  bmagInv_h = (float*) malloc (size);
+  gds2_h = (float*) malloc (size);
+  gds21_h = (float*) malloc (size);
+  gds22_h = (float*) malloc (size);
+  gbdrift_h = (float*) malloc (size);
+  gbdrift0_h = (float*) malloc (size);
+  cvdrift_h = (float*) malloc (size);
+  cvdrift0_h = (float*) malloc (size);
+  grho_h = (float*) malloc (size);
+  jacobian_h = (float*) malloc (size);
   
   // read the data with nc_get_var
   int id;
   if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &z_h, size);
   for (int n=0; n<N; n++) z_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "bmag", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &bmag_h, size);
-  cudaMallocHost ((void**) &bmagInv_h, size);
   for (int n=0; n<N; n++) bmag_h[n] = (float) dtmp[n];
   for (int n=0; n<N; n++) bmagInv_h[n] = 1./bmag_h[n];
 
@@ -245,45 +254,37 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   if (retval = nc_inq_varid(ncgeo, "grho", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &grho_h, size);
   for (int n=0; n<N; n++) grho_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds2", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &gds2_h, size);
   for (int n=0; n<N; n++) gds2_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &gds21_h, size);
   for (int n=0; n<N; n++) gds21_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &gds22_h, size);
   for (int n=0; n<N; n++) gds22_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &gbdrift_h, size);
   for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &gbdrift0_h, size);
   for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &cvdrift_h, size);
   for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  cudaMallocHost ((void**) &cvdrift0_h, size);
   for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n];
   
-  cudaFreeHost(dtmp);
+  free(dtmp);
 
   double stmp; 
   
@@ -292,7 +293,6 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   pars->drhodpsi = (float) stmp;
   drhodpsi = pars->drhodpsi;
   
-  cudaMallocHost ((void**) &jacobian_h, size);
   for (int n=0; n<N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
       
   if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
@@ -360,18 +360,18 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
 
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz; 
-  cudaMallocHost ((void**) &z_h, size);
-  cudaMallocHost ((void**) &bmag_h, size);
-  cudaMallocHost ((void**) &bmagInv_h, size);
-  cudaMallocHost ((void**) &gds2_h, size);
-  cudaMallocHost ((void**) &gds21_h, size);
-  cudaMallocHost ((void**) &gds22_h, size);
-  cudaMallocHost ((void**) &gbdrift_h, size);
-  cudaMallocHost ((void**) &gbdrift0_h, size);
-  cudaMallocHost ((void**) &cvdrift_h, size);
-  cudaMallocHost ((void**) &cvdrift0_h, size);
-  cudaMallocHost ((void**) &grho_h, size);
-  cudaMallocHost ((void**) &jacobian_h, size);
+  z_h = (float*) malloc (size);
+  bmag_h = (float*) malloc (size);
+  bmagInv_h = (float*) malloc (size);
+  gds2_h = (float*) malloc (size);
+  gds21_h = (float*) malloc (size);
+  gds22_h = (float*) malloc (size);
+  gbdrift_h = (float*) malloc (size);
+  gbdrift0_h = (float*) malloc (size);
+  cvdrift_h = (float*) malloc (size);
+  cvdrift0_h = (float*) malloc (size);
+  grho_h = (float*) malloc (size);
+  jacobian_h = (float*) malloc (size);
 
   cudaMalloc ((void**) &z, size);
   cudaMalloc ((void**) &bmag, size);
@@ -544,7 +544,7 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
 
   /*
-  cudaMallocHost((void**) &kperp2_h, sizeof(float)*grids->NxNycNz);
+  kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);
   CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);
 
   for (int iz=0; iz < grids->Nz; iz++) {
@@ -565,7 +565,7 @@ void Geometry::calculate_bgrad(Grids* grids)
   operator_arrays_allocated_=false;
 
   size_t size = sizeof(float)*grids->Nz;
-  cudaMallocHost((void**) &bgrad_h, size);
+  bgrad_h = (float*) malloc (size);
 
   cudaMalloc ((void**) &bgrad, size);
   cudaMalloc ((void**) &bgrad_temp, size);

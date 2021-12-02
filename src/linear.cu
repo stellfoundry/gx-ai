@@ -54,9 +54,14 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
     cudaMalloc((void**) &s11, sizeof(float)*grids_->Nz);
     cudaMalloc((void**) &vol_fac, sizeof(float)*grids_->Nz);
     
-    volDenom = 0. ;  cudaMallocHost (&vol_fac, sizeof(float) * grids_->Nz);
-    for (int i=0; i < grids_->Nz; i++) volDenom   += geo_->jacobian_h[i]; 
-    for (int i=0; i < grids_->Nz; i++) vol_fac[i]  = geo_->jacobian_h[i] / volDenom;
+    volDenom = 0.;  
+    float *vol_fac_h;
+    vol_fac_h = (float*) malloc (sizeof(float) * nZ);
+    cudaMalloc (&vol_fac, sizeof(float) * nZ);
+    for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i]; 
+    for (int i=0; i < nZ; i++) vol_fac_h[i]  = geo_->jacobian_h[i] / volDenom;
+    CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*nZ);
+    free(vol_fac_h);
   }
   
   // allocate conservation terms for collision operator
@@ -151,6 +156,7 @@ Linear::~Linear()
   if (upar_bar)   cudaFree(upar_bar);
   if (uperp_bar)  cudaFree(uperp_bar);
   if (t_bar)      cudaFree(t_bar);
+  if (vol_fac)    cudaFree(vol_fac);
 }
 
 void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
