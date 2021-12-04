@@ -8,10 +8,16 @@
 #include "get_error.h"
 
 class Linear {
+ public:
+  virtual ~Linear() {};
+  virtual void rhs(MomentsG* G, Fields* f, MomentsG* GRhs) = 0;
+};
+
+class Linear_GK : public Linear {
 public:
-  Linear(Parameters* pars, Grids* grids, Geometry* geo); 
-  Linear(Parameters* pars, Grids* grids); 
-  ~Linear();
+  Linear_GK(Parameters* pars, Grids* grids, Geometry* geo); 
+  Linear_GK(Parameters* pars, Grids* grids); 
+  ~Linear_GK();
 
   //  void rhs(cuComplex *G, cuComplex *GRhs);
   void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
@@ -47,4 +53,32 @@ public:
 
   float volDenom;
   
+};
+
+class Linear_KREHM : public Linear {
+public:
+  Linear_KREHM(Parameters* pars, Grids* grids, Geometry* geo); 
+  Linear_KREHM(Parameters* pars, Grids* grids); 
+  ~Linear_KREHM();
+
+  //  void rhs(cuComplex *G, cuComplex *GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+
+  //  int zderiv(MomentsG *G);
+
+  dim3 dimGrid, dimBlock, dG, dB, dGs, dBs, dimGridh, dimBlockh, dB_all, dG_all;
+  int sharedSize;
+  
+ private:
+
+  Geometry       * geo_     ;
+  Parameters     * pars_    ;
+  Grids          * grids_   ;  
+  GradParallel   * grad_par ;
+  Closures       * closures ;
+  MomentsG       * GRhs_par ;
+
+  float rho_s;
+  float d_e;
+  float nu_ei;
 };

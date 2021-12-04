@@ -1,6 +1,10 @@
 #include "linear.h"
 
-Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
+//=======================================
+// Linear_GK
+// object for handling linear terms in GK
+//=======================================
+Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
   closures(nullptr), grad_par(nullptr)
 {
@@ -124,7 +128,7 @@ Linear::Linear(Parameters* pars, Grids* grids, Geometry* geo) :
   
 }
 
-Linear::Linear(Parameters* pars, Grids* grids) :
+Linear_GK::Linear_GK(Parameters* pars, Grids* grids) :
   pars_(pars), grids_(grids), closures(nullptr), grad_par(nullptr)
 {
   if (pars_->ks) ks = true;
@@ -144,7 +148,7 @@ Linear::Linear(Parameters* pars, Grids* grids) :
   }
 }
 
-Linear::~Linear()
+Linear_GK::~Linear_GK()
 {
   if (closures) delete closures;
   if (grad_par) delete grad_par;
@@ -159,7 +163,7 @@ Linear::~Linear()
   if (vol_fac)    cudaFree(vol_fac);
 }
 
-void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();
@@ -232,8 +236,110 @@ void Linear::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
 }
 
+//==========================================
+// Linear_KREHM
+// object for handling linear terms in KREHM
+//==========================================
+Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids, Geometry* geo) :
+  pars_(pars), grids_(grids), geo_(geo),
+  closures(nullptr), grad_par(nullptr)
+{
+  // set up parallel ffts
+  if(pars_->local_limit) {
+    DEBUGPRINT("Using local limit for grad parallel.\n");
+    grad_par = new GradParallelLocal(grids_);
+  }
+  else if(pars_->boundary_option_periodic) {
+    DEBUGPRINT("Using periodic for grad parallel.\n");
+    grad_par = new GradParallelPeriodic(grids_);
+  }
+  else {
+    DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
+    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+  }
+ 
+  switch (pars_->closure_model_opt)
+    {
+    case Closure::none      :
+      break;
+    case Closure::smithpar  :
+      DEBUGPRINT("Initializing Smith parallel closures\n");
+      closures = new SmithPar(pars_, grids_, geo_, grad_par);
+      break;
+    }
+  
+  int nn1 = grids_->Nyc;             int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
+  int nn2 = grids_->Nx;              int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
+  int nn3 = grids_->Nz*grids_->Nl;   int nt3 = min(nn3,  4);   int nb3 = 1 + (nn3-1)/nt3;
+  
+  dBs = dim3(nt1, nt2, nt3);
+  dGs = dim3(nb1, nb2, nb3);
 
+  nn1 = grids_->Nyc;                              nt1 = min(nn1, 16);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nx*grids_->Nz;                    nt2 = min(nn2, 16);    nb2 = (nn2-1)/nt2 + 1;
+  nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  4);    nb3 = (nn3-1)/nt3 + 1;
+  
+  dB_all = dim3(nt1, nt2, nt3);
+  dG_all = dim3(nb1, nb2, nb3);	 
 
+  // set up CUDA grids for main linear kernel.  
+  // NOTE: nt1 = sharedSize = 32 gives best performance, but using 8 is only 5% worse.
+  // this allows use of 4x more LH resolution without changing shared memory layouts
+  // so i_share = 8 is used by default.
 
+  nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = 1;                       nt2 = min(grids_->Nm, 4 );   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = 1;                       nt3 = 1;                     nb3 = 1;
 
+  dimBlock = dim3(nt1, nt2, nt3);
+  dimGrid  = dim3(nb1, nb2, nb3);
+
+  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, 32) ;   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = grids_->Nm;              nt2 = min(grids_->Nm, 4 )      ;   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = 1;                       nt3 = 1                        ;   nb3 = 1;
+
+  dimBlockh = dim3(nt1, nt2, nt3);
+  dimGridh  = dim3(nb1, nb2, nb3);
+  
+  rho_s = pars->rho_s;
+  d_e = pars->d_e;
+  nu_ei = pars->nu_ei;
+}
+
+Linear_KREHM::~Linear_KREHM()
+{
+  if (closures) delete closures;
+  if (grad_par) delete grad_par;
+}
+
+void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+
+  // to be safe, start with zeros on RHS
+  GRhs->set_zero();
+  
+  // calculate conservation terms for collision operator
+  int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
+
+  rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, nu_ei, rho_s, d_e, GRhs->G());
+  grad_par->dz(GRhs);
+  
+  // closures
+  switch (pars_->closure_model_opt) {
+  case Closure::none : break;
+  case Closure::beer42 : closures->apply_closures(G, GRhs); break;
+  case Closure::smithperp : closures->apply_closures(G, GRhs); break;
+  case Closure::smithpar : closures->apply_closures(G, GRhs); break;
+  }
+
+  // hypercollisions
+  if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
+								   pars_->nu_hyper_l,
+								   pars_->nu_hyper_m,
+								   pars_->p_hyper_l,
+								   pars_->p_hyper_m, GRhs->G());
+  // hyper in k-space
+  if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
+						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
+
+}
 

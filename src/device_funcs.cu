@@ -226,6 +226,35 @@ __global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky)
   }
 }
 
+__global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  if ( unmasked(idx, idy) && idz < nz ) { 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+
+    float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+    float gam0 = g0(kperp2*rho_i*rho_i/2.);
+
+    phi[idxyz] = G0[idxyz]*rho_i*rho_i/2./(gam0 - 1.);
+  }
+}
+
+__global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  if ( unmasked(idx, idy) && idz < nz ) { 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+
+    float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+
+    apar[idxyz] = -G1[idxyz]*rho_s*d_e/(1. + d_e*d_e*kperp2);
+  }
+}
+
 __global__ void rhs_lin_vp(const cuComplex *G, const cuComplex* phi, cuComplex* GRhs, float* ky,
 			   bool closure, float nu, float nuh, int alpha, int alpha_h)
 {
@@ -2057,6 +2086,60 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
    } // species loop
   } // idxyz < NxNycNz
 }
+
+__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, 
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par)
+{
+  unsigned int idy  = get_id1();
+  unsigned int idx  = get_id2();
+  unsigned int idz = get_id3();
+  const float rhos_ov_de = rhos/de;
+  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+
+    int m = 0;       // m = 0 case
+    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
+    unsigned int mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
+    rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m+1) * g[mp1];
+    
+    m = nm - 1;     // m = nm-1 case
+    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
+    unsigned int mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
+    rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m) * g[mm1];
+    
+    for (int m = 1; m < nm-1; m++) {
+       unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
+       unsigned int mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
+       unsigned int mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
+       
+       rhs_par[globalIdx] = -rhos_ov_de * (sqrtf(m+1)*g[mp1] + sqrtf(m)*g[mm1]);
+       // collision term
+       if(m!=2) rhs_par[globalIdx] = rhs_par[globalIdx] - nu_ei*m*g[globalIdx];
+    }
+
+    // additional field terms in m<=2 equations
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    const cuComplex phi_ = phi[idxyz];
+    const cuComplex apar_ = apar[idxyz];
+
+    m = 0;          
+    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
+    rhs_par[globalIdx] = rhs_par[globalIdx] - apar_/(de*de);
+
+    m = 1;          
+    if (nm > 1) {
+      rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de) - nu_ei*apar_/(rhos*de);
+    }    
+
+    m = 2;         
+    if (nm > 2) {
+      rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2)*apar_/(de*de);
+    }    
+  }
+}
+
+
+
+
 
 __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 			  float nu_hyper, float D_hyper, cuComplex* rhs) {

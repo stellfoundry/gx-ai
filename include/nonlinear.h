@@ -11,9 +11,16 @@
 
 class Nonlinear {
  public:
-  Nonlinear(Parameters* pars, Grids* grids, Geometry* geo);
-  Nonlinear(Parameters* pars, Grids* grids);
-  ~Nonlinear();
+  virtual ~Nonlinear() {};
+  virtual void nlps(MomentsG* G, Fields* f, MomentsG* G_res) = 0;
+  virtual double cfl(Fields *f, double dt_max) = 0;
+};
+
+class Nonlinear_GK : public Nonlinear {
+ public:
+  Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo);
+  Nonlinear_GK(Parameters* pars, Grids* grids);
+  ~Nonlinear_GK();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
   double cfl(Fields *f, double dt_max);
@@ -55,4 +62,46 @@ class Nonlinear {
   float vmax_y[1]     ;
   cuComplex * J0phi   ;
   cuComplex * J0_Apar ;
+};
+
+class Nonlinear_KREHM : public Nonlinear {
+ public:
+  Nonlinear_KREHM(Parameters* pars, Grids* grids, Geometry* geo);
+  Nonlinear_KREHM(Parameters* pars, Grids* grids);
+  ~Nonlinear_KREHM();
+
+  void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
+  double cfl(Fields *f, double dt_max);
+  
+ private:
+
+  int nBatch;
+  dim3 dGk, dBk, dGx, dBx;
+  float cfl_x_inv, cfl_y_inv;
+  double dt_cfl;
+
+  Parameters        * pars_           ;
+  Grids             * grids_          ;  
+  Geometry          * geo_            ;
+  
+  Red               * red             ; 
+  GradPerp          * grad_perp       ;
+
+  float * dg_dx       ;
+  float * dg_dy       ;
+  float * dphi_dx     ;
+  float * dphi_dy     ;
+  float * dapar_dx     ;
+  float * dapar_dy     ;
+  float * tmp_r;
+  cuComplex * tmp_c;
+
+  float * val1        ;
+  float vPhi_max_x[1]     ;
+  float vPhi_max_y[1]     ;
+  float vA_max_x[1]     ;
+  float vA_max_y[1]     ;
+
+  float rho_s;
+  float d_e;
 };

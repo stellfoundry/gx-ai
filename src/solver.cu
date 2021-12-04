@@ -1,7 +1,11 @@
 #include "solver.h"
 #define GQN <<< dG, dB >>>
 
-Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
+//=======================================
+// Solver_GK
+// object for handling field solve in GK
+//=======================================
+Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
   pars_(pars), grids_(grids), geo_(geo),
   tmp(nullptr), nbar(nullptr), phiavgdenom(nullptr)
 {
@@ -50,14 +54,14 @@ Solver::Solver(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
   dg = dim3(nb1, nb2, nb3);
 }
 
-Solver::~Solver() 
+Solver_GK::~Solver_GK() 
 {
   if (nbar)        cudaFree(nbar);
   if (tmp)         cudaFree(tmp);
   if (phiavgdenom) cudaFree(phiavgdenom);
 }
 
-void Solver::fieldSolve(MomentsG* G, Fields* fields)
+void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
 {
   if (pars_->ks) return;
   if (pars_->vp) {
@@ -94,7 +98,7 @@ void Solver::fieldSolve(MomentsG* G, Fields* fields)
   if(pars_->source_option==PHIEXT) add_source GQN (fields->phi, pars_->phi_ext);
 }
 
-void Solver::svar (cuComplex* f, int N)
+void Solver_GK::svar (cuComplex* f, int N)
 {
   cuComplex* f_h = (cuComplex*) malloc(sizeof(cuComplex)*N);
 
@@ -108,7 +112,7 @@ void Solver::svar (cuComplex* f, int N)
   free (f_h);
 }
 
-void Solver::svar (float* f, int N)
+void Solver_GK::svar (float* f, int N)
 {
   float* f_h = (float*) malloc(sizeof(float)*N);
 
@@ -120,7 +124,35 @@ void Solver::svar (float* f, int N)
   free (f_h);
 }
 
-void Solver::zero (cuComplex* f)
+void Solver_GK::zero (cuComplex* f)
 {
   cudaMemset(f, 0., sizeof(cuComplex)*grids_->NxNycNz);
 }
+
+//==========================================
+// Solver_KREHM
+// object for handling field solve in KREHM
+//==========================================
+Solver_KREHM::Solver_KREHM(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
+  pars_(pars), grids_(grids), geo_(geo)
+{
+  int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
+  
+  nn1 = grids_->Nyc;        nt1 = min(nn1, 32 );   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = grids_->Nx;         nt2 = min(nn2,  4 );   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = grids_->Nz;         nt3 = min(nn3,  4 );   nb3 = 1 + (nn3-1)/nt3;
+  
+  dB = dim3(nt1, nt2, nt3);
+  dG = dim3(nb1, nb2, nb3);
+}
+
+Solver_KREHM::~Solver_KREHM() 
+{
+}
+
+void Solver_KREHM::fieldSolve(MomentsG* G, Fields* fields)
+{
+  phiSolve_krehm<<<dG, dB>>>(fields->phi, G->G(0), grids_->kx, grids_->ky, pars_->rho_i);
+  aparSolve_krehm<<<dG, dB>>>(fields->apar, G->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+}
+
