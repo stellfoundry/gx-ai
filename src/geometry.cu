@@ -37,29 +37,29 @@ Geometry::~Geometry() {
   if (bmag)      cudaFree(bmag);
   if (bmagInv)   cudaFree(bmagInv);
   if (bgrad)     cudaFree(bgrad);
-  if (gds2);     cudaFree(gds2);	
-  if (gds21);    cudaFree(gds21);	
-  if (gds22);    cudaFree(gds22);	
-  if (gbdrift);  cudaFree(gbdrift);	
-  if (gbdrift0); cudaFree(gbdrift0);	
-  if (cvdrift);  cudaFree(cvdrift);	
-  if (cvdrift0); cudaFree(cvdrift0);	
-  if (grho);     cudaFree(grho);	
-  if (jacobian); cudaFree(jacobian);	
+  if (gds2)      cudaFree(gds2);	
+  if (gds21)     cudaFree(gds21);	
+  if (gds22)     cudaFree(gds22);	
+  if (gbdrift)   cudaFree(gbdrift);	
+  if (gbdrift0)  cudaFree(gbdrift0);	
+  if (cvdrift)   cudaFree(cvdrift);	
+  if (cvdrift0)  cudaFree(cvdrift0);	
+  if (grho)      cudaFree(grho);	
+  if (jacobian)  cudaFree(jacobian);	
 
   if (z_h)         free(z_h);
   if (bmag_h)      free(bmag_h);
   if (bmagInv_h)   free(bmagInv_h);
   if (bgrad_h)     free(bgrad_h);
-  if (gds2_h);     free(gds2_h);	
-  if (gds21_h);    free(gds21_h);	
-  if (gds22_h);    free(gds22_h);	
-  if (gbdrift_h);  free(gbdrift_h);	
-  if (gbdrift0_h); free(gbdrift0_h);	
-  if (cvdrift_h);  free(cvdrift_h);	
-  if (cvdrift0_h); free(cvdrift0_h);	
-  if (grho_h);     free(grho_h);	
-  if (jacobian_h); free(jacobian_h);	
+  if (gds2_h)      free(gds2_h);	
+  if (gds21_h)     free(gds21_h);	
+  if (gds22_h)     free(gds22_h);	
+  if (gbdrift_h)   free(gbdrift_h);	
+  if (gbdrift0_h)  free(gbdrift0_h);	
+  if (cvdrift_h)   free(cvdrift_h);	
+  if (cvdrift0_h)  free(cvdrift0_h);	
+  if (grho_h)      free(grho_h);	
+  if (jacobian_h)  free(jacobian_h);	
 
   if(operator_arrays_allocated_) {
     if (kperp2) cudaFree(kperp2);

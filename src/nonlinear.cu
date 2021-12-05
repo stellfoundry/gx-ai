@@ -88,8 +88,8 @@ Nonlinear::Nonlinear(Parameters* pars, Grids* grids) :
 
   dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
   Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0_Apar_dx = nullptr;
-  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  vmax_x      = nullptr;
-  vmax_y      = nullptr;  J0phi       = nullptr;  J0_Apar     = nullptr; 
+  dJ0_Apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  
+  J0phi       = nullptr;  J0_Apar     = nullptr; 
 
   if (ks) {
     nBatch = 1;
