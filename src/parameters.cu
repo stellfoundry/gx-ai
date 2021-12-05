@@ -104,6 +104,17 @@ void Parameters::get_nml_vars(char* filename)
   ks_epsf           = toml::find_or <float> (tnml, "ks_epsf",     -1.0 );
 
   tnml = nml;
+  if (nml.contains("KREHM")) tnml = toml::find (nml, "KREHM");
+  
+  krehm             = toml::find_or <bool>  (tnml, "krehm",     false );
+  if(krehm) gx = false;
+  rho_i             = toml::find_or <float> (tnml, "rho_i",       1.0 );
+  d_e               = toml::find_or <float> (tnml, "d_e",         1.0 );
+  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       1.0 );
+  zt                = toml::find_or <float> (tnml, "zt",          1.0 );
+  rho_s = rho_i*sqrtf(zt/2);
+
+  tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
@@ -462,9 +473,9 @@ void Parameters::get_nml_vars(char* filename)
     if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
-  gx = (!ks && !vp);
+  gx = (!ks && !vp && !krehm);
   assert (!(ks && vp));
-  assert (ks || vp || gx);
+  assert (ks || vp || gx || krehm);
 
   int ksize = 0;
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);

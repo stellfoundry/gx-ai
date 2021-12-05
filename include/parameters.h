@@ -119,6 +119,10 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
+
+  // parameters for KREHM system
+  bool krehm;
+  float rho_s, rho_i, d_e, zt;
   
   cuComplex phi_test, smith_perp_w0;
 

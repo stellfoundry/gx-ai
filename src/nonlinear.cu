@@ -404,8 +404,8 @@ double Nonlinear_GK::cfl(Fields *f, double dt_max)
 // Nonlinear_KREHM
 // object for handling non-linear terms in KREHM
 //==============================================
-Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo), red(nullptr), grad_perp(nullptr)
+Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids), red(nullptr), grad_perp(nullptr)
 {
   tmp_c = nullptr;
   tmp_r = nullptr;
@@ -489,13 +489,13 @@ void Nonlinear_KREHM::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
     grad_perp->dyC2R(G->Gm(m), dg_dy);      
 
     // compute {g_m, phi}
-    bracket GBX (tmp_r, dg_dx, dphi_dy, dg_dy, dphi_dx);
+    bracket GBX (tmp_r, dg_dx, dphi_dy, dg_dy, dphi_dx, 1.);
     grad_perp->R2C(tmp_r, tmp_c);
     // NL_m += {g_m, phi}
     add_scaled_singlemom_kernel GBK (G_nl->Gm(m), 1., G_nl->Gm(m), 1., tmp_c);
 
     // compute {g_m, Apar}
-    bracket GBX (tmp_r, dg_dx, dapar_dy, dg_dy, dapar_dx);
+    bracket GBX (tmp_r, dg_dx, dapar_dy, dg_dy, dapar_dx, 1.);
     grad_perp->R2C(tmp_r, tmp_c);
     // NL_{m+1} += -rho_s/d_e*sqrt(m+1)*{g_m, Apar}
     if(m+1 < grids_->Nm-1) add_scaled_singlemom_kernel GBK (G_nl->Gm(m+1), 1., G_nl->Gm(m+1), -rho_s/d_e*sqrtf(m+1), tmp_c);

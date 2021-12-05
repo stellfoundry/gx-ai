@@ -11,9 +11,9 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
 
   size_t lhsize = grids_->size_G;
-  //  printf("nspecies = %d and size_G = %d \n",grids_->Nspecies, (int) grids_->size_G);
+  // printf("nspecies = %d and size_G = %d \n",grids_->Nspecies, (int) grids_->size_G);
   checkCuda(cudaMalloc((void**) &G_lm, lhsize)); 
-  cudaMemset(G_lm, 0., lhsize);
+  checkCuda(cudaMemset(G_lm, 0., lhsize));
 
   float * vts_h = (float*) malloc(sizeof(float) * grids_->Nspecies );
   float * tzs_h = (float*) malloc(sizeof(float) * grids_->Nspecies );
@@ -192,52 +192,54 @@ void MomentsG::initVP(double *time) {
   cudaDeviceSynchronize();
 }
 
-void MomentsG::initialConditions(double *time) {
+//void MomentsG::initialConditions(double *time) {
+//
+//  size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
+//  cuComplex *init_h = nullptr;
+//  init_h = (cuComplex*) malloc(momsize);
+//  
+//  std::random_device rd;
+//  std::mt19937 gen(rd());
+//  std::normal_distribution<float> ramp(0., pars_->init_amp);
+//
+//  for (int idy = 0; idy<grids_->Nyc; idy++) {
+//    init_h[idy].x = 0.;
+//    init_h[idy].y = 0.;
+//  }
+//  
+//  for (int idy = 1; idy<grids_->Naky; idy++) {
+//    init_h[idy].x = ramp(gen);
+//    init_h[idy].y = ramp(gen);
+//  }
+//
+//  //  init_h[1].x =  0.5;
+//  //  init_h[2].y = -0.25;
+//  
+//  CP_TO_GPU(G_lm, init_h, momsize);
+//  
+//  free(init_h);
+//
+//  // restart_read goes here, if restart == T
+//  // as in gs2, if restart_read is true, we want to *add* the restart values to anything
+//  // that has happened above and also move the value of time up to the end of the previous run
+//  if(pars_->restart) {
+//    DEBUG_PRINT("reading restart file \n");
+//    this->restart_read(time);
+//  }
+//
+//  cudaDeviceSynchronize();
+//  //  checkCuda(cudaGetLastError());
+//
+//  //  return cudaGetLastError();
+//  
+//}
 
-  size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
-  cuComplex *init_h = nullptr;
-  init_h = (cuComplex*) malloc(momsize);
-  
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::normal_distribution<float> ramp(0., pars_->init_amp);
-
-  for (int idy = 0; idy<grids_->Nyc; idy++) {
-    init_h[idy].x = 0.;
-    init_h[idy].y = 0.;
-  }
-  
-  for (int idy = 1; idy<grids_->Naky; idy++) {
-    init_h[idy].x = ramp(gen);
-    init_h[idy].y = ramp(gen);
-  }
-
-  //  init_h[1].x =  0.5;
-  //  init_h[2].y = -0.25;
-  
-  CP_TO_GPU(G_lm, init_h, momsize);
-  
-  free(init_h);
-
-  // restart_read goes here, if restart == T
-  // as in gs2, if restart_read is true, we want to *add* the restart values to anything
-  // that has happened above and also move the value of time up to the end of the previous run
-  if(pars_->restart) {
-    DEBUG_PRINT("reading restart file \n");
-    this->restart_read(time);
-  }
-
-  cudaDeviceSynchronize();
-  //  checkCuda(cudaGetLastError());
-
-  //  return cudaGetLastError();
-  
-}
-
-void MomentsG::initialConditions(float* z_h, double* time) {
+void MomentsG::initialConditions(double* time) {
  
   checkCuda(cudaGetLastError());
   cudaDeviceSynchronize(); // to make sure its safe to operate on host memory
+
+  float *z_h = grids_->z_h;
 
   size_t momsize = sizeof(cuComplex)*grids_->NxNycNz;
   cuComplex *init_h = nullptr;

@@ -133,8 +133,8 @@ void Solver_GK::zero (cuComplex* f)
 // Solver_KREHM
 // object for handling field solve in KREHM
 //==========================================
-Solver_KREHM::Solver_KREHM(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G) :
-  pars_(pars), grids_(grids), geo_(geo)
+Solver_KREHM::Solver_KREHM(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
 {
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   

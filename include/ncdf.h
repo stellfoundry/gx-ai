@@ -10,7 +10,7 @@
 class NetCDF_ids {
 
  public: 
-  NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo);
+  NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo = nullptr);
   ~NetCDF_ids();
 
   void close_nc_file();

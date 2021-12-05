@@ -42,7 +42,7 @@ private:
 
 class Solver_KREHM : public Solver {
  public:
-  Solver_KREHM(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G);
+  Solver_KREHM(Parameters* pars, Grids* grids);
   ~Solver_KREHM();
   
   void fieldSolve(MomentsG* G, Fields* fields);

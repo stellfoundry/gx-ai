@@ -14,7 +14,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
   phi_h = (cuComplex*) malloc(size_);
 
-  if (pars_->beta > 0.) {
+  if (pars_->beta > 0. || pars_->krehm) {
     checkCuda(cudaMalloc((void**) &apar, size_));
 
     cudaMemset(apar, 0., size_); setval <<< nb, nt >>> (apar, zero, nn);

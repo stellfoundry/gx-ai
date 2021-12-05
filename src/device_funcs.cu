@@ -2102,14 +2102,14 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
     rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m+1) * g[mp1];
     
     m = nm - 1;     // m = nm-1 case
-    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
+    globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
     unsigned int mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
     rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m) * g[mm1];
     
     for (int m = 1; m < nm-1; m++) {
-       unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
-       unsigned int mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
-       unsigned int mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
+       globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
+       mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
+       mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
        
        rhs_par[globalIdx] = -rhos_ov_de * (sqrtf(m+1)*g[mp1] + sqrtf(m)*g[mm1]);
        // collision term
@@ -2122,16 +2122,18 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
     const cuComplex apar_ = apar[idxyz];
 
     m = 0;          
-    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
+    globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
     rhs_par[globalIdx] = rhs_par[globalIdx] - apar_/(de*de);
 
     m = 1;          
     if (nm > 1) {
+      globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
       rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de) - nu_ei*apar_/(rhos*de);
     }    
 
     m = 2;         
     if (nm > 2) {
+      globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
       rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2)*apar_/(de*de);
     }    
   }

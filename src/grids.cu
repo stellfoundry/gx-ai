@@ -28,7 +28,7 @@ Grids::Grids(Parameters* pars) :
   kx_outh         = nullptr;
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
   y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
-  theta0_h        = nullptr;  th0             = nullptr;
+  theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
   
   // kz is defined without the factor of gradpar
   
@@ -49,6 +49,7 @@ Grids::Grids(Parameters* pars) :
   cudaMalloc     ( (void**) &kz,        sizeof(float) * Nz       );
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
+  z_h      = (float*) malloc(sizeof(float) * Nz       );
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
@@ -119,7 +120,11 @@ Grids::Grids(Parameters* pars) :
   // define the x coordinate
   x_h[0] = 0.;
   for (int i = 1; i < Nx ; i++) x_h[i] = x_h[i-1] + (float) 2*M_PI*(pars_->x0)/Nx;
- 
+
+  // define the z coordinate
+  for(int k=0; k<Nz; k++) {
+    z_h[k] = 2.*M_PI *pars->Zp *(k-Nz/2)/Nz;
+  }
 }
 
 Grids::~Grids() {
@@ -137,7 +142,9 @@ Grids::~Grids() {
   if (kx_h)            free(kx_h);
   if (ky_h)            free(ky_h);
   if (kz_h)            free(kz_h);
+  if (x_h)             free(x_h);
   if (y_h)             free(y_h);
+  if (z_h)             free(z_h);
   if (theta0_h)        free(theta0_h); 
  
 }

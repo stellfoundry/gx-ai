@@ -66,7 +66,6 @@ class Nonlinear_GK : public Nonlinear {
 
 class Nonlinear_KREHM : public Nonlinear {
  public:
-  Nonlinear_KREHM(Parameters* pars, Grids* grids, Geometry* geo);
   Nonlinear_KREHM(Parameters* pars, Grids* grids);
   ~Nonlinear_KREHM();
 
@@ -82,7 +81,6 @@ class Nonlinear_KREHM : public Nonlinear {
 
   Parameters        * pars_           ;
   Grids             * grids_          ;  
-  Geometry          * geo_            ;
   
   Red               * red             ; 
   GradPerp          * grad_perp       ;

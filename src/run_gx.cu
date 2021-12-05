@@ -2,9 +2,12 @@
 
 void getDeviceMemoryUsage();
 
-void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
+void run_gx(Parameters *pars, Grids *grids)
 {
   double time = 0;
+
+  Geometry    * geo         = nullptr;
+  Diagnostics * diagnostics = nullptr;
 
   Fields    * fields    = nullptr;
   MomentsG  * G         = nullptr;
@@ -23,6 +26,36 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   //                             //
   /////////////////////////////////
   if (pars->gx) {
+    int igeo = pars->igeo;
+    DEBUGPRINT("Initializing geometry...\n");
+    if(igeo==0) {
+      geo = new S_alpha_geo(pars, grids);
+      CUDA_DEBUG("Initializing geometry s_alpha: %s \n");
+    }
+    else if(igeo==1) {
+      geo = new File_geo(pars, grids);
+      printf("************************* \n \n \n");
+      printf("Warning: may have assumed grho = 1 \n \n \n");
+      printf("************************* \n");
+      CUDA_DEBUG("Initializing geometry from file: %s \n");
+    } 
+    else if(igeo==2) {
+      geo = new geo_nc(pars, grids);
+      CUDA_DEBUG("Initializing geometry from NetCDF file: %s \n");
+    } 
+    else if(igeo==3) {
+      DEBUGPRINT("igeo = 3 not yet implemented!\n");
+      exit(1);
+      //geo = new Gs2_geo();
+    }
+
+    DEBUGPRINT("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics_GK(pars, grids, geo);
+    CUDA_DEBUG("Initializing diagnostics: %s \n");    
+
+    //    DEBUGPRINT("Initializing Hermite transforms...\n");
+    //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
+    //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo);    
 
@@ -35,18 +68,20 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     }
 
     // set up initial conditions
-    G      -> initialConditions(geo->z_h, &time);   
+    G      -> initialConditions(&time);   
     solver -> fieldSolve(G, fields);                
   }
 
   if (pars->krehm) {
-    linear = new Linear_KREHM(pars, grids, geo);          
-    if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids, geo);    
+    diagnostics = new Diagnostics_KREHM(pars, grids);
 
-    solver = new Solver_KREHM(pars, grids, geo, G);    
+    linear = new Linear_KREHM(pars, grids);          
+    if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
+
+    solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
-    G      -> initialConditions(geo->z_h, &time);   
+    G      -> initialConditions(&time);   
     solver -> fieldSolve(G, fields);                
   }
 
@@ -150,6 +185,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 
   if (fields)    delete fields;
   if (forcing)   delete forcing;     
+
+  if (geo) delete geo;
+  if (diagnostics) delete diagnostics;
 }    
 
 void getDeviceMemoryUsage()
