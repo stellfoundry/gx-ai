@@ -519,7 +519,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
-  if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
+  //if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
 
   float *vol_fac_h;
   vol_fac_h = (float*) malloc (sizeof(float) * nZ);
@@ -528,27 +528,27 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*nZ);
   free(vol_fac_h);
 
-  if (pars_->diagnosing_kzspec) {
-    float *kvol_fac_h;
-    kvol_fac_h = (float*) malloc (sizeof(float) * nZ);
-    cudaMalloc (&kvol_fac, sizeof(float) * nZ);
-    for (int i=0; i < nZ; i++) kvol_fac_h[i] = 1.0;
-    CP_TO_GPU(kvol_fac, kvol_fac_h, sizeof(float)*nZ);
-    free(kvol_fac_h);
+  //if (pars_->diagnosing_kzspec) {
+  //  float *kvol_fac_h;
+  //  kvol_fac_h = (float*) malloc (sizeof(float) * nZ);
+  //  cudaMalloc (&kvol_fac, sizeof(float) * nZ);
+  //  for (int i=0; i < nZ; i++) kvol_fac_h[i] = 1.0;
+  //  CP_TO_GPU(kvol_fac, kvol_fac_h, sizeof(float)*nZ);
+  //  free(kvol_fac_h);
 
-    cudaMalloc (&amom_d, sizeof(cuComplex) * nR * nS); 
-    if (pars_->local_limit) {
-      // nothing, this is not defined, or could be defined as an identity.
-    }
-    else if(pars_->boundary_option_periodic) {
-      grad_par = new GradParallelPeriodic(grids_);
-    }
-    else {
-      grad_par = new GradParallelLinked(grids_, pars_->jtwist);
-    }
-  }
+  //  cudaMalloc (&amom_d, sizeof(cuComplex) * nR * nS); 
+  //  if (pars_->local_limit) {
+  //    // nothing, this is not defined, or could be defined as an identity.
+  //  }
+  //  else if(pars_->boundary_option_periodic) {
+  //    grad_par = new GradParallelPeriodic(grids_);
+  //  }
+  //  else {
+  //    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+  //  }
+  //}
   // need if (pars_->write_flux || "diagnosing potential) {
-  cudaMalloc (&P2s, sizeof(float) * nR * nS);
+  //cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
   if (id -> omg -> write_v_time) {
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
