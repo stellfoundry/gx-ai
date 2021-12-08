@@ -415,7 +415,16 @@ void Diagnostics_GK::finish(MomentsG* G, Fields* fields, double time)
 
 void Diagnostics_GK::copy_fluxes_to_trinity(trin_fluxes_struct *tfluxes)
 {
-  
+  // these are placeholders for gx-computed quantities
+  float qflux = 0.;
+  float pflux = 0.;
+  float heat = 0.;
+
+  for(int s=0; s<grids_->Nspecies; s++) {
+    tfluxes->qflux[s] = qflux;
+    tfluxes->pflux[s] = pflux;
+    tfluxes->heat[s] = heat;
+  }
 }
 
 void Diagnostics_GK::print_omg(cuComplex *W)
