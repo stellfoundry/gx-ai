@@ -19,7 +19,6 @@ class Nonlinear {
 class Nonlinear_GK : public Nonlinear {
  public:
   Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo);
-  Nonlinear_GK(Parameters* pars, Grids* grids);
   ~Nonlinear_GK();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
@@ -102,4 +101,55 @@ class Nonlinear_KREHM : public Nonlinear {
 
   float rho_s;
   float d_e;
+};
+
+class Nonlinear_KS : public Nonlinear {
+ public:
+  Nonlinear_KS(Parameters* pars, Grids* grids);
+  ~Nonlinear_KS();
+
+  void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
+  double cfl(Fields *f, double dt_max);
+  void qvar(cuComplex* G, int N);
+  void qvar(float* G, int N);
+  
+ private:
+
+  int nBatch;
+  dim3 dGx, dBx;
+
+  Parameters        * pars_           ;
+  Grids             * grids_          ;  
+  
+  GradPerp          * grad_perp_G     ;
+
+  float * Gy          ;
+  float * dg_dy       ;
+  float * g_res       ;
+};
+
+class Nonlinear_VP : public Nonlinear {
+ public:
+  Nonlinear_VP(Parameters* pars, Grids* grids);
+  ~Nonlinear_VP();
+
+  void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
+  double cfl(Fields *f, double dt_max);
+  void qvar(cuComplex* G, int N);
+  void qvar(float* G, int N);
+  
+ private:
+
+  int nBatch;
+  dim3 dGx, dBx;
+
+  Parameters        * pars_           ;
+  Grids             * grids_          ;  
+  
+  GradPerp          * grad_perp_G     ;
+  GradPerp          * grad_perp_phi   ;
+
+  float * Gy          ;
+  float * dphi_dy     ;
+  float * g_res       ;
 };

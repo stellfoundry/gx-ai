@@ -11,14 +11,6 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo, MomentsG* G)
 {
 
   if (pars_->ks) return;
-  if (pars_->vp) {
-    int nn1 = grids_->Nyc;        int nt1 = min(nn1, 512);     int nb1 = 1 + (nn1-1)/nt1;
-
-    dB = dim3(nt1, 1, 1);
-    dG = dim3(nb1, 1, 1);
-    
-    return;  
-  }
   
   size_t cgrid = sizeof(cuComplex)*grids_->NxNycNz;
   cudaMalloc((void**) &nbar, cgrid); zero(nbar);
@@ -148,11 +140,70 @@ Solver_KREHM::Solver_KREHM(Parameters* pars, Grids* grids) :
 
 Solver_KREHM::~Solver_KREHM() 
 {
+  // nothing
 }
 
 void Solver_KREHM::fieldSolve(MomentsG* G, Fields* fields)
 {
   phiSolve_krehm<<<dG, dB>>>(fields->phi, G->G(0), grids_->kx, grids_->ky, pars_->rho_i);
   aparSolve_krehm<<<dG, dB>>>(fields->apar, G->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+}
+
+//=======================================
+// Solver_VP
+// object for handling field solve in VP
+//=======================================
+Solver_VP::Solver_VP(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+
+  int nn1 = grids_->Nyc;        int nt1 = min(nn1, 512);     int nb1 = 1 + (nn1-1)/nt1;
+  
+  dB = dim3(nt1, 1, 1);
+  dG = dim3(nb1, 1, 1);
+  
+}
+
+Solver_VP::~Solver_VP() 
+{
+  // nothing
+}
+
+void Solver_VP::fieldSolve(MomentsG* G, Fields* fields)
+{
+  if (pars_->ks) return;
+
+  getPhi GQN (fields->phi, G->G(), grids_->ky);
+}
+
+void Solver_VP::svar (cuComplex* f, int N)
+{
+  cuComplex* f_h = (cuComplex*) malloc(sizeof(cuComplex)*N);
+
+  for (int i=0; i<N; i++) { f_h[i].x=0.; f_h[i].y=0.; }
+
+  CP_TO_CPU (f_h, f, N*sizeof(cuComplex));
+
+  for (int i=0; i<N; i++) printf("solver: var(%d) = (%e, %e) \n", i, f_h[i].x, f_h[i].y);
+  printf("\n");
+
+  free (f_h);
+}
+
+void Solver_VP::svar (float* f, int N)
+{
+  float* f_h = (float*) malloc(sizeof(float)*N);
+
+  CP_TO_CPU (f_h, f, N*sizeof(float));
+
+  for (int i=0; i<N; i++) printf("solver: var(%d) = %e \n", i, f_h[i]);
+  printf("\n");
+  
+  free (f_h);
+}
+
+void Solver_VP::zero (cuComplex* f)
+{
+  cudaMemset(f, 0., sizeof(cuComplex)*grids_->Nyc);
 }
 

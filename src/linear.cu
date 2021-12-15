@@ -128,26 +128,6 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   
 }
 
-Linear_GK::Linear_GK(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), closures(nullptr), grad_par(nullptr)
-{
-  if (pars_->ks) ks = true;
-  if (!pars_->ks && pars_->vp) vp = true;
-  
-  if (ks) {
-    dB = dim3(min(128, grids_->Naky), 1, 1);
-    dG = dim3(1+(grids_->Naky-1)/dB.x, 1, 1);
-  }
-
-  if (vp) {
-    int nnx = grids_->Nyc;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
-    int nny = grids_->Nm;     int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
-    
-    dB = dim3(nbx, nby, 1);
-    dG = dim3(ngx, ngy, 1);
-  }
-}
-
 Linear_GK::~Linear_GK()
 {
   if (closures) delete closures;
@@ -167,18 +147,6 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();
-
-  if (ks) {
-    rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky, pars_->eps_ks);
-    return;
-  }
-
-  if (vp) {
-    rhs_lin_vp <<< dG, dB >>> (G->G(), f->phi, GRhs->G(), grids_->ky,
-			       pars_->vp_closure, pars_->vp_nu,       pars_->vp_nuh,
-			       pars_->vp_alpha,   pars_->vp_alpha_h);
-    return;
-  }
   
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
@@ -343,3 +311,58 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
 }
 
+//=======================================
+// Linear_KS
+// object for handling linear terms in KS
+//=======================================
+Linear_KS::Linear_KS(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+  dB = dim3(min(128, grids_->Naky), 1, 1);
+  dG = dim3(1+(grids_->Naky-1)/dB.x, 1, 1);
+}
+
+Linear_KS::~Linear_KS()
+{
+  // nothing
+}
+
+void Linear_KS::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+
+  // to be safe, start with zeros on RHS
+  GRhs->set_zero();
+
+  rhs_ks <<< dG, dB >>> (G->G(), GRhs->G(), grids_->ky, pars_->eps_ks);
+}
+
+//=======================================
+// Linear_VP
+// object for handling linear terms in VP
+//=======================================
+Linear_VP::Linear_VP(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+  
+  int nnx = grids_->Nyc;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
+  int nny = grids_->Nm;     int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
+  
+  dB = dim3(nbx, nby, 1);
+  dG = dim3(ngx, ngy, 1);
+}
+
+Linear_VP::~Linear_VP()
+{
+  // nothing
+}
+
+void Linear_VP::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+
+  // to be safe, start with zeros on RHS
+  GRhs->set_zero();
+
+  rhs_lin_vp <<< dG, dB >>> (G->G(), f->phi, GRhs->G(), grids_->ky,
+			     pars_->vp_closure, pars_->vp_nu,       pars_->vp_nuh,
+			     pars_->vp_alpha,   pars_->vp_alpha_h);
+
+
+}

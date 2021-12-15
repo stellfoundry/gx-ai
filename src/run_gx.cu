@@ -56,8 +56,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   //                          //
   //////////////////////////////  
   if (pars->ks) {
-    linear    = new Linear_GK(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids);
+    linear    = new Linear_KS(pars, grids);    
+    if (!pars->linear) nonlinear = new Nonlinear_KS(pars, grids);
 
     // no field solve for K-S
 
@@ -72,10 +72,10 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   //                          //
   //////////////////////////////  
   if (pars->vp) {
-    linear    = new Linear_GK(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo);
+    linear    = new Linear_VP(pars, grids);    
+    if (!pars->linear) nonlinear = new Nonlinear_VP(pars, grids);
 
-    solver = new Solver_GK(pars, grids, geo, G);    
+    solver = new Solver_VP(pars, grids);    
 
     // set up initial conditions
     G -> initVP(&time);
