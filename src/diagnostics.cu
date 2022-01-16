@@ -30,7 +30,9 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   G2          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
+  ry_h        = nullptr;  gy_h        = nullptr;  gy_d        = nullptr;
 
+  
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
@@ -185,7 +187,9 @@ Diagnostics_GK::~Diagnostics_GK()
   if (omg_d)      cudaFree      ( omg_d     );
   if (gy_d)       cudaFree      ( gy_d      );
   if (amom_d)     cudaFree      ( amom_d    );
-
+  if (favg)       cudaFree      ( favg      );
+  if (df)         cudaFree      ( df        );
+  
   if (vEk)        cudaFree      ( vEk       );
   if (phi_max)    cudaFree      ( phi_max   );
   
