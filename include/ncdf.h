@@ -65,7 +65,7 @@ class NetCDF_ids {
   nca *g_y;
   nca *r_y; 
 
-  nca *vEy,    *xyvEy,    *avg_zvE;
+  nca *vEy,    *xyvEx,    *xyvEy,    *avg_zvE;
   nca *kxvEy,  *xykxvEy,  *avg_zkxvEy;
   //  nca *kyvE,   *xykyvE,   *avg_zkyvE;
   nca *kden,   *xyden,    *avg_zkden;

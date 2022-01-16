@@ -29,8 +29,8 @@ GEO_LIBS=${GS2}/geometry_c_interface.o
 GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
 CFLAGS= ${CUDA_INC} ${MPI_INC} ${CUTENSOR_INC}
-LDFLAGS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} 
-NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
+LDFLAGS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} ${CUTENSOR_LIB}
+#NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
 
 #####################################
 # Rule for building the system_config
@@ -114,6 +114,7 @@ test_make:
 	@echo CFLAGS= 	 $(CFLAGS)
 	@echo LDFLAGS= 	 $(LDFLAGS)
 	@echo NVCCFLAGS= $(NVCCFLAGS)
+	@echo NVCC_FLAGS= $(NVCC_FLAGS)
 	@echo CUDA_INC=  $(CUDA_INC)
 	@echo CUDA_LIB=  $(CUDA_LIB)
 	@echo CUTENSOR_LIB=  $(CUTENSOR_LIB)

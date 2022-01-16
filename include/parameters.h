@@ -139,7 +139,8 @@ class Parameters {
 
   bool write_vEy, write_kxvEy, write_kden, write_kUpar, write_kTpar, write_kTperp, write_kqpar;
 
-  bool write_xyvEy, write_xykxvEy, write_xyden, write_xyUpar, write_xyTpar, write_xyTperp, write_xyqpar;
+  bool write_xyvEx, write_xyvEy, write_xykxvEy, write_xyden, write_xyUpar;
+  bool write_xyTpar, write_xyTperp, write_xyqpar;
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;

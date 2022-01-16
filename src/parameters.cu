@@ -166,9 +166,10 @@ void Parameters::get_nml_vars(char* filename)
   write_all_xymom   = toml::find_or <bool> (tnml, "all_non_zonal", false );
 
   if (write_all_xymom) {
-    write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
+    write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
     write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
+    write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
     write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
     write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
     write_xyden    = toml::find_or <bool> (tnml, "xyden",    false );
@@ -195,7 +196,7 @@ void Parameters::get_nml_vars(char* filename)
   write_kmom  = (write_kmom  || write_avg_zkden  || write_avg_zkUpar || write_avg_zkTpar);
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
-  write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar);
+  write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
   write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar);
   
   tnml = nml;
@@ -720,6 +721,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_diag, "kTperp",          NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyvEx",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyden",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -932,6 +934,7 @@ void Parameters::get_nml_vars(char* filename)
   putbool  (nc_diag, "kqpar",        write_kqpar       );
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
+  putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );
   putbool  (nc_diag, "xyden",        write_xyden       );

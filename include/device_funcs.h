@@ -149,8 +149,10 @@ __global__ void bracket(float* g_res,
 			const float* dg_dx, const float* dJ0phi_dy,
 			const float* dg_dy, const float* dJ0Phi_dx, float kxfac);
 
-__global__ void d2x (cuComplex *res, cuComplex *f, float *kx);
-__global__ void ddx (cuComplex *res, cuComplex *f, float *kx);
+__global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
+__global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
+__global__ void  ddy (cuComplex *res, cuComplex *f, float *ky);
+__global__ void mddy (cuComplex *res, cuComplex *f, float *ky);
 
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size);
 

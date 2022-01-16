@@ -891,7 +891,43 @@ __global__ void ddx (cuComplex *res, cuComplex *f, float *kx)
 	if (idz < nz) {
 	  cuComplex Ikx = make_cuComplex(0., kx[idx]);
 	  unsigned int ig = idy + nyc*(idx + nx*idz);
-	  res[ig] = Ikx*f[ig];
+	  res[ig] = Ikx*f[ig]; 
+	}
+      }
+    }
+  }
+}
+
+__global__ void ddy (cuComplex *res, cuComplex *f, float *ky)
+{
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      if (unmasked(idx, idy)) {
+	unsigned int idz = get_id3();
+	if (idz < nz) {
+	  cuComplex Iky = make_cuComplex(0., ky[idy]);
+	  unsigned int ig = idy + nyc*(idx + nx*idz);
+	  res[ig] = Iky*f[ig];
+	}
+      }
+    }
+  }
+}
+
+__global__ void mddy (cuComplex *res, cuComplex *f, float *ky)
+{
+  unsigned int idy = get_id1();
+  if (idy < nyc) {
+    unsigned int idx = get_id2();
+    if (idx < nx) {
+      if (unmasked(idx, idy)) {
+	unsigned int idz = get_id3();
+	if (idz < nz) {
+	  cuComplex Iky = make_cuComplex(0., ky[idy]);
+	  unsigned int ig = idy + nyc*(idx + nx*idz);
+	  res[ig] = -Iky*f[ig];
 	}
       }
     }

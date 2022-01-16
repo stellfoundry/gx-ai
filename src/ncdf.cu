@@ -1012,11 +1012,11 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
   */
   
-  ////////////////////////////
-  //                        //
-  //  <v_ExB>_y,z (x)       // 
-  //                        //
-  ////////////////////////////
+  ////////////////////////////////
+  //  Zonal, y-component of v_E //
+  //  <v_ExB>_y,z (x)           // 
+  //                            //
+  ////////////////////////////////
 
   if (pars_->write_vEy) {
     vEy = new nca(grids_->NxNyNz, grids_->Nx);
@@ -1285,7 +1285,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   ////////////////////////////
   // Non-zonal              //
   // <v_ExB> (x, y)         // 
-  //                        //
+  // y-component            //
   ////////////////////////////
 
   if (pars_->write_xyvEy) {
@@ -1306,6 +1306,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     xyvEy -> dx = true;
   } else {
     xyvEy = new nca(0);
+  }
+  
+  ////////////////////////////
+  //                        //
+  // v_ExB (x, y)           // 
+  // x-component            //
+  ////////////////////////////
+
+  if (pars_->write_xyvEx) {
+    xyvEx = new nca(grids_->NxNyNz, grids_->NxNy);
+    xyvEx->write_v_time = true;
+  
+    xyvEx -> time_dims[0] = ztime_dim;
+    xyvEx -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xyvEx -> time_dims[2] = zx_dim;
+    
+    xyvEx -> file = z_file;
+    if (retval = nc_def_var(z_file, "vEx_xyt", NC_FLOAT, 3, xyvEx -> time_dims, &xyvEx->time)) ERR(retval);
+    
+    xyvEx -> time_count[1] = grids_->Ny;      
+    xyvEx -> time_count[2] = grids_->Nx;          
+
+    xyvEx -> xydata = true;
+    xyvEx -> mdy = true; // Requesting that the diagnostic write -d/dy because this is part of v_E
+  } else {
+    xyvEx = new nca(0);
   }
   
   ////////////////////////////
@@ -2192,6 +2218,7 @@ void NetCDF_ids::close_nc_file() {
 void NetCDF_ids::write_moment(nca *D, cuComplex *f, float* vol_fac) {
   
   //
+  // If D->dy = true, take one derivative in y
   // If D->dx = true, take one derivative in x
   // If D->d2x = true, take two derivatives in x
   // Multiply by D->adj
@@ -2203,12 +2230,11 @@ void NetCDF_ids::write_moment(nca *D, cuComplex *f, float* vol_fac) {
 
   cuComplex zz = make_cuComplex(0., 0.);  setval loop_R (amom, zz, D->N_);
   
-  // Perform any desired d/dx operations
-  if (D->d2x) {
-    d2x Gmom (amom, f, grids_->kx); 
-  } else if (D->dx) {
-    ddx Gmom (amom, f, grids_->kx);
-  } else {
+  // Perform any desired derivatives
+  if (D->d2x) {    d2x Gmom (amom, f, grids_->kx);   } else
+  if (D->dx)  {    ddx Gmom (amom, f, grids_->kx);   } else
+  if (D->dy)  {    ddy Gmom (amom, f, grids_->ky);   } else            
+  if (D->mdy) {   mddy Gmom (amom, f, grids_->ky);   } else            {
     CP_ON_GPU (amom, f, sizeof(cuComplex)*grids_->NxNycNz);
   }
 

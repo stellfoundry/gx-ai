@@ -9,7 +9,9 @@ nca::nca(int N, int Nwrite) :
   xydata = false;
   xdata = false;
   scalar = false;
-  dx = false;
+  mdy = false;
+  dy  = false;
+  dx  = false;
   d2x = false;
   adj = 1.0;
   time_start[0] = 0;
