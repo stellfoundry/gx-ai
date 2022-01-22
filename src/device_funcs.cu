@@ -856,10 +856,10 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 	logr.x = (float) log(cuCabsf(ratio));
 	logr.y = (float) atan2(ratio.y,ratio.x);
 	omega[idxy] = logr*i_dt;
-	if (isnan(omega[idxy].x)) {omega[idxy].x = 0.; omega[idxy].y = 0.0;}
+	if (isnan(omega[idxy].x)) {omega[idxy].x = -77777.; omega[idxy].y = -77777.;}
       } else {
-	omega[idxy].x = 0.;
-	omega[idxy].y = 0.;
+	omega[idxy].x = -99999.;
+	omega[idxy].y = -99999.;
       }
     }
   }
@@ -1415,6 +1415,32 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJa
       float b_s = kperp2[idxyz]*rho2_s;
 
       tmp = cuConjf( phi[idxyz] ) * ( 1.0 - g0(b_s) ) * phi[idxyz] * fac * volJac[idz];
+      p2[idxyz] = 0.5 * tmp.x;
+
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy)) {    
+      cuComplex tmp;
+      float fac=2.;
+      if (idy==0) fac = 1.0;
+
+      float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+      float gam0 = g0(kperp2*rho_i*rho_i/2.);
+
+      tmp = cuConjf( phi[idxyz] ) * ( 1.0 - gam0 ) * phi[idxyz] * fac * volJac[idz];
       p2[idxyz] = 0.5 * tmp.x;
 
     } else {
