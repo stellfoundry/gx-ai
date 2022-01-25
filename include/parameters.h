@@ -77,7 +77,7 @@ class Parameters {
 
   void init_species(specie* species);
 
-  int ncid, nczid, nzid, ncresid;
+  int ncid, nczid, nzid, ncresid, ncbid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
@@ -161,7 +161,7 @@ class Parameters {
   bool write_free_energy, diagnosing_moments, diagnosing_pzt;
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
-  bool Reservoir, ResFakeData, ResWrite;
+  bool Reservoir, ResFakeData, ResWrite, ResBatch;
   bool dealias_kz; 
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;

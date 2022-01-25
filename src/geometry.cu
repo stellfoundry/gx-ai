@@ -425,6 +425,8 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
       shat       = pars->shat;
       drhodpsi   = pars->drhodpsi;
       oldnperiod = pars->nperiod;
+
+      newNz = (2*pars->nperiod-1)*newNz;
       
       DEBUGPRINT("\n\nIN READ_GEO_INPUT:\nntgrid = %d, nperiod = %d, Nz = %d, rmaj = %f, shat = %f\n\n\n",
 		 ntgrid, pars->nperiod, newNz, pars->rmaj, pars->shat);

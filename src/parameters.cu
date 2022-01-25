@@ -527,6 +527,7 @@ void Parameters::get_nml_vars(char* filename)
   add_noise = false;
   ResFakeData = false;
   ResWrite = false;
+  ResBatch = false;
   
   tnml = nml;
   if (nml.contains("Reservoir")) tnml = toml::find (nml, "Reservoir");  
@@ -543,6 +544,7 @@ void Parameters::get_nml_vars(char* filename)
   ResSigmaNoise      = toml::find_or <float> (tnml, "noise",           -1.0  );
   ResFakeData        = toml::find_or <bool>  (tnml, "fake_data",      false  );
   ResWrite           = toml::find_or <bool>  (tnml, "write",          false  );
+  ResBatch           = toml::find_or <bool>  (tnml, "batch",          false  );
   
   if (ResTrainingSteps == 0) ResTrainingSteps = nstep/nwrite;
   if (ResTrainingDelta == 0) ResTrainingDelta = nwrite;
@@ -588,6 +590,16 @@ void Parameters::get_nml_vars(char* filename)
     if (retval = nc_def_dim (ncresid, "r",     ResQ*nx_in*ny_in*nz_in*nm_in*nl_in, &idim)) ERR(retval);
     if (retval = nc_def_dim (ncresid, "time",  NC_UNLIMITED, &idim)) ERR(retval);
     if (retval = nc_enddef (ncresid)) ERR(retval);
+  }
+
+  if (ResBatch) {
+    strcpy(strb, run_name);
+    strcat(strb, "_batch.nc");
+
+    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &ncbid)) ERR(retval);
+    if (retval = nc_def_dim (ncbid, "g", nx_in*ny_in*nz_in*nm_in*nl_in, &idim)) ERR(retval);
+    if (retval = nc_def_dim (ncbid, "time", NC_UNLIMITED, &idim)) ERR(retval);
+    if (retval = nc_enddef (ncbid)) ERR(retval);
   }
   
   if (write_xymom) {
@@ -687,6 +699,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_var (nc_ml, "SigmaNoise",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ml, "FakeData",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ml, "ResWrite",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_ml, "ResBatch",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_rst, "scale",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_rst, "restart",          NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -889,6 +902,7 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_ml, "SigmaNoise"   , ResSigmaNoise     );
   putbool  (nc_ml, "FakeData"     , ResFakeData       );
   putbool  (nc_ml, "ResWrite"     , ResWrite          );
+  putbool  (nc_ml, "ResBatch"     , ResBatch          );
   
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
