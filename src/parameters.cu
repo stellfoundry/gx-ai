@@ -204,6 +204,7 @@ void Parameters::get_nml_vars(char* filename)
 
   i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
+  local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
   ikx_single  = toml::find_or <int>    (tnml, "ikx_single",      0 );
   iky_single  = toml::find_or <int>    (tnml, "iky_single",      1 );
@@ -501,21 +502,23 @@ void Parameters::get_nml_vars(char* filename)
   if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
   species_h = (specie *) calloc(nspec_in, sizeof(specie));
-  for (int is=0; is < nspec_in; is++) {
-    species_h[is].uprim = 0.;
-    species_h[is].nu_ss = 0.;
-    species_h[is].temp = 1.;
-    
-    species_h[is].z     = toml::find <float>  (nml, "species", "z",     is);
-    species_h[is].mass  = toml::find <float>  (nml, "species", "mass",  is);
-    species_h[is].dens  = toml::find <float>  (nml, "species", "dens",  is);
-    species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
-    species_h[is].tprim = toml::find <float>  (nml, "species", "tprim", is);
-    species_h[is].fprim = toml::find <float>  (nml, "species", "fprim", is);
-    species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
-    species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
-    string stype        = toml::find <string> (nml, "species", "type",  is);
-    species_h[is].type = stype == "ion" ? 0 : 1;
+  if (nml.contains("species")) {
+    for (int is=0; is < nspec_in; is++) {
+      species_h[is].uprim = 0.;
+      species_h[is].nu_ss = 0.;
+      species_h[is].temp = 1.;
+      
+      species_h[is].z     = toml::find <float>  (nml, "species", "z",     is);
+      species_h[is].mass  = toml::find <float>  (nml, "species", "mass",  is);
+      species_h[is].dens  = toml::find <float>  (nml, "species", "dens",  is);
+      species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
+      species_h[is].tprim = toml::find <float>  (nml, "species", "tprim", is);
+      species_h[is].fprim = toml::find <float>  (nml, "species", "fprim", is);
+      species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
+      species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
+      string stype        = toml::find <string> (nml, "species", "type",  is);
+      species_h[is].type = stype == "ion" ? 0 : 1;
+    }
   }
   
   float numax = -1.;
@@ -1102,9 +1105,6 @@ void Parameters::get_nml_vars(char* filename)
   if( boundary == "periodic") { boundary_option_periodic = true;
   } else { boundary_option_periodic = false; }
   
-  local_limit = false;
-  if(qsf < 0  &&  nz_in == 1) { local_limit=true; }
-
   if     ( init_field == "density") { initf = inits::density; }
   else if( init_field == "upar"   ) { initf = inits::upar   ; }
   else if( init_field == "tpar"   ) { initf = inits::tpar   ; }

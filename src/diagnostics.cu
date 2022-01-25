@@ -208,9 +208,15 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
   bool stop = false;
   int nw;
 
+  if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+    int nt = min(512, grids_->NxNyc) ;
+    growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
+    fields_old->copyPhiFrom(fields);
+  }
+
   nw = pars_->nwrite;
 
-  if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
+  //if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
     
   if(counter%nw == 0) {
 
@@ -226,10 +232,6 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
-
-      int nt = min(512, grids_->NxNyc) ;
-      growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
-      
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
@@ -533,8 +535,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
-  //if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
-
   float *vol_fac_h;
   vol_fac_h = (float*) malloc (sizeof(float) * nZ);
   cudaMalloc (&vol_fac, sizeof(float) * nZ);
@@ -562,7 +562,8 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   //  }
   //}
   // need if (pars_->write_flux || "diagnosing potential) {
-  //cudaMalloc (&P2s, sizeof(float) * nR * nS);
+  if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2, sizeof(float) * nG); 
+  cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
   if (id -> omg -> write_v_time) {
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
@@ -658,50 +659,37 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
 
   nw = pars_->nwrite;
 
-  if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
-    
+  if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+    int nt = min(512, grids_->NxNyc) ;
+    growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
+    fields_old->copyPhiFrom(fields);
+  }
+
   if(counter%nw == 0) {
 
     fflush(NULL);
     id -> write_nc(id -> time, time);
+ 
+    //if (pars_->write_phi) id->write_nc(id->phi, phi);
 
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
-
-      int nt = min(512, grids_->NxNyc) ;
-      growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
-      
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
-    // Plot ky=kz=0 components of various quantities as functions of x
-    id -> write_moment ( id -> vEy,     fields->phi,    vol_fac);
-    id -> write_moment ( id -> kxvEy,   fields->phi,    vol_fac);
-    id -> write_moment ( id -> kden,    G->dens_ptr[0], vol_fac);
-    id -> write_moment ( id -> kUpar,   G->upar_ptr[0], vol_fac);
-    id -> write_moment ( id -> kTpar,   G->tpar_ptr[0], vol_fac);
-    id -> write_moment ( id -> kTperp,  G->tprp_ptr[0], vol_fac);
-    id -> write_moment ( id -> kqpar,   G->qpar_ptr[0], vol_fac);
+    if (pars_->diagnosing_spectra) {                                        // Various spectra
+      W_summand GALL (G2, G->G(), vol_fac, G->nt());
 
-    // Plot some zonal scalars
-    id -> write_moment ( id -> avg_zvE,     fields->phi,    vol_fac);
-    id -> write_moment ( id -> avg_zkxvEy,  fields->phi,    vol_fac);
-    id -> write_moment ( id -> avg_zkden,   G->dens_ptr[0], vol_fac);
-    id -> write_moment ( id -> avg_zkUpar,  G->upar_ptr[0], vol_fac);
-    id -> write_moment ( id -> avg_zkTpar,  G->tpar_ptr[0], vol_fac);
-    id -> write_moment ( id -> avg_zkTperp, G->tprp_ptr[0], vol_fac);
-    id -> write_moment ( id -> avg_zkqpar,  G->qpar_ptr[0], vol_fac);
-
-    // Plot the non-zonal components as functions of (x, y)
-    id -> write_moment ( id -> xykxvEy, fields->phi,    vol_fac);
-    id -> write_moment ( id -> xyvEy,   fields->phi,    vol_fac);
-    id -> write_moment ( id -> xyvEx,   fields->phi,    vol_fac);
-    id -> write_moment ( id -> xyden,   G->dens_ptr[0], vol_fac);
-    id -> write_moment ( id -> xyUpar,  G->upar_ptr[0], vol_fac);
-    id -> write_moment ( id -> xyTpar,  G->tpar_ptr[0], vol_fac);
-    id -> write_moment ( id -> xyTperp, G->tprp_ptr[0], vol_fac);
-    id -> write_moment ( id -> xyqpar,  G->qpar_ptr[0], vol_fac);
+      Wphi_summand_krehm loop_R (P2(), fields->phi, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
+      
+      id->write_Wm    (G2   );    id->write_Wl    (G2   );    id->write_Wlm   (G2   );    
+      id->write_Wz    (G2   );    id->write_Wky   (G2   );    id->write_Wkx   (G2   );    id->write_Wkxky (G2  );    
+      id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
+      
+      // Do not change the order of these four calls because totW is accumulated in order when it is requested:
+      //id->write_Ps(P2s);    id->write_Ws(G2);   // id->write_As(Phi2);    id->write_Wtot();
+    }
 
     nc_sync(id->file);
   }
