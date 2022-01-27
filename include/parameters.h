@@ -66,18 +66,19 @@ enum ASpectra {ASPECTRA_species,
 class Parameters {
 
  public:
-  Parameters(MPI_Comm mpcom);
+  Parameters(int iproc=0);
   ~Parameters(void);
   
   const int nw_spectra = 10; // should match # of elements in WSpectra
   const int np_spectra = 7;  // should match # of elements in PSpectra
   const int na_spectra = 7;  // should match # of elements in ASpectra
   void get_nml_vars(char* file);
+  void store_ncdf(int ncid);
   void set_from_trinity(trin_parameters_struct *tpars);
 
   void init_species(specie* species);
 
-  int ncid, nczid, nzid, ncresid, ncbid;
+  int nczid, nzid, ncresid, ncbid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;

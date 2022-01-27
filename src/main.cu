@@ -152,7 +152,7 @@ int main(int argc, char* argv[])
   printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
   Parameters * pars = nullptr;
-  pars = new Parameters(mpcom);
+  pars = new Parameters(iproc);
   pars->get_nml_vars(run_name);
   
   Grids * grids = nullptr;

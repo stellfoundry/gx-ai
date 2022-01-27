@@ -273,7 +273,7 @@ void MomentsG::initialConditions(double* time) {
 	  init_h[index].x = pars_->init_amp*cos(pars_->kpar_init*z_h[iz]/pars_->Zp); //*fac;
 	  init_h[index].y = pars_->init_amp*cos(pars_->kpar_init*z_h[iz]/pars_->Zp); //*fac;
 	  //init_h[index].y = 0.; //init_amp;
-	      	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
+	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	}
       }
     } else {
@@ -308,7 +308,7 @@ void MomentsG::initialConditions(double* time) {
 		init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 		init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
 	      }
-	      	    printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
+	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
 	  }
 	  if (pars_->random_init) {

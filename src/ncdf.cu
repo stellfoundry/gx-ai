@@ -39,7 +39,12 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   strcpy(strb, pars_->run_name); 
   strcat(strb, ".nc");
 
+  // create netcdf file
   int retval, idum;
+  if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &file)) ERR(retval);
+
+  // write input parameters to netcdf
+  pars->store_ncdf(file);
 
   // Loop over full real-space grid
   int nt1 = min(grids_->NxNyNz, 1024);
@@ -121,7 +126,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(z_file, "x",  NC_FLOAT, 1, v_kx, &zx)) ERR(retval);  
   }
     
-  file = pars_->ncid;
   if (retval = nc_redef(file));
   
   int ri;
@@ -1744,6 +1748,9 @@ NetCDF_ids::~NetCDF_ids() {
   if (pot)          delete pot;
   if (ph2)          delete ph2;
   if (all_red)      delete all_red;
+
+  // close netcdf file
+  close_nc_file();  fflush(NULL);
 }
 
 void NetCDF_ids::write_zonal_nc(nca *D, bool endrun) {

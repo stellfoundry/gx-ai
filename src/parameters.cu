@@ -5,10 +5,10 @@
 #include "version.h"
 using namespace std;
 
-Parameters::Parameters(MPI_Comm mpcom) {
+Parameters::Parameters(int iproc_in) {
   initialized = false;
 
-  MPI_Comm_rank(mpcom, &iproc);
+  iproc = iproc_in;
 
   // some cuda parameters (not from input file)
   int dev; 
@@ -19,7 +19,7 @@ Parameters::Parameters(MPI_Comm mpcom) {
 Parameters::~Parameters() {
   cudaDeviceSynchronize();
   if(initialized) {
-    cudaFreeHost(species_h);
+    free(species_h);
   }
 }
 
@@ -553,15 +553,120 @@ void Parameters::get_nml_vars(char* filename)
   if (ResTrainingDelta == 0) ResTrainingDelta = nwrite;
   if (ResSigmaNoise > 0.) add_noise = true;
 
+  
+  if(nz_in != 1) {
+    int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
+    nz_in = 2*ntgrid; // force even
+  }
+  
+  Zp = 2*nperiod - 1; // BD This needs updating
+  
+  // BD  This is messy. Prefer to go back to original method
+  // before, jtwist_old assumed Zp=1
+  // now, redefining jtwist = jtwist_old*Zp
+
+  if (jtwist==0) {
+    // this is an error
+    printf("************************** \n");
+    printf("************************** \n");
+    printf("jtwist = 0 is not allowed! \n");
+    printf("************************** \n");
+    printf("************************** \n");
+  }
+
+  // if jtwist = -1 in the input file
+  // set default jtwist to 2*pi*shat to get the x0 in the input file
+  
+  if (jtwist == -1) {
+    if (!zero_shat) {
+      jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
+    } else {
+      // no need to do anything here. x0 is set from input file and jtwist should not be used anywhere
+    }
+    if (jtwist == 0) jtwist = 1;  // just to be safe
+  }   
+
+  // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
+  if (!zero_shat) {
+    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+    //    printf("x0 = %e, %d, %e \n",x0,Zp,shat);
+  }
+
+  //  if(strcmp(closure_model, "beer4+2")==0) {
+  closure_model_opt = Closure::none   ;
+  if( closure_model == "beer4+2") {
+    printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
+    nm_in = 4;
+    nl_in = 2;
+    closure_model_opt = Closure::beer42;
+  } else if (closure_model == "smith_perp") { closure_model_opt = Closure::smithperp;
+  } else if (closure_model == "smith_par")  { closure_model_opt = Closure::smithpar; 
+  }
+
+  if( boundary == "periodic") { boundary_option_periodic = true;
+  } else { boundary_option_periodic = false; }
+  
+  if     ( init_field == "density") { initf = inits::density; }
+  else if( init_field == "upar"   ) { initf = inits::upar   ; }
+  else if( init_field == "tpar"   ) { initf = inits::tpar   ; }
+  else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
+  else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
+  else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
+  
+  if     ( stir_field == "density") { stirf = stirs::density; }
+  else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }
+  else if( stir_field == "tpar"   ) { stirf = stirs::tpar   ; }
+  else if( stir_field == "tperp"  ) { stirf = stirs::tperp  ; }
+  else if( stir_field == "qpar"   ) { stirf = stirs::qpar   ; }
+  else if( stir_field == "qperp"  ) { stirf = stirs::qperp  ; }
+  else if( stir_field == "ppar"   ) { stirf = stirs::ppar   ; }
+  else if( stir_field == "pperp"  ) { stirf = stirs::pperp  ; }
+  
+  if (scheme == "sspx3") scheme_opt = Tmethod::sspx3;
+  if (scheme == "g3")    scheme_opt = Tmethod::g3;
+  if (scheme == "k10")   scheme_opt = Tmethod::k10;
+  if (scheme == "k2")    scheme_opt = Tmethod::k2;
+  if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
+  if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
+  if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
+
+  if (eqfix && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
+    printf("\n");
+    printf("\n");
+    printf(ANSI_COLOR_MAGENTA);
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
+    printf(ANSI_COLOR_GREEN);
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
+    printf(ANSI_COLOR_RED);
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
+    printf(ANSI_COLOR_BLUE);
+    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
+    printf(ANSI_COLOR_RESET);    
+    printf("\n");
+    printf("\n");
+  }  
+  //  printf("scheme_opt = %d \n",scheme_opt);
+    
+  if( source == "phiext_full") {
+    source_option = PHIEXT;
+    printf("Running Rosenbluth-Hinton zonal flow calculation\n");
+  }
+
+  if(hypercollisions) printf("Using hypercollisions.\n");
+  if(hyper) printf("Using hyperdiffusion.\n");
+
+  if(debug) printf("nspec_in = %i \n",nspec_in);
+
+  nspec = nspec_in;
+  init_species(species_h);
+  initialized = true;
+  printf(ANSI_COLOR_RESET);    
+}
+
+void Parameters::store_ncdf(int ncid) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-
-  char strb[263];
-  strcpy(strb, run_name); 
-  strcat(strb, ".nc");
-
   int retval, idim, sdim, wdim, pdim, adim, nc_out, nc_inputs, nc_diss;
-  if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &ncid)) ERR(retval);
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
@@ -585,6 +690,7 @@ void Parameters::get_nml_vars(char* filename)
   if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
   if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
 
+  char strb[263];
   if (ResWrite) {
     strcpy(strb, run_name);
     strcat(strb, "_ml.nc");
@@ -1044,122 +1150,14 @@ void Parameters::get_nml_vars(char* filename)
   put_real (nc_geo, "beta",        beta       );
   putbool  (nc_geo, "zero_shat",   zero_shat  );
 
+  // record the values of jtwist and x0 used in runname.nc
+  putint (nc_dom, "jtwist", jtwist);
+  put_real (nc_dom, "x0", x0);
+
   put_wspectra (nc_sp, wspectra); 
   put_pspectra (nc_sp, pspectra); 
   put_aspectra (nc_sp, aspectra); 
   putspec (nc_spec, nspec_in, species_h);
-  
-  if(nz_in != 1) {
-    int ntgrid = nz_in/2 + (nperiod-1)*nz_in; 
-    nz_in = 2*ntgrid; // force even
-  }
-  
-  Zp = 2*nperiod - 1; // BD This needs updating
-  
-  // BD  This is messy. Prefer to go back to original method
-  // before, jtwist_old assumed Zp=1
-  // now, redefining jtwist = jtwist_old*Zp
-
-  if (jtwist==0) {
-    // this is an error
-    printf("************************** \n");
-    printf("************************** \n");
-    printf("jtwist = 0 is not allowed! \n");
-    printf("************************** \n");
-    printf("************************** \n");
-  }
-
-  // if jtwist = -1 in the input file
-  // set default jtwist to 2*pi*shat to get the x0 in the input file
-  
-  if (jtwist == -1) {
-    if (!zero_shat) {
-      jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
-    } else {
-      // no need to do anything here. x0 is set from input file and jtwist should not be used anywhere
-    }
-    if (jtwist == 0) jtwist = 1;  // just to be safe
-  }   
-
-  // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
-  if (!zero_shat) {
-    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
-    //    printf("x0 = %e, %d, %e \n",x0,Zp,shat);
-  }
-
-  // record the values of jtwist and x0 used in runname.nc
-  putint (nc_dom, "jtwist", jtwist);
-  put_real (nc_dom, "x0", x0);
-     
-  //  if(strcmp(closure_model, "beer4+2")==0) {
-  closure_model_opt = Closure::none   ;
-  if( closure_model == "beer4+2") {
-    printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
-    nm_in = 4;
-    nl_in = 2;
-    closure_model_opt = Closure::beer42;
-  } else if (closure_model == "smith_perp") { closure_model_opt = Closure::smithperp;
-  } else if (closure_model == "smith_par")  { closure_model_opt = Closure::smithpar; 
-  }
-
-  if( boundary == "periodic") { boundary_option_periodic = true;
-  } else { boundary_option_periodic = false; }
-  
-  if     ( init_field == "density") { initf = inits::density; }
-  else if( init_field == "upar"   ) { initf = inits::upar   ; }
-  else if( init_field == "tpar"   ) { initf = inits::tpar   ; }
-  else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
-  else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
-  else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
-  
-  if     ( stir_field == "density") { stirf = stirs::density; }
-  else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }
-  else if( stir_field == "tpar"   ) { stirf = stirs::tpar   ; }
-  else if( stir_field == "tperp"  ) { stirf = stirs::tperp  ; }
-  else if( stir_field == "qpar"   ) { stirf = stirs::qpar   ; }
-  else if( stir_field == "qperp"  ) { stirf = stirs::qperp  ; }
-  else if( stir_field == "ppar"   ) { stirf = stirs::ppar   ; }
-  else if( stir_field == "pperp"  ) { stirf = stirs::pperp  ; }
-  
-  if (scheme == "sspx3") scheme_opt = Tmethod::sspx3;
-  if (scheme == "g3")    scheme_opt = Tmethod::g3;
-  if (scheme == "k10")   scheme_opt = Tmethod::k10;
-  if (scheme == "k2")    scheme_opt = Tmethod::k2;
-  if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
-  if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
-  if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
-
-  if (eqfix && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
-    printf("\n");
-    printf("\n");
-    printf(ANSI_COLOR_MAGENTA);
-    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_GREEN);
-    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_RED);
-    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_BLUE);
-    printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_RESET);    
-    printf("\n");
-    printf("\n");
-  }  
-  //  printf("scheme_opt = %d \n",scheme_opt);
-    
-  if( source == "phiext_full") {
-    source_option = PHIEXT;
-    printf("Running Rosenbluth-Hinton zonal flow calculation\n");
-  }
-
-  if(hypercollisions) printf("Using hypercollisions.\n");
-  if(hyper) printf("Using hyperdiffusion.\n");
-
-  if(debug) printf("nspec_in = %i \n",nspec_in);
-
-  nspec = nspec_in;
-  init_species(species_h);
-  initialized = true;
-  printf(ANSI_COLOR_RESET);    
 }
 
 void Parameters::set_from_trinity(trin_parameters_struct *tpars)

@@ -76,7 +76,7 @@ class NetCDF_ids {
 
   nca *time, *z_time, *nz_time;
   nca *r_time; 
-  
+
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;
   int zy, zx, nzy, nzx;

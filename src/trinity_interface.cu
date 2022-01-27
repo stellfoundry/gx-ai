@@ -8,7 +8,7 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   MPI_Comm mpcom = MPI_Comm_f2c(mpcom_f);
   int iproc;
   MPI_Comm_rank(mpcom, &iproc);
-  pars = new Parameters(mpcom);
+  pars = new Parameters(iproc);
   // get default values from namelist
   pars->get_nml_vars(run_name);
 

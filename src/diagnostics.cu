@@ -416,19 +416,57 @@ void Diagnostics_GK::finish(MomentsG* G, Fields* fields, double time)
       id -> write_ks_data (id -> g_y, gy_d);
     }
   }
-
-  id->close_nc_file();  fflush(NULL);
 }
 
 void Diagnostics_GK::copy_fluxes_to_trinity(trin_fluxes_struct *tfluxes)
 {
+  int id_ns, id_time, id_fluxes, id_Q;
+  int ncres, retval;
+  char strb[263];
+  strcpy(strb, pars_->run_name); 
+  strcat(strb, ".nc");
+  // open file and get handle ncres
+  if (retval = nc_open(strb, NC_NOWRITE, &ncres)) { printf("file: %s \n",strb); ERR(retval);}
+  // get handle for time dimension
+  if (retval = nc_inq_dimid(ncres, "time", &id_time)) ERR(retval);
+  // get handle for Fluxes group
+  if (retval = nc_inq_grp_ncid(ncres, "Fluxes", &id_fluxes))    ERR(retval);
+  // get handle for qflux
+  if (retval = nc_inq_varid(id_fluxes, "qflux", &id_Q)) ERR(retval);
+
+  // get length of time output
+  size_t tlen;
+  if (retval = nc_inq_dimlen(ncres, id_time, &tlen)) ERR(retval);
+
+  // allocate arrays for time and qflux history
+  float *time = (float*) malloc(sizeof(float) * tlen);
+  float *qflux = (float*) malloc(sizeof(float) * tlen);
+
+  // read time and qflux history
+  if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);
+  
+  for(int s=0; s<grids_->Nspecies; s++) {
+    size_t qstart[] = {0, s};
+    size_t qcount[] = {tlen, 1};
+    if (retval = nc_get_vara(ncres, id_Q, qstart, qcount, qflux)) ERR(retval);
+
+    // compute time average
+    float qflux_sum = 0.; 
+    float t_sum = 0.;
+    float dt = 0.;
+    for(int i=tlen - pars_->navg; i<tlen; i++) {
+      dt = time[i] - time[i-1];
+      qflux_sum += qflux[i]*dt;
+      t_sum += dt;
+    }
+    tfluxes->qflux[s] = qflux_sum / t_sum;
+  }
+
   // these are placeholders for gx-computed quantities
-  float qflux = 0.;
   float pflux = 0.;
   float heat = 0.;
 
   for(int s=0; s<grids_->Nspecies; s++) {
-    tfluxes->qflux[s] = qflux;
     tfluxes->pflux[s] = pflux;
     tfluxes->heat[s] = heat;
   }
@@ -701,7 +739,6 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
 
 void Diagnostics_KREHM::finish(MomentsG* G, Fields* fields, double time) 
 {
-  id->close_nc_file();  fflush(NULL);
 }
 
 void Diagnostics_KREHM::print_omg(cuComplex *W)
