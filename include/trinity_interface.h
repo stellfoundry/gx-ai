@@ -64,5 +64,8 @@ struct trin_fluxes_struct {
    double heat[20];
 };
 
+extern "C"
+void gx_get_fluxes_(struct trin_parameters_struct * tpars, struct trin_fluxes_struct* tfluxes, char * namelistFile, int mpcom);
+
 void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars);
 void copy_fluxes_to_trinity(Parameters *pars, trin_fluxes_struct *tfluxes);
