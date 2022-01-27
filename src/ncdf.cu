@@ -12,7 +12,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
 {
 
-  primary     = nullptr;  secondary   = nullptr;  tertiary    = nullptr;   amom = nullptr;
+  amom = nullptr;
   df          = nullptr;  favg        = nullptr;
 
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
@@ -518,9 +518,9 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_special, "sec",  NC_FLOAT, 1, pZt -> time_dims, &pZt -> idx)) ERR(retval);
     if (retval = nc_def_var(nc_special, "tert", NC_FLOAT, 1, pzT -> time_dims, &pzT -> idx)) ERR(retval);
 
-    cudaMallocHost (&primary,   sizeof(float));    primary[0] = 0.;  
-    cudaMallocHost (&secondary, sizeof(float));    secondary[0] = 0.;
-    cudaMallocHost (&tertiary,  sizeof(float));    tertiary[0] = 0.;
+    primary[0] = 0.;  
+    secondary[0] = 0.;
+    tertiary[0] = 0.;
     cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
   } else {
     Pzt = new nca(0);
@@ -1735,10 +1735,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 }
 
 NetCDF_ids::~NetCDF_ids() {
-
-  if (primary)      cudaFreeHost ( primary   );
-  if (secondary)    cudaFreeHost ( secondary );
-  if (tertiary)     cudaFreeHost ( tertiary  );
 
   if (amom)         cudaFree ( amom );
   if (df)           cudaFree ( df   );

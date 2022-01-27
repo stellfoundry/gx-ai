@@ -129,7 +129,7 @@ class NetCDF_ids {
   Red        * ph2     ;
   Red        * all_red ;
   
-  float *primary, *secondary, *tertiary;
+  float primary[1], secondary[1], tertiary[1];
   cuComplex * t_bar     ;
   cuComplex * amom      ;
   cuComplex * df        ;

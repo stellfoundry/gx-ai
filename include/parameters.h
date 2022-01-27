@@ -12,7 +12,6 @@
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 #include "species.h"
-#include "trinity_interface.h"
 // #include <cufft.h>
 #include <string>
 #include <vector>
@@ -74,7 +73,6 @@ class Parameters {
   const int na_spectra = 7;  // should match # of elements in ASpectra
   void get_nml_vars(char* file);
   void store_ncdf(int ncid);
-  void set_from_trinity(trin_parameters_struct *tpars);
 
   void init_species(specie* species);
 
