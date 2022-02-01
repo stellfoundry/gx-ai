@@ -39,13 +39,17 @@ void Parameters::get_nml_vars(char* filename)
   repeat = toml::find_or <bool> (nml, "repeat",  false);  
   debug  = toml::find_or <bool> (nml, "debug",   false);
 
+  char default_restart_filename[280];
+  strcpy(default_restart_filename, filename);
+  strcat(default_restart_filename, ".restart.nc");
+
   auto tnml = nml;
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
   
   restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
   save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
-  restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", "newsave.nc"   );  
-  restart_from_file = toml::find_or <string> (tnml, "restart_from_file", "oldsave.nc" );  
+  restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
+  restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
    
   tnml = nml;
@@ -80,7 +84,7 @@ void Parameters::get_nml_vars(char* filename)
   nstep   = toml::find_or <int>   (tnml, "nstep",   10000    );
   nwrite  = toml::find_or <int>   (tnml, "nwrite",   1000    );
   navg    = toml::find_or <int>   (tnml, "navg",       10    );
-  nsave   = toml::find_or <int>   (tnml, "nsave", 2000000    );
+  nsave   = toml::find_or <int>   (tnml, "nsave", (int) nstep/10 );
 
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");

@@ -179,7 +179,7 @@ int main(int argc, char* argv[])
       printf("************************* \n \n \n");
       printf("Warning: may have assumed grho = 1 \n \n \n");
       printf("************************* \n");
-      CUDA_DEBUG("Initializing geometry from file: %s \n");
+      CUDA_DEBUG("Initializing geometry from eik file: %s \n");
     } 
     else if(igeo==2) {
       geo = new geo_nc(pars, grids);
