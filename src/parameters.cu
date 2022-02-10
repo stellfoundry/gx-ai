@@ -70,7 +70,7 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
 
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
-  x0       = toml::find_or <float>       (tnml, "x0",          10.0  );
+  x0       = toml::find_or <float>       (tnml, "x0",            -1  );
   jtwist   = toml::find_or <int>         (tnml, "jtwist",        -1  );
   Zp       = toml::find_or <int>         (tnml, "zp",             1  );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
@@ -578,22 +578,44 @@ void Parameters::get_nml_vars(char* filename)
     printf("************************** \n");
   }
 
-  // if jtwist = -1 in the input file
-  // set default jtwist to 2*pi*shat to get the x0 in the input file
-  
-  if (jtwist == -1) {
-    if (!zero_shat) {
-      jtwist = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);  // Use Zp or 1 here?
-    } else {
-      // no need to do anything here. x0 is set from input file and jtwist should not be used anywhere
+  // set jtwist and x0
+  if (zero_shat) {
+    // for zero magnetic shear, jtwist is not used.
+    // just need to make sure x0 is set
+    // either take x0 from input file, or if it was not set
+    // (indicated by x0 = -1) then set it to y0 by default
+    if (x0 == -1) {
+      x0 = y0;
     }
-    if (jtwist == 0) jtwist = 1;  // just to be safe
-  }   
-
-  // now set x0 to be consistent with jtwist. Two cases: ~ zero shear, and otherwise
-  if (!zero_shat) {
-    x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
-    //    printf("x0 = %e, %d, %e \n",x0,Zp,shat);
+  } else {
+    // if both jtwist and x0 were not set in input file
+    if (jtwist == -1 && x0 == -1) {
+      // set jtwist to 2pi*shat so that x0~y0
+      jtwist = (int) round(2*M_PI*shat*Zp);
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+    } 
+    // if jtwist was set in input file but x0 was not
+    else if (x0 == -1) {
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+    } 
+    // if x0 was set in input file 
+    else {
+      // compute jtwist that will give x0 ~ the input value
+      float jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
+     
+      // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
+      // and print warning if not.
+      if (jtwist > 0) {
+        if (jtwist_0 != jtwist) {
+          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %f\n", jtwist_0);
+        }
+      }
+      jtwist = jtwist_0;
+      // this is the exact x0 value that corresponds to the integer jtwist we just computed
+      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat));
+      // reset x0 to be consistent with jtwist
+      x0 = x0_j;
+    }
   }
 
   //  if(strcmp(closure_model, "beer4+2")==0) {
