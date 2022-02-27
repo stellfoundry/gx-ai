@@ -56,8 +56,6 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   float *flux_fac_h;
   flux_fac_h = (float*) malloc (sizeof(float) * nZ);
   cudaMalloc(&flux_fac, sizeof(float)*nZ);
-  // for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
-  //  for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i]*geo_->grho_h[i] / fluxDenom;
   for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
   for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
   CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);

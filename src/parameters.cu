@@ -85,6 +85,7 @@ void Parameters::get_nml_vars(char* filename)
   nwrite  = toml::find_or <int>   (tnml, "nwrite",   1000    );
   navg    = toml::find_or <int>   (tnml, "navg",       10    );
   nsave   = toml::find_or <int>   (tnml, "nsave", (int) nstep/10 );
+  nsave = max(1, nsave);
 
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
