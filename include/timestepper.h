@@ -65,28 +65,6 @@ class RungeKutta4 : public Timestepper {
   MomentsG   * G_q1       ;
   MomentsG   * G_q2       ;
 };
-/*
-class SDCe : public Timestepper {
- public:
-  SDCe(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-       Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
-  ~SDCe();
-  void advance(double* t, MomentsG* G, Fields* fields);
-  double get_dt() {return dt_;};
-  
- private:
-  void full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar);
-  Linear *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids *grids_;
-  Forcing *forcing_;
-  const double dt_max;
-  
-  double dt_;
-}
-*/
 
 class Ketcheson10 : public Timestepper {
  public:
@@ -218,3 +196,26 @@ class G3 : public Timestepper {
   MomentsG   * G_u1       ;
   MomentsG   * G_u2       ;
 };
+
+/*
+class SDCe : public Timestepper {
+ public:
+  SDCe(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+       Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~SDCe();
+  void advance(double* t, MomentsG* G, Fields* fields);
+  double get_dt() {return dt_;};
+  
+ private:
+  void full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar);
+  Linear *linear_;
+  Nonlinear *nonlinear_;
+  Solver *solver_;
+  Parameters *pars_;
+  Grids *grids_;
+  Forcing *forcing_;
+  const double dt_max;
+  
+  double dt_;
+}
+*/
