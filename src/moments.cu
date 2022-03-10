@@ -270,8 +270,8 @@ void MomentsG::initialConditions(double* time) {
 	//    DEBUG_PRINT("fac = %f \n",fac);
 	for(int iz=0; iz<grids_->Nz; iz++) {
 	  int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
-	  init_h[index].x = pars_->init_amp*cos(pars_->kpar_init*z_h[iz]/pars_->Zp); //*fac;
-	  init_h[index].y = pars_->init_amp*cos(pars_->kpar_init*z_h[iz]/pars_->Zp); //*fac;
+	  init_h[index].x = pars_->init_amp; //*fac;
+	  init_h[index].y = 0.;
 	  //init_h[index].y = 0.; //init_amp;
 	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	}
