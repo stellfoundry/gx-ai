@@ -163,7 +163,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
       	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
 	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
-	 GRhs->G());
+	 GRhs->G(), pars_->hegna);  // bb6126 - hegna test
 
   // hyper model by Hammett and Belli
   if (pars_->HB_hyper) {

@@ -223,6 +223,9 @@ void Parameters::get_nml_vars(char* filename)
   tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
   tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
+  hegna       = toml::find_or <bool>   (tnml, "hegna",       false );  // bb6126 - hegna test
+
+  if (hegna) printf("\nWARNING: Using Hegna's reduced model\n\n"); // bb6126 - hegna test
 
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -950,6 +953,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_expert, "tprimf",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_expert, "source_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_expert, ivar, "value", source.size(), source.c_str())) ERR(retval);
+  if (retval = nc_def_var (nc_expert, "hegna",                 NC_INT,   0, NULL, &ivar)) ERR(retval);  // bb6126 - hegna test
 
   // for boltzmann opts need attribute BD bug
 
@@ -1119,6 +1123,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_expert, "eqfix",      eqfix      );
   putbool  (nc_expert, "init_single", init_single  );
   putbool  (nc_expert, "secondary",   secondary    );
+  putbool  (nc_expert, "hegna",       hegna        );  // bb6126 - hegna test
   put_real (nc_expert, "phi_ext",     phi_ext      );
   putint   (nc_expert, "ikx_single",  ikx_single   );
   putint   (nc_expert, "iky_single",  iky_single   );
