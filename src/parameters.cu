@@ -225,7 +225,7 @@ void Parameters::get_nml_vars(char* filename)
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
   hegna       = toml::find_or <bool>   (tnml, "hegna",       false );  // bb6126 - hegna test
 
-  if (hegna) printf("\nWARNING: Using Hegna's reduced model\n\n"); // bb6126 - hegna test
+  if (hegna) printf("\nWARNING: Using Hegna's three-field model\n\n"); // bb6126 - hegna test
 
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -1123,7 +1123,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_expert, "eqfix",      eqfix      );
   putbool  (nc_expert, "init_single", init_single  );
   putbool  (nc_expert, "secondary",   secondary    );
-  putbool  (nc_expert, "hegna",       hegna        );  // bb6126 - hegna test
+  putbool  (nc_expert, "hegna",       hegna        );
   put_real (nc_expert, "phi_ext",     phi_ext      );
   putint   (nc_expert, "ikx_single",  ikx_single   );
   putint   (nc_expert, "iky_single",  iky_single   );

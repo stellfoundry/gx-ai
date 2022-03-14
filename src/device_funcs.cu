@@ -2133,9 +2133,6 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 }
 
 	 // bb6126 - hegna test
-	 // NEED TO ADD SOMETHING HERE FOR ACTUAL IMPLEMENTATION OF HEGNA'S MODEL
-	 // TEST PRINT
-	 //if (hegna) printf("\n\nHEGNA BOOL RECEIVED\n\n"); ... printed an inummerable number of times
 
 	 if (m==1) {
 	   rhs[globalIdx] = rhs[globalIdx] - phi_ * (
