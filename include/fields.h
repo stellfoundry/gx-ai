@@ -12,6 +12,14 @@ class Fields {
   cuComplex * phi_h  ;
   cuComplex * apar   ;
   cuComplex * apar_h ;
+
+  cuComplex * ne ;
+  cuComplex * ue ;
+  cuComplex * Te ;
+  
+  cuComplex * ne_h ;
+  cuComplex * ue_h ;
+  cuComplex * Te_h ;
   
   void print_phi(void);
   void print_apar(void);

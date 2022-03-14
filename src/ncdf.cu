@@ -28,6 +28,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   int nY  = grids_->Nyc;
   int nYk = grids_->Naky;
   int nX  = grids_->Nx;
+  int nXY = grids_->Nx * grids_->Ny;
   int nXk = grids_->Nakx;
   int nZ  = grids_->Nz;
   int nR  = nX  * nY  * nZ;
@@ -642,6 +643,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Pz = new nca(0); 
   }
   
+  ////////////////////////////
+  //                        //
+  //  Phi (x, y)            //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_xyPhi) {
+    xyPhi = new nca(grids_->NxNyNz, grids_->NxNy);
+    xyPhi->write_v_time = true;
+  
+    xyPhi -> time_dims[0] = ztime_dim;
+    xyPhi -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xyPhi -> time_dims[2] = zx_dim;
+    
+    xyPhi -> file = z_file;
+    if (retval = nc_def_var(z_file, "Phi_xyt", NC_FLOAT, 3, xyPhi -> time_dims, &xyPhi->time)) ERR(retval);
+    
+    xyPhi -> time_count[1] = grids_->Ny;      
+    xyPhi -> time_count[2] = grids_->Nx;
+
+    xyPhi -> xydata = true;
+    xyPhi -> all = true;
+  } else {
+    xyPhi = new nca(0);
+  }    
+   
   ////////////////////////////
   //                        //
   //   P (kx,ky,  species)  //
@@ -1575,6 +1602,29 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     qs = new nca(0); 
   }
 
+  ////////////////////////////
+  //                        //
+  //    Particle fluxes     //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_fluxes ) {
+    ps = new nca(nS); 
+    ps -> write_v_time = true; 
+  
+    ps -> time_dims[0] = time_dim;
+    ps -> time_dims[1] = s_dim;
+    
+    ps -> file = nc_flux;
+    if (retval = nc_def_var(nc_flux, "pflux", NC_FLOAT, 2, ps -> time_dims, &ps -> time)) ERR(retval);
+
+    ps -> time_count[1] = grids_->Nspecies;
+
+    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
+  } else {
+    ps = new nca(0); 
+  }
+
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
   
   if (retval = nc_enddef(file)) ERR(retval);
@@ -2197,6 +2247,17 @@ void NetCDF_ids::write_Q (float* Q, bool endrun)
   }
 }
 
+void NetCDF_ids::write_P (float* P, bool endrun)
+{
+  if (ps -> write_v_time) {
+    all_red->Sum(P, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
+    write_nc(ps, endrun);       
+
+    //    for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs->cpu[is]);
+    //    printf("\n");
+  }
+}
+
 void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 {
   CP_TO_CPU (omg->z_tmp, W, sizeof(cuComplex)*grids_->NxNyc);
@@ -2247,8 +2308,12 @@ void NetCDF_ids::write_moment(nca *D, cuComplex *f, float* vol_fac) {
   }
   
   if (D->xydata) {
-    fieldlineaverage GFLA (favg, df, amom, vol_fac); // D->tmp = <<f>>(kx), df = f - <<f>>
-    grad_phi -> C2R(df, D->data);
+    if (D->all) {
+      grad_phi -> C2R(amom, D->data);
+    } else {
+      fieldlineaverage GFLA (favg, df, amom, vol_fac); // D->tmp = <<f>>(kx), df = f - <<f>>
+      grad_phi -> C2R(df, D->data);
+    }
     xytranspose loop_xy (D->data, D->tmp_d); // For now, take the first plane in the z-direction by default
     CP_TO_CPU(D->cpu, D->tmp_d, sizeof(float)*D->Nwrite_);
     write_nc(D);

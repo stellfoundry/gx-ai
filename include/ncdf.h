@@ -42,6 +42,7 @@ class NetCDF_ids {
   void write_Akx   (float * P2, bool endrun = false);
   void write_Akxky (float * P2, bool endrun = false);
 
+  void write_P     (float * P,   bool endrun = false);
   void write_Q     (float * Q,   bool endrun = false);
   void write_omg   (cuComplex *W, bool endrun = false);
   void write_moment(nca *D, cuComplex *f, float* vol_fac);
@@ -57,7 +58,7 @@ class NetCDF_ids {
   void write_ks_data(nca *D, float *G);
   void write_Wtot();
   
-  nca *rh, *omg, *den, *wphi, *denk, *wphik, *den0, *wphi0, *qs; 
+  nca *rh, *omg, *den, *wphi, *denk, *wphik, *den0, *wphi0, *qs, *ps; 
   nca *Wm, *Wl, *Wlm, *Pzt, *pZt, *pzT, *Wtot;
   nca *Ps, *Pky, *Pkx, *Pkxky, *Pz, *Pkz;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
@@ -68,6 +69,7 @@ class NetCDF_ids {
   nca *vEy,    *xyvEx,    *xyvEy,    *avg_zvE;
   nca *kxvEy,  *xykxvEy,  *avg_zkxvEy;
   //  nca *kyvE,   *xykyvE,   *avg_zkyvE;
+  nca *xyPhi; 
   nca *kden,   *xyden,    *avg_zkden;
   nca *kUpar,  *xyUpar,   *avg_zkUpar;
   nca *kTpar,  *xyTpar,   *avg_zkTpar;

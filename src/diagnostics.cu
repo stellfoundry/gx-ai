@@ -243,12 +243,24 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
       
       for(int is=0; is<grids_->Nspecies; is++) {
 	float rho2s = pars_->species_h[is].rho2;
+	float p_s = pars_->species_h[is].nt;
 	heat_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
-				 grids_->ky, flux_fac, geo_->kperp2, rho2s);
+				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s);
       }
       id -> write_Q(P2s); 
     }      
 
+    if ( id -> ps -> write_v_time) {
+
+      for(int is=0; is<grids_->Nspecies; is++) {
+	float rho2s = pars_->species_h[is].rho2;
+	float n_s = pars_->species_h[is].dens;
+	part_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
+				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
+      }
+      id -> write_P(P2s); 
+    }
+    
     if (pars_->diagnosing_kzspec) {
       grad_par->zft(G); // get G = G(kz)
       W_summand GALL (G2, G->G(), kvol_fac, G->nt());
@@ -358,6 +370,9 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
     id -> write_moment ( id -> avg_zkTperp, G->tprp_ptr[0], vol_fac);
     id -> write_moment ( id -> avg_zkqpar,  G->qpar_ptr[0], vol_fac);
 
+    // Plot f(x,y,z=0)
+    id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    
     // Plot the non-zonal components as functions of (x, y)
     id -> write_moment ( id -> xykxvEy, fields->phi,    vol_fac);
     id -> write_moment ( id -> xyvEy,   fields->phi,    vol_fac);

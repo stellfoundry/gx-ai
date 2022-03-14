@@ -303,6 +303,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   pars->shat = (float) stmp;
   shat = (float) stmp;
+  //  printf("geometry: shat = %f \n",shat);
   
   if (retval = nc_inq_varid(ncgeo, "Rmaj", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);

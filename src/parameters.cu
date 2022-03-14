@@ -70,7 +70,7 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
 
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
-  x0       = toml::find_or <float>       (tnml, "x0",            -1  );
+  x0       = toml::find_or <float>       (tnml, "x0",            -1.0);
   jtwist   = toml::find_or <int>         (tnml, "jtwist",        -1  );
   Zp       = toml::find_or <int>         (tnml, "zp",             1  );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
@@ -129,7 +129,7 @@ void Parameters::get_nml_vars(char* filename)
   write_moms        = toml::find_or <bool> (tnml, "moms",        false );
   write_rh          = toml::find_or <bool> (tnml, "rh",          false );
   write_pzt         = toml::find_or <bool> (tnml, "pzt",         false );
-
+  
   write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
 
   if (write_all_avgz) {
@@ -172,8 +172,9 @@ void Parameters::get_nml_vars(char* filename)
 
   if (write_all_xymom) {
     write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyden = write_xyUpar = write_xyqpar = true;
+    write_xyPhi = write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
+    write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
     write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
     write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
     write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
@@ -202,7 +203,7 @@ void Parameters::get_nml_vars(char* filename)
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar);
+  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi);
   
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
@@ -409,14 +410,21 @@ void Parameters::get_nml_vars(char* filename)
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
   qsf         = toml::find_or <float> (tnml, "qinp",     1.4 );
-  shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
   zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false);
-
+  if (igeo==0) {
+    shat        = toml::find_or <float> (tnml, "shat",     0.8 );
+  } else {
+    shat        = toml::find_or <float> (tnml, "shat",     0.8 );
+    printf("Using the value of shat that appears in the .in file. \n");
+    printf("Be sure it is consistent with the value in the geometry file. \n");
+    printf("Using shat = %f \n",shat);
+  }
+  
   if (abs(shat) < 1.e-5) zero_shat = true;
   
   if (zero_shat) {
-    boundary = "periodic";
+    //    boundary = "periodic";
     printf("Using no magnetic shear because zero_shat = true \n");
   }
   
@@ -588,15 +596,16 @@ void Parameters::get_nml_vars(char* filename)
     if (x0 == -1) {
       x0 = y0;
     }
+    jtwist = 2*nx_in;
   } else {
     // if both jtwist and x0 were not set in input file
-    if (jtwist == -1 && x0 == -1) {
+    if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat so that x0~y0
       jtwist = (int) round(2*M_PI*shat*Zp);
       x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
     } 
     // if jtwist was set in input file but x0 was not
-    else if (x0 == -1) {
+    else if (x0 < 0.0) {
       x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
     } 
     // if x0 was set in input file 
@@ -870,6 +879,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_diag, "kTperp",          NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyPhi" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEx",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1084,6 +1094,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_diag, "kqpar",        write_kqpar       );
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
+  putbool  (nc_diag, "xyPhi",        write_xyPhi       );
   putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );

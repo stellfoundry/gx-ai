@@ -1451,7 +1451,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
 
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M))]
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s)
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1475,10 +1475,43 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
       }
     
       fg = cuConjf(vE_r) * p_bar * 2. * flxJac[idz];
-      qflux[idxyz] = fg.x;
+      qflux[idxyz] = fg.x * pres;
 
     } else {
       qflux[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  cuComplex fg;
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex n_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
+      }
+    
+      fg = cuConjf(vE_r) * n_bar * 2. * flxJac[idz];
+      pflux[idxyz] = fg.x * n_s;
+
+    } else {
+      pflux[idxyz] = 0.;
     }
   }
 }
