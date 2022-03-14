@@ -154,13 +154,13 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, geo_->kperp2, G->zt(), G->r2());
 
   // Free-streaming requires parallel FFTs, so do that first
-  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());
+  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
-      	(G->G(), f->phi, upar_bar, uperp_bar, t_bar,
+      	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
 	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
 	 GRhs->G());

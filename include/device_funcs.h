@@ -284,10 +284,16 @@ __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void nlks1(float *res, const float *Gy);
 __global__ void nlks2(cuComplex *res, const float *ky);
 __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps_ks);
-__global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
+__global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float* kperp2, const float* rho2s, 
 			       const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par);
 
-__global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
+__global__ void rhs_linear(const cuComplex *g, const cuComplex* phi, const cuComplex* apar,
+			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
+			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* ky, const float* vt, const float* zt, const float* tz, 
+			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
+			   const float* rho2s, const int* typs, cuComplex* rhs);
+__global__ void rhs_linear_no_share(const cuComplex *g, const cuComplex* phi,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, 

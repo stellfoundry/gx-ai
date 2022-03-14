@@ -1977,7 +1977,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const float* kperp2, const float* rho2s, 
+__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float* kperp2, const float* rho2s, 
 			      const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par)
 {
   unsigned int idy  = get_id1();
@@ -2012,34 +2012,46 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const fl
       }
     }
 
-    m = 1;          // m = 1 has Phi term
-    if (nm > 1) {
-      unsigned int idz = idzl % nz;     
-      unsigned int l   = idzl / nz;
-      unsigned int idxyz = idy + nyc*(idx + nx*idz);
-      const cuComplex phi_ = phi[idxyz];
-
-      for (int is = 0; is < nspecies; is++) {
-	const float vt_ = vt[is];
-	const float zt_ = zt[is]; 
-	const float b_s = rho2s[is] * kperp2[idxyz];
-	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
+    // field terms
+    unsigned int idz = idzl % nz;     
+    unsigned int l   = idzl / nz;
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    const cuComplex phi_ = phi[idxyz];
+    const cuComplex apar_ = apar[idxyz];
+    for (int is = 0; is < nspecies; is++) {
+      const float vt_ = vt[is];
+      const float zt_ = zt[is]; 
+      const float b_s = rho2s[is] * kperp2[idxyz];
+      
+      m = 1;          // m = 1 has Phi term
+      if (nm > 1) {
+        unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
 	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
+      }
+
+      m = 0;          // m = 0 has Apar term
+      unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
+      rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+
+      m = 2;          // m = 2 has Apar term
+      if (nm > 2) {
+	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
+	rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
       }
     }    
   }
 }
 
 // main kernel function for calculating RHS
-# define S_G(L, M) s_g[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
+# define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
+__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
 			   const float* rho2s, const int* typs, cuComplex* rhs)
 {
-  extern __shared__ cuComplex s_g[]; // aliased below by macro S_G, defined above
+  extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
   
   //  unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
   unsigned int idxyz = get_id1();
@@ -2058,6 +2070,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
     // local to each thread (i.e. each idxyz).
     // since idxyz is linear, these accesses are coalesced.
     const cuComplex phi_ = phi[idxyz];
+    const cuComplex apar_ = apar[idxyz];
   
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad were in shared memory, would have bank conflicts.
@@ -2099,7 +2112,10 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 unsigned int globalIdx = idxyz + nR*(l + nl*(m + nm*is));
 	 int sl = l + 1;
 	 int sm = m + 2;
-	 S_G(sl, sm) = g[globalIdx];
+	 S_H(sl, sm) = g[globalIdx];
+	 // add phi term for m=0 to change g into h
+	 if (m==0) S_H(sl, sm) = S_H(sl, sm) + zt_*Jflr(l, b_s)*phi_;
+	 if (m==1) S_H(sl, sm) = S_H(sl, sm) + zt_*vt_*Jflr(l, b_s)*apar_;
        }
      }
       
@@ -2113,10 +2129,10 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
        int sm = threadIdx.z + 2;
        if (sm < 4) {
 	 // set ghost to zero at low m
-	 S_G(sl, sm-2) = make_cuComplex(0., 0.);
+	 S_H(sl, sm-2) = make_cuComplex(0., 0.);
 	 
 	 // set ghost with closures at high m
-	 S_G(sl, sm+nm) = make_cuComplex(0., 0.);
+	 S_H(sl, sm+nm) = make_cuComplex(0., 0.);
        }
      }
      
@@ -2127,10 +2143,10 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
        int sl = threadIdx.y + 1;
        if (sl < 2) {
 	 // set ghost to zero at low l
-	 S_G(sl-1, sm) = make_cuComplex(0., 0.);
+	 S_H(sl-1, sm) = make_cuComplex(0., 0.);
 	 
 	 // set ghost with closures at high l
-	 S_G(sl+nl, sm) = make_cuComplex(0., 0.);
+	 S_H(sl+nl, sm) = make_cuComplex(0., 0.);
        }
      }
      
@@ -2145,36 +2161,45 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi,
 	 int sm = m + 2; // offset to get past ghosts
   
 	 rhs[globalIdx] = rhs[globalIdx] 
-	   - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_G(sl,sm+1) - sqrtf(m+1)* l   *S_G(sl-1,sm+1)  
-                              + sqrtf(m  )* l   *S_G(sl,sm-1) + sqrtf(m  )*(l+1)*S_G(sl+1,sm-1) )
+	   - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_H(sl,sm+1) - sqrtf(m+1)* l   *S_H(sl-1,sm+1)  
+                              + sqrtf(m  )* l   *S_H(sl,sm-1) + sqrtf(m  )*(l+1)*S_H(sl+1,sm-1) )
   
-	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_G(sl,sm+2) + (2*m+1)*S_G(sl,sm) + sqrtf(m*(m-1))*S_G(sl,sm-2) )
-	   - igb_d_s * (              (l+1)*S_G(sl+1,sm) + (2*l+1)*S_G(sl,sm)              + l*S_G(sl-1,sm) )
+	   - icv_d_s * ( sqrtf((m+1)*(m+2))*S_H(sl,sm+2) + (2*m+1)*S_H(sl,sm) + sqrtf(m*(m-1))*S_H(sl,sm-2) )
+	   - igb_d_s * (              (l+1)*S_H(sl+1,sm) + (2*l+1)*S_H(sl,sm)              + l*S_H(sl-1,sm) )
 	   
-	   - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_G(sl,sm) );
+	   - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
 
-	 // add potential, drive, and conservation terms in low hermite moments
+	 // add drive and conservation terms in low hermite moments
 	 if (m==0) {
-	   rhs[globalIdx] = rhs[globalIdx] + phi_ * (
-              Jflr(l-1,b_s)*(      -l *igb_d_s * zt_                 +           tprim_  *l  * iky_ )
-	    + Jflr(l,  b_s)*( -(2*l+1)*igb_d_s * zt_ - icv_d_s * zt_ + (fprim_ + tprim_*2*l) * iky_ )
-	    + Jflr(l+1,b_s)*(   -(l+1)*igb_d_s * zt_ )
-	    + Jflr(l+1,b_s,false)*                                              tprim_*(l+1) * iky_ )
-	     - (nu_ + nuei_) * ( b_s + 2*l ) * Jflr(l, b_s) * phi_ * zt_ 
-	     + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-	     + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
+	   rhs[globalIdx] = rhs[globalIdx] 
+            + iky_ * phi_ * (
+               Jflr(l-1,b_s)*l*tprim_
+	     + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
+	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	    )
+	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
 
 	 if (m==1) {
-	   rhs[globalIdx] = rhs[globalIdx] - phi_ * (
-	            l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * bgrad_ * vt_ * zt_
-      		  + nu_ * Jflr(l,b_s) * upar_bar_
-                  + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
+	   rhs[globalIdx] = rhs[globalIdx] 
+            + vt_ * iky_ * apar_ * (
+               Jflr(l-1,b_s)*l*tprim_
+	     + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
+	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	    )
+      	    + nu_ * Jflr(l,b_s) * upar_bar_
+            + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {
-	   rhs[globalIdx] = rhs[globalIdx] + phi_ *
-	     Jflr(l,b_s) * (-2*icv_d_s * zt_ + tprim_ * iky_)/sqrtf(2) + nu_ * sqrtf(2) * Jflr(l,b_s) * t_bar_;
+	   rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
+	      + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	 }  
+
+	 if (m==3) {
+	   rhs[globalIdx] = rhs[globalIdx] 
+            + vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
+         }
        } // l loop
      } // m loop
   
