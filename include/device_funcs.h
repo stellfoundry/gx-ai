@@ -230,7 +230,7 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, c
 		      const float* qn, const float* nzs);
 
 __global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* rho2s,
-		       const float* as, float beta);
+		       const float* as, const float* amps, const float beta);
 
 __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, 
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par);
@@ -313,7 +313,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 			  float nu_hyper, float D_hyper, cuComplex* rhs);
 
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
-				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs);
+				const int p_hyper_l, const int p_hyper_m, const float* vt, cuComplex* rhs);
 
 
 

@@ -1208,15 +1208,18 @@ void Parameters::init_species(specie* species)
     species[s].nt   = species[s].dens * species[s].temp;
     species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
     species[s].nz   = species[s].dens * species[s].z;
-    species[s].as   = species[s].nz * species[s].vt;
+    species[s].as   = species[s].nz * species[s].vt * beta / 2.;
+    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2;
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
 	     species[s].mass, species[s].z, species[s].temp, species[s].dens);
       printf("vt, tz, zt = %f, %f, %f \n",
 	     species[s].vt, species[s].tz, species[s].zt);
-      printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n \n",
+      printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n",
 	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
+      printf("as, amp = %f, %f \n\n", 
+             species[s].as, species[s].amp);
     }      
   }
 }

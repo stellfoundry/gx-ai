@@ -19,7 +19,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     checkCuda(cudaMalloc((void**) &apar, size_));
     printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
 
-    cudaMemset(apar, 0., size_); setval <<< nb, nt >>> (apar, zero, nn);
+    setval <<< nb, nt >>> (apar, zero, nn);
 
     apar_h = (cuComplex*) malloc(size_);
 
@@ -90,4 +90,5 @@ void Fields::rescale(float * phi_max) {
   dB = dim3(nt1, nt2, 1);
   dG = dim3(nb1, nb2, 1);
   rescale_kernel <<< dG, dB >>> (phi, phi_max, 1);
+  if(pars_->beta>0) rescale_kernel <<< dG, dB >>> (apar, phi_max, 1);
 }
