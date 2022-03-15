@@ -659,12 +659,6 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
 
   nw = pars_->nwrite;
 
-  if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
-    int nt = min(512, grids_->NxNyc) ;
-    growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
-    fields_old->copyPhiFrom(fields);
-  }
-
   if(counter%nw == 0) {
 
     fflush(NULL);
@@ -675,6 +669,9 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+      int nt = min(512, grids_->NxNyc) ;
+      growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt*nw, omg_d);
+      fields_old->copyPhiFrom(fields);
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
