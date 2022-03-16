@@ -70,12 +70,12 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
 
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
-  x0       = toml::find_or <float>       (tnml, "x0",            -1.0);
-  jtwist   = toml::find_or <int>         (tnml, "jtwist",        -1  );
-  Zp       = toml::find_or <int>         (tnml, "zp",             1  );
+  x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
+  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
+  Zp       = toml::find_or <int>         (tnml, "zp",           1    );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
-  g_exb    = toml::find_or <float>       (tnml, "g_exb",         0.0 );
+  g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -415,7 +415,7 @@ void Parameters::get_nml_vars(char* filename)
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
-    shat        = toml::find_or <float> (tnml, "shat",     0.8 );
+    shat        = toml::find <float> (tnml, "shat");
     printf("Using the value of shat that appears in the .in file. \n");
     printf("Be sure it is consistent with the value in the geometry file. \n");
     printf("Using shat = %f \n",shat);
@@ -611,13 +611,13 @@ void Parameters::get_nml_vars(char* filename)
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      float jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
+      int jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
      
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
       if (jtwist > 0) {
         if (jtwist_0 != jtwist) {
-          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %f\n", jtwist_0);
+          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
         }
       }
       jtwist = jtwist_0;
