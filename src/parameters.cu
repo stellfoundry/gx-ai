@@ -70,12 +70,12 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
 
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
-  x0       = toml::find_or <float>       (tnml, "x0",            -1.0);
-  jtwist   = toml::find_or <int>         (tnml, "jtwist",        -1  );
-  Zp       = toml::find_or <int>         (tnml, "zp",             1  );
+  x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
+  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
+  Zp       = toml::find_or <int>         (tnml, "zp",           1    );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
-  g_exb    = toml::find_or <float>       (tnml, "g_exb",         0.0 );
+  g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -119,6 +119,34 @@ void Parameters::get_nml_vars(char* filename)
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   rho_s = rho_i*sqrtf(zt/2);
 
+  tnml = nml;
+  if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
+
+  i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
+  nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
+  local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
+  init_single = toml::find_or <bool>   (tnml, "init_single", false );
+  ikx_single  = toml::find_or <int>    (tnml, "ikx_single",      0 );
+  iky_single  = toml::find_or <int>    (tnml, "iky_single",      1 );
+  ikx_fixed   = toml::find_or <int>    (tnml, "ikx_fixed",      -1 );
+  iky_fixed   = toml::find_or <int>    (tnml, "iky_fixed",      -1 );
+  eqfix       = toml::find_or <bool>   (tnml, "eqfix",       false );
+  secondary   = toml::find_or <bool>   (tnml, "secondary",   false );
+  phi_ext     = toml::find_or <float>  (tnml, "phi_ext",       0.0 );
+  source      = toml::find_or <string> (tnml, "source",  "default" );
+  tp_t0       = toml::find_or <float>  (tnml, "t0",           -1.0 );
+  tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
+  tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
+  tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
+  hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
+
+  if( hegna ){
+    printf("\nIn order to recover the Hegna model, setting nm=4, nl=2.\n");
+    printf("For consistency, vnewk values should be relatively high.\n");
+    nm_in = 4;
+    nl_in = 2;
+  }
+  
   tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
@@ -205,26 +233,6 @@ void Parameters::get_nml_vars(char* filename)
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
   write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi);
   
-  tnml = nml;
-  if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
-
-  i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
-  nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
-  local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
-  init_single = toml::find_or <bool>   (tnml, "init_single", false );
-  ikx_single  = toml::find_or <int>    (tnml, "ikx_single",      0 );
-  iky_single  = toml::find_or <int>    (tnml, "iky_single",      1 );
-  ikx_fixed   = toml::find_or <int>    (tnml, "ikx_fixed",      -1 );
-  iky_fixed   = toml::find_or <int>    (tnml, "iky_fixed",      -1 );
-  eqfix       = toml::find_or <bool>   (tnml, "eqfix",       false );
-  secondary   = toml::find_or <bool>   (tnml, "secondary",   false );
-  phi_ext     = toml::find_or <float>  (tnml, "phi_ext",       0.0 );
-  source      = toml::find_or <string> (tnml, "source",  "default" );
-  tp_t0       = toml::find_or <float>  (tnml, "t0",           -1.0 );
-  tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
-  tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
-  tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
-
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
 
@@ -415,7 +423,7 @@ void Parameters::get_nml_vars(char* filename)
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
-    shat        = toml::find_or <float> (tnml, "shat",     0.8 );
+    shat        = toml::find <float> (tnml, "shat");
     printf("Using the value of shat that appears in the .in file. \n");
     printf("Be sure it is consistent with the value in the geometry file. \n");
     printf("Using shat = %f \n",shat);
@@ -496,7 +504,6 @@ void Parameters::get_nml_vars(char* filename)
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
-
 
   tnml = nml;
   if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
@@ -611,13 +618,13 @@ void Parameters::get_nml_vars(char* filename)
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      float jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
+      int jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
      
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
       if (jtwist > 0) {
         if (jtwist_0 != jtwist) {
-          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %f\n", jtwist_0);
+          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
         }
       }
       jtwist = jtwist_0;
@@ -960,6 +967,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_expert, "tprimf",                NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_expert, "source_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_expert, ivar, "value", source.size(), source.c_str())) ERR(retval);
+  if (retval = nc_def_var (nc_expert, "hegna",                 NC_INT,   0, NULL, &ivar)) ERR(retval);  // bb6126 - hegna test
 
   // for boltzmann opts need attribute BD bug
 
@@ -1130,6 +1138,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_expert, "eqfix",      eqfix      );
   putbool  (nc_expert, "init_single", init_single  );
   putbool  (nc_expert, "secondary",   secondary    );
+  putbool  (nc_expert, "hegna",       hegna        );
   put_real (nc_expert, "phi_ext",     phi_ext      );
   putint   (nc_expert, "ikx_single",  ikx_single   );
   putint   (nc_expert, "iky_single",  iky_single   );

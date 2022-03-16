@@ -35,6 +35,7 @@
 
 [Domain]
  y0 = 20.0
+ x0 = 10.0 
  boundary = "linked"
 
 [Time]

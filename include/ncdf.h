@@ -100,6 +100,7 @@ class NetCDF_ids {
   int z_file, zx_dim, zy_dim, ztime_dim;
   int r_file, res_dim, rtime_dim; 
   int nz_file, nzx_dim, nzy_dim, nztime_dim;
+  int hegna;  // bb6126 - hegna test
   
   int v_z[1];            // dims for a scalar as a function of z
   int v_kz[1];           // dims for a scalar as a function of kz 

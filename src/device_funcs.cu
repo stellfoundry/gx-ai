@@ -2061,7 +2061,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
-			   const float* rho2s, const int* typs, cuComplex* rhs)
+			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna)  // bb6126 - hegna test
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
   
@@ -2193,6 +2193,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
+
+	 // bb6126 - hegna test
 
 	 if (m==1) {
 	   rhs[globalIdx] = rhs[globalIdx] 
