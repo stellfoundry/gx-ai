@@ -120,6 +120,34 @@ void Parameters::get_nml_vars(char* filename)
   rho_s = rho_i*sqrtf(zt/2);
 
   tnml = nml;
+  if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
+
+  i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
+  nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
+  local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
+  init_single = toml::find_or <bool>   (tnml, "init_single", false );
+  ikx_single  = toml::find_or <int>    (tnml, "ikx_single",      0 );
+  iky_single  = toml::find_or <int>    (tnml, "iky_single",      1 );
+  ikx_fixed   = toml::find_or <int>    (tnml, "ikx_fixed",      -1 );
+  iky_fixed   = toml::find_or <int>    (tnml, "iky_fixed",      -1 );
+  eqfix       = toml::find_or <bool>   (tnml, "eqfix",       false );
+  secondary   = toml::find_or <bool>   (tnml, "secondary",   false );
+  phi_ext     = toml::find_or <float>  (tnml, "phi_ext",       0.0 );
+  source      = toml::find_or <string> (tnml, "source",  "default" );
+  tp_t0       = toml::find_or <float>  (tnml, "t0",           -1.0 );
+  tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
+  tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
+  tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
+  hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
+
+  if( hegna ){
+    printf("\nIn order to recover the Hegna model, setting nm=4, nl=2.\n");
+    printf("For consistency, vnewk values should be relatively high.\n");
+    nm_in = 4;
+    nl_in = 2;
+  }
+  
+  tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
@@ -204,29 +232,6 @@ void Parameters::get_nml_vars(char* filename)
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
   write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar);
   
-  tnml = nml;
-  if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
-
-  i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
-  nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
-  local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
-  init_single = toml::find_or <bool>   (tnml, "init_single", false );
-  ikx_single  = toml::find_or <int>    (tnml, "ikx_single",      0 );
-  iky_single  = toml::find_or <int>    (tnml, "iky_single",      1 );
-  ikx_fixed   = toml::find_or <int>    (tnml, "ikx_fixed",      -1 );
-  iky_fixed   = toml::find_or <int>    (tnml, "iky_fixed",      -1 );
-  eqfix       = toml::find_or <bool>   (tnml, "eqfix",       false );
-  secondary   = toml::find_or <bool>   (tnml, "secondary",   false );
-  phi_ext     = toml::find_or <float>  (tnml, "phi_ext",       0.0 );
-  source      = toml::find_or <string> (tnml, "source",  "default" );
-  tp_t0       = toml::find_or <float>  (tnml, "t0",           -1.0 );
-  tp_tf       = toml::find_or <float>  (tnml, "tf",           -1.0 );
-  tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
-  tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
-  hegna       = toml::find_or <bool>   (tnml, "hegna",       false );  // bb6126 - hegna test
-
-  if (hegna) printf("\nWARNING: Using Hegna's three-field model\n\n"); // bb6126 - hegna test
-
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
 
@@ -491,7 +496,6 @@ void Parameters::get_nml_vars(char* filename)
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
-
 
   tnml = nml;
   if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
