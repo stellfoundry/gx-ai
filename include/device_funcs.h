@@ -292,7 +292,7 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, 
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
-			   const float* rho2s, const int* typs, cuComplex* rhs);
+			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna);  // bb6126 - hegna test
 
 __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);
 __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc);

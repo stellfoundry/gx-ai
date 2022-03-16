@@ -162,7 +162,8 @@ class Parameters {
   bool ostem_rname, new_varenna_fsa, qpar0_switch, qprp0_switch;
   bool zero_restart_avg, no_zderiv_covering, no_zderiv, zderiv_loop;
   bool Reservoir, ResFakeData, ResWrite, ResBatch;
-  bool dealias_kz; 
+  bool dealias_kz;
+  bool hegna;  // bb6126 - hegna test
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
     
