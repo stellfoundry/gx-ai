@@ -162,7 +162,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
-	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
+	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nz(), G->as(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
 	 GRhs->G(), pars_->hegna);  // bb6126 - hegna test
 
   // hyper model by Hammett and Belli

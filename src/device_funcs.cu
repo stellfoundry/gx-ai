@@ -2059,7 +2059,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
-			   const float* ky, const float* vt, const float* zt, const float* tz,
+			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nzs, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
 			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna)  // bb6126 - hegna test
 {
@@ -2101,12 +2101,24 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
      const float vt_ = vt[is];
      const float zt_ = zt[is];
      const float tz_ = tz[is];
+     const float nz_ = nzs[is];
      const float nu_ = nu_ss[is]; 
      const float tprim_ = tprim[is];
      const float uprim_ = uprim[is];
      const float fprim_ = fprim[is];
-     const float b_s = kperp2[idxyz] * rho2s[is];
-     const float nuei_ = (typs[is] == 1) ? nu_ : 0.0;  // only for electrons
+     const float kperp2_ = kperp2[idxyz];
+     const float b_s = kperp2_ * rho2s[is];
+     float nuei_ = 0.0;
+     float as_i = 1.0;
+     float nzvt_i = 1.0;
+     // for electrons, account for e-i collisions
+     if(typs[is] == 1) {
+       nuei_ = nu_;
+       // get as = z*n*vt*beta/2 from first ion species (assume this is main ions)
+       for(int j=0; j<nspecies; j++) {
+         if(typs[j] == 0) {as_i = as[j]; nzvt_i = nzs[j]*vt[j]; break;}
+       }
+     }
      
      const cuComplex icv_d_s = 2. * tz_ * make_cuComplex(0., cv_d[idxyz]);
      const cuComplex igb_d_s = 2. * tz_ * make_cuComplex(0., gb_d[idxyz]);
@@ -2197,13 +2209,15 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	 // bb6126 - hegna test
 
 	 if (m==1) {
+	   cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
+
 	   rhs[globalIdx] = rhs[globalIdx] 
             + vt_ * iky_ * apar_ * (
                Jflr(l-1,b_s)*l*tprim_
 	     + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
 	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
 	    )
-      	    + nu_ * Jflr(l,b_s) * upar_bar_
+      	    + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*upar_bar_i)
             + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {

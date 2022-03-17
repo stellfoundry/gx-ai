@@ -290,7 +290,7 @@ __global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const c
 __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
-			   const float* ky, const float* vt, const float* zt, const float* tz, 
+			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nz, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
 			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna);  // bb6126 - hegna test
 
