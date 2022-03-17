@@ -2398,21 +2398,24 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
 }
 
 # define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_)
+# define H1c_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] - Jflr(L,b_s)*apar_*zt_*vt_)
 # define Gc_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
 // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-				   const cuComplex* g, const cuComplex* phi, const float *kperp2,
-				   const float* zt, const float* rho2s)
+				   const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float *kperp2,
+				   const float* zt, const float* rho2s, const float* vt)
 {
   unsigned int idxyz = get_id1();
 
   if (idxyz < nx*nyc*nz) {
     cuComplex phi_ = phi[idxyz];
+    cuComplex apar_ = apar[idxyz];
     for (int is=0; is < nspecies; is++) {
       const float zt_ = zt[is];
+      const float vt_ = vt[is];
       unsigned int index = idxyz + nx*nyc*nz*is;
 
       upar_bar[index]  = make_cuComplex(0., 0.);
@@ -2423,10 +2426,11 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
       // sum over l
       for (int l=0; l < nl; l++) {
 
-        // Hc_(...) is defined by macro above. Only use H here for m=0. Confusing!
+        // Hc_(...) is defined by macro above. Only use here for m=0. 
 	uperp_bar[index] = uperp_bar[index] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0, is);
 
-        upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*Gc_(idxyz, l, 1, is);
+        // H1c_(...) is defined by macro above. Only use here for m=1.
+        upar_bar[index] = upar_bar[index] + Jflr(l,b_s)*H1c_(idxyz, l, 1, is);
 
         // energy conservation correction for nlaguerre = 1
         if (nl == 1) {
