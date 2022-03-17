@@ -26,10 +26,10 @@ class Fields {
   void rescale(float * phi_max);
   
   inline void copyPhiFrom(Fields* source) {
-    cudaMemcpyAsync(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(phi, source->phi, size_, cudaMemcpyDeviceToDevice);
   }
   inline void copyAparFrom(Fields* source) {
-    cudaMemcpyAsync(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
   }
   
 private:
