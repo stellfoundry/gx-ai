@@ -2312,8 +2312,8 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
   
   if (idxyz < nx*nyc*nz) {
     for (int is=0; is < nspecies; is++) { 
-      float scaled_nu_hyp_l = (float) vt[is] * nl * nu_hyper_l;
-      float scaled_nu_hyp_m = (float) vt[is] * nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
+      float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
+      float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
       // blockIdx for y and z are unity in the kernel invocation      
       for (int m = threadIdx.z; m < nm; m += blockDim.z) {
 	for (int l = threadIdx.y; l < nl; l += blockDim.y) {
