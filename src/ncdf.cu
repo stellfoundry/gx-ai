@@ -18,7 +18,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;
     red = new          All_Reduce(grids_, pars_->wspectra); CUDA_DEBUG("Reductions: %s \n"); // G**2
-    pot = new Grid_Species_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2 keeping track of species
+    pot = new Grid_Species_Reduce(grids_, pars_->pspectra); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2 keeping track of species
     ph2 = new         Grid_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
   }
 
