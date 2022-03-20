@@ -1988,8 +1988,10 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float* kperp2, const float* rho2s, 
-			      const float gradpar, const float* vt, const float* zt, cuComplex* rhs_par)
+__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
+			      const float* kperp2, const float* rho2s, 
+			      const float gradpar, const float* vt,
+			      const float* zt, cuComplex* rhs_par)
 {
   unsigned int idy  = get_id1();
   unsigned int idx  = get_id2();
@@ -2205,8 +2207,6 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
-
-	 // bb6126 - hegna test
 
 	 if (m==1) {
 	   cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
