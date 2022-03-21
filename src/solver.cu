@@ -41,7 +41,7 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMalloc(&qneutDenom,    sizeof(float)*grids_->NxNycNz);
   cudaMemset(qneutDenom, 0., sizeof(float)*grids_->NxNycNz);    
 
-  if(pars_->beta > 0) {
+  if(pars_->beta > 0.) {
     cudaMalloc(&ampereDenom,    sizeof(float)*grids_->NxNycNz);
     cudaMemset(ampereDenom, 0., sizeof(float)*grids_->NxNycNz);    
   }
@@ -54,7 +54,7 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // and ampereDenom = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
   for(int is=0; is<grids_->Nspecies; is++) {
     sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is]);
-    if(pars_->beta > 0) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, pars_->species_h[is], is==0);
+    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, pars_->species_h[is], is==0);
   }
 
   // set up phiavgdenom, which is stored for quasineutrality calculation as appropriate
@@ -74,6 +74,7 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 Solver_GK::~Solver_GK() 
 {
   if (nbar)        cudaFree(nbar);
+  if (jbar)        cudaFree(jbar);
   if (tmp)         cudaFree(tmp);
   if (qneutDenom)  cudaFree(qneutDenom);
   if (ampereDenom) cudaFree(ampereDenom);
@@ -97,11 +98,11 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     if(em) zero(jbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
-      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, pars_->species_h[is]);
-      if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, pars_->species_h[is]);
+      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, *G[is]->species);
     }
     
-             qneut GQN (fields->phi, nbar, qneutDenom);
+    qneut GQN (fields->phi, nbar, qneutDenom);
     if (em) ampere GQN (fields->apar, jbar, ampereDenom);
 
   } else {
@@ -109,7 +110,7 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     zero(nbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
-      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, pars_->species_h[is]);
+      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
     }
 
     // In these routines there is inefficiency because multiple threads

@@ -1536,7 +1536,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
 
 }
 
-__global__ void ampere(cuComplex* Apar, cuComplex* jbar, float* denom)
+__global__ void ampere(cuComplex* apar, cuComplex* jbar, float* denom)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1545,7 +1545,7 @@ __global__ void ampere(cuComplex* Apar, cuComplex* jbar, float* denom)
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    Apar[idxyz] = jbar[idxyz] / denom[idxyz];
+    apar[idxyz] = jbar[idxyz] / denom[idxyz];
   }
 }
 
