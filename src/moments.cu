@@ -355,6 +355,7 @@ void MomentsG::initialConditions(double* time) {
   
   // copy initial condition into device memory
   for (int is=0; is<grids_->Nspecies; is++) {
+    if(pars_->init_electrons_only && pars_->species_h[is].type!=1) continue;
     switch (pars_->initf)
       {
       case inits::density : CP_TO_GPU(dens_ptr[is], init_h, momsize); break;
