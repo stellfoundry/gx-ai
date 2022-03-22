@@ -2212,7 +2212,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	   cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
 
 	   rhs[globalIdx] = rhs[globalIdx] 
-            + vt_ * iky_ * apar_ * (
+            - vt_ * iky_ * apar_ * (
                Jflr(l-1,b_s)*l*tprim_
 	     + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
 	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
@@ -2227,7 +2227,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 
 	 if (m==3) {
 	   rhs[globalIdx] = rhs[globalIdx] 
-            + vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
+            - vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
          }
        } // l loop
      } // m loop
