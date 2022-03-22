@@ -2045,12 +2045,12 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
       // the following Apar terms are only needed in the formulation without dA/dt
       m = 0;          // m = 0 has Apar term
       unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
-      rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+      rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
 
       m = 2;          // m = 2 has Apar term
       if (nm > 2) {
 	unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
-	rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+	rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
       }
     }    
   }
