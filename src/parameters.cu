@@ -416,10 +416,16 @@ void Parameters::get_nml_vars(char* filename)
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );
+  r_geo       = toml::find_or <float> (tnml, "R_geo",     1.0 );
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
   qsf         = toml::find_or <float> (tnml, "qinp",     1.4 );
   beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
+  akappa      = toml::find_or <float> (tnml, "akappa",     1.0 );
+  akappri     = toml::find_or <float> (tnml, "akappri",    0.0 );
+  tri         = toml::find_or <float> (tnml, "tri",        1.0 );
+  tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
+  beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
   zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false);
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );

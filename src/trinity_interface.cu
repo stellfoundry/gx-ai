@@ -8,6 +8,7 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   MPI_Comm mpcom = MPI_Comm_f2c(mpcom_f);
   int iproc;
   MPI_Comm_rank(mpcom, &iproc);
+  printf("Running %s on proc %d\n", run_name, iproc); 
   pars = new Parameters(iproc);
   // get default values from namelist
   pars->get_nml_vars(run_name);
@@ -75,22 +76,22 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
    pars->equilibrium_type = tpars->equilibrium_type;
    if(tpars->restart>0) pars->restart = true;
 
-   if (tpars->nstep > pars->nstep) {
-     printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file\n");
-     exit(1);
-   }
+   //if (tpars->nstep > pars->nstep) {
+   //  printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file\n");
+   //  exit(1);
+   //}
    pars->trinity_timestep = tpars->trinity_timestep;
    pars->trinity_iteration = tpars->trinity_iteration;
    pars->trinity_conv_count = tpars->trinity_conv_count;
    pars->nstep = tpars->nstep;
    pars->navg = tpars->navg;
-   pars->end_time = tpars->end_time;
-   pars->irho = tpars->irho ;
+   //pars->end_time = tpars->end_time;
+   //pars->irho = tpars->irho ;
    pars->rhoc = tpars->rhoc ;
-   pars->eps = tpars->eps;
-   pars->bishop = tpars->bishop ;
-   pars->nperiod = tpars->nperiod ;
-   pars->nz_in = tpars->ntheta ;
+   //pars->eps = tpars->eps;
+   //pars->bishop = tpars->bishop ;
+   //pars->nperiod = tpars->nperiod ;
+   //pars->nz_in = tpars->ntheta ;
 
  /* Miller parameters*/
    pars->rmaj = tpars->rgeo_local ;
@@ -105,7 +106,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
    pars->beta_prime_input = tpars->beta_prime_input ;
-   pars->s_hat_input = tpars->s_hat_input ;
+   //pars->s_hat_input = tpars->s_hat_input ;
 
   /*Flow shear*/
    pars->g_exb = tpars->g_exb ;
@@ -169,7 +170,65 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
     //else use what is set in input file 
   }
   if(pars->jtwist!=0 && abs(pars->shat)>1.e-6) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));
-  //if(abs(pars->shat)<1.e-6) pars->x0 = pars->y0;
+  if(abs(pars->shat)<=1.e-6) pars->x0 = pars->y0;
+
+  // write a toml input file with the parameters that trinity changed
+  char fname[300];
+  sprintf(fname, "%s.trinpars_t%d_i%d", pars->run_name, pars->trinity_timestep, pars->trinity_iteration);
+  FILE *fptr;
+  fptr = fopen(fname, "w");
+  fprintf(fptr, "[Dimensions]\n");
+  fprintf(fptr, " ntheta = %d\n", pars->nz_in);
+  fprintf(fptr, " nperiod = %d\n", pars->nperiod);
+  fprintf(fptr, "\n[Geometry]\n");
+  fprintf(fptr, " rhoc = %.9e\n", pars->rhoc);
+  fprintf(fptr, " qinp = %.9e\n", pars->qsf);
+  fprintf(fptr, " shat = %.9e\n", pars->shat);
+  fprintf(fptr, " Rmaj = %.9e\n", pars->rmaj);
+  fprintf(fptr, " R_geo = %.9e\n", pars->r_geo);
+  fprintf(fptr, " shift = %.9e\n", pars->shift);
+  fprintf(fptr, " akappa = %.9e\n", pars->akappa);
+  fprintf(fptr, " akappri = %.9e\n", pars->akappri);
+  fprintf(fptr, " tri = %.9e\n", pars->tri);
+  fprintf(fptr, " tripri = %.9e\n", pars->tripri);
+  fprintf(fptr, " betaprim = %.9e\n", pars->beta_prime_input);
+  fprintf(fptr, "\n[species]\n");
+  fprintf(fptr, " z = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].z);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " mass = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].mass);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " dens = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].dens);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " temp = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].temp);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " fprim = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].fprim);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " tprim = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].tprim);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " vnewk = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e\t", pars->species_h[i].nu_ss);
+  }
+  fprintf(fptr, "]\n");
+  fclose(fptr);
 }
 
 void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
@@ -249,6 +308,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
 
   for(int s=0; s<pars_->nspec_in; s++) {
     tfluxes->heat[s] = heat;
+    printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s], tfluxes->pflux[s], tfluxes->heat[s]);
   }
 
   nc_close(ncres);
