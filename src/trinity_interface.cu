@@ -116,7 +116,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   pars->nspec = tpars->ntspec ;
   // trinity always assumes electrons are one of the evolved species
   // if GX is using Boltzmann electrons, decrease number of species by 1
-  if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+  if(pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
     pars->nspec = pars->nspec - 1;
   }
 
@@ -127,7 +127,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   }
   if (pars->debug) printf("nSpecies was set to %d\n", pars->nspec);
 
-  if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+  if(pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
     for (int s=0;s<pars->nspec;s++){
       // trinity assumes first species is electrons,
       // so ions require s+1
