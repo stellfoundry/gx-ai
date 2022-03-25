@@ -253,10 +253,10 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
     if ( id -> ps -> write_v_time) {
 
       for(int is=0; is<grids_->Nspecies; is++) {
-	float rho2s = pars_->species_h[is].rho2;
-	float n_s = pars_->species_h[is].dens;
-	part_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
-				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
+        float rho2s = pars_->species_h[is].rho2;
+        float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
+        part_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
+        			  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
       }
       id -> write_P(P2s); 
     }
