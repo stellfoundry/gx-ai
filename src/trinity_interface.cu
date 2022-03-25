@@ -229,6 +229,12 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   }
   fprintf(fptr, "]\n");
   fclose(fptr);
+
+  char command[300];
+  // call python geometry module using toml we just created to write the eik.out geo file
+  // this is a massive hack!
+  sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s", fname, pars->geofilename.c_str());
+  system(command);
 }
 
 void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)

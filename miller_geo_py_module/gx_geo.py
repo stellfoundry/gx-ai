@@ -44,6 +44,12 @@ file_idx = 42 #random number to identify your output file
 
 # read parameters from input file
 input_file = sys.argv[1]
+if len(sys.argv) > 2:
+    eikfile = sys.argv[2]
+else:
+    stem = input_file.split(".")[0]
+    eikfile = stem + ".eik.out"
+
 f = toml.load(input_file)
 
 # note: this script assumes irho=2, so rhoc = r/a
@@ -563,8 +569,6 @@ for i in range(ntheta):
 A1.append([A2, A3, A4, A5, A6, A7, A8])
 A1 = A1[0]
 
-stem = input_file.split(".")[0]
-eikfile = stem + ".eik.out"
 print("Writing eikfile", eikfile)
 g = open(eikfile, 'w')
 
