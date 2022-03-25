@@ -430,7 +430,7 @@ void Parameters::get_nml_vars(char* filename)
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
-    shat        = toml::find <float> (tnml, "shat");
+    shat        = toml::find_or <float> (tnml, "shat", 0.8);
     printf("Using the value of shat that appears in the .in file. \n");
     printf("Be sure it is consistent with the value in the geometry file. \n");
     printf("Using shat = %f \n",shat);

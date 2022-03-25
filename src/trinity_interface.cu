@@ -195,37 +195,37 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   fprintf(fptr, "\n[species]\n");
   fprintf(fptr, " z = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].z);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].z);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " mass = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].mass);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].mass);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " dens = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].dens);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].dens);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " temp = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].temp);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].temp);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " fprim = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].fprim);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].fprim);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " tprim = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].tprim);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].tprim);
   }
   fprintf(fptr, "]\n");
   fprintf(fptr, " vnewk = [ ");
   for (int i=0;i<pars->nspec;i++){
-    fprintf(fptr, "%.9e\t", pars->species_h[i].nu_ss);
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].nu_ss);
   }
   fprintf(fptr, "]\n");
   fclose(fptr);
@@ -233,7 +233,8 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   char command[300];
   // call python geometry module using toml we just created to write the eik.out geo file
   // this is a massive hack!
-  sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s", fname, pars->geofilename.c_str());
+  sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s.eik.out", fname, fname);
+  pars->geofilename = std::string(fname) + ".eik.out";
   system(command);
 }
 
