@@ -112,7 +112,13 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
 
   /* Species parameters... I think allowing 20 species should be enough!*/
   int oldnSpecies = pars->nspec;
+  // read nspecies from trinity
   pars->nspec = tpars->ntspec ;
+  // trinity always assumes electrons are one of the evolved species
+  // if GX is using Boltzmann electrons, decrease number of species by 1
+  if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+    pars->nspec = pars->nspec - 1;
+  }
 
   if (pars->nspec!=oldnSpecies){
           printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, pars->nspec);
@@ -120,12 +126,31 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
           exit(1);
   }
   if (pars->debug) printf("nSpecies was set to %d\n", pars->nspec);
-  for (int i=0;i<pars->nspec;i++){
-           pars->species_h[i].dens = tpars->dens[i] ;
-           pars->species_h[i].temp = tpars->temp[i] ;
-           pars->species_h[i].fprim = tpars->fprim[i] ;
-           pars->species_h[i].tprim = tpars->tprim[i] ;
-           pars->species_h[i].nu_ss = tpars->nu[i] ;
+
+  if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+    for (int s=0;s<pars->nspec;s++){
+      // trinity assumes first species is electrons,
+      // so ions require s+1
+      pars->species_h[s].z = tpars->z[s+1] ;
+      pars->species_h[s].mass = tpars->mass[s+1] ;
+      pars->species_h[s].dens = tpars->dens[s+1] ;
+      pars->species_h[s].temp = tpars->temp[s+1] ;
+      pars->species_h[s].fprim = tpars->fprim[s+1] ;
+      pars->species_h[s].tprim = tpars->tprim[s+1] ;
+      pars->species_h[s].nu_ss = tpars->nu[s+1] ;
+      pars->species_h[s].type = 0;  // all gx species will be ions
+    }
+  } else {
+    for (int s=0;s<pars->nspec;s++){
+      pars->species_h[s].z = tpars->z[s] ;
+      pars->species_h[s].mass = tpars->mass[s] ;
+      pars->species_h[s].dens = tpars->dens[s] ;
+      pars->species_h[s].temp = tpars->temp[s] ;
+      pars->species_h[s].fprim = tpars->fprim[s] ;
+      pars->species_h[s].tprim = tpars->tprim[s] ;
+      pars->species_h[s].nu_ss = tpars->nu[s] ;
+      pars->species_h[s].type = s == 0 ? 1 : 0; // 0th trinity species is electron, others are ions
+    }
   }
   pars->init_species(pars->species_h);
 
@@ -149,7 +174,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
 
 void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
 {
-  int id_ns, id_time, id_fluxes, id_Q;
+  int id_ns, id_time, id_fluxes, id_Q, id_P;
   int ncres, retval;
   char strb[263];
   strcpy(strb, pars_->run_name); 
@@ -162,6 +187,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   if (retval = nc_inq_grp_ncid(ncres, "Fluxes", &id_fluxes))    ERR(retval);
   // get handle for qflux
   if (retval = nc_inq_varid(id_fluxes, "qflux", &id_Q)) ERR(retval);
+  if (retval = nc_inq_varid(id_fluxes, "pflux", &id_P)) ERR(retval);
 
   // get length of time output
   size_t tlen;
@@ -170,34 +196,58 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   // allocate arrays for time and qflux history
   double *time = (double*) malloc(sizeof(double) * tlen);
   float *qflux = (float*) malloc(sizeof(float) * tlen);
+  float *pflux = (float*) malloc(sizeof(float) * tlen);
 
   // read time and qflux history
   if (retval = nc_inq_varid(ncres, "time", &id_time)) ERR(retval);
   if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);
   
+  int is = 1; // counter for trinity ion species
   for(int s=0; s<pars_->nspec_in; s++) {
     size_t qstart[] = {0, s};
     size_t qcount[] = {tlen, 1};
     if (retval = nc_get_vara(id_fluxes, id_Q, qstart, qcount, qflux)) ERR(retval);
+    if (retval = nc_get_vara(id_fluxes, id_P, qstart, qcount, pflux)) ERR(retval);
 
     // compute time average
     float qflux_sum = 0.; 
+    float pflux_sum = 0.; 
     float t_sum = 0.;
     float dt = 0.;
     for(int i=tlen - pars_->navg/pars_->nwrite; i<tlen; i++) {
       dt = time[i] - time[i-1];
       qflux_sum += qflux[i]*dt;
+      pflux_sum += pflux[i]*dt;
       t_sum += dt;
     }
-    tfluxes->qflux[s] = qflux_sum / t_sum;
+
+    // Trinity orders species with electrons first, then ions
+    if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      // no electron heat flux
+      tfluxes->qflux[0] = 0.;
+      // ion heat fluxes
+      tfluxes->qflux[is] = qflux_sum / t_sum; 
+      is++;
+
+      // no particle fluxes
+      tfluxes->pflux[s] = 0.;
+    } else {
+      if(pars_->species_h[s].type==1) { // electrons
+        tfluxes->qflux[0] = qflux_sum / t_sum; // are species 0 in trinity
+        tfluxes->pflux[0] = pflux_sum / t_sum; 
+      }
+      else {
+        tfluxes->qflux[is] = qflux_sum / t_sum; 
+        tfluxes->pflux[is] = pflux_sum / t_sum; 
+        is++;
+      }
+    }
   }
 
   // these are placeholders for gx-computed quantities
-  float pflux = 0.;
   float heat = 0.;
 
   for(int s=0; s<pars_->nspec_in; s++) {
-    tfluxes->pflux[s] = pflux;
     tfluxes->heat[s] = heat;
   }
 

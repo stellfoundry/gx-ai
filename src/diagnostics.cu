@@ -236,7 +236,7 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
-    if ( id -> qs -> write_v_time) printf("Step %d: Time = %f \t Flux = ", counter, time);          // To screen
+    if ( id -> qs -> write_v_time) printf("Step %d: Time = %f \t", counter, time);          // To screen
     if (!id -> qs -> write_v_time) printf("Step %d: Time = %f\n",          counter, time);
   
     if ( id -> qs -> write_v_time) {                                                                // heat flux
@@ -260,6 +260,7 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
       }
       id -> write_P(P2s); 
     }
+    if ( id -> qs -> write_v_time) printf("\n");
     
     if (pars_->diagnosing_kzspec) {
       grad_par->zft(G); // get G = G(kz)

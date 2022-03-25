@@ -51,6 +51,8 @@ struct trin_parameters_struct {
    
    /* Species parameters... I think allowing 20 species should be enough!*/
    int ntspec;
+   double z[20];
+   double mass[20];
    double dens[20];
    double temp[20];
    double fprim[20];
