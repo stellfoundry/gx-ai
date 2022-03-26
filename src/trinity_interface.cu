@@ -175,6 +175,8 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   // write a toml input file with the parameters that trinity changed
   char fname[300];
   sprintf(fname, "%s.trinpars_t%d_i%d", pars->run_name, pars->trinity_timestep, pars->trinity_iteration);
+  strcpy(pars->run_name, fname); 
+
   FILE *fptr;
   fptr = fopen(fname, "w");
   fprintf(fptr, "[Dimensions]\n");
