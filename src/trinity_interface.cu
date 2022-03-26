@@ -289,14 +289,14 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
 
     // Trinity orders species with electrons first, then ions
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
-      // no electron heat flux
+      // no electron heat flux or particle flux
       tfluxes->qflux[0] = 0.;
-      // ion heat fluxes
-      tfluxes->qflux[is] = qflux_sum / t_sum; 
-      is++;
+      tfluxes->pflux[0] = 0.;
 
-      // no particle fluxes
-      tfluxes->pflux[s] = 0.;
+      // ion heat and particle fluxes
+      tfluxes->qflux[is] = qflux_sum / t_sum; 
+      tfluxes->pflux[is] = pflux_sum / t_sum; 
+      is++;
     } else {
       if(pars_->species_h[s].type==1) { // electrons
         tfluxes->qflux[0] = qflux_sum / t_sum; // are species 0 in trinity
@@ -315,7 +315,12 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
 
   for(int s=0; s<pars_->nspec_in; s++) {
     tfluxes->heat[s] = heat;
-    printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s], tfluxes->pflux[s], tfluxes->heat[s]);
+    
+    if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s+1], tfluxes->pflux[s+1], tfluxes->heat[s+1]);
+    } else {
+      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s], tfluxes->pflux[s], tfluxes->heat[s]);
+    }
   }
 
   nc_close(ncres);
