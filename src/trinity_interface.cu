@@ -155,23 +155,6 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   }
   pars->init_species(pars->species_h);
 
-  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
-  // this triggers the use of jtwist_square... i.e. jtwist is 
-  // set to what it needs to make the box square at the outboard midplane
-  if (pars->jtwist < 0) {
-    int jtwist_square;
-    // determine value of jtwist needed to make X0~Y0
-    jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
-    if (jtwist_square == 0) jtwist_square = 1;
-    // as currently implemented, there is no way to manually set jtwist from input file
-    // there could be some switch here where we choose whether to use
-    // jtwist_in or jtwist_square
-    pars->jtwist = jtwist_square*2;
-    //else use what is set in input file 
-  }
-  if(pars->jtwist!=0 && abs(pars->shat)>1.e-6) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));
-  if(abs(pars->shat)<=1.e-6) pars->x0 = pars->y0;
-
   // write a toml input file with the parameters that trinity changed
   char fname[300];
   sprintf(fname, "%s.trinpars_t%d_i%d", pars->run_name, pars->trinity_timestep, pars->trinity_iteration);
@@ -294,19 +277,23 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
       // no electron heat flux or particle flux
       tfluxes->qflux[0] = 0.;
       tfluxes->pflux[0] = 0.;
+      tfluxes->heat[0] = 0.;
 
       // ion heat and particle fluxes
       tfluxes->qflux[is] = qflux_sum / t_sum; 
       tfluxes->pflux[is] = pflux_sum / t_sum; 
+      tfluxes->heat[is] = 0.;
       is++;
     } else {
       if(pars_->species_h[s].type==1) { // electrons
         tfluxes->qflux[0] = qflux_sum / t_sum; // are species 0 in trinity
         tfluxes->pflux[0] = pflux_sum / t_sum; 
+        tfluxes->heat[0] = 0.;
       }
       else {
         tfluxes->qflux[is] = qflux_sum / t_sum; 
         tfluxes->pflux[is] = pflux_sum / t_sum; 
+        tfluxes->heat[is] = 0.;
         is++;
       }
     }
@@ -316,8 +303,6 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   float heat = 0.;
 
   for(int s=0; s<pars_->nspec_in; s++) {
-    tfluxes->heat[s] = heat;
-    
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
       printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s+1], tfluxes->pflux[s+1], tfluxes->heat[s+1]);
     } else {

@@ -8,6 +8,7 @@ class Grids {
  public:
   Grids(Parameters* pars);
   ~Grids();
+  void init_ks_and_coords();
 
   int Nx;
   int Ny;

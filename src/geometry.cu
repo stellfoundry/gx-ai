@@ -188,7 +188,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   cudaDeviceSynchronize();
   
   // initialize the drift arrays and kperp2
-  initializeOperatorArrays(grids);
+  initializeOperatorArrays(pars, grids);
 }
 
 Gs2_geo::Gs2_geo() {
@@ -348,7 +348,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   cudaDeviceSynchronize();
 
   // initialize omegad and kperp2
-  initializeOperatorArrays(grids);
+  initializeOperatorArrays(pars, grids);
   
   // calculate bgrad
   calculate_bgrad(grids);
@@ -518,14 +518,14 @@ File_geo::File_geo(Parameters *pars, Grids *grids)
   cudaDeviceSynchronize();
 
   // initialize omegad and kperp2
-  initializeOperatorArrays(grids);
+  initializeOperatorArrays(pars, grids);
 
   // calculate bgrad
   calculate_bgrad(grids);
   CUDA_DEBUG("calc bgrad: %s \n");
 }
 
-void Geometry::initializeOperatorArrays(Grids* grids) {
+void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   // set this flag so we know to deallocate
   operator_arrays_allocated_ = true;
 
@@ -543,6 +543,11 @@ void Geometry::initializeOperatorArrays(Grids* grids) {
   dim3 dimBlock (32, 4, 4);
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
 
+  // set jtwist and x0, now that we know the final value of shat from geometry
+  pars->set_jtwist_x0(shat);
+  // initialize k and coordinate arrays
+  grids->init_ks_and_coords();
+  // initialize operator arrays
   init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
 

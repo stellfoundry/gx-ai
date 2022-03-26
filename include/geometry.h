@@ -71,7 +71,7 @@ class Geometry {
   float * gb_d ; 
   float * kperp2_h ;
   
-  void initializeOperatorArrays(Grids* grids);
+  void initializeOperatorArrays(Parameters* pars, Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM
 
   bool operator_arrays_allocated_;

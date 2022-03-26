@@ -426,21 +426,15 @@ void Parameters::get_nml_vars(char* filename)
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
   tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
   beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
-  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false);
+  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); // NRM: this input parameter doesn't do anything
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
-    shat        = toml::find_or <float> (tnml, "shat", 0.8);
-    printf("Using the value of shat that appears in the .in file. \n");
-    printf("Be sure it is consistent with the value in the geometry file. \n");
-    printf("Using shat = %f \n",shat);
-  }
-  
-  if (abs(shat) < 1.e-5) zero_shat = true;
-  
-  if (zero_shat) {
-    //    boundary = "periodic";
-    printf("Using no magnetic shear because zero_shat = true \n");
+    // shat will be taken from geometry file; do nothing here
+    //shat        = toml::find <float> (tnml, "shat");
+    //printf("Using the value of shat that appears in the .in file. \n");
+    //printf("Be sure it is consistent with the value in the geometry file. \n");
+    //printf("Using shat = %f \n",shat);
   }
   
   wspectra.resize(nw_spectra);
@@ -591,56 +585,6 @@ void Parameters::get_nml_vars(char* filename)
   // BD  This is messy. Prefer to go back to original method
   // before, jtwist_old assumed Zp=1
   // now, redefining jtwist = jtwist_old*Zp
-
-  if (jtwist==0) {
-    // this is an error
-    printf("************************** \n");
-    printf("************************** \n");
-    printf("jtwist = 0 is not allowed! \n");
-    printf("************************** \n");
-    printf("************************** \n");
-  }
-
-  // set jtwist and x0
-  if (zero_shat) {
-    // for zero magnetic shear, jtwist is not used.
-    // just need to make sure x0 is set
-    // either take x0 from input file, or if it was not set
-    // (indicated by x0 = -1) then set it to y0 by default
-    if (x0 == -1) {
-      x0 = y0;
-    }
-    jtwist = 2*nx_in;
-  } else {
-    // if both jtwist and x0 were not set in input file
-    if (jtwist == -1 && x0 < 0.0) {
-      // set jtwist to 2pi*shat so that x0~y0
-      jtwist = (int) round(2*M_PI*shat*Zp);
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
-    } 
-    // if jtwist was set in input file but x0 was not
-    else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat));
-    } 
-    // if x0 was set in input file 
-    else {
-      // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(shat)*Zp/y0*x0);
-     
-      // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
-      // and print warning if not.
-      if (jtwist > 0) {
-        if (jtwist_0 != jtwist) {
-          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
-        }
-      }
-      jtwist = jtwist_0;
-      // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat));
-      // reset x0 to be consistent with jtwist
-      x0 = x0_j;
-    }
-  }
 
   //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = Closure::none   ;
@@ -1381,5 +1325,59 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
+void Parameters::set_jtwist_x0(float shat_in)
+{
+  if (jtwist==0) {
+    // this is an error
+    printf("************************** \n");
+    printf("************************** \n");
+    printf("jtwist = 0 is not allowed! \n");
+    printf("************************** \n");
+    printf("************************** \n");
+  }
 
+  if (abs(shat_in) < 1.e-5) {
+    zero_shat = true;
+    printf("Using no magnetic shear because zero_shat = true \n");
+  }
+  if (zero_shat) {
+    // for zero magnetic shear, jtwist is not used.
+    // just need to make sure x0 is set
+    // either take x0 from input file, or if it was not set
+    // (indicated by x0 = -1) then set it to y0 by default
+    if (x0 == -1) {
+      x0 = y0;
+    }
+    jtwist = 2*nx_in;
+  } else {
+    // if both jtwist and x0 were not set in input file
+    if (jtwist == -1 && x0 < 0.0) {
+      // set jtwist to 2pi*shat_in so that x0~y0
+      jtwist = (int) round(2*M_PI*shat_in*Zp);
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+    } 
+    // if jtwist was set in input file but x0 was not
+    else if (x0 < 0.0) {
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+    } 
+    // if x0 was set in input file 
+    else {
+      // compute jtwist that will give x0 ~ the input value
+      int jtwist_0 = (int) round(2*M_PI*abs(shat_in)*Zp/y0*x0);
+     
+      // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
+      // and print warning if not.
+      if (jtwist > 0) {
+        if (jtwist_0 != jtwist) {
+          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
+        }
+      }
+      jtwist = jtwist_0;
+      // this is the exact x0 value that corresponds to the integer jtwist we just computed
+      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+      // reset x0 to be consistent with jtwist
+      x0 = x0_j;
+    }
+  }
+}
 
