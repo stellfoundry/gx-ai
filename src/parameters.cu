@@ -1335,11 +1335,14 @@ void Parameters::set_jtwist_x0(float shat_in)
     printf("************************** \n");
     printf("************************** \n");
   }
-
-  if (abs(shat_in) < 1.e-5) {
-    zero_shat = true;
-    printf("Using no magnetic shear because zero_shat = true \n");
+  if (shat_in == 0.0) {
+    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
+    shat_in = 1.e-8;
   }
+  if (abs(shat_in) < 1e-5) {
+    zero_shat = true;
+  }
+
   if (zero_shat) {
     // for zero magnetic shear, jtwist is not used.
     // just need to make sure x0 is set
@@ -1354,7 +1357,14 @@ void Parameters::set_jtwist_x0(float shat_in)
     if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat_in so that x0~y0
       jtwist = (int) round(2*M_PI*shat_in*Zp);
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+      if(jtwist == 0) {
+        printf("Warning: shat was set so small that it was giving jtwist=0\n");
+	printf("Setting x0=y0 and zero_shat=true\n");
+        x0 = y0;
+	zero_shat = true;
+      } else {
+        x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+      }
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
@@ -1377,7 +1387,14 @@ void Parameters::set_jtwist_x0(float shat_in)
       float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
       // reset x0 to be consistent with jtwist
       x0 = x0_j;
+      if(jtwist == 0) zero_shat = true;
     }
   }
+
+  if (zero_shat) {
+    boundary_option_periodic = true;
+    printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
+  }
+  printf("jtwist = %d, x0 = %f\n", jtwist, x0);
 }
 
