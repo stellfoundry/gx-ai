@@ -15,12 +15,13 @@ VMEC_variables::VMEC_variables(char *nml_file) {// : vmec_file(vdata) {
   const auto nml = toml::parse(nml_file); 
 
   vmec_data = toml::find <std::string> (nml, "vmec_file");
+  vmec_path = toml::find_or <std::string> (nml, "vmec_path", "./");
 
-  vmec_file = vmec_data.c_str();
-  //  printf("vmec_file = %s \n",vmec_file);
+  //  std::string tmpfile;
+  //  tmpfile = vmec_path + vmec_data;
+  vmec_file = (vmec_path + vmec_data).c_str();
+  printf("vmec_file = %s \n",vmec_file);
 
-
-  
   // Read in VMEC data and allocate some arrays
   // check if .nc file exists........
   int ncid;
