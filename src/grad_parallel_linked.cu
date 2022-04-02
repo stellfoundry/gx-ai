@@ -270,6 +270,28 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
 }
 */
 
+void GradParallelLinked::filterEnds(MomentsG* G)
+{
+  for (int is=0; is < grids_->Nspecies; is++) {
+    for(int c=0; c<nClasses; c++) {
+      // each "class" has a different number of links in the chains, and a different number of chains.
+      int ifilter = grids_->Nz*nLinks[c];
+      linkedFilterEnds GCHAINS (G->G(0,0,is), ifilter, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    }
+  }
+}
+
+void GradParallelLinked::filterEnds(cuComplex* m)
+{
+  for (int is=0; is < grids_->Nspecies; is++) {
+    for(int c=0; c<nClasses; c++) {
+      // each "class" has a different number of links in the chains, and a different number of chains.
+      int ifilter = grids_->Nz*nLinks[c];
+      linkedFilterEnds GCHAINS (m, ifilter, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], 1);
+    }
+  }
+}
+
 void GradParallelLinked::dz(MomentsG* G) 
 {
   for (int is=0; is < grids_->Nspecies; is++) {

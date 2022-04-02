@@ -37,6 +37,7 @@ class Grids {
   
   float * theta0_h ;
   float * th0; 
+  float Zp;
 
   /* Flow shear arrays*/
   //  float * kx_shift ;

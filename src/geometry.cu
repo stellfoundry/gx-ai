@@ -164,7 +164,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
       bgrad_h[k] = 0.;
       bmag_h[k] = 1.;
     }
-    if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; }
+    if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; gradpar = 1.; }
 
     // calculate these derived coefficients after slab overrides
     bmagInv_h[k] = 1./bmag_h[k];

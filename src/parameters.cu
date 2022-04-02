@@ -72,7 +72,7 @@ void Parameters::get_nml_vars(char* filename)
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
   x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
   jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
-  Zp       = toml::find_or <int>         (tnml, "zp",           1    );
+  Zp       = toml::find_or <int>         (tnml, "zp",           2*nperiod-1    );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
   g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
@@ -580,7 +580,7 @@ void Parameters::get_nml_vars(char* filename)
     nz_in = 2*ntgrid; // force even
   }
   
-  Zp = 2*nperiod - 1; // BD This needs updating
+  //Zp = 2*nperiod - 1; // BD This needs updating
   
   // BD  This is messy. Prefer to go back to original method
   // before, jtwist_old assumed Zp=1

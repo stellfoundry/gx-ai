@@ -260,6 +260,9 @@ __global__ void add_source(cuComplex* f, const float source);
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac);
 
+__global__ void linkedFilterEnds(cuComplex* G, int ifilter,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
+
 __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked, int nLinks, int nChains,
 			   const int* ikx, const int* iky, int nMoms);
 

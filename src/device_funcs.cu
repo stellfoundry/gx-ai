@@ -1966,6 +1966,7 @@ __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idzl = idz;// + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
     G_linked[idlink] = G[globalIdx];
@@ -1981,10 +1982,35 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idzl = idz;// + nz*(idk % nLinks);
+    //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    G[globalIdx] = G_linked[idlink];
+  }
+}
+
+__global__ void linkedFilterEnds(cuComplex* G, int ifilter,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
     //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
-    G[globalIdx] = G_linked[idlink];
+    float filter = 1.;
+    int width = nz*nLinks/ifilter;
+    if (idzl <= width ) {
+      float x = ((float) idzl)/width;
+      filter = 2*x*x/(1+x*x*x*x);
+    } else if (idzl >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzl)/width;
+      filter = 2*x*x/(1+x*x*x*x);
+    }
+    G[globalIdx] = filter*G[globalIdx];
   }
 }
 
