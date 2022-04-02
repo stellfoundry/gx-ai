@@ -204,6 +204,8 @@ class Geometric_coefficients {
   double domain_scaling_factor;
 
   // input variables for the interface
+  std::string vmec_path; // not presently used! 
+  std::string out_path;
   double alpha = 0.0;
   int nzgrid = 16;
   int npol = 1;

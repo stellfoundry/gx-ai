@@ -7,6 +7,7 @@ class VMEC_variables {
   ~VMEC_variables();
   void sanity_check(double*, double*, int*, int*, int*, int*, double*);
   
+  std::string vmec_path; // actually the one that is used
   std::string vmec_data;
   char const* vmec_file;
   

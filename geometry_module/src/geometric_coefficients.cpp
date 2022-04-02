@@ -24,6 +24,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
   const auto nml = toml::parse(nml_file); 
 
+  vmec_path   = toml::find_or <string> (nml, "vmec_path", "./"); // not presently used! 
+  out_path  = toml::find_or <string> (nml, "out_path", "./"); 
   alpha  = toml::find_or <double> (nml, "alpha", 0.0);
   nzgrid = toml::find_or <int> (nml, "nzgrid", 16);
   npol   = toml::find_or <int> (nml, "npol", 1);
@@ -1459,20 +1461,25 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   custom_info = custom_info.substr(0,5);
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
-  std::string vmec_name = vmec->vmec_file;
-  vmec_name = vmec_name.substr(0,vmec_name.size()-3);
+  std::string vmec_name = vmec->vmec_data;
+  vmec_name = vmec_name.substr(0,vmec_name.size()-3); // could change 0 to 5 to shorten these names
+
+  out_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
+    
   if (flux_tube_cut == "custom") {
-    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_custom_[-" + custom_info + "," + custom_info + "]_nt_" + theta_grid_points + "_geo.nc";
+    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_gds21" + "_nt_" + theta_grid_points + "_geo.nc";
+    out_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_gbdrift0" + "_nt_" + theta_grid_points + "_geo.nc";
+    out_name += "_gbdrift0" ;
   }
-  else {
-    out_name = "gx_" + vmec_name + "_psiN_" + tor_flux + "_nt_" + theta_grid_points + "_geo.nc";
-  }  
+  //  else {
+  //    out_name += "";
+  //  }  
+
+  out_name += + "_nt_" + theta_grid_points + "_geo.nc";
   
   // create file for writing
   int retval;
@@ -1582,23 +1589,25 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   custom_info = custom_info.substr(0,5);
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
-  std::string vmec_name = vmec->vmec_file;
-  //  printf("\n\n\n");
-  //  printf("vmec_name = %s \n",vmec->vmec_file);
-  //  printf("\n\n\n");
+  std::string vmec_name = vmec->vmec_data;
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
+
+  out_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
+    
   if (flux_tube_cut == "custom") {
-    out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_custom_[-" + custom_info + "," + custom_info + "]_nt_" + theta_grid_points;
+    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_gds21" + "_nt_" + theta_grid_points;
+    out_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_gbdrift0" + "_nt_" + theta_grid_points;
+    out_name += "_gbdrift0" ;
   }
-  else {
-    out_name = "grid.gx_" + vmec_name + "_psiN_" + tor_flux + "_nt_" + theta_grid_points;
-  }
+  //  else {
+  //    out_name += "";
+  //  }  
+
+  out_name += + "_nt_" + theta_grid_points;
   
   std::ofstream out_file(out_name);
   //  std::ofstream out_file(".\\name.ext");
