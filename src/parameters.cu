@@ -426,7 +426,8 @@ void Parameters::get_nml_vars(char* filename)
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
   tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
   beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
-  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); // NRM: this input parameter doesn't do anything
+  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); // NRM: this input parameter doesn't do anything....see next line
+  // Set zero_shat = true in the input file when the actual magnetic shear is inconveniently low. 
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
@@ -1374,7 +1375,7 @@ void Parameters::set_jtwist_x0(float shat_in)
     else {
       // compute jtwist that will give x0 ~ the input value
       int jtwist_0 = (int) round(2*M_PI*abs(shat_in)*Zp/y0*x0);
-     
+      
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
       if (jtwist > 0) {
