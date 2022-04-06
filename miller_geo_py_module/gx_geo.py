@@ -576,6 +576,7 @@ headings = ['ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q\n', 'gbdrift gradp
             'gds21 gds22 tgrid\n', 'cvdrift0 gbdrift0 tgrid\n']
 
 g.writelines(headings[0])
+
 g.writelines('  %d    %d    %d   %0.3f   %0.1f    %.7e   %.1f   %.4f\n'%((ntheta-1)/2, 1, (ntheta-1), np.abs(1/dpsidrho), 1.0,\
             shat, abs(qfac/rhoc*dpsidrho), qfac))
 
