@@ -1549,7 +1549,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double drhodpsi =  1.0;
   if (retval = nc_put_var(ncgeo, id_drhodpsi, &drhodpsi))               ERR(retval);
 
-  double rmaj = 1.0;
+  double rmaj = 1.0/L_reference;
   if (retval = nc_put_var(ncgeo, id_rmaj, &rmaj))                       ERR(retval);
   if (retval = nc_put_var(ncgeo, id_shat, &shat))                       ERR(retval);
 
@@ -1613,7 +1613,7 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   //  std::ofstream out_file(".\\name.ext");
   if (out_file.is_open()) {
     out_file << "ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q scale\n";
-    out_file << nzgrid << " 1.0 " << 2*nzgrid << " 1.0 1.0 " << shat << " 1.0 1.0 " << domain_scaling_factor << " \n";
+    out_file << nzgrid << " 1 " << 2*nzgrid << " 1.0 " << 1./L_reference << " " << shat << " 1.0 1.0 " << domain_scaling_factor << " \n";
     out_file << "gbdrift\t gradpar\t grho\t tgrid\n";
     for (int i=0; i<2*nzgrid+1; i++) {
       out_file << std::right << setprecision(10) << std::setw(20) << gbdrift[i] << "\t" << std::setw(20) << gradpar[i] << "\t" << std::setw(20) << grho[i] << "\t" << std::setw(20) << theta_grid[i] << "\n";
