@@ -63,7 +63,7 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   run_gx(pars, grids, geo, diagnostics);
 
   // copy time-averaged fluxes to trinity
-  copy_fluxes_to_trinity(pars, tfluxes);
+  copy_fluxes_to_trinity(pars, geo, tfluxes);
 
   delete pars;
   delete grids;
@@ -117,7 +117,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   pars->nspec = tpars->ntspec ;
   // trinity always assumes electrons are one of the evolved species
   // if GX is using Boltzmann electrons, decrease number of species by 1
-  if(pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+  if(pars->add_Boltzmann_species && pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
     pars->nspec = pars->nspec - 1;
   }
 
@@ -128,7 +128,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   }
   if (pars->debug) printf("nSpecies was set to %d\n", pars->nspec);
 
-  if(pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+  if(pars->add_Boltzmann_species && pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
     for (int s=0;s<pars->nspec;s++){
       // trinity assumes first species is electrons,
       // so ions require s+1
@@ -215,15 +215,17 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   fprintf(fptr, "]\n");
   fclose(fptr);
 
-  char command[300];
-  // call python geometry module using toml we just created to write the eik.out geo file
-  // this is a massive hack!
-  sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s.eik.out", fname, fname);
-  pars->geofilename = std::string(fname) + ".eik.out";
-  system(command);
+  if(pars->igeo==1) {
+    char command[300];
+    // call python geometry module using toml we just created to write the eik.out geo file
+    // this is a massive hack!
+    sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s.eik.out", fname, fname);
+    pars->geofilename = std::string(fname) + ".eik.out";
+    system(command);
+  }
 }
 
-void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
+void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struct *tfluxes)
 {
   int id_ns, id_time, id_fluxes, id_Q, id_P;
   int ncres, retval;
@@ -252,6 +254,21 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   // read time and qflux history
   if (retval = nc_inq_varid(ncres, "time", &id_time)) ERR(retval);
   if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);
+
+  // compute the surface area from A=Int(J |grad rho| dtheta dalpha)
+  // and dV/drhon = Int(J dtheta)
+  double surfarea = 0.;
+  double dvdrhon = 0.;
+  double dz = 2.*M_PI/pars_->nz_in;
+  for (int i=0; i<pars_->nz_in; i++) {
+    surfarea += 2.*M_PI*geo_->grho_h[i]*geo_->jacobian_h[i]*dz;
+    dvdrhon += geo_->jacobian_h[i]*dz;
+  }
+  // compute surface-averaged grho and dvdrho
+  double grhoavg = surfarea/dvdrhon;
+  tfluxes->grho = grhoavg;
+  tfluxes->dvdrho = dvdrhon;
+
   
   int is = 1; // counter for trinity ion species
   for(int s=0; s<pars_->nspec_in; s++) {
@@ -273,7 +290,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
     }
 
     // Trinity orders species with electrons first, then ions
-    if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+    if(pars_->add_Boltzmann_species && pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
       // no electron heat flux or particle flux
       tfluxes->qflux[0] = 0.;
       tfluxes->pflux[0] = 0.;
@@ -303,8 +320,8 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   float heat = 0.;
 
   for(int s=0; s<pars_->nspec_in; s++) {
-    if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
-      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s+1], tfluxes->pflux[s+1], tfluxes->heat[s+1]);
+    if(pars_->add_Boltzmann_species && pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g, surfarea = %g\n", pars_->run_name, s, tfluxes->qflux[s+1], tfluxes->pflux[s+1], tfluxes->heat[s+1], surfarea);
     } else {
       printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s], tfluxes->pflux[s], tfluxes->heat[s]);
     }

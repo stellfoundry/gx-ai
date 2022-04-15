@@ -197,6 +197,7 @@ Gs2_geo::Gs2_geo() {
 
 geo_nc::geo_nc(Parameters *pars, Grids *grids)
 {
+  printf("READING NC GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz;
 
@@ -359,6 +360,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 File_geo::File_geo(Parameters *pars, Grids *grids)
 {
 
+  printf("READING FILE GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz; 
   z_h = (float*) malloc (size);

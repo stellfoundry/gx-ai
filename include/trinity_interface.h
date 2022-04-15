@@ -1,5 +1,6 @@
 #pragma once
 #include "parameters.h"
+#include "geometry.h"
 
 struct trin_parameters_struct;
 struct trin_fluxes_struct;
@@ -64,10 +65,12 @@ struct trin_fluxes_struct {
    double pflux[20];
    double qflux[20];
    double heat[20];
+   double grho;
+   double dvdrho;
 };
 
 extern "C"
 void gx_get_fluxes_(struct trin_parameters_struct * tpars, struct trin_fluxes_struct* tfluxes, char * namelistFile, int mpcom);
 
 void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars);
-void copy_fluxes_to_trinity(Parameters *pars, trin_fluxes_struct *tfluxes);
+void copy_fluxes_to_trinity(Parameters *pars, Geometry *geo, trin_fluxes_struct *tfluxes);

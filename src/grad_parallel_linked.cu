@@ -127,7 +127,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
                       nChains[c], &workSize);
 
     // initialize kzLinked
-    init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c]);
+    init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c], false);
 
     int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
 

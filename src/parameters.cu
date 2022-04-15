@@ -1138,9 +1138,9 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_geo, "slab",        slab       );
   putbool  (nc_geo, "const_curv",  const_curv );
   putint   (nc_geo, "igeo",        igeo       );
+  put_real (nc_geo, "drhodpsi",    drhodpsi   );
+  put_real (nc_geo, "kxfac",       kxfac      );
   if (igeo == 0) {
-    put_real (nc_geo, "drhodpsi",    drhodpsi   );
-    put_real (nc_geo, "kxfac",       kxfac      );
     put_real (nc_geo, "Rmaj",        rmaj       );
     put_real (nc_geo, "shift",       shift      );
     put_real (nc_geo, "eps",         eps        );
@@ -1328,6 +1328,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
 
 void Parameters::set_jtwist_x0(float shat_in)
 {
+  printf("set_jtwist_x0: shat_in = %f\n", shat_in);
   if (jtwist==0) {
     // this is an error
     printf("************************** \n");
@@ -1357,7 +1358,7 @@ void Parameters::set_jtwist_x0(float shat_in)
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) round(2*M_PI*shat_in*Zp);
+      jtwist = (int) round(2*M_PI*abs(shat_in)*Zp);
       if(jtwist == 0) {
         printf("Warning: shat was set so small that it was giving jtwist=0\n");
 	printf("Setting x0=y0 and zero_shat=true\n");

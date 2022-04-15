@@ -1942,13 +1942,17 @@ __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element,
   ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element*normalization;
 }
 
-__global__ void init_kzLinked(float* kz, int nLinks)
+__global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
 {
-  for (int i=0; i < nz*nLinks; i++) {
-    if (i < nz*nLinks/2+1) {
+  int nzL = nz*nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
       kz[i] = (float) i/(zp*nLinks);
     } else {
-      kz[i] = (float) (i-nz*nLinks)/(zp*nLinks);
+      kz[i] = (float) (i-nzL)/(zp*nLinks);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {kz[i] = 0.0;}
     }
   }
 }
