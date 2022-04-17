@@ -44,7 +44,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
 
   nn1 = grids_->NxNyc;                          nt1 = min(nn1, 32);         nb1 = 1 + (nn1-1)/nt1;
   nn2 = grids_->Nz;                             nt2 = min(nn2, 32);         nb2 = 1 + (nn2-1)/nt2;
-  nn3 = grids_->Nmoms*grids_->Nspecies;         nt3 = min(nn3, 1);          nb3 = 1 + (nn3-1)/nt3;
+  nn3 = grids_->Nmoms;                          nt3 = min(nn3, 1);          nb3 = 1 + (nn3-1)/nt3;
 
   dBd = dim3(nt1, nt2, nt3);
   dGd = dim3(nb1, nb2, nb3);
@@ -55,6 +55,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   dBf = dim3(nt1, nt2, 1);
   dGf = dim3(nb1, nb2, 1);
   
+  hermite = new HermiteTransform(grids_);
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {
@@ -69,7 +70,9 @@ GradParallelPeriodic::~GradParallelPeriodic() {
 void GradParallelPeriodic::dealias(MomentsG* G)
 {
   for (int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) cufftExecC2C(zft_plan_forward, G->G(i), G->G(i), CUFFT_FORWARD);
-  kz_dealias GGP2 (G->G(), grids_->kzm, grids_->Nmoms*grids_->Nspecies);
+  for (int is = 0; is < grids_->Nspecies; is++) {
+    kz_dealias GGP2 (G->G(0,0,is), grids_->kzm, grids_->Nmoms);
+  }
   for (int i = 0; i < grids_->Nmoms*grids_->Nspecies; i++) cufftExecC2C(zft_plan_inverse, G->G(i), G->G(i), CUFFT_INVERSE);  
 }
 
@@ -107,6 +110,14 @@ void GradParallelPeriodic::zft_inverse(cuComplex* mom, cuComplex* res)
   cufftExecC2C(zft_plan_inverse, mom, res, CUFFT_INVERSE);
 }
 */
+
+void GradParallelPeriodic::applyOutgoingBCs(MomentsG* G)
+{
+  for (int is=0; is < grids_->Nspecies; is++) {
+    applyOutgoingBCs_periodic GGP2 (G->G(0,0,is), hermite->get_halfHermiteCoeff());
+  }
+}
+
 // FFT and derivative for all moments
 void GradParallelPeriodic::dz(MomentsG* G)
 {

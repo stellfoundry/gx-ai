@@ -1993,6 +1993,69 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
+__global__ void applyOutgoingBCs_linked(cuComplex* G, const double* halfHermiteC,
+			       int nLinks, int nChains, const int* ikx, const int* iky)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nl*nm ) {
+    unsigned int idzlink = idz + nz*(idk % nLinks);
+    //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
+    unsigned int idl = idlm % nl;
+    unsigned int idm = idlm / nl;
+    unsigned int idxyzl = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idl));
+
+    if(idzlink == 0 || idzlink == nz*nLinks-1) {
+      cuComplex G_tmp = make_cuComplex(0.,0.);
+      if (idzlink == 0) {
+        for(int j=0; j<nm; j++) {
+          G_tmp = G_tmp + pow(-1,j+idm)*halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
+        }
+      } else if (idzlink == nz*nLinks-1) {
+        for(int j=0; j<nm; j++) {
+          G_tmp = G_tmp + halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
+        }
+      }
+      
+      __syncthreads();
+
+      G[idxyzl + nx*nyc*nz*nl*idm] = G_tmp;
+    }
+  }
+}
+
+__global__ void applyOutgoingBCs_periodic(cuComplex* G, const double* halfHermiteC)
+{
+  unsigned int idxy = get_id1();
+  unsigned int idz = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idxy < nyc*nx && idlm < nl*nm ) {
+    unsigned int idl = idlm % nl;
+    unsigned int idm = idlm / nl;
+    unsigned int idxyzl = idxy + nyc*nx*(idz + nz*idl);
+
+    if(idz == 0 || idz == nz-1) {
+      cuComplex G_tmp = make_cuComplex(0.,0.);
+      if (idz == 0) {
+        for(int j=0; j<nm; j++) {
+          G_tmp = G_tmp + pow(-1,j+idm)*halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
+        }
+      } else if (idz == nz-1) {
+        for(int j=0; j<nm; j++) {
+          G_tmp = G_tmp + halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
+        }
+      }
+      
+      __syncthreads();
+
+      G[idxyzl + nx*nyc*nz*nl*idm] = G_tmp;
+    }
+  }
+}
+
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {

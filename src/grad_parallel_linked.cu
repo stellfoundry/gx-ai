@@ -145,6 +145,8 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
   }
 
   set_callbacks();
+  
+  hermite = new HermiteTransform(grids_);
   //  this->linkPrint();
 }
 
@@ -269,6 +271,17 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
   }
 }
 */
+
+void GradParallelLinked::applyOutgoingBCs(MomentsG* G)
+{
+  for (int is=0; is < grids_->Nspecies; is++) {
+    for(int c=0; c<nClasses; c++) {
+      // each "class" has a different number of links in the chains, and a different number of chains.
+      int ifilter = grids_->Nz*nLinks[c];
+      applyOutgoingBCs_linked GCHAINS (G->G(0,0,is), hermite->get_halfHermiteCoeff(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c]);
+    }
+  }
+}
 
 void GradParallelLinked::filterEnds(MomentsG* G)
 {
