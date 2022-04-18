@@ -17,8 +17,8 @@ HermiteTransform::HermiteTransform(Grids* grids) :
   cudaMalloc ((void**) &roots,      sizeof(double)*M);
 
   initTransforms(toGrid_h, toSpectral_h, halfHermiteCoeff_h, roots_h);
-  //printf("\nhalfHermiteCoeff:\n");
-  //for(int i=0; i<M*M; i++) printf("%f  ", halfHermiteCoeff_h[i]);
+  printf("\nhalfHermiteCoeff:\n");
+  for(int i=0; i<M*M; i++) printf("%f  ", halfHermiteCoeff_h[i]);
 
   CP_TO_GPU (toGrid,     toGrid_h,     sizeof(double)*M*M);
   CP_TO_GPU (toSpectral, toSpectral_h, sizeof(double)*M*M);
@@ -73,20 +73,20 @@ void HermiteTransform::initTransforms(double* toGrid_h, double* toSpectral_h, do
     // because eigenvectors inaccurate for large M
     double wgt_i = pow(gsl_sf_hermite_func(M-1, x_i/sqrtf(2.0))*pow(M_PI,.25),-2)/M;
     for (j = 0; j < M; j++) {
-      double poly_j = gsl_sf_hermite_func(j, x_i/sqrtf(2.0))*pow(M_PI,0.25);
-      gsl_matrix_set(toGrid, j, i, poly_j);
-      gsl_matrix_set(toSpectral, i, j, poly_j*wgt_i);
+      double poly_ij = gsl_sf_hermite_func(j, x_i/sqrtf(2.0))*pow(M_PI,0.25);
+      gsl_matrix_set(toGrid, i, j, poly_ij);
+      gsl_matrix_set(toSpectral, j, i, poly_ij*wgt_i);
       if(x_i>0.) {
-        gsl_matrix_set(toGridPosHalf, j, i, poly_j);
+        gsl_matrix_set(toGridPosHalf, i, j, poly_ij);
       } else {
-        gsl_matrix_set(toGridPosHalf, j, i, 0.);
+        gsl_matrix_set(toGridPosHalf, i, j, 0.);
       }
     }
   }
 
   gsl_matrix *halfHermiteCoeff = gsl_matrix_alloc(M, M);
   gsl_matrix_set_zero(halfHermiteCoeff);
-  gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, toGridPosHalf, toSpectral, 0.0, halfHermiteCoeff);
+  gsl_blas_dgemm(CblasNoTrans, CblasNoTrans, 1.0, toSpectral, toGridPosHalf, 0.0, halfHermiteCoeff);
 
   memcpy(toGrid_h, toGrid->data, sizeof(double)*M*M);
   memcpy(toSpectral_h, toSpectral->data, sizeof(double)*M*M);
