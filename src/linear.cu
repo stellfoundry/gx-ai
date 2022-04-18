@@ -146,7 +146,7 @@ Linear_GK::~Linear_GK()
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // to be safe, start with zeros on RHS
-  grad_par->applyOutgoingBCs(G);
+  //grad_par->applyOutgoingBCs(G);
   GRhs->set_zero();
   
   // calculate conservation terms for collision operator
@@ -203,7 +203,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
 
-  grad_par->applyOutgoingBCs(GRhs);
+  //grad_par->applyOutgoingBCs(GRhs);
 }
 
 //==========================================
