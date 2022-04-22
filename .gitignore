@@ -16,3 +16,4 @@ tests/*_tests
 *_field
 *omega.kykx
 .nfs*
+docs/_build
