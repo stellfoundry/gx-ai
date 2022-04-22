@@ -71,7 +71,7 @@ Diagnostic output will be printed to the screen, and also to the `cyclone_ae.nc`
 
 If you use GX in your work, please cite the following papers:
 
-N. R. Mandell, W. D. Dorland, and M. Landreman. 2018. "Laguerre-Hermite pseudo-spectral velocity formulation of gyrokinetics". J. Plasma. Phys. **84**, 905840108.
+N. R. Mandell, W. D. Dorland, and M. Landreman. 2018. "Laguerre-Hermite pseudo-spectral velocity formulation of gyrokinetics". J. Plasma. Phys. **84**, *905840108*. https://doi.org/10.1017/S0022377818000041
 
 The GX code paper is in progress, please stay tuned!
 
