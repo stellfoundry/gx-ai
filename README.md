@@ -2,9 +2,8 @@
 
 ## Introduction
 
-GX is a code for solving the nonlinear gyrokinetic equation for low-frequency turbulence in magnetized plasmas. 
-A unique feature of GX is the use of a spectral Hermite-Laguerre velocity discretization. 
-This allows GX to smoothly interpolate between coarse gyrofluid-like resolutions and finer conventional gyrokinetic resolutions.
+GX is a code for solving the nonlinear gyrokinetic system for low-frequency turbulence in magnetized plasmas using Fourier-Hermite-Laguerre spectral methods.
+A unique feature of GX is the use of a Hermite-Laguerre velocity discretization, which allows GX to smoothly interpolate between coarse gyrofluid-like resolutions and finer conventional gyrokinetic resolutions.
 
 Another unique feature of GX is that it is a GPU-native code, designed and optimized in CUDA/C++. 
 This means you will need access to an NVIDIA GPU to run GX. 
@@ -63,7 +62,7 @@ Sample input files for standard benchmark cases are provided in the `benchmarks`
 For example, to run the linear adiabatic-electron cyclone base case benchmark, 
 navigate into the `benchmarks/linear/cyclone_ae/` directory, and execute
 ```
-$ ../../gx cyclone_ae.in
+$ ../../../gx cyclone_ae.in
 ```
 Diagnostic output will be printed to the screen, and also to the `cyclone_ae.nc` NetCDF output file.
 

@@ -29,7 +29,7 @@ to use anything that is compatible with the `toml <https://github.com/ToruNiina/
 There are two input variables that are not part of any group:
 
 .. list-table::
-   :widths: 20 20 50 10
+   :widths: 20, 20, 50, 10
    :width: 100
    :header-rows: 1
 
