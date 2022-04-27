@@ -31,7 +31,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
- 
+
   switch (pars_->closure_model_opt)
     {
     case Closure::none      :
@@ -146,8 +146,8 @@ Linear_GK::~Linear_GK()
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // to be safe, start with zeros on RHS
-  //grad_par->applyOutgoingBCs(G);
   GRhs->set_zero();
+  grad_par->applyBCs(G);
   
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
@@ -202,8 +202,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
-
-  //grad_par->applyOutgoingBCs(GRhs);
+  grad_par->dampBCs(G, GRhs);
 }
 
 //==========================================

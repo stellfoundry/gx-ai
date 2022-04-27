@@ -76,7 +76,7 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
   g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
-  
+
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
 
@@ -1166,12 +1166,12 @@ void Parameters::init_species(specie* species)
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
-    species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z);
+    species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2
     species[s].nt   = species[s].dens * species[s].temp;
     species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
     species[s].nz   = species[s].dens * species[s].z;
     species[s].as   = species[s].nz * species[s].vt * beta / 2.;
-    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2;
+    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",

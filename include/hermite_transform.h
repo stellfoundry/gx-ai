@@ -15,25 +15,24 @@
 class HermiteTransform {
  public:
 
-  HermiteTransform(Grids* grids);
+  HermiteTransform(Grids* grids, float vmax=-1.0);
   ~HermiteTransform();
   
   double * get_toGrid() {return toGrid;}
   double * get_toSpectral() {return toSpectral;}
   double * get_roots() {return roots;}
-  double * get_halfHermiteCoeff() {return halfHermiteCoeff;}
-
-  const int M;
+  float get_scale_fac() {return scale_fac;}
 
  private:
   Grids * grids_     ; 
   double * toGrid     ;
   double * toSpectral ;
-  double * halfHermiteCoeff;
   double * roots      ;
+  const int M;
+  const float vmax;
+  float scale_fac;
 
-  void initTransforms(double* toGrid, double* toSpectral, double* halfHermiteCoeff, double* roots);
-  void initTransforms2(double* toGrid, double* toSpectral, double* halfHermiteCoeff, double* roots);
+  void initTransforms(double* toGrid, double* toSpectral, double* roots);
 };
 
 

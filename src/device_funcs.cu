@@ -770,6 +770,7 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
   }
 }
 
+// note: kperp2 = kperp**2 / B**2
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
@@ -782,6 +783,7 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 
   if (unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    // note: kperp2 = kperp**2 / B**2
     kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
                       + 2. * kx[idx] * shatInv * gds21[idz]) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
@@ -1550,6 +1552,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
 __global__ void ampere(cuComplex* Apar,
 		       const cuComplex* g,
 		       const float* kperp2,
+		       const float* bmag,
 		       const float* rho2s,
 		       const float* as,
 		       const float* amps,
@@ -1563,8 +1566,11 @@ __global__ void ampere(cuComplex* Apar,
     unsigned int idxyz = idy + nyc*(idx + nx*idz); // spatial index
     
     cuComplex jpar;    jpar = make_cuComplex(0., 0.);
-        
-    float denom = kperp2[idxyz];
+    
+    // note: the thing we call kperp2 is actually kperp**2/B**2 
+    // (it usually gets multiplied by rho2s, which needs the 1/B**2, to form b_s)
+    // but the laplacian in ampere's law is just regular kperp**2
+    float denom = kperp2[idxyz]*bmag[idz]*bmag[idz]; 
     for (int is=0 ; is < nspecies; is++) {
       const float b_s = kperp2[idxyz] * rho2s[is];
       const float j_ = as[is]; // as = n_s*z_s*vt_s*beta_ref/2
@@ -1970,7 +1976,6 @@ __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked,
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
-    unsigned int idzl = idz;// + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
     G_linked[idlink] = G[globalIdx];
@@ -1986,73 +1991,56 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
-    unsigned int idzl = idz;// + nz*(idk % nLinks);
-    //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
   }
 }
 
-__global__ void applyOutgoingBCs_linked(cuComplex* G, const double* halfHermiteC,
-			       int nLinks, int nChains, const int* ikx, const int* iky)
+__global__ void dampEnds_linked(cuComplex* G, 
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       cuComplex* GRhs)
 {
   unsigned int idz = get_id1();
   unsigned int idk = get_id2();
   unsigned int idlm = get_id3();
 
-  if (idz < nz && idk < nLinks*nChains && idlm < nl*nm ) {
-    unsigned int idzlink = idz + nz*(idk % nLinks);
-    //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
-    unsigned int idl = idlm % nl;
-    unsigned int idm = idlm / nl;
-    unsigned int idxyzl = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idl));
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
-    if(idzlink == 0 || idzlink == nz*nLinks-1) {
-      cuComplex G_tmp = make_cuComplex(0.,0.);
-      if (idzlink == 0) {
-        for(int j=0; j<nm; j++) {
-          G_tmp = G_tmp + pow(-1,j+idm)*halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
-        }
-      } else if (idzlink == nz*nLinks-1) {
-        for(int j=0; j<nm; j++) {
-          G_tmp = G_tmp + halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
-        }
-      }
-      
-      __syncthreads();
-
-      G[idxyzl + nx*nyc*nz*nl*idm] = G_tmp;
+    float nu = 0.;
+    // width = width of damping region in number of grid points 
+    // set damping region width to 1/8 of extended domain (on either side)
+    int width = nz*nLinks/8;  
+    float L = 2*M_PI*zp*nLinks/8;
+    float vmax = sqrtf(2*nm); // estimate of max vpar on grid
+    if (idzl <= width ) {
+      float x = ((float) idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    } else if (idzl >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    }
+    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0) {
+      GRhs[globalIdx] = GRhs[globalIdx] - 3.0*nu*vmax/L*G[globalIdx];
     }
   }
 }
 
-__global__ void applyOutgoingBCs_periodic(cuComplex* G, const double* halfHermiteC)
+__global__ void zeroEnds_linked(cuComplex* G,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {
-  unsigned int idxy = get_id1();
-  unsigned int idz = get_id2();
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
   unsigned int idlm = get_id3();
 
-  if (idz < nz && idxy < nyc*nx && idlm < nl*nm ) {
-    unsigned int idl = idlm % nl;
-    unsigned int idm = idlm / nl;
-    unsigned int idxyzl = idxy + nyc*nx*(idz + nz*idl);
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
-    if(idz == 0 || idz == nz-1) {
-      cuComplex G_tmp = make_cuComplex(0.,0.);
-      if (idz == 0) {
-        for(int j=0; j<nm; j++) {
-          G_tmp = G_tmp + pow(-1,j+idm)*halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
-        }
-      } else if (idz == nz-1) {
-        for(int j=0; j<nm; j++) {
-          G_tmp = G_tmp + halfHermiteC[idm+nm*j]*G[idxyzl + nx*nyc*nz*nl*j];
-        }
-      }
-      
-      __syncthreads();
-
-      G[idxyzl + nx*nyc*nz*nl*idm] = G_tmp;
-    }
+    // only zero ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {G[globalIdx].x = 0.; G[globalIdx].y = 0.;}
   }
 }
 
@@ -2069,7 +2057,7 @@ __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
     float filter = 1.;
-    int width = nz*nLinks/ifilter;
+    int width = 1;// nz*nLinks/ifilter;
     if (idzl <= width ) {
       float x = ((float) idzl)/width;
       filter = 2*x*x/(1+x*x*x*x);
@@ -2077,7 +2065,8 @@ __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
       float x = ((float) nz*nLinks-idzl)/width;
       filter = 2*x*x/(1+x*x*x*x);
     }
-    G[globalIdx] = filter*G[globalIdx];
+    // only filter non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0) G[globalIdx] = filter*G[globalIdx];
   }
 }
 

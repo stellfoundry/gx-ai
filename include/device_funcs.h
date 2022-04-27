@@ -229,7 +229,7 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
 __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s,
 		      const float* qn, const float* nzs);
 
-__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* rho2s,
+__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s,
 		       const float* as, const float* amps, const float beta);
 
 __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, 
@@ -260,10 +260,12 @@ __global__ void add_source(cuComplex* f, const float source);
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac);
 
-__global__ void applyOutgoingBCs_linked(cuComplex* G, const double* halfHermiteC,
-			       int nLinks, int nChains, const int* ikx, const int* iky);
+__global__ void dampEnds_linked(cuComplex* G,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       cuComplex* GRhs);
 
-__global__ void applyOutgoingBCs_periodic(cuComplex* G, const double* halfHermiteC);
+__global__ void zeroEnds_linked(cuComplex* G,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
 
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);

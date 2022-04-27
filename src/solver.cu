@@ -68,7 +68,7 @@ void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
   if (pars_->all_kinetic) {
     
              qneut GQN (fields->phi,  G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz());
-    if (em) ampere GQN (fields->apar, G->G(), geo_->kperp2, G->r2(), G->as(), G->amp(), pars_->beta);
+    if (em) ampere GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta);
 
   } else {
 

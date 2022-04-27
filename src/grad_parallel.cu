@@ -111,13 +111,6 @@ void GradParallelPeriodic::zft_inverse(cuComplex* mom, cuComplex* res)
 }
 */
 
-void GradParallelPeriodic::applyOutgoingBCs(MomentsG* G)
-{
-  for (int is=0; is < grids_->Nspecies; is++) {
-    applyOutgoingBCs_periodic GGP2 (G->G(0,0,is), hermite->get_halfHermiteCoeff());
-  }
-}
-
 // FFT and derivative for all moments
 void GradParallelPeriodic::dz(MomentsG* G)
 {
