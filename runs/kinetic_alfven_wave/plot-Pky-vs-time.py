@@ -6,7 +6,7 @@ import sys
 from netCDF4 import Dataset
 
 for fname in sys.argv[1:]:
-  data = Dataset("%s.nc"%fname, mode='r')
+  data = Dataset("%s"%fname, mode='r')
   t = data.variables['time'][:]
   ky = data.variables['ky'][:]
   for i in np.arange(1, len(ky)):

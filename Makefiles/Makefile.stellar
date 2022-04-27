@@ -21,7 +21,7 @@ CUTENSOR_LIB = -lcutensor -lcudart
 
 # paths to cuda added as part of module load
 CUDA_INC = ${CUTENSOR_INC}
-CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
+CUDA_LIB = -lcufft_static -lculibos -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
 
 GSL_LIB = -lgsl -lgslcblas -lm
 
