@@ -260,11 +260,11 @@ __global__ void add_source(cuComplex* f, const float source);
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac);
 
-__global__ void dampEnds_linked(cuComplex* G,
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
 			       cuComplex* GRhs);
 
-__global__ void zeroEnds_linked(cuComplex* G,
+__global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
 
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
@@ -299,7 +299,7 @@ __global__ void streaming_rhs (const cuComplex* g, const cuComplex* phi, const c
 
 __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
-			   const float* b, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* b, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nz, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
 			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna);  // bb6126 - hegna test

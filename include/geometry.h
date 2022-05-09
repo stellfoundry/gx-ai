@@ -1,5 +1,4 @@
-#ifndef GEO_H
-#define GEO_H
+#pragma once
 
 #include "cufft.h"
 #include "parameters.h"
@@ -105,4 +104,3 @@ class File_geo : public Geometry {
 //void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz);
 
 
-#endif

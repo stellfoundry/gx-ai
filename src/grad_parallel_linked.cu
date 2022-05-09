@@ -272,23 +272,12 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
 }
 */
 
-void GradParallelLinked::applyBCs(MomentsG* G)
+void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2)
 {
   for (int is=0; is < grids_->Nspecies; is++) {
     for(int c=0; c<nClasses; c++) {
       // each "class" has a different number of links in the chains, and a different number of chains.
-      zeroEnds_linked GCHAINS (G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-      //linkedFilterEnds GCHAINS (G->G(0,0,is), 1, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
-    }
-  }
-}
-
-void GradParallelLinked::dampBCs(MomentsG* G, MomentsG* GRhs)
-{
-  for (int is=0; is < grids_->Nspecies; is++) {
-    for(int c=0; c<nClasses; c++) {
-      // each "class" has a different number of links in the chains, and a different number of chains.
-      dampEnds_linked GCHAINS (G->G(0,0,is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G(0,0,is));
+      dampEnds_linked GCHAINS (G->G(0,0,is), f->phi, f->apar, kperp2, G->zt(is), G->vt(is), G->r2(is), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G(0,0,is));
     }
   }
 }

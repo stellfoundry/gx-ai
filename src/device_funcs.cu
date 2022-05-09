@@ -1996,7 +1996,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G, 
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
 			       cuComplex* GRhs)
 {
@@ -2007,6 +2007,7 @@ __global__ void dampEnds_linked(cuComplex* G,
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idzl = idz + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
 
     float nu = 0.;
     // width = width of damping region in number of grid points 
@@ -2023,12 +2024,23 @@ __global__ void dampEnds_linked(cuComplex* G,
     }
     // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
     if(iky[idk]>0) {
-      GRhs[globalIdx] = GRhs[globalIdx] - 3.0*nu*vmax/L*G[globalIdx];
+      unsigned int idl = idlm % nl;
+      unsigned int idm = idlm / nl;
+      const float kperp2_ = kperp2[idxyz];
+      const float zt_ = *zt;
+      const float vt_ = *vt;
+      const float rho2_ = *rho2;
+      const float b_ = kperp2_ * rho2_;
+      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+      cuComplex H_ = G[globalIdx];
+      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
 }
 
-__global__ void zeroEnds_linked(cuComplex* G,
+__global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {
   unsigned int idz = get_id1();
@@ -2038,9 +2050,19 @@ __global__ void zeroEnds_linked(cuComplex* G,
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idzl = idz + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
 
     // only zero ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
-    if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {G[globalIdx].x = 0.; G[globalIdx].y = 0.;}
+    if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {
+      unsigned int idl = idlm % nl;
+      unsigned int idm = idlm / nl;
+      const float kperp2_ = kperp2[idxyz];
+      const float b_ = kperp2_ * rho2[0];
+      G[globalIdx].x = 0.; G[globalIdx].y = 0.;
+      if(idm==0) G[globalIdx] = -zt[0]*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
+      if(idm==1) G[globalIdx] = zt[0]*vt[0]*Jflr(idl, b_)*apar[idxyz];
+    }
+
   }
 }
 
@@ -2142,7 +2164,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
-			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nzs, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
 			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna)  // bb6126 - hegna test
@@ -2171,6 +2193,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad were in shared memory, would have bank conflicts.
     // no bank conflicts for reading from global memory though. 
+    const float bmag_ = bmag[idz];
     const float bgrad_ = bgrad[idz];  
   
     // this is coalesced
@@ -2291,7 +2314,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	 }
 
 	 if (m==1) {
-	   cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
+	   cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*bmag_*bmag_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
 
 	   rhs[globalIdx] = rhs[globalIdx] 
             - vt_ * iky_ * apar_ * (
