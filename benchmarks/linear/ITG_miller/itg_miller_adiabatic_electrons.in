@@ -1,3 +1,5 @@
+# This test runs a linear ITG instability calculation using a circular Miller geometry with Cyclone-base-case-like parameters.
+# This test uses a Boltzmann adiabatic electron response.
 
  debug = false
 
@@ -26,11 +28,11 @@
  igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
  geofile = "itg_miller.eik.out"  # name of geometry file
  rhoc = 0.5                      # flux surface label, r/a
- shat = 0.8                      # magnetic shear
  Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
  R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
- shift = 0.0                     # shafranov shift
  qinp = 1.4                      # safety factor
+ shat = 0.8                      # magnetic shear
+ shift = 0.0                     # shafranov shift
  akappa = 1.0                    # elongation of flux surface
  akappri = 0.0                   # radial gradient of elongation
  tri = 0.0                       # triangularity of flux surface 
@@ -55,9 +57,11 @@
  p_hyper_m = 6                   # power of hermite hypercollisions
  nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
  p_hyper_l = 6                   # power of laguerre hypercollisions
+
+[Restart]
+ save_for_restart = false        # don't write a restart file
  
 [Diagnostics]
-
  nwrite = 100                    # write diagnostics every 100 timesteps
  omega  = true                   # compute and write growth rates and frequencies
 
@@ -83,7 +87,7 @@ z                = true
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 
 [species]
- z     = [ 1.0,      -1.0     ]         # charge (normalized to z_ref)
+ z     = [ 1.0,      -1.0     ]         # charge (normalized to Z_ref)
  mass  = [ 1.0,       2.7e-4  ]         # mass (normalized to m_ref)
  dens  = [ 1.0,       1.0     ]         # density (normalized to dens_ref)
  temp  = [ 1.0,       1.0     ]         # temperature (normalized to T_ref)
