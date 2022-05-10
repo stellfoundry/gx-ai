@@ -20,6 +20,7 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
+    grids->init_ks_and_coords();
     checkCuda(cudaGetLastError());
   }
 

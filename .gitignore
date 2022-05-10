@@ -17,3 +17,6 @@ tests/*_tests
 *omega.kykx
 .nfs*
 docs/_build
+*.nc
+unit_tests/unit_tests
+*trinpars*

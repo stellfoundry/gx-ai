@@ -52,7 +52,7 @@ TEST_F(TestTrinityInterface, SetFromTrin) {
 
 TEST_F(TestTrinityInterface, CopyFluxesToTrin) {
   trin_fluxes_struct tfluxes;
-  copy_fluxes_to_trinity(pars, &tfluxes);
+  copy_fluxes_to_trinity(pars, geo, &tfluxes);
 
   EXPECT_FLOAT_EQ(49.65884399414062, tfluxes.qflux[0]);
 }
