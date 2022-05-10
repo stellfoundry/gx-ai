@@ -845,7 +845,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   unsigned int J = nx*nyc;
 
   if (idxy < J) {
-    int IG = (int) nz/4 ;
+    int IG = (int) nz/2 ;
     
     int idy = idxy % nyc;
     int idx = idxy / nyc; // % nx;
@@ -858,10 +858,9 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 	logr.x = (float) log(cuCabsf(ratio));
 	logr.y = (float) atan2(ratio.y,ratio.x);
 	omega[idxy] = logr*i_dt;
-	if (isnan(omega[idxy].x)) {omega[idxy].x = -77777.; omega[idxy].y = -77777.;}
       } else {
-	omega[idxy].x = -99999.;
-	omega[idxy].y = -99999.;
+	omega[idxy].x = 1./0.;
+	omega[idxy].y = 1./0.;
       }
     }
   }
