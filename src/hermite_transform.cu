@@ -58,7 +58,7 @@ void HermiteTransform::initTransforms(double* toGrid_h, double* toSpectral_h, do
   // compute scaling factor, scale_fac, to enforce vmax
   float x_M = gsl_vector_get(eval, M-1);
   if (vmax>0) scale_fac = vmax/x_M;
-  else scale_fac = 1.0;
+  else {scale_fac = 1.0; vmax = x_M;}
 
   for (i = 0; i < M; i++) {
     double x_i = gsl_vector_get(eval, i)/scale_fac;

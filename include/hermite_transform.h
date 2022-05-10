@@ -22,6 +22,7 @@ class HermiteTransform {
   double * get_toSpectral() {return toSpectral;}
   double * get_roots() {return roots;}
   float get_scale_fac() {return scale_fac;}
+  float get_vmax() {return vmax;}
 
  private:
   Grids * grids_     ; 
@@ -29,7 +30,7 @@ class HermiteTransform {
   double * toSpectral ;
   double * roots      ;
   const int M;
-  const float vmax;
+  float vmax;
   float scale_fac;
 
   void initTransforms(double* toGrid, double* toSpectral, double* roots);
