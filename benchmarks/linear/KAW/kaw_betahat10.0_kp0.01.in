@@ -4,7 +4,7 @@
 
 [Dimensions]
  ntheta = 16		# number of points along field line (theta) per 2pi segment    
- nperiod = 1		# number of 2pi segments along field line
+ nperiod = 1		# number of 2pi segments along field line is 2*nperiod-1
  nky = 2		# number of (de-aliased) fourier modes in y
  nkx = 1		# number of (de-aliased) fourier modes in x
 

@@ -5,13 +5,13 @@
 
 [Dimensions]
  ntheta = 32            # number of points along field line (theta) per 2pi segment    
- nperiod = 2            # number of 2pi segments along field line
+ nperiod = 2            # number of 2pi segments along field line is 2*nperiod-1
  nky = 16               # number of (de-aliased) fourier modes in y
  nkx = 1                # number of (de-aliased) fourier modes in x
 
  nhermite = 48          # number of hermite moments (v_parallel resolution)
  nlaguerre = 16         # number of laguerre moments (mu B resolution)
- nspecies = 1           # number of evolved kinetic species
+ nspecies = 1           # number of evolved kinetic species (adiabatic electrons don't count towards nspecies)
 
 [Domain]
  y0 = 20.0              # controls box length in y (in units of rho_ref) and minimum ky, so that ky_min*rho_ref = 1/y0 

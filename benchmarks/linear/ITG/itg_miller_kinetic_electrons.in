@@ -1,11 +1,9 @@
 # This test runs a linear ITG instability calculation using a circular Miller geometry with Cyclone-base-case-like parameters.
 # This test uses kinetic electrons in the electrostatic limit.
 
- debug = false
-
 [Dimensions]
  ntheta = 32            # number of points along field line (theta) per 2pi segment    
- nperiod = 2            # number of 2pi segments along field line
+ nperiod = 2            # number of 2pi segments along field line is 2*nperiod-1
  nky = 8                # number of (de-aliased) fourier modes in y
  nkx = 1                # number of (de-aliased) fourier modes in x
 
