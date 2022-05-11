@@ -317,14 +317,14 @@ void MomentsG::initialConditions(double* time) {
 	      } else {
 		init_h[index].x = rb;		init_h[index].y = ra;
 	      }
-	      if (pars_->kpar_init < 0.) {		
-		init_h[index].x *= (cos( -pars_->kpar_init    *z_h[k]/pars_->Zp)
-				  + cos((-pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
-		init_h[index].y *= (cos( -pars_->kpar_init    *z_h[k]/pars_->Zp)
-				  + cos((-pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
+	      if (pars_->ikpar_init < 0) {		
+		init_h[index].x *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
+				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
+		init_h[index].y *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
+				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
 	      } else {
-		init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
-		init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+		init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
+		init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 	      }
 	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }

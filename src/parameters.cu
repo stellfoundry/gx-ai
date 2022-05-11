@@ -44,31 +44,34 @@ void Parameters::get_nml_vars(char* filename)
   strcat(default_restart_filename, ".restart.nc");
 
   auto tnml = nml;
-  if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
-  
-  restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
-  save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
-  restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
-  restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
-  scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
    
   tnml = nml;
   if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
   
   nz_in    = toml::find_or <int> (tnml, "ntheta",    32);
-  ny_in    = toml::find_or <int> (tnml, "ny",        32);
-  nx_in    = toml::find_or <int> (tnml, "nx",        4);
+  ny_in    = toml::find_or <int> (tnml, "ny",        0);
+  nx_in    = toml::find_or <int> (tnml, "nx",        0);
+  int nky_in   = toml::find_or <int> (tnml, "nky",       0);
+  int nkx_in   = toml::find_or <int> (tnml, "nkx",       0);
   nm_in    = toml::find_or <int> (tnml, "nhermite",  4);
   nl_in    = toml::find_or <int> (tnml, "nlaguerre", 2);
   nspec_in = toml::find_or <int> (tnml, "nspecies",  1);
   nperiod  = toml::find_or <int> (tnml, "nperiod",   1);
+
+  assert((ny_in > 0 || nky_in > 0) && "must set ny or nky");
+  if(nky_in > 0 && ny_in > 0) assert((nky_in == 1 + (ny_in-1)/3) && "nky and ny have been set inconsistenly. only one of these needs to be set.");
+  else if(nky_in > 0) ny_in = 3*(nky_in-1) + 1;
+
+  assert((nx_in > 0 || nkx_in > 0) && "must set nx or nkx");
+  if(nkx_in > 0 && nx_in > 0) assert((nkx_in == 1 + 2*((nx_in-1)/3)) && "nkx and nx have been set inconsistenly. only one of these needs to be set.");
+  else if(nkx_in > 0) nx_in = ((nkx_in - 1) /  2) * 3 + 1;
   
-  if (nx_in<4) {printf("Warning: Behavior is not guaranteed for nx = %d \n",nx_in);}
-  if (ny_in<4) {printf("Warning: Behavior is not guaranteed for ny = %d \n",ny_in);}
+  // NRM: are these warnings still needed?
+  //if (nx_in<4) {printf("Warning: Behavior is not guaranteed for nx = %d \n",nx_in);}
+  //if (ny_in<4) {printf("Warning: Behavior is not guaranteed for ny = %d \n",ny_in);}
 
   tnml = nml;
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
-
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
   x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
   jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
@@ -77,13 +80,23 @@ void Parameters::get_nml_vars(char* filename)
   ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
   g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
 
+  tnml = nml;
+  if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
+  beta = toml::find_or <float> (tnml, "beta",    0.0 );
+
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
 
-  dt      = toml::find_or <float> (tnml, "dt",          0.05 );
-  nstep   = toml::find_or <int>   (tnml, "nstep",   10000    );
-  nwrite  = toml::find_or <int>   (tnml, "nwrite",   1000    );
-  navg    = toml::find_or <int>   (tnml, "navg",       10    );
+  dt      = toml::find_or <float> (tnml, "dt",       0.05 );
+  nstep   = toml::find_or <int>   (tnml, "nstep",   10000 );
+
+  if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
+  
+  restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
+  save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
+  restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
+  restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
+  scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
   nsave   = toml::find_or <int>   (tnml, "nsave", (int) nstep/10 );
   nsave = max(1, nsave);
 
@@ -123,6 +136,12 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
 
   i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
+  int i_share_max = 96*1024/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
+  if(i_share > i_share_max) {
+    printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
+    i_share = i_share_max;
+  }
+  
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -150,6 +169,8 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
+  nwrite  = toml::find_or <int>   (tnml, "nwrite",   1000    );
+  navg    = toml::find_or <int>   (tnml, "navg",       10    );
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
   write_omega       = toml::find_or <bool> (tnml, "omega",       false );
   write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  ); if (ks) write_free_energy = false;
@@ -293,6 +314,7 @@ void Parameters::get_nml_vars(char* filename)
   init_field = toml::find_or <string> (tnml, "init_field", "density");
   init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
+  ikpar_init  = toml::find_or <float>  (tnml, "ikpar_init",     (int) kpar_init  );
   D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   );
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   );
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   );
@@ -308,7 +330,7 @@ void Parameters::get_nml_vars(char* filename)
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
-  if (random_init) kpar_init = 0.0; 
+  if (random_init) ikpar_init = 0; 
   
   if (write_omega && fixed_amplitude) {
     if (nonlinear_mode || nwrite < 3) fixed_amplitude = false;
@@ -420,7 +442,6 @@ void Parameters::get_nml_vars(char* filename)
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
   qsf         = toml::find_or <float> (tnml, "qinp",     1.4 );
-  beta        = toml::find_or <float> (tnml, "beta",    -1.0 );
   akappa      = toml::find_or <float> (tnml, "akappa",     1.0 );
   akappri     = toml::find_or <float> (tnml, "akappri",    0.0 );
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
@@ -533,11 +554,11 @@ void Parameters::get_nml_vars(char* filename)
       species_h[is].z     = toml::find <float>  (nml, "species", "z",     is);
       species_h[is].mass  = toml::find <float>  (nml, "species", "mass",  is);
       species_h[is].dens  = toml::find <float>  (nml, "species", "dens",  is);
-      species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
+      if(nml.at("species").count("temp")>0) species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
       species_h[is].tprim = toml::find <float>  (nml, "species", "tprim", is);
       species_h[is].fprim = toml::find <float>  (nml, "species", "fprim", is);
-      species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
-      species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
+      if(nml.at("species").count("uprim")>0) species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
+      if(nml.at("species").count("vnewk")>0) species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
       string stype        = toml::find <string> (nml, "species", "type",  is);
       species_h[is].type = stype == "ion" ? 0 : 1;
     }
@@ -876,7 +897,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_put_att_text (nc_con, ivar, "value", init_field.size(), init_field.c_str())) ERR(retval);
   if (retval = nc_def_var (nc_con, "init_electrons_only",   NC_INT,   0, NULL, &ivar)) ERR(retval);  
 
-  if (retval = nc_def_var (nc_con, "kpar_init",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_con, "ikpar_init",             NC_INT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_con, "random_init",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_diss, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1103,7 +1124,7 @@ void Parameters::store_ncdf(int ncid) {
   putint   (nc_con,  "stages",          stages          );
   put_real (nc_con,  "cfl",             cfl             );
   put_real (nc_con,  "init_amp",        init_amp        );
-  put_real (nc_con,  "kpar_init",       kpar_init       );
+  put_real (nc_con,  "ikpar_init",      ikpar_init       );
   putbool  (nc_con,  "random_init",     random_init     );
   putbool  (nc_con,  "dealias_kz",      dealias_kz      );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
@@ -1162,6 +1183,7 @@ void Parameters::store_ncdf(int ncid) {
 
 void Parameters::init_species(specie* species)
 {
+  vtmax = -1.;
   for(int s=0; s<nspec_in; s++) {
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
@@ -1180,9 +1202,11 @@ void Parameters::init_species(specie* species)
 	     species[s].vt, species[s].tz, species[s].zt);
       printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n",
 	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
-      printf("as, amp = %f, %f \n\n", 
+      printf("as, amp = %f, %f \n", 
              species[s].as, species[s].amp);
+      printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
+    vtmax = max(vtmax, species[s].vt);
   }
 }
 

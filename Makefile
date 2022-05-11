@@ -85,7 +85,7 @@ OBJS = device_funcs.o parameters.o grids.o reductions.o reservoir.o grad_perp.o 
 # main program
 gx: obj/main.o libgx.a 
 	$(NVCC) $(NVCCFLAGS) -o $@ $< -L. -lgx $(LDFLAGS) 
-	@mv src/version.c old/version.c
+	@rm src/version.c
 
 libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS)
 	ar -crs libgx.a $(addprefix obj/, $(OBJS)) 
