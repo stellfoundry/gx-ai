@@ -55,7 +55,7 @@
  save_for_restart = false        # don't write a restart file
  
 [Diagnostics]
- nwrite = 1000                   # write diagnostics every 100 timesteps
+ nwrite = 1000                   # write diagnostics every 1000 timesteps
  omega  = true                   # compute and write growth rates and frequencies
 
 [Wspectra]                       # spectra of W = sum_l,m |G_lm|**2
@@ -80,13 +80,13 @@ z                = true
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 
 [species]
- z     = [ 1.0,      -1.0     ]         # charge (normalized to Z_ref)
- mass  = [ 1.0,       2.7e-4  ]         # mass (normalized to m_ref)
- dens  = [ 1.0,       1.0     ]         # density (normalized to dens_ref)
- temp  = [ 1.0,       1.0     ]         # temperature (normalized to T_ref)
- tprim = [ 2.49,       0.0     ]        # temperature gradient, L_ref/L_T
- fprim = [ 0.8,       0.0     ]         # density gradient, L_ref/L_n
- vnewk = [ 0.0,       0.0     ]         # collision frequency
- type  = [ "ion",  "electron" ]         # species type
+ z     = [ 1.0,      -1.0     ]		# charge (normalized to Z_ref)
+ mass  = [ 1.0,       2.7e-4  ]		# mass (normalized to m_ref)
+ dens  = [ 1.0,       1.0     ]		# density (normalized to dens_ref)
+ temp  = [ 1.0,       1.0     ]		# temperature (normalized to T_ref)
+ tprim = [ 2.49,      0.0     ]		# temperature gradient, L_ref/L_T
+ fprim = [ 0.8,       0.0     ]		# density gradient, L_ref/L_n
+ vnewk = [ 0.0,       0.0     ]		# collision frequency
+ type  = [ "ion",  "electron" ]		# species type
 
 
