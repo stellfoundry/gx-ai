@@ -47,7 +47,7 @@
  closure_model = "none"          # no closure assumptions
  nonlinear_mode = false          # this is a linear calculation
  cfl = 1.0                       # fraction of CFL condition
- kpar_init = 0.0                 # parallel wavenumber of initial perturbation
+ ikpar_init = 0                  # parallel wavenumber of initial perturbation
  init_field = "density"          # initial condition set in density
  init_amp = 1.0e-10              # amplitude of initial condition
  hypercollisions = true          # use hypercollision model
@@ -55,7 +55,7 @@
  p_hyper_m = 6                   # power of hermite hypercollisions
  nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
  p_hyper_l = 6                   # power of laguerre hypercollisions
- init_electrons_only = true     
+ init_electrons_only = true      # only set up initial pertubation in electrons
 
 [Restart]
  save_for_restart = false        # don't write a restart file

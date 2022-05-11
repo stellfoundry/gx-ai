@@ -29,19 +29,19 @@
  shat = 1.0e-8          # magnetic shear
 
 [Controls]
- scheme = "sspx3"
- closure_model = "none"
- nonlinear_mode = false
- cfl = 1.0
- kpar_init = 1.0
- init_field = "density"
- init_amp = 1.0e-10
- hypercollisions = true
- nu_hyper_m = 0.5
- p_hyper_m = 6
- nu_hyper_l = 0.5
- p_hyper_l = 6
- init_electrons_only = true
+ scheme = "sspx3"                # use SSPx3 timestepping scheme
+ closure_model = "none"          # no closure assumptions
+ nonlinear_mode = false          # this is a linear calculation
+ cfl = 1.0                       # fraction of CFL condition
+ ikpar_init = 1                  # parallel wavenumber of initial perturbation
+ init_field = "density"          # initial condition set in density
+ init_amp = 1.0e-10              # amplitude of initial condition
+ hypercollisions = true          # use hypercollision model
+ nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
+ p_hyper_m = 6                   # power of hermite hypercollisions
+ nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
+ p_hyper_l = 6                   # power of laguerre hypercollisions
+ init_electrons_only = true      # only set up initial pertubation in electrons
  
 [Restart]
  save_for_restart = false		# don't write a restart file
