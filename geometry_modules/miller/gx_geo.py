@@ -22,7 +22,7 @@ import sys
 # definitions of the following variables can be obtained from 
 # https://gyrokinetics.gitlab.io/gs2/page/namelists/#theta_grid_eik_knobs
 
-# Further information can be found from Miller's paper and the refernces 
+# Further information can be found from Miller's paper and the references 
 # provided  in the repo
 
 # Which theta grid do you want? If all of the options below are 0
@@ -255,10 +255,8 @@ for i in range(no_of_surfs):
     L_st[i, 1:] = np.cumsum(np.sqrt(np.diff(R[i])**2 + np.diff(Z[i])**2))
 dt_st_l = derm(theta_st_new, 'l', 'o')
 dR_dpsi = derm(R, 'r')/psi_diff
-#dR_dt = derm(R, 'l', 'e')/dt_st_l
 dR_dt = dermv(R, theta_st_new, 'l', 'e')
 dZ_dpsi = derm(Z, 'r')/psi_diff
-#dZ_dt = derm(Z, 'l', 'o')/dt_st_l
 dZ_dt = dermv(Z, theta_st_new, 'l', 'o')
 
 jac = dR_dpsi*dZ_dt - dZ_dpsi*dR_dt
@@ -310,8 +308,8 @@ L_st_ex = np.concatenate((np.array([0.]), np.cumsum(np.sqrt(np.diff(R_ex)**2 + n
 
 diffrho = derm(rho, 'r')
 
-####################################################################################################################
-############################-------------------------- BISHOP'S TRICK--------------------------####################
+###################################################################################################################
+############################------------------------- BISHOP'S METHOD--------------------------####################
 ###################################################################################################################
 
 # Since we are calculating these coefficients in straight field line theta, we can use the fact that F[1]*jac[1]/R[1] = qfac[1]
@@ -341,7 +339,7 @@ if np.max(np.abs(test_diff_st)) > 6E-5:
 else:
 	print("grad theta_st along the surface test passed...\n")
 
-
+# Dual relation check
 if  np.abs(np.max((-dt_dR[1]*dpsidZ[1] + dpsidR[1]*dt_dZ[1])*jac[1]) - 1.0) > 1E-11:
 	print("theta hat dot grad theta = 1 test failed... difference > 1E-11 \n")
 else:
@@ -390,8 +388,7 @@ dpsidZ_ex = nperiod_data_extend(dpsidZ[1], nperiod, istheta=0, par = 'o')
 
 dt_st_l_ex = nperiod_data_extend(dt_st_l[1], nperiod, istheta=0, par='e')
 dt_st_l_dl_ex = nperiod_data_extend(1/dermv(L_st, theta_st_new, 'l', par = 'o')[1], nperiod, istheta = 0, par = 'e')
-#dtdr_st_ex = (dt_dR_ex*dpsidR_ex + dt_dZ_ex*dpsidZ_ex)/dpsi_dr_ex 
-#pdb.set_trace()
+
 
 # gradpar = b.grad(theta) with st field line theta
 #gradpar_ex = -1/(R_ex*B_ex)*(dpsi_dr_ex)*(dt_st_l_ex/dl_ex) 
@@ -438,31 +435,29 @@ cvdrift = 1/np.abs(drhodpsi*B_ex**3)*(2*B_ex*dpdpsi) + gbdrift
 #####################---------------------EQUAL_ARC THETA CALCULATION-------------------------######################
 #################################################################################################################### 
 #equal-arc theta calculation from straight field line gradpar
-gradpar_lim = gradpar_ex[theta_st_new_ex <= np.pi]
-B_lim = B_ex[theta_st_new_ex <= np.pi]
-B_p_lim = B_p_ex[theta_st_new_ex <= np.pi]
-theta_lim = theta_st_new_ex[theta_st_new_ex <= np.pi]
-L_eqarc = ctrap(B_p_lim/(B_lim*gradpar_lim), theta_lim, initial=0)
+gradpar_lim   = gradpar_ex[theta_st_new_ex <= np.pi]
+B_lim         = B_ex[theta_st_new_ex <= np.pi]
+B_p_lim       = B_p_ex[theta_st_new_ex <= np.pi]
+theta_lim     = theta_st_new_ex[theta_st_new_ex <= np.pi]
+L_eqarc       = ctrap(B_p_lim/(B_lim*gradpar_lim), theta_lim, initial=0)
 gradpar_eqarc = np.pi/ctrap(1/(gradpar_lim), theta_lim, initial=0)[-1]
-#gradpar_eqarc = np.pi/L_eqarc[-1]
-#maxval = ctrapz(1/gradpar, theta_st[1])[-1]
-#fin_gradpar = np.pi/maxval
 
-theta_eqarc = ctrap(B_lim/B_p_lim*gradpar_eqarc, L_eqarc, initial=0)
-theta_eqarc_new = np.linspace(0, np.pi, ntgrid)
-theta_eqarc_ex = nperiod_data_extend(theta_eqarc, nperiod, istheta=1)
+
+theta_eqarc        = ctrap(B_lim/B_p_lim*gradpar_eqarc, L_eqarc, initial=0)
+theta_eqarc_new    = np.linspace(0, np.pi, ntgrid)
+theta_eqarc_ex     = nperiod_data_extend(theta_eqarc, nperiod, istheta=1)
 theta_eqarc_new_ex = nperiod_data_extend(theta_eqarc_new, nperiod, istheta=1)
 
-gradpar_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gradpar_eqarc*np.ones((len(theta_eqarc_ex,))))
-R_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, R_ex)
-gds21_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds21[1])
-gds22_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds22[1])
-gds2_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds2[1])
-grho_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, grho)
+gradpar_eqarc_new_ex  = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gradpar_eqarc*np.ones((len(theta_eqarc_ex,))))
+R_eqarc_new_ex        = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, R_ex)
+gds21_eqarc_new_ex    = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds21[1])
+gds22_eqarc_new_ex    = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds22[1])
+gds2_eqarc_new_ex     = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gds2[1])
+grho_eqarc_new_ex     = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, grho)
 gbdrift0_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gbdrift0)
-B_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, B_ex)
-cvdrift_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, cvdrift)
-gbdrift_eqarc_new_ex = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gbdrift)
+B_eqarc_new_ex        = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, B_ex)
+cvdrift_eqarc_new_ex  = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, cvdrift)
+gbdrift_eqarc_new_ex  = np.interp(theta_eqarc_new_ex, theta_eqarc_ex, gbdrift)
 
 ###########################################################################################################
 ################---------------PACKING EIKCOEFS INTO A DICTIONARY------------------########################
@@ -519,32 +514,32 @@ file_idx    = eikcoefs_dict['file_idx']
 lambda_knob = eikcoefs_dict['lambda_knob']
 u_ML        = eikcoefs_dict['u_ML']
 
-gradpar_ball = reflect_n_append(gradpar, 'e')
-theta_ball = reflect_n_append(theta, 'o')
-cvdrift_ball = reflect_n_append(cvdrift, 'e')
-gbdrift_ball = reflect_n_append(gbdrift, 'e')
-gbdrift0_ball = reflect_n_append(gbdrift0, 'o')
-B_ball = reflect_n_append(B, 'e')
-gds2_ball = reflect_n_append(gds2, 'e')
-gds21_ball = reflect_n_append(gds21, 'o')
-gds22_ball = reflect_n_append(gds22 , 'e')
-grho_ball = reflect_n_append(grho , 'e')
+gradpar_ball   = reflect_n_append(gradpar, 'e')
+theta_ball     = reflect_n_append(theta, 'o')
+cvdrift_ball   = reflect_n_append(cvdrift, 'e')
+gbdrift_ball   = reflect_n_append(gbdrift, 'e')
+gbdrift0_ball  = reflect_n_append(gbdrift0, 'o')
+B_ball         = reflect_n_append(B, 'e')
+gds2_ball      = reflect_n_append(gds2, 'e')
+gds21_ball     = reflect_n_append(gds21, 'o')
+gds22_ball     = reflect_n_append(gds22 , 'e')
+grho_ball      = reflect_n_append(grho , 'e')
 
-Rplot_ball = reflect_n_append(R, 'e')
-Rprime_ball = reflect_n_append(nperiod_data_extend(np.sin(u_ML[theta <= np.pi]), nperiod, istheta=0, par='e'), 'e')
+Rplot_ball     = reflect_n_append(R, 'e')
+Rprime_ball    = reflect_n_append(nperiod_data_extend(np.sin(u_ML[theta <= np.pi]), nperiod, istheta=0, par='e'), 'e')
 
-Zplot_ball = reflect_n_append(Z, 'o')
-Zprime_ball = -reflect_n_append(nperiod_data_extend(np.cos(u_ML[theta <= np.pi]), nperiod, istheta=0, par='o'), 'o')
+Zplot_ball     = reflect_n_append(Z, 'o')
+Zprime_ball    = -reflect_n_append(nperiod_data_extend(np.cos(u_ML[theta <= np.pi]), nperiod, istheta=0, par='o'), 'o')
 
-aplot_ball = reflect_n_append(aplot[1], 'o')
-aprime_ball = reflect_n_append(aprime, 'o')
+aplot_ball     = reflect_n_append(aplot[1], 'o')
+aprime_ball    = reflect_n_append(aprime, 'o')
 
 
 ntheta   = len(theta_ball)
 
 
 ##################################################################################################################
-###########################---------------------GX SAVE----------------------------------######################
+###########################---------------------GX SAVE FORMAT1---------------------------########################
 ##################################################################################################################
 
 A1 = []
@@ -585,6 +580,81 @@ for i in np.arange(1, len(headings)):
     for j in range(ntheta):
             g.write(A1[i-1][j])
 g.close()
+
+##################################################################################################################
+###########################---------------------GX SAVE FORMAT2---------------------------########################
+##################################################################################################################
+try:
+	import netCDF4 as nc
+	eikfile_nc = stem + ".eiknc.out"
+
+	print('Writing eikfile in netCDF format\n')
+
+	ds = nc.Dataset(eikfile_nc, 'w')
+
+	# The netCDF input file to GX doesn't take the last(repeated) element
+	ntheta2       = ntheta - 1
+
+	z_nc = ds.createDimension('z', ntheta2)
+
+	theta_nc    = ds.createVariable('theta', 'f8', ('z',))
+	bmag_nc     = ds.createVariable('bmag', 'f8', ('z',))
+	gradpar_nc  = ds.createVariable('gradpar', 'f8', ('z',))
+	grho_nc     = ds.createVariable('grho', 'f8', ('z',))
+	gds2_nc     = ds.createVariable('gds2', 'f8', ('z',))
+	gds21_nc    = ds.createVariable('gds21', 'f8', ('z',))
+	gds22_nc    = ds.createVariable('gds22', 'f8', ('z',))
+	gbdrift_nc  = ds.createVariable('gbdrift', 'f8', ('z',))
+	gbdrift0_nc = ds.createVariable('gbdrift0', 'f8', ('z',))
+	cvdrift_nc  = ds.createVariable('cvdrift', 'f8', ('z',))
+	cvdrift0_nc = ds.createVariable('cvdrift0', 'f8', ('z',))
+	jacob_nc    = ds.createVariable('jacob', 'f8', ('z',))
+
+	Rplot_nc    = ds.createVariable('Rplot', 'f8', ('z',))
+	Zplot_nc    = ds.createVariable('Zplot', 'f8', ('z',))
+	aplot_nc    = ds.createVariable('aplot', 'f8', ('z',))
+	Rprime_nc   = ds.createVariable('Rprime', 'f8', ('z',))
+	Zprime_nc   = ds.createVariable('Zprime', 'f8', ('z',))
+	aprime_nc   = ds.createVariable('aprime', 'f8', ('z',))
+
+	drhodpsi_nc = ds.createVariable('drhodpsi', 'f8', )
+	kxfac_nc    = ds.createVariable('kxfac', 'f8', )
+	Rmaj_nc     = ds.createVariable('Rmaj', 'f8', )
+	q           = ds.createVariable('q', 'f8', )
+	shat        = ds.createVariable('shat', 'f8', )  
+
+	theta_nc[:]    = theta_ball[:-1]
+	bmag_nc[:]     = B_ball[:-1]
+	gradpar_nc[:]  = gradpar_ball[:-1]
+	grho_nc[:]     = grho_ball[:-1]
+	gds2_nc[:]     = gds2_ball[:-1]
+	gds21_nc[:]    = gds21_ball[:-1]
+	gds22_nc[:]    = gds22_ball[:-1]
+	gbdrift_nc[:]  = gbdrift_ball[:-1]
+	gbdrift0_nc[:] = gbdrift0_ball[:-1]
+	cvdrift_nc[:]  = cvdrift_ball[:-1]
+	cvdrift0_nc[:] = gbdrift0_ball[:-1]
+	jacob_nc[:]    = jacob_ball[:-1]
+
+	Rplot_nc[:]    = Rplot_ball[:-1]
+	Zplot_nc[:]    = Zplot_ball[:-1]
+	aplot_nc[:]    = aplot_ball[:-1]
+
+	Rprime_nc[:]   = Rprime_ball[:-1]
+	Zprime_nc[:]   = Zprime_ball[:-1]
+	aprime_nc[:]   = aprime_ball[:-1]
+
+	drhodpsi_nc[0] = abs(1/dpsidrho)
+	kxfac_nc[0]    = abs(qfac/rhoc*dpsidrho)
+	Rmaj_nc[0]     = (np.max(Rplot_nc) + np.min(Rplot_nc))/2
+	q[0]           = qfac
+	shat[0]        = shat0
+
+	ds.close()
+except ModuleNotFoundError:
+	print("No netCDF package in your Python environment...Not saving a netCDf input file")
+	pass
+
 
 
 
