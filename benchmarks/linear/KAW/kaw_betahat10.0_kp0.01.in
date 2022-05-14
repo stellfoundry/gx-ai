@@ -18,56 +18,23 @@
 
 [Physics]
  beta = 0.010892340441486	# reference normalized pressure, beta = n_ref T_ref / ( B_ref^2 / (8 pi)). this value corresponds to beta_hat = (beta_e/2)*(mi/me) = 10
+ nonlinear_mode = false         # this is a linear calculation
 
 [Time]
  dt = 0.00025		# timestep size (in units of L_ref/vt_ref)
  nstep  = 5000		# number of timesteps
+ scheme = "sspx3"       # use SSPx3 timestepping scheme
+
+[Initialization]
+ ikpar_init = 1                  # parallel wavenumber of initial perturbation
+ init_field = "density"          # initial condition set in density
+ init_amp = 1.0e-10              # amplitude of initial condition
+ init_electrons_only = true      # only set up initial pertubation in electrons
 
 [Geometry]
  igeo = 0               # use analytical geometry specification (s-alpha or slab)
  slab = true            # use slab geometry
  shat = 1.0e-8          # magnetic shear
-
-[Controls]
- scheme = "sspx3"                # use SSPx3 timestepping scheme
- closure_model = "none"          # no closure assumptions
- nonlinear_mode = false          # this is a linear calculation
- cfl = 1.0                       # fraction of CFL condition
- ikpar_init = 1                  # parallel wavenumber of initial perturbation
- init_field = "density"          # initial condition set in density
- init_amp = 1.0e-10              # amplitude of initial condition
- hypercollisions = true          # use hypercollision model
- nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # power of hermite hypercollisions
- nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # power of laguerre hypercollisions
- init_electrons_only = true      # only set up initial pertubation in electrons
- 
-[Restart]
- save_for_restart = false		# don't write a restart file
-
-[Diagnostics]
- nwrite = 10				# write diagnostics every 10 timesteps
- omega = true				# compute and write growth rates and frequencies
-
-[Wspectra]				# spectra of W = sum_l,m |G_lm|**2
-species          = false
-hermite          = false
-laguerre         = false
-hermite_laguerre = false
-kx               = false
-ky               = true
-kxky             = false
-kperp            = false
-z                = false
-
-[Pspectra]				# spectra of P = ( 1 - Gamma_0(b_s) ) |Phi|**2
-species          = false
-kx               = false
-ky               = true
-kxky             = false
-kperp            = false
-
 
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 
@@ -80,4 +47,34 @@ kperp            = false
  fprim = [ 0.0,       0.0     ]         # density gradient, L_ref/L_n
  vnewk = [ 0.0,       0.0     ]         # collision frequency
  type  = [ "ion",  "electron" ]         # species type
+
+
+[Dissipation]
+ closure_model = "none"          # no closure assumptions (just truncation)
+ hypercollisions = true          # use hypercollision model
+ nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
+ p_hyper_m = 6                   # power of hermite hypercollisions
+ nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
+ p_hyper_l = 6                   # power of laguerre hypercollisions
+ 
+[Diagnostics]
+ nwrite = 10				# write diagnostics every 10 timesteps
+ omega = true				# compute and write growth rates and frequencies
+
+[Wspectra]				# spectra of W = |G_lm|**2
+species          = false
+hermite          = false
+laguerre         = false
+hermite_laguerre = false
+kx               = false
+ky               = true
+kxky             = false
+z                = false
+
+[Pspectra]				# spectra of P = ( 1 - Gamma_0(b_s) ) |Phi|**2
+species          = false
+kx               = false
+ky               = true
+kxky             = false
+
 

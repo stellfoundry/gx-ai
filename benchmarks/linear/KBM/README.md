@@ -7,6 +7,6 @@ To run the test, simply use
 
 To check the results, use
 ```
-python plot-gams.py kbm_miller.nc kbm_miller_correct.nc 
+python check.py kbm_miller
 ```
 

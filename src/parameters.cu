@@ -77,21 +77,36 @@ void Parameters::get_nml_vars(char* filename)
   jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
   Zp       = toml::find_or <int>         (tnml, "zp",           2*nperiod-1    );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
-  ExBshear = toml::find_or <bool>        (tnml, "ExBshear",    false );
-  g_exb    = toml::find_or <float>       (tnml, "g_exb",        0.0  );
+  bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
+  float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
 
   tnml = nml;
   if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
   beta = toml::find_or <float> (tnml, "beta",    0.0 );
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
+  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
+  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
 
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
-
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
   nstep   = toml::find_or <int>   (tnml, "nstep",   10000 );
+  scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
+  cfl = toml::find_or <float> (tnml, "cfl", 1.0);
+  stages = toml::find_or <int>    (tnml, "stages",  10   );
+  int nwrite_time  = toml::find_or <int>   (tnml, "nwrite",   1000    ); // included for backwards-compat. nwrite now specified in Diagnostics
+  int navg_time    = toml::find_or <int>   (tnml, "navg",       10    ); // included for backwards-compat. navg now specified in Diagnostics
+
+  if (nml.contains("Initialization")) tnml = toml::find(nml, "Initialization");
+  init_field = toml::find_or <string> (tnml, "init_field", "density");
+  init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
+  kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
+  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
+  random_init     = toml::find_or <bool> (tnml, "random_init",     false);
+  init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
+  if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
-  
   restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
   save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
   restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
@@ -99,6 +114,24 @@ void Parameters::get_nml_vars(char* filename)
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
   nsave   = toml::find_or <int>   (tnml, "nsave", (int) nstep/10 );
   nsave = max(1, nsave);
+
+  if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
+  closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
+  smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",        3 );
+  smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",       3 );
+  D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   ); 
+  w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
+  D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
+  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    1.0   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   ); 
+  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   ); 
+  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
+  p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       1   ); 
+  p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
+  hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
+  HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
+  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
 
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
@@ -142,6 +175,7 @@ void Parameters::get_nml_vars(char* filename)
     i_share = i_share_max;
   }
   
+  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -169,8 +203,8 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Diagnostics")) tnml = toml::find (nml, "Diagnostics");
 
-  nwrite  = toml::find_or <int>   (tnml, "nwrite",   1000    );
-  navg    = toml::find_or <int>   (tnml, "navg",       10    );
+  nwrite  = toml::find_or <int>   (tnml, "nwrite", (long)  nwrite_time    );
+  navg    = toml::find_or <int>   (tnml, "navg",   (long)    navg_time    );
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
   write_omega       = toml::find_or <bool> (tnml, "omega",       false );
   write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  ); if (ks) write_free_energy = false;
@@ -298,38 +332,34 @@ void Parameters::get_nml_vars(char* filename)
   
   tnml = nml;
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
+  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  dealias_kz   ); // included for backwards-compat. now specified in expert
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
+  closure_model  = toml::find_or <string> (tnml, "closure_model", closure_model ); // included for backwards-compat. closure_model now specified in Dissipation
+  smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",   (long) smith_par_q );  // included for backwards-compat. smith_par_q now specified in Dissipation
+  smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",  (long) smith_perp_q ); // included for backwards-compat. smith_perp_q now specified in Dissipation
 
-  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
-  closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
-  smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",        3 );
-  smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",       3 );
-
-  fphi       = toml::find_or <float>  (tnml, "fphi",      1.0 );
-  fapar      = toml::find_or <float>  (tnml, "fapar",     0.0 );
-  fbpar      = toml::find_or <float>  (tnml, "fbpar",     0.0 );
-  scheme     = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
-  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
-  stages     = toml::find_or <int>    (tnml, "stages",         10   );
-  cfl        = toml::find_or <float>  (tnml, "cfl",           1.0   );
-  init_field = toml::find_or <string> (tnml, "init_field", "density");
-  init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
-  kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
-  ikpar_init  = toml::find_or <float>  (tnml, "ikpar_init",     (int) kpar_init  );
-  D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   );
-  w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   );
-  D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   );
-  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    1.0   );
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   );
-  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );
-  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   );
-  p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   );
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       1   );  
-  p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   );
-  hyper      = toml::find_or <bool>   (tnml, "hyper",         false );
-  HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false );
-  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
-  random_init     = toml::find_or <bool> (tnml, "random_init",     false);
-  init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
+  scheme = toml::find_or <string> (tnml, "scheme",    scheme   ); // included for backwards-compat. scheme now specified in Time
+  stages     = toml::find_or <int>    (tnml, "stages",    (long)  stages  ); // included for backwards-compat. stages now specified in Time
+  cfl        = toml::find_or <float>  (tnml, "cfl",      (double)     cfl   ); // included for backwards-compat. cfl now specified in Time
+  init_field = toml::find_or <string> (tnml, "init_field", init_field); // included for backwards-compat. init_field now specified in Initialization
+  init_amp   = toml::find_or <float>  (tnml, "init_amp", (double)  init_amp  ); // included for backwards-compat. init_amp now specified in Initialization
+  kpar_init  = toml::find_or <float>  (tnml, "kpar_init",    (double) kpar_init   ); // included for backwards-compat. kpar_init now specified in Initialization
+  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init", (long) ikpar_init  ); // included for backwards-compat. ikpar_init now specified in Initialization
+  D_HB       = toml::find_or <float>  (tnml, "D_HB",        (double)  D_HB   ); // included for backwards-compat. now specified in Dissipation 
+  w_osc      = toml::find_or <float>  (tnml, "w_osc",       (double)  w_osc   ); // included for backwards-compat. now specified in Dissipation
+  D_hyper    = toml::find_or <float>  (tnml, "D_hyper",     (double)  D_hyper   ); // included for backwards-compat. now specified in Dissipation
+  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",  (double)  nu_hyper_l   ); // included for backwards-compat. now specified in Dissipation
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",  (double)  nu_hyper_m   ); // included for backwards-compat. now specified in Dissipation
+  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",      (long)  nu_hyper   ); // included for backwards-compat. now specified in Dissipation
+  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",       (long)  p_hyper   ); // included for backwards-compat. now specified in Dissipation
+  p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",     (long)  p_hyper_l   ); // included for backwards-compat. now specified in Dissipation
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",     (long)  p_hyper_m   ); // included for backwards-compat. now specified in Dissipation  
+  p_HB       = toml::find_or <int>    (tnml, "p_HB",          (long)  p_HB   ); // included for backwards-compat. now specified in Dissipation
+  hyper      = toml::find_or <bool>   (tnml, "hyper",         hyper ); // included for backwards-compat. now specified in Dissipation
+  HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      HB_hyper ); // included for backwards-compat. now specified in Dissipation
+  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions); // included for backwards-compat. now specified in Dissipation
+  random_init     = toml::find_or <bool> (tnml, "random_init",     random_init); // include for backwards-compat. now specified in Initialization
+  init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     init_electrons_only); // include for backwards-compat. now specified in Initialization
   if (random_init) ikpar_init = 0; 
   
   if (write_omega && fixed_amplitude) {
@@ -435,6 +465,8 @@ void Parameters::get_nml_vars(char* filename)
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
   igeo        = toml::find_or <int>   (tnml, "igeo",       0 );
+  float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta );
+  if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );

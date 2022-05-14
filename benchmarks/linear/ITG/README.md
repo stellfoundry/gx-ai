@@ -11,6 +11,6 @@ To run a test, simply use (taking `itg_miller_adiabatic_electrons` as an example
 
 To check the results, use
 ```
-python plot-gams.py itg_miller_adiabatic_electrons.nc itg_miller_adiabatic_electrons_correct.nc 
+python check.py itg_miller_adiabatic_electrons
 ```
 
