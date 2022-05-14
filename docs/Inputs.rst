@@ -11,6 +11,7 @@ Important: If you are using an input file in another directory, and if you are a
 files (perhaps for a restart, perhaps to specify geometric information, etc) then the file names
 for the additional files must also include the longer path.
 
+.. _input_file:
 
 The input file
 --------------

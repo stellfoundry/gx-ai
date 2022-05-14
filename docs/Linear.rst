@@ -7,11 +7,14 @@ In this tutorial we set up a linear ion-temperature-gradient (ITG) instability c
 
 **Disclaimer**: GX is optimized for `nonlinear` calculations, not necessarily linear ones. Other gyrokinetic codes may be better-suited for some linear studies, which could require sharp velocity-space resolution and/or highly-accurate collision operators.
 
+.. contents::
+
 Input file
 ----------
 
 The :doc:`input file <inputFiles/itg_miller_adiabatic_electrons>` for this case is included in the GX repository in ``benchmarks/linear/ITG/itg_miller_adiabatic_electrons.in``.
-All GX input files consist of several blocks. 
+
+All GX input files consist of several blocks. For more details about input parameters, see :ref:`input_file`.
 
 Dimensions
 ==========
@@ -251,8 +254,6 @@ We can plot the growth rates and real frequencies using the following python scr
   
   ax1.set_xlim(left=0)
   ax2.set_xlim(left=0)
-  ax1.set_ylim(bottom=0)
-  ax2.set_ylim(bottom=0)
   ax1.set_ylabel(r'$\gamma\ a / v_{ti}$')
   ax2.set_ylabel(r'$\omega\ a / v_{ti}$')
   ax2.set_xlabel(r'$k_y \rho_i$')
