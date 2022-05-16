@@ -5,17 +5,12 @@ eiktest(old routine on GS2) for the same equilibrium. In some ways, this script 
 The derivatives are calculated usign a central-difference method. The integrals are performed using a trapezoidal sum.
 
 """
-import os   
-import time
 import numpy as np
-import pickle
 #from matplotlib import pyplot as plt
-from scipy.integrate import cumtrapz as ctrap
 from scipy.interpolate import InterpolatedUnivariateSpline as linspl
 from scipy.interpolate import CubicSpline as cubspl
 from scipy.integrate import cumtrapz as ctrap
 from utils import *
-import pdb 
 import toml
 import sys
 
@@ -121,15 +116,15 @@ else:
 # theta array with a common magnetic axis
 theta_comn_mag_ax = np.array([np.arctan2(Z[i], R[i]-R_mag_ax) for i in range(no_of_surfs)])
         
-dRj = np.zeros((no_of_surfs, ntgrid))
-dZj = np.zeros((no_of_surfs, ntgrid))
-L = np.zeros((no_of_surfs, ntgrid))
-L_st = np.zeros((no_of_surfs, ntgrid))
-dt = np.zeros((no_of_surfs, ntgrid))
-dBr_ML = np.zeros((no_of_surfs, ntgrid))
+dRj      = np.zeros((no_of_surfs, ntgrid))
+dZj      = np.zeros((no_of_surfs, ntgrid))
+L        = np.zeros((no_of_surfs, ntgrid))
+L_st     = np.zeros((no_of_surfs, ntgrid))
+dt       = np.zeros((no_of_surfs, ntgrid))
+dBr_ML   = np.zeros((no_of_surfs, ntgrid))
 theta_st = np.zeros((no_of_surfs, ntgrid))
-phi_n = np.zeros((no_of_surfs, ntgrid))
-u_ML = np.zeros((no_of_surfs, ntgrid))
+phi_n    = np.zeros((no_of_surfs, ntgrid))
+u_ML     = np.zeros((no_of_surfs, ntgrid))
 
 
 ###################################################################################################################
@@ -143,22 +138,22 @@ for i in range(no_of_surfs):
 dt = derm(theta_comn_mag_ax, 'l', 'o')
 rho_diff = derm(rho, 'r')
 # partial derivatives of R and Z on the exact rho and theta_geometric grid
-dR_drho = derm(R, 'r')/rho_diff
+dR_drho  = derm(R, 'r')/rho_diff
 
 # should be second order accurate
-dR_dt = dermv(R, theta_comn_mag_ax, 'l', 'e')
+dR_dt   = dermv(R, theta_comn_mag_ax, 'l', 'e')
 dZ_drho = derm(Z, 'r')/rho_diff
 
 # should be second order accurate
 dZ_dt = dermv(Z, theta_comn_mag_ax, 'l', 'o')
 
-jac = dR_drho*dZ_dt - dZ_drho*dR_dt
+jac   = dR_drho*dZ_dt - dZ_drho*dR_dt
 
 # partial derivatives of psi and theta_geometric on the cartesian grid
 drhodR = dZ_dt/jac
 drhodZ = -dR_dt/jac
-dt_dR = -dZ_drho/jac
-dt_dZ =  dR_drho/jac
+dt_dR  = -dZ_drho/jac
+dt_dZ  =  dR_drho/jac
 
 test_diff = (dt_dR[1]*drhodZ[1] - dt_dZ[1]*drhodR[1])/np.sqrt(drhodR[1]**2 + drhodZ[1]**2) \
             + 1/dermv(L, theta_comn_mag_ax, 'l', 'o')[1]
@@ -255,17 +250,17 @@ for i in range(no_of_surfs):
     L_st[i, 1:] = np.cumsum(np.sqrt(np.diff(R[i])**2 + np.diff(Z[i])**2))
 dt_st_l = derm(theta_st_new, 'l', 'o')
 dR_dpsi = derm(R, 'r')/psi_diff
-dR_dt = dermv(R, theta_st_new, 'l', 'e')
+dR_dt   = dermv(R, theta_st_new, 'l', 'e')
 dZ_dpsi = derm(Z, 'r')/psi_diff
-dZ_dt = dermv(Z, theta_st_new, 'l', 'o')
+dZ_dt   = dermv(Z, theta_st_new, 'l', 'o')
 
 jac = dR_dpsi*dZ_dt - dZ_dpsi*dR_dt
 
 # partial derivatives of psi and theta_f on the cartesian grid
 dpsidR = dZ_dt/jac
 dpsidZ = -dR_dt/jac
-dt_dR = -dZ_dpsi/jac
-dt_dZ =  dR_dpsi/jac
+dt_dR  = -dZ_dpsi/jac
+dt_dZ  =  dR_dpsi/jac
 
 dtdr_st0 = (dt_dR*dpsidR + dt_dZ*dpsidZ)/np.sqrt(dpsidR**2 + dpsidZ**2)
 
@@ -274,10 +269,10 @@ dl = np.sqrt(derm(R,'l', 'e')**2 + derm(Z,'l', 'o')**2)
 
 dt = derm(theta_comn_mag_ax_new, 'l', 'o')
 for i in range(no_of_surfs):
-	 dRj[i, :] = derm(R[i,:], 'l', 'e')
-	 dZj[i, :] = derm(Z[i,:], 'l', 'o') 
-	 phi = np.arctan2(dZj[i,:], dRj[i,:])
-	 phi = np.concatenate((phi[phi>=0]-np.pi/2, phi[phi<0]+3*np.pi/2)) 
+	 dRj[i, :]  = derm(R[i,:], 'l', 'e')
+	 dZj[i, :]  = derm(Z[i,:], 'l', 'o') 
+	 phi        = np.arctan2(dZj[i,:], dRj[i,:])
+	 phi        = np.concatenate((phi[phi>=0]-np.pi/2, phi[phi<0]+3*np.pi/2)) 
 	 phi_n[i,:] = phi
 
 u_ML = np.arctan2(derm(Z, 'l', 'o'), derm(R, 'l', 'e'))
@@ -288,22 +283,22 @@ R_c = dl/derm(phi_n, 'l', 'o')
 
 gradpar2 = 1/(B[1])*(B_p[1])*(derm(theta_st_new[1], 'l', 'o')/dl[1]) # gradpar is b.grad(theta)
 
-gradpar_geo = 1/(B[1])*(B_p[1])*(derm(theta_comn_mag_ax[1], 'l', 'o')/dl[1]) # gradpar is b.grad(theta)
+gradpar_geo    = 1/(B[1])*(B_p[1])*(derm(theta_comn_mag_ax[1], 'l', 'o')/dl[1]) # gradpar is b.grad(theta)
 gradpar_geo_ex = nperiod_data_extend(gradpar_geo, nperiod, istheta=1)
 
 
-B_p_ex = nperiod_data_extend(np.abs(B_p[1]), nperiod, istheta = 0, par = 'e')
-B_ex = nperiod_data_extend(B[1], nperiod, istheta = 0, par = 'e')
-R_ex = nperiod_data_extend(R[1], nperiod, istheta = 0, par = 'e')
-Z_ex = nperiod_data_extend(Z[1], nperiod, istheta = 0, par = 'o')
-theta_col = spl1(theta_st_new[1])
-theta_col_ex = nperiod_data_extend(theta_col, nperiod, istheta=1)
-theta_st_new_ex = nperiod_data_extend(theta_st_new[1], nperiod, istheta=1)
+B_p_ex                   = nperiod_data_extend(np.abs(B_p[1]), nperiod, istheta = 0, par = 'e')
+B_ex                     = nperiod_data_extend(B[1], nperiod, istheta = 0, par = 'e')
+R_ex                     = nperiod_data_extend(R[1], nperiod, istheta = 0, par = 'e')
+Z_ex                     = nperiod_data_extend(Z[1], nperiod, istheta = 0, par = 'o')
+theta_col                = spl1(theta_st_new[1])
+theta_col_ex             = nperiod_data_extend(theta_col, nperiod, istheta=1)
+theta_st_new_ex          = nperiod_data_extend(theta_st_new[1], nperiod, istheta=1)
 theta_comn_mag_ax_new_ex = nperiod_data_extend(theta_comn_mag_ax_new[1], nperiod, istheta=1)
 
 u_ML_ex = nperiod_data_extend(u_ML[1], nperiod)
-R_c_ex = nperiod_data_extend(R_c[1], nperiod)
-dl_ex = nperiod_data_extend(dl[1], nperiod)
+R_c_ex  = nperiod_data_extend(R_c[1], nperiod)
+dl_ex   = nperiod_data_extend(dl[1], nperiod)
 L_st_ex = np.concatenate((np.array([0.]), np.cumsum(np.sqrt(np.diff(R_ex)**2 + np.diff(Z_ex)**2))))
 
 diffrho = derm(rho, 'r')
@@ -525,6 +520,8 @@ gds21_ball     = reflect_n_append(gds21, 'o')
 gds22_ball     = reflect_n_append(gds22 , 'e')
 grho_ball      = reflect_n_append(grho , 'e')
 
+jacob_ball     = 1./abs(drhodpsi*gradpar_ball*B_ball)
+
 Rplot_ball     = reflect_n_append(R, 'e')
 Rprime_ball    = reflect_n_append(nperiod_data_extend(np.sin(u_ML[theta <= np.pi]), nperiod, istheta=0, par='e'), 'e')
 
@@ -572,8 +569,8 @@ headings = ['ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q\n', 'gbdrift gradp
 
 g.writelines(headings[0])
 
-g.writelines('  %d    %d    %d   %0.3f   %0.1f    %.7e   %.1f   %.4f\n'%((ntheta-1)/2, 1, (ntheta-1), np.abs(1/dpsidrho), 1.0,\
-            shat, abs(qfac/rhoc*dpsidrho), qfac))
+g.writelines('  %d    %d    %d   %0.3f   %0.1f    %.7e   %.1f   %.4f\n'%((ntheta-1)/2, 1, (ntheta-1), np.abs(1/dpsidrho),\
+             (np.max(Rplot_ball)+np.min(Rplot_ball))/2., shat, abs(qfac/rhoc*dpsidrho), qfac))
 
 for i in np.arange(1, len(headings)):
     g.writelines(headings[i])
@@ -586,7 +583,7 @@ g.close()
 ##################################################################################################################
 try:
 	import netCDF4 as nc
-	eikfile_nc = stem + ".eiknc.out"
+	eikfile_nc = stem + ".eiknc.nc"
 
 	print('Writing eikfile in netCDF format\n')
 
@@ -648,11 +645,11 @@ try:
 	kxfac_nc[0]    = abs(qfac/rhoc*dpsidrho)
 	Rmaj_nc[0]     = (np.max(Rplot_nc) + np.min(Rplot_nc))/2
 	q[0]           = qfac
-	shat[0]        = shat0
+	shat[0]        = s_hat_input
 
 	ds.close()
 except ModuleNotFoundError:
-	print("No netCDF package in your Python environment...Not saving a netCDf input file")
+	print("No netCDF4 package in your Python environment...Not saving a netCDf input file")
 	pass
 
 
