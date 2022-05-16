@@ -5,7 +5,7 @@ Running your first linear simulation
 
 In this tutorial we set up a linear ion-temperature-gradient (ITG) instability calculation using a circular Miller geometry with Cyclone-base-case-like parameters and adiabatic electrons.
 
-**Disclaimer**: GX is optimized for `nonlinear` calculations, not necessarily linear ones. Other gyrokinetic codes may be better-suited for some linear studies, which could require sharp velocity-space resolution and/or highly-accurate collision operators.
+**Disclaimer**: GX is optimized for :ref:`nonlinear <quicknl>` calculations, not necessarily linear ones. Other gyrokinetic codes may be better-suited for some linear studies, which could require sharp velocity-space resolution and/or highly-accurate collision operators.
 
 .. contents::
 
@@ -14,12 +14,14 @@ Input file
 
 The :doc:`input file <inputFiles/itg_miller_adiabatic_electrons>` for this case is included in the GX repository in ``benchmarks/linear/ITG/itg_miller_adiabatic_electrons.in``.
 
-All GX input files consist of several blocks. For more details about input parameters, see :ref:`input_file`.
+All GX input files consist of several groups. For more details about input parameters, see :ref:`input_file`.
+
+.. _lindims:
 
 Dimensions
 ==========
 
-The ``[Dimensions]`` block controls the number of grid-points/spectral basis functions in each dimension, and the number of evolved kinetic species.
+The ``[Dimensions]`` group controls the number of grid-points/spectral basis functions in each dimension, and the number of evolved kinetic species.
 
 .. code-block:: toml
 
@@ -34,7 +36,7 @@ The ``[Dimensions]`` block controls the number of grid-points/spectral basis fun
    nspecies = 1           # number of evolved kinetic species 
                           # (adiabatic electrons don't count towards nspecies)
 
-Here, we have set the number of points along the field line per :math:`2\pi` segment to be ``ntheta = 32``, and we use ``nperiod = 2`` which gives 3 segments. This means the entire :math:`\theta` domain spans :math:`[-3\pi,3\pi]`, and we will have 96 total :math:`\theta` grid-points. Note that setting ``nperiod > 1`` is only recommended for linear calculations.
+Here, we have set the number of points along the field line per :math:`2\pi` segment to be ``ntheta = 32``, and we use ``nperiod = 2`` which gives 3 segments. This means the entire :math:`\theta` domain spans :math:`[-3\pi,3\pi]`, and we will have 96 total :math:`\theta` grid-points. Note that setting ``nperiod > 1`` is only recommended for linear calculations with ``nkx=1``.
 
 The parameters ``nky`` and ``nkx`` control the number of (de-aliased) Fourier modes in the perpendicular dimensions, with :math:`x` the radial coordinate and :math:`y` the binormal coordinate. Specifying ``nky = 16`` means we will evolve 16 :math:`k_y` Fourier modes in this calculation. Typically, for linear instability calculations the fastest growing modes will have :math:`k_x = 0`, so we use ``nkx = 1``. 
 
@@ -42,10 +44,12 @@ The parameters ``nhermite`` and ``nlaguerre`` control the velocity-space resolut
 
 The parameter ``nspecies`` controls the number of evolved kinetic species. Here we are using kinetic ions and adiabatic electrons, so we set ``nspecies = 1`` (adiabatic electrons aren't a kinetic species and don't count towards ``nspecies``).
 
+.. _lindom:
+
 Domain
 ======
 
-The ``[Domain]`` block controls the size of the domain and the boundary conditions.
+The ``[Domain]`` group controls the size of the domain and the boundary conditions.
 
 .. code-block:: toml
 
@@ -61,7 +65,7 @@ We use twist-shift boundary conditions along the (extended) field line by specif
 Physics
 =======
 
-The ``[Physics]`` block controls what physics is included in the simulation.
+The ``[Physics]`` group controls what physics is included in the simulation.
 
 .. code-block:: toml
 
@@ -74,7 +78,7 @@ Since this is an electrostatic calculation with adiabatic electrons we set the p
 Time
 =======
 
-The ``[Time]`` block controls the timestepping scheme and parameters.
+The ``[Time]`` group controls the timestepping scheme and parameters.
 
 .. code-block:: toml
 
@@ -86,7 +90,7 @@ The ``[Time]`` block controls the timestepping scheme and parameters.
 Initialization
 ==============
 
-The ``[Initialization]`` block controls the initial conditions. 
+The ``[Initialization]`` group controls the initial conditions. 
 
 .. code-block:: toml
 
@@ -100,7 +104,7 @@ Here we set up an initial condition that is constant along the field line (``ikp
 Geometry
 ========
 
-The ``[Geometry]`` block controls the simulation geometry.
+The ``[Geometry]`` group controls the simulation geometry.
 
 .. code-block:: toml
 
@@ -130,7 +134,7 @@ The resulting ``itg_miller.eik.out`` file can now be read by GX to initialize th
 Species
 =======
 
-The ``[species]`` block specifies parameters like charge, mass, and gradients of each species.
+The ``[species]`` group specifies parameters like charge, mass, and gradients of each species.
 
 .. code-block:: toml
 
@@ -150,7 +154,7 @@ Note that species parameters ``z, mass, dens, temp`` are normalized to the corre
 Boltzmann
 ==========
 
-The ``[Boltzmann]`` block sets up a Boltzmann species. Here we use Boltzmann (adiabatic) electrons.
+The ``[Boltzmann]`` group sets up a Boltzmann species. Here we use Boltzmann (adiabatic) electrons.
 
 .. code-block:: toml
 
@@ -162,7 +166,7 @@ The ``[Boltzmann]`` block sets up a Boltzmann species. Here we use Boltzmann (ad
 Dissipation
 ===========
 
-The ``[Dissipation]`` block controls numerical dissipation parameters.
+The ``[Dissipation]`` group controls numerical dissipation parameters.
 
 .. code-block:: toml
 
@@ -185,7 +189,7 @@ where :math:`L =` ``nlaguerre`` and :math:`M =` ``nhermite``.
 Diagnostics
 ===========
 
-The ``[Diagnostics]`` block controls the diagnostic quantities that are computed and written to the NetCDF output file.
+The ``[Diagnostics]`` group controls the diagnostic quantities that are computed and written to the NetCDF output file.
 
 .. code-block:: toml
 
@@ -213,7 +217,7 @@ The ``[Diagnostics]`` block controls the diagnostic quantities that are computed
    z                = true         # P(z) (summed over kx, ky)
 
 
-For linear calculations, we can request to compute and write growth rates and real frequencies by using ``omega = true``. Additionally, various spectra can be computed as specified by the ``[Wspectra]`` and ``[Pspectra]`` blocks.
+For linear calculations, we can request to compute and write growth rates and real frequencies by using ``omega = true``. Additionally, various spectra can be computed as specified by the ``[Wspectra]`` and ``[Pspectra]`` groups.
 
 Plotting the results
 --------------------
