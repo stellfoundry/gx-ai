@@ -46,7 +46,7 @@ system_config:
 	$(error "STANDARD_SYSTEM_CONFIGURATION is not defined for this system")
 endif
 
-VPATH=.:src
+VPATH=.:src:geometry_modules/vmec/src
 
 ##########################
 ## Suffix Build Rules
@@ -80,6 +80,12 @@ src/version.c:
 ####################################
 OBJS = device_funcs.o parameters.o grids.o reductions.o reservoir.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o hermite_transform.o laguerre_transform.o nca.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o ts_sspx2.o ts_sspx3.o ts_rk2.o ts_rk4.o ts_k10.o ts_k2.o ts_g3.o diagnostics.o run_gx.o version.o trinity_interface.o
 
+VMEC_GEO_OBJS = main.o solver.o vmec_variables.o geometric_coefficients.o
+VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
+
+obj/geo/%.o: %.cpp $(VMEC_GEO_HEADERS)
+	$(CC) -c -o $@ $< $(CFLAGS) -I. -I geometry_modules/vmec/include
+
 # main program
 gx: obj/main.o libgx.a 
 	$(NVCC) $(NVCCFLAGS) -o $@ $< -L. -lgx $(LDFLAGS) 
@@ -88,7 +94,10 @@ gx: obj/main.o libgx.a
 libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS)
 	ar -crs libgx.a $(addprefix obj/, $(OBJS)) 
 
-all: gx libgx.a
+geometry_modules/vmec/convert_VMEC_to_GX: $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
+	$(CC) $(CFLAGS) -o $@ $? $(LDFLAGS)
+
+all: gx libgx.a geometry_modules/vmec/convert_VMEC_to_GX
 
 ########################
 # Cleaning up

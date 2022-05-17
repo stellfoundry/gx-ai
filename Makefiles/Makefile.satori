@@ -21,9 +21,9 @@ GSL_LIB = -L${GSL_DIR}/lib -lgsl -lgslcblas -lm
 
 NVCC=nvcc
 CUDAARCH=70
-CUDA_HOME = /software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs
-CUDA_INC = -I${CUDA_HOME}/include 
-CUDA_LIB = -L${CUDA_HOME}/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lcutensor -lcudart
+CUDA_DIR = /software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs
+CUDA_INC = -I${CUDA_DIR}/include 
+CUDA_LIB = -L${CUDA_DIR}/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lcutensor -lcudart
 
 NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
 
