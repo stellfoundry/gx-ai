@@ -25,10 +25,8 @@ include Makefiles/Makefile.$(GK_SYSTEM)
 
 CC = $(NVCC)
 LD = $(NVCC)
-GEO_LIBS=${GS2}/geometry_c_interface.o 
-GS2_CUDA_FLAGS=-I ${GS2} ${GS2}/libgs2.a ${GS2}/libsimpledataio.a 
 
-CFLAGS= ${CUDA_INC} ${MPI_INC} 
+CFLAGS= ${CUDA_INC} ${MPI_INC} ${NETCDF_INC} ${GSL_INC}
 LDFLAGS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} 
 #NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
 

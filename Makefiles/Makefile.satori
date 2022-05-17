@@ -1,0 +1,34 @@
+# Makefile for satori.mit.edu 
+# Maintainer: nrm@mit.edu
+#
+# add the following to your .bashrc (or equivalent)
+#
+# module load spack/0.1
+# module load nvhpc/21.5
+# module load openmpi/3.1.6-cuda-pmi-ucx-slurm-jhklron
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/software/spack/netcdf/4.7.2-uejs26rg7r42xfpg6f7xrfofbdjkxveq/lib:/home/software/spack/gsl/2.5-wmeietinmhfzwiammzup4ymx3wpa3ucz/lib:/software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs/lib
+
+NETCDF_DIR = /home/software/spack/netcdf/4.7.2-uejs26rg7r42xfpg6f7xrfofbdjkxveq/
+NETCDF_INC = -I${NETCDF_DIR}/include
+NETCDF_LIB = -L${NETCDF_DIR}/lib -lnetcdf
+
+MPI_INC= 
+MPI_LIB= -lmpi
+
+GSL_DIR = /home/software/spack/gsl/2.5-wmeietinmhfzwiammzup4ymx3wpa3ucz/
+GSL_INC = -I${GSL_DIR}/include
+GSL_LIB = -L${GSL_DIR}/lib -lgsl -lgslcblas -lm
+
+NVCC=nvcc
+CUDAARCH=70
+CUDA_HOME = /software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs
+CUDA_INC = -I${CUDA_HOME}/include 
+CUDA_LIB = -L${CUDA_HOME}/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lcutensor -lcudart
+
+NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
+
+ifeq ($(debug),on)
+  NVCCFLAGS += -g -G 
+else
+  NVCCFLAGS += -O3
+endif
