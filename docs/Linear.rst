@@ -3,14 +3,14 @@
 Running your first linear simulation
 ++++++++++++++++++++++++++++++++++++
 
-In this tutorial we set up a linear ion-temperature-gradient (ITG) instability calculation using a circular Miller geometry with Cyclone-base-case-like parameters and adiabatic electrons.
+In this tutorial we set up a linear ion-temperature-gradient (ITG) instability calculation using a circular tokamak geometry given by a Miller equilibrium with Cyclone-base-case-like parameters and adiabatic electrons.
 
 **Disclaimer**: GX is optimized for :ref:`nonlinear <quicknl>` calculations, not necessarily linear ones. Other gyrokinetic codes may be better-suited for some linear studies, which could require sharp velocity-space resolution and/or highly-accurate collision operators.
 
 .. contents::
 
-Input file
-----------
+Setting up the input file
+-------------------------
 
 The :doc:`input file <inputFiles/itg_miller_adiabatic_electrons>` for this case is included in the GX repository in ``benchmarks/linear/ITG/itg_miller_adiabatic_electrons.in``.
 
@@ -75,6 +75,8 @@ The ``[Physics]`` group controls what physics is included in the simulation.
 
 Since this is an electrostatic calculation with adiabatic electrons we set the plasma reference beta ``beta = 0.0``, which turns off electromagnetic effects. We also make this a linear calculation by setting ``nonlinear_mode = false``.
 
+.. _lintime:
+
 Time
 =======
 
@@ -86,6 +88,10 @@ The ``[Time]`` group controls the timestepping scheme and parameters.
    dt = 0.005             # timestep size (in units of L_ref/vt_ref)
    nstep  = 30000         # number of timesteps
    scheme = "sspx3"       # use SSPx3 timestepping scheme
+
+Since GX uses explicit timestepping methods, the timestep size ``dt`` must be set small enough to resolve all frequencies in the system. Using too large of a timestep will result in numerical instabilities (often giving ``nan`` growth rates). Since some of the fastest frequencies in the system scale as :math:`k_{\parallel\,\mathrm{rm}} v_{\parallel\,\mathrm{max}}`, using larger ``nhermite`` (which increases :math:`v_{\parallel\,\mathrm{max}}` will require smaller ``dt``.
+
+.. _lininit:
 
 Initialization
 ==============
@@ -100,6 +106,8 @@ The ``[Initialization]`` group controls the initial conditions.
    init_amp = 1.0e-10              # amplitude of initial condition
 
 Here we set up an initial condition that is constant along the field line (``ikpar_init = 0``) with initial perturbation amplitude ``init_amp = 1.0e-10`` in the density moment (``init_field = "density"``). By default, a random initial condition satisfying these constraints is used.
+
+.. _lingeo:
   
 Geometry
 ========
@@ -131,6 +139,8 @@ When ``igeo = 1``, GX reads the geometry file specified by ``geofile`` to set up
 
 The resulting ``itg_miller.eik.out`` file can now be read by GX to initialize the Miller geometry for the calculation.
 
+.. _linspec:
+
 Species
 =======
 
@@ -150,6 +160,8 @@ The ``[species]`` group specifies parameters like charge, mass, and gradients of
    type  = [ "ion",  "electron" ]         # species type
 
 Note that species parameters ``z, mass, dens, temp`` are normalized to the corresponding value of the reference species, which can be chosen arbitrarily. Here we only have a single species, so we simply choose the ions as the reference species, meaning :math:`z_i = Z_i/Z_\mathrm{ref} = 1.0` etc. Also, note that the species tables can have extra species data; only the first ``nspecies`` elements will be used.
+
+.. _linboltz:
   
 Boltzmann
 ==========
@@ -162,6 +174,8 @@ The ``[Boltzmann]`` group sets up a Boltzmann species. Here we use Boltzmann (ad
    add_Boltzmann_species = true    # use a Boltzmann species
    Boltzmann_type = "electrons"    # the Boltzmann species will be electrons
    tau_fac = 1.0                   # temperature ratio, T_i/T_e
+
+The parameter ``tau_fac`` is defined to be :math:`T_\mathrm{non-adiabatic}/T_\mathrm{adiabatic}`. Thus when using adiabatic electrons, ``tau_fac = T_i/T_e``.
   
 Dissipation
 ===========
@@ -218,6 +232,17 @@ The ``[Diagnostics]`` group controls the diagnostic quantities that are computed
 
 
 For linear calculations, we can request to compute and write growth rates and real frequencies by using ``omega = true``. Additionally, various spectra can be computed as specified by the ``[Wspectra]`` and ``[Pspectra]`` groups.
+
+Running the simulation
+----------------------
+
+To run the simulation from the ``benchmarks/linear/ITG`` directory, we can use
+
+.. code-block:: bash
+
+  ../../../gx itg_miller_adiabatic_electrons.in
+
+This will generate an output file in NetCDF format called ``itg_miller_adiabatic_electrons.nc`` (in the same directory).
 
 Plotting the results
 --------------------
