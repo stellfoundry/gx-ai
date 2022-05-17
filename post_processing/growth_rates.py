@@ -31,11 +31,11 @@ def growth_rates(fname, ikx=0, navgfac=0.5, label=None, plot=True, ax=None, Lref
         ax[0].plot(ky, gamavg, 'o')
         ax[1].plot(ky, omavg, 'o', label=label)
         
-        #ax[0].xaxis.set_minor_locator(AutoMinorLocator())
-        #ax[1].xaxis.set_minor_locator(AutoMinorLocator())
-        #
-        #ax[0].yaxis.set_minor_locator(AutoMinorLocator())
-        #ax[1].yaxis.set_minor_locator(AutoMinorLocator())
+        ax[0].xaxis.set_minor_locator(AutoMinorLocator())
+        ax[1].xaxis.set_minor_locator(AutoMinorLocator())
+        
+        ax[0].yaxis.set_minor_locator(AutoMinorLocator())
+        ax[1].yaxis.set_minor_locator(AutoMinorLocator())
         
         ax[0].set_xlim(left=0)
         ax[1].set_xlim(left=0)
@@ -44,6 +44,8 @@ def growth_rates(fname, ikx=0, navgfac=0.5, label=None, plot=True, ax=None, Lref
         ax[1].set_xlabel(r"$k_y \rho_%s$"%refsp)
         ax[1].legend()
         plt.tight_layout()
+
+    return omavg, gamavg
 
 if __name__ == "__main__":
     

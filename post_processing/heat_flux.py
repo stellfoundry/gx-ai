@@ -5,10 +5,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-
 from netCDF4 import Dataset
 
-def heat_flux(fname, ispec=0, navgfac=0.5, tag=None, plot=True, fig=None, Lref="a", refsp=None):
+def heat_flux(fname, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref="a", refsp=None):
     # read data from file
     data = Dataset(fname, mode='r')
     t = data.variables['time'][:]
@@ -25,19 +24,19 @@ def heat_flux(fname, ispec=0, navgfac=0.5, tag=None, plot=True, fig=None, Lref="
     istart_avg = int(len(t)*navgfac)
     qavg = np.mean(q[istart_avg:])
     qstd = np.std(q[istart_avg:])
-    if tag == None:
-        tag = fname
-    print("%s: Q_%s/Q_GB = %.5g +/- %.5g" % (tag, species_tag, qavg, qstd))
+    if label == None:
+        label = fname
+    print("%s: Q_%s/Q_GB = %.5g +/- %.5g" % (label, species_tag, qavg, qstd))
 
     # make a Q vs time plot
     if plot:
         if fig == None:
             fig = plt.figure(0)
-        plt.plot(t,q,'-',label="%s: Q = %.5g"%(tag, qavg))
+        plt.plot(t,q,'-',label="%s: Q = %.5g"%(label, qavg))
         plt.xlim(0)
         plt.ylim(0)
-        plt.ylabel("$Q_%s/Q_{GB}$"%species_tag)
-        plt.xlabel("$t\ (v_{t%s}/%s)$"%(refsp, Lref))
+        plt.ylabel(r"$Q_%s/Q_{GB}$"%species_tag)
+        plt.xlabel(r"$t\ (v_{t%s}/%s)$"%(refsp, Lref))
         plt.legend()
         plt.tight_layout()
 
@@ -49,7 +48,7 @@ if __name__ == "__main__":
             heat_flux(fname)
         
         except:
-            print(' usage: python heat-flux.py [list of .nc files]')
+            print(' usage: python heat_flux.py [list of .nc files]')
     
     #plt.savefig("heat_flux.png")
     plt.show()

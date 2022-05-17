@@ -23,7 +23,7 @@
 
 [Time]
  dt = 0.02              # timestep size (in units of L_ref/vt_ref)
- nstep = 20000          # number of timesteps
+ nstep = 25000          # number of timesteps
  scheme = "sspx3"       # use SSPx3 timestepping scheme
 
 [Initialization]
