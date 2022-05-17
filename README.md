@@ -59,12 +59,12 @@ $ [path/to/]gx [path/to/]run_name.in
 ```
 
 Sample input files for standard benchmark cases are provided in the `benchmarks` directory.
-For example, to run the linear adiabatic-electron cyclone base case benchmark, 
-navigate into the `benchmarks/linear/cyclone_ae/` directory, and execute
+For example, to run a linear ITG adiabatic-electron miller geometry benchmark, 
+navigate into the `benchmarks/linear/ITG/` directory, and execute
 ```
-$ ../../../gx cyclone_ae.in
+$ ../../../gx itg_miller_adiabatic_electrons.in
 ```
-Diagnostic output will be printed to the screen, and also to the `cyclone_ae.nc` NetCDF output file.
+Diagnostic output will be printed to the screen, and also to the `itg_miller_adiabatic_electrons.nc` NetCDF output file.
 
 ## Citing GX
 

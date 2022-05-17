@@ -9,7 +9,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.stats as stats
+#import scipy.stats as stats
 import sys
 
 from netCDF4 import Dataset
@@ -31,7 +31,7 @@ plt.plot(t, check_Pky, label='correct')
 dt = t[1]-t[0]
 diff = np.abs(Pky - check_Pky)/check_Pky
 diffsum = sum(diff*dt)
-if ( diffsum < 1e-3 ):
+if ( diffsum < 5.e-3 ):
     checkstr = "TEST PASSES\n"
 else:
     checkstr = "TEST FAILS\n"
