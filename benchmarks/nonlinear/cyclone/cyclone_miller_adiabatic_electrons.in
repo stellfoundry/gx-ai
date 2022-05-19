@@ -66,13 +66,13 @@
  closure_model = "none"          # no closure assumptions (just truncation)
  hypercollisions = true          # use hypercollision model
  nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # power of hermite hypercollisions
+ p_hyper_m = 6                   # exponent of hermite hypercollisions
  nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # power of laguerre hypercollisions
+ p_hyper_l = 6                   # exponent of laguerre hypercollisions
 
- hyper = true                    # use hyperviscosity
- D_hyper = 0.05                  # coefficient of hyperviscosity
- nu_hyper = 2                    # power of hyperviscosity
+ hyper = true                    # use hyperdiffusion
+ D_hyper = 0.05                  # coefficient of hyperdiffusion
+ p_hyper = 2                     # exponent of hyperdiffusion is 2*p_hyper = 4
 
 [Restart]
  restart = false

@@ -200,7 +200,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->p_hyper_m, G->vt(), GRhs->G());
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
-						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
+						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
   
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
