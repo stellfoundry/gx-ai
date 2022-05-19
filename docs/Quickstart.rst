@@ -8,3 +8,4 @@ Getting started with GX
 
    Linear
    Nonlinear
+   Benchmarks

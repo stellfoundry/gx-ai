@@ -1,11 +1,21 @@
 Numerics
 ========
 
+.. _timestep:
 
 Timestepping algorithms
 -----------------------
 
+.. _diss:
 
-Verification and compilation tests
-----------------------------------
+Numerical dissipation
+---------------------
+
+.. _closures:
+
+Closures
+--------
+
+.. Verification and compilation tests
+.. ----------------------------------
 

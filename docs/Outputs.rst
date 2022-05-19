@@ -3,8 +3,10 @@ Outputs
 
 Some information is written to standard output. 
 
-The NetCDF file
----------------
+.. _diag:
+
+Diagnostics and the NetCDF file
+-------------------------------
 
 
 The restart file
