@@ -104,7 +104,7 @@ all: gx libgx.a geometry_modules/vmec/convert_VMEC_to_GX
 ########################
 
 clean: 
-	rm -rf obj/*.o *~ libgx.a \#*
+	rm -rf obj/*.o obj/geo/*.o *~ libgx.a \#*
 
 distclean: clean clean_tests
 	rm -rf $(TARGET)
