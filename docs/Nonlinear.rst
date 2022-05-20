@@ -209,7 +209,7 @@ We can plot the ion heat flux using a python script included in the ``post_proce
 
 .. code-block:: bash
 
-  python ../../../heat_flux cyclone_miller_adiabatic_electrons.nc
+  python ../../../heat_flux.py cyclone_miller_adiabatic_electrons.nc
 
 .. figure:: figures/nl_miller_adiabatic_electrons_qflux.png
    :align: center
