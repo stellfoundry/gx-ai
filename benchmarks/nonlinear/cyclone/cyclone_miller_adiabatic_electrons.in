@@ -22,8 +22,8 @@
  nonlinear_mode = true           # this is a nonlinear calculation
 
 [Time]
- dt = 0.02              # timestep size (in units of L_ref/vt_ref)
- nstep = 25000          # number of timesteps
+ dt = 0.05              # timestep size (in units of L_ref/vt_ref)
+ nstep = 8000          # number of timesteps
  scheme = "sspx3"       # use SSPx3 timestepping scheme
 
 [Initialization]
@@ -34,6 +34,10 @@
 [Geometry]
  igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
  geofile = "cyclone_miller.eik.out"  # name of geometry file
+# WARNING: the following Miller parameters are not read directly by GX, but can instead be used to create the above geometry file
+# using the miller geometry module via
+# python ../../../geometry_modules/miller/gx_geo.py cyclone_miller_adiabatic_electrons.in cyclone_miller.eik.out
+# changing the parameters below without regenerating a new geometry file will have no effect on GX
  rhoc = 0.5                      # flux surface label, r/a
  Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
  R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
@@ -66,20 +70,20 @@
  closure_model = "none"          # no closure assumptions (just truncation)
  hypercollisions = true          # use hypercollision model
  nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # power of hermite hypercollisions
+ p_hyper_m = 6                   # exponent of hermite hypercollisions
  nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # power of laguerre hypercollisions
+ p_hyper_l = 6                   # exponent of laguerre hypercollisions
 
- hyper = true                    # use hyperviscosity
- D_hyper = 0.05                  # coefficient of hyperviscosity
- nu_hyper = 2                    # power of hyperviscosity
+ hyper = true                    # use hyperdiffusion
+ D_hyper = 0.05                  # coefficient of hyperdiffusion
+ p_hyper = 2                     # exponent of hyperdiffusion is 2*p_hyper = 4
 
 [Restart]
  restart = false
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 100                    # write diagnostics every 100 timesteps
+ nwrite = 10                    # write diagnostics every 100 timesteps
  fluxes = true                   # compute and write heat and particle fluxes
 
 [Wspectra]                       # spectra of W = |G_lm|**2

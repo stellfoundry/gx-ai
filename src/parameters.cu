@@ -36,7 +36,7 @@ void Parameters::get_nml_vars(char* filename)
 
   const auto nml = toml::parse(nml_file);
 
-  repeat = toml::find_or <bool> (nml, "repeat",  false);  
+  //repeat = toml::find_or <bool> (nml, "repeat",  false);  
   debug  = toml::find_or <bool> (nml, "debug",   false);
 
   char default_restart_filename[280];
@@ -122,12 +122,12 @@ void Parameters::get_nml_vars(char* filename)
   D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   ); 
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
-  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    1.0   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   ); 
-  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   ); 
-  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
+  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
+  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
+  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       1   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
@@ -465,7 +465,7 @@ void Parameters::get_nml_vars(char* filename)
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
   igeo        = toml::find_or <int>   (tnml, "igeo",       0 );
-  float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta );
+  float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta ); // included for backwards-compat. beta now set in Physics
   if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
@@ -794,7 +794,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (ncid, "nspecies",    NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "nperiod",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (ncid, "debug",       NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (ncid, "repeat",      NC_INT,   0, NULL, &ivar)) ERR(retval);
+  //if (retval = nc_def_var (ncid, "repeat",      NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_time, "dt",       NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_time, "nstep",    NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1037,7 +1037,7 @@ void Parameters::store_ncdf(int ncid) {
   putint   (ncid, "nlaguerre", nl_in);
   putint   (ncid, "nspecies",  nspec_in);
   putint   (ncid, "nperiod",   nperiod);
-  putbool  (ncid, "repeat",    repeat);
+  //putbool  (ncid, "repeat",    repeat);
   
   putbool (nc_resize, "domain_change", domain_change );
   putint  (nc_resize, "x0_mult"      , x0_mult       );

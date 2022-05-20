@@ -36,6 +36,10 @@
 [Geometry]
  igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
  geofile = "kbm_miller.eik.out"  # name of geometry file
+# WARNING: the following Miller parameters are not read directly by GX, but can instead be used to create the above geometry file
+# using the miller geometry module via
+# python ../../../geometry_modules/miller/gx_geo.py kbm_miller.in kbm_miller.eik.out
+# changing the parameters below without regenerating a new geometry file will have no effect on GX
  rhoc = 0.5                      # flux surface label, r/a
  Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
  R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
@@ -64,9 +68,9 @@
  closure_model = "none"          # no closure assumptions (just truncation)
  hypercollisions = true          # use hypercollision model
  nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # power of hermite hypercollisions
+ p_hyper_m = 6                   # exponent of hermite hypercollisions
  nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # power of laguerre hypercollisions
+ p_hyper_l = 6                   # exponent of laguerre hypercollisions
 
 [Diagnostics]
  nwrite = 1000                   # write diagnostics every 1000 timesteps

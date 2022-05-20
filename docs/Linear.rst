@@ -119,6 +119,10 @@ The ``[Geometry]`` group controls the simulation geometry.
   [Geometry]
    igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
    geofile = "itg_miller.eik.out"  # name of geometry file
+   # WARNING: the following Miller parameters are not read directly by GX, but can instead be used to create the above geometry file
+   # using the miller geometry module via
+   # python ../../../geometry_modules/miller/gx_geo.py itg_miller_adiabatic_electrons.in itg_miller.eik.out
+   # changing the parameters below without regenerating a new geometry file will have no effect on GX
    rhoc = 0.5                      # flux surface label, r/a
    Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
    R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
@@ -138,6 +142,11 @@ When ``igeo = 1``, GX reads the geometry file specified by ``geofile`` to set up
   python ../../../geometry_modules/miller/gx_geo.py itg_miller_adiabatic_electrons.in itg_miller.eik.out
 
 The resulting ``itg_miller.eik.out`` file can now be read by GX to initialize the Miller geometry for the calculation.
+
+.. warning::
+
+  The Miller parameters are not read directly by GX, only by the geometry module. This means that changing the Miller parameters in the input file
+  without regenerating the ``geofile`` will have no effect on GX.
 
 .. _linspec:
 

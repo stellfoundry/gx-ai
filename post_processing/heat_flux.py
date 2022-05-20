@@ -50,5 +50,6 @@ if __name__ == "__main__":
         except:
             print(' usage: python heat_flux.py [list of .nc files]')
     
+    # uncomment this line to save a PNG image of the plot
     #plt.savefig("heat_flux.png")
     plt.show()
