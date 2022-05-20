@@ -63,8 +63,8 @@ Time
 .. code-block:: toml
 
   [Time]
-   dt = 0.02              # timestep size (in units of L_ref/vt_ref)
-   nstep = 20000          # number of timesteps
+   dt = 0.05              # timestep size (in units of L_ref/vt_ref)
+   nstep = 8000           # number of timesteps
    scheme = "sspx3"       # use SSPx3 timestepping scheme
 
 As in the :ref:`linear <lintime>` case, the timestep size ``dt`` must be small enough to resolve all frequencies in the system. We can take larger (stable) timesteps here than in the linear case because ``nhermite`` is smaller here.
@@ -205,32 +205,11 @@ Plotting the results
 Heat flux
 =========
 
-We can plot the ion heat flux using the following python script:
+We can plot the ion heat flux using a python script included in the ``post_processing`` directory. From the ``benchmarks/nonlinear/cyclone`` directory, this can be done using
 
-.. code-block:: python
+.. code-block:: bash
 
-  import numpy as np
-  import matplotlib.pyplot as plt
-  import sys
-  from netCDF4 import Dataset
-  
-  plt.figure()
-  
-  stem = "cyclone_miller_adiabatic_electrons"
-  data = Dataset("%s.nc" % stem, mode='r')
-  t = data.variables['time'][:]
-  q = data.groups['Fluxes'].variables['qflux'][:,0]
-  
-  qavg = np.mean(q[int(len(t)/2):])
-  qstd = np.std(q[int(len(t)/2):])
-  plt.plot(t,q,'-',label="%s: Q = %f"%(stem, qavg))
-  
-  plt.xlim(0)
-  plt.ylim(0)
-  plt.ylabel("$Q_i/Q_{GB}$")
-  plt.xlabel("$t\ (v_{ti}/a)$")
-  plt.legend()
-  plt.show()
+  python ../../../heat_flux cyclone_miller_adiabatic_electrons.nc
 
 .. figure:: figures/nl_miller_adiabatic_electrons_qflux.png
    :align: center
