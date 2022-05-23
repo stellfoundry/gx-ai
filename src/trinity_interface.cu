@@ -219,7 +219,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
     char command[300];
     // call python geometry module using toml we just created to write the eik.out geo file
     // this is a massive hack!
-    sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s.eik.out", fname, fname);
+    sprintf(command, "python /home/nmandell/gx/geometry_modules/miller/gx_geo.py %s %s.eik.out", fname, fname);
     pars->geofilename = std::string(fname) + ".eik.out";
     system(command);
   }
