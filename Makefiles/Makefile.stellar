@@ -1,10 +1,16 @@
-# load these modules in your .bash_profile (or equivalent)
+# Makefile for stellar.princeton.edu
+# Maintainer: Noah Mandell (nrm@mit.edu)
+#
+# add the following to your .bash_profile (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
+#
+# export GK_SYSTEM=stellar
 # module load intel/2021.1.2
 # module load openmpi/intel-2021.1/4.1.0
 # module load netcdf/intel-2021.1/hdf5-1.10.6/openmpi-4.1.0/4.7.4
 # module load hdf5/intel-2021.1/openmpi-4.1.0/1.10.6
 # module load cudatoolkit/11.4
 # module load gsl/2.6
+#
 
 # paths to netcdf added as part of module load
 NETCDF_INC = 
@@ -21,7 +27,7 @@ CUTENSOR_LIB = -lcutensor -lcudart
 
 # paths to cuda added as part of module load
 CUDA_INC = ${CUTENSOR_INC}
-CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
+CUDA_LIB = -lcufft_static -lculibos -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
 
 GSL_LIB = -lgsl -lgslcblas -lm
 

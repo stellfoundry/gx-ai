@@ -15,3 +15,9 @@ tests/*_tests
 *.pyc
 *_field
 *omega.kykx
+.nfs*
+docs/_build
+*.nc
+unit_tests/unit_tests
+*trinpars*
+geometry_modules/vmec/convert_VMEC_to_GX

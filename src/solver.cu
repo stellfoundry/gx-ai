@@ -54,7 +54,7 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // and ampereDenom = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
   for(int is=0; is<grids_->Nspecies; is++) {
     sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is]);
-    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, pars_->species_h[is], is==0);
+    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, geo_->bmag, pars_->species_h[is], is==0);
   }
 
   // set up phiavgdenom, which is stored for quasineutrality calculation as appropriate

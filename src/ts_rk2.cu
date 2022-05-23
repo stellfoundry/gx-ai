@@ -46,7 +46,11 @@ void RungeKutta2::EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** G, MomentsG
 void RungeKutta2::advance(double *t, MomentsG** G, Fields* f)
 {
   // update the gradients if they are evolving
-  pars_->update_tprim(*t);
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is]   -> update_tprim(*t);
+    G1[is]-> update_tprim(*t);
+  }
+  // end updates
 
   EulerStep (G1, G, G, GRhs, f, 0.5, true);    solver_->fieldSolve(G1, f);
   EulerStep (G, G1, G, GRhs, f, 1.0, false);   

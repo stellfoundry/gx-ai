@@ -1,35 +1,49 @@
 Inputs
 ======
 
-GX is currently set up to be run from input files. The main input file has a user-supplied name,
-such as ``a01`` or ``scan/a01``, to which the suffix **.in** should be appended. In these examples, 
-the input file names are ``a01.in`` and ``scan/a01.in``. In the first case, the input file is in
-the current directory. In the second case, the input file is in a directory called ``scan``,
-which itself is located in the current directory.
+.. _input_file:
 
-Important: If you are using an input file in another directory, and if you are also referring to additional
-files (perhaps for a restart, perhaps to specify geometric information, etc) then the file names
-for the additional files must also include the longer path.
+The GX input file
+------------------
 
+The main GX input file is parsed with `toml <https://github.com/ToruNiina/toml11>`_. Input file names should be suffixed with ``.in``, such as ``example.in``. Such an input file can be run via
 
-The input file
---------------
-*There are two standards for the input file. One is deprecated and is not documented here.
-If you are exploring src/parameters.cu and find yourself confused by the logic there, you are
-almost certainly looking at obscure coding that supports the old standard. That obscure coding
-is itself deprecated.*
+.. code-block:: bash
 
-The main GX input file is parsed with `toml <https://github.com/ToruNiina/toml11>`_.
+  [/path/to/]gx example.in
+
+This will generate an output file in NetCDF format called ``example.nc``.
 
 The toml standard allows one to group related input variables. There are multiple
 ways to specify such groupings. Since there are sample input files provided
 with GX, here we will pick one particular syntactical pattern. Users are free
 to use anything that is compatible with the `toml <https://github.com/ToruNiina/toml11>`_ standard.
 
-There are two input variables that are not part of any group:
+Example input files can be found in the :ref:`quickstart` pages, and in the ``benchmarks`` `directory <https://bitbucket.org/gyrokinetics/gx/src/gx/benchmarks/>`_ in the GX repository.
+
+A typical input file will be of the form
+
+.. code-block:: toml
+
+  debug = false
+  
+  [Dimensions]
+  nx = ...
+  ...
+
+  [Domain]
+  ...
+
+  ...
+
+Most of the parameters belong to groups, e.g. ``[Dimensions]`` or ``[Domain]``. 
+
+In the following we describe each possible input parameter in each group. In practice, many of these parameters can be left unspecified so that default values are used.
+
+``debug`` is a special parameter that does not belong to a group, and must be specified at the top of the input file before any groups:
 
 .. list-table::
-   :widths: 20 20 50 10
+   :widths: 20, 20, 50, 10
    :width: 100
    :header-rows: 1
 
@@ -38,16 +52,14 @@ There are two input variables that are not part of any group:
      - Description
      - Default
    * - *none*
-     - debug
+     - ``debug``
      - If true, print debug information to standard out
      - **false**
-   * - *none*
-     - repeat 
-     - If true, repeat a previous run, using the information in the
-       output file from that run. **Presently not available**
-     - **false**
 
-The grid sizes are specied in the **Dimensions** group:
+Dimensions
+++++++++++
+
+The ``[Dimensions]`` group controls the number of grid-points/spectral basis functions in each dimension, and the number of evolved kinetic species.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -58,36 +70,47 @@ The grid sizes are specied in the **Dimensions** group:
      - Variable
      - Description
      - Default
-   * - **Dimensions**
-     - nx
-     - The number of grid points used in the *x* direction.
-     - **4**
-   * - **Dimensions**
-     - ny
-     - The number of grid points used in the *y* direction.
-     - **32**
-   * - **Dimensions**
-     - ntheta
+   * - ``[Dimensions]``
+     - ``nx``
+     - The number of real-space grid points in the *x* direction. Related to the number of de-aliased Fourier modes ``nkx`` via ``nkx = 1 + 2*(nx-1)/3``. Recommended for nonlinear calculations (instead of ``nkx``).
+     - 
+   * - ``[Dimensions]``
+     - ``ny``
+     - The number of real-space grid points in the *y* direction. Related to the number of de-aliased Fourier modes ``nky`` via ``nky =  1 + (ny-1)/3``. Recommended for nonlinear calculations (instead of ``nky``).
+     - 
+   * - ``[Dimensions]``
+     - ``nkx``
+     - The number of (de-aliased) Fourier modes in the *x* direction. Recommended for linear calculations (instead of ``nx``).
+     - 
+   * - ``[Dimensions]``
+     - ``nky``
+     - The number of (de-aliased) Fourier modes in the *y* direction. Recommended for linear calculations (instead of ``ny``).
+     - 
+   * - ``[Dimensions]``
+     - ``ntheta``
      - The number of grid points used in the *z* direction.
      - **32**
-   * - **Dimensions**
-     - nhermite
-     - The number of Hermite basis functions used.
+   * - ``[Dimensions]``
+     - ``nhermite``
+     - The number of Hermite basis functions used (:math:`v_\parallel` resolution)
      - **4**
-   * - **Dimensions**
-     - nlaguerre
-     - The number of Laguerre basis functions used.
+   * - ``[Dimensions]``
+     - ``nlaguerre``
+     - The number of Laguerre basis functions used (:math:`\mu B` resolution)
      - **2**
-   * - **Dimensions**
-     - nspecies
+   * - ``[Dimensions]``
+     - ``nspecies``
      - The number of kinetic species used.
      - **1**
-   * - **Dimensions**
-     - nperiod
-     - The number of poloidal turns used. 
+   * - ``[Dimensions]``
+     - ``nperiod``
+     - The number of poloidal turns used. ``nperiod=1`` recommended for nonlinear calculations.
      - **1**
 
-The physical extent of the simulation domain is specied in the **Domain** group:
+Domain
+++++++
+
+The ``[Domain]`` group controls the physical extents of the simulation domain and the boundary conditions.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -98,66 +121,36 @@ The physical extent of the simulation domain is specied in the **Domain** group:
      - Variable
      - Description
      - Default
-   * - **Domain**
-     - x0
-     - The extent of the radial domain is 2 pi x0. 
+   * - ``[Domain]``
+     - ``y0``
+     - Controls box length in the binormal coordinate :math:`y` via :math:`L_y = 2\pi \texttt{y0}` (in units of :math:`\rho_\mathrm{ref}`). Also controls the minimum :math:`k_y`, so that :math:`k_{y\,\mathrm{min}}\rho_\mathrm{ref} = 1/\texttt{y0}`. 
      - **10.0**
-   * - **Domain**
-     - y0
-     - The extent of the binormal domain is 2 pi y0. 
-     - **10.0**
-   * - **Domain**
-     - jtwist
-     - The twist-and-shift boundary condition is controlled by jtwist. Typically,
-       you should set jtwist to be an integer close to 2 pi / s_hat. 
-     - **-1**
-   * - **Domain**
-     - boundary
-     - Two options are possible: **"periodic"** or **"linked"**
+   * - ``[Domain]``
+     - ``jtwist``
+     - The twist-and-shift boundary condition is controlled by ``jtwist``. This also effectively sets ``x0`` via :math:`\texttt{x0} = \texttt{y0}\,\texttt{jtwist}/(2\pi\texttt{shat})`. Typically,
+       if the magnetic shear :math:`\hat{s}` is finite, you should set ``jtwist`` to be an integer close to :math:`2 \pi \hat{s}`, which will make :math:`\texttt{x0}\approx \texttt{y0}` (the default behavior).
+     - If finite magnetic shear: :math:`\texttt{round}(2\pi\texttt{shat})`
+        
+       If zero magnetic shear: :math:`2\, \texttt{nx}`
+   * - ``[Domain]``
+     - ``x0``
+     - Controls box length in the radial coordinate :math:`x` via :math:`L_x = 2\pi \texttt{x0}` (in units of :math:`\rho_\mathrm{ref}`). Also controls the minimum :math:`k_x`, so that :math:`k_{x\,\mathrm{min}}\rho_\mathrm{ref} = 1/\texttt{x0}`. Typically ``jtwist`` should be set instead of ``x0`` if the magnetic shear is finite.
+     - If finite magnetic shear: :math:`\texttt{y0}\,\texttt{jtwist}/(2\pi\texttt{shat})`
+
+       If zero magnetic shear: :math:`\texttt{y0}`
+   * - ``[Domain]``
+     - ``boundary``
+     - Controls the boundary condition in the :math:`z` (parallel) direction. Two options are possible: periodic (``"periodic"``) or twist-shift (``"linked"``).
      - **"linked"**
-   * - **Domain**
-     - ExBshear
-     - **Not yet implemented.** Set to **true** to include equilibrium ExB shear. 
-     - **false**
-   * - **Domain**
-     - g_exb
-     - **Not yet implemented.** Sets the equilibrium ExB shearing rate. 
-     - **0.0**
+   * - ``[Domain]``
+     - ``zp``
+     - Number of :math:`2\pi` segments in the :math:`z` (parallel) direction. Usually ``nperiod`` should be set instead.
+     - :math:`2\,\texttt{nperiod}-1`
 
-The length of simulated time and the timestep are set in the **Time** group:
+Physics
++++++++
 
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Time**
-     - dt
-     - The maximum timestep allowed.
-     - **0.05**
-   * - **Time**
-     - nstep
-     - The number of timesteps to take. 
-     - **10000**
-   * - **Time**
-     - nwrite
-     - Write time-dependent information every nwrite timesteps. 
-     - **1000**
-   * - **Time**
-     - navg
-     - **Not yet implemented.** Average time-dependent information over navg timesteps.
-     - **10**
-   * - **Time**
-     - nsave
-     - **Not yet implemented.** Write a restart file every nsave timesteps. 
-     - **2000000**
-
-The properties for each kinetic species are specified in the **species** group.
-For the most part, there are mostly no default values provided:
+Parameters that control physics options are specified in the ``[Physics]`` group:
 
 .. list-table::
    :widths: 20 20 50 10
@@ -168,122 +161,350 @@ For the most part, there are mostly no default values provided:
      - Variable
      - Description
      - Default
-   * - **species**
-     - z
-     - The charge
-     -
-   * - **species**
-     - mass
-     - The mass
-     -
-   * - **species**
-     - dens
-     - The density
-     -
-   * - **species**
-     - temp
-     - The temperature
-     - **1.0**
-   * - **species**
-     - tprim
-     - L/LT
-     -
-   * - **species**
-     - fprim
-     - L/Ln
-     - 
-   * - **species**
-     - uprim
-     - L/Lu
+   * - ``[Physics]``
+     - ``beta``
+     - This is the reference beta value, :math:`\beta_\mathrm{ref} = 8\pi n_\mathrm{ref} T_\mathrm{ref}/B^2`. Typically it would be approximately
+       half of the total beta. If ``beta > 0.0`` then electromagnetic terms will be used; otherwise, if ``beta <= 0.``, it is ignored and the calculation is electrostatic.
      - **0.0**
-   * - **species**
-     - vnewk
-     - The collision frequency
-     - **0.0**
-   * - **species**
-     - type
-     - The type of species, such as ion or electron
-     - **"ion"**
-    
-The **Controls** group contains switches and variables that determine both the physics model
-and various numerical parameters.
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Controls**
-     - nonlinear_mode
+   * - ``[Physics]``
+     - ``nonlinear_mode``
      - Set to true to include nonlinear terms in the equations. 
      - **false**
-   * - **Controls**
-     - scheme
-     - This string variable chooses the time-stepping scheme to be used. 
+  
+Time
++++++
+
+Parameters that control the time-stepping are set in the ``[Time]`` group:
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Time]``
+     - ``dt``
+     - The maximum timestep allowed.
+     - **0.05**
+   * - ``[Time]``
+     - ``nstep``
+     - The number of timesteps to take. 
+     - **10000**
+   * - ``[Time]``
+     - ``scheme``
+     - This string variable chooses the time-stepping scheme to be used. For options, see :ref:`timestep`.
      - **"sspx3"**
-   * - **Controls**
-     - stages
+   * - ``[Time]``
+     - ``stages``
      - The number of Runge-Kutta stages to be used for certain time-stepping schemes. Not relevant
-       for most choices of **scheme**. 
+       for most choices of ``scheme``. 
      - **10**    
-   * - **Controls**
-     - cfl
-     - For nonlinear runs, the maximum timestep allowed is proportional to **cfl**.
+   * - ``[Time]``
+     - ``cfl``
+     - For nonlinear runs, the maximum timestep allowed is proportional to ``cfl``.
      - **1.0**    
-   * - **Controls**
-     - init_field
+
+Initialization
++++++++++++++++
+
+The ``[Initialization]`` group controls the initial conditions. 
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Initialization]``
+     - ``init_field``
      - The initial perturbation is applied to this component of the distribution function.
      - **"density"**    
-   * - **Controls**
-     - init_amp
-     - The initial perturbation has this amplitude. 
+   * - ``[Initialization]``
+     - ``init_amp``
+     - The amplitude of the initial perturbation.
      - **1.0e-5**    
-   * - **Controls**
-     - kpar_init
-     - The initial perturbation has this parallel wavenumber.
-     - **0.0**
-   * - **Controls**
-     - closure_model
-     - This string variable determines which (if any) closure model to use.
-     - **"none"**
-   * - **Controls**
-     - fphi
-     - Set fphi to 1.0 to include Phi perturbations in the calculation. 
-     - **1.0** 
-   * - **Controls**
-     - fapar
-     - **Not yet implemented.** Set fapar to 1.0 to include perturbations of the
-       parallel component of the vector potential in the calculation. 
-     - **0.0**
-   * - **Controls**
-     - fbpar
-     - **Not yet implemented.** Set fbpar to 1.0 to include perturbations of the
-       magnetic field strength in the calculation. 
-     - **0.0**
-   * - **Controls**
-     - HB_hyper
-     - If true, use the Hammett-Belli hyperdiffusivity model 
+   * - ``[Initialization]``
+     - ``ikpar_init``
+     - Parallel wavenumber of the initial perturbation
+     - **0**
+   * - ``[Initialization]``
+     - ``init_electrons_only``
+     - Only apply initial perturbations to electrons (when using a kinetic electron species)
      - **false**
-   * - **Controls**
-     - D_HB
-     - If HB_hyper is true, sets the strength of the H-B hyperdiffusivity model.
+   * - ``[Initialization]``
+     - ``random_init``
+     - Use completely random initial conditions (e.g. no mode structure in :math:`z`)
+     - **false**
+
+Geometry
+++++++++
+
+The ``[Geometry]`` group controls the simulation geometry. Some of these parameters can also be read by the ``geometry_modules/miller/gx_geo.py`` script to generate text files containing the geometric information, which can then be used by GX by specifying ``igeo=1`` and ``geofile``. For more details about geometry options, see :ref:`geo`.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``igeo``
+     - Integer specifying the geometry setup. To use an analytic s-alpha geometry, use ``igeo = 0``.
+       To read the geometric information from a text file, use ``igeo = 1``. To read the geometric information from a NetCDF file, use ``igeo = 2``.
+     - **0**    
+   * - ``[Geometry]``
+     - ``geofile``
+     - If ``igeo = 1`` or ``igeo = 2``, the geometric information is read from the file specified by ``geofile``. 
+     - **"eik.out"**    
+   * - ``[Geometry]``
+     - ``Rmaj``
+     - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`.
+       Setting ``Rmaj = 1.0`` effectively sets :math:`L_\mathrm{ref} = R`.
      - **1.0**
-   * - **Controls**
-     - w_osc
-     - If HB_hyper is true, sets the frequency parameter in the H-B model.
+   * - ``[Geometry]``
+     - ``qinp``
+     - The magnetic safety factor, :math:`q = (r/R)(B_t/B_p)`.
+     - **1.4**
+   * - ``[Geometry]``
+     - ``shat``
+     - The global magnetic shear, :math:`\hat{s} = (r/q) dq/dr`. 
+     - **0.8**
+   * - ``[Geometry]``
+     - ``shift``
+     - This characterizes the
+       Shafranov shift and is sometimes called alpha. It should normally be a non-negative number.
      - **0.0**
-   * - **Controls**
-     - p_HB
-     - If HB_hyper is true, sets the exponent for the H-B model,
+   * - ``[Geometry]``
+     - ``eps``
+     - This is the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`. Used only for ``igeo = 0``.
+     - **0.167**
+   * - ``[Geometry]``
+     - ``rhoc``
+     - Flux surface label given by ratio of midplane diameter to the reference length, :math:`r/L_\mathrm{ref}`. 
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``R_geo``
+     - Major radius of magnetic field reference point, normalized to :math:`L_\mathrm{ref}` (i.e. :math:`B_t(R_\mathrm{geo}) = B_\mathrm{ref}`). 
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``akappa``
+     - Elongation of flux surface.
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``akappri``
+     - Radial gradient of elongation of flux surface.
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``tri``
+     - Triangularity of flux surface.
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``tripri``
+     - Radial gradient of triangularity of flux surface.
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``betaprim``
+     - Radial gradient of equilibrium pressure. Used in the calculation of the Shafranov shift.
+       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - 
+   * - ``[Geometry]``
+     - ``slab``
+     - If true, and if ``igeo = 0``, the geometry is that of a slab (straight background magnetic field)
+     - **false**
+   * - ``[Geometry]``
+     - ``const_curv``
+     - If true, and if ``igeo = 0``, the magnetic curvature is assumed to be constant along the field line, as in a Z-pinch. 
+     - **false**
+
+Species
++++++++
+
+The ``[species]`` group specifies parameters like charge, mass, and gradients of each kinetic species. For each parameter, an array is provided with entries for each species. Note that only the first ``nspecies`` elements will be read. For example, a typical ``[species]`` group might look like
+
+.. code-block:: toml
+
+  # it is okay to have extra species data here; only the first nspecies elements of each item are used
+  [species]
+   z     = [ 1.0,      -1.0     ]         # charge (normalized to Z_ref)
+   mass  = [ 1.0,       2.7e-4  ]         # mass (normalized to m_ref)
+   dens  = [ 1.0,       1.0     ]         # density (normalized to dens_ref)
+   temp  = [ 1.0,       1.0     ]         # temperature (normalized to T_ref)
+   tprim = [ 2.49,      2.49    ]         # temperature gradient, L_ref/L_T
+   fprim = [ 0.8,       0.8     ]         # density gradient, L_ref/L_n
+   vnewk = [ 0.0,       0.0     ]         # collision frequency
+   type  = [ "ion",  "electron" ]         # species type
+
+If ``nspecies=1``, only the first values of each table will be used (to set up the ion species). If ``nspecies=2`` the electron data will be used as well.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[species]``
+     - ``z``
+     - The charge (normalized to :math:`Z_\mathrm{ref}`)
+     -
+   * - ``[species]``
+     - ``mass``
+     - The mass (normalized to :math:`m_\mathrm{ref}`)
+     -
+   * - ``[species]``
+     - ``dens``
+     - The density (normalized to :math:`n_\mathrm{ref}`)
+     -
+   * - ``[species]``
+     - ``temp``
+     - The temperature (normalized to :math:`T_\mathrm{ref}`)
+     - **1.0**
+   * - ``[species]``
+     - ``tprim``
+     - Temperature gradient, :math:`L_\mathrm{ref}/L_T`
+     -
+   * - ``[species]``
+     - ``fprim``
+     - Density gradient, :math:`L_\mathrm{ref}/L_n`
+     - 
+   * - ``[species]``
+     - ``uprim``
+     - Velocity gradient, :math:`L_\mathrm{ref}/L_u`. **Not yet implemented**.
+     - **0.0**
+   * - ``[species]``
+     - ``vnewk``
+     - The collision frequency
+     - **0.0**
+   * - ``[species]``
+     - ``type``
+     - The type of species, such as ``"ion"`` or ``"electron"``
+     - **"ion"**
+
+Boltzmann
+++++++++++
+
+The ``[Boltzmann]`` group sets up a Boltzmann species, which can be either electrons (e.g. for ITG calculations) or ions (e.g. for ETG calculations).
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Boltzmann]``
+     - ``add_Boltzmann_species``
+     - If true, include a species with a Boltzmann response
+     - **false**
+   * - ``[Boltzmann]``
+     - ``Boltzmann_type``
+     - Specify the Boltzmann species type. Choose either ``"electrons"`` or ``"ions"``.
+     - **"electrons"**
+   * - ``[Boltzmann]``
+     - ``tau_fac``
+     - Set the value of :math:`\tau = T_\mathrm{kinetic}/T_\mathrm{Boltzmann}`.
+     - **1.0**
+
+Dissipation
++++++++++++
+
+The ``[Dissipation]`` group controls numerical dissipation parameters, including (mostly experimental) closure models. For more details, see :ref:`diss` and :ref:`closures`.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Dissipation]``
+     - ``hypercollisions``
+     - If true, use hypercollision model to provide hyper-dissipation at grid-scales in velocity space. For details, see :ref:`diss`.
+     - **false**
+   * - ``[Dissipation]``
+     - ``nu_hyper_l``
+     - If ``hypercollisions=true``, sets strength of Laguerre hypercollisions at grid-scales in :math:`\mu B`. 
+     - **0.5**
+   * - ``[Dissipation]``
+     - ``nu_hyper_m``
+     - If ``hypercollisions=true``, sets strength of Hermite hypercollisions at grid-scales in :math:`v_\parallel`. 
+     - **0.5**
+   * - ``[Dissipation]``
+     - ``p_hyper_l``
+     - If ``hypercollisions=true``, sets exponent of Laguerre hypercollisions.
+     - **6**
+   * - ``[Dissipation]``
+     - ``p_hyper_m``
+     - If ``hypercollisions=true``, sets exponent of Hermite hypercollisions.
+     - **6**
+   * - ``[Dissipation]``
+     - ``hyper``
+     - If true, use a simple hyperdiffusivity model to provide hyper-dissipation at grid-scales in the perpendicular dimensions. Recommended only for nonlinear calculations. For details, see :ref:`diss`.
+     - **false**
+   * - ``[Dissipation]``
+     - ``D_hyper``
+     - If ``hyper=true``, sets strength of hyperdiffusivity
+     - **0.5**
+   * - ``[Dissipation]``
+     - ``p_hyper``
+     - If ``hyper=true``, sets exponent of hyperdiffusivity to ``2*p_hyper``.
+     - **2**
+   * - ``[Dissipation]``
+     - ``HB_hyper``
+     - If true, use the Hammett-Belli hyperdiffusivity model to provide hyper-dissipation at grid-scales in the perpendicular dimensions. Recommended only for nonlinear calculations. For details, see :ref:`diss`.
+     - **false**
+   * - ``[Dissipation]``
+     - ``D_HB``
+     - If ``HB_hyper=true``, sets the strength of the H-B hyperdiffusivity model.
+     - **1.0**
+   * - ``[Dissipation]``
+     - ``w_osc``
+     - If ``HB_hyper=true``, sets the frequency parameter in the H-B model.
+     - **0.0**
+   * - ``[Dissipation]``
+     - ``p_HB``
+     - If ``HB_hyper=true``, sets the exponent for the H-B model,
        where 2 corresponds to the fourth power of k.
      - **2**
+   * - ``[Dissipation]``
+     - ``closure_model``
+     - Closure model to use. For options, see :ref:`closures`.
+     - **"none"**
+   * - ``[Dissipation]``
+     - ``smith_par_q``
+     - A parameter for ``closure_model = "smith_par"``. 
+     - **3**
+   * - ``[Dissipation]``
+     - ``smith_perp_q``
+     - A parameter for ``closure_model = "smith_perp"``. 
+     - **3**
 
-       
-To continue a previous run, use the  **Restart** group:
+
+Restart
++++++++
+
+The ``[Restart]`` group controls reading and writing of data for restarting (continuing) from previous runs. **Warning**: restart capability is currently limited. See this `issue <https://bitbucket.org/gyrokinetics/gx/issues/1/append-on-restart-instead-of-overwrite.>`_.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -294,30 +515,35 @@ To continue a previous run, use the  **Restart** group:
      - Variable
      - Description
      - Default
-   * - **Restart**
-     - restart
-     - Set to true to continue from a previous run.
+   * - ``[Restart]``
+     - ``restart``
+     - Set to true to continue the simulation from a previous run. The simulation will be initialized to the previous state by reading data from the file specified by ``restart_from_file``.
      - **false**
-   * - **Restart**
-     - save_for_restart
-     - Set to true to write information needed for a future restart. File is written at the end of the run. 
+   * - ``[Restart]``
+     - ``save_for_restart``
+     - Set to true to write information needed for a future restart. File is written every ``nsave`` timesteps.
      - **true**
-   * - **Restart**
-     - restart_to_file
-     - Filename to use for restart information for the present run.       
-     - **"newsave.nc"**
-   * - **Restart**
-     - restart_from_file
-     - Filename for a file written from a previous run, to be used as the basis for continuation (restart).
-     - **"oldsave.nc"**
-   * - **Restart**
-     - scale
-     - Multiply all variables in the restart variable by a factor of **scale**. 
+   * - ``[Restart]``
+     - ``restart_to_file``
+     - Filename to write data needed for restarting the present run.       
+     - **"[input_stem].restart.nc"**
+   * - ``[Restart]``
+     - ``restart_from_file``
+     - Filename for a file written from a previous run, to be read and used to continue (restart) the previous run.
+     - **"[input_stem].restart.nc"**
+   * - ``[Restart]``
+     - ``nsave``
+     - Restart data will be written every ``nsave`` steps.
+     - max(1, :math:`\texttt{nstep}`/10)
+   * - ``[Restart]``
+     - ``scale``
+     - Multiply all variables in the restart data by a factor of ``scale``. 
      - **1.0**
 
-The **Diagnostics** group controls the kinds of diagnostic information that is produced.
-Diagnostic information is written in NetCDF format, to a file that uses the input file name
-(without the **.in** suffix) with the **.nc** suffix appended.
+Diagnostics
++++++++++++
+
+The ``[Diagnostics]`` group controls the diagnostic quantities that are computed and written to the NetCDF output file. For more details about diagnostic quantities and options, see :ref:`diag`.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -328,133 +554,137 @@ Diagnostic information is written in NetCDF format, to a file that uses the inpu
      - Variable
      - Description
      - Default
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - omega
      - Write instantaneous estimates of the complex frequency for each Fourier component of the electrostatic potential.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - free_energy
      - Write the total free energy (integrated over the phase-space domain and summed over species) as a function of time. 
      - **true**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - fluxes
      - Write the turbulent fluxes for each species. 
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
+     - fixed_amplitude
+     - Periodically rescale amplitude of phi to avoid overflow. Only for linear calculations.
+     - **false**
+   * - ``[Diagnostics]``
      - all_zonal_scalars
      - Write quantities such as the RMS value of the zonal component of the ExB velocity as function of time.
        This is a shortcut for turning on all such writes, instead of specifying them individually (below).
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zvE
      - Write the RMS value of the zonal component of ExB velocity as a function time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkvE
      - Write the RMS value of the zonal component of the shear of the ExB velocity as a function time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkden
      - Write the RMS value of the zonal component of the guiding center
        radial density gradient as a function of time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkUpar
      - Write the RMS value of the zonal component of the guiding center
        parallel velocity as a function of time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkTpar
      - Write the RMS value of the zonal component of the guiding center
        parallel temperature as a function of time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkTperp
      - Write the RMS value of the zonal component of the guiding center
        perpendicular temperature as a function of time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - avg_zkqpar
      - Write the RMS value of the zonal component of the guiding center
        parallel-parallel heat flux as a function of time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - all_zonal
      - Write quantities such as the zonal component of the ExB velocity as function of *x* and time.
        This is a shortcut for turning on all such writes, instead of specifying them individually (below).
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - vE
      - Write the zonal component of ExB velocity as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kvE
      - Write the zonal component of the shear of the ExB velocity as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kden
      - Write the zonal component of the radial gradient of the guiding center
        density as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kUpar
      - Write the zonal component of the radial gradient of the guiding center
        parallel velocity as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kTpar
      - Write the zonal component of the radial gradient of the guiding center
        parallel temperature as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kTperp
      - Write the zonal component of the radial gradient of the guiding center
        perpendicular temperature as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - kqpar
      - Write the zonal component of the radial gradient of the guiding center
        parallel-parallel heat flux as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - all_non_zonal
      - Write quantities such as the non-zonal *y*-component of the ExB velocity as function of *x* and time.
        This is a shortcut for turning on all such writes, instead of specifying them individually (below).
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyvEx
      - Write the *x*-component of the ExB velocity as a function of *x*, *y*, and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyvEy
      - Write the non-zonal *y*-component of the ExB velocity as a function of *x*, *y*, and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xykvE
      - Write the non-zonal part of the shear of the *y*-component of the ExB velocity as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyden
      - Write the non-zonal component of the guiding center density as a function of *x* and time.       
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyUpar
      - Write the non-zonal component of the guiding center parallel velocity as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyTpar
      - Write the non-zonal component of the guiding center parallel temperature as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyTperp
      - Write the non-zonal component of the guiding center perpendicular temperature as a function of *x* and time.
      - **false**
-   * - **Diagnostics**
+   * - ``[Diagnostics]``
      - xyqpar
      - Write the non-zonal component of the guiding center parallel-parallel heat flux as a function of *x* and time.
      - **false**
 
-The **Expert** group is for expert users: 
+The ``[Wspectra]`` group controls writes of various slices of :math:`W_s(k_x,k_y,z, \ell, m) = |G_{\ell,m\,s}|^2`, the moment component of the free energy.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -465,303 +695,48 @@ The **Expert** group is for expert users:
      - Variable
      - Description
      - Default
-   * - **Expert**
-     - i_share
-     - An integer related to the shared memory block used for the inner loop of the linear solver.
-     - **8**
-   * - **Expert**
-     - nreal 
-     - Enforce the reality condition every nreal timesteps. 
-     - **1**
-   * - **Expert**
-     - init_single
-     - Only initialize a single Fourier mode if true
-     - **false**
-   * - **Expert**
-     - ikx_single
-     - Index of the kx mode to be initialized if init_single is true
-     - **0**
-   * - **Expert**
-     - iky_single
-     - Index of the ky mode to be initialized if init_single is true
-     - **1**
-   * - **Expert**
-     - eqfix
-     - Do not evolve some particular Fourier harmonic
-     - **false**
-   * - **Expert**
-     - ikx_fixed
-     - Index of the kx mode to be fixed in time if eqfix is true
-     - **-1**
-   * - **Expert**
-     - iky_fixed
-     - Index of the ky mode to be fixed in time if eqfix is true
-     - **-1**
-   * - **Expert**
-     - secondary
-     - Set things up for a secondary instability calculation
-     - **false**
-   * - **Expert**
-     - phi_ext
-     - Value of phi to use for a Rosenbluth-Hinton test
-     - **0.0**
-   * - **Expert**
-     - source
-     - Used to specify various kinds of tests
-     - **"default"**
-   * - **Expert**
-     - tp_t0
-     - The time at which to start changing tprim
-     - **-1.0**
-   * - **Expert**
-     - tp_tf
-     - The time at which to stop changing tprim
-     - **-1.0**
-   * - **Expert**
-     - tprim0
-     - The value of tprim to start with 
-     - **-1.0**
-   * - **Expert**
-     - tprimf
-     - The value of tprim to end with 
-     - **-1.0**
-       
-The size and resolution of the simulation domain can be changed in
-certain ways in a restarted run. These are new options that have not
-been used much. The group is **Resize**:
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Resize**
-     - domain_change
-     - Allow the functionality of this group to be used if domain_change is true
-     - **false**
-   * - **Resize**
-     - x0_mult
-     - Multiply Lx by x0_mult. Must be an integer >= 1.
-     - **1**
-   * - **Resize**
-     - y0_mult
-     - Multiply Ly by y0_mult. Must be an integer >= 1.
-     - **1**
-   * - **Resize**
-     - z0_mult
-     - Multiply the parallel box length by z0_mult. Must be an integer >= 1. Only valid for unsheared slab for now.
-     - **1**
-   * - **Resize**
-     - nx_mult
-     - Multiply the number of grid points in the x-direction by nx_mult. Must be an integer >= 1. 
-     - **1**
-   * - **Resize**
-     - ny_mult
-     - Multiply the number of grid points in the y-direction by ny_mult. Must be an integer >= 1. 
-     - **1**
-   * - **Resize**
-     - ntheta_mult
-     - Multiply the number of grid points in the z-direction by ntheta_mult. Must be an integer >= 1. 
-     - **1**
-   * - **Resize**
-     - nm_add
-     - Add nm_add Hermite moments. Must be integer, can be positive, negative or zero. 
-     - **0**
-   * - **Resize**
-     - nl_add
-     - Add nl_add Laguerre moments. Must be integer, can be positive, negative or zero. 
-     - **0**
-   * - **Resize**
-     - ns_add
-     - Add ns_add species.  Must be integer >= 0.
-     - **0**
-
-Add forcing with the **Forcing** group. Not generally implemented. 
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Forcing**
-     - forcing_type
-     - Picks among the forcing options
-     - **"Kz"**
-   * - **Forcing**
-     - stir_field
-     - Determines which moment of the GK equation is forced
-     - **"density"**
-   * - **Forcing**
-     - forcing_amp
-     - Amplitude of the forcing
-     - **1.0**
-   * - **Forcing**
-     - forcing_index
-     - Index of the forcing
-     - **1**
-   * - **Forcing**
-     - no_fields
-     - Turn off the field terms in the GK equation if this is true
-     - **false**
-
-One component of the plasma can be assumed to have a Boltzmann response. This is controlled with
-the **Boltzmann** group:
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Boltzmann**
-     - add_Boltzmann_species
-     - Include a species with a Boltzmann response if true
-     - **false**
-   * - **Boltzmann**
-     - Boltzmann_type
-     - Choose either "electrons" or "ions"
-     - **"electrons"**
-   * - **Boltzmann**
-     - tau_fac
-     - Set the value of tau for the Boltzmann species.
-       Actual default value is -1.0, but this is for obscure reasons. 
-       Use 1.0 as the default value and always choose a positive value. 
-     - **-1.0**
-       
-The geometry of the simulation domain is controlled through the **Geometry** group:
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Geometry**
-     - igeo 
-     - Integer. To get an analytic form of the equilibrium, use igeo = 0.
-       To read the geometric information from a file, use igeo = 1. No other options are implemented for now. 
-     - **0**
-   * - **Geometry**
-     - geofilename
-     - If igeo = 1, the geometric information is read from geofilename. 
-     - **"eik.out"**
-   * - **Geometry**
-     - slab
-     - If true, and if igeo = 0, the geometry is that of a slab.
-     - **false**
-   * - **Geometry**
-     - const_curv
-     - If true, and if igeo = 0, the curvature is assumed to a constant, as in a Z-pinch. 
-     - **false**
-   * - **Geometry**
-     - drhodpsi
-     - Not used.
-     - **1.0**
-   * - **Geometry**
-     - kxfac
-     - Not used.
-     - **1.0**
-   * - **Geometry**
-     - Rmaj
-     - If igeo = 0, Rmaj is the ratio of the major radius to the equilibrium-scale reference length.
-       Typically one should use Rmaj = 1.0 
-     - **1.0**
-   * - **Geometry**
-     - shift
-     - If igeo = 0, shift should normally be a non-negative number. It characterizes the
-       Shafranov shift and is sometimes called alpha.
-     - **0.0**
-   * - **Geometry**
-     - eps
-     - This is the inverse aspect ratio of the surface in question. Used if igeo = 0.
-     - **0.167**
-   * - **Geometry**
-     - qsf
-     - This is the safety factor. Used if igeo = 0.
-     - **1.4**
-   * - **Geometry**
-     - shat
-     - This is the global magnetic shear. Used if igeo = 0.
-     - **0.8**
-   * - **Geometry**
-     - beta
-     - This is the reference beta value. Typically it would be approximately
-       half of the total beta. If beta < 0., it is ignored. Only used for electromagnetic
-       calculations. Not yet implemented. 
-     - **-1.0**
-   * - **Geometry**
-     - zero_shat
-     - If shat = 0 and igeo = 0, set zero_shat = true and choose shat itself to be positive and
-       smaller than 1.0e-6
-     - **false**
-       
-The **Wspectra** determines controls writes of various slices of the free energy.
-
-.. list-table::
-   :widths: 20 20 50 10
-   :width: 100
-   :header-rows: 1
-
-   * - Group
-     - Variable
-     - Description
-     - Default
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - species
      - W as a function of species
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - kx
      - W as a function of kx
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - ky
      - W as a function of ky
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - kz
      - W as a function of kz
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - z
      - W as a function of z
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - laguerre
      - W as a function of the Laguerre index
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - hermite
      - W as a function of the Hermite index
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - hermite_laguerre
      - W as a function of both Hermite and Laguerre indices
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - kperp
      - W as a function of the magnitude of kperp. Not yet implemented.
      - **false**
-   * - **Wspectra**
+   * - ``[Wspectra]``
      - kxky
      - W as a function of the magnitude of kx and ky.
      - **false**
 
-The **Pspectra** determines controls writes of various slices of (1-Gamma_0) Phi**2
+The ``[Pspectra]`` group controls writes of various slices of :math:`P_s(k_x,k_y,z) = [1-\Gamma_0(b_s)] |\Phi|^2`, the field component of the free energy.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -772,37 +747,40 @@ The **Pspectra** determines controls writes of various slices of (1-Gamma_0) Phi
      - Variable
      - Description
      - Default
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - species
      - P as a function of species
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - kx
      - P as a function of kx
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - ky
      - P as a function of ky
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - kz
      - P as a function of kz
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - z
      - P as a function of z
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - kperp
      - P as a function of the magnitude of kperp. Not yet implemented.
      - **false**
-   * - **Pspectra**
+   * - ``[Pspectra]``
      - kxky
      - P as a function of the magnitude of kx and ky.
      - **false**
 
-The **Reservoir** group controls the reservoir computing toolset:
-       
+Expert
++++++++
+
+The ``[Expert]`` group controls parameters reserved for expert users.
+
 .. list-table::
    :widths: 20 20 50 10
    :width: 100
@@ -812,59 +790,102 @@ The **Reservoir** group controls the reservoir computing toolset:
      - Variable
      - Description
      - Default
-   * - **Reservoir**
-     - Use_reservoir
-     - If true, train a predictor for the dynamics. Presently only set up for the Kuramoto-Sivashinsky equation.
+   * - ``[Expert]``
+     - i_share
+     - An integer related to the shared memory block used for the inner loop of the linear solver.
+     - **8**
+   * - ``[Expert]``
+     - nreal 
+     - Enforce the reality condition every ``nreal`` timesteps. 
+     - **1**
+   * - ``[Expert]``
+     - dealias_kz
+     - If true, dealias in :math:`k_z`. Only available for ``boundary="periodic"``.
      - **false**
-   * - **Reservoir**
-     - Q
-     - For each real element of the quantity to be predicted, use Q reservoir elements. 
-     - **20** 
-   * - **Reservoir**
-     - K
-     - The number of elements for each row of A. 
-     - **3** 
-   * - **Reservoir**
-     - training_steps
-     - Sets the number of training steps to use. If zero, defaults to nstep/nwrite.
+   * - ``[Expert]``
+     - local_limit
+     - If true, run calculation in local limit, where :math:`k_z` is a scalar parameter given by :math:`k_z = 1.0/\texttt{zp}`.
+     - **false**
+   * - ``[Expert]``
+     - init_single
+     - Only initialize a single Fourier mode if true
+     - **false**
+   * - ``[Expert]``
+     - ikx_single
+     - Index of the kx mode to be initialized if ``init_single`` is true
      - **0**
-   * - **Reservoir**
-     - prediction_steps
-     - Sets the number of prediction timesteps.
-     - **200**
-   * - **Reservoir**
-     - training_delta
-     - Sets the reservoir timestep. If training_delta = zero, defaults to nwrite
-     - **0**
-   * - **Reservoir**
-     - spectral_radius
-     - Spectral radius of A
-     - **0.6**
-   * - **Reservoir**
-     - regularization
-     - beta parameter in the Tikhonov regularization used to calculated the weights for the output layer
-     - **1.0e-4**
-   * - **Reservoir**
-     - input_sigma
-     - Each value of the signal is multiplied by input_sigma.
-       Useful for getting more dynamic range out of the tanh function. 
-     - **0.5**
-   * - **Reservoir**
-     - noise
-     - Amplitude of random noise added to the signal in the training phase.
-       Default value is negative, which means no noise will be added. 
+   * - ``[Expert]``
+     - iky_single
+     - Index of the ky mode to be initialized if ``init_single`` is true
+     - **1**
+   * - ``[Expert]``
+     - eqfix
+     - Do not evolve some particular Fourier harmonic
+     - **false**
+   * - ``[Expert]``
+     - ikx_fixed
+     - Index of the kx mode to be fixed in time if ``eqfix`` is true
+     - **-1**
+   * - ``[Expert]``
+     - iky_fixed
+     - Index of the ky mode to be fixed in time if ``eqfix`` is true
+     - **-1**
+   * - ``[Expert]``
+     - phi_ext
+     - Value of phi to use for a Rosenbluth-Hinton test
+     - **0.0**
+   * - ``[Expert]``
+     - source
+     - Used to specify various kinds of tests
+     - **"default"**
+   * - ``[Expert]``
+     - t0
+     - The time at which to start changing ``tprim``
      - **-1.0**
-   * - **Reservoir**
-     - fake_data
-     - Train on manufactured data, such as a traveling wave. 
+   * - ``[Expert]``
+     - tf
+     - The time at which to stop changing ``tprim``
+     - **-1.0**
+   * - ``[Expert]``
+     - tprim0
+     - The value of ``tprim`` to start with (at time ``t0``)
+     - **-1.0**
+   * - ``[Expert]``
+     - tprimf
+     - The value of ``tprim`` to end with (at time ``tf``)
+     - **-1.0**
+
+Forcing
++++++++
+
+Add forcing with the ``[Forcing]`` group. Not generally implemented. 
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Forcing]``
+     - forcing_type
+     - Picks among the forcing options
+     - **"Kz"**
+   * - ``[Forcing]``
+     - stir_field
+     - Determines which moment of the GK equation is forced
+     - **"density"**
+   * - ``[Forcing]``
+     - forcing_amp
+     - Amplitude of the forcing
+     - **1.0**
+   * - ``[Forcing]``
+     - forcing_index
+     - Index of the forcing
+     - **1**
+   * - ``[Forcing]``
+     - no_fields
+     - Turn off the field terms in the GK equation if this is true
      - **false**
-   * - **Reservoir**
-     - write
-     - If true, write out the reservoir data, including the weights in the output layer,
-       the current values in the hidden layer, the matrix A, and the input layer. Not yet implemented.
-     - **false**
-       
-       
-       
-Auxiliary files
----------------

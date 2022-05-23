@@ -770,6 +770,7 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
   }
 }
 
+// note: kperp2 = kperp**2 / B**2
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
@@ -782,6 +783,7 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 
   if (unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    // note: kperp2 = kperp**2 / B**2
     kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
                       + 2. * kx[idx] * shatInv * gds21[idz]) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
@@ -843,7 +845,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   unsigned int J = nx*nyc;
 
   if (idxy < J) {
-    int IG = (int) nz/4 ;
+    int IG = (int) nz/2 ;
     
     int idy = idxy % nyc;
     int idx = idxy / nyc; // % nx;
@@ -856,10 +858,9 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 	logr.x = (float) log(cuCabsf(ratio));
 	logr.y = (float) atan2(ratio.y,ratio.x);
 	omega[idxy] = logr*i_dt;
-	if (isnan(omega[idxy].x)) {omega[idxy].x = -77777.; omega[idxy].y = -77777.;}
       } else {
-	omega[idxy].x = -99999.;
-	omega[idxy].y = -99999.;
+	omega[idxy].x = 1./0.;
+	omega[idxy].y = 1./0.;
       }
     }
   }
@@ -1622,7 +1623,7 @@ __global__ void sum_qneutDenom(float* denom, const float* kperp2, const specie s
   }
 }
 
-__global__ void sum_ampereDenom(float* denom, const float* kperp2, const specie sp, bool first)
+__global__ void sum_ampereDenom(float* denom, const float* kperp2, const float* bmag, const specie sp, bool first)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1633,7 +1634,10 @@ __global__ void sum_ampereDenom(float* denom, const float* kperp2, const specie 
         
     const float kperp2_ = kperp2[idxyz];
     const float b_s = kperp2_ * sp.rho2;
-    if (first) denom[idxyz] = kperp2_;
+    // note: the thing we call kperp2 is actually kperp**2/B**2
+    // (it usually gets multiplied by rho2s, which needs the 1/B**2, to form b_s)
+    // but the laplacian in ampere's law is just regular kperp**2
+    if (first) denom[idxyz] = kperp2_*bmag[idz]*bmag[idz];
 
     float g0_s = 0.;
     for (int l=0; l < nl; l++) {
@@ -1923,13 +1927,17 @@ __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element,
   ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element*normalization;
 }
 
-__global__ void init_kzLinked(float* kz, int nLinks)
+__global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
 {
-  for (int i=0; i < nz*nLinks; i++) {
-    if (i < nz*nLinks/2+1) {
+  int nzL = nz*nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
       kz[i] = (float) i/(zp*nLinks);
     } else {
-      kz[i] = (float) (i-nz*nLinks)/(zp*nLinks);
+      kz[i] = (float) (i-nzL)/(zp*nLinks);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {kz[i] = 0.0;}
     }
   }
 }
@@ -1962,10 +1970,104 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
 
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    G[globalIdx] = G_linked[idlink];
+  }
+}
+
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       cuComplex* GRhs)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+
+    float nu = 0.;
+    // width = width of damping region in number of grid points 
+    // set damping region width to 1/8 of extended domain (on either side)
+    int width = nz*nLinks/8;  
+    float L = 2*M_PI*zp*nLinks/8;
+    float vmax = sqrtf(2*nm); // estimate of max vpar on grid
+    if (idzl <= width ) {
+      float x = ((float) idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    } else if (idzl >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    }
+    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0) {
+      unsigned int idl = idlm % nl;
+      unsigned int idm = idlm / nl;
+      const float kperp2_ = kperp2[idxyz];
+      const float zt_ = sp.zt;
+      const float vt_ = sp.vt;
+      const float rho2_ = sp.rho2;
+      const float b_ = kperp2_ * rho2_;
+      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+      cuComplex H_ = G[globalIdx];
+      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+    }
+  }
+}
+
+__global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+
+    // only zero ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {
+      unsigned int idl = idlm % nl;
+      unsigned int idm = idlm / nl;
+      const float kperp2_ = kperp2[idxyz];
+      const float b_ = kperp2_ * sp.rho2;
+      G[globalIdx].x = 0.; G[globalIdx].y = 0.;
+      if(idm==0) G[globalIdx] = -sp.zt*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
+      if(idm==1) G[globalIdx] = sp.zt*sp.vt*Jflr(idl, b_)*apar[idxyz];
+    }
+
+  }
+}
+
+__global__ void linkedFilterEnds(cuComplex* G, int ifilter,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idzl = idz + nz*(idk % nLinks);
     //    unsigned int globalIdx = iky[idk] + nyc*ikx[idk] + idz*nx*nyc + idlm*nx*nyc*nz;
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
 
-    G[globalIdx] = G_linked[idlink];
+    float filter = 1.;
+    int width = 1;// nz*nLinks/ifilter;
+    if (idzl <= width ) {
+      float x = ((float) idzl)/width;
+      filter = 2*x*x/(1+x*x*x*x);
+    } else if (idzl >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzl)/width;
+      filter = 2*x*x/(1+x*x*x*x);
+    }
+    // only filter non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0) G[globalIdx] = filter*G[globalIdx];
   }
 }
 
@@ -2014,12 +2116,12 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
     // the following Apar terms are only needed in the formulation without dA/dt
     m = 0;          // m = 0 has Apar term
     globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*m));
-    rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+    rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
 
     m = 2;          // m = 2 has Apar term
     if (nm > 2) {
       globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*m));
-      rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+      rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
     }
        
   }
@@ -2029,7 +2131,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
-			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const specie sp, const specie sp_i, cuComplex* rhs, bool hegna)  // bb6126 - hegna test
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
@@ -2056,6 +2158,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad were in shared memory, would have bank conflicts.
     // no bank conflicts for reading from global memory though. 
+    const float bmag_ = bmag[idz];
     const float bgrad_ = bgrad[idz];  
   
     // this is coalesced
@@ -2153,46 +2256,43 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
         rhs[globalIdx] = rhs[globalIdx] 
           - vt_ * bgrad_ * ( - sqrtf(m+1)*(l+1)*S_H(sl,sm+1) - sqrtf(m+1)* l   *S_H(sl-1,sm+1)  
                              + sqrtf(m  )* l   *S_H(sl,sm-1) + sqrtf(m  )*(l+1)*S_H(sl+1,sm-1) )
-  
-          - icv_d_s * ( sqrtf((m+1)*(m+2))*S_H(sl,sm+2) + (2*m+1)*S_H(sl,sm) + sqrtf(m*(m-1))*S_H(sl,sm-2) )
-          - igb_d_s * (              (l+1)*S_H(sl+1,sm) + (2*l+1)*S_H(sl,sm)              + l*S_H(sl-1,sm) )
-          
-          - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
+	  - icv_d_s * ( sqrtf((m+1)*(m+2))*S_H(sl,sm+2) + (2*m+1)*S_H(sl,sm) + sqrtf(m*(m-1))*S_H(sl,sm-2) )
+	  - igb_d_s * (              (l+1)*S_H(sl+1,sm) + (2*l+1)*S_H(sl,sm)              + l*S_H(sl-1,sm) )
+	  
+	  - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
 
-        // add drive and conservation terms in low hermite moments
-        if (m==0) {
-          rhs[globalIdx] = rhs[globalIdx] 
+	// add drive and conservation terms in low hermite moments
+	if (m==0) {
+	  rhs[globalIdx] = rhs[globalIdx] 
            + iky_ * phi_ * (
               Jflr(l-1,b_s)*l*tprim_
-            + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
-            + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
-           )
-           + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-           + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
-        }
+	    + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
+	    + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	   )
+	   + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+	   + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
+	}
 
-        // bb6126 - hegna test
+	if (m==1) {
+	  cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*bmag_*bmag_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
 
-        if (m==1) {
-          cuComplex upar_bar_i = (nspecies>1 && as_i>0) ? kperp2_*apar_/as_i - nz_*vt_*upar_bar_/(nzvt_i) : make_cuComplex(0.,0.);
-
-          rhs[globalIdx] = rhs[globalIdx] 
-           + vt_ * iky_ * apar_ * (
+	  rhs[globalIdx] = rhs[globalIdx] 
+           - vt_ * iky_ * apar_ * (
               Jflr(l-1,b_s)*l*tprim_
-            + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
-            + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
-           )
-     	    + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*upar_bar_i)
+	    + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
+	    + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	   )
+      	   + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*upar_bar_i)
            + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
-        }
-        if (m==2) {
-          rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
-             + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
-        }  
+	}
+	if (m==2) {
+	  rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
+	     + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
+	}  
 
-        if (m==3) {
-          rhs[globalIdx] = rhs[globalIdx] 
-           + vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
+	if (m==3) {
+	  rhs[globalIdx] = rhs[globalIdx] 
+           - vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
         }
       } // l loop
     } // m loop

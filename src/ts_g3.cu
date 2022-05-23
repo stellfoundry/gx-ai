@@ -44,7 +44,11 @@ void G3::EulerStep(MomentsG** G_u, MomentsG** GRhs, Fields* f, bool setdt)
 void G3::advance(double *t, MomentsG** G, Fields* f)
 {
   // update the gradients if they are evolving
-  pars_->update_tprim(*t);
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is]->update_tprim(*t);
+    G_u1[is]->update_tprim(*t);
+  }
+  // end updates
 
   for(int is=0; is<grids_->Nspecies; is++) {
     G_u1[is]->copyFrom(G[is]);

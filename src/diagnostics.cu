@@ -236,8 +236,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
-    if ( id -> qs -> write_v_time) printf("Step %d: Time = %f \t Flux = ", counter, time);          // To screen
-    if (!id -> qs -> write_v_time) printf("Step %d: Time = %f\n",          counter, time);
+    if ( id -> qs -> write_v_time) printf("%s: Step %d: Time = %f \t", pars_->run_name, counter, time);          // To screen
+    if (!id -> qs -> write_v_time) printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
   
     if ( id -> qs -> write_v_time) {                                                                // heat flux
       
@@ -254,12 +254,13 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
       for(int is=0; is<grids_->Nspecies; is++) {
 	float rho2s = pars_->species_h[is].rho2;
-	float n_s = pars_->species_h[is].dens;
+        float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
 	part_flux_summand loop_R (P2(is), fields->phi, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
       }
       id -> write_P(P2s); 
     }
+    if ( id -> qs -> write_v_time) printf("\n");
     
     if (pars_->diagnosing_kzspec) {
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species

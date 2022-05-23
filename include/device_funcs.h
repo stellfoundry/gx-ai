@@ -241,7 +241,7 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
 __global__ void real_space_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const specie sp);
 
 __global__ void sum_qneutDenom(float* denom, const float* kperp2, const specie sp);
-__global__ void sum_ampereDenom(float* denom, const float* kperp2, const specie sp, bool first);
+__global__ void sum_ampereDenom(float* denom, const float* kperp2, const float* bmag, const specie sp, bool first);
 
 //__global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
 //					const float *kperp2, const float *jacobian,
@@ -260,6 +260,16 @@ __global__ void add_source(cuComplex* f, const float source);
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar, const float* qneutDenom, float tau_fac);
 
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       cuComplex* GRhs);
+
+__global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
+
+__global__ void linkedFilterEnds(cuComplex* G, int ifilter,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
+
 __global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked, int nLinks, int nChains,
 			   const int* ikx, const int* iky, int nMoms);
 
@@ -269,7 +279,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G, int nLin
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
-__global__ void init_kzLinked(float* kz, int nLinks);
+__global__ void init_kzLinked(float* kz, int nLinks, bool dealias);
 
 extern __managed__ cufftCallbackStoreC zfts_Linked_callbackPtr;
 extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
@@ -289,7 +299,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
 
 __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
-			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bgrad,
+			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const specie sp, const specie sp_i, cuComplex* rhs, bool hegna);  // bb6126 - hegna test
 
 __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);

@@ -23,7 +23,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  else if(pars_->boundary_option_periodic) {
+  else if(pars_->boundary_option_periodic && pars_->nx_in > 1) {
     DEBUGPRINT("Using periodic for grad parallel.\n");
     grad_par = new GradParallelPeriodic(grids_);
   }
@@ -31,7 +31,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
- 
+
   switch (pars_->closure_model_opt)
     {
     case Closure::none      :
@@ -161,7 +161,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
-        geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bgrad, 
+        geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
 	 grids_->ky, *(G->species), pars_->species_h[0], GRhs->G(), pars_->hegna);  // bb6126 - hegna test
 
   // hyper model by Hammett and Belli
@@ -199,8 +199,11 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->p_hyper_m, GRhs->G());
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
-						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
-
+						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
+  
+  // apply parallel boundary conditions. for linked BCs, this involves applying 
+  // a damping operator to the RHS near the boundaries of extended domain.
+  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
 }
 
 //==========================================

@@ -220,14 +220,14 @@ void MomentsG::initialConditions(double* time) {
 	      } else {
 		init_h[index].x = rb;		init_h[index].y = ra;
 	      }
-	      if (pars_->kpar_init < 0.) {		
-		init_h[index].x *= (cos( -pars_->kpar_init    *z_h[k]/pars_->Zp)
-				  + cos((-pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
-		init_h[index].y *= (cos( -pars_->kpar_init    *z_h[k]/pars_->Zp)
-				  + cos((-pars_->kpar_init+1.)*z_h[k]/pars_->Zp));
+	      if (pars_->ikpar_init < 0) {		
+		init_h[index].x *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
+				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
+		init_h[index].y *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
+				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
 	      } else {
-		init_h[index].x *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
-		init_h[index].y *= cos(pars_->kpar_init*z_h[k]/pars_->Zp);
+		init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
+		init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 	      }
 	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
@@ -646,3 +646,35 @@ void MomentsG::qvar(int N)
   free (G_h);
 }
 
+void MomentsG::update_tprim(double time) {
+
+  // this is a proof-of-principle hack. typically nothing will happen here
+
+  // for one species (or the first species in the species list):
+  // adjust tprim according to the function 
+  // if t < t0:
+  // tprim = tprim_0
+  // if t > t0: 
+  //    if (t < tf) tprim = tprim_0 + (tprim_0 - tprim_f)/(t0-tf)*(t-t0)
+  //    else tprim = tprim_f
+
+  if (pars_->tp_t0 > -0.5) {
+    if (time < (double) pars_->tp_t0) {
+      float tp = pars_->tprim0;
+      species->tprim = tp;
+    } else {
+      if (time < (double) pars_->tp_tf) {
+        float tfac = (float) time;
+        float tprim0 = pars_->tprim0;
+        float tprimf = pars_->tprimf;
+        float t0 = pars_->tp_t0;
+        float tf = pars_->tp_tf;
+        float tp = tprim0 + (tprim0-tprimf)/(t0-tf)*(tfac-t0);
+	species->tprim = tp;
+      } else {
+        float tp = pars_->tprimf;
+	species->tprim = tp;
+      }
+    }
+  }
+}

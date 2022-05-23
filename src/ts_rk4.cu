@@ -56,7 +56,12 @@ void RungeKutta4::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
 void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
 {
   // update the gradients if they are evolving
-  pars_->update_tprim(*t);
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is]   -> update_tprim(*t);
+    G_q1[is]-> update_tprim(*t);
+    G_q2[is]-> update_tprim(*t);
+  }
+  // end updates
 
   partial(G, G,    f, GRhs,  G_q1, 0.5, true);
   partial(G, G_q1, f, GStar, G_q2, 0.5, false);

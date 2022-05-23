@@ -8,6 +8,7 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   MPI_Comm mpcom = MPI_Comm_f2c(mpcom_f);
   int iproc;
   MPI_Comm_rank(mpcom, &iproc);
+  printf("Running %s on proc %d\n", run_name, iproc); 
   pars = new Parameters(iproc);
   // get default values from namelist
   pars->get_nml_vars(run_name);
@@ -62,7 +63,7 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   run_gx(pars, grids, geo, diagnostics);
 
   // copy time-averaged fluxes to trinity
-  copy_fluxes_to_trinity(pars, tfluxes);
+  copy_fluxes_to_trinity(pars, geo, tfluxes);
 
   delete pars;
   delete grids;
@@ -75,22 +76,22 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
    pars->equilibrium_type = tpars->equilibrium_type;
    if(tpars->restart>0) pars->restart = true;
 
-   if (tpars->nstep > pars->nstep) {
-     printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file\n");
-     exit(1);
-   }
+   //if (tpars->nstep > pars->nstep) {
+   //  printf("ERROR: nstep has been increased above the default value. nstep must be less than or equal to what is in the input file\n");
+   //  exit(1);
+   //}
    pars->trinity_timestep = tpars->trinity_timestep;
    pars->trinity_iteration = tpars->trinity_iteration;
    pars->trinity_conv_count = tpars->trinity_conv_count;
    pars->nstep = tpars->nstep;
    pars->navg = tpars->navg;
-   pars->end_time = tpars->end_time;
-   pars->irho = tpars->irho ;
+   //pars->end_time = tpars->end_time;
+   //pars->irho = tpars->irho ;
    pars->rhoc = tpars->rhoc ;
-   pars->eps = tpars->eps;
-   pars->bishop = tpars->bishop ;
-   pars->nperiod = tpars->nperiod ;
-   pars->nz_in = tpars->ntheta ;
+   //pars->eps = tpars->eps;
+   //pars->bishop = tpars->bishop ;
+   //pars->nperiod = tpars->nperiod ;
+   //pars->nz_in = tpars->ntheta ;
 
  /* Miller parameters*/
    pars->rmaj = tpars->rgeo_local ;
@@ -105,14 +106,20 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
 
   /* Other geometry parameters - Bishop/Greene & Chance*/
    pars->beta_prime_input = tpars->beta_prime_input ;
-   pars->s_hat_input = tpars->s_hat_input ;
+   //pars->s_hat_input = tpars->s_hat_input ;
 
   /*Flow shear*/
    pars->g_exb = tpars->g_exb ;
 
   /* Species parameters... I think allowing 20 species should be enough!*/
   int oldnSpecies = pars->nspec;
+  // read nspecies from trinity
   pars->nspec = tpars->ntspec ;
+  // trinity always assumes electrons are one of the evolved species
+  // if GX is using Boltzmann electrons, decrease number of species by 1
+  if(pars->add_Boltzmann_species && pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+    pars->nspec = pars->nspec - 1;
+  }
 
   if (pars->nspec!=oldnSpecies){
           printf("oldnSpecies=%d,  nSpecies=%d\n", oldnSpecies, pars->nspec);
@@ -120,36 +127,107 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
           exit(1);
   }
   if (pars->debug) printf("nSpecies was set to %d\n", pars->nspec);
-  for (int i=0;i<pars->nspec;i++){
-           pars->species_h[i].dens = tpars->dens[i] ;
-           pars->species_h[i].temp = tpars->temp[i] ;
-           pars->species_h[i].fprim = tpars->fprim[i] ;
-           pars->species_h[i].tprim = tpars->tprim[i] ;
-           pars->species_h[i].nu_ss = tpars->nu[i] ;
+
+  if(pars->add_Boltzmann_species && pars->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+    for (int s=0;s<pars->nspec;s++){
+      // trinity assumes first species is electrons,
+      // so ions require s+1
+      pars->species_h[s].z = tpars->z[s+1] ;
+      pars->species_h[s].mass = tpars->mass[s+1] ;
+      pars->species_h[s].dens = tpars->dens[s+1] ;
+      pars->species_h[s].temp = tpars->temp[s+1] ;
+      pars->species_h[s].fprim = tpars->fprim[s+1] ;
+      pars->species_h[s].tprim = tpars->tprim[s+1] ;
+      pars->species_h[s].nu_ss = tpars->nu[s+1] ;
+      pars->species_h[s].type = 0;  // all gx species will be ions
+    }
+  } else {
+    for (int s=0;s<pars->nspec;s++){
+      pars->species_h[s].z = tpars->z[s] ;
+      pars->species_h[s].mass = tpars->mass[s] ;
+      pars->species_h[s].dens = tpars->dens[s] ;
+      pars->species_h[s].temp = tpars->temp[s] ;
+      pars->species_h[s].fprim = tpars->fprim[s] ;
+      pars->species_h[s].tprim = tpars->tprim[s] ;
+      pars->species_h[s].nu_ss = tpars->nu[s] ;
+      pars->species_h[s].type = s == 0 ? 1 : 0; // 0th trinity species is electron, others are ions
+    }
   }
   pars->init_species(pars->species_h);
 
-  //jtwist should never be < 0. If we set jtwist < 0 in the input file,
-  // this triggers the use of jtwist_square... i.e. jtwist is 
-  // set to what it needs to make the box square at the outboard midplane
-  if (pars->jtwist < 0) {
-    int jtwist_square;
-    // determine value of jtwist needed to make X0~Y0
-    jtwist_square = (int) round(2*M_PI*abs(pars->shat)*pars->Zp);
-    if (jtwist_square == 0) jtwist_square = 1;
-    // as currently implemented, there is no way to manually set jtwist from input file
-    // there could be some switch here where we choose whether to use
-    // jtwist_in or jtwist_square
-    pars->jtwist = jtwist_square*2;
-    //else use what is set in input file 
+  // write a toml input file with the parameters that trinity changed
+  char fname[300];
+  sprintf(fname, "%s.trinpars_t%d_i%d", pars->run_name, pars->trinity_timestep, pars->trinity_iteration);
+  strcpy(pars->run_name, fname); 
+
+  FILE *fptr;
+  fptr = fopen(fname, "w");
+  fprintf(fptr, "[Dimensions]\n");
+  fprintf(fptr, " ntheta = %d\n", pars->nz_in);
+  fprintf(fptr, " nperiod = %d\n", pars->nperiod);
+  fprintf(fptr, "\n[Geometry]\n");
+  fprintf(fptr, " rhoc = %.9e\n", pars->rhoc);
+  fprintf(fptr, " qinp = %.9e\n", pars->qsf);
+  fprintf(fptr, " shat = %.9e\n", pars->shat);
+  fprintf(fptr, " Rmaj = %.9e\n", pars->rmaj);
+  fprintf(fptr, " R_geo = %.9e\n", pars->r_geo);
+  fprintf(fptr, " shift = %.9e\n", pars->shift);
+  fprintf(fptr, " akappa = %.9e\n", pars->akappa);
+  fprintf(fptr, " akappri = %.9e\n", pars->akappri);
+  fprintf(fptr, " tri = %.9e\n", pars->tri);
+  fprintf(fptr, " tripri = %.9e\n", pars->tripri);
+  fprintf(fptr, " betaprim = %.9e\n", pars->beta_prime_input);
+  fprintf(fptr, "\n[species]\n");
+  fprintf(fptr, " z = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].z);
   }
-  if(pars->jtwist!=0 && abs(pars->shat)>1.e-6) pars->x0 = pars->y0*pars->jtwist/(2*M_PI*pars->Zp*abs(pars->shat));
-  //if(abs(pars->shat)<1.e-6) pars->x0 = pars->y0;
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " mass = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].mass);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " dens = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].dens);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " temp = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].temp);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " fprim = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].fprim);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " tprim = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].tprim);
+  }
+  fprintf(fptr, "]\n");
+  fprintf(fptr, " vnewk = [ ");
+  for (int i=0;i<pars->nspec;i++){
+    fprintf(fptr, "%.9e,\t", pars->species_h[i].nu_ss);
+  }
+  fprintf(fptr, "]\n");
+  fclose(fptr);
+
+  if(pars->igeo==1) {
+    char command[300];
+    // call python geometry module using toml we just created to write the eik.out geo file
+    // this is a massive hack!
+    sprintf(command, "python /home/nmandell/gx/miller_geo_py_module/gx_geo.py %s %s.eik.out", fname, fname);
+    pars->geofilename = std::string(fname) + ".eik.out";
+    system(command);
+  }
 }
 
-void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
+void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struct *tfluxes)
 {
-  int id_ns, id_time, id_fluxes, id_Q;
+  int id_ns, id_time, id_fluxes, id_Q, id_P;
   int ncres, retval;
   char strb[263];
   strcpy(strb, pars_->run_name); 
@@ -162,6 +240,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   if (retval = nc_inq_grp_ncid(ncres, "Fluxes", &id_fluxes))    ERR(retval);
   // get handle for qflux
   if (retval = nc_inq_varid(id_fluxes, "qflux", &id_Q)) ERR(retval);
+  if (retval = nc_inq_varid(id_fluxes, "pflux", &id_P)) ERR(retval);
 
   // get length of time output
   size_t tlen;
@@ -170,35 +249,82 @@ void copy_fluxes_to_trinity(Parameters *pars_, trin_fluxes_struct *tfluxes)
   // allocate arrays for time and qflux history
   double *time = (double*) malloc(sizeof(double) * tlen);
   float *qflux = (float*) malloc(sizeof(float) * tlen);
+  float *pflux = (float*) malloc(sizeof(float) * tlen);
 
   // read time and qflux history
   if (retval = nc_inq_varid(ncres, "time", &id_time)) ERR(retval);
   if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);
+
+  // compute the surface area from A=Int(J |grad rho| dtheta dalpha)
+  // and dV/drhon = Int(J dtheta)
+  double surfarea = 0.;
+  double dvdrhon = 0.;
+  double dz = 2.*M_PI/pars_->nz_in;
+  for (int i=0; i<pars_->nz_in; i++) {
+    surfarea += 2.*M_PI*geo_->grho_h[i]*geo_->jacobian_h[i]*dz;
+    dvdrhon += geo_->jacobian_h[i]*dz;
+  }
+  // compute surface-averaged grho and dvdrho
+  double grhoavg = surfarea/dvdrhon;
+  tfluxes->grho = grhoavg;
+  tfluxes->dvdrho = dvdrhon;
+
   
+  int is = 1; // counter for trinity ion species
   for(int s=0; s<pars_->nspec_in; s++) {
     size_t qstart[] = {0, s};
     size_t qcount[] = {tlen, 1};
     if (retval = nc_get_vara(id_fluxes, id_Q, qstart, qcount, qflux)) ERR(retval);
+    if (retval = nc_get_vara(id_fluxes, id_P, qstart, qcount, pflux)) ERR(retval);
 
     // compute time average
     float qflux_sum = 0.; 
+    float pflux_sum = 0.; 
     float t_sum = 0.;
     float dt = 0.;
     for(int i=tlen - pars_->navg/pars_->nwrite; i<tlen; i++) {
       dt = time[i] - time[i-1];
       qflux_sum += qflux[i]*dt;
+      pflux_sum += pflux[i]*dt;
       t_sum += dt;
     }
-    tfluxes->qflux[s] = qflux_sum / t_sum;
+
+    // Trinity orders species with electrons first, then ions
+    if(pars_->add_Boltzmann_species && pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      // no electron heat flux or particle flux
+      tfluxes->qflux[0] = 0.;
+      tfluxes->pflux[0] = 0.;
+      tfluxes->heat[0] = 0.;
+
+      // ion heat and particle fluxes
+      tfluxes->qflux[is] = qflux_sum / t_sum; 
+      tfluxes->pflux[is] = pflux_sum / t_sum; 
+      tfluxes->heat[is] = 0.;
+      is++;
+    } else {
+      if(pars_->species_h[s].type==1) { // electrons
+        tfluxes->qflux[0] = qflux_sum / t_sum; // are species 0 in trinity
+        tfluxes->pflux[0] = pflux_sum / t_sum; 
+        tfluxes->heat[0] = 0.;
+      }
+      else {
+        tfluxes->qflux[is] = qflux_sum / t_sum; 
+        tfluxes->pflux[is] = pflux_sum / t_sum; 
+        tfluxes->heat[is] = 0.;
+        is++;
+      }
+    }
   }
 
   // these are placeholders for gx-computed quantities
-  float pflux = 0.;
   float heat = 0.;
 
   for(int s=0; s<pars_->nspec_in; s++) {
-    tfluxes->pflux[s] = pflux;
-    tfluxes->heat[s] = heat;
+    if(pars_->add_Boltzmann_species && pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
+      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g, surfarea = %g\n", pars_->run_name, s, tfluxes->qflux[s+1], tfluxes->pflux[s+1], tfluxes->heat[s+1], surfarea);
+    } else {
+      printf("%s: Species %d: qflux = %g, pflux = %g, heat = %g\n", pars_->run_name, s, tfluxes->qflux[s], tfluxes->pflux[s], tfluxes->heat[s]);
+    }
   }
 
   nc_close(ncres);

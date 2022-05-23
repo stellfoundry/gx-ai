@@ -127,7 +127,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
                       nChains[c], &workSize);
 
     // initialize kzLinked
-    init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c]);
+    init_kzLinked <<<1,1>>> (kzLinked[c], nLinks[c], false);
 
     int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
 
@@ -145,6 +145,8 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
   }
 
   set_callbacks();
+  
+  hermite = new HermiteTransform(grids_);
   //  this->linkPrint();
 }
 
@@ -265,6 +267,14 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
   }
 }
 */
+
+void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2)
+{
+  for(int c=0; c<nClasses; c++) {
+    // each "class" has a different number of links in the chains, and a different number of chains.
+    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G());
+  }
+}
 
 void GradParallelLinked::dz(MomentsG* G) 
 {

@@ -1,5 +1,4 @@
-#ifndef GEO_H
-#define GEO_H
+#pragma once
 
 #include "cufft.h"
 #include "parameters.h"
@@ -71,7 +70,7 @@ class Geometry {
   float * gb_d ; 
   float * kperp2_h ;
   
-  void initializeOperatorArrays(Grids* grids);
+  void initializeOperatorArrays(Parameters* pars, Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM
 
   bool operator_arrays_allocated_;
@@ -105,4 +104,3 @@ class File_geo : public Geometry {
 //void copy_geo_arrays_to_device(geometry_coefficents_struct * geo, geometry_coefficents_struct * geo_h, input_parameters_struct * pars, int Nz);
 
 
-#endif

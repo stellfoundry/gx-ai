@@ -75,7 +75,7 @@ class Parameters {
   void store_ncdf(int ncid);
 
   void init_species(specie* species);
-  void update_tprim(double time);
+  void set_jtwist_x0(float shat);
 
   int nczid, nzid, ncresid, ncbid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
@@ -106,6 +106,7 @@ class Parameters {
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
+  int ikpar_init;
   float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
   float D_HB, w_osc;
@@ -119,6 +120,7 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
+  float vtmax;
 
   // parameters for KREHM system
   bool krehm;
@@ -152,6 +154,7 @@ class Parameters {
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase, ExBshear;
   bool nlpm_kxdep, nlpm_nlps, nlpm_cutoff_avg, nlpm_zonal_kx1_only, smagorinsky;
   bool debug, init_single, boundary_option_periodic, forcing_init, no_fields; 
+  bool init_electrons_only;
   bool nlpm_test, new_nlpm, hammett_nlpm_interference, nlpm_abs_sgn, nlpm_hilbert;
   bool low_b, low_b_all, higher_order_moments, nlpm_zonal_only, nlpm_vol_avg;
   bool no_nonlin_flr, no_nonlin_cross_terms, no_nonlin_dens_cross_term;

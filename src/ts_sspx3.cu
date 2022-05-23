@@ -77,7 +77,12 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bo
 void SSPx3::advance(double *t, MomentsG** G, Fields* f)
 {
   // update the gradients if they are evolving
-  pars_->update_tprim(*t);
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is] -> update_tprim(*t);
+    G1[is]-> update_tprim(*t);
+    G2[is]-> update_tprim(*t);
+  }
+  // end of updates
   
   EulerStep (G1, G , GRhs, f, true);  
   solver_->fieldSolve(G1, f);         if (pars_->dealias_kz) grad_par->dealias(f->phi);

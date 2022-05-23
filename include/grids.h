@@ -8,6 +8,7 @@ class Grids {
  public:
   Grids(Parameters* pars);
   ~Grids();
+  void init_ks_and_coords();
 
   int Nx;
   int Ny;
@@ -36,6 +37,7 @@ class Grids {
   
   float * theta0_h ;
   float * th0; 
+  float Zp;
 
   /* Flow shear arrays*/
   //  float * kx_shift ;

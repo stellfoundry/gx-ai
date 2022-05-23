@@ -44,7 +44,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
 
   nn1 = grids_->NxNyc;                          nt1 = min(nn1, 32);         nb1 = 1 + (nn1-1)/nt1;
   nn2 = grids_->Nz;                             nt2 = min(nn2, 32);         nb2 = 1 + (nn2-1)/nt2;
-  nn3 = grids_->Nmoms;         nt3 = min(nn3, 1);          nb3 = 1 + (nn3-1)/nt3;
+  nn3 = grids_->Nmoms;                          nt3 = min(nn3, 1);          nb3 = 1 + (nn3-1)/nt3;
 
   dBd = dim3(nt1, nt2, nt3);
   dGd = dim3(nb1, nb2, nb3);
@@ -55,6 +55,7 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   dBf = dim3(nt1, nt2, 1);
   dGf = dim3(nb1, nb2, 1);
   
+  hermite = new HermiteTransform(grids_);
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {
@@ -107,6 +108,7 @@ void GradParallelPeriodic::zft_inverse(cuComplex* mom, cuComplex* res)
   cufftExecC2C(zft_plan_inverse, mom, res, CUFFT_INVERSE);
 }
 */
+
 // FFT and derivative for all moments
 void GradParallelPeriodic::dz(MomentsG* G)
 {
@@ -150,11 +152,12 @@ GradParallelLocal::GradParallelLocal(Grids* grids) :
 {
   dB = 512;
   dG = 1 + (grids_->NxNycNz-1)/dB.x;
+  kpar = 1./((float) grids_->Zp);
 }
 
 void GradParallelLocal::dz(MomentsG *G)
 {
-  G->scale(make_cuComplex(0.,1.));
+  G->scale(make_cuComplex(0.,kpar));
 }
 
 void GradParallelLocal::zft(MomentsG *G) {return;}
@@ -166,11 +169,11 @@ void GradParallelLocal::zft_inverse(MomentsG *G) {return;}
 
 // single moment
 void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
-  scale_singlemom_kernel GGP (res, mom, make_cuComplex(0.,1.));
+  scale_singlemom_kernel GGP (res, mom, make_cuComplex(0.,kpar));
 }
 // single moment
 void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) {
-  scale_singlemom_kernel GGP (res, mom, make_cuComplex(1.,0.));
+  scale_singlemom_kernel GGP (res, mom, make_cuComplex(kpar,0.));
 }
 
 GradParallel1D::GradParallel1D(Grids* grids) :

@@ -3,48 +3,25 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Documentation for the GX code
-==============================
-
-  
+The GX code: documentation home
+===============================
 	     
-GX is a code for solving the nonlinear gyrokinetic equations for
-plasma turbulence within a Fourier-Hermite-Laguerre framework.
-This allows GX to smoothly interpolate between coarse
-gyrofluid-like resolutions and finer conventional gyrokinetic
-resolutions.
+GX is a code for solving the nonlinear gyrokinetic system for low-frequency turbulence in magnetized plasmas using Fourier-Hermite-Laguerre spectral methods.
+A unique feature of GX is the use of a Hermite-Laguerre velocity discretization, which allows GX to smoothly interpolate between coarse gyrofluid-like resolutions and finer conventional gyrokinetic resolutions.
 
-To get started, you will need an NVIDIA GPU, and the gsl (cpu), NetCDF
-(cpu), and CUDA (gpu) libraries, including cuTensor.
+Another unique feature of GX is that it is a GPU-native code, designed and optimized in CUDA/C++. 
+This means you will need access to an NVIDIA GPU to run GX. 
 
-GX is currently supported on Traverse at Princeton, where you can
-simply module load cuda and set the GK_SYSTEM environment variable
-with
+The GX repository is open source and hosted on BitBucket: https://bitbucket.org/gyrokinetics/gx.
 
-$ export GK_SYSTEM=traverse
-
-On other systems, you will need to make a custom
-Makefiles/Makefile.[SYSTEM] with the paths to the CUDA libraries (use
-Makefile.maverick as an example) and set the GK_SYSTEM environment
-variable to [SYSTEM].
-
-After taking care of the system Makefile, to build GX simply execute
-make in the main directory. This will build the 'gx' executable.
-
-To run GX, execute
-
-$ ./gx [path_to_inputfile]
-
-A sample input file is provided in ______. 
-
+GX is currently under rapid development, resulting in quickly-changing functionality and capabilities.
+A number of planned improvements to the code (such as multi-GPU capability) are listed in the issue tracker on BitBucket (https://bitbucket.org/gyrokinetics/gx/issues).
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
-   Overview
-   Geometry
-   Inputs
-   Outputs
-   Numerics
-   
+   Install
+   Quickstart
+   Reference
+   Citing
+   License

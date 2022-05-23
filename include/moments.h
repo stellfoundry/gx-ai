@@ -19,6 +19,7 @@ class MomentsG {
   
   cuComplex * Gm(int m) {   return G(0,m);   }
 
+  void update_tprim(double time);
   void qvar (int N);
   void apply_mask(void);
   void initVP(double* time);
@@ -53,7 +54,7 @@ class MomentsG {
   dim3 dimGrid, dimBlock, dG_all, dB_all;
 
   // pointer to pars_->species_h[is] struct
-  const specie* species;
+  specie* species;
 
   cuComplex * dens_ptr;
   cuComplex * upar_ptr;
