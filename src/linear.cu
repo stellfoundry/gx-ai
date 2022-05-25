@@ -98,15 +98,18 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
+  nn3 = 1;                       nt3 = min(grids_->Nm - grids_->m_ghost, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);
   dimGrid  = dim3(nb1, nb2, nb3);
   
-  sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
+  if(grids_->m_ghost == 0)
+    sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
+  else // ghosts already included in Nm here
+    sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm) * sizeof(cuComplex);
 
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
-  if(sharedSize/1024.>96.) {
+  if(sharedSize/1024.>96. && grids_->m_ghost == 0) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
     printf("If you wish to try to keep this velocity resolution, ");
     printf("you can try lowering i_share in your input file.\n");

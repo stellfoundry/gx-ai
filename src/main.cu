@@ -19,11 +19,12 @@ int main(int argc, char* argv[])
 
   MPI_Init(&argc, &argv);
   MPI_Comm mpcom = MPI_COMM_WORLD;
-  int iproc;
+  int iproc, nprocs;
   MPI_Comm_rank(mpcom, &iproc);
+  MPI_Comm_size(mpcom, &nprocs);
   
   int devid = 0; // This should be determined (optionally) on the command line
-  checkCuda(cudaSetDevice(devid));
+  checkCuda(cudaSetDevice(iproc));
   cudaDeviceSynchronize();
 
   /*  
@@ -152,7 +153,7 @@ int main(int argc, char* argv[])
   printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
   Parameters * pars = nullptr;
-  pars = new Parameters(iproc);
+  pars = new Parameters(iproc, nprocs);
   pars->get_nml_vars(run_name);
   
   Grids * grids = nullptr;

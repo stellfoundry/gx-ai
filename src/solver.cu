@@ -1,4 +1,5 @@
 #include "solver.h"
+//#include "nccl.h"
 #define GQN <<< dG, dB >>>
 
 //=======================================
@@ -53,8 +54,9 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // compute qneutDenom = sum_s z_s^2*n_s/tau_s*(1- sum_l J_l^2)
   // and ampereDenom = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
   for(int is=0; is<grids_->Nspecies; is++) {
-    sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is]);
-    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, geo_->bmag, pars_->species_h[is], is==0);
+    int is_glob = is + grids_->is_lo;
+    sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is_glob]);
+    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, geo_->bmag, pars_->species_h[is_glob], is_glob==0);
   }
 
   // set up phiavgdenom, which is stored for quasineutrality calculation as appropriate
@@ -98,8 +100,14 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     if(em) zero(jbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
-      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
-      if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      if(grids_->m_lo == 0) { // only compute density and current on procs with m=0
+        real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+        if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      }
+    }
+
+    if(grids_->nprocs>1) {
+      //ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum);
     }
     
     qneut GQN (fields->phi, nbar, qneutDenom);
@@ -110,7 +118,13 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     zero(nbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
-      real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      if(grids_->m_lo == 0) { // only compute density on procs with m=0
+        real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      }
+    }
+
+    if(grids_->nprocs>1) { 
+      //ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum);
     }
 
     // In these routines there is inefficiency because multiple threads

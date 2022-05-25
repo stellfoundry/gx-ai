@@ -22,22 +22,22 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is) :
   // set up pointers for named moments that point to parts of G_lm
   int l,m;
   l = 0, m = 0; // density
-  if(l<Nl && m<Nm) dens_ptr = G(l,m);
-  
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) dens_ptr = G(l,m);
+
   l = 0, m = 1; // u_parallel
-  if(l<Nl && m<Nm) upar_ptr = G(l,m);
-  
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) upar_ptr = G(l,m);
+
   l = 0, m = 2; // T_parallel / sqrt(2)
-  if(l<Nl && m<Nm) tpar_ptr = G(l,m);
-  
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tpar_ptr = G(l,m);
+
   l = 0, m = 3; // q_parallel / sqrt(6)
-  if(l<Nl && m<Nm) qpar_ptr = G(l,m);
-  
-  l = 1, m = 0; // T_perp 
-  if(l<Nl && m<Nm) tprp_ptr = G(l,m);
-  
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qpar_ptr = G(l,m);
+
+  l = 1, m = 0; // T_perp
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tprp_ptr = G(l,m);
+
   l = 1, m = 1; // q_perp
-  if(l<Nl && m<Nm) qprp_ptr = G(l,m);
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qprp_ptr = G(l,m);
 
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   

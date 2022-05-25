@@ -5,8 +5,6 @@ Grids::Grids(Parameters* pars) :
   Nx       ( pars->nx_in       ),
   Ny       ( pars->ny_in       ),
   Nz       ( pars->nz_in       ),
-  Nspecies ( pars->nspec_in    ),
-  Nm       ( pars->nm_in       ),
   Nl       ( pars->nl_in       ),
   Nj       ( 3*pars->nl_in/2-1 ),
 
@@ -19,9 +17,9 @@ Grids::Grids(Parameters* pars) :
   NxNyNz   ( Nx * Ny * Nz      ),
   NxNz     ( Nx * Nz           ),
   NycNz    ( Nyc * Nz          ),
-  Nmoms    ( Nm * Nl           ),
-  size_G( sizeof(cuComplex) * NxNycNz * Nmoms), 
   Zp(pars->Zp),
+  iproc(pars->iproc),
+  nprocs(pars->nprocs),
   pars_(pars)
 {
   ky              = nullptr;  kx              = nullptr;  kz              = nullptr;
@@ -30,6 +28,57 @@ Grids::Grids(Parameters* pars) :
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
   y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
+
+  Nspecies = pars->nspec_in;
+  Nm = pars->nm_in;
+  is_lo = 0;
+  is_up = Nspecies;
+  m_lo = 0;
+  m_up = Nm;
+  m_ghost = 0;
+
+  // compute parallel decomposition
+  if(nprocs>1) {
+    // prioritize species decomp
+    if(nprocs<=Nspecies) {
+      assert((Nspecies%nprocs == 0) && "nprocs <= nspecies, so nspecies must be an integer multiple of nprocs\n");
+      // this is now the local Nspecies on this proc
+      Nspecies = Nspecies/nprocs;
+      is_lo = iproc*Nspecies;
+      is_up = (iproc+1)*Nspecies;
+
+      m_lo = 0;
+      m_up = Nm;
+    } else { // decomp in species and hermite
+      assert((nprocs%Nspecies == 0) && "nprocs > nspecies, so nprocs must be an integer multiple of nspecies\n");
+      int nprocs_m = nprocs/Nspecies;
+      int iproc_s = iproc/nprocs_m;
+      int iproc_m = iproc%nprocs_m;
+
+      // this is now the local Nspecies on this proc
+      Nspecies = 1;
+      is_lo = iproc_s*Nspecies;
+      is_up = (iproc_s+1)*Nspecies;
+
+      assert((Nm%nprocs_m == 0) && "Nm must be an integer multiple of nprocs_m=nprocs/nspecies\n");
+      // this is now the local Nm on this proc
+      Nm = Nm/nprocs_m;
+
+      m_lo = iproc_m*Nm;
+      m_up = (iproc_m+1)*Nm;
+
+      // add ghosts in m
+      if(pars->slab) {
+        m_ghost = 1;
+      } else {
+        m_ghost = 2;
+      }
+      Nm = Nm + 2*m_ghost; // add ghosts on either side
+    }
+  }
+
+  Nmoms = Nm * Nl;
+  size_G = sizeof(cuComplex) * NxNycNz * Nmoms;
   
   // kz is defined without the factor of gradpar
   
@@ -57,7 +106,7 @@ Grids::Grids(Parameters* pars) :
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
   
-  setdev_constants(Nx, Ny, Nyc, Nz, Nspecies, Nm, Nl, Nj, pars_->Zp, pars_->ikx_fixed, pars_->iky_fixed);
+  setdev_constants(Nx, Ny, Nyc, Nz, Nspecies, Nm, Nl, Nj, pars_->Zp, pars_->ikx_fixed, pars_->iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost);
 
   checkCuda(cudaDeviceSynchronize());
 

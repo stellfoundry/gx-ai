@@ -38,6 +38,10 @@ class Grids {
   float * theta0_h ;
   float * th0; 
   float Zp;
+  int iproc, nprocs;
+  int is_lo, is_up;
+  int m_lo, m_up;
+  int m_ghost;
 
   /* Flow shear arrays*/
   //  float * kx_shift ;

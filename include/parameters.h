@@ -65,7 +65,7 @@ enum ASpectra {ASPECTRA_species,
 class Parameters {
 
  public:
-  Parameters(int iproc=0);
+  Parameters(int iproc=0, int nprocs=1);
   ~Parameters(void);
   
   const int nw_spectra = 10; // should match # of elements in WSpectra
@@ -81,7 +81,7 @@ class Parameters {
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
-  int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
+  int nz_in, nperiod, Zp, bishop, scan_number, iproc, nprocs, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
   int nm_add, nl_add, ns_add;

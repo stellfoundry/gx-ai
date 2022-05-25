@@ -5,10 +5,11 @@
 #include "version.h"
 using namespace std;
 
-Parameters::Parameters(int iproc_in) {
+Parameters::Parameters(int iproc_in, int nprocs_in) {
   initialized = false;
 
   iproc = iproc_in;
+  nprocs = nprocs_in;
 
   // some cuda parameters (not from input file)
   int dev; 
