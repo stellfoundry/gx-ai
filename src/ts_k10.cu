@@ -19,8 +19,9 @@ Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   G_q1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G_q2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    G_q1[is] = new MomentsG (pars_, grids_, is);
-    G_q2[is] = new MomentsG (pars_, grids_, is);
+    int is_glob = is+grids->is_lo;
+    G_q1[is] = new MomentsG (pars_, grids_, is_glob);
+    G_q2[is] = new MomentsG (pars_, grids_, is_glob);
   }
 
   if (pars_->local_limit)                     { grad_par = new GradParallelLocal(grids_);

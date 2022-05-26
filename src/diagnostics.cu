@@ -236,14 +236,15 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
-    if ( id -> qs -> write_v_time) printf("%s: Step %d: Time = %f \t", pars_->run_name, counter, time);          // To screen
-    if (!id -> qs -> write_v_time) printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
+    if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f \t", pars_->run_name, counter, time);          // To screen
+    if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
   
     if ( id -> qs -> write_v_time) {                                                                // heat flux
       
       for(int is=0; is<grids_->Nspecies; is++) {
-	float rho2s = pars_->species_h[is].rho2;
-	float p_s = pars_->species_h[is].nt;
+        int is_glob = is + grids_->is_lo;
+	float rho2s = pars_->species_h[is_glob].rho2;
+	float p_s = pars_->species_h[is_glob].nt;
 	heat_flux_summand loop_R (P2(is), fields->phi, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s);
       }
@@ -253,8 +254,9 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     if ( id -> ps -> write_v_time) {
 
       for(int is=0; is<grids_->Nspecies; is++) {
-	float rho2s = pars_->species_h[is].rho2;
-        float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
+        int is_glob = is + grids_->is_lo;
+	float rho2s = pars_->species_h[is_glob].rho2;
+        float n_s = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
 	part_flux_summand loop_R (P2(is), fields->phi, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
       }
@@ -264,15 +266,16 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     
     if (pars_->diagnosing_kzspec) {
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
+        int is_glob = is + grids_->is_lo;
         grad_par->zft(G[is]); // get G = G(kz)
         W_summand GALL (G2(is), G[is]->G(), kvol_fac, G[is]->species->nt);
         grad_par->zft_inverse(G[is]); // restore G
 
         grad_par->zft(fields->phi, amom_d); // get amom_d = phi(kz)
       
-	float rho2s = pars_->species_h[is].rho2;
+	float rho2s = pars_->species_h[is_glob].rho2;
 	Wphi_summand loop_R (P2(is), amom_d, kvol_fac, geo_->kperp2, rho2s);
-	float qfac =  pars_->species_h[is].qneut;
+	float qfac =  pars_->species_h[is_glob].qneut;
 	Wphi_scale loop_R   (P2(is), qfac);
       }
 
@@ -299,9 +302,10 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       
       if (pars_->gx) {
 	for (int is=0; is < grids_->Nspecies; is++) {       // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
-	  float rho2s = pars_->species_h[is].rho2;
+          int is_glob = is + grids_->is_lo;
+	  float rho2s = pars_->species_h[is_glob].rho2;
 	  Wphi_summand loop_R (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
-	  float qnfac = pars_->species_h[is].qneut;
+	  float qnfac = pars_->species_h[is_glob].qneut;
 	  Wphi_scale loop_R   (P2(is), qnfac);
 	}
 
@@ -450,7 +454,7 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
 void Diagnostics_GK::print_omg(cuComplex *W)
 {
   CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
-  print_growth_rates_to_screen(tmp_omg_h);
+  if(grids_->iproc==0) print_growth_rates_to_screen(tmp_omg_h);
 }
 
   // For each kx, z, l and m, sum the moments of G**2 + Phi**2 (1-Gamma_0) with weights:

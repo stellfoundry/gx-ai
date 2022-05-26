@@ -4,30 +4,29 @@
 # add the following to your .bash_profile (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=traverse
-# module load cudatoolkit/11.0
-# module load openmpi/cuda-11.0/gcc/4.0.4/64
+# module load nvhpc/22.5
 # module load netcdf/gcc/hdf5-1.10.6/openmpi-4.0.4/4.7.3
 # module load hdf5/gcc/openmpi-4.0.4/1.10.6
 # module load gsl/1.15
+# module load anaconda3/2021.5
+# module load fftw/gcc/openmpi-4.0.4/3.3.8
 #
 
 # paths to netcdf added as part of module load
-NETCDF_INC = 
-NETCDF_LIB = -lnetcdf -lnetcdff -lhdf5 
+NETCDF_INC = -I ${NETCDFDIR}/include
+NETCDF_LIB = -L ${NETCDFDIR}/lib64 -lnetcdf -lnetcdff -lhdf5 
 
 # paths to openmpi
-OMPI_DIR = /usr/local/openmpi/cuda-11.0/4.0.4/gcc/ppc64le
+OMPI_DIR = ${NVHPC_ROOT}/comm_libs/openmpi4/openmpi-4.0.5/
 MPI_INC = -I ${OMPI_DIR}/include
-MPI_LIB = -L ${OMPI_DIR}/lib64 -lmpi 
-
-# paths to cutensor (already in path)
-CUTENSOR_INC = 
-CUTENSOR_LIB = -lcutensor -lcudart
+MPI_LIB = -L ${OMPI_DIR}/lib -lmpi -lopen-rte -lopen-pal
 
 # paths to cuda added as part of module load
-CUDA_INC = ${CUTENSOR_INC}
-CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
+CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
 
+# paths to gsl added as part of module load
+GSL_INC = -I /usr/include 
 GSL_LIB = -lgsl -lgslcblas -lm
 
 CUDAARCH=70

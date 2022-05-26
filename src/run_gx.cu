@@ -18,7 +18,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   
   // set up moments and fields objects
   for(int is=0; is<grids->Nspecies; is++) {
-    G[is] = new MomentsG (pars, grids, is+grids->is_lo);
+    int is_glob = is+grids->is_lo;
+    G[is] = new MomentsG (pars, grids, is_glob);
   }
   fields = new Fields(pars, grids);               
   
@@ -41,7 +42,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 
     // set up initial conditions
     for(int is=0; is<grids->Nspecies; is++) {
-      if(pars->init_electrons_only && pars->species_h[is+grids->is_lo].type!=1) continue;
+      int is_glob = is+grids->is_lo;
+      G[is] -> set_zero();
+      if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
     }
     solver -> fieldSolve(G, fields);                

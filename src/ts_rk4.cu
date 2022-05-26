@@ -13,10 +13,11 @@ RungeKutta4::RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   G_q1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G_q2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    GStar[is] = new MomentsG (pars_, grids_, is);
-    GRhs[is] = new MomentsG (pars_, grids_, is);
-    G_q1[is] = new MomentsG (pars_, grids_, is);
-    G_q2[is] = new MomentsG (pars_, grids_, is);
+    int is_glob = is+grids->is_lo;
+    GStar[is] = new MomentsG (pars_, grids_, is_glob);
+    GRhs[is] = new MomentsG (pars_, grids_, is_glob);
+    G_q1[is] = new MomentsG (pars_, grids_, is_glob);
+    G_q2[is] = new MomentsG (pars_, grids_, is_glob);
   }
 }
 

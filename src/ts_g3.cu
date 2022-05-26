@@ -11,8 +11,9 @@ G3::G3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   G_u1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G_u2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    G_u1[is] = new MomentsG (pars_, grids_, is);
-    G_u2[is] = new MomentsG (pars_, grids_, is);
+    int is_glob = is+grids->is_lo;
+    G_u1[is] = new MomentsG (pars_, grids_, is_glob);
+    G_u2[is] = new MomentsG (pars_, grids_, is_glob);
   }
 }
 

@@ -4,8 +4,8 @@
 #include "moments.h"
 #define GALL <<< dG_all, dB_all >>>
 
-MomentsG::MomentsG(Parameters* pars, Grids* grids, int is) : 
-  grids_(grids), pars_(pars), species(is>=0? &(pars->species_h[is]) : nullptr)
+MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) : 
+  grids_(grids), pars_(pars), species(is_glob>=0? &(pars->species_h[is_glob]) : nullptr)
 {
   G_lm       = nullptr;  dens_ptr   = nullptr;  upar_ptr   = nullptr;  tpar_ptr   = nullptr;
   tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
@@ -15,6 +15,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is) :
   checkCuda(cudaMemset(G_lm, 0., lhsize));
   
   printf("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
+  //printf("GPU %d: species type = %d\n", grids->iproc, (*species).type);
 
   int Nm = grids_->Nm;
   int Nl = grids_->Nl;

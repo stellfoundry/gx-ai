@@ -1,5 +1,4 @@
 #include "solver.h"
-//#include "nccl.h"
 #define GQN <<< dG, dB >>>
 
 //=======================================
@@ -53,8 +52,7 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   
   // compute qneutDenom = sum_s z_s^2*n_s/tau_s*(1- sum_l J_l^2)
   // and ampereDenom = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
-  for(int is=0; is<grids_->Nspecies; is++) {
-    int is_glob = is + grids_->is_lo;
+  for(int is_glob=0; is_glob<pars_->nspec_in; is_glob++) {
     sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is_glob]);
     if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, geo_->bmag, pars_->species_h[is_glob], is_glob==0);
   }
@@ -71,6 +69,10 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom, geo_->jacobian, qneutDenom, pars_->tau_fac);
   }
     
+  //cudaStreamCreate(&ncclStream);
+  if(grids_->iproc == 0) ncclGetUniqueId(&ncclId);
+  MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
+  ncclCommInitRank(&ncclComm, grids_->nprocs, ncclId, grids_->iproc);
 }
 
 Solver_GK::~Solver_GK() 
@@ -81,10 +83,13 @@ Solver_GK::~Solver_GK()
   if (qneutDenom)  cudaFree(qneutDenom);
   if (ampereDenom) cudaFree(ampereDenom);
   if (phiavgdenom) cudaFree(phiavgdenom);
+
+  ncclCommDestroy(ncclComm);
 }
 
 void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
 {
+
   if (pars_->ks) return;
   if (pars_->vp) {
     getPhi GQN (fields->phi, G[0]->G(), grids_->ky);
@@ -107,7 +112,29 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     }
 
     if(grids_->nprocs>1) {
-      //ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum);
+      //MPI_Status status;
+      //if(grids_->iproc>0) {
+      //  // send data from procs>0 to proc 0   
+      //  MPI_Send((void*) nbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, 10+grids_->iproc, MPI_COMM_WORLD);
+      //  if(em) MPI_Send((void*) jbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, 1000+grids_->iproc, MPI_COMM_WORLD);
+      //} else {  
+      //  // receive data from each proc>0 on proc 0, and accumulate
+      //  for(int proc=1; proc<grids_->nprocs; proc++) {
+      //    MPI_Recv((void*) nbuf, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, proc, 10+proc, MPI_COMM_WORLD, &status);
+      //    add_scaled_singlemom_kernel GQN (nbar, 1.0, nbar, 1.0, nbuf);
+
+      //    if(em) {
+      //      MPI_Recv((void*) jbuf, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, proc, 1000+proc, MPI_COMM_WORLD, &status);
+      //      add_scaled_singlemom_kernel GQN (jbar, 1.0, jbar, 1.0, jbuf);
+      //    }
+      //  }
+      //}
+      //MPI_Bcast((void*) nbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
+      //if(em) MPI_Bcast((void*) jbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
+
+      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      if(em) ncclAllReduce((void*) jbar, (void*) jbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      cudaStreamSynchronize(0);
     }
     
     qneut GQN (fields->phi, nbar, qneutDenom);
@@ -124,7 +151,8 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     }
 
     if(grids_->nprocs>1) { 
-      //ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum);
+      ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      cudaStreamSynchronize(0);
     }
 
     // In these routines there is inefficiency because multiple threads

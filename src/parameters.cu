@@ -5,11 +5,12 @@
 #include "version.h"
 using namespace std;
 
-Parameters::Parameters(int iproc_in, int nprocs_in) {
+Parameters::Parameters(int iproc_in, int nprocs_in, MPI_Comm mpcom_in) {
   initialized = false;
 
   iproc = iproc_in;
   nprocs = nprocs_in;
+  mpcom = mpcom_in;
 
   // some cuda parameters (not from input file)
   int dev; 
@@ -577,7 +578,7 @@ void Parameters::get_nml_vars(char* filename)
   diagnosing_moments = false;
   if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
-  species_h = (specie *) calloc(nspec_in, sizeof(specie));
+  species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
     for (int is=0; is < nspec_in; is++) {
       species_h[is].uprim = 0.;

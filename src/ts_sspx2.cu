@@ -11,8 +11,9 @@ SSPx2::SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   G1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    G1[is] = new MomentsG (pars_, grids_, is);
-    G2[is] = new MomentsG (pars_, grids_, is);
+    int is_glob = is+grids->is_lo;
+    G1[is] = new MomentsG (pars_, grids_, is_glob);
+    G2[is] = new MomentsG (pars_, grids_, is_glob);
   }
 }
 

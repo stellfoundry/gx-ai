@@ -11,7 +11,8 @@ RungeKutta2::RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   GRhs  = new MomentsG (pars, grids);
   G1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    G1[is] = new MomentsG (pars, grids, is);
+    int is_glob = is+grids->is_lo;
+    G1[is] = new MomentsG (pars, grids, is_glob);
   }
 }
 

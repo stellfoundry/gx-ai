@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
   MPI_Comm_size(mpcom, &nprocs);
   
   int devid = 0; // This should be determined (optionally) on the command line
-  checkCuda(cudaSetDevice(iproc));
+  checkCuda(cudaSetDevice(devid));
   cudaDeviceSynchronize();
 
   /*  
@@ -153,7 +153,7 @@ int main(int argc, char* argv[])
   printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
   Parameters * pars = nullptr;
-  pars = new Parameters(iproc, nprocs);
+  pars = new Parameters(iproc, nprocs, mpcom);
   pars->get_nml_vars(run_name);
   
   Grids * grids = nullptr;
@@ -162,8 +162,8 @@ int main(int argc, char* argv[])
   grids = new Grids(pars);
   CUDA_DEBUG("Initializing grids: %s \n");
 
-  DEBUGPRINT("Grid dimensions: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
-	     grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
+  DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
+	     grids->iproc, grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
   Geometry    * geo         = nullptr;
   Diagnostics * diagnostics = nullptr;

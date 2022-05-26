@@ -26,9 +26,10 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   G2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G3 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
-    G1[is] = new MomentsG (pars_, grids_, is);
-    G2[is] = new MomentsG (pars_, grids_, is);
-    G3[is] = new MomentsG (pars_, grids_, is);
+    int is_glob = is+grids->is_lo;
+    G1[is] = new MomentsG (pars_, grids_, is_glob);
+    G2[is] = new MomentsG (pars_, grids_, is_glob);
+    G3[is] = new MomentsG (pars_, grids_, is_glob);
   }
 
   if (pars_->local_limit) {

@@ -1,4 +1,5 @@
 #include "netcdf.h"
+#include "netcdf_par.h"
 #include "ncdf.h"
 #define GFLA    <<< dgfla, dbfla >>> 
 #define loop_R  <<< dGr,  dBr  >>>
@@ -42,7 +43,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   // create netcdf file
   int retval, idum;
-  if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &file)) ERR(retval);
+  if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &file)) ERR(retval);
 
   // write input parameters to netcdf
   pars->store_ncdf(file);
@@ -257,7 +258,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     den -> file = nc_special;
     if (retval = nc_def_var(nc_special, "density",  NC_FLOAT, 5, den->dims, &den->idx )) ERR(retval);
     
-    den -> start[0] = 0;
+    den -> start[0] = grids_->is_lo;
     den -> start[1] = 0;
     den -> start[2] = 0;
     den -> start[3] = 0; 
@@ -295,7 +296,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     den0 -> file = nc_special;
     if (retval = nc_def_var(nc_special, "density0",  NC_FLOAT, 5, den0 -> dims, &den0 -> idx )) ERR(retval);
     
-    den0 -> start[0] = 0;
+    den0 -> start[0] = grids_->is_lo;
     den0 -> start[1] = 0;
     den0 -> start[2] = 0;
     den0 -> start[3] = 0; 
@@ -397,7 +398,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     denk -> file = nc_special;
     if (retval = nc_def_var(nc_special, "density_kpar", NC_FLOAT, 5, denk -> dims, &denk -> idx)) ERR(retval);    
 
-    denk -> start[0] = 0;
+    denk -> start[0] = grids_->is_lo;
     denk -> start[1] = 0;
     denk -> start[2] = 0;
     denk -> start[3] = 0; 
@@ -546,6 +547,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pst", NC_FLOAT, 2, Ps -> time_dims, &Ps -> time))  ERR(retval);
     
     Ps -> time_count[1] = grids_->Nspecies;
+    Ps -> time_start[1] = grids_->is_lo;
   } else {
     Ps = new nca(0);
   }
@@ -568,6 +570,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pkxst", NC_FLOAT, 3, Pkx -> time_dims, &Pkx -> time))  ERR(retval);
 
     Pkx -> time_count[1] = grids_->Nspecies;
+    Pkx -> time_start[1] = grids_->is_lo;
     Pkx -> time_count[2] = grids_->Nakx;      
   } else {
     Pkx = new nca(0);
@@ -591,6 +594,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pkyst", NC_FLOAT, 3, Pky->time_dims, &Pky->time))  ERR(retval);
 
     Pky -> time_count[1] = grids_->Nspecies;
+    Pky -> time_start[1] = grids_->is_lo;
     Pky -> time_count[2] = grids_->Naky;
     
   } else {
@@ -615,6 +619,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pkzst", NC_FLOAT, 3, Pkz -> time_dims, &Pkz -> time))  ERR(retval);
 
     Pkz -> time_count[1] = grids_->Nspecies;
+    Pkz -> time_start[1] = grids_->is_lo;
     Pkz -> time_count[2] = grids_->Nz;
   } else {
     Pkz = new nca(0); 
@@ -638,6 +643,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pzst", NC_FLOAT, 3, Pz -> time_dims, &Pz -> time))  ERR(retval);
     
     Pz -> time_count[1] = grids_->Nspecies;
+    Pz -> time_start[1] = grids_->is_lo;
     Pz -> time_count[2] = grids_->Nz;
   } else {
     Pz = new nca(0); 
@@ -689,6 +695,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Pkxkyst", NC_FLOAT, 4, Pkxky -> time_dims, &Pkxky -> time))  ERR(retval);
     
     Pkxky -> time_count[1] = grids_->Nspecies;
+    Pkxky -> time_start[1] = grids_->is_lo;
     Pkxky -> time_count[2] = grids_->Naky;
     Pkxky -> time_count[3] = grids_->Nakx;
   } else {
@@ -712,6 +719,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wst", NC_FLOAT, 2, Ws -> time_dims, &Ws -> time))  ERR(retval);
     
     Ws -> time_count[1] = grids_->Nspecies;
+    Ws -> time_start[1] = grids_->is_lo;
   } else {
     Ws = new nca(0); 
   }
@@ -734,6 +742,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wkxst", NC_FLOAT, 3, Wkx -> time_dims, &Wkx -> time))  ERR(retval);
     
     Wkx -> time_count[1] = grids_->Nspecies;
+    Wkx -> time_start[1] = grids_->is_lo;
     Wkx -> time_count[2] = grids_->Nakx;      
   } else {
     Wkx = new nca(0);
@@ -757,6 +766,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wkyst", NC_FLOAT, 3, Wky -> time_dims, &Wky -> time))  ERR(retval);
     
     Wky -> time_count[1] = grids_->Nspecies;
+    Wky -> time_start[1] = grids_->is_lo;
     Wky -> time_count[2] = grids_->Naky;      
   } else {
     Wky = new nca(0); 
@@ -780,6 +790,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wkzst", NC_FLOAT, 3, Wkz -> time_dims, &Wkz -> time))  ERR(retval);
     
     Wkz -> time_count[1] = grids_->Nspecies;
+    Wkz -> time_start[1] = grids_->is_lo;
     Wkz -> time_count[2] = grids_->Nz;
   } else {
     Wkz = new nca(0); 
@@ -803,6 +814,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wzst", NC_FLOAT, 3, Wz -> time_dims, &Wz -> time))  ERR(retval);
     
     Wz -> time_count[1] = grids_->Nspecies;
+    Wz -> time_start[1] = grids_->is_lo;
     Wz -> time_count[2] = grids_->Nz;
   } else {
     Wz = new nca(0); 
@@ -827,6 +839,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wkxkyst", NC_FLOAT, 4, Wkxky -> time_dims, &Wkxky -> time))  ERR(retval);
     
     Wkxky -> time_count[1] = grids_->Nspecies;
+    Wkxky -> time_start[1] = grids_->is_lo;
     Wkxky -> time_count[2] = grids_->Naky;      
     Wkxky -> time_count[3] = grids_->Nakx;
   } else {
@@ -978,6 +991,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wlmst", NC_FLOAT, 4, Wlm -> time_dims, &Wlm -> time))  ERR(retval);
     
     Wlm -> time_count[1] = grids_->Nspecies;
+    Wlm -> time_start[1] = grids_->is_lo;
     Wlm -> time_count[2] = grids_->Nm;
     Wlm -> time_count[3] = grids_->Nl;      
   } else {
@@ -1002,6 +1016,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wlst", NC_FLOAT, 3, Wl -> time_dims, &Wl -> time))  ERR(retval);
     
     Wl -> time_count[1] = grids_->Nspecies;
+    Wl -> time_start[1] = grids_->is_lo;
     Wl -> time_count[2] = grids_->Nl;
   } else {
     Wl = new nca(0); 
@@ -1025,6 +1040,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Wmst", NC_FLOAT, 3, Wm -> time_dims, &Wm -> time))  ERR(retval);
     
     Wm -> time_count[1] = grids_->Nspecies;    
+    Wm -> time_start[1] = grids_->is_lo;
     Wm -> time_count[2] = grids_->Nm;          
   } else {
     Wm = new nca(0); 
@@ -1596,6 +1612,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_flux, "qflux", NC_FLOAT, 2, qs -> time_dims, &qs -> time)) ERR(retval);
 
     qs -> time_count[1] = grids_->Nspecies;
+    qs -> time_start[1] = grids_->is_lo;
 
     all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   } else {
@@ -1619,6 +1636,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_flux, "pflux", NC_FLOAT, 2, ps -> time_dims, &ps -> time)) ERR(retval);
 
     ps -> time_count[1] = grids_->Nspecies;
+    ps -> time_start[1] = grids_->is_lo;
 
     all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   } else {
@@ -1626,7 +1644,6 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   }
 
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
-  
   if (retval = nc_enddef(file)) ERR(retval);
   
   if (pars_->write_xymom) {
@@ -1815,7 +1832,10 @@ void NetCDF_ids::write_nc(nca *D, bool endrun) {
   int retval;
 
   if (D->write && endrun) {if (retval=nc_put_vara(D->file, D->idx,  D->start,      D->count,      D->cpu)) ERR(retval);} 
-  if (D->write_v_time)    {if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, D->cpu)) ERR(retval);}
+  if (D->write_v_time)    {
+    if (retval = nc_var_par_access(D->file, D->time, NC_COLLECTIVE)) ERR(retval);
+    if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, D->cpu)) ERR(retval);
+  }
   D->increment_ts(); 
 }
 
@@ -1823,7 +1843,10 @@ void NetCDF_ids::write_nc(nca *D, double data, bool endrun) {
   int retval;
 
   if (D->write && endrun) {if (retval=nc_put_vara(D->file, D->idx,  D->start,      D->count,      &data)) ERR(retval);} 
-  if (D->write_v_time)    {if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, &data)) ERR(retval);}
+  if (D->write_v_time)    {
+    if (retval = nc_var_par_access(D->file, D->time, NC_COLLECTIVE)) ERR(retval);
+    if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, &data)) ERR(retval);
+  }
   D->increment_ts(); 
 }
 
@@ -1831,7 +1854,10 @@ void NetCDF_ids::write_nc(nca *D, float data, bool endrun) {
   int retval;
 
   if (D->write && endrun) {if (retval=nc_put_vara(D->file, D->idx,  D->start,      D->count,      &data)) ERR(retval);} 
-  if (D->write_v_time)    {if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, &data)) ERR(retval);}
+  if (D->write_v_time)    {
+    if (retval = nc_var_par_access(D->file, D->time, NC_COLLECTIVE)) ERR(retval);
+    if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, &data)) ERR(retval);
+  }
   D->increment_ts(); 
 }
 
