@@ -5,6 +5,7 @@
 #
 # export GK_SYSTEM=traverse
 # module load nvhpc/22.5
+# module load openmpi/cuda-11.0/gcc/4.0.4/64
 # module load netcdf/gcc/hdf5-1.10.6/openmpi-4.0.4/4.7.3
 # module load hdf5/gcc/openmpi-4.0.4/1.10.6
 # module load gsl/1.15
@@ -17,9 +18,9 @@ NETCDF_INC = -I ${NETCDFDIR}/include
 NETCDF_LIB = -L ${NETCDFDIR}/lib64 -lnetcdf -lnetcdff -lhdf5 
 
 # paths to openmpi
-OMPI_DIR = ${NVHPC_ROOT}/comm_libs/openmpi4/openmpi-4.0.5/
+OMPI_DIR = /usr/local/openmpi/cuda-11.0/4.0.4/gcc/ppc64le
 MPI_INC = -I ${OMPI_DIR}/include
-MPI_LIB = -L ${OMPI_DIR}/lib -lmpi -lopen-rte -lopen-pal
+MPI_LIB = -L ${OMPI_DIR}/lib64 -lmpi
 
 # paths to cuda added as part of module load
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
