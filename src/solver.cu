@@ -151,7 +151,7 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     }
 
     if(grids_->nprocs>1) { 
-      ncclAllReduce(nbar, nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
       cudaStreamSynchronize(0);
     }
 

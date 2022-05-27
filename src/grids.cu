@@ -53,9 +53,10 @@ Grids::Grids(Parameters* pars) :
       //printf("GPU %d: is_lo = %d, is_up = %d, m_lo = %d, m_up = %d\n", iproc, is_lo, is_up, m_lo, m_up);
     } else { // decomp in species and hermite
       assert((nprocs%Nspecies == 0) && "nprocs > nspecies, so nprocs must be an integer multiple of nspecies\n");
-      int nprocs_m = nprocs/Nspecies;
-      int iproc_s = iproc/nprocs_m;
-      int iproc_m = iproc%nprocs_m;
+      nprocs_s = Nspecies;
+      nprocs_m = nprocs/Nspecies;
+      iproc_s = iproc/nprocs_m;
+      iproc_m = iproc%nprocs_m;
 
       // this is now the local Nspecies on this proc
       Nspecies = 1;

@@ -146,7 +146,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
   set_callbacks();
   
-  hermite = new HermiteTransform(grids_);
+  //hermite = new HermiteTransform(grids_);
   //  this->linkPrint();
 }
 

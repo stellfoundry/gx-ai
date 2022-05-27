@@ -47,7 +47,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
     }
+    if(grids->iproc==0) G[0] -> qvar(grids->NxNycNz*grids->Nl*grids->Nm);
     solver -> fieldSolve(G, fields);                
+    //if(grids->iproc==0) fields->print_phi();
   }
 
   if (pars->krehm) {

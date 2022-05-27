@@ -98,7 +98,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = min(grids_->Nm - grids_->m_ghost, 4 );   nb3 = 1 + (nn3-1)/nt3;
+  nn3 = 1;                       nt3 = min(grids_->Nm - 2*grids_->m_ghost, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);
   dimGrid  = dim3(nb1, nb2, nb3);

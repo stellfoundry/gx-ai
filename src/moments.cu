@@ -21,24 +21,30 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   int Nl = grids_->Nl;
 
   // set up pointers for named moments that point to parts of G_lm
-  int l,m;
+  int l,m,m_local;
   l = 0, m = 0; // density
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) dens_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) dens_ptr = G(l,m_local);
 
   l = 0, m = 1; // u_parallel
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) upar_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) upar_ptr = G(l,m_local);
 
   l = 0, m = 2; // T_parallel / sqrt(2)
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tpar_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tpar_ptr = G(l,m_local);
 
   l = 0, m = 3; // q_parallel / sqrt(6)
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qpar_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qpar_ptr = G(l,m_local);
 
   l = 1, m = 0; // T_perp
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tprp_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tprp_ptr = G(l,m_local);
 
   l = 1, m = 1; // q_perp
-  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qprp_ptr = G(l,m);
+  m_local = m - grids_->m_lo + grids_->m_ghost;
+  if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qprp_ptr = G(l,m_local);
 
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   
@@ -260,12 +266,12 @@ void MomentsG::initialConditions(double* time) {
   // copy initial condition into device memory
   switch (pars_->initf)
     {
-    case inits::density : CP_TO_GPU(dens_ptr, init_h, momsize); break;
-    case inits::upar    : CP_TO_GPU(upar_ptr, init_h, momsize); break;
-    case inits::tpar    : CP_TO_GPU(tpar_ptr, init_h, momsize); break;
-    case inits::tperp   : CP_TO_GPU(tprp_ptr, init_h, momsize); break; 
-    case inits::qpar    : CP_TO_GPU(qpar_ptr, init_h, momsize); break;
-    case inits::qperp   : CP_TO_GPU(qprp_ptr, init_h, momsize); break;
+    case inits::density : if(dens_ptr) CP_TO_GPU(dens_ptr, init_h, momsize); break;
+    case inits::upar    : if(upar_ptr) CP_TO_GPU(upar_ptr, init_h, momsize); break;
+    case inits::tpar    : if(tpar_ptr) CP_TO_GPU(tpar_ptr, init_h, momsize); break;
+    case inits::tperp   : if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize); break; 
+    case inits::qpar    : if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize); break;
+    case inits::qperp   : if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize); break;
     }
   checkCuda(cudaGetLastError());    
   free(init_h);     
@@ -341,6 +347,31 @@ void MomentsG::reality(int ngz)
   dG.z = (ngz-1)/dB.z + 1;
 
   reality_kernel <<< dG, dB >>> (G_lm, ngz);
+}
+
+void MomentsG::sync()
+{
+  size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+  MPI_Status stat;
+
+  // send to right
+  if(grids_->procRight() < grids_->nprocs_m) {
+    MPI_Send(Gm(grids_->Nm-1-2*grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+  }
+  // receive from left
+  if(grids_->procLeft() >= 0) {
+    MPI_Recv(Gm(0),                              size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+  }
+
+  // send to left
+  if(grids_->procLeft() >= 0) {
+    MPI_Send(Gm(grids_->m_ghost),              size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+  }
+  // receive from right
+  if(grids_->procRight() < grids_->nprocs_m) {
+    MPI_Recv(Gm(grids_->Nm-1-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+  }
+  cudaDeviceSynchronize();
 }
 
 void MomentsG::restart_write(double* time)

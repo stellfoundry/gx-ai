@@ -46,6 +46,8 @@ class MomentsG {
 
  //  void dz(MomentsG* G);
   void reality(int ngz);
+
+  void sync();
   
   inline void copyFrom(MomentsG* source) {
     cudaMemcpy(this->G(), source->G(), grids_->size_G, cudaMemcpyDeviceToDevice);

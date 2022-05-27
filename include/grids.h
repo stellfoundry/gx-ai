@@ -39,9 +39,15 @@ class Grids {
   float * th0; 
   float Zp;
   int iproc, nprocs;
+  int iproc_m, nprocs_m;
+  int iproc_s, nprocs_s;
   int is_lo, is_up;
   int m_lo, m_up;
   int m_ghost;
+
+  int proc(int iproc_m_in, int iproc_s_in) { return iproc_m_in + nprocs_m*iproc_s_in; };
+  int procLeft() {return proc(iproc_m-1, iproc_s);}
+  int procRight() {return proc(iproc_m+1, iproc_s);}
 
   /* Flow shear arrays*/
   //  float * kx_shift ;
