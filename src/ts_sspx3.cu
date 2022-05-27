@@ -62,7 +62,7 @@ SSPx3::~SSPx3()
 void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bool setdt)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    G[is]->sync();
+    //G[is]->sync();
 
     linear_->rhs(G[is], f, GRhs);  if (pars_->dealias_kz) grad_par->dealias(GRhs);
 

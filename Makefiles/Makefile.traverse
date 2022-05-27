@@ -4,7 +4,7 @@
 # add the following to your .bash_profile (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=traverse
-# module load nvhpc/22.5
+# module load nvhpc-nocompiler/22.5
 # module load openmpi/cuda-11.0/gcc/4.0.4/64
 # module load netcdf/gcc/hdf5-1.10.6/openmpi-4.0.4/4.7.3
 # module load hdf5/gcc/openmpi-4.0.4/1.10.6
