@@ -46,6 +46,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> set_zero();
       if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
+      G[is] -> sync();
     }
     //if(grids->iproc==0) G[0] -> qvar(grids->NxNycNz*grids->Nl*grids->Nm);
     solver -> fieldSolve(G, fields);                

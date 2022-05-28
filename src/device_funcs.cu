@@ -2020,8 +2020,8 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float b_ = kperp2_ * rho2_;
       // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
       cuComplex H_ = G[globalIdx];
-      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
-      if(idm==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+      if(idm+m_lo-m_ghost==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm+m_lo-m_ghost==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
       GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
@@ -2046,8 +2046,8 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float kperp2_ = kperp2[idxyz];
       const float b_ = kperp2_ * sp.rho2;
       G[globalIdx].x = 0.; G[globalIdx].y = 0.;
-      if(idm==0) G[globalIdx] = -sp.zt*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
-      if(idm==1) G[globalIdx] = sp.zt*sp.vt*Jflr(idl, b_)*apar[idxyz];
+      if(idm+m_lo-m_ghost==0) G[globalIdx] = -sp.zt*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
+      if(idm+m_lo-m_ghost==1) G[globalIdx] = sp.zt*sp.vt*Jflr(idl, b_)*apar[idxyz];
     }
 
   }
@@ -2208,7 +2208,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // read tile of g into shared mem
     // each thread in the block reads in multiple values of l and m
     // blockIdx for y and z and both of size unity in the kernel invocation
-    for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
+    for (int m = threadIdx.z + m_lo-m_ghost; m < m_up+m_ghost; m += blockDim.z) {
       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
         int m_local = m - m_lo + m_ghost;
         unsigned int globalIdx = idxyz + nR*(l + nl*m_local);
@@ -2234,12 +2234,13 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
       if(m_ghost==0) sm+=2;
       if (sm < 4) {
         // set ghost to zero at low m
-        if(m_lo==0)
+        if(m_lo==0) {
           S_H(sl, sm-2) = make_cuComplex(0., 0.);
+	}
         
         // set ghost with closures at high m
-	if(m_up==nm)
-          S_H(sl, sm+nm) = make_cuComplex(0., 0.);
+	if(m_up==nm-2*m_ghost)
+          S_H(sl, sm+nm-2*m_ghost) = make_cuComplex(0., 0.);
       }
     }
     
@@ -2264,7 +2265,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // blockIdx for y and z are unity in the kernel invocation
     for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-        unsigned int globalIdx = idxyz + nR*(l + nl*m);
+        int m_local = m - m_lo + m_ghost;
+        unsigned int globalIdx = idxyz + nR*(l + nl*m_local);
         int sl = l + 1; // offset to get past ghosts
         int sm = m - m_lo + m_ghost; // offset to get past ghosts
 	if(m_ghost==0) sm+=2;

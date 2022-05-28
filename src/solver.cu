@@ -105,8 +105,10 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     if(em) zero(jbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
-      if(grids_->m_lo == 0) { // only compute density and current on procs with m=0
+      if(grids_->m_lo == 0) { // only compute density on procs with m=0
         real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+      }
+      if(grids_->m_lo <= 1 && grids_->m_up > 1) { // only compute current on procs with m=1
         if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, *G[is]->species);
       }
     }

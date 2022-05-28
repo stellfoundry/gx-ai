@@ -282,6 +282,7 @@ void MomentsG::initialConditions(double* time) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
   }
+  sync();
   cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
   DEBUG_PRINT("initial conditions set \n");  
 }

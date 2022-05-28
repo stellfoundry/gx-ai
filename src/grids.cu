@@ -36,6 +36,8 @@ Grids::Grids(Parameters* pars) :
   m_lo = 0;
   m_up = Nm;
   m_ghost = 0;
+  nprocs_s = 1;
+  nprocs_m = 1;
 
   // compute parallel decomposition
   if(nprocs>1) {
