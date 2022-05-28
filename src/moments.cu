@@ -351,7 +351,7 @@ void MomentsG::reality(int ngz)
 
 void MomentsG::sync()
 {
-  if(grids_->nprocs==1) return;
+  if(grids_->nprocs_m==1) return;
 
   size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
   MPI_Status stat;

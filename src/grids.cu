@@ -44,6 +44,8 @@ Grids::Grids(Parameters* pars) :
       assert((Nspecies%nprocs == 0) && "nprocs <= nspecies, so nspecies must be an integer multiple of nprocs\n");
       // this is now the local Nspecies on this proc
       Nspecies = Nspecies/nprocs;
+      nprocs_s = nprocs;
+      nprocs_m = 1;
       is_lo = iproc*Nspecies;
       is_up = (iproc+1)*Nspecies;
 
