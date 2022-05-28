@@ -36,7 +36,7 @@ GTEST_FLAGS += -isystem $(GTEST_DIR)/include
 
 # All tests produced by this Makefile.  Remember to add new tests you
 # created to the list.
-UNIT_TESTS = test_grids test_geometry test_moments # test_trinity_interface test_grad_parallel_periodic test_grad_parallel_linked test_moments test_laguerre_transform test_grad_perp
+UNIT_TESTS = test_main test_grids test_geometry test_moments # test_trinity_interface test_grad_parallel_periodic test_grad_parallel_linked test_moments test_laguerre_transform test_grad_perp
 REGRESSION_TESTS = #test_cyclone_linear_beer
 TESTS = $(UNIT_TESTS) $(REGRESSION_TESTS)
 

@@ -10,7 +10,16 @@ class TestMomentsG : public ::testing::Test {
 
 protected:
   virtual void SetUp() {
-    pars = new Parameters;
+    char** argv;
+    int argc = 0;
+    MPI_Comm mpcom = MPI_COMM_WORLD;
+    MPI_Comm_rank(mpcom, &iproc);
+    MPI_Comm_size(mpcom, &nprocs);
+
+    int devid = 0; // This should be determined (optionally) on the command line
+    checkCuda(cudaSetDevice(devid));
+    cudaDeviceSynchronize();
+    pars = new Parameters(iproc, nprocs, mpcom);
     pars->nx_in = 2;
     pars->ny_in = 2;
     pars->nz_in = 2;
@@ -39,6 +48,7 @@ protected:
   Grids *grids;
   MomentsG *G;
   Geometry* geo;
+  int iproc, nprocs;
 };
 
 TEST_F(TestMomentsG, InitConditions) {
@@ -107,8 +117,10 @@ TEST_F(TestMomentsG, InitConditions) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].x, init_check[index].x);
-        EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].y, init_check[index].y);
+        if(G->upar_ptr) {
+	  EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].x, init_check[index].x); 
+          EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].y, init_check[index].y);
+	}
       }
     }
   }
@@ -122,12 +134,16 @@ TEST_F(TestMomentsG, InitConditions) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&G->dens_ptr[index].x, init_check[index].x);
-        EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].x, init_check[index].x);
-        EXPECT_FLOAT_EQ_D(&G->dens_ptr[index].y, init_check[index].y);
-        EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].y, init_check[index].y);
-        EXPECT_FLOAT_EQ_D(&G->tpar_ptr[index].x, 0.);
-        EXPECT_FLOAT_EQ_D(&G->G(0,3)[index].x, 0.);
+        if(G->dens_ptr) {
+          EXPECT_FLOAT_EQ_D(&G->dens_ptr[index].x, init_check[index].x);
+          EXPECT_FLOAT_EQ_D(&G->dens_ptr[index].y, init_check[index].y);
+	}
+        if(G->upar_ptr) {
+          EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].x, init_check[index].x);
+          EXPECT_FLOAT_EQ_D(&G->upar_ptr[index].y, init_check[index].y);
+	}
+        //EXPECT_FLOAT_EQ_D(&G->tpar_ptr[index].x, 0.);
+        //EXPECT_FLOAT_EQ_D(&G->G(0,3)[index].x, 0.);
       }
     }
   }
@@ -137,20 +153,57 @@ TEST_F(TestMomentsG, InitConditions) {
 
 TEST_F(TestMomentsG, SyncG)
 {
-  cuComplex* init = (cuComplex*) malloc(sizeof(cuComplex)*grids->NxNycNz*grids->Nmoms);
+  size_t size = sizeof(cuComplex)*grids->NxNycNz*grids->Nmoms;
+  cuComplex* init = (cuComplex*) malloc(size);
+  cuComplex* res = (cuComplex*) malloc(size);
+  float* check = (float*) malloc(size);
   for(int i=0; i<grids->NxNycNz; i++) {
     for(int l=0; l<grids->Nl; l++) {
       for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
         int m = m_loc + grids->m_lo - grids->m_ghost;
-        int index = i + grids->NxNycNz*l + grids->Nl*m;
+        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
         int fac = 1;
         if(m_loc < grids->m_ghost || m_loc >= grids->Nm-grids->m_ghost) fac = -1;
         init[index].x = fac*index;
         init[index].y = fac*m;
-        printf("GPU %d: f(%d, %d, %d) = (%d, %d)\n", grids->iproc, i, l, m, init[index].x, init[index].y);
+	check[index] = m;
+        //printf("GPU %d: f(%d, %d, %d) = (%d, %d)\n", grids->iproc, i, l, m_loc, (int) init[index].x, (int) init[index].y);
       }
     }
   }
+  CP_TO_GPU(G->G(), init, size);
+
+  G->sync();
+
+  CP_TO_CPU(res, G->G(), size);
+  cudaDeviceSynchronize();
+  for(int i=0; i<grids->NxNycNz; i++) {
+    for(int l=0; l<grids->Nl; l++) {
+      for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
+        int m = m_loc + grids->m_lo - grids->m_ghost;
+        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
+	int fac = 1;
+        if((grids->procLeft() < 0 && m_loc<grids->m_ghost) || (grids->procRight() >= grids->nprocs_m && m_loc>=grids->Nm-grids->m_ghost)) fac = -1;
+	EXPECT_FLOAT_EQ_D(&G->G()[index].y, fac*check[index]);
+        //printf("GPU %d: g(%d, %d, %d) = (%d, %d) == (%d)\n", grids->iproc, i, l, m_loc, (int) res[index].x, (int) res[index].y, (int) (fac*check[index]));
+      }
+    }
+  }
+
+//  for(int i=0; i<grids->NxNycNz; i++) {
+//    for(int l=0; l<grids->Nl; l++) {
+//      for(int m=0; m<grids->m_ghost; m++) {
+//        if(grids->procLeft() >= 0) {
+//          int index = i + grids->NxNycNz*l + grids->Nl*m;
+//	  printf("GPU %d: %d %d\n", grids->iproc, (int) init[index].y, m+grids->m_ghost);
+//	}
+//        if(grids->procRight() < grids->nprocs_m) {
+//          int index = i + grids->NxNycNz*l + grids->Nl*(m+grids->Nm-grids->m_ghost);
+//	  printf("GPU %d: %d %d\n", grids->iproc, (int) init[index].y, m+grids->Nm-2*grids->m_ghost);
+//	}
+//      }
+//    }
+//  }
 }
 
 //TEST_F(TestMomentsG, AddMomentsG) 
@@ -238,3 +291,4 @@ TEST_F(TestMomentsG, SyncG)
 //    }
 //  }
 //}
+

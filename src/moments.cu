@@ -358,7 +358,7 @@ void MomentsG::sync()
 
   // send to right
   if(grids_->procRight() < grids_->nprocs_m) {
-    MPI_Send(Gm(grids_->Nm-1-2*grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    MPI_Send(Gm(grids_->Nm-2*grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
   }
   // receive from left
   if(grids_->procLeft() >= 0) {
@@ -371,7 +371,7 @@ void MomentsG::sync()
   }
   // receive from right
   if(grids_->procRight() < grids_->nprocs_m) {
-    MPI_Recv(Gm(grids_->Nm-1-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    MPI_Recv(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
   }
   cudaDeviceSynchronize();
 }
