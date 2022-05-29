@@ -69,10 +69,6 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom, geo_->jacobian, qneutDenom, pars_->tau_fac);
   }
     
-  //cudaStreamCreate(&ncclStream);
-  if(grids_->iproc == 0) ncclGetUniqueId(&ncclId);
-  MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
-  ncclCommInitRank(&ncclComm, grids_->nprocs, ncclId, grids_->iproc);
 }
 
 Solver_GK::~Solver_GK() 
@@ -84,7 +80,6 @@ Solver_GK::~Solver_GK()
   if (ampereDenom) cudaFree(ampereDenom);
   if (phiavgdenom) cudaFree(phiavgdenom);
 
-  ncclCommDestroy(ncclComm);
 }
 
 void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
@@ -134,8 +129,8 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
       //MPI_Bcast((void*) nbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
       //if(em) MPI_Bcast((void*) jbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
 
-      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
-      if(em) ncclAllReduce((void*) jbar, (void*) jbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
+      if(em) ncclAllReduce((void*) jbar, (void*) jbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
       cudaStreamSynchronize(0);
     }
     
@@ -153,7 +148,7 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     }
 
     if(grids_->nprocs>1) { 
-      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, ncclComm, 0);
+      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
       cudaStreamSynchronize(0);
     }
 

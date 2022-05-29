@@ -48,6 +48,7 @@ class MomentsG {
   void reality(int ngz);
 
   void sync();
+  void syncMPI();
   
   inline void copyFrom(MomentsG* source) {
     cudaMemcpy(this->G(), source->G(), grids_->size_G, cudaMemcpyDeviceToDevice);
@@ -64,6 +65,8 @@ class MomentsG {
   cuComplex * tprp_ptr;
   cuComplex * qpar_ptr;
   cuComplex * qprp_ptr;
+
+  cudaStream_t syncStream;
  
  private:
   cuComplex  * G_lm   ;

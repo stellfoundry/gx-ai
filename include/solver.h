@@ -42,10 +42,6 @@ private:
   Parameters * pars_  ;
   Grids      * grids_ ;
   Geometry   * geo_   ;
-
-  ncclComm_t ncclComm;
-  ncclUniqueId ncclId;
-  cudaStream_t ncclStream;
 };
 
 class Solver_KREHM : public Solver {

@@ -87,6 +87,8 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   
   dB_all = dim3(nt1, nt2, nt3);
   dG_all = dim3(nb1, nb2, nb3);	 
+
+  cudaStreamCreate(&syncStream);
 }
 
 MomentsG::~MomentsG() {
@@ -350,7 +352,7 @@ void MomentsG::reality(int ngz)
   reality_kernel <<< dG, dB >>> (G_lm, ngz);
 }
 
-void MomentsG::sync()
+void MomentsG::syncMPI()
 {
   if(grids_->nprocs_m==1) return;
 
@@ -375,6 +377,33 @@ void MomentsG::sync()
     MPI_Recv(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
   }
   cudaDeviceSynchronize();
+}
+
+void MomentsG::sync()
+{
+  if(grids_->nprocs_m==1) return;
+
+  size_t size = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+
+  ncclGroupStart();
+  // send to right
+  if(grids_->procRight() < grids_->nprocs_m) {
+    ncclSend(Gm(grids_->Nm-2*grids_->m_ghost), size, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+  }
+  // receive from left
+  if(grids_->procLeft() >= 0) {
+    ncclRecv(Gm(0),                            size, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+  }
+
+  // send to left
+  if(grids_->procLeft() >= 0) {
+    ncclSend(Gm(grids_->m_ghost),              size, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+  }
+  // receive from right
+  if(grids_->procRight() < grids_->nprocs_m) {
+    ncclRecv(Gm(grids_->Nm-grids_->m_ghost), size, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+  }
+  ncclGroupEnd();
 }
 
 void MomentsG::restart_write(double* time)

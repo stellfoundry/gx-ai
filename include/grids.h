@@ -2,6 +2,7 @@
 #include "parameters.h"
 #include "device_funcs.h"
 #include "get_error.h"
+#include "nccl.h"
 
 class Grids {
 
@@ -38,6 +39,11 @@ class Grids {
   float * theta0_h ;
   float * th0; 
   float Zp;
+
+  ncclComm_t ncclComm;
+  ncclUniqueId ncclId;
+  cudaStream_t ncclStream;
+
   int iproc, nprocs;
   int iproc_m, nprocs_m;
   int iproc_s, nprocs_s;

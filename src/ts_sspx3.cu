@@ -64,12 +64,13 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bo
   for(int is=0; is<grids_->Nspecies; is++) {
     G[is]->sync();
 
-    linear_->rhs(G[is], f, GRhs);  if (pars_->dealias_kz) grad_par->dealias(GRhs);
-
     if(nonlinear_ != nullptr) {
       nonlinear_->nlps(G[is], f, GRhs);
       if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
     }
+    cudaStreamSynchronize(G[is]->syncStream);
+    linear_->rhs(G[is], f, GRhs);  if (pars_->dealias_kz) grad_par->dealias(GRhs);
+
     if (pars_->dealias_kz) grad_par->dealias(GRhs);
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   
