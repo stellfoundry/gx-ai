@@ -39,7 +39,7 @@ __global__ void Hkernel (cuComplex* g, cuComplex* f);
 __global__ void Gkernel (cuComplex* h, cuComplex* f);
 
 void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int Nl, int Nj, int Zp, int ikxf, int ikyf,
-		      int is_lo_in, int is_up_in, int m_lo_in, int m_up_in, int m_ghost_in);
+		      int is_lo_in, int is_up_in, int m_lo_in, int m_up_in, int m_ghost_in, int Nm_glob);
 
 __global__ void acc_scaled_kernel(cuComplex* res,
 				  double c1, const cuComplex* m1);

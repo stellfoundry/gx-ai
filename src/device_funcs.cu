@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include "device_funcs.h"
 
-__device__ __constant__ int nx, ny, nyc, nz, nspecies, nm, nl, nj, zp, ikx_fixed, iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost;
+__device__ __constant__ int nx, ny, nyc, nz, nspecies, nm, nl, nj, zp, ikx_fixed, iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost, nm_glob;
 
 void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int Nl, int Nj, int Zp, int ikxf, int ikyf,
-		      int is_lo_in, int is_up_in, int m_lo_in, int m_up_in, int m_ghost_in)
+		      int is_lo_in, int is_up_in, int m_lo_in, int m_up_in, int m_ghost_in, int Nm_glob)
 {
   cudaMemcpyToSymbol ( nx,        &Nx,        sizeof(int));
   cudaMemcpyToSymbol ( ny,        &Ny,        sizeof(int));
@@ -12,6 +12,7 @@ void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int
   cudaMemcpyToSymbol ( nz,        &Nz,        sizeof(int));
   cudaMemcpyToSymbol ( nspecies,  &Nspecies,  sizeof(int));
   cudaMemcpyToSymbol ( nm,        &Nm,        sizeof(int));
+  cudaMemcpyToSymbol ( nm_glob,        &Nm_glob,        sizeof(int));
   cudaMemcpyToSymbol ( nl,        &Nl,        sizeof(int));
   cudaMemcpyToSymbol ( nj,        &Nj,        sizeof(int));
   cudaMemcpyToSymbol ( zp,        &Zp,        sizeof(int));
@@ -1446,7 +1447,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
   }
 }
 
-# define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M))]
+# define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo+m_ghost))]
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float pres)
 {
@@ -1457,7 +1458,7 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   cuComplex fg;
 
   unsigned int idxyz = idy + nyc*(idx + nx*idz);
-  if (idy < nyc && idx < nx && idz < nz) { 
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
       cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
@@ -1490,7 +1491,7 @@ __global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuCo
   cuComplex fg;
 
   unsigned int idxyz = idy + nyc*(idx + nx*idz);
-  if (idy < nyc && idx < nx && idz < nz) { 
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
       cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
@@ -2406,7 +2407,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
   
   if (idxyz < nx*nyc*nz) {
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
-    float scaled_nu_hyp_m = (float) nm * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
+    float scaled_nu_hyp_m = (float) nm_glob * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
     // blockIdx for y and z are unity in the kernel invocation      
     for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
@@ -2415,7 +2416,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         if (m>2 || l>1) {
           rhs[globalIdx] = rhs[globalIdx] -
             (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
-             +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
+             +scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];
         }
       }
     }

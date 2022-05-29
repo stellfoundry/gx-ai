@@ -162,19 +162,20 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // loop over m to save memory. also makes it easier to parallelize later...
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     
-  for(int m=0; m<grids_->Nm; m++) {
+  for(int m=grids_->m_lo; m<grids_->m_up; m++) {
+    int m_local = m - grids_->m_lo + grids_->m_ghost;
     
-    grad_perp_G -> dxC2R(G->Gm(m), dG);
+    grad_perp_G -> dxC2R(G->Gm(m_local), dG);
     laguerre    -> transformToGrid(dG, dg_dx);
   
-    grad_perp_G -> dyC2R(G->Gm(m), dG);      
+    grad_perp_G -> dyC2R(G->Gm(m_local), dG);      
     laguerre    -> transformToGrid(dG, dg_dy);
        
     // compute {G_m, phi}
     bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
     laguerre->transformToSpectral(g_res, dG);
     // NL_m += {G_m, phi}
-    grad_perp_G->R2C(dG, G_res->Gm(m), true); // this R2C has accumulate=true
+    grad_perp_G->R2C(dG, G_res->Gm(m_local), true); // this R2C has accumulate=true
 
     if (pars_->beta > 0.) {
       // compute {G_m, Apar}
@@ -182,9 +183,9 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
-      if(m+1 < grids_->Nm-1) add_scaled_singlemom_kernel GBK (G_res->Gm(m+1), 1., G_res->Gm(m+1), -vts*sqrtf(m+1), tmp_c);
+      if(m+1 < grids_->Nm-1) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), tmp_c);
       // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
-      if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m-1), 1., G_res->Gm(m-1), -vts*sqrtf(m), tmp_c);
+      if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), tmp_c);
     }
   }
 }

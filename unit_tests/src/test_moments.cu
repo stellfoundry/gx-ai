@@ -20,13 +20,13 @@ protected:
     checkCuda(cudaSetDevice(devid));
     cudaDeviceSynchronize();
     pars = new Parameters(iproc, nprocs, mpcom);
-    pars->nx_in = 2;
+    pars->nx_in = 4;
     pars->ny_in = 2;
-    pars->nz_in = 2;
+    pars->nz_in = 1;
     pars->nperiod = 1;
     pars->nspec_in = 1;
     pars->nm_in = 8;
-    pars->nl_in = 2;
+    pars->nl_in = 1;
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
@@ -164,7 +164,7 @@ TEST_F(TestMomentsG, SyncG)
         int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
         int fac = 1;
         if(m_loc < grids->m_ghost || m_loc >= grids->Nm-grids->m_ghost) fac = -1;
-        init[index].x = fac*index;
+        init[index].x = fac*(i+grids->NxNycNz*l);
         init[index].y = fac*m;
 	check[index] = m;
         //printf("GPU %d: f(%d, %d, %d) = (%d, %d)\n", grids->iproc, i, l, m_loc, (int) init[index].x, (int) init[index].y);
@@ -184,26 +184,12 @@ TEST_F(TestMomentsG, SyncG)
         int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
 	int fac = 1;
         if((grids->procLeft() < 0 && m_loc<grids->m_ghost) || (grids->procRight() >= grids->nprocs_m && m_loc>=grids->Nm-grids->m_ghost)) fac = -1;
+	EXPECT_FLOAT_EQ_D(&G->G()[index].x, fac*(i+grids->NxNycNz*l));
 	EXPECT_FLOAT_EQ_D(&G->G()[index].y, fac*check[index]);
         //printf("GPU %d: g(%d, %d, %d) = (%d, %d) == (%d)\n", grids->iproc, i, l, m_loc, (int) res[index].x, (int) res[index].y, (int) (fac*check[index]));
       }
     }
   }
-
-//  for(int i=0; i<grids->NxNycNz; i++) {
-//    for(int l=0; l<grids->Nl; l++) {
-//      for(int m=0; m<grids->m_ghost; m++) {
-//        if(grids->procLeft() >= 0) {
-//          int index = i + grids->NxNycNz*l + grids->Nl*m;
-//	  printf("GPU %d: %d %d\n", grids->iproc, (int) init[index].y, m+grids->m_ghost);
-//	}
-//        if(grids->procRight() < grids->nprocs_m) {
-//          int index = i + grids->NxNycNz*l + grids->Nl*(m+grids->Nm-grids->m_ghost);
-//	  printf("GPU %d: %d %d\n", grids->iproc, (int) init[index].y, m+grids->Nm-2*grids->m_ghost);
-//	}
-//      }
-//    }
-//  }
 }
 
 //TEST_F(TestMomentsG, AddMomentsG) 

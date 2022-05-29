@@ -113,7 +113,7 @@ Grids::Grids(Parameters* pars) :
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
   
-  setdev_constants(Nx, Ny, Nyc, Nz, Nspecies, Nm, Nl, Nj, pars_->Zp, pars_->ikx_fixed, pars_->iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost);
+  setdev_constants(Nx, Ny, Nyc, Nz, Nspecies, Nm, Nl, Nj, pars_->Zp, pars_->ikx_fixed, pars_->iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost, pars_->nm_in);
 
   checkCuda(cudaDeviceSynchronize());
 
