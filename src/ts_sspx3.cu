@@ -21,12 +21,13 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 {
   
   // new objects for temporaries
-  GRhs  = new MomentsG (pars_, grids_);
+  GRhs = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G2 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   G3 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
   for(int is=0; is<grids_->Nspecies; is++) {
     int is_glob = is+grids->is_lo;
+    GRhs[is] = new MomentsG (pars_, grids_, is_glob);
     G1[is] = new MomentsG (pars_, grids_, is_glob);
     G2[is] = new MomentsG (pars_, grids_, is_glob);
     G3[is] = new MomentsG (pars_, grids_, is_glob);
@@ -46,12 +47,13 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 
 SSPx3::~SSPx3()
 {
-  if (GRhs)  delete GRhs;
   for(int is=0; is<grids_->Nspecies; is++) {
+    if (GRhs[is]) delete GRhs[is];
     if (G1[is]) delete G1[is];
     if (G2[is]) delete G2[is];
     if (G3[is]) delete G3[is];
   }
+  free(GRhs);
   free(G1);
   free(G2);
   free(G3);
@@ -59,22 +61,31 @@ SSPx3::~SSPx3()
 }
 
 // ======== SSPx3  ==============
-void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bool setdt)
+void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG** GRhs, Fields* f, bool setdt)
 {
+  if (setdt) dt_ = dt_max;
   for(int is=0; is<grids_->Nspecies; is++) {
     G[is]->sync();
 
+    GRhs[is]->set_zero();
     if(nonlinear_ != nullptr) {
-      nonlinear_->nlps(G[is], f, GRhs);
-      if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
+      nonlinear_->nlps(G[is], f, GRhs[is]);
+      if (setdt) dt_ = nonlinear_->cfl(f, dt_);
     }
-    cudaStreamSynchronize(G[is]->syncStream);
-    linear_->rhs(G[is], f, GRhs);  if (pars_->dealias_kz) grad_par->dealias(GRhs);
+  }
+  if(grids_->nprocs>1 && setdt && nonlinear_ != nullptr) {
+    MPI_Allreduce(&dt_, &dt_, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
+  }
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G1[is]->add_scaled(1., G[is], adt*dt_, GRhs[is]);
 
-    if (pars_->dealias_kz) grad_par->dealias(GRhs);
+    GRhs[is]->set_zero();
+
+    cudaStreamSynchronize(G[is]->syncStream);
+    linear_->rhs(G[is], f, GRhs[is]);  if (pars_->dealias_kz) grad_par->dealias(GRhs[is]);
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   
-    G1[is]->add_scaled(1., G[is], adt*dt_, GRhs);
+    G1[is]->add_scaled(1., G1[is], adt*dt_, GRhs[is]);
   }
 }
 

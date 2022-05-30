@@ -151,7 +151,7 @@ class SSPx3 : public Timestepper {
   double get_dt() {return dt_;};
 
  private:
-  void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG* GRhs, Fields* f, bool setdt);
+  void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** GRhs, Fields* f, bool setdt);
 
   const double dt_max;
   const double adt = pow(1./6., 1./3.);
@@ -170,7 +170,7 @@ class SSPx3 : public Timestepper {
   MomentsG    ** G1         ;
   MomentsG    ** G2         ;
   MomentsG    ** G3         ;
-  MomentsG     * GRhs       ;
+  MomentsG    ** GRhs       ;
   double dt_;
 };
 

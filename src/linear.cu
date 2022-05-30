@@ -84,9 +84,9 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
 
-  nn1 = grids_->Nyc;                              nt1 = min(nn1, 16);    nb1 = (nn1-1)/nt1 + 1;
-  nn2 = grids_->Nx*grids_->Nz;                    nt2 = min(nn2, 16);    nb2 = (nn2-1)/nt2 + 1;
-  nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  4);    nb3 = (nn3-1)/nt3 + 1;
+  nn1 = grids_->Nyc;             nt1 = min(nn1, 16);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nx*grids_->Nz;   nt2 = min(nn2, 16);    nb2 = (nn2-1)/nt2 + 1;
+  nn3 = grids_->Nm*grids_->Nl;   nt3 = min(nn3,  4);    nb3 = (nn3-1)/nt3 + 1;
   
   dB_all = dim3(nt1, nt2, nt3);
   dG_all = dim3(nb1, nb2, nb3);	 
@@ -98,15 +98,15 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = min(grids_->Nm - 2*grids_->m_ghost, 4 );   nb3 = 1 + (nn3-1)/nt3;
+  nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);
   dimGrid  = dim3(nb1, nb2, nb3);
   
   if(grids_->m_ghost == 0)
     sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
-  else // ghosts already included in Nm here
-    sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm) * sizeof(cuComplex);
+  else 
+    sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+2*grids_->m_ghost) * sizeof(cuComplex);
 
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
   if(sharedSize/1024.>96. && grids_->m_ghost == 0) {
@@ -148,9 +148,6 @@ Linear_GK::~Linear_GK()
 
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
-  // to be safe, start with zeros on RHS
-  GRhs->set_zero();
-  
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
   if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
@@ -206,7 +203,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
-  //if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
+  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
 }
 
 //==========================================

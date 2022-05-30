@@ -80,12 +80,11 @@ Grids::Grids(Parameters* pars) :
       } else {
         m_ghost = 2;
       }
-      Nm = Nm + 2*m_ghost; // add ghosts on either side
     }
   }
 
   Nmoms = Nm * Nl;
-  size_G = sizeof(cuComplex) * NxNycNz * Nmoms;
+  size_G = sizeof(cuComplex) * NxNycNz * (Nm + 2*m_ghost) * Nl; // this includes ghosts on either end of m grid
   
   // kz is defined without the factor of gradpar
   

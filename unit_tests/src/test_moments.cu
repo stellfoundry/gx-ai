@@ -20,8 +20,9 @@ protected:
     checkCuda(cudaSetDevice(devid));
     cudaDeviceSynchronize();
     pars = new Parameters(iproc, nprocs, mpcom);
-    pars->nx_in = 4;
-    pars->ny_in = 2;
+    pars->get_nml_vars("inputs/cyc_nl");
+    pars->nx_in = 1;
+    pars->ny_in = 1;
     pars->nz_in = 1;
     pars->nperiod = 1;
     pars->nspec_in = 1;
@@ -30,7 +31,6 @@ protected:
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
-    pars->ks = false;
 
     grids = new Grids(pars);
     G = new MomentsG(pars, grids);
@@ -38,10 +38,10 @@ protected:
   }
 
   virtual void TearDown() {
-    delete grids;
     delete G;
     delete pars;
     delete geo;
+    delete grids;
   }
 
   Parameters* pars;
@@ -153,17 +153,17 @@ TEST_F(TestMomentsG, InitConditions) {
 
 TEST_F(TestMomentsG, SyncG)
 {
-  size_t size = sizeof(cuComplex)*grids->NxNycNz*grids->Nmoms;
+  size_t size = grids->size_G;
   cuComplex* init = (cuComplex*) malloc(size);
   cuComplex* res = (cuComplex*) malloc(size);
   float* check = (float*) malloc(size);
   for(int i=0; i<grids->NxNycNz; i++) {
     for(int l=0; l<grids->Nl; l++) {
-      for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
-        int m = m_loc + grids->m_lo - grids->m_ghost;
-        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
+      for(int m_loc=-grids->m_ghost; m_loc<grids->Nm+grids->m_ghost; m_loc++) {
+        int m = m_loc + grids->m_lo;
+        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*(m_loc+grids->m_ghost);
         int fac = 1;
-        if(m_loc < grids->m_ghost || m_loc >= grids->Nm-grids->m_ghost) fac = -1;
+        if(m_loc < 0 || m_loc >= grids->Nm) fac = -1;
         init[index].x = fac*(i+grids->NxNycNz*l);
         init[index].y = fac*m;
 	check[index] = m;
@@ -171,21 +171,22 @@ TEST_F(TestMomentsG, SyncG)
       }
     }
   }
-  CP_TO_GPU(G->G(), init, size);
+  CP_TO_GPU(G->Gghost(), init, size);
 
   G->sync();
+  cudaStreamSynchronize(G->syncStream);
 
-  CP_TO_CPU(res, G->G(), size);
+  CP_TO_CPU(res, G->Gghost(), size);
   cudaDeviceSynchronize();
   for(int i=0; i<grids->NxNycNz; i++) {
     for(int l=0; l<grids->Nl; l++) {
-      for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
-        int m = m_loc + grids->m_lo - grids->m_ghost;
-        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*m_loc;
+      for(int m_loc=-grids->m_ghost; m_loc<grids->Nm+grids->m_ghost; m_loc++) {
+        int m = m_loc + grids->m_lo;
+        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*(m_loc+grids->m_ghost);
 	int fac = 1;
-        if((grids->procLeft() < 0 && m_loc<grids->m_ghost) || (grids->procRight() >= grids->nprocs_m && m_loc>=grids->Nm-grids->m_ghost)) fac = -1;
-	EXPECT_FLOAT_EQ_D(&G->G()[index].x, fac*(i+grids->NxNycNz*l));
-	EXPECT_FLOAT_EQ_D(&G->G()[index].y, fac*check[index]);
+        if((grids->procLeft() < 0 && m_loc<0) || (grids->procRight() >= grids->nprocs_m && m_loc>=grids->Nm)) fac = -1;
+	EXPECT_FLOAT_EQ_D(&G->Gghost()[index].x, fac*(i+grids->NxNycNz*l));
+	EXPECT_FLOAT_EQ_D(&G->Gghost()[index].y, fac*check[index]);
         //printf("GPU %d: g(%d, %d, %d) = (%d, %d) == (%d)\n", grids->iproc, i, l, m_loc, (int) res[index].x, (int) res[index].y, (int) (fac*check[index]));
       }
     }

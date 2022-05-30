@@ -23,27 +23,27 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   // set up pointers for named moments that point to parts of G_lm
   int l,m,m_local;
   l = 0, m = 0; // density
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) dens_ptr = G(l,m_local);
 
   l = 0, m = 1; // u_parallel
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) upar_ptr = G(l,m_local);
 
   l = 0, m = 2; // T_parallel / sqrt(2)
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tpar_ptr = G(l,m_local);
 
   l = 0, m = 3; // q_parallel / sqrt(6)
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qpar_ptr = G(l,m_local);
 
   l = 1, m = 0; // T_perp
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) tprp_ptr = G(l,m_local);
 
   l = 1, m = 1; // q_perp
-  m_local = m - grids_->m_lo + grids_->m_ghost;
+  m_local = m - grids_->m_lo;
   if(l<Nl && m>=grids_->m_lo && m<grids_->m_up) qprp_ptr = G(l,m_local);
 
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
@@ -81,18 +81,19 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
   
-  nn1 = grids_->Nyc*grids_->Nx;                   nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
-  nn2 = grids_->Nz;                               nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
-  nn3 = grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
+  nn1 = grids_->Nyc*grids_->Nx;    nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nz;                nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
+  nn3 = grids_->Nm*grids_->Nl;     nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
   
   dB_all = dim3(nt1, nt2, nt3);
   dG_all = dim3(nb1, nb2, nb3);	 
 
-  cudaStreamCreate(&syncStream);
+  cudaStreamCreateWithFlags(&syncStream, cudaStreamNonBlocking);
 }
 
 MomentsG::~MomentsG() {
   if ( G_lm     ) cudaFree ( G_lm );
+  cudaStreamDestroy(syncStream);
 }
 
 void MomentsG::set_zero(void) {
@@ -289,28 +290,28 @@ void MomentsG::initialConditions(double* time) {
   DEBUG_PRINT("initial conditions set \n");  
 }
 
-void MomentsG::scale(double    scalar) {scale_kernel GALL (G_lm, scalar);}
-void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G_lm, scalar);}
-void MomentsG::mask(void) {maskG GALL (this->G_lm);}
+void MomentsG::scale(double    scalar) {scale_kernel GALL (G(), scalar);}
+void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G(), scalar);}
+void MomentsG::mask(void) {maskG GALL (G());}
 
-void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G_lm, J0phi);}
-void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G_lm, J0phi);}
+void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G(), J0phi);}
+void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G(), J0phi);}
 
 void MomentsG::rescale(float * phi_max) {
-  rescale_kernel GALL (G_lm, phi_max, grids_->Nm*grids_->Nl);
+  rescale_kernel GALL (G(), phi_max, grids_->Nm*grids_->Nl);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, neqfix);
+  add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c2, MomentsG* G2,
 			  double c3, MomentsG* G3) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, neqfix);
+  add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), c3, G3->G(), neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
@@ -318,7 +319,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c3, MomentsG* G3,
 			  double c4, MomentsG* G4) {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, neqfix);
+  add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), c3, G3->G(), c4, G4->G(), neqfix);
 }
 
 void MomentsG::add_scaled(double c1, MomentsG* G1,
@@ -328,7 +329,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
 			  double c5, MomentsG* G5)
 {
   bool neqfix = !pars_->eqfix;
-  add_scaled_kernel GALL (G_lm, c1, G1->G_lm, c2, G2->G_lm, c3, G3->G_lm, c4, G4->G_lm, c5, G5->G_lm, neqfix);
+  add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), c3, G3->G(), c4, G4->G(), c5, G5->G(), neqfix);
 }
 
 void MomentsG::reality(int ngz) 
@@ -349,7 +350,7 @@ void MomentsG::reality(int ngz)
   dB.z = 4;
   dG.z = (ngz-1)/dB.z + 1;
 
-  reality_kernel <<< dG, dB >>> (G_lm, ngz);
+  reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
 void MomentsG::syncMPI()
@@ -361,20 +362,20 @@ void MomentsG::syncMPI()
 
   // send to right
   if(grids_->procRight() < grids_->nprocs_m) {
-    MPI_Send(Gm(grids_->Nm-2*grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
   }
   // receive from left
   if(grids_->procLeft() >= 0) {
-    MPI_Recv(Gm(0),                              size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+    MPI_Recv(Gm(-grids_->m_ghost),                              size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
   }
 
   // send to left
   if(grids_->procLeft() >= 0) {
-    MPI_Send(Gm(grids_->m_ghost),              size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+    MPI_Send(Gm(0),              size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
   }
   // receive from right
   if(grids_->procRight() < grids_->nprocs_m) {
-    MPI_Recv(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
   }
   cudaDeviceSynchronize();
 }
@@ -383,25 +384,27 @@ void MomentsG::sync()
 {
   if(grids_->nprocs_m==1) return;
 
-  size_t size = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+  // since nccl does not support cuComplex directly, we will use float type
+  // factor of 2 here is for real and imag part of cuComplex
+  size_t count = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
 
   ncclGroupStart();
   // send to right
   if(grids_->procRight() < grids_->nprocs_m) {
-    ncclSend(Gm(grids_->Nm-2*grids_->m_ghost), size, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    ncclSend(Gm(grids_->Nm-grids_->m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   // receive from left
   if(grids_->procLeft() >= 0) {
-    ncclRecv(Gm(0),                            size, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    ncclRecv(Gm(-grids_->m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
   }
 
   // send to left
   if(grids_->procLeft() >= 0) {
-    ncclSend(Gm(grids_->m_ghost),              size, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
   }
   // receive from right
   if(grids_->procRight() < grids_->nprocs_m) {
-    ncclRecv(Gm(grids_->Nm-grids_->m_ghost), size, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   ncclGroupEnd();
 }

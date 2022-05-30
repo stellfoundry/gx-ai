@@ -109,26 +109,6 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
     }
 
     if(grids_->nprocs>1) {
-      //MPI_Status status;
-      //if(grids_->iproc>0) {
-      //  // send data from procs>0 to proc 0   
-      //  MPI_Send((void*) nbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, 10+grids_->iproc, MPI_COMM_WORLD);
-      //  if(em) MPI_Send((void*) jbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, 1000+grids_->iproc, MPI_COMM_WORLD);
-      //} else {  
-      //  // receive data from each proc>0 on proc 0, and accumulate
-      //  for(int proc=1; proc<grids_->nprocs; proc++) {
-      //    MPI_Recv((void*) nbuf, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, proc, 10+proc, MPI_COMM_WORLD, &status);
-      //    add_scaled_singlemom_kernel GQN (nbar, 1.0, nbar, 1.0, nbuf);
-
-      //    if(em) {
-      //      MPI_Recv((void*) jbuf, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, proc, 1000+proc, MPI_COMM_WORLD, &status);
-      //      add_scaled_singlemom_kernel GQN (jbar, 1.0, jbar, 1.0, jbuf);
-      //    }
-      //  }
-      //}
-      //MPI_Bcast((void*) nbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
-      //if(em) MPI_Bcast((void*) jbar, sizeof(cuComplex)*grids_->NxNycNz, MPI_BYTE, 0, MPI_COMM_WORLD);
-
       ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
       if(em) ncclAllReduce((void*) jbar, (void*) jbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
       cudaStreamSynchronize(0);

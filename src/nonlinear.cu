@@ -163,7 +163,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     
   for(int m=grids_->m_lo; m<grids_->m_up; m++) {
-    int m_local = m - grids_->m_lo + grids_->m_ghost;
+    int m_local = m - grids_->m_lo;
     
     grad_perp_G -> dxC2R(G->Gm(m_local), dG);
     laguerre    -> transformToGrid(dG, dg_dx);
@@ -183,7 +183,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre->transformToSpectral(g_res, dG);
       grad_perp_G->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
-      if(m+1 < grids_->Nm-1) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), tmp_c);
+      if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), tmp_c);
       // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
       if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), tmp_c);
     }

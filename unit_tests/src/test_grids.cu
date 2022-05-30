@@ -18,6 +18,7 @@ protected:
     checkCuda(cudaSetDevice(devid));
     cudaDeviceSynchronize();
     pars = new Parameters(iproc, nprocs, mpcom);
+    pars->get_nml_vars("inputs/cyc_nl");
     checkCuda(cudaGetLastError());
     pars->nx_in = 20;
     pars->ny_in = 48;
@@ -28,7 +29,6 @@ protected:
     pars->Zp = 1.;
     pars->x0 = 10.;
     pars->y0 = 10.;
-    pars->slab = false;
 
     grids = new Grids(pars);
     grids->init_ks_and_coords();
@@ -37,6 +37,7 @@ protected:
 
   virtual void TearDown() {
     delete grids;
+    delete pars;
     cudaDeviceReset();
   }
 
@@ -90,7 +91,7 @@ TEST_F(TestGrids, ParTest) {
     EXPECT_EQ(grids->Nspecies, 1);
     int nprocs_m = nprocs/pars->nspec_in;
     EXPECT_EQ(grids->m_ghost, 2);
-    EXPECT_EQ(grids->Nm, pars->nm_in/nprocs_m+2*grids->m_ghost);
+    EXPECT_EQ(grids->Nm, pars->nm_in/nprocs_m);
   } 
 }
 

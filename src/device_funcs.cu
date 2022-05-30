@@ -1447,7 +1447,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
   }
 }
 
-# define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo+m_ghost))]
+# define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo))]
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float pres)
 {
@@ -1569,7 +1569,7 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
 	const float b_s = kperp2[idxyz] * sp.rho2;
 	for (int l=0; l < nl; l++) {
 	  unsigned int m = 0; // only m=0 components needed here
-          int m_local = m - m_lo + m_ghost;
+          int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
 	  nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.nz;
 	}
@@ -1590,7 +1590,7 @@ __global__ void real_space_current(cuComplex* jbar, const cuComplex* g, const fl
 	const float b_s = kperp2[idxyz] * sp.rho2;
 	for (int l=0; l < nl; l++) {
 	  unsigned int m = 1; // only m=1 components needed here
-          int m_local = m - m_lo + m_ghost;
+          int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
 	  jbar[idxyz] = jbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.as;
 	}
@@ -2002,7 +2002,7 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
     // set damping region width to 1/8 of extended domain (on either side)
     int width = nz*nLinks/8;  
     float L = 2*M_PI*zp*nLinks/8;
-    float vmax = sqrtf(2*nm); // estimate of max vpar on grid
+    float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
     if (idzl <= width ) {
       float x = ((float) idzl)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
@@ -2021,8 +2021,8 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float b_ = kperp2_ * rho2_;
       // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
       cuComplex H_ = G[globalIdx];
-      if(idm+m_lo-m_ghost==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
-      if(idm+m_lo-m_ghost==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
       GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
@@ -2047,8 +2047,8 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float kperp2_ = kperp2[idxyz];
       const float b_ = kperp2_ * sp.rho2;
       G[globalIdx].x = 0.; G[globalIdx].y = 0.;
-      if(idm+m_lo-m_ghost==0) G[globalIdx] = -sp.zt*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
-      if(idm+m_lo-m_ghost==1) G[globalIdx] = sp.zt*sp.vt*Jflr(idl, b_)*apar[idxyz];
+      if(idm+m_lo==0) G[globalIdx] = -sp.zt*Jflr(idl, b_)*phi[idxyz]; // this seems to cause numerical instability...
+      if(idm+m_lo==1) G[globalIdx] = sp.zt*sp.vt*Jflr(idl, b_)*apar[idxyz];
     }
 
   }
@@ -2086,54 +2086,42 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
   unsigned int idy  = get_id1();
   unsigned int idx  = get_id2();
   unsigned int idzl = get_id3();
+  unsigned int idz = idzl % nz;     
+  unsigned int l   = idzl / nz;
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  const cuComplex phi_ = phi[idxyz];
+  const cuComplex apar_ = apar[idxyz];
+  const float b_s = sp.rho2 * kperp2[idxyz];
+  const float zt_ = sp.zt;
+
   if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idzl < nz*nl)) {
     const float vt_ = sp.vt;
-    unsigned globalIdx;
+    int globalIdx;
 
     for (int m = m_lo; m < m_up; m++) {
-      int m_local = m - m_lo + m_ghost;
-      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local  )));	
+      int m_local = m - m_lo;
+      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local)));	
       int mp1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local+1)));
       int mm1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local-1)));
       cuComplex gmp1 = make_cuComplex(0.,0.);
       cuComplex gmm1 = make_cuComplex(0.,0.);
       if(m>0) gmm1 = g[mm1];
-      if(m<nm-1) gmp1 = g[mp1];
+      if(m<nm_glob-1) gmp1 = g[mp1];
       
-      rhs_par[globalIdx] = -vt_ * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1) * gradpar;
+      rhs_par[globalIdx] = rhs_par[globalIdx] -vt_ * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1) * gradpar;
+      
+      // field terms
+      if(m == 1) {  // m = 1 has Phi term
+        rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
+      }
+      // the following Apar terms are only needed in the formulation without dA/dt
+      if(m == 0) {  // m = 0 has Apar term
+        rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+      }
+      if(m == 2) {  // m = 2 has Apar term
+        rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
+      }
     }
-
-    // field terms
-    unsigned int idz = idzl % nz;     
-    unsigned int l   = idzl / nz;
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    const cuComplex phi_ = phi[idxyz];
-    const cuComplex apar_ = apar[idxyz];
-    const float b_s = sp.rho2 * kperp2[idxyz];
-    const float zt_ = sp.zt;
-    
-    int m = 1;          // m = 1 has Phi term
-    if (m>=m_lo && m<m_up) {
-      int m_local = m - m_lo + m_ghost;
-      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*m_local));
-      rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
-    }
-
-    // the following Apar terms are only needed in the formulation without dA/dt
-    m = 0;          // m = 0 has Apar term
-    if (m>=m_lo && m<m_up) {
-      int m_local = m - m_lo + m_ghost;
-      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*m_local));
-      rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
-    }
-
-    m = 2;          // m = 2 has Apar term
-    if (m>=m_lo && m<m_up) {
-      int m_local = m - m_lo + m_ghost;
-      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*m_local));
-      rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
-    }
-       
   }
 }
 
@@ -2209,67 +2197,37 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // read tile of g into shared mem
     // each thread in the block reads in multiple values of l and m
     // blockIdx for y and z and both of size unity in the kernel invocation
-    for (int m = threadIdx.z + m_lo-m_ghost; m < m_up+m_ghost; m += blockDim.z) {
-      for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-        int m_local = m - m_lo + m_ghost;
-        unsigned int globalIdx = idxyz + nR*(l + nl*m_local);
-        int sl = l + 1;
-        int sm = m_local;
-	if(m_ghost==0) sm+=2;
-	S_H(sl, sm) = g[globalIdx];
-        // add phi term for m=0 to change g into h
-        if (m==0) S_H(sl, sm) = S_H(sl, sm) + zt_*Jflr(l, b_s)*phi_;
-        // add apar term for m=1 (this is only needed in the formulation without dA/dt)
-        if (m==1) S_H(sl, sm) = S_H(sl, sm) - zt_*vt_*Jflr(l, b_s)*apar_;
+    int nm_shared = nm+2*m_ghost;
+    if(m_ghost==0) nm_shared+=4;
+    int nl_shared = nl+2;
+    int ghost = m_ghost==0 ? 2 : m_ghost;
+    for (int sm = threadIdx.z; sm < nm_shared; sm += blockDim.z) {
+      for (int sl = threadIdx.y; sl < nl_shared; sl += blockDim.y) {
+        int globalIdx = idxyz + nR*((sl-1) + nl*(sm-ghost));
+        int l = sl-1;
+        int m = sm-ghost+m_lo;
+        if(m<0 || m>=nm_glob || l<0 || l>=nl) {
+          S_H(sl, sm) = make_cuComplex(0., 0.);
+        } else {
+          S_H(sl, sm) = g[globalIdx];
+          // add phi term for m=0 to change g into h
+          if (m==0) S_H(sl, sm) = S_H(sl, sm) + zt_*Jflr(l, b_s)*phi_;
+          // add apar term for m=1 (this is only needed in the formulation without dA/dt)
+          if (m==1) S_H(sl, sm) = S_H(sl, sm) - zt_*vt_*Jflr(l, b_s)*apar_;
+        }
       }
     }
      
-    // this syncthreads is not necessary unless ghosts require information from interior cells
-    //     __syncthreads();
-    
-    // set up global ghost cells in m (for all l's)
-    // blockIdx.y is of size unity in the kernel invocation
-    for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-      int sl = l + 1;
-      int sm = threadIdx.z + m_ghost;
-      if(m_ghost==0) sm+=2;
-      if (sm < 4) {
-        // set ghost to zero at low m
-        if(m_lo==0) {
-          S_H(sl, sm-2) = make_cuComplex(0., 0.);
-	}
-        
-        // set ghost with closures at high m
-	if(m_up==nm-2*m_ghost)
-          S_H(sl, sm+nm-2*m_ghost) = make_cuComplex(0., 0.);
-      }
-    }
-    
-    // set up ghost cells in l (for all m's)
-    // blockIdx.z is unity in the kernel invocation
-    for (int m = threadIdx.z + m_lo-1; m < m_up+1; m += blockDim.z) {
-      int sm = m - m_lo + m_ghost; // this takes care of corners...
-      if(m_ghost==0) sm+=2;
-      int sl = threadIdx.y + 1;
-      if (sl < 2) {
-        // set ghost to zero at low l
-        S_H(sl-1, sm) = make_cuComplex(0., 0.);
-        
-        // set ghost with closures at high l
-        S_H(sl+nl, sm) = make_cuComplex(0., 0.);
-      }
-    }
-    
     __syncthreads();
     
     // stencil (on non-ghost cells)
     // blockIdx for y and z are unity in the kernel invocation
     for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-        int m_local = m - m_lo + m_ghost;
-        unsigned int globalIdx = idxyz + nR*(l + nl*m_local);
+        int m_local = m - m_lo;
+        int globalIdx = idxyz + nR*(l + nl*m_local);
         int sl = l + 1; // offset to get past ghosts
-        int sm = m - m_lo + m_ghost; // offset to get past ghosts
+        int sm = m_local + m_ghost; // offset to get past ghosts
 	if(m_ghost==0) sm+=2;
   
         rhs[globalIdx] = rhs[globalIdx] 
@@ -2392,7 +2350,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
       if (l<nl) {
 	unsigned int m = get_id3();
 	if (m>=m_lo && m<m_up) {
-          int m_local = m - m_lo + m_ghost;
+          int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
 	  rhs[ig] = rhs[ig] - Dfac * g[ig];
 	}
@@ -2411,7 +2369,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
     // blockIdx for y and z are unity in the kernel invocation      
     for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
       for (int l = threadIdx.y; l < nl; l += blockDim.y) {
-        int m_local = m - m_lo + m_ghost;
+        int m_local = m - m_lo;
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);
         if (m>2 || l>1) {
           rhs[globalIdx] = rhs[globalIdx] -
