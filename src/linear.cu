@@ -154,6 +154,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, geo_->kperp2, *(G->species));
 
   // Free-streaming requires parallel FFTs, so do that first
+  cudaStreamSynchronize(G->syncStream);
   streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
   grad_par->dz(GRhs);
   

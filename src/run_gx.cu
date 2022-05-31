@@ -48,9 +48,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> initialConditions(&time);   
       G[is] -> sync();
     }
-    //if(grids->iproc==0) G[0] -> qvar(grids->NxNycNz*grids->Nl*grids->Nm);
     solver -> fieldSolve(G, fields);                
-    //if(grids->iproc==0) fields->print_phi();
   }
 
   if (pars->krehm) {

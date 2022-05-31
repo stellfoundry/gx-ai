@@ -81,7 +81,6 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG** GRhs, Fields* f, b
 
     GRhs[is]->set_zero();
 
-    cudaStreamSynchronize(G[is]->syncStream);
     linear_->rhs(G[is], f, GRhs[is]);  if (pars_->dealias_kz) grad_par->dealias(GRhs[is]);
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   

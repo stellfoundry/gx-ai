@@ -14,8 +14,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   checkCuda(cudaMalloc((void**) &G_lm, lhsize)); 
   checkCuda(cudaMemset(G_lm, 0., lhsize));
   
-  printf("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
-  //printf("GPU %d: species type = %d\n", grids->iproc, (*species).type);
+  DEBUGPRINT("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
 
   int Nm = grids_->Nm;
   int Nl = grids_->Nl;

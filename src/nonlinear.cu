@@ -159,7 +159,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     grad_perp_J0phi -> dyC2R(J0apar, dJ0apar_dy);
   }
   
-  // loop over m to save memory. also makes it easier to parallelize later...
+  // loop over m to save memory. also makes it easier to parallelize.
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     
   for(int m=grids_->m_lo; m<grids_->m_up; m++) {
@@ -186,6 +186,43 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), tmp_c);
       // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
       if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), tmp_c);
+    }
+  }
+
+  // contributions from ghost cells (EM only)
+  if(pars_->beta > 0. && grids_->nprocs_m>1) {
+    cudaStreamSynchronize(G->syncStream);
+
+    // lower ghost
+    int m = grids_->m_lo;
+    int m_local = m - grids_->m_lo;
+    if(m>0) {
+      grad_perp_G -> dxC2R(G->Gm(m_local-1), dG);
+      laguerre    -> transformToGrid(dG, dg_dx);
+  
+      grad_perp_G -> dyC2R(G->Gm(m_local-1), dG);      
+      laguerre    -> transformToGrid(dG, dg_dy);
+      bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+      laguerre->transformToSpectral(g_res, dG);
+      grad_perp_G->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
+      add_scaled_singlemom_kernel GBK (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
+    }
+
+    // upper ghost
+    m = grids_->m_up-1;
+    m_local = m - grids_->m_lo;
+    if(m<pars_->nm_in-1) {
+      grad_perp_G -> dxC2R(G->Gm(m_local+1), dG);
+      laguerre    -> transformToGrid(dG, dg_dx);
+  
+      grad_perp_G -> dyC2R(G->Gm(m_local+1), dG);      
+      laguerre    -> transformToGrid(dG, dg_dy);
+      bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+      laguerre->transformToSpectral(g_res, dG);
+      grad_perp_G->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
+      add_scaled_singlemom_kernel GBK (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
     }
   }
 }
