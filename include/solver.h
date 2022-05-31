@@ -25,13 +25,13 @@ class Solver_GK : public Solver {
   void svar(float* f, int N);
   
   cuComplex * nbar ;
-  cuComplex * jbar ;
 
 private:
 
   void zero(cuComplex* f);
   
   dim3 dG, dB, dg, db;
+  int count;
 
   float * phiavgdenom ;
   float * qneutDenom;

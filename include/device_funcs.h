@@ -147,9 +147,9 @@ __global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float*
 
 __global__ void acc(float *a, const float *b);
 
-__global__ void bracket(float* g_res,
-			const float* dg_dx, const float* dJ0phi_dy,
-			const float* dg_dy, const float* dJ0Phi_dx, float kxfac);
+__global__ void bracket(float* __restrict__ g_res,
+			const float* __restrict__ dg_dx, const float* __restrict__ dJ0phi_dy,
+			const float* __restrict__ dg_dy, const float* __restrict__ dJ0Phi_dx, float kxfac);
 
 __global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
@@ -271,11 +271,11 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
 
-__global__ void linkedCopy(const cuComplex* G, cuComplex* G_linked, int nLinks, int nChains,
-			   const int* ikx, const int* iky, int nMoms);
+__global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked, int nLinks, int nChains,
+			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
-__global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G, int nLinks, int nChains,
-			       const int* ikx, const int* iky, int nMoms);
+__global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
+			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
@@ -295,13 +295,13 @@ __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void nlks1(float *res, const float *Gy);
 __global__ void nlks2(cuComplex *res, const float *ky);
 __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps_ks);
-__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float* kperp2, 
-			      const float gradpar, const specie sp, cuComplex* rhs_par);
+__global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar, const float* __restrict__ kperp2, 
+			      const float gradpar, const specie sp, cuComplex* __restrict__ rhs_par);
 
-__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
-			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
-			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
-			   const float* ky, const specie sp, const specie sp_i, cuComplex* rhs, bool hegna);  // bb6126 - hegna test
+__global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar,
+			   const cuComplex* __restrict__ upar_bar, const cuComplex* __restrict__ uperp_bar, const cuComplex* __restrict__ t_bar,
+			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d, const float* __restrict__ bmag, const float* __restrict__ bgrad,
+			   const float* __restrict__ ky, const specie sp, const specie sp_i, cuComplex* __restrict__ rhs, bool hegna);  // bb6126 - hegna test
 
 __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);
 __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc);

@@ -284,7 +284,6 @@ void MomentsG::initialConditions(double* time) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
   }
-  sync();
   cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
   DEBUG_PRINT("initial conditions set \n");  
 }
@@ -389,20 +388,20 @@ void MomentsG::sync()
 
   ncclGroupStart();
   // send to right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     ncclSend(Gm(grids_->Nm-grids_->m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   // receive from left
-  if(grids_->procLeft() >= 0) {
+  if(grids_->iproc_m-1 >= 0) {
     ncclRecv(Gm(-grids_->m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
   }
 
   // send to left
-  if(grids_->procLeft() >= 0) {
+  if(grids_->iproc_m-1 >= 0) {
     ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
   }
   // receive from right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   ncclGroupEnd();

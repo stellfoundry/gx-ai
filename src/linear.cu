@@ -128,7 +128,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dimBlockh = dim3(nt1, nt2, nt3);
   dimGridh  = dim3(nb1, nb2, nb3);
   
-  
+  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
 }
 
 Linear_GK::~Linear_GK()
@@ -159,7 +159,6 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
-  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
@@ -193,7 +192,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   }
 
   // hypercollisions
-  if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
+  if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 								   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,

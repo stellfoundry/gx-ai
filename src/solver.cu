@@ -13,12 +13,11 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   if (pars_->ks) return;
   
-  size_t cgrid = sizeof(cuComplex)*grids_->NxNycNz;
-  cudaMalloc((void**) &nbar, cgrid); zero(nbar);
+  count = grids_->NxNycNz;
+  if(pars_->beta > 0.) count = 2*count;
 
-  if(pars_->beta > 0.) {
-    cudaMalloc((void**) &jbar, cgrid); zero(jbar);
-  }
+  size_t cgrid = sizeof(cuComplex)*count;
+  cudaMalloc((void**) &nbar, cgrid); zero(nbar);
 
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   
@@ -74,7 +73,6 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 Solver_GK::~Solver_GK() 
 {
   if (nbar)        cudaFree(nbar);
-  if (jbar)        cudaFree(jbar);
   if (tmp)         cudaFree(tmp);
   if (qneutDenom)  cudaFree(qneutDenom);
   if (ampereDenom) cudaFree(ampereDenom);
@@ -97,25 +95,23 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
   
   if (pars_->all_kinetic) {
     zero(nbar);
-    if(em) zero(jbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
       if(grids_->m_lo == 0) { // only compute density on procs with m=0
         real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
       }
       if(grids_->m_lo <= 1 && grids_->m_up > 1) { // only compute current on procs with m=1
-        if(em) real_space_current GQN (jbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+        if(em) real_space_current GQN (nbar+grids_->NxNycNz, G[is]->G(), geo_->kperp2, *G[is]->species);
       }
     }
 
     if(grids_->nprocs>1) {
-      ncclAllReduce((void*) nbar, (void*) nbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
-      if(em) ncclAllReduce((void*) jbar, (void*) jbar, grids_->NxNycNz*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
+      ncclAllReduce((void*) nbar, (void*) nbar, count*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
       cudaStreamSynchronize(0);
     }
     
     qneut GQN (fields->phi, nbar, qneutDenom);
-    if (em) ampere GQN (fields->apar, jbar, ampereDenom);
+    if (em) ampere GQN (fields->apar, nbar+grids_->NxNycNz, ampereDenom);
 
   } else {
 
@@ -175,7 +171,7 @@ void Solver_GK::svar (float* f, int N)
 
 void Solver_GK::zero (cuComplex* f)
 {
-  cudaMemset(f, 0., sizeof(cuComplex)*grids_->NxNycNz);
+  cudaMemset(f, 0., sizeof(cuComplex)*count);
 }
 
 //==========================================
