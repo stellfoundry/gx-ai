@@ -7,12 +7,13 @@
 # module load spack/0.1
 # module load nvhpc/21.5
 # module load openmpi/3.1.6-cuda-pmi-ucx-slurm-jhklron
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/software/spack/netcdf/4.7.2-uejs26rg7r42xfpg6f7xrfofbdjkxveq/lib:/home/software/spack/gsl/2.5-wmeietinmhfzwiammzup4ymx3wpa3ucz/lib:/software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs/lib
+# module load anaconda3
+# export LD_LIBRARY_PATH=/home/software/spack/netcdf/4.7.2-uejs26rg7r42xfpg6f7xrfofbdjkxveq/lib:/home/software/spack/gsl/2.5-wmeietinmhfzwiammzup4ymx3wpa3ucz/lib:/software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs/lib64:/home/software/spack/hdf5/1.10.5-otmytxdnpayxhzfyhl7fu3nlvdiftlt5/lib:$LD_LIBRARY_PATH
 #
 
 NETCDF_DIR = /home/software/spack/netcdf/4.7.2-uejs26rg7r42xfpg6f7xrfofbdjkxveq/
 NETCDF_INC = -I${NETCDF_DIR}/include
-NETCDF_LIB = -L${NETCDF_DIR}/lib -lnetcdf
+NETCDF_LIB = -L${NETCDF_DIR}/lib -lnetcdf 
 
 MPI_INC= 
 MPI_LIB= -lmpi

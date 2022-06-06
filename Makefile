@@ -58,6 +58,9 @@ VPATH=.:src:geometry_modules/vmec/src
 
 HEADERS=$(wildcard include/*.h) 
 
+obj/trinity_interface.o: src/trinity_interface.cu include/trinity_interface.h
+	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include -DGX_PATH=\"${PWD}\"
+
 obj/%.o: %.cu $(HEADERS) 
 	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include 
 
@@ -104,7 +107,7 @@ all: gx libgx.a geometry_modules/vmec/convert_VMEC_to_GX
 ########################
 
 clean: 
-	rm -rf obj/*.o *~ libgx.a \#*
+	rm -rf obj/*.o obj/geo/*.o *~ libgx.a \#*
 
 distclean: clean clean_tests
 	rm -rf $(TARGET)

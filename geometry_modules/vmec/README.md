@@ -34,7 +34,7 @@ If desired, one can choose the exact endpoints of the flux tube, or have the end
 
 ## Running the module
 
-After compiling the GX code you will find an executable ./geometry\_modules/vmec/convert\_VMEC\_to\_GX. Once you have written an input file (see ./geometry\_modules/vmec/input\_files/sample\_inpfile1.ing) you can wither run 
+After compiling the GX code you will find an executable ./geometry\_modules/vmec/convert\_VMEC\_to\_GX. Once you have written an input file (see ./geometry\_modules/vmec/input\_files/sample\_inpfile1.ing) you can either run 
 ```
 /path/to/convert_VMEC_to_GX path/to/input_file
 
@@ -52,6 +52,6 @@ You can choose any of the 3 equilibria with some combination of input paramters 
 
 ## Acknowledgements
 
-This code, written by Dr. Mike Martin, is a translation of Dr. Matt Landreman's full\_surfacegs2\_vmec\_interface.
+This code, written by Dr. Mike Martin, is a translation of Dr. Matt Landreman's full\_surface\_gs2\_vmec\_interface.
 
 
