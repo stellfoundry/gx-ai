@@ -20,3 +20,6 @@ docs/_build
 *.nc
 unit_tests/unit_tests
 *trinpars*
+grep*.txt
+geometry_modules/vmec/convert_VMEC_to_GX
+
