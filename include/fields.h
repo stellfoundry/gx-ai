@@ -35,7 +35,7 @@ class Fields {
     cudaMemcpy(apar, source->apar, size_, cudaMemcpyDeviceToDevice);
   }
   inline void copyBparFrom(Fields* source) {
-    cudaMemcpy(bpar, source->apar, size_, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(bpar, source->bpar, size_, cudaMemcpyDeviceToDevice);
   }
   
 private:

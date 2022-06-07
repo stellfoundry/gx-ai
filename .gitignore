@@ -21,4 +21,3 @@ docs/_build
 unit_tests/unit_tests
 *trinpars*
 geometry_modules/vmec/convert_VMEC_to_GX
-

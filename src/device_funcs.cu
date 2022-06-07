@@ -1603,8 +1603,8 @@ __global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    cuComplex SPhi;     SPhi= make_cuComplex(0.,0.);
-    cuComplex SB;       SB  = make_cuComplex(0., 0.);
+    cuComplex SQ;       SQ  = make_cuComplex(0.,0.);
+    cuComplex SA;       SA  = make_cuComplex(0.,0.);
 
     float QPhi  = 0.;
     float QB    = 0.;
@@ -1635,13 +1635,14 @@ __global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2
 
 	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
 	aPhi +=  Jl * (Jl + Jlmi1);
-	qB   += -aPhi;
 	qPhi += Jl*Jl;
 
 	// RHS vector is [[Sphi], [SB]]
-	SPhi = SPhi +  nz_ * Jl * g[ig];
-	SB   = SB   + amp22_ * (Jl + Jlmi1) * g[ig];
+	SQ   = SQ +  nz_ * Jl * g[ig];
+	SA   = SA - amp22_ * (Jl + Jlmi1) * g[ig];
       }
+      
+      qB   = -aPhi;
       // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
       AB   += amp22_ * aB;
       APhi += amp21_ * aPhi;
@@ -1651,7 +1652,7 @@ __global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2
 
     denom       = QPhi*AB - QB*APhi; 
 
-    Bpar[idxyz] = -(APhi*SPhi + QPhi*SB)/denom;  
+    Bpar[idxyz] = (-APhi*SQ + QPhi*SA)/denom;  
   }
 }
 
@@ -1695,8 +1696,8 @@ __global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    cuComplex SPhi;     SPhi= make_cuComplex(0.,0.);
-    cuComplex SB;       SB  = make_cuComplex(0., 0.);
+    cuComplex SQ;       SQ  = make_cuComplex(0., 0.);
+    cuComplex SA;       SA  = make_cuComplex(0., 0.);
 
     float QPhi  = 0.;
     float QB    = 0.;
@@ -1726,13 +1727,14 @@ __global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
 
 	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
 	aPhi +=  Jl * (Jl + Jlmi1);
-	qB   += -aPhi;
 	qPhi += Jl*Jl;
 
-	// RHS vector is [[Sphi], [SB]]
-	SPhi = SPhi +  nz_ * Jl * g[ig];
-	SB   = SB   + amp22_ * (Jl + Jlmi1) * g[ig];
+	// RHS vector is [[SQ], [SA]]
+	SQ   = SQ +  nz_ * Jl * g[ig];
+	SA   = SA - amp22_ * (Jl + Jlmi1) * g[ig];
       }
+
+      qB   = -aPhi;
       // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
       AB   += amp22_ * aB;
       APhi += amp21_ * aPhi;
@@ -1742,7 +1744,7 @@ __global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
 
     denom       = QPhi*AB - QB*APhi; 
 
-    Phi[idxyz]  = (AB*SPhi - QB*SB)/denom;
+    Phi[idxyz]  = (AB*SQ - QB*SA)/denom;
   }
 }
 
@@ -2100,7 +2102,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
 			       cuComplex* GRhs)
 {
@@ -2137,7 +2139,7 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float b_ = kperp2_ * rho2_;
       // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
       cuComplex H_ = G[globalIdx];
-      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + (Jflr(idl, b_) + Jflr(idl-1, b_))*bpar[idxyz];
       if(idm==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
       GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
@@ -2248,8 +2250,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
       m = 1;          // m = 1 has Phi term
       if (nm > 1) {
         unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
-	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar\
-			     -(Jflr(l, b_s) + Jflr(l-1, b_s)) * bpar_ * vt_ * gradpar;
+	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar -(Jflr(l, b_s) + Jflr(l-1, b_s)) * bpar_ * vt_ * gradpar;
       }
 
       // the following Apar terms are only needed in the formulation without dA/dt
@@ -2295,7 +2296,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // since idxyz is linear, these accesses are coalesced.
     const cuComplex phi_  = phi[idxyz];
     const cuComplex apar_ = apar[idxyz];
-    const cuComplex bpar_ = apar[idxyz];
+    const cuComplex bpar_ = bpar[idxyz];
   
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad were in shared memory, would have bank conflicts.
@@ -2409,6 +2410,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	   - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
 
 	 // add drive and conservation terms in low hermite moments
+	 // RG: added bpar dependent drive terms 
 	 if (m==0) {
 	   rhs[globalIdx] = rhs[globalIdx] 
             + iky_ * phi_ * (
@@ -2416,9 +2418,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	     + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
 	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
 	    )
-	    //RG: bpar dependent drive terms 
-	    + iky_ *bpar_ *((Jflr(l, b_s) + Jflr(l-1, b_s))*fprim_ \
-	    + (l*Jflr(l-2, b_s) + 3*l*Jflr(l-1, b_s) + (3*l+1)*Jflr(l, b_s) + (l+1) *Jflr(l+1, b_s))*tprim_)
+	    + iky_ *(1./zt_)*bpar_ *((Jflr(l, b_s) + Jflr(l-1, b_s))*fprim_ \
+	    + (l*Jflr(l-2, b_s) + 3*l*Jflr(l-1, b_s) + (3*l+1)*Jflr(l, b_s) + (l+1)*Jflr(l+1, b_s))*tprim_)
 
 	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
@@ -2438,7 +2439,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	 }
 	 if (m==2) {
 	   rhs[globalIdx] = rhs[globalIdx] + iky_*(phi_*Jflr(l,b_s) +\
-	      bpar_*(Jflr(l, b_s) + Jflr(l-1, b_s)))/sqrtf(2.)*tprim_ + 
+	      bpar_*(Jflr(l, b_s) + Jflr(l-1, b_s)))*(1./zt_)*(1./sqrtf(2.))*tprim_ + 
 	      + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	 }  
 
@@ -2628,9 +2629,10 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
   }
 }
 
-# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_)
+# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_ + (Jflr(L-1,b_s) + Jflr(L,b_s))*bpar_)
 # define H1c_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] - Jflr(L,b_s)*apar_*zt_*vt_)
 # define Gc_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
+
 // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
@@ -2644,8 +2646,8 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
   if (idxyz < nx*nyc*nz) {
     cuComplex phi_  = phi[idxyz];
     cuComplex apar_ = apar[idxyz];
-    cuComplex bpar_ = apar[idxyz];
-    for (int is=0; is < nspecies; is++) {
+    cuComplex bpar_ = bpar[idxyz];
+   for (int is=0; is < nspecies; is++) {
       const float zt_ = zt[is];
       const float vt_ = vt[is];
       unsigned int index = idxyz + nx*nyc*nz*is;
