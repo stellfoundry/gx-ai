@@ -69,11 +69,11 @@ void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
   // RG: Kinetic electrons and kinetic ions
   if (pars_->all_kinetic) {
     
-             qneut GQN (fields->phi, fields->bpar, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz());
+             qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
     if (em) {
 
 	    ampere  GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta);
-	    ampere2 GQN (fields->bpar, fields->phi, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->amp21(), G->amp22(), pars_->beta);
+	    ampere2 GQN (fields->bpar, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
     }
 
   } else {

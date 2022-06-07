@@ -226,15 +226,13 @@ extern __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr;
 extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
-__global__ void qneut(cuComplex* Phi, cuComplex* Bpar, const cuComplex* g, const float* kperp2, const float* rho2s,
-		      const float* qn, const float* nzs);
 
-__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s,
-		       const float* as, const float* amps, const float beta);
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float*  amp22s);
+
+__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s, const float* as, const float* amps, const float beta);
 
 //RG: added Perp Ampere's law
-__global__ void ampere2(cuComplex* Bpar, cuComplex* Phi, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s,
-		       const float* amp21s, const float* amp22s, const float beta);
+__global__ void ampere2(cuComplex* Bpar, const cuComplex* gu, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float* amp22s);
 
 
 

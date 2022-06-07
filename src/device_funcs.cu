@@ -1591,53 +1591,69 @@ __global__ void ampere(cuComplex* Apar,
 }
 
 
-__global__ void ampere2(cuComplex* Bpar,
-                        cuComplex* Phi,
-                       const cuComplex* g,
-		       const float* kperp2,
-		       const float* bmag,
-		       const float* rho2s,
-		       const float* amp21s,
-		       const float* amp22s,
-		       const float beta)
+
+__global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
+		      const float* amp22s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); // spatial index
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    cuComplex jrad1;    jrad1 = make_cuComplex(0., 0.);
-    cuComplex jrad2;    jrad2 = make_cuComplex(0., 0.);
-    
-    float denom = kperp2[idxyz]*bmag[idz]*bmag[idz]; 
+    cuComplex SPhi;     SPhi= make_cuComplex(0.,0.);
+    cuComplex SB;       SB  = make_cuComplex(0., 0.);
+
+    float QPhi  = 0.;
+    float QB    = 0.;
+    float APhi  = 0.;
+    float AB    = 1.;
+
+    float denom= 0.;
+        
     for (int is=0 ; is < nspecies; is++) {
       const float b_s = kperp2[idxyz] * rho2s[is];
-      //const float amp21_ = amp21s[is]; // n_s*z_s*beta_ref/2
-      //const float amp22_ = amp22s[is]; // n_s*T_s*beta_ref/2
+      // RG: tau_s =  T_s 
+      const float qn_     = qn[is];  // qn = n_s*z_s^2/T_s
+      const float nz_     = nzs[is];
+      const float amp21_  = amp21s[is]; // amp21_ = beta/2*n_s*z_s
+      const float amp22_  = amp22s[is]; // amp22_ = beta/2*n_s*tau_s
 
-      float g0pl1_s = 1.;
+      float aB   = 0.;
+      float aPhi = 0.;
+      float qPhi = 0.;
+      float qB   = 0.;
+
+
       for (int l=0; l < nl; l++) {
-	unsigned int m = 0; // only m=1 components needed here
+	unsigned int m = 0; // only m=0 components are needed here
 	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
-	const float Jl    = Jflr(l, b_s);
-	const float Jlmi1 = Jflr(l-1, b_s);
+	const float Jl        = Jflr(l, b_s);
+	const float Jlmi1     = Jflr(l-1, b_s);
 
-	//RG: jrad2 is the radial current due to G (m=0)
-	jrad1 = jrad1 +  amp22s[is] * (Jl + Jlmi1) * g[ig];
+	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
+	aPhi +=  Jl * (Jl + Jlmi1);
+	qB   += -aPhi;
+	qPhi += Jl*Jl;
 
-	//RG: jrad2 is the radial current due to Phi
-	jrad2 = jrad2 +  Jl * (Jl + Jlmi1) * amp21s[is];
-
-	g0pl1_s += (Jl + Jlmi1) * (Jl + Jlmi1);
+	// RHS vector is [[Sphi], [SB]]
+	SPhi = SPhi +  nz_ * Jl * g[ig];
+	SB   = SB   + amp22_ * (Jl + Jlmi1) * g[ig];
       }
-      denom += amp22s[is] * g0pl1_s;
-    }        
-    Bpar[idxyz] = -(jrad1 + Phi[idxyz] * jrad2) / denom;
+      // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
+      AB   += amp22_ * aB;
+      APhi += amp21_ * aPhi;
+      QB   += nz_ * qB;
+      QPhi += qn_ * ( 1. - qPhi );
+    }    
+
+    denom       = QPhi*AB - QB*APhi; 
+
+    Bpar[idxyz] = -(APhi*SPhi + QPhi*SB)/denom;  
   }
 }
-
 
     
 
@@ -1665,8 +1681,12 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
   }
 }
 
-__global__ void qneut(cuComplex* Phi, cuComplex* Bpar, const cuComplex* g, const float* kperp2,
-		      const float* rho2s, const float* qn, const float* nzs)
+
+
+
+__global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
+		      const float* amp22s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1675,34 +1695,59 @@ __global__ void qneut(cuComplex* Phi, cuComplex* Bpar, const cuComplex* g, const
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    cuComplex nbar;     nbar  = make_cuComplex(0., 0.);
-    cuComplex nbar2;    nbar2 = make_cuComplex(0., 0.);
-    float denom = 0.;
+    cuComplex SPhi;     SPhi= make_cuComplex(0.,0.);
+    cuComplex SB;       SB  = make_cuComplex(0., 0.);
+
+    float QPhi  = 0.;
+    float QB    = 0.;
+    float APhi  = 0.;
+    float AB    = 1.;
+
+    float denom= 0.;
         
     for (int is=0 ; is < nspecies; is++) {
       const float b_s = kperp2[idxyz] * rho2s[is];
       // RG: tau_s =  T_s 
-      const float qn_ = qn[is]; // qn = n_s*z_s^2/T_s
-      const float nz_ = nzs[is];
+      const float qn_     = qn[is];  // qn = n_s*z_s^2/T_s
+      const float nz_     = nzs[is];
+      const float amp21_  = amp21s[is]; // amp21_ = beta/2*n_s*z_s
+      const float amp22_  = amp22s[is]; // amp22_ = beta/2*n_s*tau_s
 
-      float g0_s = 0.;
+      float aB   = 0.;
+      float aPhi = 0.;
+      float qPhi = 0.;
+      float qB   = 0.;
+
       for (int l=0; l < nl; l++) {
 	unsigned int m = 0; // only m=0 components are needed here
 	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
 	const float Jl        = Jflr(l, b_s);
 	const float Jlmi1     = Jflr(l-1, b_s);
-	nbar  = nbar  + Jl * g[ig] * nz_;
 
-	// RG: Density response due to compressive EM fluc.
-	nbar2 = nbar2 +  Jl * (Jl + Jlmi1) * nz_;
-	g0_s += Jl*Jl;
+	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
+	aPhi +=  Jl * (Jl + Jlmi1);
+	qB   += -aPhi;
+	qPhi += Jl*Jl;
+
+	// RHS vector is [[Sphi], [SB]]
+	SPhi = SPhi +  nz_ * Jl * g[ig];
+	SB   = SB   + amp22_ * (Jl + Jlmi1) * g[ig];
       }
-      denom += qn_ * ( 1. - g0_s );
+      // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
+      AB   += amp22_ * aB;
+      APhi += amp21_ * aPhi;
+      QB   += nz_ * qB;
+      QPhi += qn_ * ( 1. - qPhi );
     }    
-    
-    Phi[idxyz] = (nbar + Bpar[idxyz] * nbar2) / denom;    
+
+    denom       = QPhi*AB - QB*APhi; 
+
+    Phi[idxyz]  = (AB*SPhi - QB*SB)/denom;
   }
 }
+
+
+
 
 /*
 ========================
