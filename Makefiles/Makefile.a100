@@ -23,7 +23,7 @@ MPI_INC =
 MPI_LIB = -lmpi 
 
 CUDA_INC = 
-CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp lcutensor -lcudart
+CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -lcudart
 
 GSL_INC = 
 GSL_LIB = -lgsl -lgslcblas -lm
