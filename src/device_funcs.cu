@@ -2367,17 +2367,19 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
     float scaled_nu_hyp_m = (float) nm_glob * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
     // blockIdx for y and z are unity in the kernel invocation      
-    for (int m = threadIdx.z + m_lo; m < m_up; m += blockDim.z) {
-      for (int l = threadIdx.y; l < nl; l += blockDim.y) {
+    unsigned int l = get_id2();                                                                
+    if (l<nl) {
+      unsigned int m = get_id3();                                                              
+      if (m>=m_lo && m<m_up) {                                                                 
         int m_local = m - m_lo;
-        int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);
-        if (m>2 || l>1) {
+        int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
+        if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
-            (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
-             +scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];
-        }
-      }
-    }
+            (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+             +scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
+        }   
+      }      
+    }   
   }
 }
 
