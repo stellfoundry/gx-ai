@@ -118,8 +118,10 @@ Grids::Grids(Parameters* pars) :
 
   //cudaStreamCreate(&ncclStream);
   if(iproc == 0) ncclGetUniqueId(&ncclId);
-  MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
-  ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc);
+  if(nprocs > 1) {
+    MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
+    ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc);
+  }
 }
 
 Grids::~Grids() {
@@ -142,7 +144,7 @@ Grids::~Grids() {
   if (z_h)             free(z_h);
   if (theta0_h)        free(theta0_h); 
  
-  ncclCommDestroy(ncclComm);
+  if(nprocs > 1) ncclCommDestroy(ncclComm);
 }
 
 void Grids::init_ks_and_coords()
