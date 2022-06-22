@@ -2348,7 +2348,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
       
       unsigned int l = get_id2();
       if (l<nl) {
-	unsigned int m = get_id3();
+	unsigned int m = get_id3() + m_lo;
 	if (m>=m_lo && m<m_up) {
           int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
@@ -2369,7 +2369,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
     // blockIdx for y and z are unity in the kernel invocation      
     unsigned int l = get_id2();                                                                
     if (l<nl) {
-      unsigned int m = get_id3();                                                              
+      unsigned int m = get_id3() + m_lo;
       if (m>=m_lo && m<m_up) {                                                                 
         int m_local = m - m_lo;
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
