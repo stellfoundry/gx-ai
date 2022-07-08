@@ -1509,6 +1509,14 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   int id_scale;
   if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, NULL, &id_scale))               ERR(retval);
 
+
+  // write vmec file name as an attribute
+  int id_vmec;
+  if (retval = nc_def_var(ncgeo, "wout", NC_INT, 0, NULL, &id_vmec))        ERR(retval);
+  std::string wout = vmec->vmec_data;
+  if (retval = nc_put_att_text (ncgeo, id_vmec, "filename", 
+  wout.size(), wout.c_str())) ERR(retval);
+
   // define arrays
   int geodim[1];
   size_t start[1];
@@ -1540,7 +1548,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   if (retval = nc_def_var(ncgeo, "gds21", NC_DOUBLE, 1, geodim, &id_gds21))   ERR(retval);
   int id_gds22;
   if (retval = nc_def_var(ncgeo, "gds22", NC_DOUBLE, 1, geodim, &id_gds22))   ERR(retval);
-  
+
   // end definition phase
   if (retval = nc_enddef(ncgeo)) ERR(retval);
   
@@ -1559,6 +1567,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double q = 1.0;
   if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
   if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
+
   
   if (retval = nc_put_vara(ncgeo, id_theta,    start, count, theta_grid))  ERR(retval);
   if (retval = nc_put_vara(ncgeo, id_gradpar,  start, count, gradpar))     ERR(retval);
