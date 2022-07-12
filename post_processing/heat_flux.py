@@ -7,9 +7,8 @@ import matplotlib.pyplot as plt
 import sys
 from netCDF4 import Dataset
 
-def heat_flux(fname, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref="a", refsp=None):
+def heat_flux(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref="a", refsp=None):
     # read data from file
-    data = Dataset(fname, mode='r')
     t = data.variables['time'][:]
     q = data.groups['Fluxes'].variables['qflux'][:,ispec]
     species_type = data.groups['Inputs'].groups['Species'].variables['species_type'][ispec]
@@ -22,7 +21,7 @@ def heat_flux(fname, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref
 
     # compute time-average and std dev
     istart_avg = int(len(t)*navgfac)
-    qavg = np.mean(q[istart_avg:])
+    qavg = np.mean(q[istart_avg:int(1.5*istart_avg)])
     qstd = np.std(q[istart_avg:])
     if label == None:
         label = fname
@@ -32,10 +31,8 @@ def heat_flux(fname, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref
     if plot:
         if fig == None:
             fig = plt.figure(0)
-        plt.plot(t,q,'-',label="%s: Q = %.5g"%(label, qavg))
-        plt.xlim(0)
-        plt.ylim(0)
-        plt.ylabel(r"$Q_%s/Q_{GB}$"%species_tag)
+        plt.plot(t,q,'-',label="%s: Q_%s = %.5g"%(label, species_tag, qavg))
+        plt.ylabel(r"$Q/Q_{GB}$")
         plt.xlabel(r"$t\ (v_{t%s}/%s)$"%(refsp, Lref))
         plt.legend()
         plt.tight_layout()
@@ -43,13 +40,19 @@ def heat_flux(fname, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref
 if __name__ == "__main__":
     
     for fname in sys.argv[1:]:
-    
         try:
-            heat_flux(fname)
-        
+            data = Dataset(fname, mode='r')
         except:
             print(' usage: python heat_flux.py [list of .nc files]')
+
+        nspec = data.dimensions['s'].size
     
+        for ispec in np.arange(nspec):
+            heat_flux(data, ispec=ispec, refsp=0)
+        
+    
+    plt.xlim(0)
+    plt.ylim(0)
     # uncomment this line to save a PNG image of the plot
     #plt.savefig("heat_flux.png")
     plt.show()

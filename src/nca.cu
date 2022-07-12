@@ -44,10 +44,10 @@ nca::nca(int N, int Nwrite) :
   }  
 }
 nca::~nca() {
-  if (data)  cudaFree     ( data   );
-  if (tmp_d) cudaFree     ( tmp_d  );
-  if (tmp)   free ( tmp    );
-  if (cpu)   free ( cpu    );
-  if (z_tmp) free ( z_tmp  );
+  if (data  ) cudaFree     ( data   );
+  if (tmp_d ) cudaFree     ( tmp_d  );
+  if (tmp   ) free ( tmp    );
+  if (cpu   ) free ( cpu    );
+  if (z_tmp ) free ( z_tmp  );
 }
 void nca::increment_ts(void) {time_start[0] += 1;}
