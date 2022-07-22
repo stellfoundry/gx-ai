@@ -8,6 +8,8 @@
 #include <iterator>
 #include "grids.h"
 
+enum reduction_type {KX, KY, KXKY, Z, L, M, LM};
+
 class Red {
 public:
   virtual ~Red() {};
@@ -35,6 +37,7 @@ public:
 
 class Grid_Species_Reduce : public Red {
  public:
+  Grid_Species_Reduce(Grids *grids, reduction_type type);
   Grid_Species_Reduce(Grids *grids, std::vector<int> spectra);
   ~Grid_Species_Reduce();
   void Sum(float *f, float* res, int i=0);
@@ -63,7 +66,8 @@ class Grid_Species_Reduce : public Red {
 
 class Grid_Reduce : public Red {
  public:
-  Grid_Reduce(Grids *grids, std::vector<int> s);
+  Grid_Reduce(Grids *grids, reduction_type type);
+  Grid_Reduce(Grids *grids, std::vector<int> spectra);
   ~Grid_Reduce();
   void Sum(float *f, float* res, int i=0);
 
@@ -91,7 +95,8 @@ class Grid_Reduce : public Red {
 
 class All_Reduce : public Red {
  public:
-  All_Reduce(Grids *grids, std::vector<int> s);
+  All_Reduce(Grids *grids, reduction_type type);
+  All_Reduce(Grids *grids, std::vector<int> spectra);
   ~All_Reduce();
   void Sum(float *f, float* res, int i=0);
 

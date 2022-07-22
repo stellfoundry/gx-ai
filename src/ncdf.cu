@@ -132,6 +132,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   int ri;
   // Get handles for the dimensions
+  //nc_dims = new NcDims(grids_);
+
   if (retval = nc_inq_dimid(file, "ri", &ri))  ERR(retval);
   
   if (retval = nc_def_dim(file, "kz",        grids_->Nz,    &nkz))       ERR(retval);  

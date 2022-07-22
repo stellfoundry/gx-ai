@@ -27,6 +27,11 @@ Grid_Species_Reduce::Grid_Species_Reduce(Grids *grids, std::vector<int> spectra)
   }
 }
 
+Grid_Species_Reduce::Grid_Species_Reduce(Grids *grids, reduction_type type) 
+{
+
+}
+
 Grid_Species_Reduce::~Grid_Species_Reduce()
 {
   if (Addwork) cudaFree(Addwork);
@@ -85,6 +90,11 @@ Grid_Reduce::Grid_Reduce(Grids *grids, std::vector<int> spectra) :
 
     }
   }
+}
+
+Grid_Reduce::Grid_Reduce(Grids *grids, reduction_type type) 
+{
+
 }
 
 Grid_Reduce::~Grid_Reduce()
@@ -146,6 +156,10 @@ All_Reduce::All_Reduce(Grids *grids, std::vector<int> spectra) :
       cutensorInitTensorDescriptor(&handle, &desc[j], Modes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
     }
   }
+}
+
+All_Reduce::All_Reduce(Grids *grids, reduction_type type)
+{
 }
 
 All_Reduce::~All_Reduce()

@@ -141,3 +141,11 @@ class NetCDF_ids {
 
   dim3 dgx, dbx, dgxy, dbxy, dGr, dBr, dbp, dgp, dbfla, dgfla, dball, dgall; 
 };
+
+class NcDims {
+ public:
+  NcDims();
+  ~NcDims();
+
+  int time, species, kx, ky, x, y, z, l, m;
+};
