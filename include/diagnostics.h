@@ -118,6 +118,8 @@ private:
   float        * P2s           ;
   float        * Phi2          ;
   float        * val           ;
+  cuComplex    * field_d       ;
+  cuComplex    * field_h       ;
   cuComplex    * omg_d         ;
   cuComplex    * tmp_omg_h     ;
   cuComplex    * t_bar         ;

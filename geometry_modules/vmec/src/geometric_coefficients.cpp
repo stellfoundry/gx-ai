@@ -987,8 +987,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     gds2_pest[itheta] = (grad_alpha_X[itheta] * grad_alpha_X[itheta] + grad_alpha_Y[itheta] * grad_alpha_Y[itheta] + grad_alpha_Z[itheta] * grad_alpha_Z[itheta])
       * L_reference * L_reference * normalized_toroidal_flux_used;
 
-    // Note that the gds21 value from GIST had the incorrect sign at some point. Thus, if comparing to GIST, it is possible that the signs will disagree
-    // it seems like the sign needs to be flipped if the VMEC toroidal flux is positive, otherwise gds21 is incorrect (potentially related to signgs = -1?)
+    // Note that the gds21 value from GIST had the incorrect sign at some point.
+    // Thus, if comparing to GIST, it is possible that the signs will disagree
+    // it seems like the sign needs to be flipped if the VMEC toroidal flux is positive,
+    // otherwise gds21 is incorrect (potentially related to signgs = -1?)
     gds21_pest[itheta] = (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta])
       * (shat / B_reference);
     //    gds21_pest[itheta] = (sign_psi * vmec->signgs) * (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta]) * (shat / B_reference);
@@ -1509,6 +1511,14 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   int id_scale;
   if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, NULL, &id_scale))               ERR(retval);
 
+
+  // write vmec file name as an attribute
+  int id_vmec;
+  if (retval = nc_def_var(ncgeo, "wout", NC_INT, 0, NULL, &id_vmec))        ERR(retval);
+  std::string wout = vmec->vmec_data;
+  if (retval = nc_put_att_text (ncgeo, id_vmec, "filename", 
+  wout.size(), wout.c_str())) ERR(retval);
+
   // define arrays
   int geodim[1];
   size_t start[1];
@@ -1540,7 +1550,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   if (retval = nc_def_var(ncgeo, "gds21", NC_DOUBLE, 1, geodim, &id_gds21))   ERR(retval);
   int id_gds22;
   if (retval = nc_def_var(ncgeo, "gds22", NC_DOUBLE, 1, geodim, &id_gds22))   ERR(retval);
-  
+
   // end definition phase
   if (retval = nc_enddef(ncgeo)) ERR(retval);
   
@@ -1559,6 +1569,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double q = 1.0;
   if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
   if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
+
   
   if (retval = nc_put_vara(ncgeo, id_theta,    start, count, theta_grid))  ERR(retval);
   if (retval = nc_put_vara(ncgeo, id_gradpar,  start, count, gradpar))     ERR(retval);
