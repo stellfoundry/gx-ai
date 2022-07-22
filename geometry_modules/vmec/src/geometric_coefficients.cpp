@@ -987,8 +987,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     gds2_pest[itheta] = (grad_alpha_X[itheta] * grad_alpha_X[itheta] + grad_alpha_Y[itheta] * grad_alpha_Y[itheta] + grad_alpha_Z[itheta] * grad_alpha_Z[itheta])
       * L_reference * L_reference * normalized_toroidal_flux_used;
 
-    // Note that the gds21 value from GIST had the incorrect sign at some point. Thus, if comparing to GIST, it is possible that the signs will disagree
-    // it seems like the sign needs to be flipped if the VMEC toroidal flux is positive, otherwise gds21 is incorrect (potentially related to signgs = -1?)
+    // Note that the gds21 value from GIST had the incorrect sign at some point.
+    // Thus, if comparing to GIST, it is possible that the signs will disagree
+    // it seems like the sign needs to be flipped if the VMEC toroidal flux is positive,
+    // otherwise gds21 is incorrect (potentially related to signgs = -1?)
     gds21_pest[itheta] = (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta])
       * (shat / B_reference);
     //    gds21_pest[itheta] = (sign_psi * vmec->signgs) * (grad_alpha_X[itheta] * grad_psi_X[itheta] + grad_alpha_Y[itheta] * grad_psi_Y[itheta] + grad_alpha_Z[itheta] * grad_psi_Z[itheta]) * (shat / B_reference);

@@ -3,7 +3,7 @@
 nca::nca(int N, int Nwrite) :
   N_(N), Nwrite_(Nwrite)
 {
-  data = nullptr;  cpu = nullptr;  tmp = nullptr; z_tmp = nullptr; tmp_d = nullptr;
+  data = nullptr;  cpu  = nullptr;  tmp = nullptr; z_tmp = nullptr; tmp_d = nullptr;
   write = false;  
   write_v_time = false;
   xydata = false;
@@ -35,7 +35,7 @@ nca::nca(int N, int Nwrite) :
     } else {
       cpu = (float*) malloc  (sizeof(float) * N);
     }
-  } else { // omega only
+  } else { // omega only ... BD: now also fields 7/20/22
     N = -N;
     if (Nwrite > 0) {
       z_tmp = (cuComplex*) malloc  (sizeof(cuComplex) * N);
