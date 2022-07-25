@@ -2365,7 +2365,7 @@ void NetCDF_ids::write_fields(nca *D, cuComplex *a, bool endrun)
   if (D->write) {
     CP_TO_CPU (D->z_tmp, a, sizeof(cuComplex) * grids_->NxNycNz);
     
-    reduce2zk(D->cpu, fields_phi->z_tmp);
+    reduce2zk(D->cpu, D->z_tmp);
     write_nc (D, endrun);
   }
 }
