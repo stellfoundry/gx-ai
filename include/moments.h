@@ -25,6 +25,8 @@ class MomentsG {
   float* nz(int s=0) {return &nzs[s];}
   float* qn(int s=0) {return &qns[s];}
   float* amp(int s=0) {return &amps[s];}
+  float* amp21(int s=0) {return &amp21s[s];}
+  float* amp22(int s=0) {return &amp22s[s];}
   float* nu(int s=0) {return &nu_ss[s];}
   float* vt(int s=0) {return &vts[s];}
   float* tp(int s=0) {return &tps[s];}
@@ -88,6 +90,8 @@ class MomentsG {
   float * nzs = nullptr;
   float * qns = nullptr;
   float * amps = nullptr;
+  float * amp21s = nullptr;
+  float * amp22s = nullptr;
   float * nu_ss = nullptr;
   float * vts = nullptr;
   float * tps = nullptr;

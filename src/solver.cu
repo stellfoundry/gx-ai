@@ -54,6 +54,7 @@ Solver_GK::~Solver_GK()
 }
 
 void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
+// RG: Calculates all the fields, i.e., phi, apar, bpar
 {
   if (pars_->ks) return;
   if (pars_->vp) {
@@ -64,14 +65,20 @@ void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
   if (pars_->no_fields) { zero(fields->phi); return; }
   
   bool em = pars_->beta > 0. ? true : false;
-  
+
+  // RG: Kinetic electrons and kinetic ions
   if (pars_->all_kinetic) {
     
-             qneut GQN (fields->phi,  G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz());
-    if (em) ampere GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta);
+             qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
+    if (em) {
+
+	    ampere  GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta);
+	    ampere2 GQN (fields->bpar, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
+    }
 
   } else {
 
+    // RG: Boltzmann electrons or Boltzmann ions
     zero(nbar);
     real_space_density GQN (nbar, G->G(), geo_->kperp2, G->r2(), G->nz());
 
@@ -143,10 +150,13 @@ Solver_KREHM::~Solver_KREHM()
   // nothing
 }
 
+
 void Solver_KREHM::fieldSolve(MomentsG* G, Fields* fields)
 {
   phiSolve_krehm<<<dG, dB>>>(fields->phi, G->G(0), grids_->kx, grids_->ky, pars_->rho_i);
   aparSolve_krehm<<<dG, dB>>>(fields->apar, G->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+  //RG: FLAGS Is this needed in KREHM?
+  //bparSolve_krehm<<<dG, dB>>>(fields->bpar, G->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
 }
 
 //=======================================
