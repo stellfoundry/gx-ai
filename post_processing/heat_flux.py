@@ -21,7 +21,7 @@ def heat_flux(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref=
 
     # compute time-average and std dev
     istart_avg = int(len(t)*navgfac)
-    qavg = np.mean(q[istart_avg:int(1.5*istart_avg)])
+    qavg = np.mean(q[istart_avg:])
     qstd = np.std(q[istart_avg:])
     if label == None:
         label = fname
