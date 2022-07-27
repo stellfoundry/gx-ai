@@ -150,7 +150,7 @@ class Parameters {
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
-  bool fixed_amplitude; 
+  bool fixed_amplitude, write_fields, write_eigenfuncs; 
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex, add_noise;
   bool new_varenna, new_catto, nlpm, dorland_nlpm, dorland_nlpm_phase, ExBshear;
