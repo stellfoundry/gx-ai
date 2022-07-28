@@ -12,10 +12,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
 {
 
-  tmp_c       = nullptr;  dG          = nullptr;  dg_dx       = nullptr;  dg_dy       = nullptr;  val1        = nullptr;
-  Gy          = nullptr;  dJ0phi_dx   = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
-  dJ0apar_dy = nullptr;  dphi        = nullptr;  g_res       = nullptr;  
-  J0phi       = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
+  tmp_c      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
+  Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
+  dJ0apar_dy = nullptr;  dphi       = nullptr;  g_res       = nullptr;  
+  J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -97,12 +97,12 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( Gy          ) cudaFree ( Gy          );
   if ( dJ0phi_dx   ) cudaFree ( dJ0phi_dx   );
   if ( dJ0phi_dy   ) cudaFree ( dJ0phi_dy   );
-  if ( dJ0apar_dx ) cudaFree ( dJ0apar_dx );
-  if ( dJ0apar_dy ) cudaFree ( dJ0apar_dy );
+  if ( dJ0apar_dx  ) cudaFree ( dJ0apar_dx  );
+  if ( dJ0apar_dy  ) cudaFree ( dJ0apar_dy  );
   if ( dphi        ) cudaFree ( dphi        );
   if ( g_res       ) cudaFree ( g_res       );
   if ( J0phi       ) cudaFree ( J0phi       );
-  if ( J0apar     ) cudaFree ( J0apar     );
+  if ( J0apar      ) cudaFree ( J0apar      );
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)

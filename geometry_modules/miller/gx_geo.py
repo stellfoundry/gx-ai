@@ -40,6 +40,7 @@ file_idx = 42 #random number to identify your output file
 # read parameters from input file
 input_file = sys.argv[1]
 if len(sys.argv) > 2:
+    stem = input_file.split(".")[0]
     eikfile = sys.argv[2]
 else:
     stem = input_file.split(".")[0]

@@ -1459,8 +1459,8 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   cuComplex fg;
 
   unsigned int idxyz = idy + nyc*(idx + nx*idz);
-  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
-    if (unmasked(idx, idy) && idy > 0) {    
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy) && idy > 0 && m_lo == 0) {    
       
       cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
     

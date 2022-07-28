@@ -35,7 +35,6 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   flux_fac = nullptr;
   kvol_fac = nullptr;
 
-  
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
   fields_old = new     Fields(pars_, grids_);       cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
@@ -96,7 +95,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
     cudaMalloc (&Phi2, sizeof(float) * nR);  
   }
-  
+
   if (id -> omg -> write_v_time) {
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
     tmp_omg_h = (cuComplex*) malloc (sizeof(cuComplex) * nX * nY);
@@ -262,7 +261,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       }
       id -> write_P(P2s); 
     }
-    if ( id -> qs -> write_v_time) printf("\n");
+    if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
     
     if (pars_->diagnosing_kzspec) {
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
@@ -448,6 +447,11 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
       id -> write_nc(id -> time, time);
       id -> write_ks_data (id -> g_y, gy_d);
     }
+  }
+  if (pars_->write_fields) {
+    id -> write_fields(id -> fields_phi,  fields->phi );
+    id -> write_fields(id -> fields_apar, fields->apar);
+    id -> write_fields(id -> fields_bpar, fields->bpar);
   }
 }
 

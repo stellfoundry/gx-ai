@@ -16,7 +16,8 @@ class NetCDF_ids {
   void close_nc_file();
 
   void reduce2k    (float * fk, cuComplex * f);
-
+  void reduce2zk   (float * fk, cuComplex * f);
+  
   void write_Wm    (float * G2, bool endrun = false);
   void write_Wl    (float * G2, bool endrun = false);
   void write_Wlm   (float * G2, bool endrun = false);
@@ -46,7 +47,7 @@ class NetCDF_ids {
   void write_Q     (float * Q,   bool endrun = false);
   void write_omg   (cuComplex *W, bool endrun = false);
   void write_moment(nca *D, cuComplex *f, float* vol_fac);
-
+  void write_fields(nca *D, cuComplex *a, bool endrun = true);
   void write_gy    (float * gy_d,     bool endrun = false);
   
   void write_zonal(nca *D, cuComplex* f, bool shear, float adj);
@@ -63,6 +64,7 @@ class NetCDF_ids {
   nca *Ps, *Pky, *Pkx, *Pkxky, *Pz, *Pkz;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
+  nca *fields_phi, *fields_apar, *fields_bpar;
   nca *g_y;
   nca *r_y; 
 
