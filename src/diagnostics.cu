@@ -261,7 +261,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       }
       id -> write_P(P2s); 
     }
-    if ( id -> qs -> write_v_time) printf("\n");
+    if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
     
     if (pars_->diagnosing_kzspec) {
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species

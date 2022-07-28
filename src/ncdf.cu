@@ -2366,26 +2366,48 @@ void NetCDF_ids::write_As(float *P2, bool endrun)
 
 void NetCDF_ids::write_Q (float* Q, bool endrun)
 {
-  if (qs -> write_v_time) {
+  if (qs -> write_v_time) {// && grids_->m_lo==0) {
     all_red->Sum(Q, qs->data);                   CP_TO_CPU (qs->cpu, qs->data, sizeof(float)*grids_->Nspecies);
+
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) ps->time_start[0] = 0;
+
     write_nc(qs, endrun);       
 
-    if(grids_->iproc==0) {
-      printf("Heat flux = ");
-      for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs->cpu[is]);
+    if(grids_->m_lo==0) {
+      for (int is=0; is<grids_->Nspecies; is++) {
+        int is_glob = is + grids_->is_lo;
+        const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
+        printf ("Q_%s = %e \t ", spec_string, qs->cpu[is]);
+      }
     }
   }
 }
 
 void NetCDF_ids::write_P (float* P, bool endrun)
 {
-  if (ps -> write_v_time) {
+  if (ps -> write_v_time) { //&& grids_->m_lo==0) {
     all_red->Sum(P, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
+
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) ps->time_start[0] = 0; 
+
     write_nc(ps, endrun);       
 
-    if(grids_->iproc==0) {
-      printf("Particle flux = ");
-      for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",ps->cpu[is]);
+    if(grids_->m_lo==0) {
+      for (int is=0; is<grids_->Nspecies; is++) {
+        int is_glob = is + grids_->is_lo;
+        const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
+        printf ("Gamma_%s = %e \t ", spec_string, ps->cpu[is]);
+      }
     }
   }
 }
