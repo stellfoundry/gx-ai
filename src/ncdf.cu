@@ -1095,6 +1095,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Wlm -> time_count[1] = grids_->Nspecies;
     Wlm -> time_start[1] = grids_->is_lo;
     Wlm -> time_count[2] = grids_->Nm;
+    Wlm -> time_start[2] = grids_->m_lo;
     Wlm -> time_count[3] = grids_->Nl;      
   } else {
     Wlm = new nca(0); 
@@ -1144,6 +1145,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Wm -> time_count[1] = grids_->Nspecies;    
     Wm -> time_start[1] = grids_->is_lo;
     Wm -> time_count[2] = grids_->Nm;          
+    Wm -> time_start[2] = grids_->m_lo;
   } else {
     Wm = new nca(0); 
   }
