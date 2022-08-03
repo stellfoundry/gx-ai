@@ -2438,8 +2438,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
             + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {
-	   rhs[globalIdx] = rhs[globalIdx] + iky_*(phi_*Jflr(l,b_s) +\
-	      bpar_*(Jflr(l, b_s) + Jflr(l-1, b_s)))*(1./zt_)*(1./sqrtf(2.))*tprim_ + 
+	   rhs[globalIdx] = rhs[globalIdx] + iky_*(phi_*Jflr(l,b_s) +
+	      bpar_*(Jflr(l, b_s) + Jflr(l-1, b_s))*(1./zt_))*(1./sqrtf(2.))*tprim_ + 
 	      + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	 }  
 
