@@ -1,178 +1,209 @@
 #include "spectra_diagnostics.h"
 
-Spectra::~Spectra()
+void SpectraDiagnostic::add_spectra(SpectraCalc *spectra)
 {
-  cudaFree(data);
-  free(tmp);
-  free(cpu);
-  delete field_reduce;
-  delete moments_reduce;
-}
-
-void Spectra::allocate()
-{
-  cudaMalloc (&data, sizeof(float) * N);
-  tmp = (float*) malloc  (sizeof(float) * N);
-  cpu = (float*) malloc  (sizeof(float) * Nwrite);
-}
-
-int Spectra::define_variable(string varstem, int nc_group)
-{
-  int varid, retval;
-  if (retval = nc_def_var(nc_group, (varstem + tag).c_str(), NC_FLOAT, ndim, dims, &varid)) ERR(retval);
-  if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
-  return varid;
-}
-
-void Spectra::write(float *fullData, int varid, int nc_group, bool isMoments)
-{
-  if(isMoments) moments_reduce->Sum(fullData, data); 
-  else field_reduce->Sum(fullData, data); 
-  CP_TO_CPU(tmp, data, sizeof(float)*N);
-  if(N!=Nwrite) dealias_and_reorder(tmp, cpu);
-  else cpu = tmp;
-  
-  int retval;
-  if (retval=nc_put_vara(nc_group, varid, start, count, cpu)) ERR(retval);
-  start[0] += 1;
-}
-
-Spectra_kyst::Spectra_kyst(Grids* grids, NcDims *nc_dims)
-{
-  grids_ = grids;
-  tag = "_kyst";
-  ndim = 3;
-
-  dims[0] = nc_dims->time;
-  dims[1] = nc_dims->species;
-  dims[2] = nc_dims->ky;
-
-  count[0] = 1; // each write is a single time slice
-  count[1] = grids->Nspecies;
-  count[2] = grids->Naky;
-
-  start[1] = grids->is_lo;
-
-  field_reduce = new Grid_Species_Reduce(grids, KY);
-  moments_reduce = new All_Reduce(grids, KY);
-
-  N = grids->Nyc*grids->Nspecies;
-  Nwrite = grids->Naky*grids->Nspecies; // only write de-aliased modes
-
-  allocate();
-}
-
-void Spectra_kyst::dealias_and_reorder(float *fold, float *fnew)
-{
-  for (int is = 0; is < grids_->Nspecies; is++) {
-    for (int ik = 0; ik < grids_->Naky; ik++) {
-      fnew[ik + is*grids_->Naky] = fold[ik + is*grids_->Nyc];
-    }
-  }
-}
-
-Spectra_kxkyst::Spectra_kxkyst(Grids* grids, NcDims *nc_dims)
-{
-  grids_ = grids;
-  tag = "_kxkyst";
-  ndim = 4;
-
-  dims[0] = nc_dims->time;
-  dims[1] = nc_dims->species;
-  dims[2] = nc_dims->ky;
-  dims[3] = nc_dims->kx;
-
-  count[0] = 1; // each write is a single time slice
-  count[1] = grids->Nspecies;
-  count[2] = grids->Naky;
-  count[3] = grids->Nakx;
-
-  start[1] = grids->is_lo;
-
-  field_reduce = new Grid_Species_Reduce(grids, KXKY);
-  moments_reduce = new All_Reduce(grids, KXKY);
-
-  N = grids->Nx*grids->Nyc*grids->Nspecies;
-  Nwrite = grids->Nakx*grids->Naky*grids->Nspecies; // only write de-aliased modes
-
-  allocate();
-}
-
-void Spectra_kxkyst::dealias_and_reorder(float *fold, float *fnew)
-{
-  int NK = grids_->Nakx/2;
-  int NX = grids_->Nx; 
-  for (int is = 0; is < grids_->Nspecies; is++) {
-    int it = 0;
-    int itp = it + NK;
-    for (int ik = 0; ik < grids_->Naky; ik++) {
-      int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-      int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
-      fnew[Qp] = fold[Rp];
-    }	
-    for (int it = 1; it < NK+1; it++) {
-      int itp = NK + it;
-      int itn = NK - it;
-      int itm = NX - it;
-      
-      for (int ik = 0; ik < grids_->Naky; ik++) {
-
-        int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-        int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
-
-        int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
-        int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
-
-        fnew[Qp] = fold[Rp];
-        fnew[Qn] = fold[Rm];
-      }
-    }
-  }
-}
-
-Spectra_kyt::Spectra_kyt(Grids* grids, NcDims *nc_dims)
-{
-  grids_ = grids;
-  tag = "_kyt";
-  ndim = 2;
-
-  dims[0] = nc_dims->time;
-  dims[1] = nc_dims->ky;
-
-  count[0] = 1; // each write is a single time slice
-  count[1] = grids->Naky;
-
-  field_reduce = new Grid_Reduce(grids, KY);
-  moments_reduce = new All_Reduce(grids, KY);
-
-  N = grids->Nyc;
-  Nwrite = grids->Naky; // only write de-aliased modes
-
-  allocate();
-}
-
-void Spectra_kyt::dealias_and_reorder(float *fold, float *fnew)
-{
-  for (int ik = 0; ik < grids_->Naky; ik++) {
-    fnew[ik] = fold[ik];
-  }
-}
-
-SpectraDiagnostic::SpectraDiagnostic(string varname, int nc_group, int nc_type)
-  : varname(varname), nc_group(nc_group), nc_type(nc_type)  
-{
-}
-
-void SpectraDiagnostic::add_spectra(Spectra *spectra)
-{
-  spectraList.push_back(*spectra);
-  int varid = spectra->define_variable(varname, nc_group);
+  spectraList.push_back(spectra);
+  int varid = spectra->define_nc_variable(varname, nc_group);
   spectraIds.push_back(varid);
 }
 
-void SpectraDiagnostic::write(float* data, bool isMoments)
+void SpectraDiagnostic::write_spectra(float* data)
 {
   for(int i=0; i<spectraList.size(); i++) {
-    spectraList[i].write(data, spectraIds[i], nc_group, isMoments);
+    spectraList[i]->write(data, spectraIds[i], ncdf_->nc_grids->time_index, nc_group, isMoments, skipWrite);
+  }
+}
+
+void SpectraDiagnostic::set_kernel_dims()
+{
+  if(isMoments) {
+    int nyx =  grids_->Nyc * grids_->Nx;
+    int nslm = grids_->Nmoms * grids_->Nspecies;
+
+    int nt1 = 32;
+    int nb1 = 1 + (nyx-1)/nt1;
+
+    int nt2 = 32;
+    int nb2 = 1 + (grids_->Nz-1)/nt2;
+    
+    dB = dim3(nt1, nt2, 1);
+    dG = dim3(nb1, nb2, nslm);
+  } else {
+    dB = dim3(min(16, grids_->Nyc), min(8, grids_->Nx), min(8, grids_->Nz));
+    dG = dim3(1 + (grids_->Nyc-1)/dB.x, 1 + (grids_->Nx-1)/dB.y, 1 + (grids_->Nz-1)/dB.z);  
+  }
+}
+
+Phi2Diagnostic::Phi2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  geo_ = geo;
+  ncdf_ = ncdf;
+  varname = "Phi2";
+  isMoments = false;
+  set_kernel_dims();
+  nc_group = ncdf_->nc_diagnostics->spectra;
+
+  add_spectra(allSpectra->t_spectra);
+  add_spectra(allSpectra->kxt_spectra);
+  add_spectra(allSpectra->kyt_spectra);
+  add_spectra(allSpectra->kxkyt_spectra);
+  add_spectra(allSpectra->zt_spectra);
+}
+
+void Phi2Diagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  Phi2_summand <<<dG, dB>>> (tmpf, f->phi, geo_->vol_fac); 	
+  write_spectra(tmpf);
+
+  float *phi2 = spectraList[0]->get_data();
+
+  if(grids_->iproc==0) {
+    printf ("Phi**2 = %.3e   ", phi2[0]);
+  }
+}
+
+WphiDiagnostic::WphiDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  geo_ = geo;
+  ncdf_ = ncdf;
+  varname = "Wphi";
+  isMoments = false;
+  set_kernel_dims();
+  nc_group = ncdf_->nc_diagnostics->spectra;
+
+  add_spectra(allSpectra->st_spectra);
+  add_spectra(allSpectra->kxst_spectra);
+  add_spectra(allSpectra->kyst_spectra);
+  add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
+}
+
+void WphiDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int is_glob = is + grids_->is_lo;
+    float rho2s = pars_->species_h[is_glob].rho2;
+    Wphi_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, geo_->vol_fac, geo_->kperp2, rho2s); 	
+  }
+  write_spectra(tmpf);
+}
+
+WgDiagnostic::WgDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  geo_ = geo;
+  ncdf_ = ncdf;
+  varname = "Wg";
+  isMoments = true;
+  set_kernel_dims();
+  nc_group = ncdf_->nc_diagnostics->spectra;
+
+  add_spectra(allSpectra->st_spectra);
+  add_spectra(allSpectra->kxst_spectra);
+  add_spectra(allSpectra->kyst_spectra);
+  add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
+  add_spectra(allSpectra->lmst_spectra);
+}
+
+void WgDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int is_glob = is + grids_->is_lo;
+    float nt = pars_->species_h[is_glob].nt;
+    Wg_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], G[is]->G(), geo_->vol_fac, nt);
+  }
+  write_spectra(tmpG);
+}
+
+HeatFluxDiagnostic::HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  geo_ = geo;
+  ncdf_ = ncdf;
+  varname = "HeatFlux";
+  isMoments = false;
+  if(grids_->m_lo>0) skipWrite = true; // procs with higher hermites will have nonsense 
+                                       // heat flux data, so skip the write from these procs
+  set_kernel_dims();
+  nc_group = ncdf_->nc_diagnostics->spectra;
+
+  add_spectra(allSpectra->st_spectra);
+  add_spectra(allSpectra->kxst_spectra);
+  add_spectra(allSpectra->kyst_spectra);
+  add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
+}
+
+void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int is_glob = is + grids_->is_lo;
+    float rho2s = pars_->species_h[is_glob].rho2;
+    float p_s = pars_->species_h[is_glob].nt;
+    heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s); 	
+  }
+  write_spectra(tmpf);
+
+  float *fluxes = spectraList[0]->get_data();
+
+  if(!skipWrite) {
+    for (int is=0; is<grids_->Nspecies; is++) {
+      int is_glob = is + grids_->is_lo;
+      const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
+      printf ("Q_%s = %.3e   ", spec_string, fluxes[is]);
+    }
+  }
+}
+
+ParticleFluxDiagnostic::ParticleFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  geo_ = geo;
+  ncdf_ = ncdf;
+  varname = "ParticleFlux";
+  isMoments = false;
+  if(grids_->m_lo>0) skipWrite = true; // procs with higher hermites will have nonsense 
+                                       // particle flux data, so skip the write from these procs
+  set_kernel_dims();
+  nc_group = ncdf_->nc_diagnostics->spectra;
+
+  add_spectra(allSpectra->st_spectra);
+  add_spectra(allSpectra->kxst_spectra);
+  add_spectra(allSpectra->kyst_spectra);
+  add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
+}
+
+void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int is_glob = is + grids_->is_lo;
+    float rho2s = pars_->species_h[is_glob].rho2;
+    float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
+    particle_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, n_s); 	
+  }
+  write_spectra(tmpf);
+
+  float *fluxes = spectraList[0]->get_data();
+
+  if(!skipWrite) {
+    for (int is=0; is<grids_->Nspecies; is++) {
+      int is_glob = is + grids_->is_lo;
+      const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
+      printf ("Gam_%s = %.3e   ", spec_string, fluxes[is]);
+    }
   }
 }
