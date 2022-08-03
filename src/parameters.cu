@@ -736,14 +736,13 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_diag,   "SetSpectra",     &nc_sp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Resize",         &nc_resize)) ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Reservoir",      &nc_ml))     ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Geometry",       &nc_geo))    ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Species",        &nc_spec))   ERR(retval);
   if (retval = nc_def_grp(nc_spec,   "Boltzmann",      &nc_bz))     ERR(retval);  
-  if (retval = nc_def_grp(ncid,      "Special",        &nc_out))    ERR(retval);  
-  if (retval = nc_def_grp(ncid,      "Spectra",        &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Non_zonal",      &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Special",        &nc_out))    ERR(retval);  
+  //if (retval = nc_def_grp(ncid,      "Spectra",        &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Non_zonal",      &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
 
   char strb[263];
   if (ResWrite) {
@@ -777,17 +776,6 @@ void Parameters::store_ncdf(int ncid) {
     if (retval = nc_enddef (nczid)) ERR(retval);
   }
 
-  int ri = 2;
-  if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "x",       nx_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "y",       ny_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "m",       nm_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "l",       nl_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "s",       nspec_in,      &sdim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "time",    NC_UNLIMITED,  &idim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "nw",     nw_spectra,    &wdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -993,26 +981,26 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_put_att_text (nc_bz, ivar, "value", Btype.size(), Btype.c_str() ) ) ERR(retval);
   
   // geometry
-  if (retval = nc_def_var (nc_geo, "igeo",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "slab",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "const_curv",            NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "geofile_dum",           NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_put_att_text (nc_geo, ivar, "value", geofilename.size(), geofilename.c_str())) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "igeo",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "slab",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "const_curv",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "geofile_dum",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_put_att_text (nc_inputs, ivar, "value", geofilename.size(), geofilename.c_str())) ERR(retval);
 
-  if (retval = nc_def_var (nc_geo, "drhodpsi",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kxfac",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "Rmaj",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "shift",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "eps",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "q",                     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "shat",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kappa",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kappa_prime",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "tri",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "drhodpsi",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kxfac",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "Rmaj",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "shift",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "eps",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "q",                     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "shat",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kappa",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kappa_prime",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "tri",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
-  if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1199,28 +1187,28 @@ void Parameters::store_ncdf(int ncid) {
       
   //  putbool  (ncid, "snyder_electrons", snyder_electrons);
 
-  putbool  (nc_geo, "slab",        slab       );
-  putbool  (nc_geo, "const_curv",  const_curv );
-  putint   (nc_geo, "igeo",        igeo       );
-  put_real (nc_geo, "drhodpsi",    drhodpsi   );
-  put_real (nc_geo, "kxfac",       kxfac      );
+  putbool  (nc_inputs, "slab",        slab       );
+  putbool  (nc_inputs, "const_curv",  const_curv );
+  putint   (nc_inputs, "igeo",        igeo       );
+  put_real (nc_inputs, "drhodpsi",    drhodpsi   );
+  put_real (nc_inputs, "kxfac",       kxfac      );
   if (igeo == 0) {
-    put_real (nc_geo, "Rmaj",        rmaj       );
-    put_real (nc_geo, "shift",       shift      );
-    put_real (nc_geo, "eps",         eps        );
-    put_real (nc_geo, "q",           qsf        );
-    put_real (nc_geo, "shat",        shat       );
+    put_real (nc_inputs, "Rmaj",        rmaj       );
+    put_real (nc_inputs, "shift",       shift      );
+    put_real (nc_inputs, "eps",         eps        );
+    put_real (nc_inputs, "q",           qsf        );
+    put_real (nc_inputs, "shat",        shat       );
   }
-  put_real (nc_geo, "beta",        beta       );
-  putbool  (nc_geo, "zero_shat",   zero_shat  );
+  put_real (nc_inputs, "beta",        beta       );
+  putbool  (nc_inputs, "zero_shat",   zero_shat  );
 
   // record the values of jtwist and x0 used in runname.nc
   putint (nc_dom, "jtwist", jtwist);
   put_real (nc_dom, "x0", x0);
 
-  put_wspectra (nc_sp, wspectra); 
-  put_pspectra (nc_sp, pspectra); 
-  put_aspectra (nc_sp, aspectra); 
+  //put_wspectra (nc_sp, wspectra); 
+  //put_pspectra (nc_sp, pspectra); 
+  //put_aspectra (nc_sp, aspectra); 
   putspec (nc_spec, nspec_in, species_h);
 }
 

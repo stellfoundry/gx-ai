@@ -180,6 +180,8 @@ class Parameters {
   int specs[1]; // dims for netcdf species variable arrays
   size_t is_start[1], is_count[1]; 
 
+  bool energy_spectra, flux_spectra;
+
   int aspecdim[1]; // dimension of control structure for spectral plots (adiabatic species)
   int pspecdim[1]; // dimension of control structure for spectral plots (1-Gamma_0) Phi**2
   int wspecdim[1]; // dimension of control structure for spectral plots G**2
