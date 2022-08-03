@@ -8,7 +8,39 @@
 #include <iterator>
 #include "grids.h"
 
-enum reduction_type {KX, KY, KXKY, Z, L, M, LM};
+class Reduction {
+ public:
+  Reduction(Grids *grids, std::vector<int32_t> modeFull, std::vector<int32_t> modeReduced);
+  ~Reduction();
+  void Sum(float* f, float* res);
+  void Max(float* f, float* res);
+ private:
+  void * Addwork;     uint64_t sizeAdd;    uint64_t sizeWork;    
+  void * Maxwork;     uint64_t sizeMax;   
+  cudaDataType_t cfloat = CUDA_R_32F;
+  cudaDataType_t dfloat = CUDA_R_64F;
+  cutensorComputeType_t typeCompute64 = CUTENSOR_R_MIN_64F;
+  cutensorComputeType_t typeCompute = CUTENSOR_R_MIN_32F;
+  cutensorOperator_t opAdd = CUTENSOR_OP_ADD;
+  cutensorOperator_t opMax = CUTENSOR_OP_MAX;
+  cutensorHandle_t handle; 
+  cutensorContractionFind_t find;
+    
+  float alpha = 1.0;  double alpha64 = 1.0;
+  float beta  = 0.0;  double beta64  = 0.0;
+  
+  Grids *grids_;
+  bool initialized_Sum = false;
+  bool initialized_Max = false;
+
+  cutensorTensorDescriptor_t descFull, descReduced;
+
+  std::vector<int64_t> extentFull, extentReduced;
+
+  std::unordered_map<int32_t, int64_t> extent;
+  std::vector<int32_t> modeFull_;
+  std::vector<int32_t> modeReduced_;
+};
 
 class Red {
 public:
@@ -21,6 +53,7 @@ public:
   virtual void MatMat(double* res, double* M1, double* M2) {};
   
   void * Addwork;     uint64_t sizeAdd;    uint64_t sizeWork;    
+  void * Maxwork;     uint64_t sizeMax;   
   cudaDataType_t cfloat = CUDA_R_32F;
   cudaDataType_t dfloat = CUDA_R_64F;
   cutensorComputeType_t typeCompute64 = CUTENSOR_R_MIN_64F;
@@ -37,7 +70,6 @@ public:
 
 class Grid_Species_Reduce : public Red {
  public:
-  Grid_Species_Reduce(Grids *grids, reduction_type type);
   Grid_Species_Reduce(Grids *grids, std::vector<int> spectra);
   ~Grid_Species_Reduce();
   void Sum(float *f, float* res, int i=0);
@@ -48,25 +80,24 @@ class Grid_Species_Reduce : public Red {
 
   std::vector<int32_t> initialized;
 
-  cutensorTensorDescriptor_t dP;  std::vector<cutensorTensorDescriptor_t> desc; 
-  std::vector<int64_t> extent_P;  std::vector<std::vector<int64_t>> extents; 
+  cutensorTensorDescriptor_t dP;  std::vector<cutensorTensorDescriptor_t> desc;
+  std::vector<int64_t> extent_P;  std::vector<std::vector<int64_t>> extents;
 
   std::unordered_map<int32_t, int64_t> extent;
   std::vector<int32_t> Pmode{'y', 'x', 'z', 's'};
 
   int32_t nPmode = Pmode.size(); // for integrals of (1-Gamma_0) Phi**2
   std::vector<std::vector<int32_t>> pModes{{'s'},
-					   {'x', 's'},
-					   {'y', 's'},
-					   {'y', 'x', 's'},
-					   {'y', 'x', 's'},
-					   {'z', 's'},
-					   {'z', 's'}};							       
+                                           {'x', 's'},
+                                           {'y', 's'},
+                                           {'y', 'x', 's'},
+                                           {'y', 'x', 's'},
+                                           {'z', 's'},
+                                           {'z', 's'}};
 };
 
 class Grid_Reduce : public Red {
  public:
-  Grid_Reduce(Grids *grids, reduction_type type);
   Grid_Reduce(Grids *grids, std::vector<int> spectra);
   ~Grid_Reduce();
   void Sum(float *f, float* res, int i=0);
@@ -95,7 +126,6 @@ class Grid_Reduce : public Red {
 
 class All_Reduce : public Red {
  public:
-  All_Reduce(Grids *grids, reduction_type type);
   All_Reduce(Grids *grids, std::vector<int> spectra);
   ~All_Reduce();
   void Sum(float *f, float* res, int i=0);
