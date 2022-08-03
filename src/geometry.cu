@@ -554,6 +554,21 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
 
+  // initialize volume integral weight quantities needed for some diagnostics
+  float volDenom = 0.;  
+  vol_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
+  cudaMalloc (&vol_fac, sizeof(float) * grids->Nz);
+  for (int i=0; i < grids->Nz; i++) volDenom   += jacobian_h[i]; 
+  for (int i=0; i < grids->Nz; i++) vol_fac_h[i]  = jacobian_h[i] / volDenom;
+  CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*grids->Nz);
+
+  float fluxDenom = 0.;  
+  flux_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
+  cudaMalloc(&flux_fac, sizeof(float)*grids->Nz);
+  for (int i=0; i<grids->Nz; i++) fluxDenom   += jacobian_h[i]*grho_h[i];
+  for (int i=0; i<grids->Nz; i++) flux_fac_h[i]  = jacobian_h[i] / fluxDenom;
+  CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*grids->Nz);
+
   /*
   kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);
   CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);
