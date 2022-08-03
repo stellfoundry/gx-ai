@@ -170,7 +170,7 @@ __global__ void xytranspose(float *in, float *out);
 __global__ void yzavg(float *vE, float *vEavg, float *vol_fac);
 __global__ void fieldlineaverage(cuComplex *favg, cuComplex *df, const cuComplex *f, const float *volJac);
 
-__global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, const float nt);
+__global__ void Wg_summand(float *G2, const cuComplex* g, const float* volJac, const float nt);
 
 __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac);
 
@@ -180,7 +180,7 @@ __global__ void maxPhi(float* phi_max, const cuComplex *phi);
 
 __global__ void Wphi_scale(float* p2, float alpha);
 
-__global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJac);
+__global__ void Phi2_summand(float *p2, const cuComplex *phi, const float *volJac);
   
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s);
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i);
@@ -188,7 +188,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float p_s);
 
-__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+__global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float n_s);
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
