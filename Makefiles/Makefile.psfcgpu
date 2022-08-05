@@ -1,6 +1,9 @@
 # Makefile for gpu.psfc.mit.edu
 # Maintainer: Noah Mandell (nrm@mit.edu)
 #
+# Note: in the following, paths to local installs in /home/nrm/software are used. this is not standard practice and should not be replicated in other Makefiles.
+# however, on this machine, there are no system installs of the dependencies, and the /home/nrm/software directory should be readable for all users.
+#
 # add the following to your .bash_profile (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=psfcgpu
