@@ -175,6 +175,13 @@ int main(int argc, char* argv[])
       CUDA_DEBUG("Initializing geometry s_alpha: %s \n");
     }
     else if(igeo==1) {
+      // call python geometry module using toml we just created to write the eik.out geo file
+      // GX_PATH is defined at compile time via a -D flag
+      char command[300];
+      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.out", GX_PATH, pars->run_name, pars->geofilename.c_str());
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+
       geo = new File_geo(pars, grids);
       printf("************************* \n \n \n");
       printf("Warning: may have assumed grho = 1 \n \n \n");
