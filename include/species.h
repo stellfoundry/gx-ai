@@ -19,5 +19,7 @@ typedef struct {
   float qneut;
   float as;
   float amp;
+  float amp21;
+  float amp22;
   int type;
 } specie;

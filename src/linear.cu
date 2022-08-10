@@ -151,16 +151,16 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
   if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
-			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, geo_->kperp2, G->zt(), G->r2(), G->vt());
+			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, G->zt(), G->r2(), G->vt());
 
   // Free-streaming requires parallel FFTs, so do that first
-  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());
+  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, G->r2(), geo_->gradpar, G->vt(), G->zt(), GRhs->G());
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
-      	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
+      	(G->G(), f->phi, f->apar, f-> bpar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
 	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nz(), G->as(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
 	 GRhs->G(), pars_->hegna);

@@ -1230,11 +1230,13 @@ void Parameters::init_species(specie* species)
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
     species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2
-    species[s].nt   = species[s].dens * species[s].temp;
-    species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
-    species[s].nz   = species[s].dens * species[s].z;
-    species[s].as   = species[s].nz * species[s].vt * beta / 2.;
-    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
+    species[s].nt    = species[s].dens * species[s].temp;
+    species[s].qneut = species[s].dens * species[s].z * species[s].z / species[s].temp;
+    species[s].nz    = species[s].dens * species[s].z;
+    species[s].as    = species[s].nz * species[s].vt * beta / 2.;
+    species[s].amp   = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
+    species[s].amp21 = species[s].dens * species[s].z * beta / 2.; 
+    species[s].amp22 = species[s].dens * species[s].temp * beta / 2.; 
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
@@ -1245,6 +1247,8 @@ void Parameters::init_species(specie* species)
 	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
       printf("as, amp = %f, %f \n", 
              species[s].as, species[s].amp);
+      printf("amp21, amp22 = %f, %f \n", 
+             species[s].amp21, species[s].amp22);
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);

@@ -1578,16 +1578,87 @@ __global__ void ampere(cuComplex* Apar,
       for (int l=0; l < nl; l++) {
 	unsigned int m = 1; // only m=1 components needed here
 	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
-	const float Jl = Jflr(l, b_s);
+	const float Jl   = Jflr(l, b_s);
 	jpar = jpar + j_ * Jl * g[ig];
 	g0_s += Jl*Jl;
       }
       // this term is needed when using formulation without dA/dt
+      // RG: FLAG Where is the kperp2 in denom
       denom += amp_ * g0_s;
     }        
     Apar[idxyz] = jpar / denom;
   }
 }
+
+
+
+__global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
+		      const float* amp22s)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if ( unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    
+    cuComplex SQ;       SQ  = make_cuComplex(0.,0.);
+    cuComplex SA;       SA  = make_cuComplex(0.,0.);
+
+    float QPhi  = 0.;
+    float QB    = 0.;
+    float APhi  = 0.;
+    float AB    = 1.;
+
+    float denom= 0.;
+        
+    for (int is=0 ; is < nspecies; is++) {
+      const float b_s = kperp2[idxyz] * rho2s[is];
+      // RG: tau_s =  T_s 
+      const float qn_     = qn[is];  // qn = n_s*z_s^2/T_s
+      const float nz_     = nzs[is];
+      const float amp21_  = amp21s[is]; // amp21_ = beta/2*n_s*z_s
+      const float amp22_  = amp22s[is]; // amp22_ = beta/2*n_s*tau_s
+
+      float aB   = 0.;
+      float aPhi = 0.;
+      float qPhi = 0.;
+      float qB   = 0.;
+
+
+      for (int l=0; l < nl; l++) {
+	unsigned int m = 0; // only m=0 components are needed here
+	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
+	const float Jl        = Jflr(l, b_s);
+	const float Jlmi1     = Jflr(l-1, b_s);
+
+	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
+	aPhi +=  Jl * (Jl + Jlmi1);
+	qPhi += Jl*Jl;
+
+	// RHS vector is [[Sphi], [SB]]
+	SQ   = SQ +  nz_ * Jl * g[ig];
+	SA   = SA - amp22_ * (Jl + Jlmi1) * g[ig];
+      }
+      
+      qB   = -aPhi;
+      // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
+      AB   += amp22_ * aB;
+      APhi += amp21_ * aPhi;
+      QB   += nz_ * qB;
+      QPhi += qn_ * ( 1. - qPhi );
+    }    
+
+    denom       = QPhi*AB - QB*APhi; 
+
+    Bpar[idxyz] = (-APhi*SQ + QPhi*SA)/denom;  
+  }
+}
+
+    
+
+
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2,
 				   const float *rho2s, const float *nzs)
@@ -1611,8 +1682,12 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
   }
 }
 
-__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
-		      const float* rho2s, const float* qn, const float* nzs)
+
+
+
+__global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
+		      const float* amp22s)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1621,28 +1696,60 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
     
-    cuComplex nbar;    nbar = make_cuComplex(0., 0.);
-    float denom = 0.;
+    cuComplex SQ;       SQ  = make_cuComplex(0., 0.);
+    cuComplex SA;       SA  = make_cuComplex(0., 0.);
+
+    float QPhi  = 0.;
+    float QB    = 0.;
+    float APhi  = 0.;
+    float AB    = 1.;
+
+    float denom= 0.;
         
     for (int is=0 ; is < nspecies; is++) {
       const float b_s = kperp2[idxyz] * rho2s[is];
-      const float qn_ = qn[is]; // qn = n_s*z_s^2/T_s
-      const float nz_ = nzs[is];
+      // RG: tau_s =  T_s 
+      const float qn_     = qn[is];  // qn = n_s*z_s^2/T_s
+      const float nz_     = nzs[is];
+      const float amp21_  = amp21s[is]; // amp21_ = beta/2*n_s*z_s
+      const float amp22_  = amp22s[is]; // amp22_ = beta/2*n_s*tau_s
 
-      float g0_s = 0.;
+      float aB   = 0.;
+      float aPhi = 0.;
+      float qPhi = 0.;
+      float qB   = 0.;
+
       for (int l=0; l < nl; l++) {
 	unsigned int m = 0; // only m=0 components are needed here
 	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
-	const float Jl = Jflr(l, b_s);
-	nbar = nbar + Jl * g[ig] * nz_;
-	g0_s += Jl*Jl;
+	const float Jl        = Jflr(l, b_s);
+	const float Jlmi1     = Jflr(l-1, b_s);
+
+	aB   += (Jl + Jlmi1) * (Jl + Jlmi1);
+	aPhi +=  Jl * (Jl + Jlmi1);
+	qPhi += Jl*Jl;
+
+	// RHS vector is [[SQ], [SA]]
+	SQ   = SQ +  nz_ * Jl * g[ig];
+	SA   = SA - amp22_ * (Jl + Jlmi1) * g[ig];
       }
-      denom += qn_ * ( 1. - g0_s );
+
+      qB   = -aPhi;
+      // LHS matrix terms [[QPhi, QB], [APhi, AB]]; Q:Quasineutrality, A: Ampere
+      AB   += amp22_ * aB;
+      APhi += amp21_ * aPhi;
+      QB   += nz_ * qB;
+      QPhi += qn_ * ( 1. - qPhi );
     }    
-    
-    Phi[idxyz] = nbar / denom;    
+
+    denom       = QPhi*AB - QB*APhi; 
+
+    Phi[idxyz]  = (AB*SQ - QB*SA)/denom;
   }
 }
+
+
+
 
 /*
 ========================
@@ -1995,7 +2102,7 @@ __global__ void linkedCopyBack(const cuComplex* G_linked, cuComplex* G,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, float* zt, float* vt, float* rho2,
+__global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
 			       cuComplex* GRhs)
 {
@@ -2032,7 +2139,7 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
       const float b_ = kperp2_ * rho2_;
       // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
       cuComplex H_ = G[globalIdx];
-      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz];
+      if(idm==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + (Jflr(idl, b_) + Jflr(idl-1, b_))*bpar[idxyz];
       if(idm==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
       GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
@@ -2091,8 +2198,8 @@ __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
-			      const float* kperp2, const float* rho2s, 
+__global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar,
+			      const float* kperp2, const float* rho2s,
 			      const float gradpar, const float* vt,
 			      const float* zt, cuComplex* rhs_par)
 {
@@ -2134,15 +2241,16 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
     const cuComplex phi_ = phi[idxyz];
     const cuComplex apar_ = apar[idxyz];
+    const cuComplex bpar_ = bpar[idxyz];
     for (int is = 0; is < nspecies; is++) {
       const float vt_ = vt[is];
-      const float zt_ = zt[is]; 
+      const float zt_ = zt[is]; // zt = z_s/tau_s, tau_s = T_s 
       const float b_s = rho2s[is] * kperp2[idxyz];
       
       m = 1;          // m = 1 has Phi term
       if (nm > 1) {
         unsigned int globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m + nm * is)));
-	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar;
+	rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar -(Jflr(l, b_s) + Jflr(l-1, b_s)) * bpar_ * vt_ * gradpar;
       }
 
       // the following Apar terms are only needed in the formulation without dA/dt
@@ -2161,7 +2269,7 @@ __global__ void streaming_rhs(const cuComplex* g, const cuComplex* phi, const cu
 
 // main kernel function for calculating RHS
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
+__global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar,
 			   const cuComplex* upar_bar, const cuComplex* uperp_bar, const cuComplex* t_bar,
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nzs, const float* as,
@@ -2186,8 +2294,9 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
     // read these values into (hopefully) register memory. 
     // local to each thread (i.e. each idxyz).
     // since idxyz is linear, these accesses are coalesced.
-    const cuComplex phi_ = phi[idxyz];
+    const cuComplex phi_  = phi[idxyz];
     const cuComplex apar_ = apar[idxyz];
+    const cuComplex bpar_ = bpar[idxyz];
   
     // all threads in a block will likely have same value of idz, so they will be reading same value of bgrad[idz].
     // if bgrad were in shared memory, would have bank conflicts.
@@ -2244,7 +2353,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	 int sm = m + 2;
 	 S_H(sl, sm) = g[globalIdx];
 	 // add phi term for m=0 to change g into h
-	 if (m==0) S_H(sl, sm) = S_H(sl, sm) + zt_*Jflr(l, b_s)*phi_;
+	 if (m==0) S_H(sl, sm) = S_H(sl, sm) + zt_*Jflr(l, b_s)*phi_ + (Jflr(l, b_s)+Jflr(l-1, b_s))*bpar_;
 	 // add apar term for m=1 (this is only needed in the formulation without dA/dt)
 	 if (m==1) S_H(sl, sm) = S_H(sl, sm) - zt_*vt_*Jflr(l, b_s)*apar_;
        }
@@ -2301,6 +2410,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	   - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
 
 	 // add drive and conservation terms in low hermite moments
+	 // RG: added bpar dependent drive terms 
 	 if (m==0) {
 	   rhs[globalIdx] = rhs[globalIdx] 
             + iky_ * phi_ * (
@@ -2308,6 +2418,9 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	     + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
 	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
 	    )
+	    + iky_ *(1./zt_)*bpar_ *((Jflr(l, b_s) + Jflr(l-1, b_s))*fprim_ \
+	    + (l*Jflr(l-2, b_s) + 3*l*Jflr(l-1, b_s) + (3*l+1)*Jflr(l, b_s) + (l+1)*Jflr(l+1, b_s))*tprim_)
+
 	    + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
 	    + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	 }
@@ -2325,7 +2438,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
             + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {
-	   rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
+	   rhs[globalIdx] = rhs[globalIdx] + iky_*(phi_*Jflr(l,b_s) +
+	      bpar_*(Jflr(l, b_s) + Jflr(l-1, b_s))*(1./zt_))*(1./sqrtf(2.))*tprim_ + 
 	      + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	 }  
 
@@ -2515,23 +2629,25 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
   }
 }
 
-# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_)
+# define Hc_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_*zt_ + (Jflr(L-1,b_s) + Jflr(L,b_s))*bpar_)
 # define H1c_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] - Jflr(L,b_s)*apar_*zt_*vt_)
 # define Gc_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
+
 // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
 // in a clumsy way
 __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-				   const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const float *kperp2,
+				   const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const float *kperp2,
 				   const float* zt, const float* rho2s, const float* vt)
 {
   unsigned int idxyz = get_id1();
 
   if (idxyz < nx*nyc*nz) {
-    cuComplex phi_ = phi[idxyz];
+    cuComplex phi_  = phi[idxyz];
     cuComplex apar_ = apar[idxyz];
-    for (int is=0; is < nspecies; is++) {
+    cuComplex bpar_ = bpar[idxyz];
+   for (int is=0; is < nspecies; is++) {
       const float zt_ = zt[is];
       const float vt_ = vt[is];
       unsigned int index = idxyz + nx*nyc*nz*is;
