@@ -35,6 +35,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   flux_tube_cut = toml::find_or <string> (nml, "flux_tube_cut", "none");
   custom_length = toml::find_or <double> (nml, "custom_length", M_PI);
   which_crossing = toml::find_or <int> (nml, "which_crossing", 4);
+  file_tag = toml::find_or <string> (nml, "file_tag", ""); // new TQ 8.14
 
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
@@ -1464,6 +1465,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   std::string vmec_name = vmec->vmec_data;
   vmec_name = vmec_name.substr(0,vmec_name.size()-3); // could change 0 to 5 to shorten these names
 
+  /* This part of the code writes the (netcdf) geometry output name*/
   out_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
@@ -1480,6 +1482,12 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   //  }  
 
   out_name += + "_nt_" + theta_grid_points + "_geo.nc";
+  /* This is the new usage. Above is previous. 
+   * If file_tag is not included in the input file, do nothing, 
+   * else overwrite the above out_name. */
+  if (file_tag != "") {
+    out_name = out_path + "gx_geo_" + file_tag + ".nc";
+  }
   
   // create file for writing
   int retval;
@@ -1601,6 +1609,7 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   std::string vmec_name = vmec->vmec_data;
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
 
+  /* This part of the code writes the (human readable) output name*/
   out_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
@@ -1615,8 +1624,14 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   //  else {
   //    out_name += "";
   //  }  
-
   out_name += + "_nt_" + theta_grid_points;
+
+  /* This is the new usage. Above is previous. 
+   * If file_tag is not included in the input file, do nothing, 
+   * else overwrite the above out_name. */
+  if (file_tag != "") {
+    out_name = out_path + "grid.gx_" + file_tag;
+  }
   
   std::ofstream out_file(out_name);
   //  std::ofstream out_file(".\\name.ext");
