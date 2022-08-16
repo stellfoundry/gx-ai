@@ -446,7 +446,109 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   } else {
     wphik = new nca(0);     
   }
+  
+  ////////////////////////////
+  //                        //
+  //   Fields -- Phi        //
+  //                        //
+  ////////////////////////////
 
+  if (pars_->write_fields && pars_->fphi > 0.) {
+    fields_phi = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
+    fields_phi -> write = true;
+  
+    fields_phi -> dims[0] = ky_dim; 
+    fields_phi -> dims[1] = kx_dim;
+    fields_phi -> dims[2] = nz;
+    fields_phi -> dims[3] = ri; 
+    
+    fields_phi -> file = nc_special;
+
+    if (retval = nc_def_var(nc_special, "Phi_z", NC_FLOAT, 4, fields_phi -> dims, &fields_phi -> idx)) ERR(retval);
+
+    fields_phi -> start[0] = 0;
+    fields_phi -> start[1] = 0;
+    fields_phi -> start[2] = 0;
+    fields_phi -> start[3] = 0;
+    
+    fields_phi -> count[0] = grids_->Naky;
+    fields_phi -> count[1] = grids_->Nakx;
+    fields_phi -> count[2] = grids_->Nz;
+    fields_phi -> count[3] = 2;
+
+    for (int i=0; i < nXk * nYk * nZ * 2; i++) fields_phi->cpu[i] = 0.;
+  } else {
+    fields_phi = new nca(0);
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Fields -- Apar       //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_fields && pars_->fapar > 0.) {
+    fields_apar = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
+    fields_apar -> write = true;
+  
+    fields_apar -> dims[0] = ky_dim; 
+    fields_apar -> dims[1] = kx_dim;
+    fields_apar -> dims[2] = nz;
+    fields_apar -> dims[3] = ri; 
+    
+    fields_apar -> file = nc_special;
+
+    if (retval = nc_def_var(nc_special, "Apar_z", NC_FLOAT, 4, fields_apar -> dims, &fields_apar -> idx)) ERR(retval);
+
+    fields_apar -> start[0] = 0;
+    fields_apar -> start[1] = 0;
+    fields_apar -> start[2] = 0;
+    fields_apar -> start[3] = 0;
+    
+    fields_apar -> count[0] = grids_->Naky;
+    fields_apar -> count[1] = grids_->Nakx;
+    fields_apar -> count[2] = grids_->Nz;
+    fields_apar -> count[3] = 2;
+
+    for (int i=0; i < nXk * nYk * nZ * 2; i++) fields_apar->cpu[i] = 0.;
+  } else {
+    fields_apar = new nca(0);
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Fields -- Bpar       //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_fields && pars_->fbpar > 0.) {
+    fields_bpar = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
+    fields_bpar -> write = true;
+  
+    fields_bpar -> dims[0] = ky_dim; 
+    fields_bpar -> dims[1] = kx_dim;
+    fields_bpar -> dims[2] = nz;
+    fields_bpar -> dims[3] = ri; 
+    
+    fields_bpar -> file = nc_special;
+
+    if (retval = nc_def_var(nc_special, "Bpar_z", NC_FLOAT, 4, fields_bpar -> dims, &fields_bpar -> idx)) ERR(retval);
+
+    fields_bpar -> start[0] = 0;
+    fields_bpar -> start[1] = 0;
+    fields_bpar -> start[2] = 0;
+    fields_bpar -> start[3] = 0;
+    
+    fields_bpar -> count[0] = grids_->Naky;
+    fields_bpar -> count[1] = grids_->Nakx;
+    fields_bpar -> count[2] = grids_->Nz;
+    fields_bpar -> count[3] = 2;
+
+    for (int i=0; i < nXk * nYk * nZ * 2; i++) fields_bpar->cpu[i] = 0.;
+  } else {
+    fields_bpar = new nca(0);
+  }
+  
   ////////////////////////////
   //                        //
   //   Frequencies          //
@@ -2258,6 +2360,16 @@ void NetCDF_ids::write_P (float* P, bool endrun)
   }
 }
 
+void NetCDF_ids::write_fields(nca *D, cuComplex *a, bool endrun)
+{
+  if (D->write) {
+    CP_TO_CPU (D->z_tmp, a, sizeof(cuComplex) * grids_->NxNycNz);
+    
+    reduce2zk(D->cpu, D->z_tmp);
+    write_nc (D, endrun);
+  }
+}
+
 void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 {
   CP_TO_CPU (omg->z_tmp, W, sizeof(cuComplex)*grids_->NxNyc);
@@ -2388,6 +2500,63 @@ void NetCDF_ids::reduce2k(float *fk, cuComplex* f) {
 
       fk[2*Qn  ] = f[Rm].x;
       fk[2*Qn+1] = f[Rm].y;
+    }
+  }
+}
+
+// condense a (ky,kx,z) object for netcdf output, taking into account the mask
+// and changing the type from cuComplex to float
+// and transposing to put z as fastest index
+void NetCDF_ids::reduce2zk(float *fk, cuComplex* f) {
+  
+  int Nx   = grids_->Nx;
+  int Nakx = grids_->Nakx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+  int Nz   = grids_->Nz;
+  
+  int NK = grids_->Nakx/2;
+  
+  int it = 0;
+  int itp = it + NK;
+  for (int ik=0; ik<Naky; ik++) {
+    int Qp = itp + ik*Nakx;
+    int Rp = ik  + it*Nyc;
+    for (int k=0; k<Nz; k++) {
+      int ig = Rp + Nx*Nyc*k;
+      int ir = 0 + 2*(k + Nz*Qp);
+      int ii = 1 + 2*(k + Nz*Qp);
+      fk[ir] = f[ig].x;
+      fk[ii] = f[ig].y;
+    }
+  }
+
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = Nx - it;
+    for (int ik=0; ik<Naky; ik++) {
+      int Qp = itp + ik*Nakx;
+      int Rp = ik  + it*Nyc;
+
+      int Qn = itn + ik*Nakx;
+      int Rm = ik  + itm*Nyc;
+      for (int k=0; k<Nz; k++) {
+	int ip = Rp + Nx*Nyc*k;
+	int im = Rm + Nx*Nyc*k;
+
+	int irp = 0 + 2*(k + Nz*Qp);
+	int iip = 1 + 2*(k + Nz+Qp);
+
+	int irn = 0 + 2*(k + Nz*Qn);
+	int iin = 1 + 2*(k + Nz*Qn);
+
+	fk[irp] = f[Rp].x;
+	fk[iip] = f[Rp].y;
+
+	fk[irn] = f[im].x;
+	fk[iin] = f[im].y;
+      }
     }
   }  
 }

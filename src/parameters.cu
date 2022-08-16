@@ -86,7 +86,10 @@ void Parameters::get_nml_vars(char* filename)
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
   ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
   g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
-
+  fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
+  fapar    = toml::find_or <float> (tnml, "fapar",       0.0);
+  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
+  
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
@@ -206,12 +209,14 @@ void Parameters::get_nml_vars(char* filename)
   nwrite  = toml::find_or <int>   (tnml, "nwrite", (long)  nwrite_time    );
   navg    = toml::find_or <int>   (tnml, "navg",   (long)    navg_time    );
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
-  write_omega       = toml::find_or <bool> (tnml, "omega",       false );
-  write_free_energy = toml::find_or <bool> (tnml, "free_energy", true  ); if (ks) write_free_energy = false;
-  write_fluxes      = toml::find_or <bool> (tnml, "fluxes",      false );
-  write_moms        = toml::find_or <bool> (tnml, "moms",        false );
-  write_rh          = toml::find_or <bool> (tnml, "rh",          false );
-  write_pzt         = toml::find_or <bool> (tnml, "pzt",         false );
+  write_omega       = toml::find_or <bool> (tnml, "omega",          false );
+  write_free_energy = toml::find_or <bool> (tnml, "free_energy",    true  ); if (ks) write_free_energy = false;
+  write_fluxes      = toml::find_or <bool> (tnml, "fluxes",         false );
+  write_moms        = toml::find_or <bool> (tnml, "moms",           false );
+  write_rh          = toml::find_or <bool> (tnml, "rh",             false );
+  write_pzt         = toml::find_or <bool> (tnml, "pzt",            false );
+  write_fields      = toml::find_or <bool> (tnml, "fields",         false );
+  write_eigenfuncs  = toml::find_or <bool> (tnml, "eigenfunctions", false );
   
   write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
 
@@ -871,7 +876,9 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_diag, "fixed_amp",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "omega",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "fluxes",          NC_INT,   0, NULL, &ivar)) ERR(retval);
-
+  if (retval = nc_def_var (nc_diag, "fields",          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "eigenfunctions",  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  
   if (retval = nc_def_var (nc_diag, "all_zonal_scalars", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "avg_zvE",         NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "avg_zkxvEy",      NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1127,15 +1134,17 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_diag, "avg_zkTperp",  write_avg_zkTperp );
   putbool  (nc_diag, "avg_zkqpar",   write_avg_zkqpar  );
 
-  putbool  (nc_diag, "omega",       write_omega        );
-  putbool  (nc_diag, "fixed_amp",   fixed_amplitude    );
-  putbool  (nc_diag, "free_energy", write_free_energy  );
-  putbool  (nc_diag, "fluxes",      write_fluxes       );
-  putbool  (nc_diag, "moms",        write_moms         );
-  putbool  (nc_diag, "rh",          write_rh           );
-  putbool  (nc_diag, "pzt",         write_pzt          );
-  putbool  (nc_diag, "phi",         write_phi          );
-  putbool  (nc_diag, "phi_kpar",    write_phi_kpar     );
+  putbool  (nc_diag, "eigenfunctions", write_eigenfuncs   );
+  putbool  (nc_diag, "fields",         write_fields       );
+  putbool  (nc_diag, "omega",          write_omega        );
+  putbool  (nc_diag, "fixed_amp",      fixed_amplitude    );
+  putbool  (nc_diag, "free_energy",    write_free_energy  );
+  putbool  (nc_diag, "fluxes",         write_fluxes       );
+  putbool  (nc_diag, "moms",           write_moms         );
+  putbool  (nc_diag, "rh",             write_rh           );
+  putbool  (nc_diag, "pzt",            write_pzt          );
+  putbool  (nc_diag, "phi",            write_phi          );
+  putbool  (nc_diag, "phi_kpar",       write_phi_kpar     );
 
   putint   (nc_expert, "nreal",   nreal);
   putint   (nc_expert, "i_share", i_share);
@@ -1221,11 +1230,13 @@ void Parameters::init_species(specie* species)
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
     species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2
-    species[s].nt   = species[s].dens * species[s].temp;
-    species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
-    species[s].nz   = species[s].dens * species[s].z;
-    species[s].as   = species[s].nz * species[s].vt * beta / 2.;
-    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
+    species[s].nt    = species[s].dens * species[s].temp;
+    species[s].qneut = species[s].dens * species[s].z * species[s].z / species[s].temp;
+    species[s].nz    = species[s].dens * species[s].z;
+    species[s].as    = species[s].nz * species[s].vt * beta / 2.;
+    species[s].amp   = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
+    species[s].amp21 = species[s].dens * species[s].z * beta / 2.; 
+    species[s].amp22 = species[s].dens * species[s].temp * beta / 2.; 
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
@@ -1236,6 +1247,8 @@ void Parameters::init_species(specie* species)
 	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
       printf("as, amp = %f, %f \n", 
              species[s].as, species[s].amp);
+      printf("amp21, amp22 = %f, %f \n", 
+             species[s].amp21, species[s].amp22);
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
