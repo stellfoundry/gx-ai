@@ -1,4 +1,5 @@
 #### Here we make plots of coefficients in gx.eik.out file
+# Usage is: python plot_geometry.py geofile.eik.out input_file.in
 import csv
 import sys
 import toml
@@ -277,10 +278,10 @@ if __name__ == "__main__":
 
     print("Plotting various geometric quantities.....")
     fname, inputfilename = sys.argv[1], sys.argv[2]
-        #try:
-    plot_geometry(fname, inputfilename)
-        #except:
-        #    print(' usage: python plot_geometry.py geofile.eik.out input_file.in')
+    try:
+        plot_geometry(fname, inputfilename)
+    except:
+        print('usage: python plot_geometry.py geofile.eik.out input_file.in')
 #    plt.show()
 
 
