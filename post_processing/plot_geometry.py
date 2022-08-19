@@ -4,12 +4,17 @@ import csv
 import sys
 import toml
 import numpy as np
-import pandas as pd
 from scipy import constants
 from scipy import interpolate
 import matplotlib.pyplot as plt
 from matplotlib import ticker
 from matplotlib.ticker import AutoMinorLocator
+try:
+    import pandas as pd
+except:
+    print("Error: this script requires the pandas python package.") 
+    exit(0)
+    
 
 ##### Plotting parameters
 ticklabelsize = 19
@@ -281,7 +286,7 @@ if __name__ == "__main__":
     try:
         plot_geometry(fname, inputfilename)
     except:
-        print('usage: python plot_geometry.py geofile.eik.out input_file.in')
+        print('Error... usage: python plot_geometry.py geofile.eik.out input_file.in')
 #    plt.show()
 
 
