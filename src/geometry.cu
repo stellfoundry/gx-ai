@@ -14,7 +14,10 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   int igeo = pars->igeo;
   std::string geo_option = pars->geo_option;
   DEBUGPRINT("Initializing geometry...\n");
-  if(geo_option=="s-alpha" || igeo==0) {
+  if(geo_option=="s-alpha" || geo_option=="slab" || geo_option=="const-curv" || igeo==0) {
+    if(geo_option=="slab") pars->slab = true;
+    if(geo_option=="const-curv") pars->const_curv = true;
+
     geo = new S_alpha_geo(pars, grids);
     CUDA_DEBUG("Initializing geometry s_alpha: %s \n");
     if(igeo==0) {
@@ -58,7 +61,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   } 
   else {
     printf("Error: geo_option = \"%s\" is invalid.\n", geo_option.c_str());
-    printf("Options are: geo_option = {\"s-alpha\", \"miller\", \"vmec\", \"eik\", \"nc\"}\n");
+    printf("Options are: geo_option = {\"s-alpha\", \"miller\", \"vmec\", \"eik\", \"nc\", \"slab\", \"const-curv\"}\n");
     exit(1);
   }
   return geo;
