@@ -6,6 +6,64 @@
 #include <string>
 #include <sstream>
 
+// wrapper for initializing a particular Geometry class
+Geometry* init_geo(Parameters* pars, Grids* grids)
+{
+  Geometry* geo;
+
+  int igeo = pars->igeo;
+  std::string geo_option = pars->geo_option;
+  DEBUGPRINT("Initializing geometry...\n");
+  if(geo_option=="s-alpha" || igeo==0) {
+    geo = new S_alpha_geo(pars, grids);
+    CUDA_DEBUG("Initializing geometry s_alpha: %s \n");
+    if(igeo==0) {
+      printf(ANSI_COLOR_RED);
+      printf("Warning: igeo is being deprecated. Use geo_option=\"s-alpha\" instead of igeo=0.\n"); 
+      printf(ANSI_COLOR_RESET);
+    }
+  }
+  else if(geo_option=="miller") {
+    // call python geometry module to write an eik.out geo file
+    // GX_PATH is defined at compile time via a -D flag
+    char command[300];
+    sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
+    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+    system(command);
+
+    // now read the eik file that was generated
+    geo = new Eik_geo(pars, grids);
+    CUDA_DEBUG("Initializing miller geometry: %s \n");
+  } 
+  else if(geo_option=="vmec") {
+  }
+  else if(geo_option=="eik" || igeo==1) {
+    // read already existing eik.out geo file (don't run any geometry module) 
+    geo = new Eik_geo(pars, grids);
+    CUDA_DEBUG("Initializing geometry from eik.out file: %s \n");
+    if(igeo==1) {
+      printf(ANSI_COLOR_RED);
+      printf("Warning: igeo is being deprecated. Use geo_option=\"eik\" instead of igeo=1.\n"); 
+      printf(ANSI_COLOR_RESET);
+    }
+  }
+  else if(geo_option=="nc" || igeo==2) {
+    geo = new geo_nc(pars, grids);
+    CUDA_DEBUG("Initializing geometry from NetCDF file: %s \n");
+    if(igeo==2) {
+      printf(ANSI_COLOR_RED);
+      printf("Warning: igeo is being deprecated. Use geo_option=\"nc\" instead of igeo=2.\n"); 
+      printf(ANSI_COLOR_RESET);
+    }
+  } 
+  else {
+    printf("Error: geo_option = \"%s\" is invalid.\n", geo_option.c_str());
+    printf("Options are: geo_option = {\"s-alpha\", \"miller\", \"vmec\", \"eik\", \"nc\"}\n");
+    exit(1);
+  }
+  return geo;
+}
+
 Geometry::Geometry() {
 
   operator_arrays_allocated_=false;
@@ -358,7 +416,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 }
 
 // MFM - 07/09/17
-File_geo::File_geo(Parameters *pars, Grids *grids)
+Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
 {
 
   printf("READING FILE GEO\n");

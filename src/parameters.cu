@@ -465,11 +465,13 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Geometry")) tnml = toml::find (nml, "Geometry");  
 
-  geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" );  
+  geo_option  = toml::find_or <string> (tnml, "geo_option", "miller");
+  geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
+  geofilename = toml::find_or <string> (tnml, "geo_file", "eik.out" );  
   slab        = toml::find_or <bool>   (tnml, "slab",         false );
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
-  igeo        = toml::find_or <int>   (tnml, "igeo",       0 );
+  igeo        = toml::find_or <int>   (tnml, "igeo",       -1 ); // included for backwards-compat. use geo_option instead.
   float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta ); // included for backwards-compat. beta now set in Physics
   if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
@@ -484,7 +486,7 @@ void Parameters::get_nml_vars(char* filename)
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
   tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
   beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
-  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); // NRM: this input parameter doesn't do anything....see next line
+  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); 
   // Set zero_shat = true in the input file when the actual magnetic shear is inconveniently low. 
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
