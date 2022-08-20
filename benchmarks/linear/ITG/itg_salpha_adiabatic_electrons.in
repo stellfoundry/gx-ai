@@ -32,7 +32,7 @@
  init_amp = 1.0e-10              # amplitude of initial condition
 
 [Geometry]
- igeo = 0                        # use s-alpha analytical model geometry
+ geo_option = "s-alpha"          # use s-alpha analytical model geometry
  eps = 0.18                      # inverse aspect ratio of flux surface, r/R
  Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
  qinp = 1.4                      # safety factor
