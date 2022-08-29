@@ -2335,8 +2335,8 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
        }
      }
      
-     const cuComplex icv_d_s = 2. * tz_ * make_cuComplex(0., cv_d[idxyz]);
-     const cuComplex igb_d_s = 2. * tz_ * make_cuComplex(0., gb_d[idxyz]);
+     const cuComplex icv_d_s = tz_ * make_cuComplex(0., cv_d[idxyz]);
+     const cuComplex igb_d_s = tz_ * make_cuComplex(0., gb_d[idxyz]);
 
      // conservation terms (species-specific)
      cuComplex upar_bar_  =  upar_bar[idxyz + is * nR]; 
