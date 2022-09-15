@@ -9,4 +9,4 @@ N. R. Mandell, W. D. Dorland, and M. Landreman. 2018. "Laguerre-Hermite pseudo-s
 
 The GX code paper is in progress, please stay tuned!
 
-N. R. Mandell, W. D. Dorland, I. Abel, R. Gaur, P. Kim, M. Martin, and T. Qian. 2022. "GX: a GPU-native gyrokinetic turbulence code for tokamak and stellarator design". arXiv:2209.06731. https://arxiv.org/abs/2209.06731
+N. R. Mandell, W. D. Dorland, I. Abel, R. Gaur, P. Kim, M. Martin, and T. Qian. 2022. "GX: a GPU-native gyrokinetic turbulence code for tokamak and stellarator design". arXiv:2209.06731. `<https://arxiv.org/abs/2209.06731>`_
