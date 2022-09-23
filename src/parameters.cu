@@ -1456,9 +1456,9 @@ void Parameters::set_jtwist_x0(float shat_in)
       jtwist = jtwist_0;
       // this is the exact x0 value that corresponds to the integer jtwist we just computed
       float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
-      // reset x0 to be consistent with jtwist
-      x0 = x0_j;
+
       if(jtwist == 0) zero_shat = true;
+      else x0 = x0_j; // reset x0 to be consistent with jtwist
     }
   }
 
