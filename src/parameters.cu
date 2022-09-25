@@ -172,7 +172,12 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
 
   i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
-  int i_share_max = 96*1024/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
+  int dev;
+  cudaDeviceProp prop;
+  cudaGetDevice(&dev);
+  cudaGetDeviceProperties(&prop, dev);
+  size_t maxSharedSize = prop.sharedMemPerBlockOptin;
+  int i_share_max = maxSharedSize/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
   if(i_share > i_share_max) {
     printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
     i_share = i_share_max;
