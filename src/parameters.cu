@@ -1400,9 +1400,9 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float shat_in)
+void Parameters::set_jtwist_x0(float *shat_in)
 {
-  printf("set_jtwist_x0: shat_in = %f\n", shat_in);
+  printf("set_jtwist_x0: shat_in = %f\n", *shat_in);
   if (jtwist==0) {
     // this is an error
     printf("************************** \n");
@@ -1411,11 +1411,11 @@ void Parameters::set_jtwist_x0(float shat_in)
     printf("************************** \n");
     printf("************************** \n");
   }
-  if (shat_in == 0.0) {
+  if (*shat_in == 0.0) {
     printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    shat_in = 1.e-8;
+    *shat_in = 1.e-8;
   }
-  if (abs(shat_in) < 1e-5) {
+  if (abs(*shat_in) < 1e-5) {
     zero_shat = true;
   }
 
@@ -1432,24 +1432,24 @@ void Parameters::set_jtwist_x0(float shat_in)
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) round(2*M_PI*abs(shat_in)*Zp);
+      jtwist = (int) round(2*M_PI*abs(*shat_in)*Zp);
       if(jtwist == 0) {
         printf("Warning: shat was set so small that it was giving jtwist=0\n");
 	printf("Setting x0=y0 and zero_shat=true\n");
         x0 = y0;
 	zero_shat = true;
       } else {
-        x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+        x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
       }
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(shat_in)*Zp/y0*x0);
+      int jtwist_0 = (int) round(2*M_PI*abs(*shat_in)*Zp/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
@@ -1460,10 +1460,10 @@ void Parameters::set_jtwist_x0(float shat_in)
       }
       jtwist = jtwist_0;
       // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
-      // reset x0 to be consistent with jtwist
-      x0 = x0_j;
+      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+
       if(jtwist == 0) zero_shat = true;
+      else x0 = x0_j; // reset x0 to be consistent with jtwist
     }
   }
 
