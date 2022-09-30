@@ -39,11 +39,15 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     CUDA_DEBUG("Initializing miller geometry: %s \n");
   } 
   else if(geo_option=="vmec") {
+    printf("Error: geo_option = \"vmec\" is not yet implemented.\n");
+    printf("Use the geometry_modules/vmec/convert_VMEC_to_GX executable to generate an eik.out file,\n");
+    printf("and then use geo_option = \"eik\".\n");
+    exit(1);
   }
   else if(geo_option=="eik" || igeo==1) {
     // read already existing eik.out geo file (don't run any geometry module) 
     geo = new Eik_geo(pars, grids);
-    CUDA_DEBUG("Initializing geometry from eik.out file: %s \n");
+    CUDA_DEBUG("Initializing geometry from eik.out file: %s \n", pars->geofilename.c_str());
     if(igeo==1) {
       printf(ANSI_COLOR_RED);
       printf("Warning: igeo is being deprecated. Use geo_option=\"eik\" instead of igeo=1.\n"); 
