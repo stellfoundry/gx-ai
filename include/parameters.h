@@ -168,6 +168,7 @@ class Parameters {
   bool Reservoir, ResFakeData, ResWrite, ResBatch;
   bool dealias_kz;
   bool hegna;  // bb6126 - hegna test
+  bool ei_colls;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
     

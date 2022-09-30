@@ -89,6 +89,7 @@ void Parameters::get_nml_vars(char* filename)
   fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
   fapar    = toml::find_or <float> (tnml, "fapar",       0.0);
   fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
+  ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");

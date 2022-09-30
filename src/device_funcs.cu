@@ -1548,14 +1548,14 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
 }
 
 
-__global__ void ampere(cuComplex* Apar,
+__global__ void ampere_apar(cuComplex* Apar,
 		       const cuComplex* g,
 		       const float* kperp2,
 		       const float* bmag,
 		       const float* rho2s,
 		       const float* as,
 		       const float* amps,
-		       const float beta)
+		       const float beta, const float fapar)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1586,15 +1586,15 @@ __global__ void ampere(cuComplex* Apar,
       // RG: FLAG Where is the kperp2 in denom
       denom += amp_ * g0_s;
     }        
-    Apar[idxyz] = jpar / denom;
+    Apar[idxyz] = fapar * jpar / denom;
   }
 }
 
 
 
-__global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2,
+__global__ void ampere_bpar(cuComplex* Bpar, const cuComplex* g, const float* kperp2,
 		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
-		      const float* amp22s)
+		      const float* amp22s, const float fbpar)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1652,7 +1652,7 @@ __global__ void ampere2(cuComplex* Bpar, const cuComplex* g, const float* kperp2
 
     denom       = QPhi*AB - QB*APhi; 
 
-    Bpar[idxyz] = (-APhi*SQ + QPhi*SA)/denom;  
+    Bpar[idxyz] = fbpar * (-APhi*SQ + QPhi*SA)/denom;  
   }
 }
 
@@ -1682,12 +1682,42 @@ __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const fl
   }
 }
 
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2,
+		      const float* rho2s, const float* qn, const float* nzs, const float fphi)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
 
+  if ( unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
 
+    cuComplex nbar;    nbar = make_cuComplex(0., 0.);
+    float denom = 0.;
 
-__global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
+    for (int is=0 ; is < nspecies; is++) {
+      const float b_s = kperp2[idxyz] * rho2s[is];
+      const float qn_ = qn[is]; // qn = n_s*z_s^2/T_s
+      const float nz_ = nzs[is];
+
+      float g0_s = 0.;
+      for (int l=0; l < nl; l++) {
+	unsigned int m = 0; // only m=0 components are needed here
+	unsigned int ig = idxyz + nx*nyc*nz*(l + nl*(m + nm*is));
+	const float Jl = Jflr(l, b_s);
+	nbar = nbar + Jl * g[ig] * nz_;
+	g0_s += Jl*Jl;
+      }
+      denom += qn_ * ( 1. - g0_s );
+    }
+
+    Phi[idxyz] = fphi * nbar / denom;
+  }
+}
+
+__global__ void qneut_with_bpar(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
 		      const float* rho2s, const float* qn, const float* nzs, const float* amp21s,
-		      const float* amp22s)
+		      const float* amp22s, const float fphi)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1744,7 +1774,7 @@ __global__ void qneut(cuComplex* Phi,  const cuComplex* g, const float* kperp2,
 
     denom       = QPhi*AB - QB*APhi; 
 
-    Phi[idxyz]  = (AB*SQ - QB*SA)/denom;
+    Phi[idxyz]  = fphi * (AB*SQ - QB*SA)/denom;
   }
 }
 
@@ -1905,7 +1935,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* PhiAvgDenom, const float* kperp2,
-				 const float* rho2s, const float* qns, float tau_fac)
+				 const float* rho2s, const float* qns, float tau_fac, float fphi)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1942,8 +1972,8 @@ __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp,
       PhiAvg.x = 0.; PhiAvg.y = 0.;
     }
 
-    Phi[idxyz].x = ( nbar[idxyz].x + tau_fac * PhiAvg.x ) / (tau_fac + pfilter2); // Eq 4
-    Phi[idxyz].y = ( nbar[idxyz].y + tau_fac * PhiAvg.y ) / (tau_fac + pfilter2);
+    Phi[idxyz].x = fphi * ( nbar[idxyz].x + tau_fac * PhiAvg.x ) / (tau_fac + pfilter2); // Eq 4
+    Phi[idxyz].y = fphi * ( nbar[idxyz].y + tau_fac * PhiAvg.y ) / (tau_fac + pfilter2);
   }
 }
 
@@ -1988,7 +2018,7 @@ __global__ void add_source(cuComplex* f, const float source)
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* kperp2, const float* rho2s, const float* qns, 
-			   float tau_fac)
+			   float tau_fac, float fphi)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -2004,8 +2034,8 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
       pfilter2 += qns[is] * ( 1. - g0(b_s));
     }
     
-    Phi[idxyz].x = ( nbar[idxyz].x / (tau_fac + pfilter2 ) );  
-    Phi[idxyz].y = ( nbar[idxyz].y / (tau_fac + pfilter2 ) );  
+    Phi[idxyz].x = fphi * ( nbar[idxyz].x / (tau_fac + pfilter2 ) );  
+    Phi[idxyz].y = fphi * ( nbar[idxyz].y / (tau_fac + pfilter2 ) );  
   }
 }
 
@@ -2274,7 +2304,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 			   const float* kperp2, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nzs, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim,
-			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna)  // bb6126 - hegna test
+			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna, bool ei_colls)  // bb6126 - hegna test
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
   
@@ -2326,12 +2356,13 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
      float nuei_ = 0.0;
      float as_i = 1.0;
      float nzvt_i = 1.0;
+     float vt_i = 1.0;
      // for electrons, account for e-i collisions
-     if(typs[is] == 1) {
+     if(typs[is] == 1 && ei_colls) {
        nuei_ = nu_;
        // get as = z*n*vt*beta/2 from first ion species (assume this is main ions)
        for(int j=0; j<nspecies; j++) {
-         if(typs[j] == 0) {as_i = as[j]; nzvt_i = nzs[j]*vt[j]; break;}
+         if(typs[j] == 0) {as_i = as[j]; vt_i = vt[j]; nzvt_i = nzs[j]*vt[j]; break;}
        }
      }
      
@@ -2434,7 +2465,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
 	     + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
 	     + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
 	    )
-      	    + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*upar_bar_i)
+      	    + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*vt_i/vt_*upar_bar_i)
             + phi_ * Jflr(l,b_s) * uprim_ * iky_ / vt_; // need to set uprim_ more carefully; this is a placeholder
 	 }
 	 if (m==2) {
@@ -2552,7 +2583,7 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 	  int globalIdx = idxyz + nx*nyc*nz*(l + nl*(m + nm*is)); 
 	  if (m>2 || l>1) {
 	    rhs[globalIdx] = rhs[globalIdx] -
-	      (scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
+	      vt[is]*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)
 	       +scaled_nu_hyp_m*pow((float) m/nm, p_hyper_m))*g[globalIdx];
 	  }
 	}
