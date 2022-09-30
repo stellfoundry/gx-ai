@@ -50,6 +50,7 @@ public:
   float     * vol_fac       ; 
 
   float volDenom;
+  size_t maxSharedSize;
   
 };
 

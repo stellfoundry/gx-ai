@@ -201,18 +201,17 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
     gds21_h[k] = -shat * (shat * theta - shift * sin(theta));
     gds22_h[k] = pow(shat,2);
 
-    gbdrift_h[k] = 1. / (2.*rmaj) *
-               (cos(theta) + (shat * theta - shift * sin(theta)) * sin(theta));
+    gbdrift_h[k] = 1. / rmaj * (cos(theta) + (shat * theta - shift * sin(theta)) * sin(theta));
     cvdrift_h[k] = gbdrift_h[k];
 
-    gbdrift0_h[k] = - shat * sin(theta) / (2.*rmaj);
+    gbdrift0_h[k] = - shat * sin(theta) / rmaj;
     cvdrift0_h[k] = gbdrift0_h[k];
 
     grho_h[k] = 1;
 
     if(pars->const_curv) {
-      cvdrift_h[k] = 1./(2.*rmaj);
-      gbdrift_h[k] = 1./(2.*rmaj);
+      cvdrift_h[k] = 1./rmaj;
+      gbdrift_h[k] = 1./rmaj;
       cvdrift0_h[k] = 0.;
       gbdrift0_h[k] = 0.;
     }
@@ -333,19 +332,19 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n] / 4.0;
+  for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n] / 4.0;
+  for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n] / 4.0;
+  for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n] / 4.0;
+  for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n] / 2.0;
   
   free(dtmp);
 
@@ -512,21 +511,21 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
 	getline (myfile, datline); stringstream ss(datline);
-        ss >> element; gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.25;
+        ss >> element; gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.5;
         ss >> element; gradpar        = stof(element);
         ss >> element; grho_h[idz]    = stof(element);
         ss >> element; z_h[idz]       = stof(element);
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
      
-      DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",4.*gbdrift_h[0],4.*gbdrift_h[Nz-1]);
+      DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",2.*gbdrift_h[0],2.*gbdrift_h[Nz-1]);
       DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
       
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz; idz++) {
         getline (myfile, datline); stringstream ss(datline);
         ss >> element; cvdrift_h[idz] = stof(element);
-        cvdrift_h[idz] *= 0.25;
+        cvdrift_h[idz] *= 0.5;
         ss >> element; gds2_h[idz]    = stof(element);
         ss >> element; bmag_h[idz]    = stof(element);
         bmagInv_h[idz]  = 1./bmag_h[idz];
@@ -534,7 +533,7 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
-      DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",4.*cvdrift_h[0],4.*cvdrift_h[Nz-1]);
+      DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",2.*cvdrift_h[0],2.*cvdrift_h[Nz-1]);
       DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
       DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
@@ -552,8 +551,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
             getline(myfile, datline); // text
       for (int idz=0; idz < newNz; idz++) {
         getline (myfile, datline); stringstream ss(datline);
-        ss >> element; cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.25;
-        ss >> element; gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.25;
+        ss >> element; cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.5;
+        ss >> element; gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.5;
       }
       getline(myfile, datline); // periodic points (not always periodic, but extra)
 
@@ -608,7 +607,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
 
   // set jtwist and x0, now that we know the final value of shat from geometry
-  pars->set_jtwist_x0(shat);
+  pars->set_jtwist_x0(&shat);
   // initialize k and coordinate arrays
   grids->init_ks_and_coords();
   // initialize operator arrays

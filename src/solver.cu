@@ -69,13 +69,17 @@ void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
   // RG: Kinetic electrons and kinetic ions
   if (pars_->all_kinetic) {
     
-             qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
     if (em) {
-
-	    ampere  GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta);
-	    ampere2 GQN (fields->bpar, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22());
+      if(pars_->fapar>0.0) ampere_apar  GQN (fields->apar, G->G(), geo_->kperp2, geo_->bmag, G->r2(), G->as(), G->amp(), pars_->beta, pars_->fapar);
+      if(pars_->fbpar>0.0) {
+        qneut_with_bpar GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22(), pars_->fphi);
+        ampere_bpar  GQN (fields->bpar, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), G->amp21(), G->amp22(), pars_->fbpar);
+      } else {
+        qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), pars_->fphi);
+      }
+    } else {
+      qneut GQN (fields->phi, G->G(), geo_->kperp2, G->r2(), G->qn(), G->nz(), pars_->fphi);
     }
-
   } else {
 
     // RG: Boltzmann electrons or Boltzmann ions
@@ -88,10 +92,10 @@ void Solver_GK::fieldSolve(MomentsG* G, Fields* fields)
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
       zero(fields->phi);
       qneutAdiab_part1 GQN (             tmp, nbar,              geo_->kperp2, geo_->jacobian, G->r2(), G->qn(), pars_->tau_fac);
-      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2,                 G->r2(), G->qn(), pars_->tau_fac);
+      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom, geo_->kperp2,                 G->r2(), G->qn(), pars_->tau_fac, pars_->fphi);
     } 
     
-    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar, geo_->kperp2, G->r2(), G->qn(), pars_->tau_fac);
+    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar, geo_->kperp2, G->r2(), G->qn(), pars_->tau_fac, pars_->fphi);
   }
   
   if(pars_->source_option==PHIEXT) add_source GQN (fields->phi, pars_->phi_ext);

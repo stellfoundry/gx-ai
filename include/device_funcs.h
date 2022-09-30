@@ -227,12 +227,14 @@ extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
 
-__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float*  amp22s);
+__global__ void qneut(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, float fphi);
 
-__global__ void ampere(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s, const float* as, const float* amps, const float beta);
+__global__ void qneut_with_bpar(cuComplex* Phi, const cuComplex* g, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float*  amp22s, float fphi);
+
+__global__ void ampere_apar(cuComplex* Apar, const cuComplex* gu, const float* kperp2, const float* bmag, const float* rho2s, const float* as, const float* amps, const float beta, float fapar);
 
 //RG: added Perp Ampere's law
-__global__ void ampere2(cuComplex* Bpar, const cuComplex* gu, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float* amp22s);
+__global__ void ampere_bpar(cuComplex* Bpar, const cuComplex* gu, const float* kperp2, const float* rho2s, const float* qn, const float* nzs, const float* amp21s, const float* amp22s, float fbpar);
 
 
 
@@ -254,7 +256,7 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* PhiAvgDenom, const float* kperp2, 
-				 const float* rho2s, const float* qns, float tau_fac);
+				 const float* rho2s, const float* qns, float tau_fac, float fphi);
 
 __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2, const float* jacobian,
 				 const float* rho2s, const float* qns, float tau_fac);
@@ -262,7 +264,7 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* kperp2, const 
 __global__ void add_source(cuComplex* f, const float source);
 
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
-			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac);
+			   const float* kperp2, const float* rho2s, const float* qns, float tau_fac, float fphi);
 
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, float* zt, float* vt, float* rho2,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
@@ -306,7 +308,7 @@ __global__ void rhs_linear(const cuComplex *g, const cuComplex* phi, const cuCom
 			   const float* b, const float* cv_d, const float* gb_d, const float* bmag, const float* bgrad,
 			   const float* ky, const float* vt, const float* zt, const float* tz, const float* nz, const float* as,
 			   const float* nu_ss, const float* tprim, const float* uprim, const float* fprim, 
-			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna);  // bb6126 - hegna test
+			   const float* rho2s, const int* typs, cuComplex* rhs, bool hegna, bool ei_colls);  // bb6126 - hegna test
 
 __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky, const cuComplex* df, float w_osc);
 __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc);

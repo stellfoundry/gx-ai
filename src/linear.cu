@@ -105,13 +105,19 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   
   sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
 
+  int dev;
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
+  maxSharedSize = prop.sharedMemPerBlockOptin;
+
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
-  if(sharedSize/1024.>96.) {
+  if(sharedSize>maxSharedSize) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
     printf("If you wish to try to keep this velocity resolution, ");
     printf("you can try lowering i_share in your input file.\n");
     printf("You are using i_share = %d now, perhaps by default.\n", pars_->i_share);
-    printf("The size of the shared memory block should be less than 96 KB ");
+    printf("The size of the shared memory block should be less than %d KB ", maxSharedSize/1024);
     printf("which means i_share*(nhermite+4)*(nlaguerre+2) < %d. \n", 12*1024);
     printf("Presently, you have set i_share*(nhermite+4)*(nlaguerre+2) = %d. \n",
 	   pars_->i_share*(grids_->Nm+4)*(grids_->Nl+2));
@@ -158,12 +164,12 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
-  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
+  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, maxSharedSize);
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, f-> bpar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
 	 grids_->ky, G->vt(), G->zt(), G->tz(), G->nz(), G->as(), G->nu(), G->tp(), G->up(), G->fp(), G->r2(), G->ty(),
-	 GRhs->G(), pars_->hegna);
+	 GRhs->G(), pars_->hegna, pars_->ei_colls);
 
   // hyper model by Hammett and Belli
   if (pars_->HB_hyper) {
