@@ -30,6 +30,8 @@ CUDA_LIB = -L${CUDA_DIR}/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -l
 
 NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
 
+GS2_PATH = /home/nrm/gs2
+
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
 else

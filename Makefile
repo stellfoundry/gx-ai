@@ -58,8 +58,13 @@ VPATH=.:src:geometry_modules/vmec/src
 
 HEADERS=$(wildcard include/*.h) 
 
+ifdef GS2_PATH
+obj/%.o: %.cu $(HEADERS) 
+	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+else
 obj/%.o: %.cu $(HEADERS) 
 	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include -DGX_PATH=\"${PWD}\"
+endif
 
 obj/%.o: %.cpp $(HEADERS)
 	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include

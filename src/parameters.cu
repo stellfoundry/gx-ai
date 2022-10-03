@@ -483,6 +483,7 @@ void Parameters::get_nml_vars(char* filename)
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );
+  rmaj        = toml::find_or <float> (tnml, "rmaj",    (double) rmaj );
   r_geo       = toml::find_or <float> (tnml, "R_geo",     1.0 );
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
@@ -491,7 +492,8 @@ void Parameters::get_nml_vars(char* filename)
   akappri     = toml::find_or <float> (tnml, "akappri",    0.0 );
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
   tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
-  beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
+  beta_prime_input    = toml::find_or <float> (tnml, "beta_prime_input", -1.0 );
+  beta_prime_input    = toml::find_or <float> (tnml, "betaprim", (double) beta_prime_input );
   zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); 
   // Set zero_shat = true in the input file when the actual magnetic shear is inconveniently low. 
   if (igeo==0) {
@@ -503,6 +505,32 @@ void Parameters::get_nml_vars(char* filename)
     //printf("Be sure it is consistent with the value in the geometry file. \n");
     //printf("Using shat = %f \n",shat);
   }
+  
+  // the following parameters are exclusively for interfacing 
+  // with the GS2 geometry module via eiktest
+  // for parameter definitions, see src/geo/geometry.f90 in the GS2 repo
+  // the defaults are the same as the defaults in gs2's eiktest.f90
+  rhoc = toml::find_or <float> (tnml, "rhoc", 0.5); 
+  geoType = toml::find_or <int> (tnml, "geoType", 0); 
+  iflux = toml::find_or <int> (tnml, "iflux", 0); 
+  delrho = toml::find_or <float> (tnml, "delrho", 0.01); 
+  bishop = toml::find_or <int> (tnml, "bishop", 0); 
+  irho = toml::find_or <int> (tnml, "irho", 2); 
+  isym = toml::find_or <int> (tnml, "isym", 0); 
+  eqfile = toml::find_or <string> (tnml, "eqfile", "none" );  
+  s_hat_input = toml::find_or <float> (tnml, "s_hat_input", 1.0 );
+  p_prime_input = toml::find_or <float> (tnml, "p_prime_input", -2.0 );
+  invLp_input = toml::find_or <float> (tnml, "invLp_input", 5.0 );
+  alpha_input = toml::find_or <float> (tnml, "alpha_input", 0.0 );
+  efit_eq = toml::find_or <bool> (tnml, "efit_eq", false);
+  dfit_eq = toml::find_or <bool> (tnml, "dfit_eq", false);
+  gen_eq = toml::find_or <bool> (tnml, "gen_eq", false);
+  ppl_eq = toml::find_or <bool> (tnml, "ppl_eq", false);
+  local_eq = toml::find_or <bool> (tnml, "local_eq", false);
+  idfit_eq = toml::find_or <bool> (tnml, "idfit_eq", false);
+  chs_eq = toml::find_or <bool> (tnml, "chs_eq", false);
+  transp_eq = toml::find_or <bool> (tnml, "transp_eq", false);
+  gs2d_eq = toml::find_or <bool> (tnml, "gs2d_eq", false);
   
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);

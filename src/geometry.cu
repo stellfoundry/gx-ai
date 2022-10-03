@@ -44,6 +44,25 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     printf("and then use geo_option = \"eik\".\n");
     exit(1);
   }
+#ifdef GS2_PATH
+  else if(geo_option=="gs2_geo") {
+    // write an eik.in file
+    write_eiktest_in(pars, grids);
+    char command[300];
+    sprintf(command, "%s/bin/eiktest > eiktest.log", GS2_PATH, pars->run_name);
+    pars->geofilename = "eik.out";
+    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+    system(command);
+
+    // now read the eik file that was generated
+    geo = new Eik_geo(pars, grids);
+  }
+#else
+  else if(geo_option=="gs2_geo") {
+    printf("Error: gx was not compiled with gs2 geometry support.\n");
+    exit(1);
+  }
+#endif
   else if(geo_option=="eik" || igeo==1) {
     // read already existing eik.out geo file (don't run any geometry module) 
     geo = new Eik_geo(pars, grids);
@@ -69,6 +88,75 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     exit(1);
   }
   return geo;
+}
+
+void write_eiktest_in(Parameters *pars, Grids *grids) {
+  FILE *fptr;
+  fptr = fopen("eik.in", "w");
+  fprintf(fptr, "&stuff\n");
+  fprintf(fptr, " ntheta = %d\n", pars->nz_in);
+  fprintf(fptr, " nperiod = %d\n", pars->nperiod);
+  fprintf(fptr, " geoType = %d\n", pars->geoType);
+  fprintf(fptr, " rmaj = %.9e\n", pars->rmaj);
+  fprintf(fptr, " akappri = %.9e\n", pars->akappri);
+  fprintf(fptr, " akappa = %.9e\n", pars->akappa);
+  fprintf(fptr, " shift = %.9e\n", pars->shift);
+  fprintf(fptr, " equal_arc = .true. ! this is required for GX\n");
+  fprintf(fptr, " rhoc = %.9e\n", pars->rhoc);
+  fprintf(fptr, " itor = 1\n");
+  fprintf(fptr, " qinp = %.9e\n", pars->qsf);
+  fprintf(fptr, " iflux = %d\n", pars->iflux);
+  fprintf(fptr, " delrho = %f\n", pars->delrho);
+  fprintf(fptr, " tri = %.9e\n", pars->tri);
+  fprintf(fptr, " bishop = %d\n", pars->bishop);
+  fprintf(fptr, " irho = %d\n", pars->irho);
+  fprintf(fptr, " isym = %d\n", pars->isym);
+  fprintf(fptr, " tripri = %.9e\n", pars->tripri);
+  fprintf(fptr, " R_geo = %.9e\n", pars->r_geo);
+  fprintf(fptr, " eqfile = '%s'\n", pars->eqfile.c_str());
+  if(pars->efit_eq)
+    fprintf(fptr, " efit_eq = .true.\n");
+  else
+    fprintf(fptr, " efit_eq = .false.\n");
+  if(pars->dfit_eq)
+    fprintf(fptr, " dfit_eq = .true.\n");
+  else
+    fprintf(fptr, " dfit_eq = .false.\n");
+  if(pars->gen_eq)
+    fprintf(fptr, " gen_eq = .true.\n");
+  else
+    fprintf(fptr, " gen_eq = .false.\n");
+  if(pars->ppl_eq)
+    fprintf(fptr, " ppl_eq = .true.\n");
+  else
+    fprintf(fptr, " ppl_eq = .false.\n");
+  if(pars->local_eq)
+    fprintf(fptr, " local_eq = .true.\n");
+  else
+    fprintf(fptr, " local_eq = .false.\n");
+  if(pars->idfit_eq)
+    fprintf(fptr, " idfit_eq = .true.\n");
+  else
+    fprintf(fptr, " idfit_eq = .false.\n");
+  if(pars->chs_eq)
+    fprintf(fptr, " chs_eq = .true.\n");
+  else
+    fprintf(fptr, " chs_eq = .false.\n");
+  if(pars->transp_eq)
+    fprintf(fptr, " transp_eq = .true.\n");
+  else
+    fprintf(fptr, " transp_eq = .false.\n");
+  if(pars->gs2d_eq)
+    fprintf(fptr, " gs2d_eq = .true.\n");
+  else
+    fprintf(fptr, " gs2d_eq = .false.\n");
+  fprintf(fptr, " s_hat_input = %.9e\n", pars->s_hat_input);
+  fprintf(fptr, " p_prime_input = %.9e\n", pars->p_prime_input);
+  fprintf(fptr, " beta_prime_input = %.9e\n", pars->beta_prime_input);
+  fprintf(fptr, " invLp_input = %.9e\n", pars->invLp_input);
+  fprintf(fptr, " alpha_input = %.9e\n", pars->alpha_input);
+  fprintf(fptr, "/\n");
+  fclose(fptr);
 }
 
 Geometry::Geometry() {

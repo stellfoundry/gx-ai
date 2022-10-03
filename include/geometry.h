@@ -100,6 +100,7 @@ class Eik_geo : public Geometry {
 };
 
 Geometry* init_geo(Parameters* pars, Grids* grids);
+void write_eiktest_in(Parameters *pars, Grids *grids);
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 
