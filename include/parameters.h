@@ -199,6 +199,7 @@ class Parameters {
   // char scheme[32], forcing_type[32], init_field[32], stir_field[32];
   // char boundary[32], closure_model[32], source[32];
 
+  std::string geo_option;
   std::string geofilename;
   //  char geofilename[512];
 

@@ -93,11 +93,13 @@ class geo_nc : public Geometry {
 };
 
 // MFM
-class File_geo : public Geometry {
+class Eik_geo : public Geometry {
  public:
-  File_geo(Parameters* parameters, Grids* grids);
+  Eik_geo(Parameters* parameters, Grids* grids);
 
 };
+
+Geometry* init_geo(Parameters* pars, Grids* grids);
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 
