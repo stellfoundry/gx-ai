@@ -303,10 +303,24 @@ __global__ void rhs_ks(const cuComplex *G, cuComplex *GRhs, float *ky, float eps
   }
 }
 
+__global__ void abs(float *f, int N)
+{
+  unsigned int i = get_id1();
+  if (i < N) f[i] = abs(f[i]);
+}
+
 __global__ void add_section(cuComplex *res, const cuComplex *tmp, int ntot)
 {
   unsigned int i = get_id1();
   if (i < ntot) res[i] = res[i] + tmp[i];
+}
+
+__global__ void add_scaled_singlemom_kernel(float* res,
+					    double c1, const float* m1,
+					    double c2, const float* m2)
+{
+  unsigned int idxyz = get_id1();
+  if (idxyz < nx*ny*nz) res[idxyz] = c1*m1[idxyz] + c2*m2[idxyz];
 }
 
 __global__ void add_scaled_singlemom_kernel(cuComplex* res,
@@ -866,14 +880,26 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   }
 }
 
-__global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float* kperp2,
-			    const float* muB, const float rho2_s)
+__global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp2,
+			    const float* muB, const float rho2_s, const float fac)
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
-    J0phi[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * phi[idxyz];
+    J0f[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * f[idxyz] * fac;
+  }
+}
+
+__global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, const cuComplex* bpar, const float* kperp2,
+			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idj = get_id2();
+  if (idxyz < nx*nyc*nz && idj < nj) {
+    unsigned int ig = idxyz + nx*nyc*nz*idj;
+    float alpha = sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s);
+    J0phiB[ig] = j0f(alpha) * phi[idxyz] * fphi + tz*2.*muB[idj]*j1f(alpha)/alpha * bpar[idxyz] * fbpar;
   }
 }
 
@@ -1451,8 +1477,8 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
 }
 
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M))]
-__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float pres)
+__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1464,18 +1490,21 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
-      cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
     
       float b_s = kperp2[idxyz]*rho2_s;
     
       // sum over l
       cuComplex p_bar = make_cuComplex(0.,0.);
+      cuComplex q_bar = make_cuComplex(0.,0.);
 
       for (int il=0; il < nl; il++) {
 	p_bar = p_bar + Jfac(il, b_s)*Gh_(idxyz, il, 0) + rsqrtf(2.)*Jflr(il, b_s)*Gh_(idxyz, il, 2);
+	q_bar = q_bar + Jfac(il, b_s)*Gh_(idxyz, il, 1) + Jflr(il, b_s)*(sqrtf(1.5)*Gh_(idxyz, il, 3)+ Gh_(idxyz, il, 1));
       }
     
-      fg = cuConjf(vE_r) * p_bar * 2. * flxJac[idz];
+      fg = (cuConjf(vPhi_r) * p_bar - vts * cuConjf(vA_r) * q_bar) * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
 
     } else {
@@ -1484,8 +1513,8 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
   }
 }
 
-__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float n_s)
+__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1497,18 +1526,21 @@ __global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuCo
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
-      cuComplex vE_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
     
       float b_s = kperp2[idxyz]*rho2_s;
     
       // sum over l
       cuComplex n_bar = make_cuComplex(0.,0.);
+      cuComplex u_bar = make_cuComplex(0.,0.);
 
       for (int il=0; il < nl; il++) {
 	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
+	u_bar = u_bar + Jflr(il, b_s)*Gh_(idxyz, il, 1);
       }
     
-      fg = cuConjf(vE_r) * n_bar * 2. * flxJac[idz];
+      fg = (cuConjf(vPhi_r) * n_bar - vts*cuConjf(vA_r)*u_bar) * 2. * flxJac[idz];
       pflux[idxyz] = fg.x * n_s;
 
     } else {
@@ -1569,7 +1601,8 @@ __global__ void ampere_apar(cuComplex* Apar,
     // note: the thing we call kperp2 is actually kperp**2/B**2 
     // (it usually gets multiplied by rho2s, which needs the 1/B**2, to form b_s)
     // but the laplacian in ampere's law is just regular kperp**2
-    float denom = kperp2[idxyz]*bmag[idz]*bmag[idz]; 
+    float kp2 = kperp2[idxyz]*bmag[idz]*bmag[idz]; 
+    float denom = 0.;
     for (int is=0 ; is < nspecies; is++) {
       const float b_s = kperp2[idxyz] * rho2s[is];
       const float j_ = as[is]; // as = n_s*z_s*vt_s*beta_ref/2
@@ -1583,10 +1616,9 @@ __global__ void ampere_apar(cuComplex* Apar,
 	g0_s += Jl*Jl;
       }
       // this term is needed when using formulation without dA/dt
-      // RG: FLAG Where is the kperp2 in denom
       denom += amp_ * g0_s;
     }        
-    Apar[idxyz] = fapar * jpar / denom;
+    Apar[idxyz] = fapar * jpar / (kp2 + denom);
   }
 }
 

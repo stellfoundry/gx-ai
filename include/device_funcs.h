@@ -42,6 +42,12 @@ void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int
 __global__ void acc_scaled_kernel(cuComplex* res,
 				  double c1, const cuComplex* m1);
 
+__global__ void abs(float *f, int N);
+
+__global__ void add_scaled_singlemom_kernel(float* res,
+					    double c1, const float* m1,
+					    double c2, const float* m2);
+
 __global__ void add_scaled_kernel(cuComplex* res,
 				  double c1, const cuComplex* m1,
 				  double c2, const cuComplex* m2);
@@ -140,8 +146,11 @@ __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi,
 		     
 __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, double dt, cuComplex *omega);
 
-__global__ void J0phiToGrid(cuComplex* J0phi, const cuComplex* phi, const float* b,
-			    const float* muB, float rho2_s);
+__global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp2,
+			    const float* muB, const float rho2_s, const float fac);
+
+__global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, const cuComplex* bpar, const float* kperp2,
+			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar);
 
 __global__ void acc(float *a, const float *b);
 
@@ -183,11 +192,11 @@ __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJ
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s);
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i);
   
-__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float p_s);
+__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
 
-__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float n_s);
+__global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts);
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,

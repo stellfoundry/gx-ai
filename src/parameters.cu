@@ -79,17 +79,6 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
-
-  tnml = nml;
-  if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
-  beta = toml::find_or <float> (tnml, "beta",    0.0 );
-  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
-  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
-  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
-  fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
-  fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
-  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
-  ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -344,7 +333,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
   dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  dealias_kz   ); // included for backwards-compat. now specified in expert
-  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
   closure_model  = toml::find_or <string> (tnml, "closure_model", closure_model ); // included for backwards-compat. closure_model now specified in Dissipation
   smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",   (long) smith_par_q );  // included for backwards-compat. smith_par_q now specified in Dissipation
   smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",  (long) smith_perp_q ); // included for backwards-compat. smith_perp_q now specified in Dissipation
@@ -467,7 +456,7 @@ void Parameters::get_nml_vars(char* filename)
     assert( add_Boltzmann_species
 	    && "If all_kinetic == false then add_Boltzmann_species should be true");
   }
-      
+
   tnml = nml;
   if (nml.contains("Geometry")) tnml = toml::find (nml, "Geometry");  
 
@@ -478,8 +467,7 @@ void Parameters::get_nml_vars(char* filename)
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
   igeo        = toml::find_or <int>   (tnml, "igeo",       -1 ); // included for backwards-compat. use geo_option instead.
-  float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta ); // included for backwards-compat. beta now set in Physics
-  if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
+  float beta_geo = toml::find_or <float> (tnml, "beta", 0.0 ); // included for backwards-compat. beta now set in Physics
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );
@@ -531,6 +519,18 @@ void Parameters::get_nml_vars(char* filename)
   chs_eq = toml::find_or <bool> (tnml, "chs_eq", false);
   transp_eq = toml::find_or <bool> (tnml, "transp_eq", false);
   gs2d_eq = toml::find_or <bool> (tnml, "gs2d_eq", false);
+
+  tnml = nml;
+  if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
+  beta = toml::find_or <float> (tnml, "beta",    0.0 );
+  if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode;
+  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
+  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
+  fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
+  fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
+  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
+  ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
@@ -745,6 +745,12 @@ void Parameters::get_nml_vars(char* filename)
   if(hyper) printf("Using hyperdiffusion.\n");
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
+
+  if(all_kinetic && beta == 0.0) {
+    printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
+    printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
+    printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+  }
 
   nspec = nspec_in;
   init_species(species_h);

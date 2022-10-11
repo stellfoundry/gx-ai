@@ -57,6 +57,7 @@ class Nonlinear_GK : public Nonlinear {
   float * dJ0apar_dx ;
   float * dJ0apar_dy ;
   float * dphi        ;
+  float * dapar        ;
   float * g_res       ;
   float vmax_x[1]     ;
   float vmax_y[1]     ;

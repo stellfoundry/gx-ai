@@ -124,7 +124,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
@@ -243,8 +243,9 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
       for(int is=0; is<grids_->Nspecies; is++) {
 	float rho2s = pars_->species_h[is].rho2;
 	float p_s = pars_->species_h[is].nt;
-	heat_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
-				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s);
+	float vt_s = pars_->species_h[is].vt;
+	heat_flux_summand loop_R (P2(is), fields->phi, fields->apar, G->G(0,0,is),
+				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s, vt_s);
       }
       id -> write_Q(P2s); 
     }      
@@ -254,8 +255,9 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
       for(int is=0; is<grids_->Nspecies; is++) {
         float rho2s = pars_->species_h[is].rho2;
         float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
-        part_flux_summand loop_R (P2(is), fields->phi, G->G(0,0,is),
-        			  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
+	float vt_s = pars_->species_h[is].vt;
+        part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G->G(0,0,is),
+        			  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
       id -> write_P(P2s); 
     }
