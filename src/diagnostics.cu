@@ -670,6 +670,7 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
 
     fflush(NULL);
     id -> write_nc(id -> time, time);
+    printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
  
     //if (pars_->write_phi) id->write_nc(id->phi, phi);
 

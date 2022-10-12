@@ -635,6 +635,10 @@ void Parameters::get_nml_vars(char* filename)
       string stype        = toml::find <string> (nml, "species", "type",  is);
       species_h[is].type = stype == "ion" ? 0 : 1;
     }
+  } else if(krehm) {
+    species_h[0].temp = 1.0;
+    species_h[0].mass = 1.0;
+    species_h[0].type = 1;
   }
   
   float numax = -1.;

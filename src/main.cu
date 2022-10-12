@@ -180,7 +180,7 @@ int main(int argc, char* argv[])
     //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
   }
   if (pars->krehm) {
-    geo = nullptr; // krehm does not require geometry
+    geo = init_geo(pars, grids);
     diagnostics = new Diagnostics_KREHM(pars, grids);
   }
 
