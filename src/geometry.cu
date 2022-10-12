@@ -29,10 +29,13 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   else if(geo_option=="miller") {
     // call python geometry module to write an eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
-    char command[300];
-    sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    if(grids->iproc == 0) {
+      char command[300];
+      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
@@ -46,13 +49,16 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   }
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
-    // write an eik.in file
-    write_eiktest_in(pars, grids);
-    char command[300];
-    sprintf(command, "%s/bin/eiktest > eiktest.log", GS2_PATH, pars->run_name);
-    pars->geofilename = "eik.out";
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    if(grids->iproc == 0) {
+      // write an eik.in file
+      write_eiktest_in(pars, grids);
+      char command[300];
+      sprintf(command, "%s/bin/eiktest > eiktest.log", GS2_PATH, pars->run_name);
+      pars->geofilename = "eik.out";
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
