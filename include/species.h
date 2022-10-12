@@ -16,8 +16,7 @@ typedef struct {
   float vt;
   float nt;
   float nz;
-  float qneut;
-  float as;
-  float amp;
+  float jparfac;
+  float jperpfac;
   int type;
 } specie;

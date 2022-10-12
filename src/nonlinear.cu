@@ -9,7 +9,7 @@
 //===========================================
 Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
+  red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0f(nullptr), grad_perp_f(nullptr)
 {
 
   tmp_c      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
@@ -32,10 +32,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
   
   nBatch = grids_->Nz*grids_->Nj; 
-  grad_perp_J0phi = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
+  grad_perp_J0f = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
 
   nBatch = grids_->Nz;
-  grad_perp_phi =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  grad_perp_f =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
   
   checkCuda(cudaMalloc(&tmp_c,    sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
   checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
@@ -46,13 +46,16 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
   checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
-  if (pars_->beta > 0.) {
+  if (pars_->fapar > 0.) {
     checkCuda(cudaMalloc(&J0apar,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
   }
 
   checkCuda(cudaMalloc(&dphi,  sizeof(float)*grids_->NxNyNz));
+  if (pars_->fapar > 0.) {
+    checkCuda(cudaMalloc(&dapar,  sizeof(float)*grids_->NxNyNz));
+  }
   checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
@@ -75,8 +78,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
 
-  cfl_x_inv = (float) grids_->Nx / (pars_->cfl * 2 * M_PI * pars_->x0);
-  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0); 
+  cfl_x_inv = (float) grids_->Nx/2 / (pars_->cfl * pars_->x0);
+  cfl_y_inv = (float) grids_->Ny/2 / (pars_->cfl * pars_->y0); 
+//  cfl_x_inv = (float) grids_->Nx / (pars_->cfl * 2 * M_PI * pars_->x0);
+//  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0);
   
   dt_cfl = 0.;
 }
@@ -86,8 +91,8 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( grad_perp_G     ) delete grad_perp_G;
   if ( red             ) delete red;
   if ( laguerre        ) delete laguerre;
-  if ( grad_perp_J0phi ) delete grad_perp_J0phi;
-  if ( grad_perp_phi   ) delete grad_perp_phi;
+  if ( grad_perp_J0f ) delete grad_perp_J0f;
+  if ( grad_perp_f   ) delete grad_perp_f;
 
   if ( tmp_c       ) cudaFree ( tmp_c       );
   if ( dG          ) cudaFree ( dG          );
@@ -137,7 +142,7 @@ void Nonlinear_GK::qvar (float* G, int N)
 
 void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
-  // BD  J0phiToGrid does not use a Laguerre transform. Implications?
+  // BD  J0fToGrid does not use a Laguerre transform. Implications?
   // BD  If we use alternate forms for <J0> then that would need to be reflected here
 
   //    printf("\n");
@@ -146,17 +151,22 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 
   float rho2s = G->species->rho2;
   float vts = G->species->vt;
-  J0phiToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s);
+  float tz = G->species->tz;
+  if(pars_->fbpar > 0.0) {
+    J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
+  } else {
+    J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
+  }
 
-  grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
-  grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
+  grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
+  grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
 
-  if (pars_->beta > 0.) {
+  if (pars_->fapar > 0.) {
 
-    J0phiToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s);
+    J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
     
-    grad_perp_J0phi -> dxC2R(J0apar, dJ0apar_dx);
-    grad_perp_J0phi -> dyC2R(J0apar, dJ0apar_dy);
+    grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
+    grad_perp_J0f -> dyC2R(J0apar, dJ0apar_dy);
   }
   
   // loop over m to save memory. also makes it easier to parallelize.
@@ -177,7 +187,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     // NL_m += {G_m, phi}
     grad_perp_G->R2C(dG, G_res->Gm(m_local), true); // this R2C has accumulate=true
 
-    if (pars_->beta > 0.) {
+    if (pars_->fapar > 0.) {
       // compute {G_m, Apar}
       bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
       laguerre->transformToSpectral(g_res, dG);
@@ -190,7 +200,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   }
 
   // contributions from ghost cells (EM only)
-  if(pars_->beta > 0. && grids_->nprocs_m>1) {
+  if(pars_->fapar > 0. && grids_->nprocs_m>1) {
     cudaStreamSynchronize(G->syncStream);
 
     // lower ghost
@@ -228,9 +238,28 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 }
 double Nonlinear_GK::cfl(Fields *f, double dt_max)
 {
+  float vpmax = sqrtf(2.*pars_->nm_in)*pars_->vtmax; // estimate of max vpar on grid
 
-  grad_perp_phi -> dxC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_y, val1, sizeof(float));
-  grad_perp_phi -> dyC2R(f->phi, dphi);  red->Max(dphi, val1); CP_TO_CPU(vmax_x, val1, sizeof(float));
+  grad_perp_f -> dxC2R(f->phi, dphi); 
+  abs GBX (dphi, grids_->NxNyNz);
+  if(pars_->fapar > 0.0) {
+    grad_perp_f -> dxC2R(f->apar, dapar); 
+    abs GBX (dapar, grids_->NxNyNz);
+    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dapar);
+  }
+  red->Max(dphi, val1); 
+  CP_TO_CPU(vmax_y, val1, sizeof(float));
+
+  grad_perp_f -> dyC2R(f->phi, dphi);  
+  abs GBX (dphi, grids_->NxNyNz);
+  if(pars_->fapar > 0.0) {
+    grad_perp_f -> dyC2R(f->apar, dapar); 
+    abs GBX (dapar, grids_->NxNyNz);
+    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dapar);
+  }
+  red->Max(dphi, val1); 
+  CP_TO_CPU(vmax_x, val1, sizeof(float));
+
   // need em evaluation if beta > 0
   float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
   dt_cfl = min(dt_max, 1./vmax);
@@ -439,7 +468,7 @@ double Nonlinear_KS::cfl(Fields *f, double dt_max)
 // object for handling non-linear terms in VP
 //===========================================
 Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), grad_perp_G(nullptr), grad_perp_phi(nullptr)
+  pars_(pars), grids_(grids), grad_perp_G(nullptr), grad_perp_f(nullptr)
 {
 
   Gy          = nullptr;  dphi_dy     = nullptr;  g_res       = nullptr;  
@@ -448,7 +477,7 @@ Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
   grad_perp_G =    new GradPerp(grids_, nBatch, grids_->Nyc*grids_->Nm);
   
   nBatch = 1;
-  grad_perp_phi =  new GradPerp(grids_, nBatch, grids_->Nyc);
+  grad_perp_f =  new GradPerp(grids_, nBatch, grids_->Nyc);
   
   checkCuda(cudaMalloc(&Gy,      sizeof(float)*grids_->Ny*grids_->Nm)); 
   checkCuda(cudaMalloc(&dphi_dy, sizeof(float)*grids_->Ny));              
@@ -465,7 +494,7 @@ Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
 Nonlinear_VP::~Nonlinear_VP() 
 {
   if ( grad_perp_G     ) delete grad_perp_G;
-  if ( grad_perp_phi   ) delete grad_perp_phi;
+  if ( grad_perp_f   ) delete grad_perp_f;
 
   if ( Gy          ) cudaFree ( Gy          );
   if ( dphi_dy     ) cudaFree ( dphi_dy     );
@@ -506,7 +535,7 @@ void Nonlinear_VP::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
 
   grad_perp_G -> C2R(G->G(), Gy);
-  grad_perp_phi -> dyC2R(f->phi, dphi_dy);
+  grad_perp_f -> dyC2R(f->phi, dphi_dy);
   nlvp GBX (g_res, Gy, dphi_dy);
   grad_perp_G -> R2C(g_res, G_res->G(), true);
 }

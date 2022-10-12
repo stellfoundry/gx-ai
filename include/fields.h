@@ -14,7 +14,7 @@ class Fields {
   cuComplex * apar_h ;
   cuComplex * bpar   ;
   cuComplex * bpar_h ;
-  
+
   cuComplex * ne ;
   cuComplex * ue ;
   cuComplex * Te ;

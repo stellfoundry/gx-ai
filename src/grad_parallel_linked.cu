@@ -272,7 +272,7 @@ void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float*
 {
   for(int c=0; c<nClasses; c++) {
     // each "class" has a different number of links in the chains, and a different number of chains.
-    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G());
+    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G());
   }
 }
 

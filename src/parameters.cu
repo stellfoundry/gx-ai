@@ -81,16 +81,6 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
-
-  tnml = nml;
-  if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
-  beta = toml::find_or <float> (tnml, "beta",    0.0 );
-  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode;
-  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
-  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
-  fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
-  fapar    = toml::find_or <float> (tnml, "fapar",       0.0);
-  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -174,7 +164,12 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
 
   i_share     = toml::find_or <int>    (tnml, "i_share",         8 );
-  int i_share_max = 96*1024/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
+  int dev;
+  cudaDeviceProp prop;
+  cudaGetDevice(&dev);
+  cudaGetDeviceProperties(&prop, dev);
+  size_t maxSharedSize = prop.sharedMemPerBlockOptin;
+  int i_share_max = maxSharedSize/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
   if(i_share > i_share_max) {
     printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
     i_share = i_share_max;
@@ -340,7 +335,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
   dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  dealias_kz   ); // included for backwards-compat. now specified in expert
-  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
   closure_model  = toml::find_or <string> (tnml, "closure_model", closure_model ); // included for backwards-compat. closure_model now specified in Dissipation
   smith_par_q    = toml::find_or <int>    (tnml, "smith_par_q",   (long) smith_par_q );  // included for backwards-compat. smith_par_q now specified in Dissipation
   smith_perp_q   = toml::find_or <int>    (tnml, "smith_perp_q",  (long) smith_perp_q ); // included for backwards-compat. smith_perp_q now specified in Dissipation
@@ -463,20 +458,22 @@ void Parameters::get_nml_vars(char* filename)
     assert( add_Boltzmann_species
 	    && "If all_kinetic == false then add_Boltzmann_species should be true");
   }
-      
+
   tnml = nml;
   if (nml.contains("Geometry")) tnml = toml::find (nml, "Geometry");  
 
-  geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" );  
+  geo_option  = toml::find_or <string> (tnml, "geo_option", "miller");
+  geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
+  geofilename = toml::find_or <string> (tnml, "geo_file", "eik.out" );  
   slab        = toml::find_or <bool>   (tnml, "slab",         false );
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
-  igeo        = toml::find_or <int>   (tnml, "igeo",       0 );
-  float beta_geo = toml::find_or <float> (tnml, "beta", (double) beta ); // included for backwards-compat. beta now set in Physics
-  if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
+  igeo        = toml::find_or <int>   (tnml, "igeo",       -1 ); // included for backwards-compat. use geo_option instead.
+  float beta_geo = toml::find_or <float> (tnml, "beta", 0.0 ); // included for backwards-compat. beta now set in Physics
   drhodpsi    = toml::find_or <float> (tnml, "drhodpsi", 1.0 );
   kxfac       = toml::find_or <float> (tnml, "kxfac",    1.0 );
   rmaj        = toml::find_or <float> (tnml, "Rmaj",     1.0 );
+  rmaj        = toml::find_or <float> (tnml, "rmaj",    (double) rmaj );
   r_geo       = toml::find_or <float> (tnml, "R_geo",     1.0 );
   shift       = toml::find_or <float> (tnml, "shift",    0.0 );
   eps         = toml::find_or <float> (tnml, "eps",    0.167 );
@@ -485,8 +482,9 @@ void Parameters::get_nml_vars(char* filename)
   akappri     = toml::find_or <float> (tnml, "akappri",    0.0 );
   tri         = toml::find_or <float> (tnml, "tri",        1.0 );
   tripri      = toml::find_or <float> (tnml, "tripri",     0.0 );
-  beta_prime_input    = toml::find_or <float> (tnml, "betaprim", 0.0 );
-  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); // NRM: this input parameter doesn't do anything....see next line
+  beta_prime_input    = toml::find_or <float> (tnml, "beta_prime_input", -1.0 );
+  beta_prime_input    = toml::find_or <float> (tnml, "betaprim", (double) beta_prime_input );
+  zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); 
   // Set zero_shat = true in the input file when the actual magnetic shear is inconveniently low. 
   if (igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
@@ -497,6 +495,44 @@ void Parameters::get_nml_vars(char* filename)
     //printf("Be sure it is consistent with the value in the geometry file. \n");
     //printf("Using shat = %f \n",shat);
   }
+  
+  // the following parameters are exclusively for interfacing 
+  // with the GS2 geometry module via eiktest
+  // for parameter definitions, see src/geo/geometry.f90 in the GS2 repo
+  // the defaults are the same as the defaults in gs2's eiktest.f90
+  rhoc = toml::find_or <float> (tnml, "rhoc", 0.5); 
+  geoType = toml::find_or <int> (tnml, "geoType", 0); 
+  iflux = toml::find_or <int> (tnml, "iflux", 0); 
+  delrho = toml::find_or <float> (tnml, "delrho", 0.01); 
+  bishop = toml::find_or <int> (tnml, "bishop", 0); 
+  irho = toml::find_or <int> (tnml, "irho", 2); 
+  isym = toml::find_or <int> (tnml, "isym", 0); 
+  eqfile = toml::find_or <string> (tnml, "eqfile", "none" );  
+  s_hat_input = toml::find_or <float> (tnml, "s_hat_input", 1.0 );
+  p_prime_input = toml::find_or <float> (tnml, "p_prime_input", -2.0 );
+  invLp_input = toml::find_or <float> (tnml, "invLp_input", 5.0 );
+  alpha_input = toml::find_or <float> (tnml, "alpha_input", 0.0 );
+  efit_eq = toml::find_or <bool> (tnml, "efit_eq", false);
+  dfit_eq = toml::find_or <bool> (tnml, "dfit_eq", false);
+  gen_eq = toml::find_or <bool> (tnml, "gen_eq", false);
+  ppl_eq = toml::find_or <bool> (tnml, "ppl_eq", false);
+  local_eq = toml::find_or <bool> (tnml, "local_eq", false);
+  idfit_eq = toml::find_or <bool> (tnml, "idfit_eq", false);
+  chs_eq = toml::find_or <bool> (tnml, "chs_eq", false);
+  transp_eq = toml::find_or <bool> (tnml, "transp_eq", false);
+  gs2d_eq = toml::find_or <bool> (tnml, "gs2d_eq", false);
+
+  tnml = nml;
+  if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
+  beta = toml::find_or <float> (tnml, "beta",    0.0 );
+  if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
+  nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode;
+  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
+  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
+  fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
+  fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
+  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
+  ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
@@ -601,6 +637,10 @@ void Parameters::get_nml_vars(char* filename)
       string stype        = toml::find <string> (nml, "species", "type",  is);
       species_h[is].type = stype == "ion" ? 0 : 1;
     }
+  } else if(krehm) {
+    species_h[0].temp = 1.0;
+    species_h[0].mass = 1.0;
+    species_h[0].type = 1;
   }
   
   float numax = -1.;
@@ -711,6 +751,12 @@ void Parameters::get_nml_vars(char* filename)
   if(hyper) printf("Using hyperdiffusion.\n");
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
+
+  if(all_kinetic && beta == 0.0) {
+    printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
+    printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
+    printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+  }
 
   nspec = nspec_in;
   init_species(species_h);
@@ -1232,21 +1278,20 @@ void Parameters::init_species(specie* species)
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
     species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2
-    species[s].nt   = species[s].dens * species[s].temp;
-    species[s].qneut= species[s].dens * species[s].z * species[s].z / species[s].temp;
-    species[s].nz   = species[s].dens * species[s].z;
-    species[s].as   = species[s].nz * species[s].vt * beta / 2.;
-    species[s].amp  = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
+    species[s].nt    = species[s].dens * species[s].temp;
+    species[s].nz    = species[s].dens * species[s].z;
+    species[s].jparfac = species[s].nz * species[s].vt * beta / 2.;
+    species[s].jperpfac = -species[s].dens * species[s].temp * beta / 2.; 
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
 	     species[s].mass, species[s].z, species[s].temp, species[s].dens);
       printf("vt, tz, zt = %f, %f, %f \n",
 	     species[s].vt, species[s].tz, species[s].zt);
-      printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n",
-	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
-      printf("as, amp = %f, %f \n", 
-             species[s].as, species[s].amp);
+      printf("rho2, nt, nz = %f, %f, %f \n",
+	     species[s].rho2, species[s].nt, species[s].nz);
+      printf("jparfac, jperpfac = %f, %f \n", 
+             species[s].jparfac, species[s].jperpfac);
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
@@ -1393,9 +1438,9 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float shat_in)
+void Parameters::set_jtwist_x0(float *shat_in)
 {
-  printf("set_jtwist_x0: shat_in = %f\n", shat_in);
+  printf("set_jtwist_x0: shat_in = %f\n", *shat_in);
   if (jtwist==0) {
     // this is an error
     printf("************************** \n");
@@ -1404,11 +1449,11 @@ void Parameters::set_jtwist_x0(float shat_in)
     printf("************************** \n");
     printf("************************** \n");
   }
-  if (shat_in == 0.0) {
+  if (*shat_in == 0.0) {
     printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    shat_in = 1.e-8;
+    *shat_in = 1.e-8;
   }
-  if (abs(shat_in) < 1e-5) {
+  if (abs(*shat_in) < 1e-5) {
     zero_shat = true;
   }
 
@@ -1425,24 +1470,24 @@ void Parameters::set_jtwist_x0(float shat_in)
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) round(2*M_PI*abs(shat_in)*Zp);
+      jtwist = (int) round(2*M_PI*abs(*shat_in)*Zp);
       if(jtwist == 0) {
         printf("Warning: shat was set so small that it was giving jtwist=0\n");
 	printf("Setting x0=y0 and zero_shat=true\n");
         x0 = y0;
 	zero_shat = true;
       } else {
-        x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+        x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
       }
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
+      x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(shat_in)*Zp/y0*x0);
+      int jtwist_0 = (int) round(2*M_PI*abs(*shat_in)*Zp/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
@@ -1453,10 +1498,10 @@ void Parameters::set_jtwist_x0(float shat_in)
       }
       jtwist = jtwist_0;
       // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(shat_in));
-      // reset x0 to be consistent with jtwist
-      x0 = x0_j;
+      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+
       if(jtwist == 0) zero_shat = true;
+      else x0 = x0_j; // reset x0 to be consistent with jtwist
     }
   }
 

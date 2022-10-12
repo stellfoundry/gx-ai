@@ -206,6 +206,7 @@ class Geometric_coefficients {
   // input variables for the interface
   std::string vmec_path; // not presently used! 
   std::string out_path;
+  std::string file_tag;
   double alpha = 0.0;
   int nzgrid = 16;
   int npol = 1;

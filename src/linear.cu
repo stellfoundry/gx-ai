@@ -108,13 +108,19 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   else 
     sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+2*grids_->m_ghost) * sizeof(cuComplex);
 
+  int dev;
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
+  maxSharedSize = prop.sharedMemPerBlockOptin;
+
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
-  if(sharedSize/1024.>96. && grids_->m_ghost == 0) {
+  if(sharedSize>maxSharedSize && grids_->m_ghost == 0) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
     printf("If you wish to try to keep this velocity resolution, ");
     printf("you can try lowering i_share in your input file.\n");
     printf("You are using i_share = %d now, perhaps by default.\n", pars_->i_share);
-    printf("The size of the shared memory block should be less than 96 KB ");
+    printf("The size of the shared memory block should be less than %d KB ", maxSharedSize/1024);
     printf("which means i_share*(nhermite+4)*(nlaguerre+2) < %d. \n", 12*1024);
     printf("Presently, you have set i_share*(nhermite+4)*(nlaguerre+2) = %d. \n",
 	   pars_->i_share*(grids_->Nm+4)*(grids_->Nl+2));
@@ -151,18 +157,19 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
   if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
-			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, geo_->kperp2, *(G->species));
+			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, *(G->species));
 
   // Free-streaming requires parallel FFTs, so do that first
   cudaStreamSynchronize(G->syncStream);
-  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
+  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
   grad_par->dz(GRhs);
   
   // calculate most of the RHS
+  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, maxSharedSize);
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
-      	(G->G(), f->phi, f->apar, upar_bar, uperp_bar, t_bar,
+      	(G->G(), f->phi, f->apar, f-> bpar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
-	 grids_->ky, *(G->species), pars_->species_h[0], GRhs->G(), pars_->hegna);  // bb6126 - hegna test
+	grids_->ky, *(G->species), pars_->species_h[0], GRhs->G(), pars_->hegna, pars_->ei_colls);
 
   // hyper model by Hammett and Belli
   if (pars_->HB_hyper) {

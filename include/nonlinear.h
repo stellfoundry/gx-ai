@@ -42,8 +42,8 @@ class Nonlinear_GK : public Nonlinear {
   Red               * red             ; 
   LaguerreTransform * laguerre        ;
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_J0phi ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_J0f ;
+  GradPerp          * grad_perp_f   ;
 
   cuComplex * tmp_c   ;
   float * dG          ;
@@ -57,6 +57,7 @@ class Nonlinear_GK : public Nonlinear {
   float * dJ0apar_dx ;
   float * dJ0apar_dy ;
   float * dphi        ;
+  float * dapar        ;
   float * g_res       ;
   float vmax_x[1]     ;
   float vmax_y[1]     ;
@@ -148,7 +149,7 @@ class Nonlinear_VP : public Nonlinear {
   Grids             * grids_          ;  
   
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_f   ;
 
   float * Gy          ;
   float * dphi_dy     ;

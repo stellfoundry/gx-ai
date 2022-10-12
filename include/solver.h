@@ -25,6 +25,8 @@ class Solver_GK : public Solver {
   void svar(float* f, int N);
   
   cuComplex * nbar ;
+  cuComplex * jparbar ;
+  cuComplex * jperpbar ;
 
 private:
 
@@ -34,8 +36,11 @@ private:
   int count;
 
   float * phiavgdenom ;
-  float * qneutDenom;
-  float * ampereDenom;
+  float * ampereParFac;
+  float * qneutFacPhi;
+  float * qneutFacBpar;
+  float * amperePerpFacPhi;
+  float * amperePerpFacBpar;
   cuComplex * tmp ;
 
   // local private copies

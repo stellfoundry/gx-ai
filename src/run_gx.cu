@@ -115,6 +115,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   bool bvar; 
   bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+
+  cudaDeviceSynchronize();
+  checkCudaErrors(cudaGetLastError());
   
   while(counter<pars->nstep) {
     counter++;
@@ -132,6 +135,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     for(int is=0; is<grids->Nspecies; is++) {
       if (pars->save_for_restart && counter % pars->nsave == 0) G[is]->restart_write(&time);
     }
+
+    // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
+    checkCudaErrors(cudaGetLastError());
   }
 
   for(int is=0; is<grids->Nspecies; is++) {
