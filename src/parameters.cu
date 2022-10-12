@@ -771,6 +771,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -867,6 +868,12 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_vp, "vp_nuh",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_vp, "vp_alpha",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_vp, "vp_alpha_h", NC_INT,   0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_krehm, "krehm",   NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "rho_i",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
   specs[0] = wdim;
   if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1146,6 +1153,12 @@ void Parameters::store_ncdf(int ncid) {
   putint   (nc_vp, "vp_alpha_h", vp_alpha_h  );
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
+
+  putbool  (nc_krehm, "krehm", krehm);
+  put_real (nc_krehm, "rho_i", rho_i);
+  put_real (nc_krehm, "d_e", d_e);
+  put_real (nc_krehm, "nu_ei", nu_ei);
+  put_real (nc_krehm, "zt", zt);
   
   putbool  (nc_rst, "restart",           restart          );
   putbool  (nc_rst, "save_for_restart",  save_for_restart );  
