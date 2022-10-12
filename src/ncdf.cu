@@ -2376,7 +2376,7 @@ void NetCDF_ids::write_Q (float* Q, bool endrun)
     // the issue is that all procs need to participate in the collective write,
     // but these procs have 0 for the flux. so just let these procs (over)write 0 
     // to beginning of time domain.
-    if(grids_->m_lo > 0) ps->time_start[0] = 0;
+    if(grids_->m_lo > 0) qs->time_start[0] = 0;
 
     write_nc(qs, endrun);       
 

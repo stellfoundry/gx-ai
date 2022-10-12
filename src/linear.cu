@@ -196,7 +196,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,
-								   pars_->p_hyper_m, GRhs->G());
+								   pars_->p_hyper_m, GRhs->G(), G->species->vt);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
@@ -306,7 +306,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 								   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
 								   pars_->p_hyper_l,
-								   pars_->p_hyper_m, GRhs->G());
+								   pars_->p_hyper_m, GRhs->G(), 1.);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
