@@ -8,17 +8,17 @@ def lh_spectra(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None):
 
     t = data.variables['time'][:]
     try:
-        wlh = data.groups['Spectra'].variables['Wlmst'][:,ispec,:,:]
-        nh = wlh.shape[1]
-        nl = wlh.shape[2]
+        wlm = data.groups['Spectra'].variables['Wlmst'][:,ispec,:,:]
+        nm = wlm.shape[1]
+        nl = wlm.shape[2]
         
-        wh = np.mean(wlh[int(len(t)/2):,...], axis=(0,2))*nl
-        wl = np.mean(wlh[int(len(t)/2):,...], axis=(0,1))*nh
+        wm = np.mean(wlm[int(len(t)/2):,...], axis=(0,2))*nl
+        wl = np.mean(wlm[int(len(t)/2):,...], axis=(0,1))*nm
     except:
         try:
             wl = data.groups['Spectra'].variables['Wlst'][:,ispec,:,:]
-            wh = data.groups['Spectra'].variables['Whst'][:,ispec,:,:]
-            nh = wh.shape[1]
+            wm = data.groups['Spectra'].variables['Wmst'][:,ispec,:,:]
+            nm = wm.shape[1]
             nl = wl.shape[1]
         except:
             print('Error: W(l,m) spectra data was not written.')
@@ -38,7 +38,7 @@ def lh_spectra(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None):
         ax1 = fig.add_subplot(1, 2, 1)
         ax2 = fig.add_subplot(1, 2, 2)
 
-        ax1.plot(wh,'.-',label=label)
+        ax1.plot(wm,'.-',label=label)
         ax1.set_xlabel("$m$")
         ax1.set_yscale('log')
         ax1.grid()
