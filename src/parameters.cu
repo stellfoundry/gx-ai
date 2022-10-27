@@ -1064,6 +1064,10 @@ void Parameters::store_ncdf(int ncid) {
   
   if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "B_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "a_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "grhoavg",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "surfarea",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1270,6 +1274,10 @@ void Parameters::store_ncdf(int ncid) {
   }
   put_real (nc_geo, "beta",        beta       );
   putbool  (nc_geo, "zero_shat",   zero_shat  );
+  put_real (nc_geo, "B_ref", B_ref);
+  put_real (nc_geo, "a_ref", a_ref);
+  put_real (nc_geo, "grhoavg", grhoavg);
+  put_real (nc_geo, "surfarea", surfarea);
 
   // record the values of jtwist and x0 used in runname.nc
   putint (nc_dom, "jtwist", jtwist);

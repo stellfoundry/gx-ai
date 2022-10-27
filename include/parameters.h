@@ -123,6 +123,7 @@ class Parameters {
   int vp_alpha, vp_alpha_h;
   float vtmax;
   float delrho, p_prime_input, invLp_input, alpha_input;
+  float B_ref, a_ref, grhoavg, surfarea;
 
   // parameters for KREHM system
   bool krehm;
