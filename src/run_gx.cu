@@ -160,6 +160,17 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   if (forcing)   delete forcing;     
 }    
 
+void uuid_print(cudaUUID_t a){
+  std::cout << "GPU";
+  std::vector<std::tuple<int, int> > r = {{0,4}, {4,6}, {6,8}, {8,10}, {10,16}};
+  for (auto t : r){
+    std::cout << "-";
+    for (int i = std::get<0>(t); i < std::get<1>(t); i++)
+      std::cout << std::hex << (unsigned)(unsigned char)a.bytes[i];
+  }
+  std::cout << std::endl;
+}
+
 void getDeviceMemoryUsage()
 {
   cudaDeviceSynchronize();
@@ -179,8 +190,9 @@ void getDeviceMemoryUsage()
   double free_db = (double) free_byte;
   double total_db = (double) prop.totalGlobalMem;
   double used_db = total_db - free_db ;
-  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%), total = %f MB\n",
+  printf("GPU type: %s\n", prop.name);
+  uuid_print(prop.uuid);
+  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%)\n",
 	 used_db /1024.0/1024.0, used_db/total_db*100.,
-	 free_db /1024.0/1024.0, free_db/total_db*100.,
-	 total_db/1024.0/1024.0);
+	 free_db /1024.0/1024.0, free_db/total_db*100.);
 }

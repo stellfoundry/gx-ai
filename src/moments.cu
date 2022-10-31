@@ -98,7 +98,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids) :
   qpar_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
   qprp_ptr = (cuComplex**) malloc(sizeof(cuComplex*) * grids_->Nspecies);
 
-  printf("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
+  if(pars_->debug) printf("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
 
   int Nm = grids_->Nm;
   int Nl = grids_->Nl;

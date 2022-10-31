@@ -12,19 +12,20 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   setval <<< nb, nt >>> (phi, zero, nn);
 
   //  cudaMemset(phi, 0., size_);
+  bool debug = pars->debug;
 
   phi_h = (cuComplex*) malloc(size_);
-  printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+  if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
 
     checkCuda(cudaMalloc((void**) &apar, size_));
-    printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+    if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
 
     setval <<< nb, nt >>> (apar, zero, nn);
 
     apar_h = (cuComplex*) malloc(size_);
 
     checkCuda(cudaMalloc((void**) &bpar, size_));
-    printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+    if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
 
     setval <<< nb, nt >>> (bpar, zero, nn);
 
@@ -34,21 +35,21 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
     if (!pars_->krehm) {
       checkCuda(cudaMalloc((void**) &ne, size_));
-      printf("Allocated ne array of size %.2f MB\n", size_/1024./1024.);
+      if(debug) printf("Allocated ne array of size %.2f MB\n", size_/1024./1024.);
       
       cudaMemset(ne, 0., size_); setval <<< nb, nt >>> (ne, zero, nn);
       
       ne_h = (cuComplex*) malloc(size_);
       
       checkCuda(cudaMalloc((void**) &ue, size_));
-      printf("Allocated ue array of size %.2f MB\n", size_/1024./1024.);
+      if(debug) printf("Allocated ue array of size %.2f MB\n", size_/1024./1024.);
       
       cudaMemset(ue, 0., size_); setval <<< nb, nt >>> (ue, zero, nn);
       
       ue_h = (cuComplex*) malloc(size_);
       
       checkCuda(cudaMalloc((void**) &Te, size_));
-      printf("Allocated Te array of size %.2f MB\n", size_/1024./1024.);
+      if(debug) printf("Allocated Te array of size %.2f MB\n", size_/1024./1024.);
       
       cudaMemset(Te, 0., size_); setval <<< nb, nt >>> (Te, zero, nn);
       
