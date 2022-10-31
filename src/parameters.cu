@@ -464,7 +464,7 @@ void Parameters::get_nml_vars(char* filename)
 
   geo_option  = toml::find_or <string> (tnml, "geo_option", "miller");
   geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
-  geofilename = toml::find_or <string> (tnml, "geo_file", "eik.out" );  
+  geofilename = toml::find_or <string> (tnml, "geo_file", geofilename );  
   slab        = toml::find_or <bool>   (tnml, "slab",         false );
   const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
 
@@ -526,6 +526,7 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
   beta = toml::find_or <float> (tnml, "beta",    0.0 );
   if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
+  if (!all_kinetic) beta = 0.0; // electromagnetic doesn't make sense with adiabatic species
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode;
   ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
   g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
@@ -773,6 +774,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -869,6 +871,12 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_vp, "vp_nuh",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_vp, "vp_alpha",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_vp, "vp_alpha_h", NC_INT,   0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_krehm, "krehm",   NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "rho_i",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
   specs[0] = wdim;
   if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1059,6 +1067,10 @@ void Parameters::store_ncdf(int ncid) {
   
   if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_geo, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "B_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "a_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "grhoavg",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_geo, "surfarea",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1148,6 +1160,12 @@ void Parameters::store_ncdf(int ncid) {
   putint   (nc_vp, "vp_alpha_h", vp_alpha_h  );
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
+
+  putbool  (nc_krehm, "krehm", krehm);
+  put_real (nc_krehm, "rho_i", rho_i);
+  put_real (nc_krehm, "d_e", d_e);
+  put_real (nc_krehm, "nu_ei", nu_ei);
+  put_real (nc_krehm, "zt", zt);
   
   putbool  (nc_rst, "restart",           restart          );
   putbool  (nc_rst, "save_for_restart",  save_for_restart );  
@@ -1259,6 +1277,10 @@ void Parameters::store_ncdf(int ncid) {
   }
   put_real (nc_geo, "beta",        beta       );
   putbool  (nc_geo, "zero_shat",   zero_shat  );
+  put_real (nc_geo, "B_ref", B_ref);
+  put_real (nc_geo, "a_ref", a_ref);
+  put_real (nc_geo, "grhoavg", grhoavg);
+  put_real (nc_geo, "surfarea", surfarea);
 
   // record the values of jtwist and x0 used in runname.nc
   putint (nc_dom, "jtwist", jtwist);

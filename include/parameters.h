@@ -80,7 +80,7 @@ class Parameters {
   void set_jtwist_x0(float* shat);
 
   int nczid, nzid, ncresid, ncbid;
-  int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag;
+  int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, icovering;
@@ -125,6 +125,7 @@ class Parameters {
   int vp_alpha, vp_alpha_h;
   float vtmax;
   float delrho, p_prime_input, invLp_input, alpha_input;
+  float B_ref, a_ref, grhoavg, surfarea;
 
   // parameters for KREHM system
   bool krehm;

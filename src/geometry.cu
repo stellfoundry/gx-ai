@@ -53,8 +53,8 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       // write an eik.in file
       write_eiktest_in(pars, grids);
       char command[300];
-      sprintf(command, "%s/bin/eiktest > eiktest.log", GS2_PATH, pars->run_name);
-      pars->geofilename = "eik.out";
+      sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
+      pars->geofilename = std::string(pars->run_name) + ".eik.eik.out";
       printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
     }
@@ -98,7 +98,10 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
 
 void write_eiktest_in(Parameters *pars, Grids *grids) {
   FILE *fptr;
-  fptr = fopen("eik.in", "w");
+
+  char fname[300];
+  sprintf(fname, "%s.eik.in", pars->run_name);
+  fptr = fopen(fname, "w");
   fprintf(fptr, "&stuff\n");
   fprintf(fptr, " ntheta = %d\n", pars->nz_in);
   fprintf(fptr, " nperiod = %d\n", pars->nperiod);
@@ -583,6 +586,12 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
       ss >> element; pars->shat     = stof(element);
       ss >> element; pars->kxfac    = stof(element);       
       ss >> element; pars->qsf      = stof(element);       
+      if (!ss.eof()) { // newer eik.out files may have additional data
+        ss >> element; pars->B_ref    = stof(element);
+        ss >> element; pars->a_ref    = stof(element);
+        ss >> element; pars->grhoavg  = stof(element);
+        ss >> element; pars->surfarea = stof(element);
+      }
 
       shat       = pars->shat;
       drhodpsi   = pars->drhodpsi;
