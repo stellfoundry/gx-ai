@@ -4,7 +4,6 @@
 #include <iostream>
 #include "geometric_coefficients.h"
 #include <netcdf.h>
-#include "parameters.h"
 #include <cmath>
 #include "vmec_variables.h"
 #include "solver.h"

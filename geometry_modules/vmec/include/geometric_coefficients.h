@@ -2,7 +2,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "parameters.h"
 #include "vmec_variables.h"
 #define _USE_MATH_DEFINES
 #include <math.h>

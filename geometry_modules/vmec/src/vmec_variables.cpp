@@ -1,7 +1,6 @@
 #include <iostream>
 #include "vmec_variables.h"
 #include <netcdf.h>
-#include "parameters.h"
 #include <cmath>
 #include "toml.hpp"
 
