@@ -1,6 +1,7 @@
 #include "geometry.h"
 #define GGEO <<< dimGrid, dimBlock >>>
 
+#include "geometry_modules/vmec/include/solver.h"
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -524,7 +525,23 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
 
   printf("READING FILE GEO\n");
   operator_arrays_allocated_=false;
-  size_t size = sizeof(float)*grids->Nz; 
+
+  size_t eiksize = sizeof(double)*(grids->Nz+1); 
+  double* eik_z_h = (double*) malloc (eiksize);
+  double* eik_bmag_h = (double*) malloc (eiksize);
+  double* eik_bmagInv_h = (double*) malloc (eiksize);
+  double* eik_gradpar_h = (double*) malloc (eiksize);
+  double* eik_gds2_h = (double*) malloc (eiksize);
+  double* eik_gds21_h = (double*) malloc (eiksize);
+  double* eik_gds22_h = (double*) malloc (eiksize);
+  double* eik_gbdrift_h = (double*) malloc (eiksize);
+  double* eik_gbdrift0_h = (double*) malloc (eiksize);
+  double* eik_cvdrift_h = (double*) malloc (eiksize);
+  double* eik_cvdrift0_h = (double*) malloc (eiksize);
+  double* eik_grho_h = (double*) malloc (eiksize);
+  double* eik_jacobian_h = (double*) malloc (eiksize);
+
+  size_t size = sizeof(float)*(grids->Nz); 
   z_h = (float*) malloc (size);
   bmag_h = (float*) malloc (size);
   bmagInv_h = (float*) malloc (size);
@@ -616,52 +633,55 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
       }
       
       getline (myfile, datline);  // text
-      for (int idz=0; idz < newNz; idz++) {
+      for (int idz=0; idz < newNz+1; idz++) {
 	getline (myfile, datline); stringstream ss(datline);
-        ss >> element; gbdrift_h[idz] = stof(element); gbdrift_h[idz] *= 0.5;
-        ss >> element; gradpar        = stof(element);
-        ss >> element; grho_h[idz]    = stof(element);
-        ss >> element; z_h[idz]       = stof(element);
+        ss >> element; eik_gbdrift_h[idz] = stod(element); eik_gbdrift_h[idz] *= 0.5;
+        ss >> element; eik_gradpar_h[idz] = stod(element);
+        ss >> element; eik_grho_h[idz]    = stod(element);
+        ss >> element; eik_z_h[idz]       = stod(element);
       }
-      getline(myfile, datline); // periodic points (not always periodic, but extra)
+      if(eik_gradpar_h[0] != eik_gradpar_h[Nz/2]) {
+        printf("Error: GX requires an equal-arc theta coordinate, so that gradpar = const.\nFor gs2 geometry module, use equal_arc = true. Exiting...\n");
+        fflush(stdout);
+        abort();
+      } else {
+        gradpar = eik_gradpar_h[0];
+      }
      
       DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",2.*gbdrift_h[0],2.*gbdrift_h[Nz-1]);
       DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
       
       getline (myfile, datline);  // text
-      for (int idz=0; idz < newNz; idz++) {
+      for (int idz=0; idz < newNz+1; idz++) {
         getline (myfile, datline); stringstream ss(datline);
-        ss >> element; cvdrift_h[idz] = stof(element);
-        cvdrift_h[idz] *= 0.5;
-        ss >> element; gds2_h[idz]    = stof(element);
-        ss >> element; bmag_h[idz]    = stof(element);
-        bmagInv_h[idz]  = 1./bmag_h[idz];
-        jacobian_h[idz] = 1./abs(drhodpsi*gradpar*bmag_h[idz]);
+        ss >> element; eik_cvdrift_h[idz] = stod(element);
+        eik_cvdrift_h[idz] *= 0.5;
+        ss >> element; eik_gds2_h[idz]    = stod(element);
+        ss >> element; eik_bmag_h[idz]    = stod(element);
+        eik_bmagInv_h[idz]  = 1./eik_bmag_h[idz];
+        eik_jacobian_h[idz] = 1./abs(drhodpsi*gradpar*eik_bmag_h[idz]);
       }
-      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
       DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",2.*cvdrift_h[0],2.*cvdrift_h[Nz-1]);
       DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
       DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
 
       getline(myfile, datline); // text
-      for (int idz=0; idz < newNz; idz++) {
+      for (int idz=0; idz < newNz+1; idz++) {
         getline (myfile, datline); stringstream ss(datline);
-        ss >> element; gds21_h[idz] = stof(element); 
-        ss >> element; gds22_h[idz] = stof(element);
+        ss >> element; eik_gds21_h[idz] = stod(element); 
+        ss >> element; eik_gds22_h[idz] = stod(element);
       }
-      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
       DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
       DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
 
             getline(myfile, datline); // text
-      for (int idz=0; idz < newNz; idz++) {
+      for (int idz=0; idz < newNz+1; idz++) {
         getline (myfile, datline); stringstream ss(datline);
-        ss >> element; cvdrift0_h[idz] = stof(element); cvdrift0_h[idz] *= 0.5;
-        ss >> element; gbdrift0_h[idz] = stof(element); gbdrift0_h[idz] *= 0.5;
+        ss >> element; eik_cvdrift0_h[idz] = stod(element); eik_cvdrift0_h[idz] *= 0.5;
+        ss >> element; eik_gbdrift0_h[idz] = stod(element); eik_gbdrift0_h[idz] *= 0.5;
       }
-      getline(myfile, datline); // periodic points (not always periodic, but extra)
 
       DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
       DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
@@ -669,6 +689,22 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
       myfile.close();      
     }
   else cout << "Failed to open";    
+
+  // interpolate to equally-spaced theta grid
+  for(int k=0; k<newNz; k++) {
+    z_h[k] = 2.*M_PI *pars->Zp *(k-newNz/2)/newNz;
+  }
+  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, ntgrid, false);
   
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
@@ -677,7 +713,6 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   CP_TO_GPU (cvdrift,  cvdrift_h,  size);
   CP_TO_GPU (bmag,     bmag_h,     size);
   CP_TO_GPU (bmagInv,  bmagInv_h,  size);
-  //  CP_TO_GPU (bgrad,    bgrad_h,    size);
   CP_TO_GPU (gds2,     gds2_h,     size);
   CP_TO_GPU (gds21,    gds21_h,    size);
   CP_TO_GPU (gds22,    gds22_h,    size);

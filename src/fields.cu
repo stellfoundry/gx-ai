@@ -12,6 +12,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   setval <<< nb, nt >>> (phi, zero, nn);
 
   //  cudaMemset(phi, 0., size_);
+  bool debug = pars->debug;
 
   phi_h = (cuComplex*) malloc(size_);
   DEBUGPRINT("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -24,7 +25,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     apar_h = (cuComplex*) malloc(size_);
 
     checkCuda(cudaMalloc((void**) &bpar, size_));
-    printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+    if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
 
     setval <<< nb, nt >>> (bpar, zero, nn);
 
