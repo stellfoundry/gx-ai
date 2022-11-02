@@ -60,6 +60,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       system(command);
     }
     MPI_Barrier(MPI_COMM_WORLD);
+    pars->geofilename = std::string(pars->run_name) + ".eik.eik.out"; // need this on all procs
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
