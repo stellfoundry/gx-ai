@@ -128,6 +128,7 @@ class Parameters {
   // parameters for KREHM system
   bool krehm;
   float rho_s, rho_i, d_e, zt;
+  bool harris_sheet;
   
   cuComplex phi_test, smith_perp_w0;
 

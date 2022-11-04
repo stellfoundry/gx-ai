@@ -2,8 +2,8 @@
 #include "get_error.h"
 
 Fields::Fields(Parameters* pars, Grids* grids) :
-  size_(sizeof(cuComplex)*grids->NxNycNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
-  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_h(nullptr), bpar(nullptr), bpar_h(nullptr),
+  size_(sizeof(cuComplex)*grids->NxNycNz), sizeReal_(sizeof(float)*grids->NxNyNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
+  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_ext(nullptr), apar_h(nullptr), apar_ext_realspace_h(nullptr), apar_ext_realspace(nullptr), bpar(nullptr), bpar_h(nullptr),
   ne(nullptr), ne_h(nullptr), ue(nullptr), ue_h(nullptr), Te(nullptr), Te_h(nullptr)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
@@ -22,7 +22,16 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
     setval <<< nb, nt >>> (apar, zero, nn);
 
+    checkCuda(cudaMalloc((void**) &apar_ext, size_));
+    if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+
+    checkCuda(cudaMalloc((void**) &apar_ext_realspace, sizeReal_));
+
+    setval <<< nb, nt >>> (apar_ext, zero, nn);
+
     apar_h = (cuComplex*) malloc(size_);
+    apar_ext_h = (cuComplex*) malloc(size_);
+    apar_ext_realspace_h = (float*) malloc(sizeReal_);
 
     checkCuda(cudaMalloc((void**) &bpar, size_));
     if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -57,6 +66,25 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     }
   }
 
+  if (pars_->harris_sheet) {
+    // loop over all grid (x and y)
+    for(idz = 0; idz < grids_->Nz; idz++) {
+      for(idx = 0; idx < grids_->Nx; idx++) {
+        for(idy = 0; idy < grids_->Ny; idy++) {
+           float x = grids_->x_h[idx];
+           float y = grids_->y_h[idy];
+           float z = grids_->z_h[idz];
+	 //int index = ...;
+         // set apar_ext_realspace_h(x,y) = ... on CPU
+	 //apar_ext_realspace_h[index] = ...;
+	}
+      }
+    }
+
+    // copy to GPU apar_ext_realspace CP_TO_GPU
+    // FFT (on GPU): apar_ext_realspace -> apar_ext
+    // use GradPerp class for FFT. look at src/nonlinear.cu for how its used.
+  }
 }
 
 Fields::~Fields() {

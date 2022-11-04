@@ -156,6 +156,7 @@ void Parameters::get_nml_vars(char* filename)
   d_e               = toml::find_or <float> (tnml, "d_e",         1.0 );
   nu_ei             = toml::find_or <float> (tnml, "nu_ei",       1.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
+  harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   rho_s = rho_i*sqrtf(zt/2);
 
   tnml = nml;
