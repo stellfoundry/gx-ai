@@ -8,9 +8,11 @@
 # module load nvhpc-mixed/21.11
 # module load cray-hdf5-parallel/1.12.1.1
 # module load cray-netcdf-hdf5parallel/4.8.1.1
-# module load e4s/21.11-tcl
-# module load gsl/2.7-gcc-11.2.0
-#
+# module load e4s/21.11
+# module load gsl/2.7
+# module load cray-fftw/3.3.8.13
+
+
 
 # paths to netcdf
 NETCDF_INC = -I ${NETCDF_DIR}/include
