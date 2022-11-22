@@ -693,7 +693,7 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
      
       
-      Wapar_summand_krehm loop_R (P2(), fields->apar, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
+      Wapar_summand_krehm loop_R (P2(), fields->apar, fields->apar_ext, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
       id->write_Aparky (P2()); id->write_Aparkx (P2());
       //id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
       // Do not change the order of these four calls because totW is accumulated in order when it is requested:
@@ -714,6 +714,7 @@ void Diagnostics_KREHM::finish(MomentsG* G, Fields* fields, double time)
     id -> write_fields(id -> fields_phi,  fields->phi );
     id -> write_fields(id -> fields_apar, fields->apar);
     id -> write_fields(id -> fields_bpar, fields->bpar);
+    id -> write_fields_realspace(id -> fields_apar_realspace, fields->apar);
   }
 }
 

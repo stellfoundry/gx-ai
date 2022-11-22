@@ -65,11 +65,11 @@ void GradPerp::qvar (cuComplex* G, int N)
   cuComplex* G_h;
   int Nk = grids_->Nyc*grids_->Nx;
   G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
-  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
+  for (int i=0; i<N; i++) {G_h[i].x = 10.; G_h[i].y = 0.;}
   CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
 
   printf("\n");
-  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
+  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = (%e, %e) \n", i%grids_->Nyc, i/grids_->Nyc, G_h[i].x, G_h[i].y);
   printf("\n");
 
   free (G_h);
@@ -84,7 +84,7 @@ void GradPerp::qvar (float* G, int N)
   CP_TO_CPU (G_h, G, N*sizeof(float));
 
   printf("\n");
-  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = %e \n", i%Nx, i/Nx, G_h[i]);
+  for (int i=0; i<N; i++) printf("grad_perp: var(%d,%d) = %e \n", i%grids_->Ny, i/grids_->Ny, G_h[i]);
   printf("\n");
 
   free (G_h);

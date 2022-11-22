@@ -52,6 +52,7 @@ class NetCDF_ids {
   void write_omg   (cuComplex *W, bool endrun = false);
   void write_moment(nca *D, cuComplex *f, float* vol_fac);
   void write_fields(nca *D, cuComplex *a, bool endrun = true);
+  void write_fields_realspace(nca *D, cuComplex *a, bool endrun=true);
   void write_gy    (float * gy_d,     bool endrun = false);
   
   void write_zonal(nca *D, cuComplex* f, bool shear, float adj);
@@ -69,7 +70,7 @@ class NetCDF_ids {
   nca *Aparky, *Aparkx, *Aparkxky;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
-  nca *fields_phi, *fields_apar, *fields_bpar;
+  nca *fields_phi, *fields_apar, *fields_apar_realspace, *fields_bpar;
   nca *g_y;
   nca *r_y; 
 

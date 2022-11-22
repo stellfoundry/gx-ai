@@ -4,7 +4,7 @@
 
 Fields::Fields(Parameters* pars, Grids* grids) :
   size_(sizeof(cuComplex)*grids->NxNycNz), sizeReal_(sizeof(float)*grids->NxNyNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
-  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_ext(nullptr), apar_h(nullptr), apar_ext_realspace_h(nullptr), apar_ext_realspace(nullptr), bpar(nullptr), bpar_h(nullptr),
+  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_ext(nullptr), apar_ext_h(nullptr), apar_h(nullptr), apar_ext_realspace_h(nullptr), apar_ext_realspace(nullptr), bpar(nullptr), bpar_h(nullptr),
   ne(nullptr), ne_h(nullptr), ue(nullptr), ue_h(nullptr), Te(nullptr), Te_h(nullptr)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
@@ -32,6 +32,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
     apar_h = (cuComplex*) malloc(size_);
     apar_ext_realspace_h = (float*) malloc(sizeReal_);
+    apar_ext_h = (cuComplex*) malloc(size_);
 
     checkCuda(cudaMalloc((void**) &bpar, size_));
     if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -67,14 +68,14 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   }
 
   if (pars_->harris_sheet) {
-    //printf("setting up harris sheet\n");
-    printf("%f\n",pars_->x0);
+    int nBatch = grids_->Nz;
+    GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+    
+    //set up harris sheet in real space   
     for(int idz = 0; idz < grids_->Nz; idz++) {
       for(int idx = 0; idx < grids_->Nx; idx++) {
         for(int idy = 0; idy < grids_->Ny; idy++) {
            float x = grids_->x_h[idx];
-           //float y = grids_->y_h[idy];
-           //float z = grids_->z_h[idz];
 
 	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
 	   float A0 = 1.0;
@@ -82,13 +83,25 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 	}
       }
     }
-
-    CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
     
-    int nBatch = grids_->Nz;
-    GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
-    grad_perp->R2C(apar_ext_realspace, apar_ext, false);
-   
+    //copy apar_ext to GPU and do Fourier transformation
+    CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
+    grad_perp->R2C(apar_ext_realspace, apar_ext, true);
+
+    //debug part
+
+    //grad_perp->qvar(apar_ext_realspace, grids_->NxNyNz); 
+    //CP_TO_CPU(apar_ext_h, apar_ext, sizeof(cuComplex) * grids_->NxNycNz);
+  //  for(int idz = 0; idz < grids_->Nz; idz++){
+  //    for(int idx = 0; idx < grids_->Nx; idx++){
+  //      for(int idy = 0; idy < grids_->Nyc; idy++){
+  //         unsigned int idxyz = idy + grids_->Nyc *(idx + grids_->Nx*idz); 
+  //         printf("idxyz%d:",idxyz);
+  //         printf("%f\n",apar_ext_h[idxyz].x);
+  //      }
+  //    }
+  //  }
+    //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
   }
 }
 

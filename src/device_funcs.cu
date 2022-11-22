@@ -248,15 +248,10 @@ __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, floa
   unsigned int idz = get_id3();
   if ( unmasked(idx, idy) && idz < nz ) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    //printf("idy %d;",idy); 
-    //printf("idx %d;",idx); 
-    //printf("idz %d;",idz); 
-    //printf("index %d:",idxyz);
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
     apar[idxyz] = -G1[idxyz]*rho_s*d_e/(1. + d_e*d_e*kperp2) + apar_ext[idxyz];
-    //printf("%f\n",apar_ext[idxyz].x);
   }
 }
 
@@ -1482,7 +1477,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
 }
 
 // WApar_summand_krehm
-__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const float* volJac, const float* kx, const float* ky, float rho_i)
+__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac, const float* kx, const float* ky, float rho_i)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1497,8 +1492,8 @@ __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const floa
       if (idy==0) fac = 1.0;
 
       float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
-      
-      tmp = cuConjf( apar[idxyz] ) * apar[idxyz] * fac;
+      cuComplex apar_perturb = apar[idxyz] - apar_ext[idxyz];
+      tmp = kperp2 * cuConjf( apar_perturb ) * apar_perturb * fac;
       p2[idxyz] = 0.5 * tmp.x;
     } else {
       p2[idxyz] = 0.;

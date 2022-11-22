@@ -13,6 +13,7 @@ class Fields {
   cuComplex * apar   ;
   cuComplex * apar_h ;
   cuComplex * apar_ext   ;
+  cuComplex * apar_ext_h ;
   float *apar_ext_realspace_h;
   float *apar_ext_realspace;
   cuComplex * bpar   ;

@@ -1,4 +1,4 @@
-#include "netcdf.h"
+
 #include "ncdf.h"
 #define GFLA    <<< dgfla, dbfla >>> 
 #define loop_R  <<< dGr,  dBr  >>>
@@ -145,6 +145,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_inq_dimid(file, "s",       &s_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "time",    &time_dim)) ERR(retval);
 
+  //if (retval = nc_inq_dimid(file, "z",       &z_dim))    ERR(retval);
+
   if (retval = nc_def_var(file, "periodic",       NC_INT, 0, 0, &periodic))        ERR(retval);
   if (retval = nc_def_var(file, "local_limit",    NC_INT, 0, 0, &local_limit))     ERR(retval);
 
@@ -163,8 +165,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   v_kx[0] = x_dim;
   if (retval = nc_def_var(file, "x",        NC_FLOAT, 1, v_kx, &x))               ERR(retval);  
 
-  //  v_z[0] = nz;
-  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
+  //v_z[0] = nz;
+  //if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
   
   // z_h needs to be defined.
   // Z0 would typically be q R
@@ -514,7 +516,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   } else {
     fields_apar = new nca(0);
   }
+ 
+  // write real space 
+  if (pars_->write_fields && (pars_->fapar > 0. || pars_->krehm)) {
+    fields_apar_realspace = new nca(nX * grids_->Ny * nZ, nX * grids_->Ny * nZ);
+    fields_apar_realspace -> write = true;
   
+    fields_apar_realspace -> dims[0] = x_dim; 
+    fields_apar_realspace -> dims[1] = y_dim;
+    fields_apar_realspace -> dims[2] = nz;
+    
+    fields_apar_realspace -> file = nc_special;
+
+    if (retval = nc_def_var(nc_special, "Apar_z_rs", NC_FLOAT, 3, fields_apar_realspace -> dims, &fields_apar_realspace -> idx)) ERR(retval);
+
+    fields_apar_realspace -> start[0] = 0;
+    fields_apar_realspace -> start[1] = 0;
+    fields_apar_realspace -> start[2] = 0;
+    
+    fields_apar_realspace -> count[0] = grids_->Nx;
+    fields_apar_realspace -> count[1] = grids_->Ny;
+    fields_apar_realspace -> count[2] = grids_->Nz;
+
+    for (int i=0; i < nX * grids->Ny * nZ; i++) fields_apar_realspace->cpu[i] = 10.;
+  } else {
+    fields_apar_realspace = new nca(0);
+  }
   ////////////////////////////
   //                        //
   //   Fields -- Bpar       //
@@ -525,8 +552,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     fields_bpar = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
     fields_bpar -> write = true;
   
-    fields_bpar -> dims[0] = ky_dim; 
-    fields_bpar -> dims[1] = kx_dim;
+    fields_bpar -> dims[0] = y_dim; 
+    fields_bpar -> dims[1] = x_dim;
     fields_bpar -> dims[2] = nz;
     fields_bpar -> dims[3] = ri; 
     
@@ -720,6 +747,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     if (retval = nc_def_var(nc_sp, "Aparkyst", NC_FLOAT, 3, Aparky->time_dims, &Aparky->time))  ERR(retval);
 
     Aparky -> time_count[1] = grids_->Nspecies;
+    Aparky -> time_count[2] = grids_->Naky;
   } else {
     Pky = new nca(0);
     Aparky = new nca(0);
@@ -1998,8 +2026,7 @@ void NetCDF_ids::write_Pky(float* P2, bool endrun)
   if (Pky -> write_v_time || (Pky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    pot->Sum(P2, Pky->data, PSPECTRA_ky);               CP_TO_CPU(Pky->tmp, Pky->data, sizeof(float)*i);
-    
+    pot->Sum(P2, Pky->data, PSPECTRA_ky);               CP_TO_CPU(Pky->tmp, Pky->data, sizeof(float)*i); 
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
 	Pky->cpu[ik + is*grids_->Naky] = Pky->tmp[ik + is*grids_->Nyc];
@@ -2017,7 +2044,7 @@ void NetCDF_ids::write_Aparky(float* P2, bool endrun)
     pot->Sum(P2, Aparky->data, PSPECTRA_ky);               CP_TO_CPU(Aparky->tmp, Aparky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
-      for (int ik = 0; ik < grids_->Naky; ik++) {
+      for (int ik = 0; ik < grids_->Naky; ik++) { 
 	Aparky->cpu[ik + is*grids_->Naky] = Aparky->tmp[ik + is*grids_->Nyc];
       }
     }
@@ -2496,6 +2523,23 @@ void NetCDF_ids::write_fields(nca *D, cuComplex *a, bool endrun)
     write_nc (D, endrun);
   }
 }
+
+void NetCDF_ids::write_fields_realspace(nca *D, cuComplex *a, bool endrun)
+{
+  if (D->write) {
+     //transfrom a into real space
+    GradPerp * grad_apar = new GradPerp(grids_, grids_->Nz, grids_->NxNycNz);
+    grad_apar->C2R(a,D->data);
+    //grad_apar->qvar(D->data, grids_->NxNyNz);
+
+     //copy it to CPU write to output file
+    CP_TO_CPU(D->cpu, D->data, sizeof(float) * D->N_);
+    //grad_apar->qvar(D->cpu,grids_->NxNyNz);   
+
+    write_nc(D, endrun);
+  } 
+}
+
 
 void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 {
