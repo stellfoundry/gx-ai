@@ -2344,8 +2344,9 @@ void NetCDF_ids::write_Q (float* Q, bool endrun)
     all_red->Sum(Q, qs->data);                   CP_TO_CPU (qs->cpu, qs->data, sizeof(float)*grids_->Nspecies);
     write_nc(qs, endrun);       
 
-    printf("Heat flux = ");
-    for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",qs->cpu[is]);
+    printf("Heat flux = [");
+    for (int is=0; is<grids_->Nspecies; is++) printf ("% 7.4e  ",qs->cpu[is]);
+    printf("],   ");
   }
 }
 
@@ -2355,8 +2356,9 @@ void NetCDF_ids::write_P (float* P, bool endrun)
     all_red->Sum(P, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
     write_nc(ps, endrun);       
 
-    printf("Particle flux = ");
-    for (int is=0; is<grids_->Nspecies; is++) printf ("%e \t ",ps->cpu[is]);
+    printf("Particle flux = [");
+    for (int is=0; is<grids_->Nspecies; is++) printf ("% 7.4e  ",ps->cpu[is]);
+    printf("]   ");
   }
 }
 

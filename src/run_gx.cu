@@ -107,7 +107,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
   
-  while(counter<pars->nstep) {
+  while(counter<pars->nstep && time<pars->t_max) {
     counter++;
 
     timestep -> advance(&time, G, fields);

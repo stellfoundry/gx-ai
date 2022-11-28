@@ -253,7 +253,7 @@ double Nonlinear_GK::get_max_frequency(Fields *f)
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
-  double omega_max = grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0];
+  double omega_max = pars_->kxfac*(grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0]);
   return omega_max;
 }
 

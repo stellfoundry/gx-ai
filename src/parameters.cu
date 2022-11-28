@@ -83,10 +83,12 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
-  nstep   = toml::find_or <int>   (tnml, "nstep",   10000 );
+  nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
   scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
   cfl = toml::find_or <float> (tnml, "cfl", 1.0);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
+  t_max = toml::find_or <float> (tnml, "t_max", 1.e20);
+  t_add = toml::find_or <float> (tnml, "t_add", -1.0);
   int nwrite_time  = toml::find_or <int>   (tnml, "nwrite",   1000    ); // included for backwards-compat. nwrite now specified in Diagnostics
   int navg_time    = toml::find_or <int>   (tnml, "navg",       10    ); // included for backwards-compat. navg now specified in Diagnostics
 
@@ -1490,7 +1492,6 @@ void Parameters::set_jtwist_x0(float *shat_in)
     if (x0 == -1) {
       x0 = y0;
     }
-    jtwist = 2*nx_in;
   } else {
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
@@ -1531,6 +1532,7 @@ void Parameters::set_jtwist_x0(float *shat_in)
   }
 
   if (zero_shat) {
+    jtwist = 2*nx_in;
     boundary_option_periodic = true;
     printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
   }

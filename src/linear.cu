@@ -23,10 +23,10 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  else if(pars_->boundary_option_periodic && pars_->nx_in > 1) {
-    DEBUGPRINT("Using periodic for grad parallel.\n");
-    grad_par = new GradParallelPeriodic(grids_);
-  }
+  //else if(pars_->boundary_option_periodic && pars_->nx_in > 1) {
+  //  DEBUGPRINT("Using periodic for grad parallel.\n");
+  //  grad_par = new GradParallelPeriodic(grids_);
+  //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
