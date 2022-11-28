@@ -229,6 +229,34 @@ double Nonlinear_GK::cfl(Fields *f, double dt_max)
 
 }
 
+double Nonlinear_GK::get_max_frequency(Fields *f)
+{
+  float vpar_max = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
+
+  grad_perp_phi -> dxC2R(f->phi, dphi); 
+  abs GBX (dphi, grids_->NxNyNz);
+  if(pars_->fapar > 0.0) {
+    grad_perp_phi -> dxC2R(f->apar, dapar); 
+    abs GBX (dapar, grids_->NxNyNz);
+    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpar_max, dapar);
+  }
+  red->Max(dphi, val1); 
+  CP_TO_CPU(vmax_y, val1, sizeof(float));
+
+  grad_perp_phi -> dyC2R(f->phi, dphi);  
+  abs GBX (dphi, grids_->NxNyNz);
+  if(pars_->fapar > 0.0) {
+    grad_perp_phi -> dyC2R(f->apar, dapar); 
+    abs GBX (dapar, grids_->NxNyNz);
+    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpar_max, dapar);
+  }
+  red->Max(dphi, val1); 
+  CP_TO_CPU(vmax_x, val1, sizeof(float));
+
+  double omega_max = grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0];
+  return omega_max;
+}
+
 //==============================================
 // Nonlinear_KREHM
 // object for handling non-linear terms in KREHM

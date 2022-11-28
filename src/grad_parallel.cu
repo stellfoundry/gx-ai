@@ -55,7 +55,6 @@ GradParallelPeriodic::GradParallelPeriodic(Grids* grids) :
   dBf = dim3(nt1, nt2, 1);
   dGf = dim3(nb1, nb2, 1);
   
-  hermite = new HermiteTransform(grids_);
 }
 
 GradParallelPeriodic::~GradParallelPeriodic() {

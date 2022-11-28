@@ -27,10 +27,12 @@ RungeKutta4::~RungeKutta4()
 void RungeKutta4::partial(MomentsG* G, MomentsG* Gt, Fields *f, MomentsG* Rhs, MomentsG *Gnew, double adt, bool setdt)
 {
   linear_->rhs(Gt, f, Rhs);
+  if (setdt) omega_max = linear_->get_max_frequency();
   if (nonlinear_ != nullptr) {
     nonlinear_->nlps (Gt, f, Rhs);
-    if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
+    if (setdt) omega_max += nonlinear_->get_max_frequency(f);
   }
+  if (setdt) dt_ = min(cfl_fac*pars_->cfl/omega_max, dt_max);
 
   if (pars_->eqfix) Gnew->copyFrom(G);
   

@@ -213,6 +213,12 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
 }
 
+double Linear_GK::get_max_frequency()
+{
+  double omega_max = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar;
+  return omega_max;
+}
+
 //==========================================
 // Linear_KREHM
 // object for handling linear terms in KREHM
