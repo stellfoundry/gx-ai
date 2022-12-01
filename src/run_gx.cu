@@ -125,12 +125,12 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     if (checkstop) break;
-    if (counter % pars->nreal == 0)  { 
-      for(int is=0; is<grids->Nspecies; is++) {
-        G[is] -> reality(grids->Nl * grids->Nm); 
-      }
-      solver -> fieldSolve(G, fields);
-    }
+    //if (counter % pars->nreal == 0)  { 
+    //  for(int is=0; is<grids->Nspecies; is++) {
+    //    G[is] -> reality(grids->Nl * grids->Nm); 
+    //  }
+    //  solver -> fieldSolve(G, fields);
+    //}
 
     for(int is=0; is<grids->Nspecies; is++) {
       if (pars->save_for_restart && counter % pars->nsave == 0) G[is]->restart_write(&time);

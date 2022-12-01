@@ -24,7 +24,9 @@ int main(int argc, char* argv[])
   MPI_Comm_size(mpcom, &nprocs);
   
   int devid = 0; // This should be determined (optionally) on the command line
-  checkCuda(cudaSetDevice(devid));
+  int nGPUs = 0;
+  cudaGetDeviceCount(&nGPUs);
+  checkCuda(cudaSetDevice(iproc%nGPUs));
   cudaDeviceSynchronize();
 
   /*  

@@ -73,9 +73,6 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG** GRhs, Fields* f, b
       if (setdt) dt_ = nonlinear_->cfl(f, dt_);
     }
   }
-  if(grids_->nprocs>1 && setdt && nonlinear_ != nullptr) {
-    MPI_Allreduce(MPI_IN_PLACE, &dt_, 1, MPI_FLOAT, MPI_MIN, MPI_COMM_WORLD);
-  }
   for(int is=0; is<grids_->Nspecies; is++) {
     G1[is]->add_scaled(1., G[is], adt*dt_, GRhs[is]);
 
