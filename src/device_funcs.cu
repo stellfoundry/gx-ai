@@ -1113,10 +1113,12 @@ __global__ void bracket(float* __restrict__ g_res, const float* __restrict__ dg_
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
+  unsigned int idm = get_id3();
 
-  if (idxyz < nx*ny*nz && idj < nj) {
-    unsigned int ig = idxyz + nx*ny*nz*idj;
-    g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[ig] - dg_dy[ig] * dJ0phi_dx[ig] ) * kxfac;
+  if (idxyz < nx*ny*nz && idj < nj && idm < nm) {
+    unsigned int iphi = idxyz + nx*ny*nz*idj;
+    unsigned int ig = idxyz + nx*ny*nz*(idj + nj*idm);
+    g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[iphi] - dg_dy[ig] * dJ0phi_dx[iphi] ) * kxfac;
     
   }
 }

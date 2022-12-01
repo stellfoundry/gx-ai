@@ -31,7 +31,7 @@ class Nonlinear_GK : public Nonlinear {
   int nBatch;
   size_t Size; 
   bool ks, vp;
-  dim3 dGk, dBk, dGx, dBx;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -41,10 +41,13 @@ class Nonlinear_GK : public Nonlinear {
   
   Red               * red             ; 
   LaguerreTransform * laguerre        ;
+  LaguerreTransform * laguerre_single ;
   GradPerp          * grad_perp_G     ;
+  GradPerp          * grad_perp_G_single ;
   GradPerp          * grad_perp_J0f ;
   GradPerp          * grad_perp_f   ;
 
+  MomentsG * G_tmp;
   cuComplex * tmp_c   ;
   float * dG          ;
   float * dg_dx       ;
