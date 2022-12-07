@@ -25,6 +25,7 @@ class Solver_GK : public Solver {
   void svar(float* f, int N);
   
   cuComplex * nbar ;
+  cuComplex * nbar_tmp ;
   cuComplex * jparbar ;
   cuComplex * jperpbar ;
 

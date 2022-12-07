@@ -20,7 +20,12 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   // the "nbar" array contains nbar, jparbar, and jperpbar
   size_t cgrid = sizeof(cuComplex)*count;
-  cudaMalloc((void**) &nbar, cgrid); zero(nbar);
+  if (pars_->use_NCCL) {
+    cudaMalloc((void**) &nbar, cgrid); zero(nbar);
+  } else {
+    cudaMallocHost((void**) &nbar, cgrid); zero(nbar);
+    cudaMallocHost((void**) &nbar_tmp, cgrid); zero(nbar_tmp);
+  }
   // set offset pointers to jparbar and jperpbar
   if(pars_->fapar > 0.) jparbar = nbar+grids_->NxNycNz;
   if(pars_->fbpar > 0.) jperpbar = nbar+2*grids_->NxNycNz;
@@ -129,15 +134,18 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
       }
     }
 
+    checkCuda(cudaDeviceSynchronize());
     if(grids_->nprocs>1) {
       // factor of 2 in count*2 is from cuComplex -> float conversion
       if(pars_->use_NCCL) { 
         ncclAllReduce((void*) nbar, (void*) nbar, count*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
         cudaStreamSynchronize(0);
       } else {
-	MPI_Allreduce(MPI_IN_PLACE, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+	MPI_Allreduce((void*) nbar_tmp, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+        CP_ON_GPU(nbar, nbar_tmp, sizeof(cuComplex)*count);
       }
     }
+    checkCuda(cudaDeviceSynchronize());
     
     if (pars_->fbpar>0.0) {
       qneut_and_ampere_perp GQN (fields->phi, fields->bpar, nbar, jperpbar, qneutFacPhi, qneutFacBpar, amperePerpFacPhi, amperePerpFacBpar, pars_->fphi, pars_->fbpar);
