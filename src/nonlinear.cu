@@ -73,8 +73,8 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nher = grids_->Nm;
 
   int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
-  int nby = min(16, nlag);  int ngy = 1 + (nlag-1)/nby;
-  int nbz = min(16, nher);  int ngz = 1 + (nher-1)/nbz;
+  int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
+  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
 
   dBx = dim3(nbx, nby, nbz);
   dGx = dim3(ngx, ngy, ngz);
