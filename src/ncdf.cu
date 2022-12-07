@@ -95,7 +95,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   dball = dim3(nt1, nt2, nt3);
   dgall = dim3(nb1, nb2, nb3);
   
-  if (pars_->write_kmom || pars_->write_xymom || pars_->write_avgz) {
+  if (pars_->write_kmom || pars_->write_xymom || pars_->write_all_avgz) {
     int nbatch = grids_->Nz;
     grad_phi = new GradPerp(grids_, nbatch, grids_->NxNycNz);
 
