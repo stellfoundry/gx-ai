@@ -221,20 +221,20 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
 
-extern __managed__ cufftCallbackLoadC i_kxs_callbackPtr;
-extern __managed__ cufftCallbackLoadC i_kx_callbackPtr;
-extern __managed__ cufftCallbackLoadC i_ky_callbackPtr;
-extern __managed__ cufftCallbackStoreC mask_and_scale_callbackPtr;
+extern __device__ cufftCallbackLoadC i_kxs_callbackPtr;
+extern __device__ cufftCallbackLoadC i_kx_callbackPtr;
+extern __device__ cufftCallbackLoadC i_ky_callbackPtr;
+extern __device__ cufftCallbackStoreC mask_and_scale_callbackPtr;
   
 __device__ void zfts(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr);
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 
-extern __managed__ cufftCallbackStoreC zfts_callbackPtr;
-extern __managed__ cufftCallbackStoreC i_kz_callbackPtr;
-extern __managed__ cufftCallbackStoreC i_kz_1d_callbackPtr;
-extern __managed__ cufftCallbackStoreC abs_kz_callbackPtr;
+extern __device__ cufftCallbackStoreC zfts_callbackPtr;
+extern __device__ cufftCallbackStoreC i_kz_callbackPtr;
+extern __device__ cufftCallbackStoreC i_kz_1d_callbackPtr;
+extern __device__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
 
@@ -293,9 +293,9 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __global__ void init_kzLinked(float* kz, int nLinks, bool dealias);
 
-extern __managed__ cufftCallbackStoreC zfts_Linked_callbackPtr;
-extern __managed__ cufftCallbackStoreC i_kzLinked_callbackPtr;
-extern __managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
+extern __device__ cufftCallbackStoreC zfts_Linked_callbackPtr;
+extern __device__ cufftCallbackStoreC i_kzLinked_callbackPtr;
+extern __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky);
 __global__ void rhs_lin_vp(const cuComplex *G, const cuComplex* phi, cuComplex* GRhs, float* ky,

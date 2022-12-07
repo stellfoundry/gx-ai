@@ -1025,10 +1025,10 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   }
 }
 
-__managed__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
-__managed__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
-__managed__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
-__managed__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
+__device__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
+__device__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
+__device__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
+__device__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
 
 // Multiplies by i kz / Nz 
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -1059,10 +1059,10 @@ __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void
   ((cuComplex*)dataOut)[offset] = Ikz*element/nz;
 }
 
-__managed__ cufftCallbackStoreC zfts_callbackPtr = zfts;
-__managed__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
-__managed__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
-__managed__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
+__device__ cufftCallbackStoreC zfts_callbackPtr = zfts;
+__device__ cufftCallbackStoreC i_kz_callbackPtr = i_kz;
+__device__ cufftCallbackStoreC i_kz_1d_callbackPtr = i_kz_1d;
+__device__ cufftCallbackStoreC abs_kz_callbackPtr = abs_kz;
 
 __global__ void acc(float *a, const float *b)
 {a[0] = a[0] + b[0];}
@@ -2028,9 +2028,9 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
   }
 }
 
-__managed__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
-__managed__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
-__managed__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
+__device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
+__device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
+__device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
 			   int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms)
