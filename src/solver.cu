@@ -131,10 +131,12 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
 
     if(grids_->nprocs>1) {
       // factor of 2 in count*2 is from cuComplex -> float conversion
-      if(pars_->use_NCCL) ncclAllReduce((void*) nbar, (void*) nbar, count*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
-      else MPI_Allreduce(MPI_IN_PLACE, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
-
-      cudaStreamSynchronize(0);
+      if(pars_->use_NCCL) { 
+        ncclAllReduce((void*) nbar, (void*) nbar, count*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
+        cudaStreamSynchronize(0);
+      } else {
+	MPI_Allreduce(MPI_IN_PLACE, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+      }
     }
     
     if (pars_->fbpar>0.0) {
