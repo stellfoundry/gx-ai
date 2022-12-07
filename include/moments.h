@@ -52,6 +52,7 @@ class MomentsG {
   void reality(int ngz);
 
   void sync();
+  void syncNCCL();
   void syncMPI();
   
   inline void copyFrom(MomentsG* source) {

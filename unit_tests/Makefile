@@ -85,10 +85,10 @@ obj/gtest.a : obj/gtest-all.o
 obj/gtest_main.a : obj/gtest-all.o obj/gtest_main.o
 	$(AR) $(ARFLAGS) $@ $^
 
-$(GX_DIR)/obj/%.o: $(GX_DIR)/src/%.cu
+$(GX_LIB): $(GX_DIR)/src/*.cu
 	cd $(GX_DIR); \
-	make obj/$*.o; \
-	cd tests;
+	make libgx.a; \
+	cd unit_tests;
 
 # Build tests
 obj/test_%.o: test_%.cu 

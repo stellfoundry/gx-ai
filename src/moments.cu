@@ -88,6 +88,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   dG_all = dim3(nb1, nb2, nb3);	 
 
   cudaStreamCreateWithFlags(&syncStream, cudaStreamNonBlocking);
+  checkCuda(cudaGetLastError());
 }
 
 MomentsG::~MomentsG() {
@@ -351,6 +352,12 @@ void MomentsG::reality(int ngz)
   reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
+void MomentsG::sync()
+{
+  if(pars_->use_NCCL) syncNCCL();
+  else syncMPI();
+}
+
 void MomentsG::syncMPI()
 {
   if(grids_->nprocs_m==1) return;
@@ -359,26 +366,26 @@ void MomentsG::syncMPI()
   MPI_Status stat;
 
   // send to right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
   }
   // receive from left
-  if(grids_->procLeft() >= 0) {
-    MPI_Recv(Gm(-grids_->m_ghost),                              size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+  if(grids_->iproc_m-1 >= 0) {
+    MPI_Recv(Gm(-grids_->m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
   }
 
   // send to left
-  if(grids_->procLeft() >= 0) {
-    MPI_Send(Gm(0),              size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+  if(grids_->iproc_m-1 >= 0) {
+    MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
   }
   // receive from right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
   }
   cudaDeviceSynchronize();
 }
 
-void MomentsG::sync()
+void MomentsG::syncNCCL()
 {
   if(grids_->nprocs_m==1) return;
 
