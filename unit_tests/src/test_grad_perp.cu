@@ -24,7 +24,6 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    grids->init_ks_and_coords();
     grad_perp = new GradPerp(grids, grids->Nz*grids->Nl, grids->NxNycNz*grids->Nl);
   }
 
@@ -112,6 +111,25 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
       }
     }
   }    
+
+  // try d/dx and d/dy before kx and ky have been initialized in grids. this should give all zeros.
+  grad_perp->dxC2R(comp, dx);
+  grad_perp->dyC2R(comp, dy);
+
+  for(int idz=0; idz<grids->Nz; idz++) {
+    for(int idl=0; idl<grids->Nl; idl++) {
+      for(int idx=0; idx<grids->Nx; idx++) {
+        for(int idy=0; idy<grids->Ny; idy++) {
+          int globalIdx = idy + grids->Ny*idx + grids->Nx*grids->Ny*idz + grids->NxNyNz*idl;
+          EXPECT_FLOAT_EQ_D(&dx[globalIdx], 0.0, 2.e-6);
+          EXPECT_FLOAT_EQ_D(&dy[globalIdx], 0.0, 2.e-6);
+        }
+      }
+    }
+  }
+
+  // now initialize kx and ky
+  grids->init_ks_and_coords();
 
   grad_perp->dxC2R(comp, dx);
   grad_perp->dyC2R(comp, dy);
