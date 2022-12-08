@@ -23,10 +23,10 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  else if(pars_->boundary_option_periodic && pars_->nx_in > 1) {
-    DEBUGPRINT("Using periodic for grad parallel.\n");
-    grad_par = new GradParallelPeriodic(grids_);
-  }
+  //else if(pars_->boundary_option_periodic && pars_->nx_in > 1) {
+  //  DEBUGPRINT("Using periodic for grad parallel.\n");
+  //  grad_par = new GradParallelPeriodic(grids_);
+  //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
@@ -213,6 +213,12 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
 }
 
+double Linear_GK::get_max_frequency()
+{
+  double omega_max = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar;
+  return omega_max;
+}
+
 //==========================================
 // Linear_KREHM
 // object for handling linear terms in KREHM
@@ -310,9 +316,9 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
-								   pars_->nu_hyper_l,
-								   pars_->nu_hyper_m,
-								   pars_->p_hyper_l,
+								   0.,
+								   1./pars_->dt/pars_->nm_in,
+								   1.,
 								   pars_->p_hyper_m, GRhs->G(), 1.);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,

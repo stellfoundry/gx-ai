@@ -284,6 +284,7 @@ void MomentsG::initialConditions(double* time) {
   if(pars_->restart) {
     DEBUG_PRINT("reading restart file \n");
     this->restart_read(time);
+    if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
   }
   cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
   DEBUG_PRINT("initial conditions set \n");  

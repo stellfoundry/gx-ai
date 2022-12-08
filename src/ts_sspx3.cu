@@ -65,19 +65,23 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG** GRhs, Fields* f, b
 {
   if (setdt) dt_ = dt_max;
   for(int is=0; is<grids_->Nspecies; is++) {
+    // start sync first, so that we can overlap it with computation below
     G[is]->sync();
 
+    // compute timestep (if necessary)
+    if (setdt && is==0 && nonlinear_ != nullptr) { // dt will be computed same for all species, so just do first time through species loop
+      dt_ = nonlinear_->cfl(f, dt_);
+    }
+
+    // compute and increment nonlinear term
     GRhs[is]->set_zero();
     if(nonlinear_ != nullptr) {
       nonlinear_->nlps(G[is], f, GRhs[is]);
-      if (setdt) dt_ = nonlinear_->cfl(f, dt_);
     }
-  }
-  for(int is=0; is<grids_->Nspecies; is++) {
     G1[is]->add_scaled(1., G[is], adt*dt_, GRhs[is]);
 
+    // compute and increment linear term
     GRhs[is]->set_zero();
-
     linear_->rhs(G[is], f, GRhs[is]);  if (pars_->dealias_kz) grad_par->dealias(GRhs[is]);
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   

@@ -235,8 +235,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       print_omg(omg_d);  id -> write_omg(omg_d);
     }
 
-    if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f \t", pars_->run_name, counter, time);          // To screen
-    if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
+    if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
+    if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e\n",  pars_->run_name, counter, time, dt);
   
     if ( id -> qs -> write_v_time) {                                                                // heat flux
       

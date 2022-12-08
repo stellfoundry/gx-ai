@@ -2384,7 +2384,7 @@ void NetCDF_ids::write_Q (float* Q, bool endrun)
       for (int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
         const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
-        printf ("Q_%s = %e \t ", spec_string, qs->cpu[is]);
+        printf ("Q_%s = % 7.4e  ", spec_string, qs->cpu[is]);
       }
     }
   }
@@ -2408,7 +2408,7 @@ void NetCDF_ids::write_P (float* P, bool endrun)
       for (int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
         const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
-        printf ("Gamma_%s = %e \t ", spec_string, ps->cpu[is]);
+        printf ("Gamma_%s = % 7.4e  ", spec_string, ps->cpu[is]);
       }
     }
   }

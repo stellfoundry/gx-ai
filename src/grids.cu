@@ -1,4 +1,5 @@
 #include "grids.h"
+#include "hermite_transform.h"
 
 Grids::Grids(Parameters* pars) :
   // copy from input parameters
@@ -31,6 +32,7 @@ Grids::Grids(Parameters* pars) :
 
   Nspecies = pars->nspec_in;
   Nm = pars->nm_in;
+  Nm_glob = pars->nm_in;
   is_lo = 0;
   is_up = Nspecies;
   m_lo = 0;
@@ -215,4 +217,11 @@ void Grids::init_ks_and_coords()
   for(int k=0; k<Nz; k++) {
     z_h[k] = 2.*M_PI *pars_->Zp *(k-Nz/2)/Nz;
   }
+
+  HermiteTransform * hermite = new HermiteTransform(this);
+  vpar_max = hermite->get_vmax();
+  kx_max = kx_h[Nx/2];
+  ky_max = ky_h[Ny/2];
+  kz_max = kz_h[Nz/2];
+  delete hermite;
 }

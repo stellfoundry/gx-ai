@@ -97,13 +97,13 @@ obj/test_%.o: test_%.cu
 obj/device_test.o: device_test.cu
 	$(NVCC) -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) $(GTEST_FLAGS)
 
-test_%: obj/test_%.o obj/gtest_main.a ${GX_LIB} obj/device_test.o
+test_%: obj/test_%.o obj/gtest_main.a $(GX_LIB) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-unit_tests: $(addprefix obj/, $(UNIT_TESTS:=.o)) obj/gtest_main.a ${GX_LIB} obj/device_test.o
-	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS)
+unit_tests: $(addprefix obj/, $(UNIT_TESTS:=.o)) obj/gtest_main.a $(GX_LIB) obj/device_test.o
+	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
-regression_tests: $(addprefix obj/, $(REGRESSION_TESTS:=.o)) obj/gtest_main.a ${GX_LIB} obj/device_test.o
+regression_tests: $(addprefix obj/, $(REGRESSION_TESTS:=.o)) obj/gtest_main.a $(GX_LIB) obj/device_test.o
 	$(NVCC) -o $@ $^ $(CFLAGS) $(NVCCFLAGS) $(LDFLAGS) 
 
 test_each: $(TESTS)

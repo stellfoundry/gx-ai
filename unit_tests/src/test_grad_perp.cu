@@ -126,6 +126,7 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
         }
       }
     }
+    
   }
 
   // now initialize kx and ky
