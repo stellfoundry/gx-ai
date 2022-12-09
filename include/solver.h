@@ -48,6 +48,7 @@ private:
   Parameters * pars_  ;
   Grids      * grids_ ;
   Geometry   * geo_   ;
+
 };
 
 class Solver_KREHM : public Solver {

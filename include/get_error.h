@@ -1,6 +1,7 @@
 #pragma once
 #include <helper_cuda.h>
 #include <cufft.h>
+#include <nccl.h>
 #include <assert.h>
 
 // Convenience function for checking CUDA runtime API results
@@ -31,6 +32,17 @@ inline T __checkCudaErrors__(T code, const char *func, const char *file, int lin
 
 template <>
 inline cufftResult __checkCudaErrors__(cufftResult code, const char *func, const char *file, int line) 
+{
+  if (code) {
+    fprintf(stderr, "CUDA error: (code=%d)  \"%s\" at %s:%d \n", (unsigned int)code, func, file, line);
+    cudaDeviceReset();
+    exit(EXIT_FAILURE);
+  }
+  return code;
+}
+
+template <>
+inline ncclResult_t __checkCudaErrors__(ncclResult_t code, const char *func, const char *file, int line) 
 {
   if (code) {
     fprintf(stderr, "CUDA error: (code=%d)  \"%s\" at %s:%d \n", (unsigned int)code, func, file, line);
