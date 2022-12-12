@@ -24,7 +24,7 @@ include Makefiles/Makefile.$(GK_SYSTEM)
 ###########################
 
 INCS= ${CUDA_INC} ${MPI_INC} ${NETCDF_INC} ${GSL_INC}
-LIBS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} 
+LIBS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} ${C_LIB}
 #NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
 
 #####################################

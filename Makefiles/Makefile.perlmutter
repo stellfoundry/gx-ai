@@ -33,12 +33,14 @@ CUDA_LIB = -L ${NVIDIA_PATH}/math_libs/lib64 -lcudart -lcufft_static -lculibos -
 
 # paths to gsl 
 GSL_INC = -I ${GSL_ROOT}/include
-GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas -lm
+GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas
+
+C_LIB = -lm
 
 CUDAARCH=80
 CC=CC
 
-NVCC      = nvcc
+NVCC   = nvcc
 CFLAGS = -fPIC
 NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
