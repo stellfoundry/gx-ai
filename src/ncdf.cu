@@ -1,5 +1,3 @@
-#include "netcdf.h"
-#include "netcdf_par.h"
 #include "ncdf.h"
 #define GFLA    <<< dgfla, dbfla >>> 
 #define loop_R  <<< dGr,  dBr  >>>
