@@ -78,7 +78,7 @@
  fluxes = true                   # compute and write heat and particle fluxes
 
 [Expert]
- use_NCCL = false
+ use_NCCL = true
 
 [Wspectra]                       # spectra of W = |G_lm|**2
 species          = false

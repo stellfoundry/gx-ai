@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
   
   int devid = 0; // This should be determined (optionally) on the command line
   int nGPUs = 0;
-  cudaGetDeviceCount(&nGPUs);
+  checkCuda(cudaGetDeviceCount(&nGPUs));
   checkCuda(cudaSetDevice(iproc%nGPUs));
   cudaDeviceSynchronize();
 
