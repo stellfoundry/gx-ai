@@ -63,6 +63,9 @@ void RungeKutta4::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
     Rhs[is]->set_zero();
     linear_->rhs(Gt[is], f, Rhs[is]);
     Gnew[is]->add_scaled(1., Gnew[is], adt*dt_, Rhs[is]);
+  
+    // need to recompute and save Rhs for intermediate steps
+    Rhs[is]->add_scaled(1./(adt*dt_), Gnew[is], -1./(adt*dt_), G[is]);
   }
 
   // compute new fields
