@@ -248,7 +248,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	heat_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s, vt_s);
       }
-      id -> write_Q(P2s); 
+      id -> write_Qky(P2());
+      id -> write_Qkx(P2());
+      id -> write_Qkxky(P2());
+      id -> write_Qz(P2());
+      id -> write_Q(P2()); 
     }      
 
     if ( id -> ps -> write_v_time) {
