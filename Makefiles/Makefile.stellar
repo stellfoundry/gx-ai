@@ -26,16 +26,19 @@ MPI_LIB = -L ${OMPI_DIR}/lib64 -lmpi
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
 CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
 
-GSL_LIB = -lgsl -lgslcblas -lm
+GSL_LIB = -lgsl -lgslcblas
+
+C_LIB = -ldl -lm  -lpthread
 
 # this GS2 install should be accessible to all users
 GS2_PATH = /home/nmandell/gs2-amd
 
 CUDAARCH=80
-CC=gcc
+CC=g++
 
 NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
+CFLAGS = -fPIC
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
