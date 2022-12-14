@@ -222,8 +222,8 @@ double Nonlinear_GK::cfl(Fields *f, double dt_max)
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
-  // need em evaluation if beta > 0
-  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
+  double scale = 0.5;  // normalization scaling factor for C2R FFT
+  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv)*scale;
   dt_cfl = min(dt_max, 1./vmax);
   return dt_cfl;
 
@@ -253,7 +253,8 @@ double Nonlinear_GK::get_max_frequency(Fields *f)
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
-  double omega_max = pars_->kxfac*(grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0]);
+  double scale = 0.5;  // normalization scaling factor for C2R FFT
+  double omega_max = pars_->kxfac*(grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0])*scale;
   return omega_max;
 }
 

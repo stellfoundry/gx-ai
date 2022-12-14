@@ -121,7 +121,7 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
-  float vtmax;
+  float vtmax, tzmax;
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
