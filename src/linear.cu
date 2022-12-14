@@ -215,7 +215,8 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
 double Linear_GK::get_max_frequency()
 {
-  double omega_max = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar;
+  // estimate max linear frequency from kz_max*vpar_max*vt_max + omegad_max, with omegad_max ~ 2*tz_max*(kx_max+ky_max)*vpar_max^2/R
+  double omega_max = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar + 2.*pars_->tzmax*grids_->vpar_max*grids_->vpar_max*(grids_->kx_max+grids_->ky_max)/pars_->rmaj;
   return omega_max;
 }
 

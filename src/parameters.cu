@@ -109,7 +109,7 @@ void Parameters::get_nml_vars(char* filename)
   restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
   restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
-  nsave   = toml::find_or <int>   (tnml, "nsave", (int) nstep/10 );
+  nsave   = toml::find_or <int>   (tnml, "nsave", 10000 );
   nsave = max(1, nsave);
 
   if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
@@ -1298,6 +1298,7 @@ void Parameters::store_ncdf(int ncid) {
 void Parameters::init_species(specie* species)
 {
   vtmax = -1.;
+  tzmax = -1.;
   for(int s=0; s<nspec_in; s++) {
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
@@ -1320,6 +1321,7 @@ void Parameters::init_species(specie* species)
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
+    tzmax = max(tzmax, species[s].tz);
   }
 }
 
