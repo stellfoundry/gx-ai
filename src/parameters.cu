@@ -27,7 +27,7 @@ Parameters::~Parameters() {
 void Parameters::get_nml_vars(char* filename)
 {
   strcpy (run_name, filename);
-  char nml_file[263];
+  char nml_file[1000];
   
   strcpy(nml_file, run_name);
   strcat(nml_file, ".in");
@@ -39,7 +39,7 @@ void Parameters::get_nml_vars(char* filename)
   //repeat = toml::find_or <bool> (nml, "repeat",  false);  
   debug  = toml::find_or <bool> (nml, "debug",   false);
 
-  char default_restart_filename[280];
+  char default_restart_filename[1000];
   strcpy(default_restart_filename, filename);
   strcat(default_restart_filename, ".restart.nc");
 
