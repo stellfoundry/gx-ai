@@ -20,7 +20,9 @@ MPI_LIB= -lmpi
 
 GSL_DIR = /home/software/spack/gsl/2.5-wmeietinmhfzwiammzup4ymx3wpa3ucz/
 GSL_INC = -I${GSL_DIR}/include
-GSL_LIB = -L${GSL_DIR}/lib -lgsl -lgslcblas -lm
+GSL_LIB = -L${GSL_DIR}/lib -lgsl -lgslcblas 
+
+C_LIB = -ldl -lm -lpthread
 
 NVCC=nvcc
 CUDAARCH=70
@@ -28,7 +30,11 @@ CUDA_DIR = /software/hpc-sdk/2021_215/Linux_ppc64le/21.5/math_libs
 CUDA_INC = -I${CUDA_DIR}/include 
 CUDA_LIB = -L${CUDA_DIR}/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lcutensor -lcudart
 
-NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
+CC=g++
+
+NVCC   = nvcc
+CFLAGS = -fPIC
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
 GS2_PATH = /home/nrm/gs2
 

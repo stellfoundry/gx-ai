@@ -35,14 +35,17 @@ CUDA_INC = ${CUTENSOR_INC}
 CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp ${CUTENSOR_LIB}
 
 GSL_INC = -I ${GSL_INCLUDE}
-GSL_LIB = -L ${GSL_ROOT_DIR}/lib -lgsl -lgslcblas -lm
+GSL_LIB = -L ${GSL_ROOT_DIR}/lib -lgsl -lgslcblas
+
+C_LIB = -ldl -lm -lpthread
 
 # marconi has NVIDIA V100, so compute capability is 7.0
 CUDAARCH=70
-CC=gcc
+CC=g++
 
-NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
+NVCC   = nvcc
+CFLAGS = -fPIC
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

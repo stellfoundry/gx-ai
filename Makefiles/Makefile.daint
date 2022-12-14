@@ -3,7 +3,7 @@
 #
 # add the following to your .bash_profile and uncomment (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
-#export GK_SYSTEM='daint'
+#export GK_SYSTEM=daint
 #module load PrgEnv-intel
 #module load daint-gpu
 #module load cray-mpich/7.7.18
@@ -27,14 +27,17 @@ CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
 CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
 
 GSL_INC = 
-GSL_LIB = -lgsl -lgslcblas -lm
+GSL_LIB = -lgsl -lgslcblas
+
+C_LIB = -ldl -lm -lpthread
 
 # piz daint has NVIDIA P100, so compute capability is 6.0
 CUDAARCH=60
-CC=gcc
+CC=g++
 
-NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
+NVCC   = nvcc
+CFLAGS = -fPIC
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
