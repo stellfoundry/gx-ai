@@ -2470,13 +2470,19 @@ void NetCDF_ids::write_Qky(float* Q, bool endrun)
   if (Qky -> write_v_time || (Qky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    red_qflux->Sum(Q, Qky->data, PSPECTRA_ky);               CP_TO_CPU(Qky->tmp, Qky->data, sizeof(float)*i);
+    red_qflux->Sum(Q, Qky->data, QSPECTRA_ky);               CP_TO_CPU(Qky->tmp, Qky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
 	Qky->cpu[ik + is*grids_->Naky] = Qky->tmp[ik + is*grids_->Nyc];
       }
     }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Qky->time_start[0] = 0;
     write_nc(Qky, endrun);      
   }
 }
@@ -2488,7 +2494,7 @@ void NetCDF_ids::write_Qkx(float* Q, bool endrun)
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx;
     
-    red_qflux->Sum(Q, Qkx->data, PSPECTRA_kx);               CP_TO_CPU(Qkx->tmp, Qkx->data, sizeof(float)*i);
+    red_qflux->Sum(Q, Qkx->data, QSPECTRA_kx);               CP_TO_CPU(Qkx->tmp, Qkx->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it  = 0;
@@ -2503,6 +2509,12 @@ void NetCDF_ids::write_Qkx(float* Q, bool endrun)
 	Qkx->cpu[itn + is*grids_->Nakx] = Qkx->tmp[itm + is*grids_->Nx];	
       }
     }  
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Qkx->time_start[0] = 0;
     write_nc(Qkx, endrun);     
   }
 }
@@ -2512,7 +2524,13 @@ void NetCDF_ids::write_Qz(float* Q, bool endrun)
   if (Qz -> write_v_time || (Qz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;
     
-    red_qflux->Sum(Q, Qz->data, PSPECTRA_z);         CP_TO_CPU(Qz->cpu, Qz->data, sizeof(float)*i);
+    red_qflux->Sum(Q, Qz->data, QSPECTRA_z);         CP_TO_CPU(Qz->cpu, Qz->data, sizeof(float)*i);
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Qz->time_start[0] = 0;
     write_nc(Qz, endrun);        
   }
 }
@@ -2526,7 +2544,7 @@ void NetCDF_ids::write_Qkxky(float* Q, bool endrun)
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx; 
     
-    red_qflux->Sum(Q, Qkxky->data, PSPECTRA_kxky);
+    red_qflux->Sum(Q, Qkxky->data, QSPECTRA_kxky);
     CP_TO_CPU(Qkxky->tmp, Qkxky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
@@ -2555,6 +2573,12 @@ void NetCDF_ids::write_Qkxky(float* Q, bool endrun)
 	}
       }
     }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Qkxky->time_start[0] = 0;
     write_nc(Qkxky, endrun);     
   }
 }
