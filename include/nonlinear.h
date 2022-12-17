@@ -96,10 +96,8 @@ class Nonlinear_KREHM : public Nonlinear {
   cuComplex * tmp_c;
 
   float * val1        ;
-  float vPhi_max_x[1]     ;
-  float vPhi_max_y[1]     ;
-  float vA_max_x[1]     ;
-  float vA_max_y[1]     ;
+  float v_max_x[1]     ;
+  float v_max_y[1]     ;
 
   float rho_s;
   float d_e;

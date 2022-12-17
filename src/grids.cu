@@ -8,7 +8,7 @@ Grids::Grids(Parameters* pars) :
   Nspecies ( pars->nspec_in    ),
   Nm       ( pars->nm_in       ),
   Nl       ( pars->nl_in       ),
-  Nj       ( 3*pars->nl_in/2-1 ),
+  Nj       ( max(1, 3*pars->nl_in/2-1) ),
 
   Nyc      ( 1 + Ny/2          ),
   Naky     ( 1 + (Ny-1)/3      ),

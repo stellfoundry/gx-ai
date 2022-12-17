@@ -309,11 +309,9 @@ void Nonlinear_KREHM::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
   grad_perp->dxC2R(f->apar, dapar_dx);
   grad_perp->dyC2R(f->apar, dapar_dy);
 
-  G_nl->set_zero();
-
   // loop over m, computing all nonlinear terms involving a bracket of g_m
   // this way each g_m only needs to be transformed twice (for d/dx and d/dy)
-  for(int m=0; m<grids_->Nm-1; m++) {
+  for(int m=0; m<grids_->Nm; m++) {
     grad_perp->dxC2R(G->Gm(m), dg_dx);
     grad_perp->dyC2R(G->Gm(m), dg_dy);      
 
@@ -326,21 +324,26 @@ void Nonlinear_KREHM::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
     bracket GBX (tmp_r, dg_dx, dapar_dy, dg_dy, dapar_dx, 1.);
     grad_perp->R2C(tmp_r, tmp_c, false); // this R2C has accumulate=false
     // NL_{m+1} += -rho_s/d_e*sqrt(m+1)*{g_m, Apar}
-    if(m+1 < grids_->Nm-1) add_scaled_singlemom_kernel GBK (G_nl->Gm(m+1), 1., G_nl->Gm(m+1), -rho_s/d_e*sqrtf(m+1), tmp_c);
+    if(m+1 < grids_->Nm) add_scaled_singlemom_kernel GBK (G_nl->Gm(m+1), 1., G_nl->Gm(m+1), -rho_s/d_e*sqrtf(m+1), tmp_c);
     // NL_{m-1} += -rho_s/d_e*sqrt(m)*{g_m, Apar}
     if(m>0) add_scaled_singlemom_kernel GBK (G_nl->Gm(m-1), 1., G_nl->Gm(m-1), -rho_s/d_e*sqrtf(m), tmp_c);
   }
 }
 double Nonlinear_KREHM::cfl(Fields *f, double dt_max)
 {
-  red->Max(dphi_dx, val1); CP_TO_CPU(vPhi_max_y, val1, sizeof(float));
-  red->Max(dphi_dy, val1); CP_TO_CPU(vPhi_max_x, val1, sizeof(float));
-  red->Max(dapar_dx, val1); CP_TO_CPU(vA_max_y, val1, sizeof(float));
-  red->Max(dapar_dy, val1); CP_TO_CPU(vA_max_x, val1, sizeof(float));
+  float vpmax = sqrtf(2.*grids_->Nm)*pars_->vtmax; // estimate of max vpar on grid
+  
+  abs GBX (dphi_dx, grids_->NxNyNz );
+  abs GBX (dapar_dx, grids_->NxNyNz );
+  add_scaled_singlemom_kernel GBX (dphi_dx, 1., dphi_dx, vpmax, dapar_dx);
+  red->Max(dphi_dx, val1); CP_TO_CPU(v_max_y, val1, sizeof(float));
 
-  float vPhi_max = max(vPhi_max_x[0]*cfl_x_inv, vPhi_max_y[0]*cfl_y_inv);
-  float vA_max = max(vA_max_x[0]*cfl_x_inv, vA_max_y[0]*cfl_y_inv);
-  float vmax = vPhi_max; // add vA condition
+  abs GBX (dphi_dy, grids_->NxNyNz );
+  abs GBX (dapar_dy, grids_->NxNyNz );
+  add_scaled_singlemom_kernel GBX (dphi_dy, 1., dphi_dy, vpmax, dapar_dy);
+  red->Max(dphi_dy, val1); CP_TO_CPU(v_max_x, val1, sizeof(float));
+
+  float vmax = max(v_max_x[0]*cfl_x_inv, v_max_y[0]*cfl_y_inv);
   dt_cfl = min(dt_max, 1./vmax);
   return dt_cfl;
 
