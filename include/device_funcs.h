@@ -248,8 +248,10 @@ __global__ void ampere_bpar(cuComplex* Bpar, const cuComplex* gu, const float* k
 
 
 
-__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
-			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par);
+__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* apar_ext,
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs);
+__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext,
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs);
 __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i);
 __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext);
 

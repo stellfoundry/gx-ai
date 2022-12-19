@@ -154,10 +154,12 @@ void Parameters::get_nml_vars(char* filename)
   if(krehm) gx = false;
   rho_i             = toml::find_or <float> (tnml, "rho_i",       1.0 );
   d_e               = toml::find_or <float> (tnml, "d_e",         1.0 );
-  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       1.0 );
+  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       0.0 );
+  eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   rho_s = rho_i*sqrtf(zt/2);
+  if(eta>0.0) nu_ei = eta/d_e/d_e;
 
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");

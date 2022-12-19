@@ -2544,7 +2544,7 @@ __global__ void rhs_linear(const cuComplex* g, const cuComplex* phi, const cuCom
   } // idxyz < NxNycNz
 }
 
-__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, 
+__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* apar_ext, 
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par)
 {
   unsigned int idy  = get_id1();
@@ -2569,14 +2569,13 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
        mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
        
        rhs_par[globalIdx] = -rhos_ov_de * (sqrtf(m+1)*g[mp1] + sqrtf(m)*g[mm1]);
-       // collision term
-       if(m!=2) rhs_par[globalIdx] = rhs_par[globalIdx] - nu_ei*m*g[globalIdx];
     }
 
     // additional field terms in m<=2 equations
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
     const cuComplex phi_ = phi[idxyz];
     const cuComplex apar_ = apar[idxyz];
+    const cuComplex apar_ext_ = apar_ext[idxyz];
 
     m = 0;          
     globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
@@ -2585,7 +2584,7 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
     m = 1;          
     if (nm > 1) {
       globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
-      rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de) - nu_ei*apar_/(rhos*de);
+      rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de);
     }    
 
     m = 2;         
@@ -2597,6 +2596,27 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
 }
 
 
+__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, 
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs)
+{
+  unsigned int idy  = get_id1();
+  unsigned int idx  = get_id2();
+  unsigned int idz = get_id3();
+  const float rhos_ov_de = rhos/de;
+  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    const cuComplex apar_ = apar[idxyz];
+    const cuComplex apar_ext_ = apar_ext[idxyz];
+
+    for (int m = 1; m < nm; m++) {
+       unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
+       
+       // collision term
+       if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
+       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*(apar_-apar_ext_)/(rhos*de);
+    }
+  }
+}
 
 
 
