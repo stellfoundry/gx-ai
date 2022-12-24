@@ -78,7 +78,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
            float x = grids_->x_h[idx];
 
 	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
-	   float A0 = 1.0;
+	   float A0 = 1.29904; // this value makes B_ext_max = 1
 	   apar_ext_realspace_h[index] = A0/pow(cosh((x-M_PI*pars_->x0)/pars_->x0),2);
 	}
       }
@@ -87,6 +87,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     //copy apar_ext to GPU and do Fourier transformation
     CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
     grad_perp->R2C(apar_ext_realspace, apar_ext, true);
+    
 
     //debug part
 

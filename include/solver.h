@@ -12,6 +12,7 @@ class Solver {
  public:
   virtual ~Solver() {};
   virtual void fieldSolve(MomentsG* G, Fields* fields) = 0;
+  virtual void set_equilibrium_current(MomentsG* G, Fields* fields) {};
 };
 
 class Solver_GK : public Solver {
@@ -46,6 +47,8 @@ class Solver_KREHM : public Solver {
   ~Solver_KREHM();
   
   void fieldSolve(MomentsG* G, Fields* fields);
+  void set_equilibrium_current(MomentsG* G, Fields* fields);
+
   
   cuComplex * nbar ;
 

@@ -253,7 +253,8 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
 __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext,
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs);
 __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i);
-__global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext);
+__global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e);
+__global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext);
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2,
 				   const float *rho2s, const float *nzs);

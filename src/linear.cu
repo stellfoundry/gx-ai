@@ -297,8 +297,10 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
 
-  rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->apar_ext, nu_ei, rho_s, d_e, GRhs->G());
-  grad_par->dz(GRhs);
+  if(grids_->Nz>1) {
+    rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->apar_ext, nu_ei, rho_s, d_e, GRhs->G());
+    grad_par->dz(GRhs);
+  }
   
   // closures
   switch (pars_->closure_model_opt) {

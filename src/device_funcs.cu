@@ -241,7 +241,7 @@ __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float*
   }
 }
 
-__global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext)
+__global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -251,7 +251,21 @@ __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, floa
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
-    apar[idxyz] = -G1[idxyz]*rho_s*d_e/(1. + d_e*d_e*kperp2) + apar_ext[idxyz];
+    apar[idxyz] = -G1[idxyz]*rho_s*d_e/(1. + d_e*d_e*kperp2);
+  }
+}
+
+__global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  if ( unmasked(idx, idy) && idz < nz ) { 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+
+    float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+
+    G1[idxyz] = G1[idxyz] + (1. + d_e*d_e*kperp2)*apar_ext[idxyz]/(rho_s*d_e);
   }
 }
 
