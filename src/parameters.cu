@@ -486,7 +486,7 @@ void Parameters::get_nml_vars(char* filename)
   beta_prime_input    = toml::find_or <float> (tnml, "betaprim", (double) beta_prime_input );
   zero_shat   = toml::find_or <bool>  (tnml, "zero_shat", false); 
   // Set zero_shat = true in the input file when the actual magnetic shear is inconveniently low. 
-  if (igeo==0) {
+  if(geo_option=="s-alpha" || geo_option=="slab" || geo_option=="const-curv" || igeo==0) {
     shat        = toml::find_or <float> (tnml, "shat",     0.8 );
   } else {
     // shat will be taken from geometry file; do nothing here
