@@ -10,8 +10,8 @@ for fname in sys.argv[1:]:
   data = Dataset(fname, mode='r')
   t = data.variables['time'][:]
   ky = data.variables['ky'][:]
-  Pky = data.groups['Spectra'].variables['Pkyst'][:,0,:]
-  Pky = np.mean(Pky[int(len(t)/2):], axis=0)
+  Pkyt = data.groups['Spectra'].variables['Pkyst'][:,0,:]
+  Pky = np.mean(Pkyt[int(len(t)/2):], axis=0)
   plt.plot(ky, Pky, 'o-')
 
 plt.xscale('log')
