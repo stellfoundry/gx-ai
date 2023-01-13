@@ -465,7 +465,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Geometry")) tnml = toml::find (nml, "Geometry");  
 
-  geo_option  = toml::find_or <string> (tnml, "geo_option", "miller");
+  geo_option  = toml::find_or <string> (tnml, "geo_option", "none");
   geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
   geofilename = toml::find_or <string> (tnml, "geo_file", geofilename );  
   slab        = toml::find_or <bool>   (tnml, "slab",         false );
