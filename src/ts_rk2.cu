@@ -30,17 +30,28 @@ void RungeKutta2::EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** G, MomentsG
 			    Fields* f, double adt, bool setdt)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    GRhs->set_zero();
-    linear_->rhs(G0[is], f, GRhs); 
-  
-    if(nonlinear_ != nullptr) {
-      nonlinear_->nlps(G0[is], f, GRhs);
-      if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
-    }
+    // start sync first, so that we can overlap it with computation below
+    G0[is]->sync();
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   
 
+    // compute timestep (if necessary)
+    if (setdt && is==0) { // dt will be computed same for all species, so just do first time through species loop
+      omega_max = linear_->get_max_frequency();
+      if (nonlinear_ != nullptr) omega_max += nonlinear_->get_max_frequency(f);
+      dt_ = min(cfl_fac*pars_->cfl/omega_max, dt_max);
+    }
+
+    GRhs->set_zero();
+    if(nonlinear_ != nullptr) {
+      nonlinear_->nlps(G0[is], f, GRhs);
+    }
     G1[is]->add_scaled(1., G[is], adt*dt_, GRhs); 
+
+    GRhs->set_zero();
+    linear_->rhs(G0[is], f, GRhs); 
+  
+    G1[is]->add_scaled(1., G1[is], adt*dt_, GRhs); 
   }
 }
 

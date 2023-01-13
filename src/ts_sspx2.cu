@@ -31,17 +31,30 @@ SSPx2::~SSPx2()
 // ======== SSPx2  ==============
 void SSPx2::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bool setdt)
 {
+  if (setdt) dt_ = dt_max;
   for(int is=0; is<grids_->Nspecies; is++) {
-    GRhs->set_zero();
-    linear_->rhs(G[is], f, GRhs);
-
-    if(nonlinear_ != nullptr) {
-      nonlinear_->nlps(G[is], f, GRhs);
-      if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
-    }
+    // start sync first, so that we can overlap it with computation below
+    G[is]->sync();
 
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   
-    G1[is]->add_scaled(1., G[is], dt_/sqrt(2.), GRhs);
+
+    // compute timestep (if necessary)
+    if (setdt && is==0 && nonlinear_ != nullptr) { // dt will be computed same for all species, so just do first time through species loop
+      dt_ = nonlinear_->cfl(f, dt_);
+    }
+
+    // compute and increment nonlinear term
+    GRhs->set_zero();
+    if(nonlinear_ != nullptr) {
+      nonlinear_->nlps(G[is], f, GRhs);
+    }
+    G1[is]->add_scaled(1., G[is], adt*dt_, GRhs);
+
+    // compute and increment linear term
+    GRhs->set_zero();
+    linear_->rhs(G[is], f, GRhs); 
+
+    G1[is]->add_scaled(1., G1[is], adt*dt_, GRhs);
   }
 }
 

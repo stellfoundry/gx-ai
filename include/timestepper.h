@@ -30,6 +30,8 @@ class RungeKutta2 : public Timestepper {
 
   double dt_;
   const double dt_max;
+  const double cfl_fac = 1.0;
+  double omega_max;
   Linear     * linear_    ;
   Nonlinear  * nonlinear_ ;
   Solver     * solver_    ;
@@ -77,7 +79,7 @@ class Ketcheson10 : public Timestepper {
   double get_dt() {return dt_;};
 
  private:
-  void EulerStep(MomentsG** G_q1, MomentsG** GRhs, Fields* f,  bool setdt);
+  void EulerStep(MomentsG** G_q1, MomentsG** GRhs, MomentsG* Gtmp, Fields* f,  bool setdt);
   const double dt_max;
   double dt_;
 
@@ -90,6 +92,7 @@ class Ketcheson10 : public Timestepper {
   Forcing      * forcing_   ;
   MomentsG    ** G_q1       ;
   MomentsG    ** G_q2       ;
+  MomentsG     * Gtmp       ;
 };
 
 class K2 : public Timestepper {
@@ -132,6 +135,7 @@ class SSPx2 : public Timestepper {
   void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG* GRhs, Fields* f, bool setdt);
   const double dt_max;
   double dt_;
+  const double adt = 1./sqrt(2.);
 
   Linear     * linear_    ;
   Nonlinear  * nonlinear_ ;
@@ -153,7 +157,7 @@ class SSPx3 : public Timestepper {
   double get_dt() {return dt_;};
 
  private:
-  void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** GRhs, Fields* f, bool setdt);
+  void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG* GRhs, Fields* f, bool setdt);
 
   const double dt_max;
   const double adt = pow(1./6., 1./3.);
@@ -172,7 +176,7 @@ class SSPx3 : public Timestepper {
   MomentsG    ** G1         ;
   MomentsG    ** G2         ;
   MomentsG    ** G3         ;
-  MomentsG    ** GRhs       ;
+  MomentsG    *  GRhs       ;
   double dt_;
 };
 
