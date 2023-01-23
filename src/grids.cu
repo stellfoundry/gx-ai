@@ -1,5 +1,6 @@
 #include "grids.h"
 #include "hermite_transform.h"
+#include "laguerre_transform.h"
 
 Grids::Grids(Parameters* pars) :
   // copy from input parameters
@@ -242,9 +243,12 @@ void Grids::init_ks_and_coords()
   }
 
   HermiteTransform * hermite = new HermiteTransform(this);
+  LaguerreTransform * laguerre = new LaguerreTransform(this, 1);
   vpar_max = hermite->get_vmax();
+  muB_max = laguerre->get_vmax();
   kx_max = kx_h[(Nx-1)/3];
   ky_max = ky_h[(Ny-1)/3];
   kz_max = kz_h[Nz/2];
   delete hermite;
+  delete laguerre;
 }

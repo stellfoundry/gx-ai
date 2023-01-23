@@ -208,7 +208,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
   bool stop = false;
   int nw;
 
-  if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+  if(id -> omg -> write_v_time && counter >= 0) {                    // complex frequencies
     int nt = min(512, grids_->NxNyc) ;
     growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
     fields_old->copyPhiFrom(fields);
@@ -218,9 +218,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
   //if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
     
-  if(counter%nw == 0) {
+  if(counter%nw == 1 || time > pars_->t_max) {
 
-    fflush(NULL);
     if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
       id -> write_nc(id -> time, time);
       //      if (pars_->ResWrite) id -> write_nc( id -> r_time, time);
@@ -231,10 +230,6 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
-    if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
-      print_omg(omg_d);  id -> write_omg(omg_d);
-    }
-
     if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
     if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e\n",  pars_->run_name, counter, time, dt);
   
@@ -268,6 +263,10 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_P(P2s); 
     }
     if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
+
+    if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+      print_omg(omg_d);  id -> write_omg(omg_d);
+    }
     
     if (pars_->diagnosing_kzspec) {
       for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
@@ -409,6 +408,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     }
 
     nc_sync(id->file);
+    fflush(NULL);
   }
   if (pars_->Reservoir && counter%pars_->ResTrainingDelta == 0) {
     grad_perp->C2R(G[0]->G(), gy_d);

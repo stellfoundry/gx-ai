@@ -14,7 +14,7 @@ class Nonlinear {
   virtual ~Nonlinear() {};
   virtual void nlps(MomentsG* G, Fields* f, MomentsG* G_res) = 0;
   virtual double cfl(Fields *f, double dt_max) = 0;
-  virtual double get_max_frequency(Fields *f) {return 1.0;};
+  virtual void get_max_frequency(Fields *f, double *wmax) {};
 };
 
 class Nonlinear_GK : public Nonlinear {
@@ -24,7 +24,7 @@ class Nonlinear_GK : public Nonlinear {
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
   double cfl(Fields *f, double dt_max);
-  double get_max_frequency(Fields *f);
+  void get_max_frequency(Fields *f, double *wmax);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);
   

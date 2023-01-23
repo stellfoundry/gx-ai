@@ -1,11 +1,12 @@
 #pragma once
+#include "get_error.h"
 
 #define DEBUGPRINT(_fmt, ...)  if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define DEBUG_PRINT(_fmt, ...)  if (pars_->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
-#define CP_ON_GPU(to, from, isize) cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice)
-#define CP_TO_GPU(gpu, cpu, isize) cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice)
-#define CP_TO_CPU(cpu, gpu, isize) cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost)
+#define CP_ON_GPU(to, from, isize) checkCuda(cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice))
+#define CP_TO_GPU(gpu, cpu, isize) checkCuda(cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice))
+#define CP_TO_CPU(cpu, gpu, isize) checkCuda(cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost))
 
 #define CUDA_DEBUG(_fmt, ...) if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__, cudaGetErrorString(cudaGetLastError()))
 
@@ -132,7 +133,7 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
-  float vtmax, tzmax;
+  float vtmax, tzmax, etamax;
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;

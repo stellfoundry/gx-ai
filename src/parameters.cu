@@ -87,7 +87,7 @@ void Parameters::get_nml_vars(char* filename)
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
   nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
   scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
-  cfl = toml::find_or <float> (tnml, "cfl", 1.0);
+  cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
   t_max = toml::find_or <float> (tnml, "t_max", 1.e20);
   t_add = toml::find_or <float> (tnml, "t_add", -1.0);
@@ -1318,6 +1318,7 @@ void Parameters::init_species(specie* species)
 {
   vtmax = -1.;
   tzmax = -1.;
+  etamax = -1.;
   for(int s=0; s<nspec_in; s++) {
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
@@ -1341,6 +1342,7 @@ void Parameters::init_species(specie* species)
     }      
     vtmax = max(vtmax, species[s].vt);
     tzmax = max(tzmax, species[s].tz);
+    etamax = max(etamax, species[s].tprim/species[s].fprim);
   }
 }
 

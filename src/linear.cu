@@ -213,11 +213,15 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
 }
 
-double Linear_GK::get_max_frequency()
+void Linear_GK::get_max_frequency(double *omega_max)
 {
   // estimate max linear frequency from kz_max*vpar_max*vt_max + omegad_max, with omegad_max ~ 2*tz_max*(kx_max+ky_max)*vpar_max^2/R
-  double omega_max = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar + 2.*pars_->tzmax*grids_->vpar_max*grids_->vpar_max*(grids_->kx_max+grids_->ky_max)/pars_->rmaj;
-  return omega_max;
+  int nz0 = grids_->Nz/2;
+  int nz1 = grids_->Nz/4;
+  omega_max[0] = pars_->tzmax*grids_->kx_max/geo_->shat*(grids_->vpar_max*grids_->vpar_max*abs(geo_->cvdrift0_h[nz1]) + grids_->muB_max*abs(geo_->gbdrift0_h[nz1]));
+  omega_max[1] = pars_->tzmax*grids_->ky_max*(grids_->vpar_max*grids_->vpar_max*geo_->cvdrift_h[nz0] + grids_->muB_max*geo_->gbdrift_h[nz0]);
+  if(pars_->linear) omega_max[1] = (omega_max[1] + grids_->ky_max*(1 + pars_->etamax*(grids_->vpar_max*grids_->vpar_max/2 + grids_->muB_max - 1.5)));
+  omega_max[2] = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar;
 }
 
 //==========================================

@@ -281,7 +281,7 @@ double Nonlinear_GK::cfl(Fields *f, double dt_max)
 
 }
 
-double Nonlinear_GK::get_max_frequency(Fields *f)
+void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
 {
   float vpar_max = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
 
@@ -306,8 +306,8 @@ double Nonlinear_GK::get_max_frequency(Fields *f)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
   double scale = 0.5;  // normalization scaling factor for C2R FFT
-  double omega_max = pars_->kxfac*(grids_->kx_max*vmax_x[0] + grids_->ky_max*vmax_y[0])*scale;
-  return omega_max;
+  omega_max[0] = max(omega_max[0], pars_->kxfac*(grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = max(omega_max[1], pars_->kxfac*(grids_->ky_max*vmax_y[0])*scale);
 }
 
 //==============================================
