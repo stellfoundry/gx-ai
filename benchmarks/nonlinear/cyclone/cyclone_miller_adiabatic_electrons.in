@@ -22,8 +22,9 @@
  nonlinear_mode = true           # this is a nonlinear calculation
 
 [Time]
- dt = 0.05              # timestep size (in units of L_ref/vt_ref)
+ dt = 0.5              # timestep size (in units of L_ref/vt_ref)
  nstep = 8000          # number of timesteps
+ cfl = 1.0
  scheme = "sspx3"       # use SSPx3 timestepping scheme
 
 [Initialization]

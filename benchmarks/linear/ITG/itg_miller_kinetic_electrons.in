@@ -23,9 +23,8 @@
  nonlinear_mode = false          # this is a linear calculation
 
 [Time]
- dt = 0.0004            # timestep size (in units of L_ref/vt_ref)
- nstep  = 100000        # number of timesteps
- scheme = "sspx3"       # use SSPx3 timestepping scheme
+ t_max = 40.0          # end time (in units of L_ref/vt_ref)
+ scheme = "rk4"         # use RK4 timestepping scheme (with adaptive timestepping)
 
 [Initialization]
  ikpar_init = 0                  # parallel wavenumber of initial perturbation

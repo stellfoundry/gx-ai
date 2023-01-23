@@ -23,9 +23,8 @@
  nonlinear_mode = false          # this is a linear calculation
 
 [Time]
- dt = 0.0004            # timestep size (in units of L_ref/vt_ref)
- nstep  = 50000        # number of timesteps
- scheme = "sspx3"       # use SSPx3 timestepping scheme
+ t_max = 20.0           # end time (in units of L_ref/vt_ref)
+ scheme = "sspx3"       # use SSPx3 timestepping scheme (with adaptive timestepping)
 
 [Initialization]
  ikpar_init = 0                  # parallel wavenumber of initial perturbation
@@ -75,7 +74,7 @@
 species          = false
 hermite          = false
 laguerre         = false
-hermite_laguerre = true          # W(l,m) (summed over kx, ky, z)
+hermite_laguerre = false          # W(l,m) (summed over kx, ky, z)
 kx               = false
 ky               = true          # W(ky) (summed over kx, z, l, m)
 kxky             = false
@@ -86,5 +85,4 @@ species          = false
 kx               = false
 ky               = true         # P(ky) (summed over kx, z)
 kxky             = false
-z                = true         # P(z) (summed over kx, ky)
 
