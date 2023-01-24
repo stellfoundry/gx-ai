@@ -11,7 +11,7 @@ class Linear {
  public:
   virtual ~Linear() {};
   virtual void rhs(MomentsG* G, Fields* f, MomentsG* GRhs) = 0;
-  virtual double get_max_frequency() {return 1.0;};
+  virtual void get_max_frequency(double *wmax) {};
 };
 
 class Linear_GK : public Linear {
@@ -20,7 +20,7 @@ public:
   ~Linear_GK();
 
   void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
-  double get_max_frequency();
+  void get_max_frequency(double* wmax);
 
   //  int zderiv(MomentsG *G);
 

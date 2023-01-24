@@ -5,10 +5,12 @@
 #include "version.h"
 using namespace std;
 
-Parameters::Parameters(int iproc_in) {
+Parameters::Parameters(int iproc_in, int nprocs_in, MPI_Comm mpcom_in) {
   initialized = false;
 
   iproc = iproc_in;
+  nprocs = nprocs_in;
+  mpcom = mpcom_in;
 
   // some cuda parameters (not from input file)
   int dev; 
@@ -85,7 +87,7 @@ void Parameters::get_nml_vars(char* filename)
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
   nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
   scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
-  cfl = toml::find_or <float> (tnml, "cfl", 1.0);
+  cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
   t_max = toml::find_or <float> (tnml, "t_max", 1.e20);
   t_add = toml::find_or <float> (tnml, "t_add", -1.0);
@@ -107,7 +109,7 @@ void Parameters::get_nml_vars(char* filename)
   restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
   restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
-  nsave   = toml::find_or <int>   (tnml, "nsave", (int) 10000 );
+  nsave   = toml::find_or <int>   (tnml, "nsave", 10000 );
   nsave = max(1, nsave);
 
   if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
@@ -192,6 +194,7 @@ void Parameters::get_nml_vars(char* filename)
   tprim0      = toml::find_or <float>  (tnml, "tprim0",       -1.0 );
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
   hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
+  use_NCCL    = toml::find_or <bool>   (tnml, "use_NCCL",    true );
 
   if( hegna ){
     printf("\nIn order to recover the Hegna model, setting nm=4, nl=2.\n");
@@ -462,7 +465,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Geometry")) tnml = toml::find (nml, "Geometry");  
 
-  geo_option  = toml::find_or <string> (tnml, "geo_option", "miller");
+  geo_option  = toml::find_or <string> (tnml, "geo_option", "none");
   geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
   geofilename = toml::find_or <string> (tnml, "geo_file", geofilename );  
   slab        = toml::find_or <bool>   (tnml, "slab",         false );
@@ -538,10 +541,12 @@ void Parameters::get_nml_vars(char* filename)
   wspectra.resize(nw_spectra);
   pspectra.resize(np_spectra);
   aspectra.resize(na_spectra);
+  qspectra.resize(nq_spectra);
 
   wspectra.assign(nw_spectra, 0);
   pspectra.assign(np_spectra, 0);
   aspectra.assign(na_spectra, 0);
+  qspectra.assign(nq_spectra, 0);
 
   tnml = nml;
   if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
@@ -568,6 +573,17 @@ void Parameters::get_nml_vars(char* filename)
   pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
   pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
 
+  tnml = nml;
+  if (nml.contains("Qspectra")) tnml = toml::find (nml, "Qspectra");  
+
+  qspectra [QSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+  qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+
   // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
   if (!all_kinetic) {
     aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
@@ -587,6 +603,7 @@ void Parameters::get_nml_vars(char* filename)
   wspectra[ WSPECTRA_kperp] = 0;
   pspectra[ PSPECTRA_kperp] = 0;
   aspectra[ ASPECTRA_kperp] = 0;
+  qspectra[ QSPECTRA_kperp] = 0;
   
   // If Wtot is requested, turn Ws, Ps, Phi2 on:
   if (write_free_energy) {
@@ -603,6 +620,7 @@ void Parameters::get_nml_vars(char* filename)
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
+  for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
 
   tnml = nml;
   if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
@@ -620,7 +638,7 @@ void Parameters::get_nml_vars(char* filename)
   diagnosing_moments = false;
   if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
-  species_h = (specie *) calloc(nspec_in, sizeof(specie));
+  species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
     for (int is=0; is < nspec_in; is++) {
       species_h[is].uprim = 0.;
@@ -768,7 +786,7 @@ void Parameters::get_nml_vars(char* filename)
 void Parameters::store_ncdf(int ncid) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-  int retval, idim, sdim, wdim, pdim, adim, nc_out, nc_inputs, nc_diss;
+  int retval, idim, sdim, wdim, pdim, adim, qdim, nc_out, nc_inputs, nc_diss;
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
@@ -836,6 +854,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_dim (nc_sp, "nw",     nw_spectra,    &wdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
+  if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -886,6 +905,9 @@ void Parameters::store_ncdf(int ncid) {
 
   specs[0] = adim;
   if (retval = nc_def_var (nc_sp, "aspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  specs[0] = qdim;
+  if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1296,34 +1318,31 @@ void Parameters::init_species(specie* species)
 {
   vtmax = -1.;
   tzmax = -1.;
+  etamax = -1.;
   for(int s=0; s<nspec_in; s++) {
     species[s].vt   = sqrt(species[s].temp / species[s].mass);
     species[s].tz   = species[s].temp / species[s].z;
     species[s].zt   = species[s].z / species[s].temp;
     species[s].rho2 = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2
     species[s].nt    = species[s].dens * species[s].temp;
-    species[s].qneut = species[s].dens * species[s].z * species[s].z / species[s].temp;
     species[s].nz    = species[s].dens * species[s].z;
-    species[s].as    = species[s].nz * species[s].vt * beta / 2.;
-    species[s].amp   = species[s].dens * species[s].z * species[s].z / species[s].mass * beta / 2.;
-    species[s].amp21 = species[s].dens * species[s].z * beta / 2.; 
-    species[s].amp22 = species[s].dens * species[s].temp * beta / 2.; 
+    species[s].jparfac = species[s].nz * species[s].vt * beta / 2.;
+    species[s].jperpfac = -species[s].dens * species[s].temp * beta / 2.; 
     if (debug) {
       printf("species = %d \n",s);
       printf("mass, z, temp, dens = %f, %f, %f, %f \n",
 	     species[s].mass, species[s].z, species[s].temp, species[s].dens);
       printf("vt, tz, zt = %f, %f, %f \n",
 	     species[s].vt, species[s].tz, species[s].zt);
-      printf("rho2, nt, qneut, nz = %f, %f, %f, %f \n",
-	     species[s].rho2, species[s].nt, species[s].qneut, species[s].nz);
-      printf("as, amp = %f, %f \n", 
-             species[s].as, species[s].amp);
-      printf("amp21, amp22 = %f, %f \n", 
-             species[s].amp21, species[s].amp22);
+      printf("rho2, nt, nz = %f, %f, %f \n",
+	     species[s].rho2, species[s].nt, species[s].nz);
+      printf("jparfac, jperpfac = %f, %f \n", 
+             species[s].jparfac, species[s].jperpfac);
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
     tzmax = max(tzmax, species[s].tz);
+    etamax = max(etamax, species[s].tprim/species[s].fprim);
   }
 }
 
@@ -1404,6 +1423,16 @@ void Parameters::put_aspectra (int ncid, std::vector<int> s) {
 
   if (retval = nc_inq_varid(ncid, "aspectra", &idum))     ERR(retval);
   if (retval = nc_put_vara (ncid, idum, aspectra_start, aspectra_count, s.data())) ERR(retval);
+}
+
+void Parameters::put_qspectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  qspectra_start[0] = 0;
+  qspectra_count[0] = nq_spectra;
+
+  if (retval = nc_inq_varid(ncid, "qspectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, qspectra_start, qspectra_count, s.data())) ERR(retval);
 }
 
 void Parameters::putspec (int  ncid, int nspec, specie* spec) {

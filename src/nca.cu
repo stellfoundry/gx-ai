@@ -27,9 +27,9 @@ nca::nca(int N, int Nwrite) :
   if (N == 0) return;
       
   if (N > 0) {
-    cudaMalloc (&data, sizeof(float) * N);
+    checkCuda(cudaMalloc (&data, sizeof(float) * N));
     if (Nwrite > 0) {
-      cudaMalloc      (&tmp_d, sizeof(float) * Nwrite);  // not needed for spectra
+      checkCuda(cudaMalloc      (&tmp_d, sizeof(float) * Nwrite));  // not needed for spectra
       tmp = (float*) malloc  (sizeof(float) * N);
       cpu = (float*) malloc  (sizeof(float) * Nwrite);
     } else {

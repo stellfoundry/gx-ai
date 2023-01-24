@@ -14,7 +14,7 @@ class Nonlinear {
   virtual ~Nonlinear() {};
   virtual void nlps(MomentsG* G, Fields* f, MomentsG* G_res) = 0;
   virtual double cfl(Fields *f, double dt_max) = 0;
-  virtual double get_max_frequency(Fields *f) {return 1.0;};
+  virtual void get_max_frequency(Fields *f, double *wmax) {};
 };
 
 class Nonlinear_GK : public Nonlinear {
@@ -24,7 +24,7 @@ class Nonlinear_GK : public Nonlinear {
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
   double cfl(Fields *f, double dt_max);
-  double get_max_frequency(Fields *f);
+  void get_max_frequency(Fields *f, double *wmax);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);
   
@@ -33,7 +33,7 @@ class Nonlinear_GK : public Nonlinear {
   int nBatch;
   size_t Size; 
   bool ks, vp;
-  dim3 dGk, dBk, dGx, dBx;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -43,10 +43,13 @@ class Nonlinear_GK : public Nonlinear {
   
   Red               * red             ; 
   LaguerreTransform * laguerre        ;
+  LaguerreTransform * laguerre_single ;
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_J0phi ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_G_single ;
+  GradPerp          * grad_perp_J0f ;
+  GradPerp          * grad_perp_f   ;
 
+  MomentsG * G_tmp;
   cuComplex * tmp_c   ;
   float * dG          ;
   float * dg_dx       ;
@@ -151,7 +154,7 @@ class Nonlinear_VP : public Nonlinear {
   Grids             * grids_          ;  
   
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_f   ;
 
   float * Gy          ;
   float * dphi_dy     ;

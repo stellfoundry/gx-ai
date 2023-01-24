@@ -7,15 +7,21 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   double time = 0;
 
   Fields    * fields    = nullptr;
-  MomentsG  * G         = nullptr;
   Solver    * solver    = nullptr;
   Linear    * linear    = nullptr;
   Nonlinear * nonlinear = nullptr;
+  MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
+  for(int is=0; is<grids->Nspecies; is++) {
+    G[is] = nullptr;
+  }
   Forcing   * forcing   = nullptr;
   
   // set up moments and fields objects
-  G         = new MomentsG (pars, grids);
-  fields    = new Fields(pars, grids);               
+  for(int is=0; is<grids->Nspecies; is++) {
+    int is_glob = is+grids->is_lo;
+    G[is] = new MomentsG (pars, grids, is_glob);
+  }
+  fields = new Fields(pars, grids);               
   
   /////////////////////////////////
   //                             //
@@ -24,9 +30,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   /////////////////////////////////
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
-    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo);    
+    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
 
-    solver = new Solver_GK(pars, grids, geo, G);    
+    solver = new Solver_GK(pars, grids, geo);    
 
     if (pars->forcing_init) {
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
@@ -35,7 +41,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     }
 
     // set up initial conditions
-    G      -> initialConditions(&time);   
+    for(int is=0; is<grids->Nspecies; is++) {
+      int is_glob = is+grids->is_lo;
+      G[is] -> set_zero();
+      if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
+      G[is] -> initialConditions(&time);   
+      G[is] -> sync();
+    }
     solver -> fieldSolve(G, fields);                
   }
 
@@ -46,7 +58,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
-    G      -> initialConditions(&time);   
+    G[0] -> initialConditions(&time);   
     solver -> fieldSolve(G, fields);                
   }
 
@@ -62,7 +74,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     // no field solve for K-S
 
     // set up initial conditions
-    G -> initialConditions(&time);
+    G[0] -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
   }    
 
@@ -78,7 +90,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_VP(pars, grids);    
 
     // set up initial conditions
-    G -> initVP(&time);
+    G[0] -> initVP(&time);
     solver -> fieldSolve(G, fields);
   }    
 
@@ -113,18 +125,24 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     if (checkstop) break;
-    if (counter % pars->nreal == 0)  {
-      G -> reality(grids->Nl * grids->Nm * grids->Nspecies); 
-      solver -> fieldSolve(G, fields);
-    }
+    //if (counter % pars->nreal == 0)  { 
+    //  for(int is=0; is<grids->Nspecies; is++) {
+    //    G[is] -> reality(grids->Nl * grids->Nm); 
+    //  }
+    //  solver -> fieldSolve(G, fields);
+    //}
 
-    if (pars->save_for_restart && counter % pars->nsave == 0) G->restart_write(&time);
+    for(int is=0; is<grids->Nspecies; is++) {
+      if (pars->save_for_restart && counter % pars->nsave == 0) G[is]->restart_write(&time);
+    }
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCudaErrors(cudaGetLastError());
   }
 
-  if (pars->save_for_restart) G->restart_write(&time);
+  for(int is=0; is<grids->Nspecies; is++) {
+    if (pars->save_for_restart) G[is]->restart_write(&time);
+  }
 
   if (pars->eqfix && (
 		      (pars->scheme_opt == Tmethod::k10) ||
@@ -150,12 +168,14 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 
   diagnostics->finish(G, fields, time);
 
-  if (G)         delete G;
-  if (solver)    delete solver;
+  for(int is=0; is<grids->Nspecies; is++) {
+    if (G[is])         delete G[is];
+  }
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;
 
+  if (solver)    delete solver;
   if (fields)    delete fields;
   if (forcing)   delete forcing;     
 }    

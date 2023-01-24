@@ -23,11 +23,8 @@ include Makefiles/Makefile.$(GK_SYSTEM)
 ## Setup Compiler Flags
 ###########################
 
-CC = $(NVCC)
-LD = $(NVCC)
-
-CFLAGS= ${CUDA_INC} ${MPI_INC} ${NETCDF_INC} ${GSL_INC}
-LDFLAGS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} 
+INCS= ${CUDA_INC} ${MPI_INC} ${NETCDF_INC} ${GSL_INC}
+LIBS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} ${C_LIB}
 #NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
 
 #####################################
@@ -60,19 +57,19 @@ HEADERS=$(wildcard include/*.h)
 
 ifdef GS2_PATH
 obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
-else
-obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -w -dc -o $@ $< $(CFLAGS) $(NVCCFLAGS) -I. -I include -DGX_PATH=\"${PWD}\"
+	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+else                                        
+obj/%.o: %.cu $(HEADERS)                    
+	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
 
 .SILENT: src/version.c obj/version.o
 
 obj/version.o: src/version.c
-	$(CC) -c -o $@ $< $(CFLAGS) -I. -I include
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
 
 src/version.c: 
 	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
@@ -89,20 +86,25 @@ VMEC_GEO_OBJS = solver.o vmec_variables.o geometric_coefficients.o
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
 obj/geo/%.o: %.cpp $(VMEC_GEO_HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS) -I. -I geometry_modules/vmec/include
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I geometry_modules/vmec/include
 
 # main program
-gx: obj/main.o libgx.a 
-	$(NVCC) $(NVCCFLAGS) -o $@ $< -L. -lgx $(LDFLAGS) 
+gx: obj/main.o libgx.a
+	$(NVCC) -dlink $(NVCCFLAGS) -o obj/gx.o $< -L. -lgx $(LIBS) 
+	$(CC) -o $@ obj/gx.o obj/main.o -L. -lgx $(LIBS) 
 	@rm src/version.c
 
 libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
 	ar -crs libgx.a $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
 
-geometry_modules/vmec/convert_VMEC_to_GX: obj/geo/main.o $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
-	$(CC) $(CFLAGS) -o $@ $< $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(LDFLAGS)
+libgx.so: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
+	$(NVCC) -dlink $(NVCCFLAGS) -o obj/device.o $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
+	$(CC) -shared -o libgx.so obj/device.o $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
 
-all: gx libgx.a geometry_modules/vmec/convert_VMEC_to_GX
+geometry_modules/vmec/convert_VMEC_to_GX: obj/geo/main.o $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
+	$(CC) -o $@ $< $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(LIBS)
+
+all: gx geometry_modules/vmec/convert_VMEC_to_GX
 
 ########################
 # Cleaning up

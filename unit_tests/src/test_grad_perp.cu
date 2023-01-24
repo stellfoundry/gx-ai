@@ -24,7 +24,6 @@ protected:
     pars->y0 = 10.;
 
     grids = new Grids(pars);
-    grids->init_ks_and_coords();
     grad_perp = new GradPerp(grids, grids->Nz*grids->Nl, grids->NxNycNz*grids->Nl);
   }
 
@@ -64,9 +63,9 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
         int globalIdx = idy + grids->Ny*idx + grids->Nx*grids->Ny*idz;
         float x = pars->x0*2.*M_PI*(float)(idx-grids->Nx/2)/grids->Nx;
         float y = pars->y0*2.*M_PI*(float)(idy-grids->Ny/2)/grids->Ny;
-        init_h[globalIdx] = idz*ra*sin(kx*x + ky*y);
-        dxcheck[globalIdx] = idz*kx*ra*cos(kx*x + ky*y);
-        dycheck[globalIdx] = idz*ky*ra*cos(kx*x + ky*y);
+        init_h[globalIdx] = (idz+1)*ra*sin(kx*x + ky*y);
+        dxcheck[globalIdx] = (idz+1)*kx*ra*cos(kx*x + ky*y);
+        dycheck[globalIdx] = (idz+1)*ky*ra*cos(kx*x + ky*y);
       }
     }
     
@@ -77,6 +76,8 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
   grad_perp->R2C(init, comp, accumulate=false);
 
   printf("Checking R2C without accumulate...\n");
+
+  //grad_perp->qvar(comp, grids->NxNycNz);
   
   for(int idz=0; idz<grids->Nz*grids->Nl; idz++) {
     for(int idx=0; idx<grids->Nx; idx++) {
@@ -84,7 +85,7 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
          int globalIdx = idy + grids->Nyc*idx + grids->Nx*grids->Nyc*idz;
          if(idy==1 && idx==2) {
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].x, 0., 1e-6);
-	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0.5*idz, 1e-6);
+	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0.5*(idz+1), 1e-6);
 	 } else {
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].x, 0., 1e-6);
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0., 1e-6);
@@ -102,7 +103,7 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
          int globalIdx = idy + grids->Nyc*idx + grids->Nx*grids->Nyc*idz;
          if(idy==1 && idx==2) {
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].x, 0., 1e-6);
-	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0.5*idz, 1e-6);
+	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0.5*(idz+1), 1e-6);
 	 } else {
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].x, 0., 1e-6);
 	   EXPECT_FLOAT_EQ_D(&comp[globalIdx].y, 0., 1e-6);
@@ -110,6 +111,26 @@ TEST_F(TestGradPerp, EvaluateDerivative) {
       }
     }
   }    
+
+  // try d/dx and d/dy before kx and ky have been initialized in grids. this should give all zeros.
+  grad_perp->dxC2R(comp, dx);
+  grad_perp->dyC2R(comp, dy);
+
+  for(int idz=0; idz<grids->Nz; idz++) {
+    for(int idl=0; idl<grids->Nl; idl++) {
+      for(int idx=0; idx<grids->Nx; idx++) {
+        for(int idy=0; idy<grids->Ny; idy++) {
+          int globalIdx = idy + grids->Ny*idx + grids->Nx*grids->Ny*idz + grids->NxNyNz*idl;
+          EXPECT_FLOAT_EQ_D(&dx[globalIdx], 0.0, 2.e-6);
+          EXPECT_FLOAT_EQ_D(&dy[globalIdx], 0.0, 2.e-6);
+        }
+      }
+    }
+    
+  }
+
+  // now initialize kx and ky
+  grids->init_ks_and_coords();
 
   grad_perp->dxC2R(comp, dx);
   grad_perp->dyC2R(comp, dy);

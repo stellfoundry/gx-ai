@@ -1,11 +1,12 @@
 #pragma once
+#include "get_error.h"
 
 #define DEBUGPRINT(_fmt, ...)  if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define DEBUG_PRINT(_fmt, ...)  if (pars_->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
-#define CP_ON_GPU(to, from, isize) cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice)
-#define CP_TO_GPU(gpu, cpu, isize) cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice)
-#define CP_TO_CPU(cpu, gpu, isize) cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost)
+#define CP_ON_GPU(to, from, isize) checkCuda(cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice))
+#define CP_TO_GPU(gpu, cpu, isize) checkCuda(cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice))
+#define CP_TO_CPU(cpu, gpu, isize) checkCuda(cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost))
 
 #define CUDA_DEBUG(_fmt, ...) if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__, cudaGetErrorString(cudaGetLastError()))
 
@@ -55,6 +56,14 @@ enum ASpectra {ASPECTRA_species,
 	       ASPECTRA_kxky,
 	       ASPECTRA_z,	       
 	       ASPECTRA_kz};
+
+enum QSpectra {QSPECTRA_species,
+	       QSPECTRA_kx,
+	       QSPECTRA_ky,
+	       QSPECTRA_kperp,
+	       QSPECTRA_kxky,
+	       QSPECTRA_z,	       
+	       QSPECTRA_kz};
 	       
 #define RH_equilibrium 3
 #define PHIEXT 1
@@ -65,12 +74,15 @@ enum ASpectra {ASPECTRA_species,
 class Parameters {
 
  public:
-  Parameters(int iproc=0);
+  Parameters(int iproc=0, int nprocs=1, MPI_Comm mpcom=MPI_COMM_WORLD);
   ~Parameters(void);
   
+  int iproc, nprocs;
+  MPI_Comm mpcom;
   const int nw_spectra = 10; // should match # of elements in WSpectra
   const int np_spectra = 7;  // should match # of elements in PSpectra
   const int na_spectra = 7;  // should match # of elements in ASpectra
+  const int nq_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
   void store_ncdf(int ncid);
 
@@ -81,7 +93,7 @@ class Parameters {
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
-  int nz_in, nperiod, Zp, bishop, scan_number, iproc, icovering;
+  int nz_in, nperiod, Zp, bishop, scan_number, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
   int nm_add, nl_add, ns_add;
@@ -121,7 +133,7 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
-  float vtmax, tzmax;
+  float vtmax, tzmax, etamax;
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
@@ -176,6 +188,7 @@ class Parameters {
   bool efit_eq, dfit_eq, gen_eq, ppl_eq, local_eq, idfit_eq, chs_eq, transp_eq, gs2d_eq;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
+  bool use_NCCL;
     
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
@@ -187,9 +200,11 @@ class Parameters {
   int aspecdim[1]; // dimension of control structure for spectral plots (adiabatic species)
   int pspecdim[1]; // dimension of control structure for spectral plots (1-Gamma_0) Phi**2
   int wspecdim[1]; // dimension of control structure for spectral plots G**2
+  int qspecdim[1]; // dimension of control structure for spectral plots Q
   size_t aspectra_start[1], aspectra_count[1]; 
   size_t pspectra_start[1], pspectra_count[1]; 
   size_t wspectra_start[1], wspectra_count[1]; 
+  size_t qspectra_start[1], qspectra_count[1]; 
   
   std::string Btype;
   std::string code_info;
@@ -213,6 +228,7 @@ class Parameters {
   std::vector<int> wspectra;
   std::vector<int> pspectra;
   std::vector<int> aspectra;
+  std::vector<int> qspectra;
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;
@@ -229,6 +245,7 @@ class Parameters {
   void  put_wspectra (int ncid, std::vector<int> s);
   void  put_pspectra (int ncid, std::vector<int> s);
   void  put_aspectra (int ncid, std::vector<int> s);
+  void  put_qspectra (int ncid, std::vector<int> s);
   bool initialized;
 };
 

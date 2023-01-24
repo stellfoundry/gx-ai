@@ -30,10 +30,13 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   else if(geo_option=="miller") {
     // call python geometry module to write an eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
-    char command[300];
-    sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    if(grids->iproc == 0) {
+      char command[300];
+      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
@@ -47,13 +50,17 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   }
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
-    // write an eik.in file
-    write_eiktest_in(pars, grids);
-    char command[300];
-    sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
-    pars->geofilename = std::string(pars->run_name) + ".eik.eik.out";
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    if(grids->iproc == 0) {
+      // write an eik.in file
+      write_eiktest_in(pars, grids);
+      char command[300];
+      sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
+      pars->geofilename = std::string(pars->run_name) + ".eik.eik.out";
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    pars->geofilename = std::string(pars->run_name) + ".eik.eik.out"; // need this on all procs
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
@@ -749,6 +756,18 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   // initialize operator arrays
   init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
+
+  // compute max values of gbdrift, cvdrift, gbdrift0, cvdrift0
+  gbdrift_max = 0.;
+  gbdrift0_max = 0.;
+  cvdrift_max = 0.;
+  cvdrift0_max = 0.;
+  for(int i=0; i<grids->Nz; i++) {
+    gbdrift_max = max(gbdrift_max, abs(gbdrift_h[i]));
+    gbdrift0_max = max(gbdrift0_max, abs(gbdrift0_h[i]));
+    cvdrift_max = max(cvdrift_max, abs(cvdrift_h[i]));
+    cvdrift0_max = max(cvdrift0_max, abs(cvdrift0_h[i]));
+  }
 
   /*
   kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);
