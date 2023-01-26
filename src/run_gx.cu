@@ -101,6 +101,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     case Tmethod::k2    : timestep = new K2          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::g3    : timestep = new G3          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;

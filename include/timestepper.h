@@ -42,6 +42,34 @@ class RungeKutta2 : public Timestepper {
   MomentsG  ** G1         ;
 };
 
+class RungeKutta3 : public Timestepper {
+ public:
+  RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
+	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+  ~RungeKutta3();
+  void advance(double* t, MomentsG** G, Fields* fields);
+  void partial(MomentsG** G, MomentsG** Gt, Fields *f,
+	       MomentsG** Rhs, MomentsG **Gnew, double adt, bool setdt);
+  double get_dt() {return dt_;};
+
+ private:
+  const double dt_max;
+  double dt_;
+  const double cfl_fac = 1.73;
+  double omega_max[3];
+
+  Linear     * linear_    ;
+  Nonlinear  * nonlinear_ ;
+  Solver     * solver_    ;
+  Parameters * pars_      ;
+  Grids      * grids_     ;
+  Forcing    * forcing_   ;
+  MomentsG  ** GRhs1      ;
+  MomentsG  ** GRhs2      ;
+  MomentsG  ** G_q1       ;
+  MomentsG  ** G_q2       ;
+};
+
 class RungeKutta4 : public Timestepper {
  public:
   RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,

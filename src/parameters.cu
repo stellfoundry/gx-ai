@@ -741,6 +741,7 @@ void Parameters::get_nml_vars(char* filename)
   if (scheme == "k10")   scheme_opt = Tmethod::k10;
   if (scheme == "k2")    scheme_opt = Tmethod::k2;
   if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
+  if (scheme == "rk3")   scheme_opt = Tmethod::rk3;
   if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
   if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
