@@ -10,7 +10,7 @@ GX now has the capability to parallelize a calculation over multiple GPUs.
 Constraints
 -----------
 
-Parallelization is currently only implemented over the species and Hermite indices. The computational grid must divide evenly into the number of GPUs requested, and decomposition of species index is prioritized. This means:
+Parallelization is currently only implemented over the species and Hermite indices. The computational grid must divide evenly into the number of GPUs requested, and decomposition of species index is prioritized. If :math:`N_\mathrm{sp}` is the number of species, :math:`N_m` is the number of Hermite modes, and :math:`N_\mathrm{GPU}` is the number of GPUs to be used for the calculation, this means:
 
 - if :math:`N_\mathrm{GPU} \leq N_\mathrm{sp}`, :math:`N_\mathrm{sp}` must be an integer multiple of :math:`N_\mathrm{GPU}`
 - if :math:`N_\mathrm{GPU} > N_\mathrm{sp}`, :math:`N_\mathrm{GPU}` must be an integer multiple of :math:`N_\mathrm{sp}` AND :math:`N_m` must be an integer multiple of :math:`N_\mathrm{GPU}/N_\mathrm{sp}`.
