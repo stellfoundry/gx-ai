@@ -29,6 +29,8 @@ class Geometric_coefficients {
   std::vector<double> slice(std::vector<double> const &, int, int);
 
   VMEC_variables *vmec;
+  std::string outfile_name;
+  std::string outnc_name;
 
   template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));

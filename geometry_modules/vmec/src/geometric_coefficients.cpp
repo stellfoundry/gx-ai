@@ -22,19 +22,25 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   vmec(vmec_vars) {
 
   const auto nml = toml::parse(nml_file); 
+  auto tnml = nml;
 
-  vmec_path   = toml::find_or <string> (nml, "vmec_path", "./"); // not presently used! 
-  out_path  = toml::find_or <string> (nml, "out_path", "./"); 
-  alpha  = toml::find_or <double> (nml, "alpha", 0.0);
-  nzgrid = toml::find_or <int> (nml, "nzgrid", 16);
-  npol   = toml::find_or <int> (nml, "npol", 1);
+  if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
+  int ntheta = toml::find_or <int> (tnml, "ntheta", 32);
+  nzgrid = ntheta/2;
+
+  if (nml.contains("Geometry")) tnml = toml::find(nml, "Geometry");
+
+  vmec_path   = toml::find_or <string> (tnml, "vmec_path", ""); // not presently used! 
+  out_path  = toml::find_or <string> (tnml, "out_path", ""); 
+  alpha  = toml::find_or <double> (tnml, "alpha", 0.0);
+  npol   = toml::find_or <int> (tnml, "npol", 1);
   desired_normalized_toroidal_flux =
-    toml::find_or <double> (nml, "desired_normalized_toroidal_flux", 0.25);
-  vmec_surface_option = toml::find_or <int> (nml, "vmec_surface_option", 2);
-  flux_tube_cut = toml::find_or <string> (nml, "flux_tube_cut", "none");
-  custom_length = toml::find_or <double> (nml, "custom_length", M_PI);
-  which_crossing = toml::find_or <int> (nml, "which_crossing", 4);
-  file_tag = toml::find_or <string> (nml, "file_tag", ""); // new TQ 8.14
+    toml::find_or <double> (tnml, "desired_normalized_toroidal_flux", 0.25);
+  vmec_surface_option = toml::find_or <int> (tnml, "vmec_surface_option", 2);
+  flux_tube_cut = toml::find_or <string> (tnml, "flux_tube_cut", "none");
+  custom_length = toml::find_or <double> (tnml, "custom_length", M_PI);
+  which_crossing = toml::find_or <int> (tnml, "which_crossing", 4);
+  file_tag = toml::find_or <string> (tnml, "file_tag", ""); // new TQ 8.14
 
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
@@ -105,6 +111,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   case 0:
     // use exact radius requested
     normalized_toroidal_flux_used = desired_normalized_toroidal_flux;
+    std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
     break;
       
   case 1:
@@ -1457,7 +1464,6 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 						    double* cvdrift0) {
 
   // set up filename
-  std::string out_name;
   std::string tor_flux = std::to_string(normalized_toroidal_flux_used);
   std::string custom_info = std::to_string(custom_length);
   custom_info = custom_info.substr(0,5);
@@ -1465,36 +1471,37 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_data;
   vmec_name = vmec_name.substr(0,vmec_name.size()-3); // could change 0 to 5 to shorten these names
+  vmec_name = vmec_name.substr(vmec_name.find_last_of("/")+1);
 
   /* This part of the code writes the (netcdf) geometry output name*/
-  out_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
+  outnc_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
-    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
+    outnc_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name += "_gds21" ;
+    outnc_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name += "_gbdrift0" ;
+    outnc_name += "_gbdrift0" ;
   }
   //  else {
-  //    out_name += "";
+  //    outnc_name += "";
   //  }  
 
-  out_name += + "_nt_" + theta_grid_points + "_geo.nc";
+  outnc_name += + "_nt_" + theta_grid_points + "_geo.nc";
   /* This is the new usage. Above is previous. 
    * If file_tag is not included in the input file, do nothing, 
-   * else overwrite the above out_name. */
+   * else overwrite the above outnc_name. */
   if (file_tag != "") {
-    out_name = out_path + "gx_geo_" + file_tag + ".nc";
+    outnc_name = out_path + "gx_geo_" + file_tag + ".nc";
   }
   
   // create file for writing
   int retval;
   int ncgeo;
   
-  if (retval = nc_create(out_name.c_str(), NC_CLOBBER, &ncgeo))  ERR(retval);
+  if (retval = nc_create(outnc_name.c_str(), NC_CLOBBER, &ncgeo))  ERR(retval);
 
   // define dimensions
   int id_z; 
@@ -1601,40 +1608,40 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
 						      double* gbdrift0, double* cvdrift,
 						      double* cvdrift0) {
 
-  std::string out_name;
   std::string tor_flux = std::to_string(normalized_toroidal_flux_used);
   std::string custom_info = std::to_string(custom_length);
   custom_info = custom_info.substr(0,5);
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_data;
+  vmec_name = vmec_name.substr(vmec_name.find_last_of("/")+1);
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
 
   /* This part of the code writes the (human readable) output name*/
-  out_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
+  outfile_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
-    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
+    outfile_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name += "_gds21" ;
+    outfile_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name += "_gbdrift0" ;
+    outfile_name += "_gbdrift0" ;
   }
   //  else {
-  //    out_name += "";
+  //    outfile_name += "";
   //  }  
-  out_name += + "_nt_" + theta_grid_points;
+  outfile_name += + "_nt_" + theta_grid_points;
 
   /* This is the new usage. Above is previous. 
    * If file_tag is not included in the input file, do nothing, 
-   * else overwrite the above out_name. */
+   * else overwrite the above outfile_name. */
   if (file_tag != "") {
-    out_name = out_path + "grid.gx_" + file_tag;
+    outfile_name = out_path + "grid.gx_" + file_tag;
   }
   
-  std::ofstream out_file(out_name);
+  std::ofstream out_file(outfile_name);
   //  std::ofstream out_file(".\\name.ext");
   if (out_file.is_open()) {
     out_file << "ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q scale\n";

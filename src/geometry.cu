@@ -1,4 +1,6 @@
 #include "geometry.h"
+#include "vmec_variables.h"
+#include "geometric_coefficients.h"
 #define GGEO <<< dimGrid, dimBlock >>>
 
 #include "geometry_modules/vmec/include/solver.h"
@@ -43,10 +45,17 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     CUDA_DEBUG("Initializing miller geometry: %s \n");
   } 
   else if(geo_option=="vmec") {
-    printf("Error: geo_option = \"vmec\" is not yet implemented.\n");
-    printf("Use the geometry_modules/vmec/convert_VMEC_to_GX executable to generate an eik.out file,\n");
-    printf("and then use geo_option = \"eik\".\n");
-    exit(1);
+    char nml_file[512];
+    strcpy (nml_file, pars->run_name);
+    strcat (nml_file, ".in");
+    VMEC_variables *vmec = new VMEC_variables(nml_file);
+    Geometric_coefficients *vmec_geo = new Geometric_coefficients(nml_file, vmec);
+    pars->geofilename = vmec_geo->outfile_name;
+
+    // now read the eik file that was generated
+    geo = new Eik_geo(pars, grids);
+    delete vmec_geo;
+    delete vmec;
   }
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {

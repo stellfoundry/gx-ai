@@ -468,8 +468,8 @@ void Parameters::get_nml_vars(char* filename)
   geo_option  = toml::find_or <string> (tnml, "geo_option", "none");
   geofilename = toml::find_or <string> (tnml, "geofile",  "eik.out" ); // included for backwards-compat. use geo_file instead. 
   geofilename = toml::find_or <string> (tnml, "geo_file", geofilename );  
-  slab        = toml::find_or <bool>   (tnml, "slab",         false );
-  const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false );
+  slab        = toml::find_or <bool>   (tnml, "slab",         false ); // included for backwards-compat. use geo_option = "slab" instead.
+  const_curv  = toml::find_or <bool>   (tnml, "const_curv",   false ); // included for backwards-compat. use geo_option = "const-curv" instead.
 
   igeo        = toml::find_or <int>   (tnml, "igeo",       -1 ); // included for backwards-compat. use geo_option instead.
   float beta_geo = toml::find_or <float> (tnml, "beta", 0.0 ); // included for backwards-compat. beta now set in Physics

@@ -25,7 +25,6 @@ include Makefiles/Makefile.$(GK_SYSTEM)
 
 INCS= ${CUDA_INC} ${MPI_INC} ${NETCDF_INC} ${GSL_INC}
 LIBS= $(CUDA_LIB) ${MPI_LIB} ${NETCDF_LIB} ${GSL_LIB} ${C_LIB}
-#NVCCFLAGS=-arch=sm_70 --compiler-options="-fPIC"
 
 #####################################
 # Rule for building the system_config
@@ -54,17 +53,18 @@ VPATH=.:src:geometry_modules/vmec/src
 .DEFAULT_GOAL := $(TARGET)
 
 HEADERS=$(wildcard include/*.h) 
+VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
 ifdef GS2_PATH
 obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
 else                                        
 obj/%.o: %.cu $(HEADERS)                    
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -DGX_PATH=\"${PWD}\"
+	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
 
 .SILENT: src/version.c obj/version.o
 
@@ -104,7 +104,7 @@ libgx.so: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO
 geometry_modules/vmec/convert_VMEC_to_GX: obj/geo/main.o $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
 	$(CC) -o $@ $< $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(LIBS)
 
-all: gx geometry_modules/vmec/convert_VMEC_to_GX
+all: gx
 
 ########################
 # Cleaning up
