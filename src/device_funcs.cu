@@ -1621,7 +1621,7 @@ __global__ void real_space_par_current(cuComplex* jbar, const cuComplex* g, cons
   }
 }
 
-__global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const specie sp)
+__global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const float *bmagInv, const specie sp)
 {
   unsigned int idy = get_id1();
   if (idy < nyc) {
@@ -1636,7 +1636,7 @@ __global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, con
           int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
 	  // jperpfac = -beta_ref/2*n_s*T_s
-	  jbar[idxyz] = jbar[idxyz] + (Jflr(l, b_s) + Jflr(l-1, b_s)) * g[ig] * sp.jperpfac;
+	  jbar[idxyz] = jbar[idxyz] + (Jflr(l, b_s) + Jflr(l-1, b_s)) * bmagInv[idz] * g[ig] * sp.jperpfac;
 	}
       }
     }
@@ -1691,7 +1691,7 @@ __global__ void qneut_and_ampere_perp(cuComplex* Phi, cuComplex* Bpar, const cuC
 //         amperePerpFacPhi  = beta/2*sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
 //         amperePerpFacBpar = 1 + beta/2*sum_s n_s*t_s*sum_l (J_l + J_{l-1})^2
 __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* ampereParFac, float* amperePerpFacPhi, float* amperePerpFacBpar,
-                               const float* kperp2, const float* bmag, const specie sp, const float beta, const bool first, const float fapar, const float fbpar)
+                               const float* kperp2, const float* bmag, const float* bmagInv, const specie sp, const float beta, const bool first, const float fapar, const float fbpar)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1726,9 +1726,9 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
 
     if(fbpar>0.) {
       qneutFacBpar[idxyz] += -sp.nz * g01_s;
-      amperePerpFacPhi[idxyz] += sp.nz*beta/2. * g01_s;
+      amperePerpFacPhi[idxyz] += sp.nz*beta/2. * bmagInv[idz] * g01_s;
       if(first) amperePerpFacBpar[idxyz] = 1.;
-      amperePerpFacBpar[idxyz] += sp.nt*beta/2. * g11_s;
+      amperePerpFacBpar[idxyz] += sp.nt*beta/2. * bmagInv[idz] * g11_s;
     }
   }
 }
