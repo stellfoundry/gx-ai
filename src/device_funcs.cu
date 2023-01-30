@@ -1704,12 +1704,9 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
         
     const float kperp2_ = kperp2[idxyz];
-    //float b_s;
-    //const float b_s = kperp2_ * sp.rho2;
-    //const float b_s_long_wavelength_GK = kperp2_ * sp.rho2_long_wavelength_GK; // JFP
-    //if (long_wavelength_GK) b_s = kperp2_ * sp.rho2_long_wavelength_GK;
-    //else b_s = kperp2_ * sp.rho2;
-    const float b_s = kperp2_ * sp.rho2;
+    float b_s;
+    if (long_wavelength_GK) b_s = kperp2_ * sp.rho2_long_wavelength_GK;
+    else b_s = kperp2_ * sp.rho2;
 
     float g0_s = 0.;
     for (int l=0; l < nl; l++) {
