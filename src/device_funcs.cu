@@ -79,9 +79,12 @@ __host__ __device__ float factorial(int m) {
 }
 
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
-  if (l>30) return 0.; // protect against underflow for single precision evaluation
-
-  if (l<0) return 0.;
+  if (b<0.001){
+    if (l == 0) return 1.; // for long_wavelength_GK where b = 0.
+    else if (l > 0) return 0.; // for long_wavelength_GK where b = 0.
+  }
+  else if (l>30) return 0.; // protect against underflow for single precision evaluation
+  else if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
 }
@@ -1691,7 +1694,7 @@ __global__ void qneut_and_ampere_perp(cuComplex* Phi, cuComplex* Bpar, const cuC
 //         amperePerpFacPhi  = beta/2*sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
 //         amperePerpFacBpar = 1 + beta/2*sum_s n_s*t_s*sum_l (J_l + J_{l-1})^2
 __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* ampereParFac, float* amperePerpFacPhi, float* amperePerpFacBpar,
-                               const float* kperp2, const float* bmag, const specie sp, const float beta, const bool first, const float fapar, const float fbpar)
+                               const float* kperp2, const float* bmag, const specie sp, const float beta, const bool first, const float fapar, const float fbpar, const bool long_wavelength_GK)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1701,6 +1704,11 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
     unsigned int idxyz = idy + nyc*(idx + nx*idz); 
         
     const float kperp2_ = kperp2[idxyz];
+    //float b_s;
+    //const float b_s = kperp2_ * sp.rho2;
+    //const float b_s_long_wavelength_GK = kperp2_ * sp.rho2_long_wavelength_GK; // JFP
+    //if (long_wavelength_GK) b_s = kperp2_ * sp.rho2_long_wavelength_GK;
+    //else b_s = kperp2_ * sp.rho2;
     const float b_s = kperp2_ * sp.rho2;
 
     float g0_s = 0.;
@@ -1717,7 +1725,8 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
       g11_s += (Jflr(l, b_s) + Jflr(l-1, b_s))*(Jflr(l, b_s) + Jflr(l-1, b_s));
     }
 
-    qneutFacPhi[idxyz] += sp.nz*sp.zt * ( 1. - g0_s );
+    if (long_wavelength_GK) qneutFacPhi[idxyz] += sp.nz*sp.zt * b_s;
+    else qneutFacPhi[idxyz] += sp.nz*sp.zt * ( 1. - g0_s );
 
     if(fapar>0.) {
       if (first) ampereParFac[idxyz] = kperp2_*bmag[idz]*bmag[idz];

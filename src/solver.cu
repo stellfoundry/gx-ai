@@ -78,8 +78,8 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //         amperePerpFacPhi  = beta/2*sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
   //         amperePerpFacBpar = 1 + beta/2*sum_s n_s*t_s*sum_l (J_l + J_{l-1})^2
   for(int is_glob=0; is_glob<pars_->nspec_in; is_glob++) {
-    sum_solverFacs GQN (qneutFacPhi, qneutFacBpar, ampereParFac, amperePerpFacPhi, amperePerpFacBpar, geo_->kperp2, geo_->bmag, 
-                        pars_->species_h[is_glob], pars_->beta, is_glob==0, pars_->fapar, pars_->fbpar);
+    sum_solverFacs GQN (qneutFacPhi, qneutFacBpar, ampereParFac, amperePerpFacPhi, amperePerpFacBpar, geo_->kperp2, geo_->bmag,
+                        pars_->species_h[is_glob], pars_->beta, is_glob==0, pars_->fapar, pars_->fbpar, pars_->long_wavelength_GK);
   }
 
   // set up phiavgdenom, which is stored for quasineutrality calculation as appropriate
