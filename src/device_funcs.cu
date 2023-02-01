@@ -79,11 +79,7 @@ __host__ __device__ float factorial(int m) {
 }
 
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
-  if (b<0.001){
-    if (l == 0) return 1.; // for long_wavelength_GK where b = 0.
-    else if (l > 0) return 0.; // for long_wavelength_GK where b = 0.
-  }
-  else if (l>30) return 0.; // protect against underflow for single precision evaluation
+  if (l>30) return 0.; // protect against underflow for single precision evaluation
   else if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
   else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
