@@ -1,6 +1,7 @@
 #include <random>
 #include <algorithm>
 #include <vector>
+#include "ncdf.h"
 #include "moments.h"
 #define GALL <<< dG_all, dB_all >>>
 
@@ -88,6 +89,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   dG_all = dim3(nb1, nb2, nb3);	 
 
   cudaStreamCreateWithFlags(&syncStream, cudaStreamNonBlocking);
+  checkCuda(cudaGetLastError());
 }
 
 MomentsG::~MomentsG() {
@@ -117,7 +119,7 @@ void MomentsG::initVP(double *time) {
   CP_TO_GPU(G_lm, init_h, sizeof(cuComplex)*grids_->Nyc*grids_->Nm);
   free(init_h);
 
-  if (pars_->restart) this->restart_read(time);
+  if (pars_->restart) restart_read(time);
 
   cudaDeviceSynchronize();
 }
@@ -282,7 +284,8 @@ void MomentsG::initialConditions(double* time) {
   // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
     DEBUG_PRINT("reading restart file \n");
-    this->restart_read(time);
+    restart_read(time);
+    if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
   }
   cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
   DEBUG_PRINT("initial conditions set \n");  
@@ -351,6 +354,12 @@ void MomentsG::reality(int ngz)
   reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
+void MomentsG::sync()
+{
+  if(pars_->use_NCCL) syncNCCL();
+  else syncMPI();
+}
+
 void MomentsG::syncMPI()
 {
   if(grids_->nprocs_m==1) return;
@@ -359,26 +368,26 @@ void MomentsG::syncMPI()
   MPI_Status stat;
 
   // send to right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
   }
   // receive from left
-  if(grids_->procLeft() >= 0) {
-    MPI_Recv(Gm(-grids_->m_ghost),                              size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+  if(grids_->iproc_m-1 >= 0) {
+    MPI_Recv(Gm(-grids_->m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
   }
 
   // send to left
-  if(grids_->procLeft() >= 0) {
-    MPI_Send(Gm(0),              size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+  if(grids_->iproc_m-1 >= 0) {
+    MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
   }
   // receive from right
-  if(grids_->procRight() < grids_->nprocs_m) {
+  if(grids_->iproc_m+1 < grids_->nprocs_m) {
     MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
   }
   cudaDeviceSynchronize();
 }
 
-void MomentsG::sync()
+void MomentsG::syncNCCL()
 {
   if(grids_->nprocs_m==1) return;
 
@@ -424,6 +433,7 @@ void MomentsG::restart_write(double* time)
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
   int Nm   = grids_->Nm;
+  int Nm_glob = grids_->Nm_glob;
   int Nl   = grids_->Nl;
 
   // handles
@@ -440,14 +450,14 @@ void MomentsG::restart_write(double* time)
   // inquire/define the variable names
   //  } else {
   int ri=2;
-  if (retval = nc_create(strb, NC_CLOBBER, &ncres)) ERR(retval);
+  if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &ncres)) ERR(retval);
 
   if (retval = nc_def_dim(ncres, "ri",  ri,    &id_ri)) ERR(retval);
   if (retval = nc_def_dim(ncres, "Nz",  Nz,    &id_nz)) ERR(retval);
   if (retval = nc_def_dim(ncres, "Nkx", Nakx,  &id_Nkx)) ERR(retval);
   if (retval = nc_def_dim(ncres, "Nky", Naky,  &id_Nky)) ERR(retval);
   if (retval = nc_def_dim(ncres, "Nl",  Nl,    &id_nl)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nm",  Nm,    &id_nh)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nm",  Nm_glob,    &id_nh)) ERR(retval);
 
   moments_out[0] = id_nh;  count[0] = Nm;
   moments_out[1] = id_nl;  count[1] = Nl;
@@ -456,7 +466,7 @@ void MomentsG::restart_write(double* time)
   moments_out[4] = id_Nky; count[4] = Naky;
   moments_out[5] = id_ri;  count[5] = ri;
 
-  start[0] = 0; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
+  start[0] = grids_->m_lo; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
   if (retval = nc_def_var(ncres, "G",    NC_FLOAT, 6, moments_out, &id_G)) ERR(retval);
   if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
   if (retval = nc_enddef(ncres)) ERR(retval);
@@ -472,7 +482,7 @@ void MomentsG::restart_write(double* time)
   for (unsigned int index=0; index <   jtot; index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
   for (unsigned int index=0; index < 2*itot; index++) G_out[index] = 0.;
   
-  CP_TO_CPU(G_h, G_lm, sizeof(cuComplex)*jtot);
+  CP_TO_CPU(G_h, G(), sizeof(cuComplex)*jtot);
   
   for (int m=0; m < Nm; m++) {
     for (int l=0; l < Nl; l++) {
@@ -516,6 +526,8 @@ void MomentsG::restart_read(double* time)
 
   int retval;
   int ncres;
+  size_t start[7];
+  size_t count[7];
   
   size_t lhsize = grids_->size_G;
   size_t ldum;
@@ -526,6 +538,7 @@ void MomentsG::restart_read(double* time)
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
   int Nm   = grids_->Nm;
+  int Nm_glob = grids_->Nm_glob;
   int Nl   = grids_->Nl;
   
   // handles
@@ -549,8 +562,8 @@ void MomentsG::restart_read(double* time)
   if (retval = nc_inq_varid(ncres, "time", &id_time)) ERR(retval);
   
   if (retval = nc_inq_dim(ncres, id_nh, stra, &ldum))  ERR(retval);
-  if (Nm-pars_->nm_add != (int) ldum) {
-    printf("Cannot restart because of Nm mismatch: %d \t %zu \n", Nm, ldum);
+  if (Nm_glob-pars_->nm_add != (int) ldum) {
+    printf("Cannot restart because of Nm mismatch: %d \t %zu \n", Nm_glob, ldum);
     exit (1);
   }
 
@@ -598,9 +611,17 @@ void MomentsG::restart_read(double* time)
   for (unsigned int index=0; index < itot;  index++) {G_hold[index].x = 0.; G_hold[index].y = 0.;}
   for (unsigned int index=0; index < itot;  index++) {G_h[index].x = 0.; G_h[index].y = 0.;}
   for (unsigned int index=0; index<2*iitot; index++) {G_in[index] = 0.;}
-  CP_TO_CPU(G_hold, G_lm, sizeof(cuComplex)*itot);
+  CP_TO_CPU(G_hold, G(), sizeof(cuComplex)*itot);
   
-  if (retval = nc_get_var(ncres, id_G, G_in)) ERR(retval);
+  start[0] = grids_->m_lo; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
+  count[0] = Nm;
+  count[1] = Nl;
+  count[2] = Nz; 
+  count[3] = Nakx;
+  count[4] = Naky;
+  count[5] = 2;
+  
+  if (retval = nc_get_vara(ncres, id_G, start, count, G_in)) ERR(retval);
   if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);
   if (retval = nc_close(ncres)) ERR(retval);
 
@@ -688,7 +709,8 @@ void MomentsG::restart_read(double* time)
   free(G_hold);
   
   unsigned int jtot = Nx * Nyc * Nz * Nm * Nl;
-  CP_TO_GPU(G_lm, G_h, sizeof(cuComplex)*jtot);
+  CP_TO_GPU(G(), G_h, sizeof(cuComplex)*jtot);
+  mask();
   
   free(G_h);
 }

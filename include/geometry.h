@@ -73,6 +73,7 @@ class Geometry {
   float * cv_d ;
   float * gb_d ; 
   float * kperp2_h ;
+  float gbdrift_max, cvdrift_max, gbdrift0_max, cvdrift0_max;
   
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM
@@ -97,11 +98,14 @@ class geo_nc : public Geometry {
 };
 
 // MFM
-class File_geo : public Geometry {
+class Eik_geo : public Geometry {
  public:
-  File_geo(Parameters* parameters, Grids* grids);
+  Eik_geo(Parameters* parameters, Grids* grids);
 
 };
+
+Geometry* init_geo(Parameters* pars, Grids* grids);
+void write_eiktest_in(Parameters *pars, Grids *grids);
 
 //void set_geometry(input_parameters_struct * pars, grids_struct * grids, geometry_coefficents_struct * geo, struct gx_parameters_struct * gxpars);
 

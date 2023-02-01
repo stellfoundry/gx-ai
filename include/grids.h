@@ -16,6 +16,7 @@ class Grids {
   int Nz;
   int Nspecies; 
   int Nm;
+  int Nm_glob;
   int Nl;
   int Nj;
   int Nyc;
@@ -39,9 +40,11 @@ class Grids {
   float * theta0_h ;
   float * th0; 
   float Zp;
+  float kx_max, ky_max, kz_max, vpar_max, muB_max;
 
-  ncclComm_t ncclComm;
-  ncclUniqueId ncclId;
+  ncclComm_t ncclComm, ncclComm_s, ncclComm_m0;
+  ncclUniqueId ncclId, ncclId_m;
+  std::vector<ncclUniqueId> ncclId_s;
   cudaStream_t ncclStream;
 
   int iproc, nprocs;

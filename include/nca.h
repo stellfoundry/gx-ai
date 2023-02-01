@@ -1,5 +1,6 @@
 #pragma once
 #include <cuComplex.h>
+#include <get_error.h>
 
 class nca {
  public:

@@ -1,4 +1,6 @@
 #include "grids.h"
+#include "hermite_transform.h"
+#include "laguerre_transform.h"
 
 Grids::Grids(Parameters* pars) :
   // copy from input parameters
@@ -31,6 +33,7 @@ Grids::Grids(Parameters* pars) :
 
   Nspecies = pars->nspec_in;
   Nm = pars->nm_in;
+  Nm_glob = pars->nm_in;
   is_lo = 0;
   is_up = Nspecies;
   m_lo = 0;
@@ -38,6 +41,8 @@ Grids::Grids(Parameters* pars) :
   m_ghost = 0;
   nprocs_s = 1;
   nprocs_m = 1;
+  iproc_m = 0;
+  iproc_s = 0;
 
   // compute parallel decomposition
   if(nprocs>1) {
@@ -48,6 +53,8 @@ Grids::Grids(Parameters* pars) :
       Nspecies = Nspecies/nprocs;
       nprocs_s = nprocs;
       nprocs_m = 1;
+      iproc_s = iproc;
+      iproc_m = 0;
       is_lo = iproc*Nspecies;
       is_up = (iproc+1)*Nspecies;
 
@@ -120,7 +127,26 @@ Grids::Grids(Parameters* pars) :
   if(iproc == 0) ncclGetUniqueId(&ncclId);
   if(nprocs > 1) {
     MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
-    ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc);
+  }
+  // set up some additional ncclIds
+  if(iproc == 0) ncclGetUniqueId(&ncclId_m);
+  if(nprocs > 1) {
+    MPI_Bcast((void *)&ncclId_m, sizeof(ncclId_m), MPI_BYTE, 0, MPI_COMM_WORLD);
+  }
+  ncclId_s.resize(nprocs_s);
+  for(int i=0; i<nprocs_s; i++) {
+    if(iproc == 0) ncclGetUniqueId(&ncclId_s[i]);
+    if(nprocs > 1) {
+      MPI_Bcast((void *)&ncclId_s[i], sizeof(ncclId_s[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+  }
+
+  // set up NCCL communicator that involves only GPUs containing m=0, i.e. grids_->proc(0, iproc_s)
+  checkCuda(ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc));
+  // set up NCCL communicator that is per-species
+  checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s], iproc_m));
+  if(iproc_m == 0) {
+    checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m, iproc_s));
   }
 }
 
@@ -215,4 +241,14 @@ void Grids::init_ks_and_coords()
   for(int k=0; k<Nz; k++) {
     z_h[k] = 2.*M_PI *pars_->Zp *(k-Nz/2)/Nz;
   }
+
+  HermiteTransform * hermite = new HermiteTransform(this);
+  LaguerreTransform * laguerre = new LaguerreTransform(this, 1);
+  vpar_max = hermite->get_vmax();
+  muB_max = laguerre->get_vmax();
+  kx_max = kx_h[(Nx-1)/3];
+  ky_max = ky_h[(Ny-1)/3];
+  kz_max = kz_h[Nz/2];
+  delete hermite;
+  delete laguerre;
 }

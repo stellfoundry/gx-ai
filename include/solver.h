@@ -25,6 +25,9 @@ class Solver_GK : public Solver {
   void svar(float* f, int N);
   
   cuComplex * nbar ;
+  cuComplex * nbar_tmp ;
+  cuComplex * jparbar ;
+  cuComplex * jperpbar ;
 
 private:
 
@@ -34,14 +37,18 @@ private:
   int count;
 
   float * phiavgdenom ;
-  float * qneutDenom;
-  float * ampereDenom;
+  float * ampereParFac;
+  float * qneutFacPhi;
+  float * qneutFacBpar;
+  float * amperePerpFacPhi;
+  float * amperePerpFacBpar;
   cuComplex * tmp ;
 
   // local private copies
   Parameters * pars_  ;
   Grids      * grids_ ;
   Geometry   * geo_   ;
+
 };
 
 class Solver_KREHM : public Solver {

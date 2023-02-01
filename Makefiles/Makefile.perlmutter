@@ -1,16 +1,24 @@
 # Makefile for perlmutter (NERSC)
 # Maintainer: Noah Mandell (nrm@mit.edu)
 #
-# add the following to your .bash_profile (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
+# add and uncomment the following in your .bashrc.ext (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=perlmutter
-# module load PrgEnv-gnu/8.3.3
-# module load nvhpc-mixed/21.11
-# module load cray-hdf5-parallel/1.12.1.1
-# module load cray-netcdf-hdf5parallel/4.8.1.1
-# module load e4s/21.11-tcl
-# module load gsl/2.7-gcc-11.2.0
+# module load PrgEnv-gnu
+# module load cudatoolkit
+# module load nvhpc-mixed
+# module load cray-hdf5-parallel
+# module load cray-netcdf-hdf5parallel
+# module load e4s
+# module load gsl
+# module load python
+# module load craype-x86-milan
+# module load craype-accel-nvidia80
+# module load cray-fftw
+# module load nccl
 #
+
+
 
 # paths to netcdf
 NETCDF_INC = -I ${NETCDF_DIR}/include
@@ -22,18 +30,21 @@ MPI_INC = -I ${MPI_DIR}/include
 MPI_LIB = -L ${MPI_DIR}/lib -lmpi
 
 # paths to cuda 
-CUDA_INC = -I ${NVIDIA_PATH}/math_libs/include -I ${NVIDIA_PATH}/comm_libs/include
-CUDA_LIB = -L ${NVIDIA_PATH}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVIDIA_PATH}/comm_libs/nccl/lib -lnccl
+CUDA_INC = -I ${NVIDIA_PATH}/math_libs/include -I ${NCCL_HOME}/include
+CUDA_LIB = -L ${NVIDIA_PATH}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_HOME}/lib -lnccl
 
 # paths to gsl 
 GSL_INC = -I ${GSL_ROOT}/include
-GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas -lm
+GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas
+
+C_LIB = -lm
 
 CUDAARCH=80
-CC=gcc
+CC=CC
 
-NVCC      = nvcc
-NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
+NVCC   = nvcc
+CFLAGS = -fPIC
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

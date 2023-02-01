@@ -151,7 +151,8 @@ void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmp
     int is_glob = is + grids_->is_lo;
     float rho2s = pars_->species_h[is_glob].rho2;
     float p_s = pars_->species_h[is_glob].nt;
-    heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s); 	
+    float vts = pars_->species_h[is_glob].vt;
+    heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, vts); 	
   }
   write_spectra(tmpf);
 
@@ -193,7 +194,8 @@ void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
     int is_glob = is + grids_->is_lo;
     float rho2s = pars_->species_h[is_glob].rho2;
     float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
-    particle_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, n_s); 	
+    float vts = pars_->species_h[is_glob].vt;
+    particle_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, n_s, vts); 	
   }
   write_spectra(tmpf);
 

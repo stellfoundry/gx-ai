@@ -19,6 +19,8 @@ class MomentsG {
   }
   
   cuComplex * Gm(int m) {   return G(0,m);   }
+
+  // accessor to G array including ghosts
   cuComplex * Gghost(int l=0, int m=0) {
     return &G_lm[grids_->NxNycNz*(l + grids_->Nl*m)];
   }
@@ -52,6 +54,7 @@ class MomentsG {
   void reality(int ngz);
 
   void sync();
+  void syncNCCL();
   void syncMPI();
   
   inline void copyFrom(MomentsG* source) {

@@ -7,17 +7,29 @@
 //=======================================
 Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  tmp(nullptr), nbar(nullptr), phiavgdenom(nullptr), 
-  qneutDenom(nullptr), ampereDenom(nullptr)
+  tmp(nullptr), nbar(nullptr), jparbar(nullptr), jperpbar(nullptr), phiavgdenom(nullptr), 
+  qneutFacPhi(nullptr), ampereParFac(nullptr),
+  qneutFacBpar(nullptr), amperePerpFacPhi(nullptr), amperePerpFacBpar(nullptr)
 {
 
   if (pars_->ks) return;
   
   count = grids_->NxNycNz;
-  if(pars_->beta > 0.) count = 2*count;
+  if(pars_->fapar > 0.) count = 2*grids_->NxNycNz;
+  if(pars_->fbpar > 0.) count = 3*grids_->NxNycNz;
 
+  // the "nbar" array contains nbar, jparbar, and jperpbar
   size_t cgrid = sizeof(cuComplex)*count;
-  cudaMalloc((void**) &nbar, cgrid); zero(nbar);
+  if (pars_->use_NCCL) {
+    checkCuda(cudaMalloc((void**) &nbar, cgrid)); zero(nbar);
+    checkCuda(cudaMalloc((void**) &nbar_tmp, cgrid)); zero(nbar_tmp);
+  } else {
+    cudaMallocHost((void**) &nbar, cgrid); zero(nbar);
+    cudaMallocHost((void**) &nbar_tmp, cgrid); zero(nbar_tmp);
+  }
+  // set offset pointers to jparbar and jperpbar
+  if(pars_->fapar > 0.) jparbar = nbar+grids_->NxNycNz;
+  if(pars_->fbpar > 0.) jperpbar = nbar+2*grids_->NxNycNz;
 
   int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
   
@@ -37,23 +49,37 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   
   if(!pars_->all_kinetic && (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS)) {cudaMalloc((void**) &tmp,  cgrid); zero(tmp);}
   
-  cudaMalloc(&qneutDenom,    sizeof(float)*grids_->NxNycNz);
-  cudaMemset(qneutDenom, 0., sizeof(float)*grids_->NxNycNz);    
+  if(pars_->fphi > 0.) {
+    cudaMalloc(&qneutFacPhi,    sizeof(float)*grids_->NxNycNz);
+    cudaMemset(qneutFacPhi, 0., sizeof(float)*grids_->NxNycNz);    
+  }
 
-  if(pars_->beta > 0.) {
-    cudaMalloc(&ampereDenom,    sizeof(float)*grids_->NxNycNz);
-    cudaMemset(ampereDenom, 0., sizeof(float)*grids_->NxNycNz);    
+  if(pars_->fapar > 0.) {
+    cudaMalloc(&ampereParFac,    sizeof(float)*grids_->NxNycNz);
+    cudaMemset(ampereParFac, 0., sizeof(float)*grids_->NxNycNz);    
+  }
+
+  if(pars_->fbpar > 0.) {
+    cudaMalloc(&qneutFacBpar,    sizeof(float)*grids_->NxNycNz);
+    cudaMemset(qneutFacBpar, 0., sizeof(float)*grids_->NxNycNz);    
+    cudaMalloc(&amperePerpFacPhi,    sizeof(float)*grids_->NxNycNz);
+    cudaMemset(amperePerpFacPhi, 0., sizeof(float)*grids_->NxNycNz);    
+    cudaMalloc(&amperePerpFacBpar,    sizeof(float)*grids_->NxNycNz);
+    cudaMemset(amperePerpFacBpar, 0., sizeof(float)*grids_->NxNycNz);    
   }
   
   int threads, blocks;
   threads = min(grids_->NxNycNz, 128);
   blocks = 1 + (grids_->NxNycNz-1)/threads;
   
-  // compute qneutDenom = sum_s z_s^2*n_s/tau_s*(1- sum_l J_l^2)
-  // and ampereDenom = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
+  // compute qneutFacPhi  = sum_s z_s^2*n_s/tau_s*(1- sum_l J_l^2)
+  //         qneutFacBpar = -sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
+  //         ampereParFac = kperp2 + beta/2*sum_s z_s^2*n_s/m_s*sum_l J_l^2
+  //         amperePerpFacPhi  = beta/2*sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
+  //         amperePerpFacBpar = 1 + beta/2*sum_s n_s*t_s*sum_l (J_l + J_{l-1})^2
   for(int is_glob=0; is_glob<pars_->nspec_in; is_glob++) {
-    sum_qneutDenom GQN (qneutDenom, geo_->kperp2, pars_->species_h[is_glob]);
-    if(pars_->beta > 0.) sum_ampereDenom GQN (ampereDenom, geo_->kperp2, geo_->bmag, pars_->species_h[is_glob], is_glob==0);
+    sum_solverFacs GQN (qneutFacPhi, qneutFacBpar, ampereParFac, amperePerpFacPhi, amperePerpFacBpar, geo_->kperp2, geo_->bmag, 
+                        pars_->species_h[is_glob], pars_->beta, is_glob==0, pars_->fapar, pars_->fbpar);
   }
 
   // set up phiavgdenom, which is stored for quasineutrality calculation as appropriate
@@ -65,22 +91,26 @@ Solver_GK::Solver_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     threads = min(grids_->Nx, 128);
     blocks = 1 + (grids_->Nx-1)/threads;
     
-    calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom, geo_->jacobian, qneutDenom, pars_->tau_fac);
+    calc_phiavgdenom <<<blocks, threads>>> (phiavgdenom, geo_->jacobian, qneutFacPhi, pars_->tau_fac);
   }
-    
 }
+
 
 Solver_GK::~Solver_GK() 
 {
   if (nbar)        cudaFree(nbar);
   if (tmp)         cudaFree(tmp);
-  if (qneutDenom)  cudaFree(qneutDenom);
-  if (ampereDenom) cudaFree(ampereDenom);
+  if (qneutFacPhi)  cudaFree(qneutFacPhi);
+  if (qneutFacBpar)  cudaFree(qneutFacBpar);
+  if (amperePerpFacPhi)  cudaFree(amperePerpFacPhi);
+  if (amperePerpFacBpar)  cudaFree(amperePerpFacBpar);
+  if (ampereParFac) cudaFree(ampereParFac);
   if (phiavgdenom) cudaFree(phiavgdenom);
 
 }
 
 void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
+// Calculates all the fields, i.e., phi, apar, bpar
 {
 
   if (pars_->ks) return;
@@ -91,30 +121,53 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
   
   if (pars_->no_fields) { zero(fields->phi); return; }
   
-  bool em = pars_->beta > 0. ? true : false;
-  
+  // Kinetic electrons and kinetic ions
   if (pars_->all_kinetic) {
     zero(nbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
       if(grids_->m_lo == 0) { // only compute density on procs with m=0
         real_space_density GQN (nbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+	if(pars_->fbpar>0.0) {
+          // jperpbar is an offset pointer to a location in nbar
+	  real_space_perp_current GQN (jperpbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+	}
       }
       if(grids_->m_lo <= 1 && grids_->m_up > 1) { // only compute current on procs with m=1
-        if(em) real_space_current GQN (nbar+grids_->NxNycNz, G[is]->G(), geo_->kperp2, *G[is]->species);
+        if(pars_->fapar>0.0) {
+          // jparbar is an offset pointer to a location in nbar
+	  real_space_par_current GQN (jparbar, G[is]->G(), geo_->kperp2, *G[is]->species);
+	}
       }
     }
 
     if(grids_->nprocs>1) {
-      ncclAllReduce((void*) nbar, (void*) nbar, count*2, ncclFloat, ncclSum, grids_->ncclComm, 0);
-      cudaStreamSynchronize(0);
+      // factor of 2 in count*2 is from cuComplex -> float conversion
+      // here, "nbar" actually packages nbar, jparbar, and jperpbar
+      if(pars_->use_NCCL) { 
+	// do AllReduce only across procs with m=0
+	if(grids_->iproc_m==0) {
+          checkCuda(ncclAllReduce((void*) nbar, (void*) nbar_tmp, count*2, ncclFloat, ncclSum, grids_->ncclComm_m0, 0));
+	}
+	// broadcast result to all procs
+	checkCuda(ncclBroadcast((void*) nbar_tmp, (void*) nbar, count*2, ncclFloat, 0, grids_->ncclComm_s, 0));
+        cudaStreamSynchronize(0);
+      } else {
+	MPI_Allreduce((void*) nbar_tmp, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+        CP_ON_GPU(nbar, nbar_tmp, sizeof(cuComplex)*count);
+      }
     }
     
-    qneut GQN (fields->phi, nbar, qneutDenom);
-    if (em) ampere GQN (fields->apar, nbar+grids_->NxNycNz, ampereDenom);
+    if (pars_->fbpar>0.0) {
+      qneut_and_ampere_perp GQN (fields->phi, fields->bpar, nbar, jperpbar, qneutFacPhi, qneutFacBpar, amperePerpFacPhi, amperePerpFacBpar, pars_->fphi, pars_->fbpar);
+    } else {
+      qneut GQN (fields->phi, nbar, qneutFacPhi, pars_->fphi);
+    }
+    if (pars_->fapar>0.0) ampere_apar  GQN (fields->apar, jparbar, ampereParFac, pars_->fapar);
 
   } else {
 
+    // Boltzmann electrons or Boltzmann ions
     zero(nbar);
 
     for(int is=0; is<grids_->Nspecies; is++) {
@@ -133,11 +186,11 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
 
     if(pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
       zero(fields->phi);
-      qneutAdiab_part1 GQN (             tmp, nbar, geo_->jacobian, qneutDenom, pars_->tau_fac);
-      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom,    qneutDenom, pars_->tau_fac);
+      qneutAdiab_part1 GQN (             tmp, nbar, geo_->jacobian, qneutFacPhi, pars_->tau_fac);
+      qneutAdiab_part2 GQN (fields->phi, tmp, nbar, phiavgdenom,    qneutFacPhi, pars_->tau_fac, pars_->fphi);
     } 
     
-    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar, qneutDenom, pars_->tau_fac);
+    if(pars_->Boltzmann_opt == BOLTZMANN_IONS) qneutAdiab GQN (fields->phi, nbar, qneutFacPhi, pars_->tau_fac, pars_->fphi);
   }
   
   if(pars_->source_option==PHIEXT) add_source GQN (fields->phi, pars_->phi_ext);

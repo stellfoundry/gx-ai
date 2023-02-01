@@ -77,8 +77,9 @@ Diagnostics_GK::~Diagnostics_GK()
 
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
 {
-  if(counter % pars_->nwrite == 0) {
-    printf("step=%d   \ttime=%.4e\t\t", counter, time); 
+  bool stop = false;
+  if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
+    printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
     for(int i=0; i<spectraDiagnosticList.size(); i++) {
       spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
     }
@@ -96,13 +97,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     ncdf_->nc_grids->write_time(time);
     printf("\n");
     fflush(NULL);
-  }
 
 //  int retval;
-  bool stop = false;
 //  int nw;
 //
-//  if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+//  if(id -> omg -> write_v_time && counter >= 0) {                    // complex frequencies
 //    int nt = min(512, grids_->NxNyc) ;
 //    growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
 //    fields_old->copyPhiFrom(fields);
@@ -112,9 +111,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //
 //  //if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
 //    
-//  if(counter%nw == 0) {
+//  if(counter%nw == 1 || time > pars_->t_max) {
 //
-//    fflush(NULL);
 //    if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
 //      id -> write_nc(id -> time, time);
 //      //      if (pars_->ResWrite) id -> write_nc( id -> r_time, time);
@@ -125,12 +123,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //
 //    if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
 //    
-//    if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
-//      print_omg(omg_d);  id -> write_omg(omg_d);
-//    }
-//
-//    if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f \t", pars_->run_name, counter, time);          // To screen
-//    if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
+//    if ( id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
+//    if (!id -> qs -> write_v_time && grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e\n",  pars_->run_name, counter, time, dt);
 //  
 //    if ( id -> qs -> write_v_time) {                                                                // heat flux
 //      
@@ -138,10 +132,15 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //        int is_glob = is + grids_->is_lo;
 //	float rho2s = pars_->species_h[is_glob].rho2;
 //	float p_s = pars_->species_h[is_glob].nt;
-//	heat_flux_summand loop_R (P2(is), fields->phi, G[is]->G(),
-//				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s);
+//	float vt_s = pars_->species_h[is_glob].vt;
+//	heat_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
+//				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s, vt_s);
 //      }
-//      id -> write_Q(P2s); 
+//      id -> write_Qky(P2());
+//      id -> write_Qkx(P2());
+//      id -> write_Qkxky(P2());
+//      id -> write_Qz(P2());
+//      id -> write_Q(P2()); 
 //    }      
 //
 //    if ( id -> ps -> write_v_time) {
@@ -150,12 +149,17 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //        int is_glob = is + grids_->is_lo;
 //	float rho2s = pars_->species_h[is_glob].rho2;
 //        float n_s = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
-//	part_flux_summand loop_R (P2(is), fields->phi, G[is]->G(),
-//				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s);
+//	float vt_s = pars_->species_h[is_glob].vt;
+//	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
+//				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
 //      }
 //      id -> write_P(P2s); 
 //    }
 //    if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
+//
+//    if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+//      print_omg(omg_d);  id -> write_omg(omg_d);
+//    }
 //    
 //    if (pars_->diagnosing_kzspec) {
 //      for (int is=0; is < grids_->Nspecies; is++) {             // P2(s) = (1-G0(s)) |phi**2| for each kinetic species
@@ -168,7 +172,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //      
 //	float rho2s = pars_->species_h[is_glob].rho2;
 //	Wphi_summand loop_R (P2(is), amom_d, kvol_fac, geo_->kperp2, rho2s);
-//	float qfac =  pars_->species_h[is_glob].qneut;
+//	float qfac = pars_->species_h[is_glob].nz*pars_->species_h[is_glob].zt;
 //	Wphi_scale loop_R   (P2(is), qfac);
 //      }
 //
@@ -198,7 +202,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //          int is_glob = is + grids_->is_lo;
 //	  float rho2s = pars_->species_h[is_glob].rho2;
 //	  Wphi_summand loop_R (P2(is), fields->phi, vol_fac, geo_->kperp2, rho2s);
-//	  float qnfac = pars_->species_h[is_glob].qneut;
+//	  float qnfac = pars_->species_h[is_glob].nz*pars_->species_h[is_glob].zt;
 //	  Wphi_scale loop_R   (P2(is), qnfac);
 //	}
 //
@@ -297,6 +301,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //    }
 //
 //    nc_sync(id->file);
+//    fflush(NULL);
 //  }
 //  if (pars_->Reservoir && counter%pars_->ResTrainingDelta == 0) {
 //    grad_perp->C2R(G[0]->G(), gy_d);
@@ -306,7 +311,6 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //    }
 //    rc->add_data(gy_d);
 //  }
-//
 //  if (pars_->fixed_amplitude && (counter % nw == nw-2)) {
 //    maxPhi KXKY (phi_max, fields->phi);
 //    for(int is=0; is<grids_->Nspecies; is++) {
@@ -314,6 +318,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //    }
 //    fields->rescale(phi_max);
 //  }
+  }
   
   // check to see if we should stop simulation
   stop = checkstop();
@@ -577,6 +582,7 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 //
 //    fflush(NULL);
 //    id -> write_nc(id -> time, time);
+//    printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
 // 
 //    //if (pars_->write_phi) id->write_nc(id->phi, phi);
 //

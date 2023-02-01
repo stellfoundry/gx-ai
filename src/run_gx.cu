@@ -101,6 +101,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     case Tmethod::k2    : timestep = new K2          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::g3    : timestep = new G3          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
@@ -115,23 +116,29 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   bool bvar; 
   bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+
+  cudaDeviceSynchronize();
+  checkCudaErrors(cudaGetLastError());
   
-  while(counter<pars->nstep) {
+  while(counter<pars->nstep && time<pars->t_max) {
     counter++;
 
     timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     if (checkstop) break;
-    if (counter % pars->nreal == 0)  { 
-      for(int is=0; is<grids->Nspecies; is++) {
-        G[is] -> reality(grids->Nl * grids->Nm); 
-      }
-      solver -> fieldSolve(G, fields);
-    }
+    //if (counter % pars->nreal == 0)  { 
+    //  for(int is=0; is<grids->Nspecies; is++) {
+    //    G[is] -> reality(grids->Nl * grids->Nm); 
+    //  }
+    //  solver -> fieldSolve(G, fields);
+    //}
 
     for(int is=0; is<grids->Nspecies; is++) {
       if (pars->save_for_restart && counter % pars->nsave == 0) G[is]->restart_write(&time);
     }
+
+    // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
+    checkCudaErrors(cudaGetLastError());
   }
 
   for(int is=0; is<grids->Nspecies; is++) {
@@ -174,6 +181,17 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   if (forcing)   delete forcing;     
 }    
 
+void uuid_print(cudaUUID_t a){
+  std::cout << "GPU";
+  std::vector<std::tuple<int, int> > r = {{0,4}, {4,6}, {6,8}, {8,10}, {10,16}};
+  for (auto t : r){
+    std::cout << "-";
+    for (int i = std::get<0>(t); i < std::get<1>(t); i++)
+      std::cout << std::hex << (unsigned)(unsigned char)a.bytes[i];
+  }
+  std::cout << std::endl;
+}
+
 void getDeviceMemoryUsage()
 {
   cudaDeviceSynchronize();
@@ -193,8 +211,9 @@ void getDeviceMemoryUsage()
   double free_db = (double) free_byte;
   double total_db = (double) prop.totalGlobalMem;
   double used_db = total_db - free_db ;
-  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%), total = %f MB\n",
+  printf("GPU type: %s\n", prop.name);
+  uuid_print(prop.uuid);
+  printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%)\n",
 	 used_db /1024.0/1024.0, used_db/total_db*100.,
-	 free_db /1024.0/1024.0, free_db/total_db*100.,
-	 total_db/1024.0/1024.0);
+	 free_db /1024.0/1024.0, free_db/total_db*100.);
 }

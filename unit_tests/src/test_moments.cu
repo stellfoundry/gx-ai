@@ -6,6 +6,27 @@
 #include "device_funcs.h"
 #include "diagnostics.h"
 
+int main(int argc, char* argv[]) {
+  ::testing::InitGoogleTest(&argc, argv);
+  MPI_Init(&argc, &argv);
+  RUN_ALL_TESTS();
+  MPI_Finalize();
+}
+
+bool masked(int idx, int idy, int nx, int ny) {
+  int ikx;
+  if (idx < nx/2+1)
+    ikx = idx;
+  else
+    ikx = idx-nx;
+  if ( idx < nx           // index should be in range to be actively masked
+    && idy < ny           // index should be in range to be actively masked
+       && ( (idx==0 && idy==0) || idy > (ny-1)/3  || ikx > (nx-1)/3 || ikx < -(nx-1)/3 ))
+    return true;
+  else
+    return false;
+}
+
 class TestMomentsG : public ::testing::Test {
 
 protected:
@@ -17,12 +38,14 @@ protected:
     MPI_Comm_size(mpcom, &nprocs);
 
     int devid = 0; // This should be determined (optionally) on the command line
-    checkCuda(cudaSetDevice(devid));
+    int nGPUs = 0;
+    cudaGetDeviceCount(&nGPUs);
+    checkCuda(cudaSetDevice(iproc%nGPUs));
     cudaDeviceSynchronize();
     pars = new Parameters(iproc, nprocs, mpcom);
     pars->get_nml_vars("inputs/cyc_nl");
-    pars->nx_in = 1;
-    pars->ny_in = 1;
+    pars->nx_in = 4;
+    pars->ny_in = 4;
     pars->nz_in = 1;
     pars->nperiod = 1;
     pars->nspec_in = 1;
@@ -191,6 +214,52 @@ TEST_F(TestMomentsG, SyncG)
       }
     }
   }
+}
+
+TEST_F(TestMomentsG, Restart) {
+  size_t size = grids->NxNycNz*grids->Nmoms*sizeof(cuComplex);
+  cuComplex* init = (cuComplex*) malloc(size);
+  for(int i=0; i<grids->NxNycNz; i++) {
+    for(int l=0; l<grids->Nl; l++) {
+      for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
+        int m = m_loc + grids->m_lo;
+        int index = i + grids->NxNycNz*l + grids->Nl*grids->NxNycNz*(m_loc);
+        int fac = 1;
+        if(m_loc < 0 || m_loc >= grids->Nm) fac = -1;
+        init[index].x = i+grids->NxNycNz*l+grids->NxNycNz*grids->Nl*m;
+        init[index].y = m;
+      }
+    }
+  }
+  CP_TO_GPU(G->G(), init, size);
+
+  double t = 0.1;
+  G->restart_write(&t);
+
+  G->set_zero();
+  t = -10.0;
+
+  G->restart_read(&t);
+
+  for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
+    for(int l=0; l<grids->Nl; l++) {
+      for(int k=0; k<grids->Nz; k++) {
+        for (int i=0; i < grids->Nx; i++) {
+          for (int j=0; j < grids->Nyc; j++) {
+            int m = m_loc + grids->m_lo;
+            unsigned int index = j + grids->Nyc *(i  + grids->Nx  *(k + grids->Nz*(l + grids->Nl*m_loc)));
+            int fac = 1;
+            if(masked(i, j, grids->Nx, grids->Ny)) fac = 0.;
+            EXPECT_FLOAT_EQ_D(&G->G()[index].x, fac* ( j + grids->Nyc*(i+grids->Nx*k)+grids->NxNycNz*l+grids->NxNycNz*grids->Nl*m) );
+            EXPECT_FLOAT_EQ_D(&G->G()[index].y, fac*m);
+	  }
+	}
+      }
+    }
+  }
+
+  EXPECT_FLOAT_EQ(t, 0.1);
+
 }
 
 //TEST_F(TestMomentsG, AddMomentsG) 

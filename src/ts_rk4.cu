@@ -40,17 +40,37 @@ RungeKutta4::~RungeKutta4()
 void RungeKutta4::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs, MomentsG **Gnew, double adt, bool setdt)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    Rhs[is]->set_zero();
-    linear_->rhs(Gt[is], f, Rhs[is]);
-    if (nonlinear_ != nullptr) {
-      nonlinear_->nlps (Gt[is], f, Rhs[is]);
-      if (setdt) dt_ = nonlinear_->cfl(f, dt_max);
-    }
+    // start sync first, so that we can overlap it with computation below
+    Gt[is]->sync();
 
     if (pars_->eqfix) Gnew[is]->copyFrom(G[is]);
-    
+
+    // compute timestep (if necessary)
+    if (setdt && is==0) { // dt will be computed same for all species, so just do first time through species loop
+      linear_->get_max_frequency(omega_max);
+      if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
+      double wmax = 0.;
+      for(int i=0; i<3; i++) wmax += omega_max[i];
+      dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
+    }
+
+    // compute and increment nonlinear term
+    Rhs[is]->set_zero();
+    if (nonlinear_ != nullptr) {
+      nonlinear_->nlps (Gt[is], f, Rhs[is]);
+    }
     Gnew[is]->add_scaled(1., G[is], adt*dt_, Rhs[is]);
+
+    // compute and increment linear term
+    Rhs[is]->set_zero();
+    linear_->rhs(Gt[is], f, Rhs[is]);
+    Gnew[is]->add_scaled(1., Gnew[is], adt*dt_, Rhs[is]);
+  
+    // need to recompute and save Rhs for intermediate steps
+    Rhs[is]->add_scaled(1./(adt*dt_), Gnew[is], -1./(adt*dt_), G[is]);
   }
+
+  // compute new fields
   solver_->fieldSolve(Gnew, f);
 }
 
@@ -76,12 +96,19 @@ void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
 
   // This update is just to improve readability
   for(int is=0; is<grids_->Nspecies; is++) {
+    // start sync first, so that we can overlap it with computation below
+    G_q1[is]->sync();
+
     GRhs[is]->add_scaled(1., GRhs[is], dt_/3., GStar[is]);
     
-    linear_->rhs(G_q1[is], f, GStar[is]);
+    GStar[is]->set_zero();
     if(nonlinear_ != nullptr) nonlinear_->nlps(G_q1[is], f, GStar[is]);     
-    
     G[is]->add_scaled(1., G[is], 1., GRhs[is], dt_/6., GStar[is]);
+
+    GStar[is]->set_zero();
+    linear_->rhs(G_q1[is], f, GStar[is]);
+    
+    G[is]->add_scaled(1., G[is], dt_/6., GStar[is]);
 
     /*
     partial(G, G_q2, f, G_q1, GStar, 1., false);
