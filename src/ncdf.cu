@@ -41,3 +41,8 @@ void NetCDF::close_nc_file() {
   int retval;
   if (retval = nc_close(fileid)) ERR(retval);
 }
+
+void NetCDF::sync() {
+  int retval;
+  if (retval = nc_sync(fileid)) ERR(retval);
+}

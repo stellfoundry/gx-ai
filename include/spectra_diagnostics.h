@@ -43,30 +43,37 @@ class SpectraDiagnostic {
   NetCDF* ncdf_;
 };
 
+// The following classes each define a particular diagnostic quantity
+
+// |Phi|**2
 class Phi2Diagnostic : public SpectraDiagnostic {
  public:
   Phi2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// Wphi = (1-Gamma0(b_s))|Phi|**2
 class WphiDiagnostic : public SpectraDiagnostic {
  public:
   WphiDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// Wg = |G|^2
 class WgDiagnostic : public SpectraDiagnostic {
  public:
   WgDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// HeatFlux (Q)
 class HeatFluxDiagnostic : public SpectraDiagnostic {
  public:
   HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// ParticleFlux (Gamma)
 class ParticleFluxDiagnostic : public SpectraDiagnostic {
  public:
   ParticleFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);

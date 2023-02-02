@@ -1,5 +1,7 @@
 #include "spectra_diagnostics.h"
 
+// base class methods
+// add a particular type of spectra to the calculation list
 void SpectraDiagnostic::add_spectra(SpectraCalc *spectra)
 {
   spectraList.push_back(spectra);
@@ -7,6 +9,7 @@ void SpectraDiagnostic::add_spectra(SpectraCalc *spectra)
   spectraIds.push_back(varid);
 }
 
+// write all spectra
 void SpectraDiagnostic::write_spectra(float* data)
 {
   for(int i=0; i<spectraList.size(); i++) {
@@ -14,26 +17,28 @@ void SpectraDiagnostic::write_spectra(float* data)
   }
 }
 
+// set kernel launch dimensions for diagnostic calculation kernels
 void SpectraDiagnostic::set_kernel_dims()
 {
   if(isMoments) {
     int nyx =  grids_->Nyc * grids_->Nx;
     int nslm = grids_->Nmoms * grids_->Nspecies;
 
-    int nt1 = 32;
+    int nt1 = 16;
     int nb1 = 1 + (nyx-1)/nt1;
 
-    int nt2 = 32;
+    int nt2 = 16;
     int nb2 = 1 + (grids_->Nz-1)/nt2;
     
     dB = dim3(nt1, nt2, 1);
     dG = dim3(nb1, nb2, nslm);
   } else {
-    dB = dim3(min(16, grids_->Nyc), min(8, grids_->Nx), min(8, grids_->Nz));
+    dB = dim3(min(8, grids_->Nyc), min(8, grids_->Nx), min(8, grids_->Nz));
     dG = dim3(1 + (grids_->Nyc-1)/dB.x, 1 + (grids_->Nx-1)/dB.y, 1 + (grids_->Nz-1)/dB.z);  
   }
 }
 
+// |Phi|**2 diagnostic class
 Phi2Diagnostic::Phi2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
 {
   nc_type = NC_FLOAT;
@@ -55,9 +60,12 @@ Phi2Diagnostic::Phi2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, Ne
 
 void Phi2Diagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
 {
+  // compute |Phi|**2(ky, kx, z, t)
   Phi2_summand <<<dG, dB>>> (tmpf, f->phi, geo_->vol_fac); 	
+  // compute and write spectra of |Phi|**2
   write_spectra(tmpf);
 
+  // get Phi**2(t) data
   float *phi2 = spectraList[0]->get_data();
 
   if(grids_->iproc==0) {
@@ -156,6 +164,7 @@ void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmp
   }
   write_spectra(tmpf);
 
+  // get Q(t) data
   float *fluxes = spectraList[0]->get_data();
 
   if(!skipWrite) {
@@ -199,6 +208,7 @@ void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
   }
   write_spectra(tmpf);
 
+  // get Gam(t) data
   float *fluxes = spectraList[0]->get_data();
 
   if(!skipWrite) {

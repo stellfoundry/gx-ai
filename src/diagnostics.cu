@@ -17,25 +17,25 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   ncdf_ = new NetCDF(pars_, grids_, geo_); 
 
   // set up spectra calculators
-  if(pars_->energy_spectra || pars_->flux_spectra) {
+  if(pars_->write_free_energy || pars_->write_fluxes) {
     allSpectra_ = new AllSpectraCalcs(grids_, ncdf_->nc_dims);
     cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
     cudaMalloc (&tmpG, sizeof(float) * grids_->NxNycNz * grids_->Nmoms * grids_->Nspecies); 
   }
 
   // initialize energy spectra diagnostics
-  if(pars_->energy_spectra) {
+  if(pars_->write_free_energy) {
     spectraDiagnosticList.push_back(std::make_unique<WgDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<WphiDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   }
 
   // initialize flux spectra diagnostics
-  if(pars_->flux_spectra) {
+  if(pars_->write_fluxes) {
     spectraDiagnosticList.push_back(std::make_unique<HeatFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<ParticleFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   }
-
+  
 //  // set up fields diagnostics
 //  FieldsDiagnostic *fieldsDiagnostic = new FieldsDiagnostic(pars_, geo_, ncdf_);
 //
@@ -79,10 +79,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 {
   bool stop = false;
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
-    printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
+    if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
     for(int i=0; i<spectraDiagnosticList.size(); i++) {
       spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
     }
+
 
     //if(write_fields) {
     //  for(int i=0; i<eigenfunctionDiagnosticList.size(); i++) {
@@ -95,8 +96,12 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     //}
 
     ncdf_->nc_grids->write_time(time);
-    printf("\n");
-    fflush(NULL);
+    ncdf_->sync();
+
+    if(grids_->iproc == 0) {
+      printf("\n");
+      fflush(NULL);
+    }
 
 //  int retval;
 //  int nw;

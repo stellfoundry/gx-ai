@@ -169,6 +169,7 @@ class NetCDF {
   NcGrids *nc_grids;
   NcGeo *nc_geo;
   NcDiagnostics *nc_diagnostics;
+  void sync();
  private:
   void close_nc_file();
   Parameters *pars_;
