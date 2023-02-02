@@ -1,4 +1,4 @@
-#include "spectra_diagnostics.h"
+#include "diagnostic_classes.h"
 
 // base class methods
 // add a particular type of spectra to the calculation list
@@ -216,6 +216,128 @@ void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
       int is_glob = is + grids_->is_lo;
       const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
       printf ("Gam_%s = %.3e   ", spec_string, fluxes[is]);
+    }
+  }
+}
+
+GrowthRateDiagnostic::GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  ncdf_ = ncdf;
+  varname = "omega_kxkyt";
+  nc_group = ncdf_->nc_diagnostics->diagnostics_id;
+  ndim = 4;
+
+  dims[0] = ncdf_->nc_dims->time;
+  dims[1] = ncdf_->nc_dims->ky;
+  dims[2] = ncdf_->nc_dims->kx;
+  dims[3] = ncdf_->nc_dims->ri;
+
+  count[0] = 1; // each write is a single time slice
+  count[1] = grids->Naky;
+  count[2] = grids->Nakx;
+  count[3] = 2;
+
+  N = grids->NxNyc;
+  Nwrite = grids->Nakx*grids->Naky*2;
+
+  int retval;
+  if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
+  if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+
+  cudaMalloc (&omg_d, sizeof(cuComplex) * N);
+  omg_h = (cuComplex*) malloc  (sizeof(cuComplex) * N);
+  cpu = (float*) malloc  (sizeof(float) * Nwrite);
+}
+
+GrowthRateDiagnostic::~GrowthRateDiagnostic()
+{
+  cudaFree(omg_d);
+  free(omg_h);
+  free(cpu);
+}
+
+// need separate calculate and write methods for growth rates, 
+// so that can calculate every step but write less often
+void GrowthRateDiagnostic::calculate(Fields* fields, Fields* fields_old, double dt)
+{
+  int nt = min(512, grids_->NxNyc) ;
+  growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
+  fields_old->copyPhiFrom(fields);
+}
+
+void GrowthRateDiagnostic::write()
+{
+  // write to ncdf
+  CP_TO_CPU(omg_h, omg_d, sizeof(cuComplex)*N);
+  dealias_and_reorder(omg_h, cpu);
+  
+  int retval;
+  start[0] = ncdf_->nc_grids->time_index;
+  if (retval=nc_put_vara(nc_group, varid, start, count, cpu)) ERR(retval);
+
+  // print to screen
+  int Nx = grids_->Nx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+
+  printf("\nky\tkx\t\tomega\t\tgamma\n");
+
+  for(int j=0; j<Naky; j++) {
+    for(int i= 1 + 2*Nx/3; i<Nx; i++) {
+      int index = j + Nyc*i;
+      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], omg_h[index].x, omg_h[index].y);
+      printf("\n");
+    }
+    for(int i=0; i < 1 + (Nx-1)/3; i++) {
+      int index = j + Nyc*i;
+      if(index!=0) {
+        printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], omg_h[index].x, omg_h[index].y);
+        printf("\n");
+      } else {
+        printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
+      }
+    }
+    if (Nx>1) printf("\n");
+  }
+
+}
+
+void GrowthRateDiagnostic::dealias_and_reorder(cuComplex* fold, float* fnew)
+{
+  int Nx   = grids_->Nx;
+  int Nakx = grids_->Nakx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+
+  int NK = grids_->Nakx/2;
+ 
+  int it = 0;
+  int itp = it + NK;
+  for (int ik=0; ik<Naky; ik++) {
+    int Qp = itp + ik*Nakx;
+    int Rp = ik  + it*Nyc;
+    fnew[2*Qp  ] = fold[Rp].x;
+    fnew[2*Qp+1] = fold[Rp].y;
+  }
+
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = Nx - it;
+    for (int ik=0; ik<Naky; ik++) {
+      int Qp = itp + ik*Nakx;
+      int Rp = ik  + it*Nyc;
+
+      int Qn = itn + ik*Nakx;
+      int Rm = ik  + itm*Nyc;
+      fnew[2*Qp  ] = fold[Rp].x;
+      fnew[2*Qp+1] = fold[Rp].y;
+
+      fnew[2*Qn  ] = fold[Rm].x;
+      fnew[2*Qn+1] = fold[Rm].y;
     }
   }
 }

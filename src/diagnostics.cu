@@ -36,8 +36,15 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     spectraDiagnosticList.push_back(std::make_unique<ParticleFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   }
   
+  // initialize growth rate diagnostic
+  if(pars_->write_omega) {
+    growthRateDiagnostic = new GrowthRateDiagnostic(pars_, grids_, ncdf_);
+  }
+
 //  // set up fields diagnostics
-//  FieldsDiagnostic *fieldsDiagnostic = new FieldsDiagnostic(pars_, geo_, ncdf_);
+//  if(pars_->write_fields) {
+//    FieldsDiagnostic *fieldsDiagnostic = new FieldsDiagnostic(pars_, geo_, ncdf_);
+//  }
 //
 //  // set up moments diagnostics
 //  MomentsDiagnostic *momentsDiagnostic = new MomentsDiagnostic(pars_, geo_, ncdf_);
@@ -50,49 +57,32 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
 Diagnostics_GK::~Diagnostics_GK()
 {
-  if (fields_old) delete fields_old;
-
-  //if (G2s)        cudaFree      ( G2s       );
-  //if (P2s)        cudaFree      ( P2s       );
-  //if (Phi2)       cudaFree      ( Phi2      );
-  if (t_bar)      cudaFree      ( t_bar     );
-  if (omg_d)      cudaFree      ( omg_d     );
-  if (gy_d)       cudaFree      ( gy_d      );
-  if (amom_d)     cudaFree      ( amom_d    );
-  if (favg)       cudaFree      ( favg      );
-  if (df)         cudaFree      ( df        );
-  
-  if (vEk)        cudaFree      ( vEk       );
-  if (phi_max)    cudaFree      ( phi_max   );
-  
-  if (vol_fac)    cudaFree  ( vol_fac   );
-  if (flux_fac)   cudaFree  ( flux_fac  );
-  if (kvol_fac)   cudaFree  ( kvol_fac  );
-  if (val)        free  ( val       );
-  if (tmp_omg_h)  free  ( tmp_omg_h );
-  if (gy_h)       free  ( gy_h      );
-  if (ry_h)       free  ( ry_h      );
-
+  if(pars_->write_omega) delete growthRateDiagnostic;
+  if(pars_->write_free_energy || pars_->write_fluxes) {
+    spectraDiagnosticList.clear();
+    delete allSpectra_;
+  }
 }
 
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
 {
   bool stop = false;
+  if(pars_->write_omega && counter >= 0) {
+    growthRateDiagnostic->calculate(fields, fields_old, dt);
+  }
+
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
-    if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e,  ", pars_->run_name, counter, time, dt);          // To screen
+    if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
     for(int i=0; i<spectraDiagnosticList.size(); i++) {
       spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
     }
 
+    if(pars_->write_omega) growthRateDiagnostic->write();
 
     //if(write_fields) {
     //  for(int i=0; i<eigenfunctionDiagnosticList.size(); i++) {
     //    eigenfunctionDiagnosticList[i].calculate_and_write(G, fields, tmpG, tmpFields);
     //  }
-    //}
-
-    //if(write_omega) {
-    //  growthRateDiagnostic->calculate_and_write(fields, fields_old, dt);
     //}
 
     ncdf_->nc_grids->write_time(time);

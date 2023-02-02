@@ -79,3 +79,30 @@ class ParticleFluxDiagnostic : public SpectraDiagnostic {
   ParticleFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
+
+class GrowthRateDiagnostic {
+ public:
+  GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
+  ~GrowthRateDiagnostic();
+  void calculate(Fields* f, Fields* f_old, double dt);
+  void write();
+ private:
+  void dealias_and_reorder(cuComplex* fold, float* fnew);
+
+  string tag;
+  int ndim, N, Nwrite;
+  int dims[6];
+  size_t count[6] = {0};
+  size_t start[6] = {0};
+  int varid;
+
+  string varname;
+  int nc_group, nc_type;
+  dim3 dG, dB;
+  Parameters* pars_;
+  Grids* grids_;
+  NetCDF* ncdf_;
+
+  cuComplex *omg_d, *omg_h;
+  float *cpu;
+};

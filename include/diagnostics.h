@@ -8,7 +8,7 @@
 #include "grad_parallel.h"
 #include "grad_perp.h"
 #include "reservoir.h"
-#include "spectra_diagnostics.h"
+#include "diagnostic_classes.h"
 #include "spectra_calc.h"
 #include <memory>
 
@@ -88,6 +88,7 @@ private:
   char stopfilename_[2000];
 
   vector<unique_ptr<SpectraDiagnostic>> spectraDiagnosticList;
+  GrowthRateDiagnostic *growthRateDiagnostic;
 };
 
 class Diagnostics_KREHM : public Diagnostics {
