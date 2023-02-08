@@ -1636,7 +1636,7 @@ __global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, con
           int m_local = m - m_lo;
 	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
 	  // jperpfac = -beta_ref/2*n_s*T_s
-	  jbar[idxyz] = jbar[idxyz] + (Jflr(l, b_s) + Jflr(l-1, b_s)) * bmagInv[idz] * g[ig] * sp.jperpfac;
+	  jbar[idxyz] = jbar[idxyz] + (Jflr(l, b_s) + Jflr(l-1, b_s)) * bmagInv[idz]*bmagInv[idz] * g[ig] * sp.jperpfac;
 	}
       }
     }
@@ -1726,9 +1726,9 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
 
     if(fbpar>0.) {
       qneutFacBpar[idxyz] += -sp.nz * g01_s;
-      amperePerpFacPhi[idxyz] += sp.nz*beta/2. * bmagInv[idz] * g01_s;
+      amperePerpFacPhi[idxyz] += sp.nz*beta/2. * bmagInv[idz]*bmagInv[idz] * g01_s;
       if(first) amperePerpFacBpar[idxyz] = 1.;
-      amperePerpFacBpar[idxyz] += sp.nt*beta/2. * bmagInv[idz] * g11_s;
+      amperePerpFacBpar[idxyz] += sp.nt*beta/2. * bmagInv[idz]*bmagInv[idz] * g11_s;
     }
   }
 }
