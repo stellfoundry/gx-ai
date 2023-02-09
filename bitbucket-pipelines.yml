@@ -4,14 +4,13 @@
 # The workflow allows running tests and code linting on the default branch.
 
 
-image: gcc:10.2
-
+#image: linux.shell
 
 pipelines:
   default:
-    - parallel:
-        - step:
-            name: Test
-            script:
-              - source ~/.bash_profile
+      - step:
+          runs-on:
+            - self.hosted
+            - linux.shell
+          script:
               - make -j
