@@ -13,4 +13,5 @@ pipelines:
         - step:
             name: Test
             script:
+              - source ~/.bash_profile
               - make -j
