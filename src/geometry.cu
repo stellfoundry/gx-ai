@@ -704,17 +704,17 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   for(int k=0; k<newNz; k++) {
     z_h[k] = 2.*M_PI *pars->Zp *(k-newNz/2)/newNz;
   }
-  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, ntgrid, ntgrid, false);
   
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);

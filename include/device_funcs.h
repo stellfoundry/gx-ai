@@ -248,7 +248,7 @@ __global__ void real_space_par_current(cuComplex* jbar, const cuComplex* g, cons
 __global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const float *bmagInv, const specie sp);
 
 __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* ampereParFac, float* amperePerpFacPhi, float* amperePerpFacBpar,
-                               const float* kperp2, const float* bmag, const float* bmagInv, const specie sp, const float beta, const bool first, const float fapar, const float fbpar);
+                               const float* kperp2, const float* bmag, const float* bmagInv, const specie sp, const float beta, const bool first, const float fapar, const float fbpar, bool long_wavelength_GK);
 
 __global__ void qneut(cuComplex* Phi, const cuComplex* nbar, const float* denom, float fphi);
 __global__ void ampere_apar(cuComplex* apar, cuComplex* jbar, float* denom, float fapar);
