@@ -13,4 +13,4 @@ pipelines:
         - step:
             name: Test
             script:
-              - echo "HELLO"
+              - make -j
