@@ -1066,13 +1066,13 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     
       if (flux_tube_cut == "gds21") {
 	
-	get_cut_indices_zeros(gds21_pest, ileft, iright, nzgrid, root_idx_left, root_idx_right);
+	get_cut_indices_zeros(gds21_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
 	get_revised_theta_zeros(theta_std_copy, gds21_pest, theta_grid_cut, revised_theta_grid);
 	
       }
       else if (flux_tube_cut == "gbdrift0") {
 	
-	get_cut_indices_zeros(gbdrift0_pest, ileft, iright, nzgrid, root_idx_left, root_idx_right);
+	get_cut_indices_zeros(gbdrift0_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
 	get_revised_theta_zeros(theta_std_copy, gbdrift0_pest, theta_grid_cut, revised_theta_grid);
       }
       else {
@@ -1095,29 +1095,29 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     cvdrift_cut = slice(cvdrift_pest, ileft, iright);
     cvdrift0_cut = slice(cvdrift0_pest, ileft, iright);
         
-    bmag_temp = &bmag_cut[0];
-    gradpar_temp = &gradpar_cut[0];
-    grho_temp = &grho_cut[0];
-    gds2_temp = &gds2_cut[0];
-    gds21_temp = &gds21_cut[0];
-    gds22_temp = &gds22_cut[0];
-    gbdrift_temp = &gbdrift_cut[0];
-    gbdrift0_temp = &gbdrift0_cut[0];
-    cvdrift_temp = &cvdrift_cut[0];
-    cvdrift0_temp = &cvdrift0_cut[0];
+    bmag_temp = &bmag_pest[0];
+    gradpar_temp = &gradpar_pest[0];
+    grho_temp = &grho_pest[0];
+    gds2_temp = &gds2_pest[0];
+    gds21_temp = &gds21_pest[0];
+    gds22_temp = &gds22_pest[0];
+    gbdrift_temp = &gbdrift_pest[0];
+    gbdrift0_temp = &gbdrift0_pest[0];
+    cvdrift_temp = &cvdrift_pest[0];
+    cvdrift0_temp = &cvdrift0_pest[0];
     //theta_grid_temp = &theta_grid_cut[0];
  
     // Interpolate the cut grid onto the revised grid based on the type of cut
-    interp_to_new_grid(bmag_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gradpar_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(grho_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds2_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds21_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds22_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gbdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gbdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(cvdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(cvdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
+    interp_to_new_grid(&bmag_cut[0], bmag_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gradpar_cut[0], gradpar_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&grho_cut[0], grho_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gds2_cut[0], gds2_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gds21_cut[0], gds21_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gds22_cut[0], gds22_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gbdrift_cut[0], gbdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&gbdrift0_cut[0], gbdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&cvdrift_cut[0], cvdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
+    interp_to_new_grid(&cvdrift0_cut[0], cvdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid_cut, nzgrid, true);
 
     std::cout << "Final gds21 = [";
     for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
@@ -1262,7 +1262,7 @@ void Geometric_coefficients::get_revised_theta_custom(std::vector<double>& theta
 
 }
 
-void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_, int& root_idx_left_, int& root_idx_right_) {
+void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_cut, int& root_idx_left_, int& root_idx_right_) {
 
   std::vector<double> data_cut;
   
@@ -1305,7 +1305,7 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
   root_idx_right = isign[which_crossing + (nzeros-1)] + region;
   
   data_cut = slice(data,ileft,iright);
-  nzgrid_ = (data_cut.size() - 1) / 2;
+  nzgrid_cut = (data_cut.size() - 1) / 2;
 
 }
 

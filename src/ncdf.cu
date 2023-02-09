@@ -2002,6 +2002,7 @@ void NetCDF_ids::write_zonal_nc(nca *D, bool endrun) {
     if (retval=nc_put_vara(D->file, D->idx,  D->start,      D->count,      &D->zonal)) ERR(retval);
   } 
   if (D->write_v_time)    {
+    if (retval = nc_var_par_access(D->file, D->time, NC_COLLECTIVE)) ERR(retval);
     if (retval=nc_put_vara(D->file, D->time, D->time_start, D->time_count, &D->zonal)) ERR(retval);
   }
   D->increment_ts(); 
