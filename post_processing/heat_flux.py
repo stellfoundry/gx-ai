@@ -37,7 +37,8 @@ def heat_flux(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref=
         plt.plot(t,q,'-',label=r"%s: $Q_%s/Q_\mathrm{GB}$ = %.5g"%(label, species_tag, qavg))
         plt.ylabel(r"$Q/Q_\mathrm{GB}$")
         plt.xlabel(r"$t\ (v_{t%s}/%s)$"%(refsp, Lref))
-        plt.legend()
+        legend = plt.legend(loc='upper left')
+        legend.set_in_layout(False)
         plt.tight_layout()
 
 if __name__ == "__main__":

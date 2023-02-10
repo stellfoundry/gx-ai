@@ -32,8 +32,10 @@ def plot_geometry(fname, input_file_name):
     file_name_save = file_name[:-8]
     my_cols = ['A','B','C','D']
     #data_geo_code = pd.read_csv(file_name, encoding = "ISO-8859-1", names=my_cols, lineterminator='\n', engine = 'python')
-    data_geo_code = pd.read_csv(file_name, names=my_cols, engine = 'python')
-
+    try:
+        data_geo_code = pd.read_csv(file_name, names=my_cols, engine = 'python')
+    except:
+        print("Error reading eik.out file. Check formatting.")
 
     a = data_geo_code.iloc[1]['A']
     splits = a.split()
@@ -287,6 +289,6 @@ if __name__ == "__main__":
         plot_geometry(fname, inputfilename)
     except:
         print('Error... usage: python plot_geometry.py geofile.eik.out input_file.in')
-#    plt.show()
+    #plt.show()
 
 

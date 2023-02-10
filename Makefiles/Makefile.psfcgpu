@@ -8,6 +8,7 @@
 #
 # export GK_SYSTEM=psfcgpu
 # export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/20.7/math_libs/lib64:/opt/nvidia/hpc_sdk/Linux_x86_64/20.7/comm_libs/nccl/lib:/opt/openmpi-4.0.4/gcc-8.3.1/lib:/home/nrm/software/netcdf-4.8.1/lib:/home/nrm/software/hdf5-1.10.8/lib:/home/nrm/software/gsl-2.7.1/lib:$LD_LIBRARY_PATH
+# alias python=python3
 #
 
 NETCDF_DIR = /home/nrm/software/netcdf-4.8.1
@@ -24,7 +25,7 @@ GSL_INC = -I${GSL_DIR}/include
 GSL_LIB = -L${GSL_DIR}/lib -lgsl -lgslcblas -lm
 
 # paths to cuda 
-NVHPC_ROOT = /opt/nvidia/hpc_sdk/Linux_x86_64/20.7
+NVHPC_ROOT = /opt/nvidia/hpc_sdk/Linux_x86_64/22.5
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
 CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
 
