@@ -327,8 +327,8 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 			  float nu_hyper, float D_hyper, cuComplex* rhs);
 
-__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
-				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt);
+__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m, const float nu_hyper_lm,
+				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt);
 
 
 

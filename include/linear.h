@@ -10,7 +10,7 @@
 class Linear {
  public:
   virtual ~Linear() {};
-  virtual void rhs(MomentsG* G, Fields* f, MomentsG* GRhs) = 0;
+  virtual void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) = 0;
   virtual void get_max_frequency(double *wmax) {};
 };
 
@@ -19,7 +19,7 @@ public:
   Linear_GK(Parameters* pars, Grids* grids, Geometry* geo); 
   ~Linear_GK();
 
-  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt);
   void get_max_frequency(double* wmax);
 
   //  int zderiv(MomentsG *G);
@@ -62,7 +62,7 @@ public:
   ~Linear_KREHM();
 
   //  void rhs(cuComplex *G, cuComplex *GRhs);
-  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt);
 
   //  int zderiv(MomentsG *G);
 
@@ -88,7 +88,7 @@ public:
   Linear_KS(Parameters* pars, Grids* grids); 
   ~Linear_KS();
 
-  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt);
 
   dim3 dG, dB;
   
@@ -103,7 +103,7 @@ public:
   Linear_VP(Parameters* pars, Grids* grids); 
   ~Linear_VP();
 
-  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt);
 
   dim3 dG, dB;
   
