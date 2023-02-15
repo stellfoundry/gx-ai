@@ -152,7 +152,7 @@ Linear_GK::~Linear_GK()
   if (vol_fac)    cudaFree(vol_fac);
 }
 
-void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
@@ -200,10 +200,13 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
-								   pars_->nu_hyper_l,
+		  						   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
+								   pars_->nu_hyper_lm/dt,
 								   pars_->p_hyper_l,
-								   pars_->p_hyper_m, GRhs->G(), G->species->vt);
+								   pars_->p_hyper_m, 
+								   pars_->p_hyper_lm, 
+								   GRhs->G(), G->species->vt);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
@@ -298,7 +301,7 @@ Linear_KREHM::~Linear_KREHM()
   if (grad_par) delete grad_par;
 }
 
-void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();
@@ -319,10 +322,10 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
-								   0.,
-								   1./pars_->dt/pars_->nm_in,
-								   1.,
-								   pars_->p_hyper_m, GRhs->G(), 1.);
+								   0., 0.,
+								   pars_->nu_hyper_lm/dt,
+								   1., 1., 
+								   pars_->p_hyper_lm, GRhs->G(), 1.);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
@@ -345,7 +348,7 @@ Linear_KS::~Linear_KS()
   // nothing
 }
 
-void Linear_KS::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_KS::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();
@@ -373,7 +376,7 @@ Linear_VP::~Linear_VP()
   // nothing
 }
 
-void Linear_VP::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_VP::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();

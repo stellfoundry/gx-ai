@@ -2445,8 +2445,8 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
   }
 }
 
-__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
-				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt) {
+__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m, const float nu_hyper_lm,
+				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt) {
   unsigned int idxyz = get_id1();
   
   if (idxyz < nx*nyc*nz) {
@@ -2461,8 +2461,9 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
-            vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
-             +scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
+	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
+             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+             + scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
         }   
       }      
     }   
