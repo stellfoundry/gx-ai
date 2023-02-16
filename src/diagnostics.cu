@@ -407,6 +407,12 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_ks_data ( id -> g_y, G[0]->G());
     }
 
+    if (pars_->write_fields) {
+      id -> write_fields(id -> fields_phi,  fields->phi );
+      id -> write_fields(id -> fields_apar, fields->apar);
+      id -> write_fields(id -> fields_bpar, fields->bpar);
+    }
+
     nc_sync(id->file);
     fflush(NULL);
   }
@@ -453,11 +459,6 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
       id -> write_nc(id -> time, time);
       id -> write_ks_data (id -> g_y, gy_d);
     }
-  }
-  if (pars_->write_fields) {
-    id -> write_fields(id -> fields_phi,  fields->phi );
-    id -> write_fields(id -> fields_apar, fields->apar);
-    id -> write_fields(id -> fields_bpar, fields->bpar);
   }
 }
 

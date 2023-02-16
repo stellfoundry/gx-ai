@@ -398,6 +398,20 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   // allocate space for variables on the CPU
   double * dtmp;
   dtmp = (double*) malloc(sizeof(double)*N);
+  double* nc_z_h = (double*) malloc (size);
+  double* nc_bmag_h = (double*) malloc (size);
+  double* nc_bmagInv_h = (double*) malloc (size);
+  double* nc_gds2_h = (double*) malloc (size);
+  double* nc_gds21_h = (double*) malloc (size);
+  double* nc_gds22_h = (double*) malloc (size);
+  double* nc_gbdrift_h = (double*) malloc (size);
+  double* nc_gbdrift0_h = (double*) malloc (size);
+  double* nc_cvdrift_h = (double*) malloc (size);
+  double* nc_cvdrift0_h = (double*) malloc (size);
+  double* nc_grho_h = (double*) malloc (size);
+  double* nc_gradpar_h = (double*) malloc (size);
+  double* nc_jacobian_h = (double*) malloc (size);
+
   z_h = (float*) malloc (size);
   bmag_h = (float*) malloc (size);
   bmagInv_h = (float*) malloc (size);
@@ -415,50 +429,74 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   int id;
   if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) z_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_z_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "bmag", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) bmag_h[n] = (float) dtmp[n];
-  for (int n=0; n<N; n++) bmagInv_h[n] = 1./bmag_h[n];
+  for (int n=0; n<N; n++) nc_bmag_h[n] = dtmp[n];
+  for (int n=0; n<N; n++) nc_bmagInv_h[n] = 1./nc_bmag_h[n];
 
   if (retval = nc_inq_varid(ncgeo, "gradpar", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  gradpar = (float) dtmp[0];
+  for (int n=0; n<N; n++) nc_gradpar_h[n] = dtmp[n];
+  if(nc_gradpar_h[0] != nc_gradpar_h[N/2]) {
+    printf("Error: GX requires an equal-arc theta coordinate, so that gradpar = const.\nFor gs2 geometry module, use equal_arc = true. Exiting...\n");
+    fflush(stdout);
+    abort();
+  } else {
+    gradpar = nc_gradpar_h[0];
+  }
 
   if (retval = nc_inq_varid(ncgeo, "grho", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) grho_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_grho_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds2", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds2_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds2_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds21_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds21_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds22_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds22_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_gbdrift_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_gbdrift0_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_cvdrift_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_cvdrift0_h[n] = dtmp[n] / 2.0;
   
   free(dtmp);
+
+  // interpolate to equally-spaced theta grid
+  for(int k=0; k<N; k++) {
+    z_h[k] = 2.*M_PI *pars->Zp *(k-N/2)/N;
+  }
+  int ntgrid = N/2;
+  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, ntgrid, ntgrid, false);
+  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, ntgrid, ntgrid, false);
 
   double stmp; 
   
