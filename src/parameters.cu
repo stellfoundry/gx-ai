@@ -957,6 +957,7 @@ void Parameters::store_ncdf(int ncid) {
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyPhi" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyApar" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEx",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1184,7 +1185,7 @@ void Parameters::store_ncdf(int ncid) {
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
   putbool  (nc_diag, "xyPhi",        write_xyPhi       );
-  putbool  (nc_diag, "xyApar",        write_xyApar       );
+  putbool  (nc_diag, "xyApar",       write_xyApar       );
   putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );

@@ -676,10 +676,9 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
     //if (pars_->write_phi) id->write_nc(id->phi, phi);
 
     // Plot f(x,y,z=0)
+    if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
     id -> write_moment ( id -> xyApar,  fields->apar,   vol_fac);
-
-    if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
       int nt = min(512, grids_->NxNyc) ;
@@ -706,6 +705,7 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
     }
 
     nc_sync(id->file);
+    nc_sync(id->z_file);
   }
 
   // check to see if we should stop simulation

@@ -2584,7 +2584,7 @@ void NetCDF_ids::close_nc_file() {
   int retval;
   if (retval = nc_close(  file)) ERR(retval);
   if (pars_->write_xymom) {
-    if (retval = nc_close(pars_->nczid)) ERR(retval);
+    if (retval = nc_close(z_file)) ERR(retval);
   }
 }
 
