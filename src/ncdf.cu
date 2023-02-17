@@ -824,6 +824,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   } else {
     xyPhi = new nca(0);
   }    
+
+  ////////////////////////////
+  //                        //
+  //  Apar (x, y)            //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_xyApar) {
+    xyApar = new nca(grids_->NxNyNz, grids_->NxNy);
+    xyApar->write_v_time = true;
+  
+    xyApar -> time_dims[0] = ztime_dim;
+    xyApar -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xyApar -> time_dims[2] = zx_dim;
+    
+    xyApar -> file = z_file;
+    if (retval = nc_def_var(z_file, "Apar_xyt", NC_FLOAT, 3, xyApar -> time_dims, &xyApar->time)) ERR(retval);
+    
+    xyApar -> time_count[1] = grids_->Ny;      
+    xyApar -> time_count[2] = grids_->Nx;
+
+    xyApar -> xydata = true;
+    xyApar -> all = true;
+  } else {
+    xyApar = new nca(0);
+  }    
    
   ////////////////////////////
   //                        //

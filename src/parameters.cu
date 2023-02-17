@@ -258,9 +258,10 @@ void Parameters::get_nml_vars(char* filename)
 
   if (write_all_xymom) {
     write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyPhi = write_xyden = write_xyUpar = write_xyqpar = true;
+    write_xyPhi = write_xyApar = write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
     write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
+    write_xyApar   = toml::find_or <bool> (tnml, "xyApar",   false );
     write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
     write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
     write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
@@ -289,7 +290,7 @@ void Parameters::get_nml_vars(char* filename)
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi);
+  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi || write_xyApar);
   
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -1183,6 +1184,7 @@ void Parameters::store_ncdf(int ncid) {
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
   putbool  (nc_diag, "xyPhi",        write_xyPhi       );
+  putbool  (nc_diag, "xyApar",        write_xyApar       );
   putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );

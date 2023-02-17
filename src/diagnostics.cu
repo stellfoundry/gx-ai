@@ -374,6 +374,7 @@ bool Diagnostics_GK::loop(MomentsG* G, Fields* fields, double dt, int counter, d
 
     // Plot f(x,y,z=0)
     id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyApar,  fields->apar,    vol_fac);
     
     // Plot the non-zonal components as functions of (x, y)
     id -> write_moment ( id -> xykxvEy, fields->phi,    vol_fac);
@@ -673,6 +674,10 @@ bool Diagnostics_KREHM::loop(MomentsG* G, Fields* fields, double dt, int counter
     printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
  
     //if (pars_->write_phi) id->write_nc(id->phi, phi);
+
+    // Plot f(x,y,z=0)
+    id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyApar,  fields->apar,   vol_fac);
 
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
     
