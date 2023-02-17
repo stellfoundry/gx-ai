@@ -211,7 +211,7 @@ class NcGrids {
     if (retval = nc_def_var(grid_id, "kz", NC_FLOAT, 1, &nc_dims->kz, &kz)) ERR(retval);
     if (retval = nc_def_var(grid_id, "x",  NC_FLOAT, 1, &nc_dims->x, &x))  ERR(retval);  
     if (retval = nc_def_var(grid_id, "y",  NC_FLOAT, 1, &nc_dims->y, &y))  ERR(retval);  
-    if (retval = nc_def_var(grid_id, "z",  NC_FLOAT, 1, &nc_dims->z, &z))  ERR(retval);  
+    if (retval = nc_def_var(grid_id, "theta",  NC_FLOAT, 1, &nc_dims->z, &z))  ERR(retval);  
  
     if (retval = nc_put_var(grid_id, kx, grids->kx_outh)) ERR(retval);
     if (retval = nc_put_var(grid_id, ky, grids->ky_h)) ERR(retval);

@@ -71,6 +71,8 @@ enum QSpectra {QSPECTRA_species,
 #define BOLTZMANN_IONS 1
 #define BOLTZMANN_ELECTRONS 2
 
+class NcDims;
+
 class Parameters {
 
  public:
@@ -84,7 +86,7 @@ class Parameters {
   const int na_spectra = 7;  // should match # of elements in ASpectra
   const int nq_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
-  void store_ncdf(int ncid);
+  void store_ncdf(int ncid, NcDims* nc_dims);
 
   void init_species(specie* species);
   void set_jtwist_x0(float* shat);

@@ -20,7 +20,7 @@ NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo) :
   nc_geo = new NcGeo(grids_, geo_, nc_dims, fileid);
 
   // write input parameters to netcdf
-  pars->store_ncdf(fileid);
+  pars->store_ncdf(fileid, nc_dims);
 
   nc_diagnostics = new NcDiagnostics(fileid);
 }
