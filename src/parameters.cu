@@ -536,7 +536,7 @@ void Parameters::get_nml_vars(char* filename)
   g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
   fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
   fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
-  fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
+  fbpar    = toml::find_or <float> (tnml, "fbpar",       beta > 0.0? 1.0 : 0.0);
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   wspectra.resize(nw_spectra);
