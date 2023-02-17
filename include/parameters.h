@@ -190,6 +190,7 @@ class Parameters {
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
   bool use_NCCL;
   bool long_wavelength_GK;
+  float damp_ends_widthfrac, damp_ends_amp;
     
   char *scan_type;
   char *equilibrium_option, *nlpm_option;

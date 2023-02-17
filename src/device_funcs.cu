@@ -2072,7 +2072,7 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
 
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
-			       cuComplex* GRhs)
+			       cuComplex* GRhs, float widthfrac, float amp)
 {
   unsigned int idz = get_id1();
   unsigned int idk = get_id2();
@@ -2086,8 +2086,9 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
-    int width = nz*nLinks/8;  
-    float L = 2*M_PI*zp*nLinks/8;
+    // widthfac = 1./8.;
+    int width = (int) nz*nLinks*widthfrac;  
+    float L = (float) 2*M_PI*zp*nLinks*widthfrac;
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
     if (idzl <= width ) {
       float x = ((float) idzl)/width;
@@ -2109,7 +2110,8 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
       cuComplex H_ = G[globalIdx];
       if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
       if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
+      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
 }

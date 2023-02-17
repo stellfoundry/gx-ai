@@ -39,7 +39,7 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
     grad_par = new GradParallelPeriodic(grids_);
   }
   else {
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
   
 }
