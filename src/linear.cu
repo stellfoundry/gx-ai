@@ -29,7 +29,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
 
   switch (pars_->closure_model_opt)
@@ -213,7 +213,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
-  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
+  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2, dt);
 }
 
 void Linear_GK::get_max_frequency(double *omega_max)
@@ -253,7 +253,7 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
   }
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
  
   switch (pars_->closure_model_opt)

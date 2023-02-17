@@ -18,7 +18,7 @@ class GradParallel {
   virtual void zft(cuComplex* m, cuComplex* res)=0;
   virtual void dealias(MomentsG* G) {};
   virtual void dealias(cuComplex* f) {};
-  virtual void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2) {};
+  virtual void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2, double dt) {};
   
   virtual void zft_inverse(MomentsG* G)=0;
   //  virtual void zft_inverse(cuComplex* m, cuComplex* res)=0;
@@ -53,14 +53,14 @@ class GradParallelPeriodic : public GradParallel {
 
 class GradParallelLinked : public GradParallel {
  public:
-  GradParallelLinked(Grids* grids, int jtwist);
+  GradParallelLinked(Parameters* pars, Grids* grids);
   ~GradParallelLinked();
 
   void dealias(MomentsG* G);
   void dealias(cuComplex* f);
   void dz(MomentsG* G);     void dz(cuComplex* m, cuComplex* res);
   void zft(MomentsG* G);   void zft(cuComplex* m, cuComplex* res);
-  void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2);
+  void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2, double dt);
 
   void zft_inverse(MomentsG* G);
   //  void zft_inverse(cuComplex* m, cuComplex* res);
@@ -70,6 +70,7 @@ class GradParallelLinked : public GradParallel {
   void identity(MomentsG* G); // for testing
 
  private:
+  Parameters * pars_;
   Grids * grids_ ;
   
   int get_nClasses(int *idxRight, int *idxLeft, int *linksR, int *linksL, int *n_k, int naky, int ntheta0, int jshift0);

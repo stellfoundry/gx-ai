@@ -275,7 +275,7 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar, const float* q
 
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
-			       cuComplex* GRhs);
+			       cuComplex* GRhs, float widthfrac, float amp);
 
 __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
