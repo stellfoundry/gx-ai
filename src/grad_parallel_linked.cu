@@ -3,9 +3,10 @@
 #include "get_error.h"
 #define GCHAINS <<< dG[c], dB[c] >>>
 
-GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
- : grids_(grids)
+GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
+ : pars_(pars), grids_(grids)
 {
+  int jtwist = pars_->jtwist;
   nLinks       = nullptr;  nChains      = nullptr;
   ikxLinked_h  = nullptr;  ikyLinked_h  = nullptr;
   ikxLinked    = nullptr;  ikyLinked    = nullptr;
@@ -267,11 +268,11 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
 }
 */
 
-void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2)
+void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2, double dt)
 {
   for(int c=0; c<nClasses; c++) {
     // each "class" has a different number of links in the chains, and a different number of chains.
-    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G());
+    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G(), pars_->damp_ends_widthfrac, (float) pars_->damp_ends_amp/dt);
   }
 }
 
