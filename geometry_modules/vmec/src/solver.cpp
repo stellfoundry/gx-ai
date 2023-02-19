@@ -100,22 +100,23 @@ double fzero_residual(double theta_vmec_try, void *p) {
 void interp_to_new_grid(double *geo_array_in, double *geo_array_out, double *z_on_theta_grid, double *uniform_grid, int nzgrid_in, int nzgrid_out, bool include_final_grid_point) {
 
   gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, 2*nzgrid_in+1);
+  int nz_in, nz_out;
+  if(include_final_grid_point) {
+    nz_in = 2*nzgrid_in + 1;
+    nz_out = 2*nzgrid_out + 1;
+  } else {
+    nz_in = 2*nzgrid_in ;
+    nz_out = 2*nzgrid_out ;
+  }
 
-  gsl_spline_init (spline, z_on_theta_grid, geo_array_in, 2*nzgrid_in+1);
+  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, nz_in);
 
-  if (include_final_grid_point) {
-    for (int j=0; j < 2*nzgrid_out+1; j++) {
-      geo_array_out[j] = gsl_spline_eval(spline, uniform_grid[j], acc);
-    }
+  gsl_spline_init (spline, z_on_theta_grid, geo_array_in, nz_in);
+
+  for (int j=0; j < nz_out; j++) {
+    geo_array_out[j] = gsl_spline_eval(spline, uniform_grid[j], acc);
   }
   
-  else {
-    for (int j=0; j < 2*nzgrid_out; j++) {
-      geo_array_out[j] = gsl_spline_eval(spline, uniform_grid[j], acc);
-    }
-  }
-
   gsl_spline_free (spline);
   gsl_interp_accel_free (acc);
 
@@ -124,22 +125,21 @@ void interp_to_new_grid(double *geo_array_in, double *geo_array_out, double *z_o
 void interp_to_new_grid(double *geo_array_in, float *geo_array_out, double *z_on_theta_grid, float *uniform_grid, int nzgrid_in, int nzgrid_out, bool include_final_grid_point) {
 
   gsl_interp_accel *acc = gsl_interp_accel_alloc ();
-  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, 2*nzgrid_in+1);
-
-  gsl_spline_init (spline, z_on_theta_grid, geo_array_in, 2*nzgrid_in+1);
-
-  if (include_final_grid_point) {
-    for (int j=0; j < 2*nzgrid_out+1; j++) {
-      geo_array_out[j] = (float) gsl_spline_eval(spline, (double) uniform_grid[j], acc);
-    }
+  int nz_in, nz_out;
+  if(include_final_grid_point) {
+    nz_in = 2*nzgrid_in + 1;
+    nz_out = 2*nzgrid_out + 1;
+  } else {
+    nz_in = 2*nzgrid_in ;
+    nz_out = 2*nzgrid_out ;
   }
-  
-  else {
-    for (int j=0; j < 2*nzgrid_out; j++) {
-      double z_eval = (double) uniform_grid[j];
-      if(j==0 && z_eval < spline->interp->xmin) z_eval = spline->interp->xmin;
-      geo_array_out[j] = (float) gsl_spline_eval(spline, z_eval, acc);
-    }
+
+  gsl_spline *spline = gsl_spline_alloc (gsl_interp_cspline, nz_in);
+
+  gsl_spline_init (spline, z_on_theta_grid, geo_array_in, nz_in);
+
+  for (int j=0; j < nz_out; j++) {
+    geo_array_out[j] = (float) gsl_spline_eval(spline, (double) uniform_grid[j], acc);
   }
 
   gsl_spline_free (spline);

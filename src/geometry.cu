@@ -373,6 +373,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   printf("READING NC GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz;
+  size_t dsize = sizeof(double)*grids->Nz;
 
   char stra[NC_MAX_NAME+1];
   char strb[513];
@@ -396,21 +397,20 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   }
 
   // allocate space for variables on the CPU
-  double * dtmp;
-  dtmp = (double*) malloc(sizeof(double)*N);
-  double* nc_z_h = (double*) malloc (size);
-  double* nc_bmag_h = (double*) malloc (size);
-  double* nc_bmagInv_h = (double*) malloc (size);
-  double* nc_gds2_h = (double*) malloc (size);
-  double* nc_gds21_h = (double*) malloc (size);
-  double* nc_gds22_h = (double*) malloc (size);
-  double* nc_gbdrift_h = (double*) malloc (size);
-  double* nc_gbdrift0_h = (double*) malloc (size);
-  double* nc_cvdrift_h = (double*) malloc (size);
-  double* nc_cvdrift0_h = (double*) malloc (size);
-  double* nc_grho_h = (double*) malloc (size);
-  double* nc_gradpar_h = (double*) malloc (size);
-  double* nc_jacobian_h = (double*) malloc (size);
+  double* dtmp = (double*) malloc(dsize);
+  double* nc_z_h = (double*) malloc (dsize);
+  double* nc_bmag_h = (double*) malloc (dsize);
+  double* nc_bmagInv_h = (double*) malloc (dsize);
+  double* nc_gds2_h = (double*) malloc (dsize);
+  double* nc_gds21_h = (double*) malloc (dsize);
+  double* nc_gds22_h = (double*) malloc (dsize);
+  double* nc_gbdrift_h = (double*) malloc (dsize);
+  double* nc_gbdrift0_h = (double*) malloc (dsize);
+  double* nc_cvdrift_h = (double*) malloc (dsize);
+  double* nc_cvdrift0_h = (double*) malloc (dsize);
+  double* nc_grho_h = (double*) malloc (dsize);
+  double* nc_gradpar_h = (double*) malloc (dsize);
+  double* nc_jacobian_h = (double*) malloc (dsize);
 
   z_h = (float*) malloc (size);
   bmag_h = (float*) malloc (size);
@@ -424,7 +424,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   cvdrift0_h = (float*) malloc (size);
   grho_h = (float*) malloc (size);
   jacobian_h = (float*) malloc (size);
-  
+
   // read the data with nc_get_var
   int id;
   if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
@@ -482,10 +482,11 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   free(dtmp);
 
   // interpolate to equally-spaced theta grid
-  for(int k=0; k<N; k++) {
-    z_h[k] = 2.*M_PI *pars->Zp *(k-N/2)/N;
+  for(int k=0; k<grids->Nz; k++) {
+    z_h[k] = 2.*M_PI *pars->Zp *(k-grids->Nz/2)/grids->Nz;
   }
   int ntgrid = N/2;
+
   interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, ntgrid, ntgrid, false);
   interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, ntgrid, ntgrid, false);
   interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, ntgrid, ntgrid, false);
