@@ -22,7 +22,7 @@ void SpectraDiagnostic::set_kernel_dims()
 {
   if(isMoments) {
     int nyx =  grids_->Nyc * grids_->Nx;
-    int nslm = grids_->Nmoms * grids_->Nspecies;
+    int nlm = grids_->Nmoms;
 
     int nt1 = 16;
     int nb1 = 1 + (nyx-1)/nt1;
@@ -31,7 +31,7 @@ void SpectraDiagnostic::set_kernel_dims()
     int nb2 = 1 + (grids_->Nz-1)/nt2;
     
     dB = dim3(nt1, nt2, 1);
-    dG = dim3(nb1, nb2, nslm);
+    dG = dim3(nb1, nb2, nlm);
   } else {
     dB = dim3(min(8, grids_->Nyc), min(8, grids_->Nx), min(8, grids_->Nz));
     dG = dim3(1 + (grids_->Nyc-1)/dB.x, 1 + (grids_->Nx-1)/dB.y, 1 + (grids_->Nz-1)/dB.z);  

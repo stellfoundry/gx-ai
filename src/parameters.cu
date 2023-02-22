@@ -1,4 +1,5 @@
 #include "parameters.h"
+#include "ncdf.h"
 #include <netcdf.h>
 #include "toml.hpp"
 #include <iostream>
@@ -537,106 +538,107 @@ void Parameters::get_nml_vars(char* filename)
   fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
   fbpar    = toml::find_or <float> (tnml, "fbpar",       0.0);
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
-  
-  wspectra.resize(nw_spectra);
-  pspectra.resize(np_spectra);
-  aspectra.resize(na_spectra);
-  qspectra.resize(nq_spectra);
-
-  wspectra.assign(nw_spectra, 0);
-  pspectra.assign(np_spectra, 0);
-  aspectra.assign(na_spectra, 0);
-  qspectra.assign(nq_spectra, 0);
-
-  tnml = nml;
-  if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
-
-  wspectra [WSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_l]       = (toml::find_or <bool> (tnml, "laguerre",         false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_m]       = (toml::find_or <bool> (tnml, "hermite",          false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_lm]      = (toml::find_or <bool> (tnml, "hermite_laguerre", false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Pspectra")) tnml = toml::find (nml, "Pspectra");  
-
-  pspectra [PSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Qspectra")) tnml = toml::find (nml, "Qspectra");  
-
-  qspectra [QSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
-  if (!all_kinetic) {
-    aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
-    aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
-    aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
-    aspectra [ ASPECTRA_kz      ] = wspectra [ WSPECTRA_kz      ];
-    aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
-    aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
-    aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
-  }
-  // for backwards compatibility
-  if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
-  if (write_h_spectrum)  wspectra[WSPECTRA_m] = 1;
-  if (write_lh_spectrum) wspectra[WSPECTRA_lm] = 1;
-  
-  // Some diagnostics are not yet available:
-  wspectra[ WSPECTRA_kperp] = 0;
-  pspectra[ PSPECTRA_kperp] = 0;
-  aspectra[ ASPECTRA_kperp] = 0;
-  qspectra[ QSPECTRA_kperp] = 0;
-  
-  // If Wtot is requested, turn Ws, Ps, Phi2 on:
-  if (write_free_energy) {
-    wspectra[WSPECTRA_species] = 1;
-    pspectra[PSPECTRA_species] = 1;
-    if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
-  }
 
   gx = (!ks && !vp && !krehm);
   assert (!(ks && vp));
   assert (ks || vp || gx || krehm);
-
-  int ksize = 0;
-  for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
-  for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
-  for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
-  for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
-
-  tnml = nml;
-  if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
-
-  diagnosing_pzt = write_pzt;
   
-  diagnosing_spectra = false;
-  if (ksize > 0) diagnosing_spectra = true;
-
-  diagnosing_kzspec = false;
-  if ((wspectra[ WSPECTRA_kz ] == 1) || (pspectra[ PSPECTRA_kz ] == 1) || (aspectra[ ASPECTRA_kz ] == 1)) {
-    diagnosing_kzspec = true;
-  }
-  
-  diagnosing_moments = false;
-  if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
+//  wspectra.resize(nw_spectra);
+//  pspectra.resize(np_spectra);
+//  aspectra.resize(na_spectra);
+//  qspectra.resize(nq_spectra);
+//
+//  wspectra.assign(nw_spectra, 0);
+//  pspectra.assign(np_spectra, 0);
+//  aspectra.assign(na_spectra, 0);
+//  qspectra.assign(nq_spectra, 0);
+//
+//  tnml = nml;
+//  if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
+//
+//  wspectra [WSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_l]       = (toml::find_or <bool> (tnml, "laguerre",         false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_m]       = (toml::find_or <bool> (tnml, "hermite",          false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_lm]      = (toml::find_or <bool> (tnml, "hermite_laguerre", false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  tnml = nml;
+//  if (nml.contains("Pspectra")) tnml = toml::find (nml, "Pspectra");  
+//
+//  pspectra [PSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  tnml = nml;
+//  if (nml.contains("Qspectra")) tnml = toml::find (nml, "Qspectra");  
+//
+//  qspectra [QSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
+//  if (!all_kinetic) {
+//    aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
+//    aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
+//    aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
+//    aspectra [ ASPECTRA_kz      ] = wspectra [ WSPECTRA_kz      ];
+//    aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
+//    aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
+//    aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
+//  }
+//  // for backwards compatibility
+//  if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
+//  if (write_h_spectrum)  wspectra[WSPECTRA_m] = 1;
+//  if (write_lh_spectrum) wspectra[WSPECTRA_lm] = 1;
+//  
+//  // Some diagnostics are not yet available:
+//  wspectra[ WSPECTRA_kperp] = 0;
+//  pspectra[ PSPECTRA_kperp] = 0;
+//  aspectra[ ASPECTRA_kperp] = 0;
+//  qspectra[ QSPECTRA_kperp] = 0;
+//  
+//  // If Wtot is requested, turn Ws, Ps, Phi2 on:
+//  if (write_free_energy) {
+//    wspectra[WSPECTRA_species] = 1;
+//    pspectra[PSPECTRA_species] = 1;
+//    if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
+//  }
+//
+//
+//  int ksize = 0;
+//  for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
+//  for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
+//  for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
+//  for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
+//
+//  tnml = nml;
+//  if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
+//
+//  diagnosing_pzt = write_pzt;
+//  
+//  diagnosing_spectra = false;
+//  if (ksize > 0) diagnosing_spectra = true;
+//
+//  diagnosing_kzspec = false;
+//  if ((wspectra[ WSPECTRA_kz ] == 1) || (pspectra[ PSPECTRA_kz ] == 1) || (aspectra[ ASPECTRA_kz ] == 1)) {
+//    diagnosing_kzspec = true;
+//  }
+//  
+//  diagnosing_moments = false;
+//  if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
   species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
@@ -784,7 +786,7 @@ void Parameters::get_nml_vars(char* filename)
   printf(ANSI_COLOR_RESET);    
 }
 
-void Parameters::store_ncdf(int ncid) {
+void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
   int retval, idim, sdim, wdim, pdim, adim, qdim, nc_out, nc_inputs, nc_diss;
@@ -884,19 +886,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
-  specs[0] = wdim;
-  if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = pdim;
-  if (retval = nc_def_var (nc_sp, "pspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = adim;
-  if (retval = nc_def_var (nc_sp, "aspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = qdim;
-  if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = sdim;
+  specs[0] = nc_dims->species;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_spec, "z",            NC_FLOAT, 1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_spec, "m",            NC_FLOAT, 1, specs, &ivar)) ERR(retval);
