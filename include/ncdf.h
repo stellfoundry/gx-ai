@@ -294,9 +294,12 @@ class NcDiagnostics {
 
     // create sub-group for Moments diagnostics
     if (retval = nc_def_grp(diagnostics_id, "Moments", &moments)) ERR(retval);
+
+    // create sub-group for Eigenfunction diagnostics
+    if (retval = nc_def_grp(diagnostics_id, "Eigenfunctions", &eigenfunctions)) ERR(retval);
   };
   ~NcDiagnostics() {};
   int diagnostics_id; // ncdf id for diagnostics group
   // ncdf ids for diagnostics sub-groups
-  int spectra, fields, moments;
+  int spectra, fields, moments, eigenfunctions;
 };

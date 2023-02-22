@@ -106,3 +106,30 @@ class GrowthRateDiagnostic {
   cuComplex *omg_d, *omg_h;
   float *cpu;
 };
+
+class EigenfunctionDiagnostic {
+ public:
+  EigenFunctionDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
+  ~EigenFunctionDiagnostic();
+  void calculate_and_write(Fields* f);
+ private:
+  void dealias_and_reorder(cuComplex* fold, float* fnew);
+
+  string tag;
+  int ndim, N, Nwrite;
+  int dims[6];
+  size_t count[6] = {0};
+  size_t start[6] = {0};
+  int varids[3];
+
+  string varnames[3];
+  int nc_group, nc_type;
+  dim3 dG, dB;
+  Parameters* pars_;
+  Grids* grids_;
+  NetCDF* ncdf_;
+
+  cuComplex *f_h;
+  float *cpu;
+};
+

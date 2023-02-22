@@ -41,6 +41,13 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     growthRateDiagnostic = new GrowthRateDiagnostic(pars_, grids_, ncdf_);
   }
 
+  // initialize eigenfunction diagnostics
+  if(pars_->write_eigenfunctions) {
+    //eigenfunctionDiagnosticList.push_back(std::make_unique<PhiEigenfunction>(pars_, grids_, ncdf_));
+    //eigenfunctionDiagnosticList.push_back(std::make_unique<AparEigenfunction>(pars_, grids_, ncdf_));
+    eigenfunctionDiagnostic = new EigenfunctionDiagnostic(pars_, grids_, ncdf_);
+  }
+
 //  // set up fields diagnostics
 //  if(pars_->write_fields) {
 //    FieldsDiagnostic *fieldsDiagnostic = new FieldsDiagnostic(pars_, geo_, ncdf_);

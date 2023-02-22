@@ -341,3 +341,115 @@ void GrowthRateDiagnostic::dealias_and_reorder(cuComplex* fold, float* fnew)
     }
   }
 }
+
+EigenfunctionDiagnostic::EigenfunctionDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  ncdf_ = ncdf;
+  varnames[0] = "Phi_z";
+  varnames[1] = "Apar_z";
+  varnames[2] = "Bpar_z";
+  nc_group = ncdf_->nc_diagnostics->eigenfunctions;
+  ndim = 4;
+
+  dims[0] = ncdf_->nc_dims->ky;
+  dims[1] = ncdf_->nc_dims->kx;
+  dims[2] = ncdf_->nc_dims->z;
+  dims[3] = ncdf_->nc_dims->ri;
+
+  count[0] = grids->Naky;
+  count[1] = grids->Nakx;
+  count[2] = grids->Nz;
+  count[3] = 2;
+
+  N = grids->NxNycNz;
+  Nwrite = grids->Nakx*grids->Naky*grids->Nz*2;
+
+  int retval;
+  for(int i=0; i<3; i++) {
+    if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+  }
+
+  f_h = (cuComplex*) malloc  (sizeof(cuComplex) * N);
+  cpu = (float*) malloc  (sizeof(float) * Nwrite);
+}
+
+EigenfunctionDiagnostic::calculate_and_write(Fields* f)
+{
+  int retval;
+
+  // write phi to ncdf
+  CP_TO_CPU(f_h, f->phi, sizeof(cuComplex)*N);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[0], start, count, cpu)) ERR(retval);
+
+  // write apar to ncdf
+  CP_TO_CPU(f_h, f->apar, sizeof(cuComplex)*N);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[1], start, count, cpu)) ERR(retval);
+  
+  // write bpar to ncdf
+  CP_TO_CPU(f_h, f->bpar, sizeof(cuComplex)*N);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[2], start, count, cpu)) ERR(retval);
+}
+
+// condense a (ky,kx,z) object for netcdf output, taking into account the mask
+// and changing the type from cuComplex to float
+// and transposing to put z as fastest index
+EigenFunctionDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
+{
+  int Nx   = grids_->Nx;
+  int Nakx = grids_->Nakx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+  int Nz   = grids_->Nz;
+ 
+  int NK = grids_->Nakx/2;
+ 
+  int it = 0;
+  int itp = it + NK;
+  for (int ik=0; ik<Naky; ik++) {
+    int Qp = itp + ik*Nakx;
+    int Rp = ik  + it*Nyc;
+    for (int k=0; k<Nz; k++) {
+      int ig = Rp + Nx*Nyc*k;
+      int ir = 0 + 2*(k + Nz*Qp);
+      int ii = 1 + 2*(k + Nz*Qp);
+      fk[ir] = f[ig].x;
+      fk[ii] = f[ig].y;
+    }
+  }
+
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = Nx - it;
+    for (int ik=0; ik<Naky; ik++) {
+      int Qp = itp + ik*Nakx;
+      int Rp = ik  + it*Nyc;
+
+      int Qn = itn + ik*Nakx;
+      int Rm = ik  + itm*Nyc;
+      for (int k=0; k<Nz; k++) {
+        int ip = Rp + Nx*Nyc*k;
+        int im = Rm + Nx*Nyc*k;
+
+        int irp = 0 + 2*(k + Nz*Qp);
+        int iip = 1 + 2*(k + Nz+Qp);
+
+        int irn = 0 + 2*(k + Nz*Qn);
+        int iin = 1 + 2*(k + Nz*Qn);
+
+        fk[irp] = f[Rp].x;
+        fk[iip] = f[Rp].y;
+
+        fk[irn] = f[im].x;
+        fk[iin] = f[im].y;
+      }
+    }
+  } 
+}
