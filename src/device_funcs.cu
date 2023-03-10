@@ -910,7 +910,8 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     float alpha = sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s);
-    J0phiB[ig] = j0f(alpha) * phi[idxyz] * fphi + tz*2.*muB[idj]*j1f(alpha)/alpha * bpar[idxyz] * fbpar;
+    float j1_over_alpha = alpha < 1e-8 ? 0.5 : j1f(alpha)/alpha;
+    J0phiB[ig] = j0f(alpha) * phi[idxyz] * fphi + tz*2.*muB[idj]*j1_over_alpha * bpar[idxyz] * fbpar;
   }
 }
 
