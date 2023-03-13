@@ -1257,19 +1257,21 @@ __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, co
     unsigned int idz = get_id2();
     if (idz < nz) {
       unsigned int idlm = get_id3();
-      unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
+      if (idlm < nm*nl) {
+        unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
 
-      unsigned int idy = idxy % nyc;
-      unsigned int idx = idxy / nyc;// % nx;
-      cuComplex fg;
-      if (unmasked(idx, idy)) {
+        unsigned int idy = idxy % nyc;
+        unsigned int idx = idxy / nyc;// % nx;
+        cuComplex fg;
+        if (unmasked(idx, idy)) {
 
-	float fac = 2.0;
-	if (idy==0) fac = 1.0;
-	fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
-	G2[ig] = 0.5 * fg.x * nt_;
-      } else {
-	G2[ig] = 0.;
+          float fac = 2.0;
+          if (idy==0) fac = 1.0;
+          fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
+          G2[ig] = 0.5 * fg.x * nt_;
+        } else {
+          G2[ig] = 0.;
+        }
       }
     }
   }
