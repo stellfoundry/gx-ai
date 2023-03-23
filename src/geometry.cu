@@ -34,6 +34,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     // GX_PATH is defined at compile time via a -D flag
     if(grids->iproc == 0) {
       char command[300];
+      pars->geofilename = std::string(pars->run_name) + ".eik.out";
       sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
       printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
