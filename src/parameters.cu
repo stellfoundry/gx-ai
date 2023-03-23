@@ -1573,8 +1573,9 @@ void Parameters::set_jtwist_x0(float *shat_in)
 
   if (zero_shat) {
     jtwist = 2*nx_in;
+    *shat_in = 1.e-6;
     boundary_option_periodic = true;
-    printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
+    printf("Using no magnetic shear (setting shat = 1e-6) because zero_shat = true. Setting boundary_option='periodic' \n");
   }
   printf("jtwist = %d, x0 = %f\n", jtwist, x0);
 }

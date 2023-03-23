@@ -32,10 +32,10 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   else if(geo_option=="miller") {
     // call python geometry module to write an eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
+    pars->geofilename = std::string(pars->run_name) + ".eik.out";
     if(grids->iproc == 0) {
       char command[300];
-      pars->geofilename = std::string(pars->run_name) + ".eik.out";
-      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
+      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > %s.gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
       printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
     }
