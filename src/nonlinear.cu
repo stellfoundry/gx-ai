@@ -15,7 +15,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   tmp_c      = nullptr;  G_tmp      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
-  dJ0apar_dy = nullptr;  dphi       = nullptr;  g_res       = nullptr;  
+  dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
 
   if (grids_ -> Nl < 2) {
@@ -118,6 +118,7 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( dJ0apar_dx  ) cudaFree ( dJ0apar_dx  );
   if ( dJ0apar_dy  ) cudaFree ( dJ0apar_dy  );
   if ( dphi        ) cudaFree ( dphi        );
+  if ( dchi        ) cudaFree ( dchi        );
   if ( g_res       ) cudaFree ( g_res       );
   if ( J0phi       ) cudaFree ( J0phi       );
   if ( J0apar      ) cudaFree ( J0apar      );
@@ -207,9 +208,9 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       int m_local = m - grids_->m_lo;
 
       // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
-      if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), G_tmp->Gm(m_local));
+      if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), G_tmp->Gm(m_local));
       // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
-      if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), G_tmp->Gm(m_local));
+      if(m>0) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), G_tmp->Gm(m_local));
     }
   }
 
@@ -230,7 +231,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre_single->transformToSpectral(g_res, dG);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
-      add_scaled_singlemom_kernel GBK (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
     }
 
     // upper ghost
@@ -246,39 +247,9 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
       laguerre_single->transformToSpectral(g_res, dG);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
-      add_scaled_singlemom_kernel GBK (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
     }
   }
-}
-double Nonlinear_GK::cfl(Fields *f, double dt_max)
-{
-  float vpmax = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
-
-  grad_perp_f -> dxC2R(f->phi, dphi); 
-  abs GBX (dphi, grids_->NxNyNz);
-  if(pars_->fapar > 0.0) {
-    grad_perp_f -> dxC2R(f->apar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dchi);
-  }
-  red->Max(dphi, val1); 
-  CP_TO_CPU(vmax_y, val1, sizeof(float));
-
-  grad_perp_f -> dyC2R(f->phi, dphi);  
-  abs GBX (dphi, grids_->NxNyNz);
-  if(pars_->fapar > 0.0) {
-    grad_perp_f -> dyC2R(f->apar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dchi);
-  }
-  red->Max(dphi, val1); 
-  CP_TO_CPU(vmax_x, val1, sizeof(float));
-
-  double scale = 0.5;  // normalization scaling factor for C2R FFT
-  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv)*scale;
-  dt_cfl = min(dt_max, 1./vmax);
-  return dt_cfl;
-
 }
 
 void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
@@ -287,31 +258,31 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   float muB_max = grids_->muB_max*pars_->tzmax; 
 
   grad_perp_f -> dxC2R(f->phi, dphi); 
-  abs GBX (dphi, grids_->NxNyNz);
+  abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
     grad_perp_f -> dxC2R(f->apar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpar_max, dchi);
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, vpar_max, dchi);
   }
   if(pars_->fbpar > 0.0) {
     grad_perp_f -> dxC2R(f->bpar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, muB_max, dchi);
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
   grad_perp_f -> dyC2R(f->phi, dphi);  
-  abs GBX (dphi, grids_->NxNyNz);
+  abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
     grad_perp_f -> dyC2R(f->apar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpar_max, dchi);
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, vpar_max, dchi);
   }
   if(pars_->fbpar > 0.0) {
     grad_perp_f -> dyC2R(f->bpar, dchi); 
-    abs GBX (dchi, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, muB_max, dchi);
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));

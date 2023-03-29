@@ -23,7 +23,7 @@ class Nonlinear_GK : public Nonlinear {
   ~Nonlinear_GK();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(Fields *f, double dt_max);
+  double cfl(Fields *f, double dt_max) {};
   void get_max_frequency(Fields *f, double *wmax);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);
