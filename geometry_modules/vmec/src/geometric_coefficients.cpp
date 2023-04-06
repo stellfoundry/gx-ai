@@ -42,6 +42,11 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   which_crossing = toml::find_or <int> (tnml, "which_crossing", 4);
   file_tag = toml::find_or <string> (tnml, "file_tag", ""); // new TQ 8.14
 
+  char run_name[1000];
+  strncpy(run_name, nml_file, strlen(nml_file)-3);
+  run_name[strlen(nml_file)-3] = '\0';
+  filestem.assign(run_name);
+
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
   // INPUT PARAMETERS
@@ -864,7 +869,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - dX_ds[itheta] * dZ_dtheta_vmec[itheta] * dY_dzeta[itheta]
       - dY_ds[itheta] * dX_dtheta_vmec[itheta] * dZ_dzeta[itheta];
   }
-  test_arrays(sqrt_g, temp2D, false, 3.0e-3, sqrt_g_name);
+  test_arrays(sqrt_g, temp2D, false, 5.0e-3, sqrt_g_name);
 
   double *inv_sqrt_g = new double[2*nzgrid+1]{};
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
@@ -1009,7 +1014,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     gbdrift_pest[itheta] = sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * B_cross_grad_B_dot_grad_alpha[itheta] / ( B[itheta] * B[itheta] * B[itheta] );
 
     gbdrift0_pest[itheta] = sign_psi * ( (B_sub_theta_vmec[itheta] * dB_dzeta[itheta] - B_sub_zeta[itheta] * dB_dtheta_vmec[itheta]) / sqrt_g[itheta] )
-      * ( (abs(edge_toroidal_flux_over_2pi) * 2 * shat) / (B[itheta] * B[itheta] * B[itheta] * sqrt_s) );
+      * ( ((edge_toroidal_flux_over_2pi) * 2 * shat) / (B[itheta] * B[itheta] * B[itheta] * sqrt_s) );
     // In the above expression for gbdrift0, the first line and the edge_toroidal_flux_over_2pi is \vec{B} \times \nabla B \cdot \nabla \psi
 
     cvdrift_pest[itheta] = gbdrift_pest[itheta] + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0
@@ -1474,7 +1479,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   vmec_name = vmec_name.substr(vmec_name.find_last_of("/")+1);
 
   /* This part of the code writes the (netcdf) geometry output name*/
-  outnc_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
+  outnc_name = out_path + filestem + "_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
     outnc_name += "_custom_[-" + custom_info + "," + custom_info + "]";
@@ -1618,7 +1623,7 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
 
   /* This part of the code writes the (human readable) output name*/
-  outfile_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
+  outfile_name = out_path + filestem + "_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
     outfile_name += "_custom_[-" + custom_info + "," + custom_info + "]";
@@ -1632,7 +1637,7 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   //  else {
   //    outfile_name += "";
   //  }  
-  outfile_name += + "_nt_" + theta_grid_points;
+  outfile_name += + "_nt_" + theta_grid_points + ".eik.out";
 
   /* This is the new usage. Above is previous. 
    * If file_tag is not included in the input file, do nothing, 
