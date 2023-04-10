@@ -46,17 +46,21 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     CUDA_DEBUG("Initializing miller geometry: %s \n");
   } 
   else if(geo_option=="vmec") {
-    char nml_file[512];
-    strcpy (nml_file, pars->run_name);
-    strcat (nml_file, ".in");
-    VMEC_variables *vmec = new VMEC_variables(nml_file);
-    Geometric_coefficients *vmec_geo = new Geometric_coefficients(nml_file, vmec);
-    pars->geofilename = vmec_geo->outfile_name;
+    if(grids->iproc == 0) {
+      char nml_file[512];
+      strcpy (nml_file, pars->run_name);
+      strcat (nml_file, ".in");
+      VMEC_variables *vmec = new VMEC_variables(nml_file);
+      Geometric_coefficients *vmec_geo = new Geometric_coefficients(nml_file, vmec);
+      pars->geofilename = vmec_geo->outfile_name;
+
+      delete vmec_geo;
+      delete vmec;
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
-    delete vmec_geo;
-    delete vmec;
   }
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
