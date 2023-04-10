@@ -310,7 +310,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   case Closure::smithpar : closures->apply_closures(G, GRhs); break;
   }
 
-  krehm_collisions <<< dGs, dBs >>> (G->G(), f->apar, f->apar_ext, nu_ei, rho_s, d_e, GRhs->G());
+  krehm_collisions <<< dGs, dBs >>> (G->G(), f->apar, f->apar_ext, grids_->kx, grids_->ky, nu_ei, rho_s, d_e, GRhs->G());
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),

@@ -2610,7 +2610,7 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
 }
 
 
-__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, 
+__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, const float* kx, const float* ky,
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs)
 {
   unsigned int idy  = get_id1();
@@ -2621,13 +2621,14 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
     const cuComplex apar_ = apar[idxyz];
     const cuComplex apar_ext_ = apar_ext[idxyz];
+    const float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
     for (int m = 1; m < nm; m++) {
        unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
        
        // collision term
        if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
-       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*(apar_-apar_ext_)/(rhos*de);
+       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*apar_/(rhos*de) + nu_ei*de/rhos*kperp2*apar_ext_;
     }
   }
 }
