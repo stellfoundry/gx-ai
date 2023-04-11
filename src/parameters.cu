@@ -530,13 +530,18 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
   beta = toml::find_or <float> (tnml, "beta",    0.0 );
   if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
-  if (!all_kinetic) beta = 0.0; // electromagnetic doesn't make sense with adiabatic species
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode;
   ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
   g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
   fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
   fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
   fbpar    = toml::find_or <float> (tnml, "fbpar",       beta > 0.0? 1.0 : 0.0);
+  // electromagnetic doesn't make sense with adiabatic species
+  if (!all_kinetic) {
+    beta = 0.0; 
+    fapar = 0.0;
+    fbpar = 0.0;
+  }
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   
   wspectra.resize(nw_spectra);
@@ -1536,7 +1541,7 @@ void Parameters::set_jtwist_x0(float *shat_in)
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
       // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) round(2*M_PI*abs(*shat_in)*Zp);
+      jtwist = (int) fmax(1., round(2*M_PI*abs(*shat_in)*Zp));
       if(jtwist == 0) {
         printf("Warning: shat was set so small that it was giving jtwist=0\n");
 	printf("Setting x0=y0 and zero_shat=true\n");
@@ -1573,7 +1578,7 @@ void Parameters::set_jtwist_x0(float *shat_in)
 
   if (zero_shat) {
     jtwist = 2*nx_in;
-    *shat_in = 1.e-6;
+    *shat_in = 1.e-5;
     boundary_option_periodic = true;
     printf("Using no magnetic shear (setting shat = 1e-6) because zero_shat = true. Setting boundary_option='periodic' \n");
   }
