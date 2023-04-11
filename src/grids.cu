@@ -141,12 +141,15 @@ Grids::Grids(Parameters* pars) :
     }
   }
 
-  // set up NCCL communicator that involves only GPUs containing m=0, i.e. grids_->proc(0, iproc_s)
   checkCuda(ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc));
   // set up NCCL communicator that is per-species
   checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s], iproc_m));
+  // set up NCCL communicator that involves only GPUs containing m=0, i.e. grids_->proc(0, iproc_s)
   if(iproc_m == 0) {
-    checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m, iproc_s));
+    if(nprocs_m > 1)
+      checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m, iproc_s));
+    else
+      ncclComm_m0 = ncclComm;
   }
 }
 
