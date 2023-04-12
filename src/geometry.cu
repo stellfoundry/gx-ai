@@ -58,6 +58,10 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       delete vmec;
     }
     MPI_Barrier(MPI_COMM_WORLD);
+    int size = pars->geofilename.size();
+    MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if(grids->iproc != 0) pars->geofilename.resize(size);
+    MPI_Bcast((void*) pars->geofilename.c_str(), size, MPI_CHAR, 0, MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
@@ -577,7 +581,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
 {
 
-  printf("READING FILE GEO\n");
+  printf("READING FILE GEO: %s\n", pars->geofilename.c_str());
   operator_arrays_allocated_=false;
 
   size_t eiksize = sizeof(double)*(grids->Nz+1); 
