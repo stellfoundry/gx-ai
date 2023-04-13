@@ -76,7 +76,7 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
   x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
-  z0       = toml::find_or <float>       (tnml, "z0",          -1.0  );
+  z0       = toml::find_or <float>       (tnml, "z0",           1.0  );
   jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
   Zp       = toml::find_or <int>         (tnml, "zp",           2*nperiod-1    );
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
@@ -930,6 +930,7 @@ void Parameters::store_ncdf(int ncid) {
 
   if (retval = nc_def_var (nc_dom, "y0",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "x0",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_dom, "z0",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "zp",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "jtwist",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "boundary_dum",  NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1168,6 +1169,7 @@ void Parameters::store_ncdf(int ncid) {
   
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
+  if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );
   putint   (nc_dom, "zp",      Zp      );
   putint   (nc_dom, "jtwist",  jtwist  );
   putbool  (nc_dom, "long_wavelength_GK", long_wavelength_GK);
