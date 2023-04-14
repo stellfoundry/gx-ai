@@ -32,6 +32,7 @@ Grids::Grids(Parameters* pars) :
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
 
   Nspecies = pars->nspec_in;
+  Nspecies_glob = Nspecies;
   Nm = pars->nm_in;
   Nm_glob = pars->nm_in;
   is_lo = 0;

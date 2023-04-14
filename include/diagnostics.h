@@ -14,7 +14,12 @@ class Diagnostics {
   virtual ~Diagnostics() {};
   virtual bool loop(MomentsG** G, Fields* fields, double dt, int counter, double time) = 0 ;
   virtual void finish(MomentsG** G, Fields* fields, double time) = 0;  
+  void restart_write(MomentsG** G, double *time);
   //virtual void write_init(MomentsG** G, Fields* f) = 0;
+ protected:
+  Parameters   * pars_         ;
+  Grids        * grids_        ;
+  
 };
 
 class Diagnostics_GK : public Diagnostics {
@@ -43,8 +48,6 @@ private:
   
   cuComplex valphi;
 
-  Parameters   * pars_         ;
-  Grids        * grids_        ;
   Geometry     * geo_          ;  
 
   GradPerp     * grad_perp     ; 
@@ -106,8 +109,6 @@ private:
   
   cuComplex valphi;
 
-  Parameters   * pars_         ;
-  Grids        * grids_        ;
   Geometry     * geo_          ;  
 
   GradPerp     * grad_perp     ; 

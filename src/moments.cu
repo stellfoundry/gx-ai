@@ -6,7 +6,7 @@
 #define GALL <<< dG_all, dB_all >>>
 
 MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) : 
-  grids_(grids), pars_(pars), species(is_glob>=0? &(pars->species_h[is_glob]) : nullptr)
+  grids_(grids), pars_(pars), species(is_glob>=0? &(pars->species_h[is_glob]) : nullptr), is_glob_(is_glob)
 {
   G_lm       = nullptr;  dens_ptr   = nullptr;  upar_ptr   = nullptr;  tpar_ptr   = nullptr;
   tprp_ptr   = nullptr;  qpar_ptr   = nullptr;  qprp_ptr   = nullptr;
@@ -283,6 +283,7 @@ void MomentsG::initialConditions(double* time) {
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
   // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
+    set_zero();
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
@@ -416,16 +417,12 @@ void MomentsG::syncNCCL()
   ncclGroupEnd();
 }
 
-void MomentsG::restart_write(double* time)
+void MomentsG::restart_write(int ncres, int id_G)
 {
   float* G_out;
   cuComplex* G_h;
 
   int retval;
-  int ncres;
-  int moments_out[7];
-  size_t start[7];
-  size_t count[7];
   
   int Nx   = grids_->Nx;
   int Nakx = grids_->Nakx;
@@ -433,45 +430,26 @@ void MomentsG::restart_write(double* time)
   int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
   int Nm   = grids_->Nm;
-  int Nm_glob = grids_->Nm_glob;
   int Nl   = grids_->Nl;
 
-  // handles
-  int id_ri, id_nz, id_Nkx, id_Nky;
-  int id_nh, id_nl, id_ns;
-  int id_G, id_time;
+  size_t start[7];
+  size_t count[7];
+  int ri = 2;
+  count[0] = 1;
+  count[1] = Nm;
+  count[2] = Nl;
+  count[3] = Nz;  
+  count[4] = Nakx;
+  count[5] = Naky;
+  count[6] = ri;
 
-  char strb[512];
-  strcpy(strb, pars_->restart_to_file.c_str());
-
-  //  if(pars_->restart) {
-  // ultimately, appending to an existing file
-  // if appending, are the time values consistent?
-  // inquire/define the variable names
-  //  } else {
-  int ri=2;
-  if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &ncres)) ERR(retval);
-
-  if (retval = nc_def_dim(ncres, "ri",  ri,    &id_ri)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nz",  Nz,    &id_nz)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nkx", Nakx,  &id_Nkx)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nky", Naky,  &id_Nky)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nl",  Nl,    &id_nl)) ERR(retval);
-  if (retval = nc_def_dim(ncres, "Nm",  Nm_glob,    &id_nh)) ERR(retval);
-
-  moments_out[0] = id_nh;  count[0] = Nm;
-  moments_out[1] = id_nl;  count[1] = Nl;
-  moments_out[2] = id_nz;  count[2] = Nz;  
-  moments_out[3] = id_Nkx; count[3] = Nakx;
-  moments_out[4] = id_Nky; count[4] = Naky;
-  moments_out[5] = id_ri;  count[5] = ri;
-
-  start[0] = grids_->m_lo; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
-  if (retval = nc_def_var(ncres, "G",    NC_FLOAT, 6, moments_out, &id_G)) ERR(retval);
-  if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
-  if (retval = nc_enddef(ncres)) ERR(retval);
-
-  if (retval = nc_put_var(ncres, id_time, time)) ERR(retval);
+  start[0] = is_glob_; 
+  start[1] = grids_->m_lo; 
+  start[2] = 0; 
+  start[3] = 0; 
+  start[4] = 0;
+  start[5] = 0;
+  start[6] = 0;
   
   unsigned int itot, jtot;
   jtot = Nx   * Nyc  * Nz * Nm * Nl;
@@ -513,8 +491,6 @@ void MomentsG::restart_write(double* time)
       
   free(G_out);
   free(G_h);
-
-  if (retval = nc_close(ncres)) ERR(retval);
 }
 
 void MomentsG::restart_read(double* time)
@@ -613,13 +589,20 @@ void MomentsG::restart_read(double* time)
   for (unsigned int index=0; index<2*iitot; index++) {G_in[index] = 0.;}
   CP_TO_CPU(G_hold, G(), sizeof(cuComplex)*itot);
   
-  start[0] = grids_->m_lo; start[1] = 0; start[2] = 0; start[3] = 0; start[4] = 0; start[5] = 0; start[6] = 0;
-  count[0] = Nm;
-  count[1] = Nl;
-  count[2] = Nz; 
-  count[3] = Nakx;
-  count[4] = Naky;
-  count[5] = 2;
+  start[0] = is_glob_; 
+  start[1] = grids_->m_lo; 
+  start[2] = 0; 
+  start[3] = 0; 
+  start[4] = 0; 
+  start[5] = 0; 
+  start[6] = 0; 
+  count[0] = 1;
+  count[1] = Nm;
+  count[2] = Nl;
+  count[3] = Nz; 
+  count[4] = Nakx;
+  count[5] = Naky;
+  count[6] = 2;
   
   if (retval = nc_get_vara(ncres, id_G, start, count, G_in)) ERR(retval);
   if (retval = nc_get_var(ncres, id_time, time)) ERR(retval);

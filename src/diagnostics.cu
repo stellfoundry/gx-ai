@@ -9,9 +9,11 @@
 #define loop_y <<< dgp, dbp >>> 
 
 Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo),
+  geo_(geo),
   fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
 {
+  pars_ = pars;
+  grids_ = grids;
   printf(ANSI_COLOR_BLUE);
   
   int nL  = grids_->Nl;
@@ -540,10 +542,11 @@ void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
 
 
 Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids),
   fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
 {
   printf(ANSI_COLOR_BLUE);
+  pars_ = pars;
+  grids_ = grids;
   
   int nL  = grids_->Nl;
   int nM  = grids_->Nm;
@@ -770,5 +773,62 @@ void Diagnostics_KREHM::print_growth_rates_to_screen(cuComplex* w)
     }
     if (Nx>1) printf("\n");
   }
+}
+
+void Diagnostics::restart_write(MomentsG** G, double *time)
+{
+  char strb[512];
+  int retval;
+  int ncres;
+  strcpy(strb, pars_->restart_to_file.c_str());
+  if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &ncres)) ERR(retval);
+  
+  int moments_out[7];
+  
+  int Nspecies_glob = grids_->Nspecies_glob;
+  int Nx   = grids_->Nx;
+  int Nakx = grids_->Nakx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+  int Nz   = grids_->Nz;
+  int Nm   = grids_->Nm;
+  int Nm_glob = grids_->Nm_glob;
+  int Nl   = grids_->Nl;
+
+  // handles
+  int id_ri, id_nz, id_Nkx, id_Nky;
+  int id_nh, id_nl, id_sp;
+  int id_G, id_time;
+  int ri = 2;
+
+  if (retval = nc_def_dim(ncres, "Nspecies",  Nspecies_glob,    &id_sp)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "ri",  ri,    &id_ri)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nz",  Nz,    &id_nz)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nkx", Nakx,  &id_Nkx)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nky", Naky,  &id_Nky)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nl",  Nl,    &id_nl)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nm",  Nm_glob,    &id_nh)) ERR(retval);
+
+  moments_out[0] = id_sp;
+  moments_out[1] = id_nh; 
+  moments_out[2] = id_nl; 
+  moments_out[3] = id_nz;  
+  moments_out[4] = id_Nkx;
+  moments_out[5] = id_Nky;
+  moments_out[6] = id_ri; 
+
+  if (retval = nc_def_var(ncres, "G",    NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
+  if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
+  if (retval = nc_enddef(ncres)) ERR(retval);
+
+  // write time
+  if (retval = nc_put_var(ncres, id_time, time)) ERR(retval);
+
+  // write moments
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is]->restart_write(ncres, id_G);
+  }
+
+  if (retval = nc_close(ncres)) ERR(retval);
 }
 

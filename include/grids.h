@@ -15,6 +15,7 @@ class Grids {
   int Ny;
   int Nz;
   int Nspecies; 
+  int Nspecies_glob;
   int Nm;
   int Nm_glob;
   int Nl;
