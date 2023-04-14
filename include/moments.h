@@ -30,7 +30,7 @@ class MomentsG {
   void apply_mask(void);
   void initVP(double* time);
   void initialConditions(double* time=nullptr);
-  void restart_write(double* time);
+  void restart_write(int nc, int id);
   void restart_read(double* time);
   
   void getH(cuComplex* J0phi);
@@ -79,4 +79,5 @@ class MomentsG {
   cuComplex  * G_lm   ;
   Grids      * grids_ ;
   Parameters * pars_  ;
+  int is_glob_;
 };
