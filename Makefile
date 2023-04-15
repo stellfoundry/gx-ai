@@ -111,7 +111,7 @@ all: gx
 ########################
 
 clean: 
-	rm -rf obj/*.o obj/geo/*.o *~ libgx.a \#*
+	rm -rf obj/*.o obj/geo/*.o *~ libgx.a gx \#*
 
 distclean: clean clean_tests
 	rm -rf $(TARGET)
