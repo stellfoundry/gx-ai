@@ -24,8 +24,7 @@ CUTENSOR_LIB = -lcutensor -lcudart
 CUDA_INC = ${CUTENSOR_INC}
 CUDA_LIB = -L/usr/local/cuda-12/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver ${CUTENSOR_LIB} -lnccl
 
-# EVIL HACK
-CC = g++
+CXX = g++
 
 C_LIB = -ldl -lm -lpthread
 

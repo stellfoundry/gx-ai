@@ -35,7 +35,7 @@ C_LIB = -ldl -lm  -lpthread
 GS2_PATH = /home/nmandell/gs2-amd
 
 CUDAARCH=80
-CC=g++
+CXX = g++
 
 NVCC      = nvcc
 CFLAGS = -fPIC

@@ -29,7 +29,8 @@ GSL_INC =
 GSL_LIB = -lgsl -lgslcblas -lm
 
 CUDAARCH=70
-CC=gcc
+
+CXX = g++
 
 NVCC      = nvcc
 NVCCFLAGS = -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math 
