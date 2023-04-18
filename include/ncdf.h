@@ -45,6 +45,13 @@ class NetCDF_ids {
   void write_Akx   (float * P2, bool endrun = false);
   void write_Akxky (float * P2, bool endrun = false);
 
+  void write_Phi2t    (float * P2, bool endrun = false);
+  void write_Phi2z    (float * P2, bool endrun = false);
+  void write_Phi2kz   (float * P2, bool endrun = false);
+  void write_Phi2ky   (float * P2, bool endrun = false);
+  void write_Phi2kx   (float * P2, bool endrun = false);
+  void write_Phi2kxky (float * P2, bool endrun = false);
+
   void write_P     (float * P,   bool endrun = false);
   void write_Q     (float * Q,   bool endrun = false);
   void write_Qz   (float * Q,   bool endrun = false);
@@ -71,6 +78,7 @@ class NetCDF_ids {
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
   nca *Qs, *Qky, *Qkx, *Qkxky, *Qz, *Qkz;
+  nca *Phi2t, *Phi2ky, *Phi2kx, *Phi2kxky, *Phi2z, *Phi2kz;
   nca *fields_phi, *fields_apar, *fields_bpar;
   nca *g_y;
   nca *r_y; 
@@ -139,6 +147,7 @@ class NetCDF_ids {
   Red        * red     ;
   Red        * pot     ;
   Red        * ph2     ;
+  Red        * a2     ;
   Red        * all_red ;
   Red        * red_qflux ;
   

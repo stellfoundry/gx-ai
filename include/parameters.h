@@ -64,6 +64,14 @@ enum QSpectra {QSPECTRA_species,
 	       QSPECTRA_kxky,
 	       QSPECTRA_z,	       
 	       QSPECTRA_kz};
+
+enum Phi2Spectra {PHI2SPECTRA_t,
+	       PHI2SPECTRA_kx,
+	       PHI2SPECTRA_ky,
+	       PHI2SPECTRA_kperp,
+	       PHI2SPECTRA_kxky,
+	       PHI2SPECTRA_z,	       
+	       PHI2SPECTRA_kz};
 	       
 #define RH_equilibrium 3
 #define PHIEXT 1
@@ -83,6 +91,7 @@ class Parameters {
   const int np_spectra = 7;  // should match # of elements in PSpectra
   const int na_spectra = 7;  // should match # of elements in ASpectra
   const int nq_spectra = 7;  // should match # of elements in PSpectra
+  const int nphi2_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
   void store_ncdf(int ncid);
 
@@ -202,10 +211,12 @@ class Parameters {
   int pspecdim[1]; // dimension of control structure for spectral plots (1-Gamma_0) Phi**2
   int wspecdim[1]; // dimension of control structure for spectral plots G**2
   int qspecdim[1]; // dimension of control structure for spectral plots Q
+  int phi2specdim[1]; // dimension of control structure for spectral plots Q
   size_t aspectra_start[1], aspectra_count[1]; 
   size_t pspectra_start[1], pspectra_count[1]; 
   size_t wspectra_start[1], wspectra_count[1]; 
   size_t qspectra_start[1], qspectra_count[1]; 
+  size_t phi2spectra_start[1], phi2spectra_count[1]; 
   
   std::string Btype;
   std::string code_info;
@@ -230,6 +241,7 @@ class Parameters {
   std::vector<int> pspectra;
   std::vector<int> aspectra;
   std::vector<int> qspectra;
+  std::vector<int> phi2spectra;
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;
@@ -247,6 +259,7 @@ class Parameters {
   void  put_pspectra (int ncid, std::vector<int> s);
   void  put_aspectra (int ncid, std::vector<int> s);
   void  put_qspectra (int ncid, std::vector<int> s);
+  void  put_phi2spectra (int ncid, std::vector<int> s);
   bool initialized;
 };
 

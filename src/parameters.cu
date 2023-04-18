@@ -549,11 +549,13 @@ void Parameters::get_nml_vars(char* filename)
   pspectra.resize(np_spectra);
   aspectra.resize(na_spectra);
   qspectra.resize(nq_spectra);
+  phi2spectra.resize(nphi2_spectra);
 
   wspectra.assign(nw_spectra, 0);
   pspectra.assign(np_spectra, 0);
   aspectra.assign(na_spectra, 0);
   qspectra.assign(nq_spectra, 0);
+  phi2spectra.assign(nphi2_spectra, 0);
 
   tnml = nml;
   if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
@@ -591,6 +593,17 @@ void Parameters::get_nml_vars(char* filename)
   qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
   qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
 
+  tnml = nml;
+  if (nml.contains("Phi2spectra")) tnml = toml::find (nml, "Phi2spectra");  
+
+  phi2spectra [PHI2SPECTRA_t]       = (toml::find_or <bool> (tnml, "time",             true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             true)) == true ? 1 : 0;
+
   // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
   if (!all_kinetic) {
     aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
@@ -611,6 +624,7 @@ void Parameters::get_nml_vars(char* filename)
   pspectra[ PSPECTRA_kperp] = 0;
   aspectra[ ASPECTRA_kperp] = 0;
   qspectra[ QSPECTRA_kperp] = 0;
+  phi2spectra[ PHI2SPECTRA_kperp] = 0;
   
   // If Wtot is requested, turn Ws, Ps, Phi2 on:
   if (write_free_energy) {
@@ -628,6 +642,7 @@ void Parameters::get_nml_vars(char* filename)
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
   for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
+  for (int k=0; k<phi2spectra.size(); k++) ksize = max(ksize, phi2spectra[k]);
 
   tnml = nml;
   if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
@@ -794,7 +809,7 @@ void Parameters::get_nml_vars(char* filename)
 void Parameters::store_ncdf(int ncid) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-  int retval, idim, sdim, wdim, pdim, adim, qdim, nc_out, nc_inputs, nc_diss;
+  int retval, idim, sdim, wdim, pdim, adim, qdim, phi2dim, nc_out, nc_inputs, nc_diss;
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
@@ -863,6 +878,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
+  if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -916,6 +932,9 @@ void Parameters::store_ncdf(int ncid) {
 
   specs[0] = qdim;
   if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  specs[0] = phi2dim;
+  if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1450,6 +1469,16 @@ void Parameters::put_qspectra (int ncid, std::vector<int> s) {
 
   if (retval = nc_inq_varid(ncid, "qspectra", &idum))     ERR(retval);
   if (retval = nc_put_vara (ncid, idum, qspectra_start, qspectra_count, s.data())) ERR(retval);
+}
+
+void Parameters::put_phi2spectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  phi2spectra_start[0] = 0;
+  phi2spectra_count[0] = nphi2_spectra;
+
+  if (retval = nc_inq_varid(ncid, "phi2spectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, phi2spectra_start, phi2spectra_count, s.data())) ERR(retval);
 }
 
 void Parameters::putspec (int  ncid, int nspec, specie* spec) {

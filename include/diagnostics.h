@@ -58,6 +58,7 @@ private:
   
   float        * G2s            ;
   float        * P2s           ;
+  float        * A2            ;
   float        * Phi2          ;
   float        * val           ;
   cuComplex    * omg_d         ;
