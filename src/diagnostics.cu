@@ -264,7 +264,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
-      id -> write_P(P2s); 
+      id -> write_Gamky(P2());
+      id -> write_Gamkx(P2());
+      id -> write_Gamkxky(P2());
+      id -> write_Gamz(P2());
+      id -> write_Gam(P2()); 
     }
     if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
 

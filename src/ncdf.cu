@@ -1949,6 +1949,82 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     ps = new nca(0); 
   }
 
+  if (pars_->gamspectra[GamSPECTRA_ky] > 0) {
+    Gamky = new nca(nY*nS, nYk*nS);
+    Gamky -> write_v_time = true;
+    
+    Gamky -> time_dims[0] = time_dim;
+    Gamky -> time_dims[1] = s_dim;
+    Gamky -> time_dims[2] = ky_dim;
+
+    Gamky -> file = nc_sp;     
+    if (retval = nc_def_var(nc_sp, "Gamkyst", NC_FLOAT, 3, Gamky->time_dims, &Gamky->time))  ERR(retval);
+
+    Gamky -> time_count[1] = grids_->Nspecies;
+    Gamky -> time_start[1] = grids_->is_lo;
+    Gamky -> time_count[2] = grids_->Naky;
+    
+  } else {
+    Gamky = new nca(0);
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_kx] > 0) {
+    Gamkx = new nca(nX*nS, nXk*nS); 
+    Gamkx -> write_v_time = true;
+
+    Gamkx -> time_dims[0] = time_dim;
+    Gamkx -> time_dims[1] = s_dim;
+    Gamkx -> time_dims[2] = kx_dim;
+    
+    Gamkx -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamkxst", NC_FLOAT, 3, Gamkx -> time_dims, &Gamkx -> time))  ERR(retval);
+
+    Gamkx -> time_count[1] = grids_->Nspecies;
+    Gamkx -> time_start[1] = grids_->is_lo;
+    Gamkx -> time_count[2] = grids_->Nakx;      
+  } else {
+    Gamkx = new nca(0);
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_z] > 0) {
+    Gamz = new nca(nZ*nS); 
+    Gamz -> write_v_time = true;
+
+    Gamz -> time_dims[0] = time_dim;
+    Gamz -> time_dims[1] = s_dim;
+    Gamz -> time_dims[2] = nz;
+    
+    Gamz -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamzst", NC_FLOAT, 3, Gamz -> time_dims, &Gamz -> time))  ERR(retval);
+    
+    Gamz -> time_count[1] = grids_->Nspecies;
+    Gamz -> time_start[1] = grids_->is_lo;
+    Gamz -> time_count[2] = grids_->Nz;
+  } else {
+    Gamz = new nca(0); 
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_kxky] > 0) {
+    Gamkxky = new nca(nX * nY * nS, nXk * nYk * nS); 
+    
+    Gamkxky -> write_v_time = true;
+
+    Gamkxky -> time_dims[0] = time_dim;
+    Gamkxky -> time_dims[1] = s_dim;
+    Gamkxky -> time_dims[2] = ky_dim;
+    Gamkxky -> time_dims[3] = kx_dim;
+    
+    Gamkxky -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamkxkyst", NC_FLOAT, 4, Gamkxky -> time_dims, &Gamkxky -> time))  ERR(retval);
+    
+    Gamkxky -> time_count[1] = grids_->Nspecies;
+    Gamkxky -> time_start[1] = grids_->is_lo;
+    Gamkxky -> time_count[2] = grids_->Naky;
+    Gamkxky -> time_count[3] = grids_->Nakx;
+  } else {
+    Gamkxky = new nca(0); 
+  }
+
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
   if (retval = nc_enddef(file)) ERR(retval);
   
@@ -2816,17 +2892,17 @@ void NetCDF_ids::write_Qkxky(float* Q, bool endrun)
   }
 }
 
-void NetCDF_ids::write_P (float* P, bool endrun)
+void NetCDF_ids::write_Gam (float* Gam, bool endrun)
 {
-  if (ps -> write_v_time) { //&& grids_->m_lo==0) {
-    all_red->Sum(P, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
+  if (ps -> write_v_time) {// && grids_->m_lo==0) {
+    all_red->Sum(Gam, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
 
     // this is sort of a hack to prevent procs with higher hermite modes
     // from overwriting flux in netcdf file with nonsense.
     // the issue is that all procs need to participate in the collective write,
     // but these procs have 0 for the flux. so just let these procs (over)write 0 
     // to beginning of time domain.
-    if(grids_->m_lo > 0) ps->time_start[0] = 0; 
+    if(grids_->m_lo > 0) ps->time_start[0] = 0;
 
     write_nc(ps, endrun);       
 
@@ -2837,6 +2913,124 @@ void NetCDF_ids::write_P (float* P, bool endrun)
         printf ("Gamma_%s = % 7.4e  ", spec_string, ps->cpu[is]);
       }
     }
+  }
+}
+
+void NetCDF_ids::write_Gamky(float* Gam, bool endrun)
+{
+  if (Gamky -> write_v_time || (Gamky -> write && endrun)) {
+    int i = grids_->Nyc*grids_->Nspecies;
+
+    red_qflux->Sum(Gam, Gamky->data, GamSPECTRA_ky);               CP_TO_CPU(Gamky->tmp, Gamky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+	Gamky->cpu[ik + is*grids_->Naky] = Gamky->tmp[ik + is*grids_->Nyc];
+      }
+    }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamky->time_start[0] = 0;
+    write_nc(Gamky, endrun);      
+  }
+}
+
+void NetCDF_ids::write_Gamkx(float* Gam, bool endrun)
+{
+  if (Gamkx -> write_v_time || (Gamkx -> write && endrun)) {
+    int i = grids_->Nx*grids_->Nspecies;
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx;
+    
+    red_qflux->Sum(Gam, Gamkx->data, GamSPECTRA_kx);               CP_TO_CPU(Gamkx->tmp, Gamkx->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it  = 0;
+      int itp = it + NK;
+      Gamkx->cpu[itp + is*grids_->Nakx] = Gamkx->tmp[it  + is*grids_->Nx];
+      
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	Gamkx->cpu[itp + is*grids_->Nakx] = Gamkx->tmp[it  + is*grids_->Nx];
+	Gamkx->cpu[itn + is*grids_->Nakx] = Gamkx->tmp[itm + is*grids_->Nx];	
+      }
+    }  
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamkx->time_start[0] = 0;
+    write_nc(Gamkx, endrun);     
+  }
+}
+
+void NetCDF_ids::write_Gamz(float* Gam, bool endrun)
+{
+  if (Gamz -> write_v_time || (Gamz -> write && endrun)) {
+    int i = grids_->Nz*grids_->Nspecies;
+    
+    red_qflux->Sum(Gam, Gamz->data, GamSPECTRA_z);         CP_TO_CPU(Gamz->cpu, Gamz->data, sizeof(float)*i);
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamz->time_start[0] = 0;
+    write_nc(Gamz, endrun);        
+  }
+}
+
+void NetCDF_ids::write_Gamkxky(float* Gam, bool endrun)
+{
+  if (Gamkxky -> write_v_time || (Gamkxky -> write && endrun)) {
+
+    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;
+
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    
+    red_qflux->Sum(Gam, Gamkxky->data, GamSPECTRA_kxky);
+    CP_TO_CPU(Gamkxky->tmp, Gamkxky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it = 0;
+      int itp = it + NK;
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+	int Gamp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	Gamkxky->cpu[Gamp] = Gamkxky->tmp[Rp];
+      }	
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	
+	for (int ik = 0; ik < grids_->Naky; ik++) {
+
+	  int Gamp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  int Gamn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  Gamkxky->cpu[Gamp] = Gamkxky->tmp[Rp];
+	  Gamkxky->cpu[Gamn] = Gamkxky->tmp[Rm];
+	}
+      }
+    }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamkxky->time_start[0] = 0;
+    write_nc(Gamkxky, endrun);     
   }
 }
 

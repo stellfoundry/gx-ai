@@ -103,3 +103,16 @@ kx               = false
 ky               = true         # Q(ky) (summed over kx, z)
 kxky             = false
 z                = true         # Q(z) (summed over kx, ky)
+
+[Gamspectra]                    # spectra of Gamma (particle flux)
+kx               = false
+ky               = true         # Gamma(ky) (summed over kx, z)
+kxky             = false
+z                = true         # Gamma(z) (summed over kx, ky)
+
+[Phi2spectra]                   # spectra of |Phi|**2
+time               = true
+kx               = true
+ky               = true         # |Phi|**2(ky) (summed over kx, z)
+kxky             = true
+z                = true         # |Phi|**2(z) (summed over kx, ky)

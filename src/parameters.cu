@@ -549,12 +549,14 @@ void Parameters::get_nml_vars(char* filename)
   pspectra.resize(np_spectra);
   aspectra.resize(na_spectra);
   qspectra.resize(nq_spectra);
+  gamspectra.resize(ngam_spectra);
   phi2spectra.resize(nphi2_spectra);
 
   wspectra.assign(nw_spectra, 0);
   pspectra.assign(np_spectra, 0);
   aspectra.assign(na_spectra, 0);
   qspectra.assign(nq_spectra, 0);
+  gamspectra.assign(ngam_spectra, 0);
   phi2spectra.assign(nphi2_spectra, 0);
 
   tnml = nml;
@@ -594,6 +596,17 @@ void Parameters::get_nml_vars(char* filename)
   qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
 
   tnml = nml;
+  if (nml.contains("Gamspectra")) tnml = toml::find (nml, "Gamspectra");  
+
+  gamspectra [GamSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+
+  tnml = nml;
   if (nml.contains("Phi2spectra")) tnml = toml::find (nml, "Phi2spectra");  
 
   phi2spectra [PHI2SPECTRA_t]       = (toml::find_or <bool> (tnml, "time",             true)) == true ? 1 : 0;
@@ -624,6 +637,7 @@ void Parameters::get_nml_vars(char* filename)
   pspectra[ PSPECTRA_kperp] = 0;
   aspectra[ ASPECTRA_kperp] = 0;
   qspectra[ QSPECTRA_kperp] = 0;
+  gamspectra[ GamSPECTRA_kperp] = 0;
   phi2spectra[ PHI2SPECTRA_kperp] = 0;
   
   // If Wtot is requested, turn Ws, Ps, Phi2 on:
@@ -642,6 +656,7 @@ void Parameters::get_nml_vars(char* filename)
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
   for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
+  for (int k=0; k<gamspectra.size(); k++) ksize = max(ksize, gamspectra[k]);
   for (int k=0; k<phi2spectra.size(); k++) ksize = max(ksize, phi2spectra[k]);
 
   tnml = nml;
@@ -809,7 +824,7 @@ void Parameters::get_nml_vars(char* filename)
 void Parameters::store_ncdf(int ncid) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-  int retval, idim, sdim, wdim, pdim, adim, qdim, phi2dim, nc_out, nc_inputs, nc_diss;
+  int retval, idim, sdim, wdim, pdim, adim, qdim, gamdim, phi2dim, nc_out, nc_inputs, nc_diss;
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
@@ -878,6 +893,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
+  if (retval = nc_def_dim (nc_sp, "ng",     nq_spectra,    &gamdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
@@ -932,6 +948,9 @@ void Parameters::store_ncdf(int ncid) {
 
   specs[0] = qdim;
   if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  specs[0] = gamdim;
+  if (retval = nc_def_var (nc_sp, "gamspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = phi2dim;
   if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1469,6 +1488,16 @@ void Parameters::put_qspectra (int ncid, std::vector<int> s) {
 
   if (retval = nc_inq_varid(ncid, "qspectra", &idum))     ERR(retval);
   if (retval = nc_put_vara (ncid, idum, qspectra_start, qspectra_count, s.data())) ERR(retval);
+}
+
+void Parameters::put_gamspectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  gamspectra_start[0] = 0;
+  gamspectra_count[0] = ngam_spectra;
+
+  if (retval = nc_inq_varid(ncid, "gamspectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, gamspectra_start, gamspectra_count, s.data())) ERR(retval);
 }
 
 void Parameters::put_phi2spectra (int ncid, std::vector<int> s) {
