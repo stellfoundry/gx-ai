@@ -1399,7 +1399,7 @@ void Parameters::init_species(specie* species)
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
-    tzmax = max(tzmax, species[s].tz);
+    tzmax = max(tzmax, abs(species[s].tz));
     etamax = max(etamax, species[s].tprim/species[s].fprim);
   }
 }
