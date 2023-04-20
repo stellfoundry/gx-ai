@@ -893,8 +893,8 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "ng",     nq_spectra,    &gamdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
+  //if (retval = nc_def_dim (nc_sp, "ng",     ngam_spectra,    &gamdim)) ERR(retval);
+  //if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -949,11 +949,11 @@ void Parameters::store_ncdf(int ncid) {
   specs[0] = qdim;
   if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
-  specs[0] = gamdim;
-  if (retval = nc_def_var (nc_sp, "gamspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+  //specs[0] = gamdim;
+  //if (retval = nc_def_var (nc_sp, "gamspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
-  specs[0] = phi2dim;
-  if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+  //specs[0] = phi2dim;
+  //if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1361,6 +1361,9 @@ void Parameters::store_ncdf(int ncid) {
   put_wspectra (nc_sp, wspectra); 
   put_pspectra (nc_sp, pspectra); 
   put_aspectra (nc_sp, aspectra); 
+  put_qspectra (nc_sp, qspectra); 
+  //put_phi2spectra (nc_sp, phi2spectra); 
+  //put_gamspectra (nc_sp, gamspectra); 
   putspec (nc_spec, nspec_in, species_h);
 }
 
