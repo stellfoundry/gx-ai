@@ -221,7 +221,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     r_time -> file = r_file;
     r_time -> time_dims[0] = rtime_dim;
     if (retval = nc_def_var(r_file, "time", NC_DOUBLE, 1, r_time -> time_dims, &r_time -> time))   ERR(retval);
-  }
+  } else r_time = nullptr;
   
   if (pars_->write_xymom) {
     z_time = new nca(0); 
@@ -230,7 +230,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     z_time -> file = z_file;
     z_time -> time_dims[0] = ztime_dim;
     if (retval = nc_def_var(z_file, "time", NC_DOUBLE, 1, z_time -> time_dims, &z_time -> time))   ERR(retval);
-  }
+  } else z_time = nullptr;
   
   time = new nca(0); 
   time -> write_v_time = true;
@@ -2194,6 +2194,89 @@ NetCDF_ids::~NetCDF_ids() {
   if (ph2)          delete ph2;
   if (a2)          delete a2;
   if (all_red)      delete all_red;
+  if (grad_phi) delete grad_phi;
+  
+  if(r_time) delete r_time;
+  if(z_time) delete z_time;
+  delete time;
+  delete den;
+  delete den0;
+  delete wphi;
+  delete wphi0;
+  delete denk;
+  delete wphik;
+  delete fields_phi;
+  delete fields_apar;
+  delete fields_bpar;
+  delete omg;
+  delete rh;
+  delete Pzt;
+  delete pZt;
+  delete pzT;
+  delete Ps;
+  delete Pkx;
+  delete Pky;
+  delete Pkz;
+  delete Pz;
+  delete xyPhi;
+  delete Pkxky;
+  delete Ws;
+  delete Wkx;
+  delete Wky;
+  delete Wkz;
+  delete Wz;
+  delete Wkxky;
+  delete Phi2t;
+  delete Phi2kx;
+  delete Phi2ky;
+  delete Phi2kxky;
+  delete Phi2z;
+  delete Phi2kz;
+  delete As;
+  delete Akx;
+  delete Aky;
+  delete Akz;
+  delete Az;
+  delete Akxky;
+  delete Wlm;
+  delete Wl;
+  delete Wm;
+  delete vEy;
+  delete avg_zvE;  
+  delete avg_zkxvEy;  
+  delete avg_zkden;
+  delete avg_zkUpar;
+  delete avg_zkTpar;
+  delete avg_zkqpar;
+  delete avg_zkTperp;
+  delete kxvEy;
+  delete kden;
+  delete kUpar;
+  delete kTpar;
+  delete kTperp;
+  delete kqpar;
+  delete xyvEy;
+  delete xyvEx;
+  delete xykxvEy;
+  delete xyden;
+  delete xyUpar;
+  delete xyTpar;
+  delete xyTperp;
+  delete xyqpar;
+  delete r_y;
+  delete g_y;
+  delete Wtot;
+  delete qs;
+  delete Qky;
+  delete Qkx;
+  delete Qkxky;
+  delete Qz;
+  delete ps;
+  delete Gamky;
+  delete Gamkx;
+  delete Gamkxky;
+  delete Gamz;
+  
 
   // close netcdf file
   close_nc_file();  fflush(NULL);
