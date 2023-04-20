@@ -155,6 +155,7 @@ class NetCDF_ids {
   Red        * a2     ;
   Red        * all_red ;
   Red        * red_qflux ;
+  Red        * red_pflux ;
   
   float primary[1], secondary[1], tertiary[1];
   cuComplex * t_bar     ;

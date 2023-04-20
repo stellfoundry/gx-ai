@@ -19,6 +19,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     red = new          All_Reduce(grids_, pars_->wspectra); CUDA_DEBUG("Reductions: %s \n"); // G**2
     pot = new Grid_Species_Reduce(grids_, pars_->pspectra); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2 keeping track of species
     red_qflux = new Grid_Species_Reduce(grids_, pars_->qspectra); CUDA_DEBUG("Reductions: %s \n"); // heat flux Q for each species
+    red_pflux = new Grid_Species_Reduce(grids_, pars_->gamspectra); CUDA_DEBUG("Reductions: %s \n"); // particle flux Gamma for each species
     a2 = new         Grid_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2 (adiabatic)
     ph2 = new         Grid_Reduce(grids_, pars_->phi2spectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
   }
@@ -3004,7 +3005,7 @@ void NetCDF_ids::write_Gamky(float* Gam, bool endrun)
   if (Gamky -> write_v_time || (Gamky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    red_qflux->Sum(Gam, Gamky->data, GamSPECTRA_ky);               CP_TO_CPU(Gamky->tmp, Gamky->data, sizeof(float)*i);
+    red_pflux->Sum(Gam, Gamky->data, GamSPECTRA_ky);               CP_TO_CPU(Gamky->tmp, Gamky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
@@ -3028,7 +3029,7 @@ void NetCDF_ids::write_Gamkx(float* Gam, bool endrun)
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx;
     
-    red_qflux->Sum(Gam, Gamkx->data, GamSPECTRA_kx);               CP_TO_CPU(Gamkx->tmp, Gamkx->data, sizeof(float)*i);
+    red_pflux->Sum(Gam, Gamkx->data, GamSPECTRA_kx);               CP_TO_CPU(Gamkx->tmp, Gamkx->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
       int it  = 0;
@@ -3058,7 +3059,7 @@ void NetCDF_ids::write_Gamz(float* Gam, bool endrun)
   if (Gamz -> write_v_time || (Gamz -> write && endrun)) {
     int i = grids_->Nz*grids_->Nspecies;
     
-    red_qflux->Sum(Gam, Gamz->data, GamSPECTRA_z);         CP_TO_CPU(Gamz->cpu, Gamz->data, sizeof(float)*i);
+    red_pflux->Sum(Gam, Gamz->data, GamSPECTRA_z);         CP_TO_CPU(Gamz->cpu, Gamz->data, sizeof(float)*i);
     // this is sort of a hack to prevent procs with higher hermite modes
     // from overwriting flux in netcdf file with nonsense.
     // the issue is that all procs need to participate in the collective write,
@@ -3078,7 +3079,7 @@ void NetCDF_ids::write_Gamkxky(float* Gam, bool endrun)
     int NK = grids_->Nakx/2;
     int NX = grids_->Nx; 
     
-    red_qflux->Sum(Gam, Gamkxky->data, GamSPECTRA_kxky);
+    red_pflux->Sum(Gam, Gamkxky->data, GamSPECTRA_kxky);
     CP_TO_CPU(Gamkxky->tmp, Gamkxky->data, sizeof(float)*i);
     
     for (int is = 0; is < grids_->Nspecies; is++) {
