@@ -87,7 +87,7 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
-  nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
+  nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
   scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
   cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
@@ -1539,10 +1539,10 @@ void Parameters::set_jtwist_x0(float *shat_in)
     // (indicated by x0 = -1) then set it to y0 by default
     if (x0 == -1) {
       x0 = y0;
-      if (geo_option=="slab") {
-	printf("Parallel box size is 2 * pi * z0 = %d \n",2*M_PI*z0);
-	printf("And regardless of other messages, the magnetic shear is zero");      
-      }
+    }
+    if (geo_option=="slab") {
+      printf("Parallel box size is 2 * pi * z0 = %f \n",2*M_PI*z0);
+      printf("And regardless of other messages, the magnetic shear is zero");      
     }
   } else {
     // if both jtwist and x0 were not set in input file

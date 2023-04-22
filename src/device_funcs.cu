@@ -883,9 +883,10 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 	logr.x = (float) log(cuCabsf(ratio));
 	logr.y = (float) atan2(ratio.y,ratio.x);
 	omega[idxy] = logr*i_dt;
+	//	printf("omega = (%f, %f) \t idxy = %d \t idx = %d idy = %d \n",omega[idxy].x, omega[idxy].y, idxy, idx, idy);
       } else {
-	omega[idxy].x = 1./0.;
-	omega[idxy].y = 1./0.;
+	omega[idxy].x = 0.;
+	omega[idxy].y = 0.;
       }
     }
   }
@@ -2219,7 +2220,8 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* 
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar, const cuComplex* __restrict__ bpar,
 			   const cuComplex* __restrict__ upar_bar, const cuComplex* __restrict__ uperp_bar, const cuComplex* __restrict__ t_bar,
-			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d, const float* __restrict__ bmag, const float* __restrict__ bgrad,
+			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d,
+			   const float* __restrict__ bmag, const float* __restrict__ bgrad,
 			   const float* __restrict__ ky, const specie sp, const specie sp_i, cuComplex* __restrict__ rhs, bool hegna, bool ei_colls)  // bb6126 - hegna test
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
