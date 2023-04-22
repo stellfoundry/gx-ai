@@ -210,19 +210,20 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 {
   int retval;
   bool stop = false;
-  int nw;
+  int nw = pars_->nwrite;
 
-  if(id -> omg -> write_v_time && counter >= 0) {                    // complex frequencies
+  if (counter == 0) fields_old->copyPhiFrom(fields);
+  
+  if(id -> omg -> write_v_time && (counter == 0 || counter%nw==nw-1)) {  // complex frequencies
     int nt = min(512, grids_->NxNyc) ;
     growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
     fields_old->copyPhiFrom(fields);
   }
 
-  nw = pars_->nwrite;
-
   //if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
     
-  if(counter%nw == 1 || time > pars_->t_max) {
+  //  if(counter%nw == 1 || time > pars_->t_max) {
+  if(counter%nw == 0 || time > pars_->t_max) {
 
     if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
       id -> write_nc(id -> time, time);
