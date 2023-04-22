@@ -782,20 +782,31 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // Needs a test for zero
-  
   if (idy>0 && unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz]) 		       
-			+ pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+
+    if (shat == 0.0) {
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * gds21[idz]) 
+			+ pow( kxs[idy+nyc*idx], 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
     
-    cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
-    gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
-    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+
+    } else {
+      float shatInv = 1./shat; 
+    
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz])
+			+ pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+      
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    }
   }
 }
 
-// note: kperp2 = kperp**2 / B**2
+// note: kperp2 = kperp**2 / B**2   (because it is kperp**2 rho**2)
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
@@ -804,15 +815,22 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // Needs a test for zero
-
   if (unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    // note: kperp2 = kperp**2 / B**2
-    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
-                      + 2. * kx[idx] * shatInv * gds21[idz]) 
+
+    if (shat == 0.0) {
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+		      + 2. * kx[idx]      * gds21[idz] ) 
+		      + pow( kx[idx], 2)  * gds22[idz] )
+	              * pow( bmagInv[idz], 2);
+    } else {	      
+      float shatInv = 1./shat; 
+
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+                      + 2. * kx[idx] * shatInv * gds21[idz] ) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
                       * pow( bmagInv[idz], 2);
+    }
   }
 }
 
@@ -823,16 +841,23 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // BD this needs an exception for shat = 0.
-
   // cv/gb is the y-directed part of the curvature / grad-B drift
   // cv0/gb0 is the part proportional to the theta_0, aka the x-directed component
 
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
-    gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
-    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+
+    if (shat == 0.0) {
+
+      cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    } else {
+      float shatInv = 1./shat; // BD this needs an exception for shat = 0.
+      cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    }
   }
 }
 
