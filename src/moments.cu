@@ -240,25 +240,25 @@ void MomentsG::initialConditions(double* time) {
 		init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 		init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 	      }
-	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
+	      //	      printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	    }
-	  }
-	  if (pars_->random_init) {
-	    for (int k=0; k<grids_->Nz; k++) {
-	      int index = j + grids_->Nyc*(idx + grids_->Nx*k);
-	      init_h[index].x = 0.;
-	      init_h[index].y = 0.;
-	    }
-	    for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
-	      float ka = (float) (samp * rand() / RAND_MAX);
-	      float pa = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
-	      float kb = (float) (samp * rand() / RAND_MAX);
-	      float pb = (float) (M_PI * (rand()-RAND_MAX/2) / RAND_MAX);
+	    if (pars_->random_init) {
 	      for (int k=0; k<grids_->Nz; k++) {
 		int index = j + grids_->Nyc*(idx + grids_->Nx*k);
-		
-		init_h[index].x += ka*sin((float) jj*z_h[k] + pa);
-		init_h[index].y += kb*sin((float) jj*z_h[k] + pb);
+		init_h[index].x = 0.;
+		init_h[index].y = 0.;
+	      }
+	      for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
+		float ka = (float) (samp * (float) rand() / RAND_MAX);
+		float pa = (float) (M_PI * ((float) rand()-RAND_MAX/2) / RAND_MAX);
+		float kb = (float) (samp * (float) rand() / RAND_MAX);
+		float pb = (float) (M_PI * ((float) rand()-RAND_MAX/2) / RAND_MAX);
+		for (int k=0; k<grids_->Nz; k++) {
+		  int index = j + grids_->Nyc*(idx + grids_->Nx*k);
+		  
+		  init_h[index].x += ka*sin(static_cast<float>(jj)*z_h[k] + pa);
+		  init_h[index].y += kb*sin(static_cast<float>(jj)*z_h[k] + pb);
+		}
 	      }
 	    }
 	  }

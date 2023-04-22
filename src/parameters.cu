@@ -1586,8 +1586,8 @@ void Parameters::set_jtwist_x0(float *shat_in)
     printf("************************** \n");
   }
   if (*shat_in == 0.0) {
-    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    *shat_in = 1.e-8;
+    //    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
+    //    *shat_in = 1.e-8;
   }
   if (abs(*shat_in) < 1e-5) {
     zero_shat = true;
@@ -1646,9 +1646,9 @@ void Parameters::set_jtwist_x0(float *shat_in)
 
   if (zero_shat) {
     jtwist = 2*nx_in;
-    *shat_in = 1.e-5;
+    //    *shat_in = 1.e-5;
     boundary_option_periodic = true;
-    printf("Using no magnetic shear (setting shat = 1e-6) because zero_shat = true. Setting boundary_option='periodic' \n");
+    printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
   }
   printf("jtwist = %d, x0 = %f\n", jtwist, x0);
 }
