@@ -28,7 +28,7 @@ NVCC=nvcc
 CUDAARCH=70
 CUDA_LIB = -L${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lcutensor -lcudart -L${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
 
-CC=g++
+CXX = g++
 
 NVCC   = nvcc
 CFLAGS = -fPIC

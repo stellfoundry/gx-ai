@@ -29,7 +29,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
-  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
+  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
   ry_h        = nullptr;  gy_h        = nullptr;  gy_d        = nullptr;
@@ -88,6 +88,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   if (id -> rh -> write) val = (float*) malloc(sizeof(float)*2);
 
+  cudaMalloc (&Phi2, sizeof(float) * nR);  
   if (!pars_->all_kinetic) {
 
     if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
@@ -95,7 +96,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
       cudaMalloc((void**)   &df, sizeof(cuComplex) * nR);
     }
 
-    cudaMalloc (&Phi2, sizeof(float) * nR);  
+    cudaMalloc (&A2, sizeof(float) * nR);  
   }
 
   if (id -> omg -> write_v_time) {
@@ -185,6 +186,7 @@ Diagnostics_GK::~Diagnostics_GK()
   if (G2s)        cudaFree      ( G2s       );
   if (P2s)        cudaFree      ( P2s       );
   if (Phi2)       cudaFree      ( Phi2      );
+  if (A2)       cudaFree      ( A2      );
   if (t_bar)      cudaFree      ( t_bar     );
   if (omg_d)      cudaFree      ( omg_d     );
   if (gy_d)       cudaFree      ( gy_d      );
@@ -262,7 +264,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
-      id -> write_P(P2s); 
+      id -> write_Gamky(P2());
+      id -> write_Gamkx(P2());
+      id -> write_Gamkxky(P2());
+      id -> write_Gamz(P2());
+      id -> write_Gam(P2()); 
     }
     if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
 
@@ -285,20 +291,21 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	Wphi_scale loop_R   (P2(is), qfac);
       }
 
+      Wphi2_summand loop_R (Phi2, amom_d, kvol_fac);
       if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac);
+	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (A2, amom_d, kvol_fac);
 	
 	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
 	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
 	  grad_par->zft(df, amom_d); // get df = df(kz)
-	  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac); 	
+	  Wphi2_summand loop_R (A2, amom_d, kvol_fac); 	
 	}
 
 	float fac = 1./pars_->tau_fac;
-	Wphi_scale loop_R (Phi2, fac);
+	Wphi_scale loop_R (A2, fac);
       }
       
-      id -> write_Wkz(G2());    id -> write_Pkz(P2());    id -> write_Akz(Phi2);      
+      id -> write_Wkz(G2());    id -> write_Pkz(P2());    id -> write_Akz(A2);      id -> write_Phi2kz(Phi2);
     }
     
     if (pars_->diagnosing_spectra) {                                        // Various spectra
@@ -317,16 +324,18 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	  Wphi_scale loop_R   (P2(is), qnfac);
 	}
 
+	Wphi2_summand loop_R (Phi2, fields->phi, vol_fac);
+
 	if (pars_->add_Boltzmann_species) {
-	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, fields->phi, vol_fac);
+	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (A2, fields->phi, vol_fac);
 	  
 	  if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
 	    fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
-	    Wphi2_summand loop_R (Phi2, df, vol_fac); 	
+	    Wphi2_summand loop_R (A2, df, vol_fac); 	
 	  }
 	  
 	  float fac = 1./pars_->tau_fac;
-	  Wphi_scale loop_R (Phi2, fac);
+	  Wphi_scale loop_R (A2, fac);
 	}
       }
 
@@ -347,10 +356,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
       id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
-      id->write_Az    (Phi2 );    id->write_Aky   (Phi2 );    id->write_Akx   (Phi2 );    id->write_Akxky (Phi2);
+      id->write_Az    (A2 );    id->write_Aky   (A2 );    id->write_Akx   (A2 );    id->write_Akxky (A2);
+      id->write_Phi2z    (Phi2 );    id->write_Phi2ky   (Phi2 );    id->write_Phi2kx   (Phi2 );    id->write_Phi2kxky (Phi2);
       
       // Do not change the order of these four calls because totW is accumulated in order when it is requested:
-      id->write_Ps(P2());    id->write_Ws(G2());    id->write_As(Phi2);    id->write_Wtot();
+      id->write_Ps(P2());    id->write_Ws(G2());    id->write_As(A2);    id->write_Wtot();  id->write_Phi2t(Phi2);
     }
     
     // Rosenbluth-Hinton diagnostic

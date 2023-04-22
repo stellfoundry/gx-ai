@@ -36,7 +36,8 @@ C_LIB = -ldl -lm -lpthread
 
 # marconi has NVIDIA V100, so compute capability is 7.0
 CUDAARCH=70
-CC=g++
+
+CXX = g++
 
 NVCC   = nvcc
 CFLAGS = -fPIC
