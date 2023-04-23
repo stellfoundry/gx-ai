@@ -214,13 +214,13 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
   if (counter == 0) fields_old->copyPhiFrom(fields);
   
-  if(id -> omg -> write_v_time && (counter == 0 || counter%nw==nw-1)) {  // complex frequencies
+  if(id -> omg -> write_v_time && (counter == 0 || counter%nw==0)) {  // complex frequencies
     int nt = min(512, grids_->NxNyc) ;
     growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
     fields_old->copyPhiFrom(fields);
   }
 
-  //if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
+  if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
     
   //  if(counter%nw == 1 || time > pars_->t_max) {
   if(counter%nw == 0 || time > pars_->t_max) {
