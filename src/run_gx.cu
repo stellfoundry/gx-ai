@@ -133,17 +133,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     //  solver -> fieldSolve(G, fields);
     //}
 
-    for(int is=0; is<grids->Nspecies; is++) {
-      if (pars->save_for_restart && counter % pars->nsave == 0) G[is]->restart_write(&time);
-    }
+    if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCudaErrors(cudaGetLastError());
   }
 
-  for(int is=0; is<grids->Nspecies; is++) {
-    if (pars->save_for_restart) G[is]->restart_write(&time);
-  }
+  if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
   if (pars->eqfix && (
 		      (pars->scheme_opt == Tmethod::k10) ||
@@ -172,6 +168,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   for(int is=0; is<grids->Nspecies; is++) {
     if (G[is])         delete G[is];
   }
+  free(G);
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;

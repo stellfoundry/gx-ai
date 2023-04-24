@@ -910,7 +910,8 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     float alpha = sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s);
-    J0phiB[ig] = j0f(alpha) * phi[idxyz] * fphi + tz*2.*muB[idj]*j1f(alpha)/alpha * bpar[idxyz] * fbpar;
+    float j1_over_alpha = alpha < 1e-8 ? 0.5 : j1f(alpha)/alpha;
+    J0phiB[ig] = j0f(alpha) * phi[idxyz] * fphi + tz*2.*muB[idj]*j1_over_alpha * bpar[idxyz] * fbpar;
   }
 }
 
@@ -1256,19 +1257,21 @@ __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, co
     unsigned int idz = get_id2();
     if (idz < nz) {
       unsigned int idlm = get_id3();
-      unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
+      if (idlm < nm*nl) {
+        unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
 
-      unsigned int idy = idxy % nyc;
-      unsigned int idx = idxy / nyc;// % nx;
-      cuComplex fg;
-      if (unmasked(idx, idy)) {
+        unsigned int idy = idxy % nyc;
+        unsigned int idx = idxy / nyc;// % nx;
+        cuComplex fg;
+        if (unmasked(idx, idy)) {
 
-	float fac = 2.0;
-	if (idy==0) fac = 1.0;
-	fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
-	G2[ig] = 0.5 * fg.x * nt_;
-      } else {
-	G2[ig] = 0.;
+          float fac = 2.0;
+          if (idy==0) fac = 1.0;
+          fg = cuConjf(g[ig]) * g[ig] * volJac[idz] * fac;
+          G2[ig] = 0.5 * fg.x * nt_;
+        } else {
+          G2[ig] = 0.;
+        }
       }
     }
   }
@@ -2271,7 +2274,10 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
     float nzvt_i = 1.0;
     // for electrons, account for e-i collisions
     if(sp.type == 1 && ei_colls) {
-      nuei_ = nu_;
+      if( nspecies > 1 )
+	 nuei_ = sp_i.z * nu_;
+      else
+	 nuei_ = nu_;
       // get as = z*n*vt*beta/2 from first ion species (assume this is main ions)
       as_i = sp_i.jparfac; 
       vt_i = sp_i.vt;
@@ -2344,7 +2350,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
 	    + JflrB(l+1,b_s,false)*(l+1)*tprim_ 
 	   )
 	   + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
-	   + nu_ * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
+	   + ( nu_ + nuei_ ) * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	}
 
 	if (m==1) {
@@ -2362,7 +2368,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
 	if (m==2) {
 	  rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
 	     + iky_/zt_*bpar_*JflrB(l, b_s)/sqrtf(2.)*tprim_ + 
-	     + nu_ * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
+	     + ( nu_ + nuei_ ) * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	}  
 
 	if (m==3) {

@@ -9,9 +9,11 @@
 #define loop_y <<< dgp, dbp >>> 
 
 Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
-  pars_(pars), grids_(grids), geo_(geo),
+  geo_(geo),
   fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
 {
+  pars_ = pars;
+  grids_ = grids;
   printf(ANSI_COLOR_BLUE);
   
   int nL  = grids_->Nl;
@@ -27,7 +29,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
-  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
+  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
   ry_h        = nullptr;  gy_h        = nullptr;  gy_d        = nullptr;
@@ -86,6 +88,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   if (id -> rh -> write) val = (float*) malloc(sizeof(float)*2);
 
+  cudaMalloc (&Phi2, sizeof(float) * nR);  
   if (!pars_->all_kinetic) {
 
     if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
@@ -93,7 +96,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
       cudaMalloc((void**)   &df, sizeof(cuComplex) * nR);
     }
 
-    cudaMalloc (&Phi2, sizeof(float) * nR);  
+    cudaMalloc (&A2, sizeof(float) * nR);  
   }
 
   if (id -> omg -> write_v_time) {
@@ -128,16 +131,16 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
-  int nslm = nL * nM * nS;
+  int nlm = nL * nM;
 
-  int nt1 = 32;
+  int nt1 = 16;
   int nb1 = 1 + (nyx-1)/nt1;
 
-  int nt2 = 32;
+  int nt2 = 16;
   int nb2 = 1 + (grids_->Nz-1)/nt2;
   
   dB_all = dim3(nt1, nt2, 1);
-  dG_all = dim3(nb1, nb2, nslm);
+  dG_all = dim3(nb1, nb2, nlm);
   
   nt1 = min(32, grids_->Nyc);
   nb1 = 1 + (grids_->Nyc-1)/nt1;
@@ -183,6 +186,7 @@ Diagnostics_GK::~Diagnostics_GK()
   if (G2s)        cudaFree      ( G2s       );
   if (P2s)        cudaFree      ( P2s       );
   if (Phi2)       cudaFree      ( Phi2      );
+  if (A2)       cudaFree      ( A2      );
   if (t_bar)      cudaFree      ( t_bar     );
   if (omg_d)      cudaFree      ( omg_d     );
   if (gy_d)       cudaFree      ( gy_d      );
@@ -260,7 +264,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
-      id -> write_P(P2s); 
+      id -> write_Gamky(P2());
+      id -> write_Gamkx(P2());
+      id -> write_Gamkxky(P2());
+      id -> write_Gamz(P2());
+      id -> write_Gam(P2()); 
     }
     if ( id -> qs -> write_v_time && grids_->m_lo == 0) printf("\n");
 
@@ -283,25 +291,28 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	Wphi_scale loop_R   (P2(is), qfac);
       }
 
+      Wphi2_summand loop_R (Phi2, amom_d, kvol_fac);
       if (pars_->add_Boltzmann_species) {
-	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac);
+	if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (A2, amom_d, kvol_fac);
 	
 	if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {
 	  fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
 	  grad_par->zft(df, amom_d); // get df = df(kz)
-	  Wphi2_summand loop_R (Phi2, amom_d, kvol_fac); 	
+	  Wphi2_summand loop_R (A2, amom_d, kvol_fac); 	
 	}
 
 	float fac = 1./pars_->tau_fac;
-	Wphi_scale loop_R (Phi2, fac);
+	Wphi_scale loop_R (A2, fac);
       }
       
-      id -> write_Wkz(G2());    id -> write_Pkz(P2());    id -> write_Akz(Phi2);      
+      id -> write_Wkz(G2());    id -> write_Pkz(P2());    id -> write_Akz(A2);      id -> write_Phi2kz(Phi2);
     }
     
     if (pars_->diagnosing_spectra) {                                        // Various spectra
       for (int is=0; is < grids_->Nspecies; is++) {  
-        W_summand GALL (G2(is), G[is]->G(), vol_fac, G[is]->species->nt);
+        int is_glob = is + grids_->is_lo;
+	float p_s = pars_->species_h[is_glob].nt;
+        W_summand GALL (G2(is), G[is]->G(), vol_fac, p_s);
       }
       
       if (pars_->gx) {
@@ -313,16 +324,18 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 	  Wphi_scale loop_R   (P2(is), qnfac);
 	}
 
+	Wphi2_summand loop_R (Phi2, fields->phi, vol_fac);
+
 	if (pars_->add_Boltzmann_species) {
-	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (Phi2, fields->phi, vol_fac);
+	  if (pars_->Boltzmann_opt == BOLTZMANN_IONS)  Wphi2_summand loop_R (A2, fields->phi, vol_fac);
 	  
 	  if (pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {	  
 	    fieldlineaverage GFLA (favg, df, fields->phi, vol_fac); // favg is a dummy variable
-	    Wphi2_summand loop_R (Phi2, df, vol_fac); 	
+	    Wphi2_summand loop_R (A2, df, vol_fac); 	
 	  }
 	  
 	  float fac = 1./pars_->tau_fac;
-	  Wphi_scale loop_R (Phi2, fac);
+	  Wphi_scale loop_R (A2, fac);
 	}
       }
 
@@ -343,10 +356,11 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
       id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
-      id->write_Az    (Phi2 );    id->write_Aky   (Phi2 );    id->write_Akx   (Phi2 );    id->write_Akxky (Phi2);
+      id->write_Az    (A2 );    id->write_Aky   (A2 );    id->write_Akx   (A2 );    id->write_Akxky (A2);
+      id->write_Phi2z    (Phi2 );    id->write_Phi2ky   (Phi2 );    id->write_Phi2kx   (Phi2 );    id->write_Phi2kxky (Phi2);
       
       // Do not change the order of these four calls because totW is accumulated in order when it is requested:
-      id->write_Ps(P2());    id->write_Ws(G2());    id->write_As(Phi2);    id->write_Wtot();
+      id->write_Ps(P2());    id->write_Ws(G2());    id->write_As(A2);    id->write_Wtot();  id->write_Phi2t(Phi2);
     }
     
     // Rosenbluth-Hinton diagnostic
@@ -538,10 +552,11 @@ void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
 
 
 Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids),
   fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
 {
   printf(ANSI_COLOR_BLUE);
+  pars_ = pars;
+  grids_ = grids;
   
   int nL  = grids_->Nl;
   int nM  = grids_->Nm;
@@ -768,5 +783,62 @@ void Diagnostics_KREHM::print_growth_rates_to_screen(cuComplex* w)
     }
     if (Nx>1) printf("\n");
   }
+}
+
+void Diagnostics::restart_write(MomentsG** G, double *time)
+{
+  char strb[512];
+  int retval;
+  int ncres;
+  strcpy(strb, pars_->restart_to_file.c_str());
+  if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &ncres)) ERR(retval);
+  
+  int moments_out[7];
+  
+  int Nspecies_glob = grids_->Nspecies_glob;
+  int Nx   = grids_->Nx;
+  int Nakx = grids_->Nakx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+  int Nz   = grids_->Nz;
+  int Nm   = grids_->Nm;
+  int Nm_glob = grids_->Nm_glob;
+  int Nl   = grids_->Nl;
+
+  // handles
+  int id_ri, id_nz, id_Nkx, id_Nky;
+  int id_nh, id_nl, id_sp;
+  int id_G, id_time;
+  int ri = 2;
+
+  if (retval = nc_def_dim(ncres, "Nspecies",  Nspecies_glob,    &id_sp)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "ri",  ri,    &id_ri)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nz",  Nz,    &id_nz)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nkx", Nakx,  &id_Nkx)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nky", Naky,  &id_Nky)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nl",  Nl,    &id_nl)) ERR(retval);
+  if (retval = nc_def_dim(ncres, "Nm",  Nm_glob,    &id_nh)) ERR(retval);
+
+  moments_out[0] = id_sp;
+  moments_out[1] = id_nh; 
+  moments_out[2] = id_nl; 
+  moments_out[3] = id_nz;  
+  moments_out[4] = id_Nkx;
+  moments_out[5] = id_Nky;
+  moments_out[6] = id_ri; 
+
+  if (retval = nc_def_var(ncres, "G",    NC_FLOAT, 7, moments_out, &id_G)) ERR(retval);
+  if (retval = nc_def_var(ncres, "time", NC_DOUBLE, 0, 0, &id_time)) ERR(retval);
+  if (retval = nc_enddef(ncres)) ERR(retval);
+
+  // write time
+  if (retval = nc_put_var(ncres, id_time, time)) ERR(retval);
+
+  // write moments
+  for(int is=0; is<grids_->Nspecies; is++) {
+    G[is]->restart_write(ncres, id_G);
+  }
+
+  if (retval = nc_close(ncres)) ERR(retval);
 }
 

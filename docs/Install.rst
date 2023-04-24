@@ -56,3 +56,27 @@ If you are on a supported system (we'll use ``traverse`` as an example):
 
 If you are not on a supported system, you will need to make a custom ``Makefiles/Makefile.[GK_SYSTEM]``
 with the paths to the necessary libraries; please use ``Makefile.traverse`` as a template. 
+
+Setting up a Python environment for GX
+--------------------------------------
+
+Some parts of GX (e.g. post-processing scripts and some geometry modules) require a Python installation with
+
+- python 3 (3.11 preferred)
+- numpy
+- scipy
+- matplotlib
+- netCDF4
+- tomli (if python < 3.11)
+
+We recommend using a `Conda <https://conda.io/miniconda.html>`_ environment to install the dependencies. To create a Conda environment for GX called ``gxenv``, use
+
+.. code-block:: bash
+
+  conda create -n gxenv python=3.11 numpy matplotlib scipy netCDF4
+
+After creating the environment (only needed once per system), one must always have the ``gxenv`` environment activated in order to use the GX python scripts. Activate the environment with
+
+.. code-block:: bash
+
+  conda activate gxenv
