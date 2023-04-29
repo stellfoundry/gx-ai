@@ -2119,7 +2119,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
     if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
 
-    if (linked && false) {
+    if (linked && pars->shat != 0.0 && false) {
       
       int Nx = grids_->Nx;
       int Ny = grids_->Ny;

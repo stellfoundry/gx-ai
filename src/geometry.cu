@@ -346,6 +346,12 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
       bmag_h[k] = 1.;
       gradpar = 1.;
       if (pars->z0 > 0.) gradpar = 1./pars->z0;
+      if (pars->zero_shat) {
+	gds21_h[k] = 0.0;
+	gds22_h[k] = 1.0;
+	shat = 0.0;
+	pars->shat = 0.0;	
+      }
     }
     if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; gradpar = 1.; }
 

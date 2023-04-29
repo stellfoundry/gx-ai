@@ -86,8 +86,8 @@ void Parameters::get_nml_vars(char* filename)
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
-  dt      = toml::find_or <float> (tnml, "dt",       0.5 );
-  nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
+  dt      = toml::find_or <float> (tnml, "dt",       0.05 );
+  nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
   scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
   cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
@@ -1589,8 +1589,8 @@ void Parameters::set_jtwist_x0(float *shat_in)
     printf("************************** \n");
   }
   if (*shat_in == 0.0) {
-    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    *shat_in = 1.e-8;
+    //    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
+    //    *shat_in = 1.e-8;
   }
   if (abs(*shat_in) < 1e-5) {
     zero_shat = true;
@@ -1603,10 +1603,10 @@ void Parameters::set_jtwist_x0(float *shat_in)
     // (indicated by x0 = -1) then set it to y0 by default
     if (x0 == -1) {
       x0 = y0;
-      if (geo_option=="slab") {
-	printf("Parallel box size is 2 * pi * z0 = %d \n",2*M_PI*z0);
-	printf("And regardless of other messages, the magnetic shear is zero");      
-      }
+    }
+    if (geo_option=="slab") {
+      printf("Parallel box size is 2 * pi * z0 = %f \n",2*M_PI*z0);
+      printf("And regardless of other messages, the magnetic shear is zero.\n");      
     }
   } else {
     // if both jtwist and x0 were not set in input file
@@ -1618,6 +1618,16 @@ void Parameters::set_jtwist_x0(float *shat_in)
 	printf("Setting x0=y0 and zero_shat=true\n");
         x0 = y0;
 	zero_shat = true;
+	//
+	// Per the discussion in April, 2023, we want to change the logic in this section.
+	// Instead of setting zero_shat = true, we want to force jtwist = 1 and
+	// then take the x0 that that gives.
+	//
+	// We could calculate kx_max and advise the user to set nx such that
+	// kx_max ~ ky_max (for example). For small values of magnetic shear,
+	// this will produce recommendations for nx that can be quite large.
+	// But that is probably the best thing to do.
+	//      
       } else {
         x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
       }
@@ -1649,10 +1659,10 @@ void Parameters::set_jtwist_x0(float *shat_in)
 
   if (zero_shat) {
     jtwist = 2*nx_in;
-    *shat_in = 1.e-5;
+    //    *shat_in = 1.e-5;
     boundary_option_periodic = true;
-    printf("Using no magnetic shear (setting shat = 1e-6) because zero_shat = true. Setting boundary_option='periodic' \n");
+    printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
   }
-  printf("jtwist = %d, x0 = %f\n", jtwist, x0);
+  printf("Final values arejtwist = %d, x0 = %f\n", jtwist, x0);
 }
 

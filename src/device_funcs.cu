@@ -782,20 +782,31 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // Needs a test for zero
-  
   if (idy>0 && unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz]) 		       
-			+ pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+
+    if (shat == 0.0) {
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * gds21[idz]) 
+			+ pow( kxs[idy+nyc*idx], 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
     
-    cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
-    gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
-    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+
+    } else {
+      float shatInv = 1./shat; 
+    
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * shatInv * gds21[idz])
+			+ pow( kxs[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+      
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxs[idy+nyc*idx] * shatInv * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    }
   }
 }
 
-// note: kperp2 = kperp**2 / B**2
+// note: kperp2 = kperp**2 / B**2   (because it is kperp**2 rho**2)
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
@@ -804,15 +815,22 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // Needs a test for zero
-
   if (unmasked(idx, idy) && idz < nz) { 
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    // note: kperp2 = kperp**2 / B**2
-    kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
-                      + 2. * kx[idx] * shatInv * gds21[idz]) 
+
+    if (shat == 0.0) {
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+		      + 2. * kx[idx]      * gds21[idz] ) 
+		      + pow( kx[idx], 2)  * gds22[idz] )
+	              * pow( bmagInv[idz], 2);
+    } else {	      
+      float shatInv = 1./shat; 
+
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
+                      + 2. * kx[idx] * shatInv * gds21[idz] ) 
                       + pow( kx[idx] * shatInv, 2) * gds22[idz] ) 
                       * pow( bmagInv[idz], 2);
+    }
   }
 }
 
@@ -823,16 +841,23 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  float shatInv = 1./shat; // BD this needs an exception for shat = 0.
-
   // cv/gb is the y-directed part of the curvature / grad-B drift
   // cv0/gb0 is the part proportional to the theta_0, aka the x-directed component
 
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
-    gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
-    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+
+    if (shat == 0.0) {
+
+      cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    } else {
+      float shatInv = 1./shat; // BD this needs an exception for shat = 0.
+      cv_d[idxyz] = ky[idy] * cv[idz] + kx[idx] * shatInv * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kx[idx] * shatInv * gb0[idz] ;
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    }
   }
 }
 
@@ -883,9 +908,10 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
 	logr.x = (float) log(cuCabsf(ratio));
 	logr.y = (float) atan2(ratio.y,ratio.x);
 	omega[idxy] = logr*i_dt;
+	//	printf("omega = (%f, %f) \t idxy = %d \t idx = %d idy = %d \n",omega[idxy].x, omega[idxy].y, idxy, idx, idy);
       } else {
-	omega[idxy].x = 1./0.;
-	omega[idxy].y = 1./0.;
+	omega[idxy].x = 0.;
+	omega[idxy].y = 0.;
       }
     }
   }
@@ -2221,7 +2247,8 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* 
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar, const cuComplex* __restrict__ bpar,
 			   const cuComplex* __restrict__ upar_bar, const cuComplex* __restrict__ uperp_bar, const cuComplex* __restrict__ t_bar,
-			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d, const float* __restrict__ bmag, const float* __restrict__ bgrad,
+			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d,
+			   const float* __restrict__ bmag, const float* __restrict__ bgrad,
 			   const float* __restrict__ ky, const specie sp, const specie sp_i, cuComplex* __restrict__ rhs, bool hegna, bool ei_colls)  // bb6126 - hegna test
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above

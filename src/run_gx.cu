@@ -115,28 +115,24 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   bool bvar; 
-  bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
 
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
   
   while(counter<pars->nstep && time<pars->t_max) {
-    counter++;
 
-    timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    timestep -> advance(&time, G, fields);
     if (checkstop) break;
-    //if (counter % pars->nreal == 0)  { 
-    //  for(int is=0; is<grids->Nspecies; is++) {
-    //    G[is] -> reality(grids->Nl * grids->Nm); 
-    //  }
-    //  solver -> fieldSolve(G, fields);
-    //}
 
     if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCudaErrors(cudaGetLastError());
+    counter++;
+    if (counter==pars->nstep || time>=pars->t_max) {
+      bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    }
   }
 
   if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);

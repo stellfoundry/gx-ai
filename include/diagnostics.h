@@ -33,7 +33,7 @@ class Diagnostics_GK : public Diagnostics {
 
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
-  float* G2(int s=0) {return &G2s[grids_->NxNycNz*s];}
+  float* G2(int s=0) {return &G2s[grids_->NxNycNz*grids_->Nmoms*s];}
 
   int ndiag; 
   int ikx_local, iky_local, iz_local;
