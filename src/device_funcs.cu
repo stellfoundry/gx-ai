@@ -2042,6 +2042,25 @@ __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, 
   ((cuComplex*)dataOut)[offset] = element*normalization;
 }
 
+__device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element, void *hyperData, void *sharedPtr)
+{
+  int *data = (int*) hyperData;
+  int nLinks = data[0];
+  int p_hyper_z = data[1];
+  unsigned int nzL = nz*nLinks;
+  unsigned int idz = offset % (nzL);
+  float zpnLinv = (float) 1./zp*nLinks;
+  float hypkz;
+  if (idz < nzL/2+1) {
+    hypkz = pow((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  } else {
+    int idzs = idz-nzL;
+    hypkz = pow((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  }
+  float normalization = (float) 1./nzL;
+  ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
+}
+
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -2066,8 +2085,24 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
   }
 }
 
+__global__ void init_hyperkzLinked(float* hyperkz, int nLinks, bool dealias_kz, int p_hyper_z)
+{
+  int nzL = nz*nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
+      hyperkz[i] = pow((float) i/(zp*nLinks), p_hyper_z);
+    } else {
+      hyperkz[i] = pow((float) (i-nzL)/(zp*nLinks), p_hyper_z);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {hyperkz[i] = 0.0;}
+    }
+  }
+}
+
 __device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
 __device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
+__device__ cufftCallbackStoreC   hyperkzLinked_callbackPtr = hyperkzLinked;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
@@ -2096,6 +2131,20 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
+  }
+}
+
+__global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G,
+			       int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    G[globalIdx] = G[globalIdx] + scale*G_linked[idlink];
   }
 }
 
