@@ -162,7 +162,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   // Free-streaming requires parallel FFTs, so do that first
   cudaStreamSynchronize(G->syncStream);
   streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
-  grad_par->dz(GRhs);
+  grad_par->dz(GRhs, GRhs, false);
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, maxSharedSize);
@@ -202,7 +202,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 		  						   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
-								   pars_->nu_hyper_lm/dt,
+								   G->species->vt/pars_->vtmax*pars_->nu_hyper_lm/dt,
 								   pars_->p_hyper_l,
 								   pars_->p_hyper_m, 
 								   pars_->p_hyper_lm, 
@@ -210,6 +210,8 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
+
+  if(pars_->hyperz) grad_par->hyperz(G, GRhs, pars_->nu_hyper_z/dt, true);
   
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
@@ -319,7 +321,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
 
   rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, nu_ei, rho_s, d_e, GRhs->G());
-  grad_par->dz(GRhs);
+  grad_par->dz(GRhs, GRhs, false);
   
   // closures
   switch (pars_->closure_model_opt) {

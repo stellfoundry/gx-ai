@@ -111,6 +111,7 @@ class Parameters {
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, p_hyper_lm, irho, nwrite, navg, nsave, igeo, nreal;
+  int p_hyper_z;
   int nz_in, nperiod, Zp, bishop, scan_number, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
@@ -140,6 +141,7 @@ class Parameters {
   int ikpar_init;
   float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m, nu_hyper_lm;
+  float nu_hyper_z;
   float D_HB, w_osc;
   float low_cutoff, high_cutoff, nlpm_max, tau_nlpm;
   float ion_z, ion_mass, ion_dens, ion_fprim, ion_uprim, ion_temp, ion_tprim, ion_vnewk;
@@ -180,6 +182,7 @@ class Parameters {
   bool write_xyPhi; 
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
+  bool hyperz;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
   bool fixed_amplitude, write_fields, write_eigenfuncs; 
