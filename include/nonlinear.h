@@ -23,7 +23,7 @@ class Nonlinear_GK : public Nonlinear {
   ~Nonlinear_GK();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(Fields *f, double dt_max);
+  double cfl(Fields *f, double dt_max) {};
   void get_max_frequency(Fields *f, double *wmax);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);
@@ -62,7 +62,7 @@ class Nonlinear_GK : public Nonlinear {
   float * dJ0apar_dx ;
   float * dJ0apar_dy ;
   float * dphi        ;
-  float * dapar        ;
+  float * dchi        ;
   float * g_res       ;
   float vmax_x[1]     ;
   float vmax_y[1]     ;
@@ -95,8 +95,8 @@ class Nonlinear_KREHM : public Nonlinear {
   float * dg_dy       ;
   float * dphi_dx     ;
   float * dphi_dy     ;
-  float * dapar_dx     ;
-  float * dapar_dy     ;
+  float * dchi_dx     ;
+  float * dchi_dy     ;
   float * tmp_r;
   cuComplex * tmp_c;
 

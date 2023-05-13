@@ -245,7 +245,7 @@ The ``[Initialization]`` group controls the initial conditions.
 Geometry
 ++++++++
 
-The ``[Geometry]`` group controls the simulation geometry. Some of these parameters can also be read by the ``geometry_modules/miller/gx_geo.py`` script to generate text files containing the geometric information, which can then be used by GX by specifying ``igeo=1`` and ``geofile``. For more details about geometry options, see :ref:`geo`.
+The ``[Geometry]`` group controls the simulation geometry. For more details about geometry options, see :ref:`geo`.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -257,18 +257,19 @@ The ``[Geometry]`` group controls the simulation geometry. Some of these paramet
      - Description
      - Default
    * - ``[Geometry]``
-     - ``igeo``
-     - Integer specifying the geometry setup. To use an analytic s-alpha geometry, use ``igeo = 0``.
-       To read the geometric information from a text file, use ``igeo = 1``. To read the geometric information from a NetCDF file, use ``igeo = 2``.
-     - **0**    
+     - ``geo_option``
+     - String specifying the geometry setup. Options are ``{"s-alpha", "miller", "vmec", "eik", "nc", "slab", "const-curv", "gs2_geo"}``
+     - **"miller"**    
    * - ``[Geometry]``
-     - ``geofile``
-     - If ``igeo = 1`` or ``igeo = 2``, the geometric information is read from the file specified by ``geofile``. 
+     - ``geo_file``
+     - For ``geo_option = "eik"``, the geometric information is read from the file specified by ``geo_file``. 
      - **"eik.out"**    
    * - ``[Geometry]``
      - ``Rmaj``
-     - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`.
-       Setting ``Rmaj = 1.0`` effectively sets :math:`L_\mathrm{ref} = R`.
+     - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`. 
+       The choice of ``Rmaj`` can effectively choose the definition of :math:`L_\mathrm{ref}`.
+       Setting ``Rmaj = 1.0`` effectively sets :math:`L_\mathrm{ref} = R`. 
+       Setting ``Rmaj`` to the aspect ratio :math:`R/a` (with :math:`a` the minor radius) effectively sets :math:`L_\mathrm{ref} = a`.
      - **1.0**
    * - ``[Geometry]``
      - ``qinp``
@@ -285,51 +286,36 @@ The ``[Geometry]`` group controls the simulation geometry. Some of these paramet
      - **0.0**
    * - ``[Geometry]``
      - ``eps``
-     - This is the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`. Used only for ``igeo = 0``.
+     - This is the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`. Used only for ``geo_option = "s-alpha"``.
      - **0.167**
    * - ``[Geometry]``
      - ``rhoc``
      - Flux surface label given by ratio of midplane diameter to the reference length, :math:`r/L_\mathrm{ref}`. 
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
      - 
    * - ``[Geometry]``
      - ``R_geo``
      - Major radius of magnetic field reference point, normalized to :math:`L_\mathrm{ref}` (i.e. :math:`B_t(R_\mathrm{geo}) = B_\mathrm{ref}`). 
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
      - 
    * - ``[Geometry]``
      - ``akappa``
-     - Elongation of flux surface.
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - Elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
      - 
    * - ``[Geometry]``
      - ``akappri``
-     - Radial gradient of elongation of flux surface.
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - Radial gradient of elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
      - 
    * - ``[Geometry]``
      - ``tri``
-     - Triangularity of flux surface.
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - Triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
      - 
    * - ``[Geometry]``
      - ``tripri``
-     - Radial gradient of triangularity of flux surface.
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - Radial gradient of triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
      - 
    * - ``[Geometry]``
      - ``betaprim``
-     - Radial gradient of equilibrium pressure. Used in the calculation of the Shafranov shift.
-       Currently only used by miller geometry module (to generate an ``igeo=1``-style geometry file).
+     - Radial gradient of equilibrium pressure. Used in the calculation of the Shafranov shift. 
      - 
-   * - ``[Geometry]``
-     - ``slab``
-     - If true, and if ``igeo = 0``, the geometry is that of a slab (straight background magnetic field)
-     - **false**
-   * - ``[Geometry]``
-     - ``const_curv``
-     - If true, and if ``igeo = 0``, the magnetic curvature is assumed to be constant along the field line, as in a Z-pinch. 
-     - **false**
 
 Species
 +++++++
@@ -421,7 +407,7 @@ The ``[Boltzmann]`` group sets up a Boltzmann species, which can be either elect
      - **"electrons"**
    * - ``[Boltzmann]``
      - ``tau_fac``
-     - Set the value of :math:`\tau = T_\mathrm{kinetic}/T_\mathrm{Boltzmann}`.
+     - Set the value of :math:`\tau = T_\mathrm{ref}/T_\mathrm{Boltzmann}` (which is usually :math:`\tau = T_\mathrm{kinetic}/T_\mathrm{Boltzmann}`).
      - **1.0**
 
 Dissipation

@@ -40,7 +40,9 @@ GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas
 C_LIB = -lm
 
 CUDAARCH=80
-CC=CC
+
+# Cray names their C++ compiler CC (C compiler is cc)
+CXX = CC
 
 NVCC   = nvcc
 CFLAGS = -fPIC
