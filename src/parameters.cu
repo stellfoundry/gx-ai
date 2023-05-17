@@ -1580,8 +1580,12 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float *shat_in)
+void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 {
+  float shat = *shat_in;
+  // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
+  float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
+
   printf("set_jtwist_x0: shat_in = %f\n", *shat_in);
   if (jtwist==0) {
     // this is an error
@@ -1614,8 +1618,8 @@ void Parameters::set_jtwist_x0(float *shat_in)
   } else {
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1 && x0 < 0.0) {
-      // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) fmax(1., round(2*M_PI*abs(*shat_in)*Zp));
+      // set jtwist so that x0~y0
+      jtwist = (int) fmax(1., round(abs(twist_shift_geo_fac)*Zp));
       if(jtwist == 0) {
         printf("Warning: shat was set so small that it was giving jtwist=0\n");
 	printf("Setting x0=y0 and zero_shat=true\n");
@@ -1632,17 +1636,17 @@ void Parameters::set_jtwist_x0(float *shat_in)
 	// But that is probably the best thing to do.
 	//      
       } else {
-        x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+        x0 = y0 * jtwist/(abs(twist_shift_geo_fac)*Zp);
       }
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+      x0 = y0 * jtwist/(Zp*abs(twist_shift_geo_fac));
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(*shat_in)*Zp/y0*x0);
+      int jtwist_0 = (int) round(abs(twist_shift_geo_fac)*Zp/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
@@ -1653,7 +1657,7 @@ void Parameters::set_jtwist_x0(float *shat_in)
       }
       jtwist = jtwist_0;
       // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+      float x0_j = y0 * jtwist/(Zp*abs(twist_shift_geo_fac));
 
       if(jtwist == 0) zero_shat = true;
       else x0 = x0_j; // reset x0 to be consistent with jtwist
