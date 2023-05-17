@@ -814,7 +814,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
 
   // set jtwist and x0, now that we know the final value of shat from geometry
-  pars->set_jtwist_x0(&shat);
+  pars->set_jtwist_x0(&shat, gds21_h, gds22_h);
   // initialize k and coordinate arrays
   grids->init_ks_and_coords();
   // initialize operator arrays

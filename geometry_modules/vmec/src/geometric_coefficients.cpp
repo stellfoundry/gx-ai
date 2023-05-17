@@ -36,10 +36,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   npol   = toml::find_or <int> (tnml, "npol", 1);
   desired_normalized_toroidal_flux =
     toml::find_or <double> (tnml, "desired_normalized_toroidal_flux", 0.25);
-  vmec_surface_option = toml::find_or <int> (tnml, "vmec_surface_option", 2);
+  vmec_surface_option = toml::find_or <int> (tnml, "vmec_surface_option", 0);
   flux_tube_cut = toml::find_or <string> (tnml, "flux_tube_cut", "none");
   custom_length = toml::find_or <double> (tnml, "custom_length", M_PI);
-  which_crossing = toml::find_or <int> (tnml, "which_crossing", 4);
+  which_crossing = toml::find_or <int> (tnml, "which_crossing", -1);
   file_tag = toml::find_or <string> (tnml, "file_tag", ""); // new TQ 8.14
 
   char run_name[1000];
@@ -1291,15 +1291,14 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
   }
   std::cout << "]\n\n";
   
-  if (which_crossing > nzeros) {
+  if (which_crossing > nzeros || which_crossing <= -nzeros) {
     std::cout << "There are not " << which_crossing << " zero crossings for a grid of this size.\n";
     std::cout << "You must select which_cross <= " << nzeros << "\n";
     std::cout << "Exiting...\n";
     exit(1);
   }
-  else if (which_crossing <= 0) {
-    std::cout << "which_crossing must be >0. Exiting...\n";
-    exit(1);
+  else if (which_crossing <= 0) { // which_crossing can be negative to index from outermost zeros, i.e. which_crossing = -1 gives outermost zero
+    which_crossing = nzeros - abs(which_crossing) + 1;
   }
 
   ileft_ = isign[nzeros - which_crossing];
