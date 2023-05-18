@@ -212,7 +212,7 @@ class Geometric_coefficients {
   double alpha = 0.0;
   int nzgrid = 16;
   int nzgrid_cut = 16;
-  int npol = 1;
+  double npol = 1;
   int sign_psi;
   double desired_normalized_toroidal_flux = 0.25;
   int vmec_surface_option = 2;
