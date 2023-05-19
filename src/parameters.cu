@@ -77,8 +77,13 @@ void Parameters::get_nml_vars(char* filename)
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
   x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
   z0       = toml::find_or <float>       (tnml, "z0",           1.0  );
-  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
+  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1000 );
   Zp       = toml::find_or <int>         (tnml, "zp",           2*nperiod-1    );
+  // possible values of boundary are:
+  // "linked": twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018)
+  // "forced periodic" (or simply "periodic"): use periodic BCs with no cutting of flux tube
+  // "exact periodic": cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only)
+  // "continuous drifts": cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
@@ -760,7 +765,7 @@ void Parameters::get_nml_vars(char* filename)
   } else if (closure_model == "smith_par")  { closure_model_opt = Closure::smithpar; 
   }
 
-  if( boundary == "periodic") { boundary_option_periodic = true;
+  if( boundary == "periodic" || boundary == "exact periodic" || boundary == "forced periodic") { boundary_option_periodic = true;
   } else { boundary_option_periodic = false; }
   
   if     ( init_field == "density") { initf = inits::density; }
@@ -1580,9 +1585,13 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float *shat_in)
+void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 {
-  printf("set_jtwist_x0: shat_in = %f\n", *shat_in);
+  float shat = *shat_in;
+  // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
+  float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
+
+  printf("set_jtwist_x0: shat = %f, twist_shift_geo_fac = %f\n", shat, twist_shift_geo_fac);
   if (jtwist==0) {
     // this is an error
     printf("************************** \n");
@@ -1591,36 +1600,31 @@ void Parameters::set_jtwist_x0(float *shat_in)
     printf("************************** \n");
     printf("************************** \n");
   }
-  if (*shat_in == 0.0) {
-    //    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    //    *shat_in = 1.e-8;
-  }
-  if (abs(*shat_in) < 1e-5) {
+  if (abs(shat) < 1e-5) {
     zero_shat = true;
+    boundary_option_periodic = true;
   }
 
-  if (zero_shat) {
-    // for zero magnetic shear, jtwist is not used.
+  if (boundary_option_periodic) {
+    // for periodic BCs, set jtwist=2*nx_in, which will give a separate periodic domain for each mode (no linking).
     // just need to make sure x0 is set
     // either take x0 from input file, or if it was not set
     // (indicated by x0 = -1) then set it to y0 by default
+    jtwist = 2*nx_in;
     if (x0 == -1) {
       x0 = y0;
     }
     if (geo_option=="slab") {
       printf("Parallel box size is 2 * pi * z0 = %f \n",2*M_PI*z0);
-      printf("And regardless of other messages, the magnetic shear is zero.\n");      
+      if(zero_shat) printf("And regardless of other messages, the magnetic shear is zero.\n");      
     }
-  } else {
+    printf("Using periodic BCs with x0 = %f, y0 = %f\n", x0, y0);
+  } else { // use twist-and-shift BCs
     // if both jtwist and x0 were not set in input file
-    if (jtwist == -1 && x0 < 0.0) {
-      // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) fmax(1., round(2*M_PI*abs(*shat_in)*Zp));
+    if (jtwist == -1000 && x0 < 0.0) {
+      // set jtwist so that x0~y0
+      jtwist = (int) round((twist_shift_geo_fac)*Zp);
       if(jtwist == 0) {
-        printf("Warning: shat was set so small that it was giving jtwist=0\n");
-	printf("Setting x0=y0 and zero_shat=true\n");
-        x0 = y0;
-	zero_shat = true;
 	//
 	// Per the discussion in April, 2023, we want to change the logic in this section.
 	// Instead of setting zero_shat = true, we want to force jtwist = 1 and
@@ -1631,41 +1635,44 @@ void Parameters::set_jtwist_x0(float *shat_in)
 	// this will produce recommendations for nx that can be quite large.
 	// But that is probably the best thing to do.
 	//      
-      } else {
-        x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
-      }
+        printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+        printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+        printf("Consider using an alternative boundary option.\n");
+
+        jtwist = 1;
+      } 
+
+      x0 = y0 * abs(jtwist)/(abs(twist_shift_geo_fac)*Zp);
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+      x0 = y0 * abs(jtwist)/(Zp*abs(twist_shift_geo_fac));
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(*shat_in)*Zp/y0*x0);
+      int jtwist_0 = (int) round((twist_shift_geo_fac)*Zp/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
-      if (jtwist > 0) {
+      if (jtwist != -1000) {
         if (jtwist_0 != jtwist) {
           printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
         }
       }
+      if(jtwist_0 == 0) {
+        printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+        printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+        printf("Consider using an alternative boundary option.\n");
+
+        jtwist_0 = 1;
+      } 
       jtwist = jtwist_0;
-      // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
-
-      if(jtwist == 0) zero_shat = true;
-      else x0 = x0_j; // reset x0 to be consistent with jtwist
+      // reset x0 to be consistent with the integer jtwist we just computed
+      x0 = y0 * abs(jtwist)/(Zp*abs(twist_shift_geo_fac));
     }
+    printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, x0 = %f, y0 = %f\n", jtwist, x0, y0);
   }
 
-  if (zero_shat) {
-    jtwist = 2*nx_in;
-    //    *shat_in = 1.e-5;
-    boundary_option_periodic = true;
-    printf("Using no magnetic shear because zero_shat = true. Setting boundary_option='periodic' \n");
-  }
-  printf("Final values arejtwist = %d, x0 = %f\n", jtwist, x0);
 }
 
