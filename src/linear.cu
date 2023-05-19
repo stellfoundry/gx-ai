@@ -31,7 +31,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  grad_par = new GradParallelPeriodic(grids_);
   //}
   else {
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
 
   switch (pars_->closure_model_opt)
