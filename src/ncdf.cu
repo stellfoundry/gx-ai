@@ -2176,7 +2176,19 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
     if (retval = nc_put_var (nc_geo, ivar, &geo_->gradpar)) ERR(retval);
   }
-  
+
+  // I wish I could use Parameters.put_real() here
+  if (retval = nc_inq_varid(nc_geo, "shat", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->shat)) ERR(retval);
+
+  if (retval = nc_inq_varid(nc_geo, "Rmaj", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->rmaj)) ERR(retval);
+
+  if (retval = nc_inq_varid(nc_geo, "q", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->qsf)) ERR(retval);
+
+
+
   idum = pars_->boundary_option_periodic ? 1 : 0;
   if (retval = nc_put_var(file, periodic,      &idum))     ERR(retval);
 

@@ -31,6 +31,7 @@ class Geometric_coefficients {
   VMEC_variables *vmec;
   std::string outfile_name;
   std::string outnc_name;
+  bool usenc;
   std::string filestem;
 
   template <typename T> int sgn(T val) {
