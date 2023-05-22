@@ -29,8 +29,8 @@ void solver_vmec_theta(double *theta_vmec, double *zeta, int nzgrid, double alph
     zeta0 = zeta[izeta];
     if (!zeta0 == 0) {
       theta_pest_target = alpha + iota * zeta0;
-      theta_vmec_min = theta_pest_target - 0.5;
-      theta_vmec_max = theta_pest_target + 0.5;
+      theta_vmec_min = theta_pest_target - 1.0;
+      theta_vmec_max = theta_pest_target + 1.0;
       r = 0.1;
       g_params g_parameters = {theta_pest_target, zeta0, {radial_index[0], radial_index[1]} , {radial_weight[0], radial_weight[1]}, vmec};
       F.function = &fzero_residual;

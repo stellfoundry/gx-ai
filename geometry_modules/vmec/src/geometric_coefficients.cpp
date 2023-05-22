@@ -30,6 +30,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
   if (nml.contains("Geometry")) tnml = toml::find(nml, "Geometry");
 
+  usenc   = toml::find_or <bool> (tnml, "usenc", true);
   vmec_path   = toml::find_or <string> (tnml, "vmec_path", ""); // not presently used! 
   out_path  = toml::find_or <string> (tnml, "out_path", ""); 
   alpha  = toml::find_or <double> (tnml, "alpha", 0.0);
@@ -1585,7 +1586,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double kxfac = 1.0;
   if (retval = nc_put_var(ncgeo, id_kxfac, &kxfac))                     ERR(retval);
 
-  double q = 1.0;
+  double q = safety_factor_q;
   if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
   if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
 
@@ -1650,7 +1651,7 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
   //  std::ofstream out_file(".\\name.ext");
   if (out_file.is_open()) {
     out_file << "ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q scale\n";
-    out_file << nzgrid << " 1 " << 2*nzgrid << " 1.0 " << 1./L_reference << " " << shat << " 1.0 1.0 " << domain_scaling_factor << " \n";
+    out_file << nzgrid << " 1 " << 2*nzgrid << " 1.0 " << 1./L_reference << " " << shat << " 1.0 " << safety_factor_q << " "  << domain_scaling_factor << " \n";
     out_file << "gbdrift\t gradpar\t grho\t tgrid\n";
     for (int i=0; i<2*nzgrid+1; i++) {
       out_file << std::right << setprecision(10) << std::setw(20) << gbdrift[i] << "\t" << std::setw(20) << gradpar[i] << "\t" << std::setw(20) << grho[i] << "\t" << std::setw(20) << theta_grid[i] << "\n";
