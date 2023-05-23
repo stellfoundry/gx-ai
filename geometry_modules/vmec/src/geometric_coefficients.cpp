@@ -30,8 +30,11 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
   if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
   string boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
+  float y0 = toml::find_or <float> (tnml, "y0", 10.0  );
+  float x0 = toml::find_or <float> (tnml, "x0", (double) y0 ); // default to aspect ratio = 1 in this module
   if (boundary == "exact periodic") flux_tube_cut = "gds21";
   else if (boundary == "continuous drifts") flux_tube_cut = "gbdrift0";
+  else if (boundary == "linked aspect") flux_tube_cut = "aspect";
   else flux_tube_cut = "none";
 
   if (nml.contains("Geometry")) tnml = toml::find(nml, "Geometry");
@@ -988,6 +991,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   std::vector<double> gbdrift0_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift0_pest (2*nzgrid+1, 0.0);
+  std::vector<double> aspect_pest (2*nzgrid+1, 0.0);
 
   // Except for bmag and gradpar, the following are related to dx/dpsi and/or dy/dalpha
   // Depending on the sign of the toroidal flux, the sign of dx/dpsi and dy/alpha will change to ensure that
@@ -1032,6 +1036,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);
 
     cvdrift0_pest[itheta] = gbdrift0_pest[itheta];// + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);;
+
+    // this is the A - Ly_target/Lx_target, with A = 2 |grad x . grad y|/|grad x|^2 = Ly/Lx the aspect ratio, so that roots of aspect give locations where A = Ly_target/Lx_target
+    aspect_pest[itheta] = abs(2. * shat * gds21_pest[itheta] / gds22_pest[itheta]) - y0/x0;
 
   }
   std::cout << "\n";
@@ -1090,6 +1097,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 	
 	get_cut_indices_zeros(gbdrift0_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
 	get_revised_theta_zeros(theta_std_copy, gbdrift0_pest, theta_grid_cut, revised_theta_grid);
+      }
+      else if (flux_tube_cut == "aspect") {
+	get_cut_indices_zeros(aspect_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
+	get_revised_theta_zeros(theta_std_copy, aspect_pest, theta_grid_cut, revised_theta_grid);
       }
       else {
 	std::cout << "The string " << flux_tube_cut << " is not valid.\n";
