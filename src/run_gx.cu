@@ -44,7 +44,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     for(int is=0; is<grids->Nspecies; is++) {
       int is_glob = is+grids->is_lo;
       G[is] -> set_zero();
-      if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
+      if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
       G[is] -> sync();
     }
