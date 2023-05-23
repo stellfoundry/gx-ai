@@ -1511,7 +1511,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 
   // define dimensions
   int id_z; 
-  if (retval = nc_def_dim(ncgeo, "z", 2*nzgrid, &id_z))    ERR(retval);
+  if (retval = nc_def_dim(ncgeo, "z", 2*nzgrid+1, &id_z))    ERR(retval);
 
   // define scalars
   int id_nperiod;
@@ -1546,7 +1546,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 
   geodim[0] = id_z;
   start[0] = 0;
-  count[0] = 2*nzgrid;
+  count[0] = 2*nzgrid+1;
   
   int id_theta;
   if (retval = nc_def_var(ncgeo, "theta", NC_DOUBLE, 1, geodim, &id_theta))   ERR(retval);

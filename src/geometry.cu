@@ -401,7 +401,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   printf("READING NC GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz;
-  size_t dsize = sizeof(double)*grids->Nz;
+  size_t dsize = sizeof(double)*(grids->Nz+1);
 
   char stra[NC_MAX_NAME+1];
   char strb[513];
@@ -419,8 +419,8 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_inq_dim  (ncgeo, id_z, stra, &N))    ERR(retval);
 
   // do basic sanity check
-  if (grids->Nz != (int) N) {
-    printf("Number of points along the field line in geometry file %d does not match input %d \n", N, grids->Nz);
+  if (grids->Nz != (int) N-1) {
+    printf("Number of points along the field line in geometry file %d does not match input %d \n", N-1, grids->Nz);
     exit (1);
   }
 
