@@ -68,6 +68,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
     if(grids->iproc != 0) pars->geofilename.resize(size);
     MPI_Bcast((void*) pars->geofilename.c_str(), size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void*) &usenc, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     if (usenc) {
@@ -514,17 +515,17 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   }
   int ntgrid = N/2;
 
-  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, grids->Nz, grids->Nz);
-  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, grids->Nz, grids->Nz);
+  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
 
   double stmp; 
   
