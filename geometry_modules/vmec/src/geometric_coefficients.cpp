@@ -999,7 +999,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   std::vector<double> gbdrift0_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift0_pest (2*nzgrid+1, 0.0);
-  std::vector<double> aspect_pest (2*nzgrid+1, 0.0);
+  std::vector<double> jtwist_pest (2*nzgrid+1, 0.0);
 
   // Except for bmag and gradpar, the following are related to dx/dpsi and/or dy/dalpha
   // Depending on the sign of the toroidal flux, the sign of dx/dpsi and dy/alpha will change to ensure that
@@ -1045,10 +1045,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
     cvdrift0_pest[itheta] = gbdrift0_pest[itheta];// + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);;
 
-    // this is the A - Ly_target/Lx_target, with A = 2 |grad x . grad y|/(J * |grad x|^2) = Ly/Lx the aspect ratio, so that roots of aspect give locations where A = Ly_target/Lx_target
-    float twist_shift_geo_fac = 2.*shat*gds21_pest[0]/gds22_pest[0];
-    int jtwist = (int) round((twist_shift_geo_fac)/y0*x0)-1;
-    aspect_pest[itheta] = abs(2. * shat * gds21_pest[itheta] /(jtwist * gds22_pest[itheta])) - y0/x0;
+    float twist_shift_geo_fac = 2.*shat*gds21_pest[itheta]/gds22_pest[itheta];
+    float jtwist_float = (twist_shift_geo_fac)/y0*x0;
+    jtwist_pest[itheta] = jtwist_float;
 
   }
 
@@ -1061,8 +1060,6 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   // ---------------------------------------------------------------------
   // Take subset of grid in theta for boundary condition considerations
   // ---------------------------------------------------------------------
-  
-  
   std::vector<double> theta_grid_cut;// (2*nzgrid+1, 0.0);
   std::vector<double> revised_theta_grid;// (2*nzgrid+1, 0.0);
   
@@ -1086,8 +1083,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       std::cout << "*************************************************************************\n";
       std::cout << "You have chosen to cut the flux tube to enforce y0/x0 = " << y0/x0 << "\n";
       std::cout << "*************************************************************************\n";
-      get_cut_indices_zeros(aspect_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
-      get_revised_theta_zeros(theta_std_copy, aspect_pest, theta_grid_cut, revised_theta_grid);
+      get_cut_indices_ints(jtwist_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
+      get_revised_theta_zeros(theta_std_copy, jtwist_pest, theta_grid_cut, revised_theta_grid);
     }
     else {
       std::cout << "Error: the string " << flux_tube_cut << " is not valid.\n";
@@ -1142,6 +1139,13 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       std::cout << "Final gbdrift0 = [";
       for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
         std::cout << gbdrift0_temp[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+
+      std::cout << "Final twist_shift_geo_fac = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        float twist_shift_geo_fac = 2.*shat*gds21_temp[itheta]/gds22_temp[itheta];
+        std::cout << twist_shift_geo_fac << ", ";
       }
       std::cout << "]\n\n";
     }
@@ -1280,6 +1284,69 @@ void Geometric_coefficients::get_revised_theta_custom(std::vector<double>& theta
 
 }
 
+void Geometric_coefficients::get_cut_indices_ints(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_cut, int& root_idx_left_, int& root_idx_right_) {
+
+  if(verbose) {
+    std::cout << "Data before cut = [";
+    for (int i=0; i<2*nzgrid; i++) {
+      std::cout << data[i] << ", ";
+    }
+    std::cout << "]\n\n";
+  }
+
+  std::vector<int> iint;
+  std::vector<int> intval;
+  for (int itheta=0; itheta<2*nzgrid; itheta++) {
+    if (floor(data[itheta]) < floor(data[itheta+1]) && floor(data[itheta+1])!=0) {
+      iint.push_back(itheta);
+      intval.push_back(floor(data[itheta+1]));
+    }
+    if (floor(data[itheta]) > floor(data[itheta+1]) && floor(data[itheta])!=0) {
+      iint.push_back(itheta);
+      intval.push_back(floor(data[itheta]));
+    }
+  }
+
+  int nints = iint.size()/2;
+  if(verbose) {
+    std::cout << "Indices of integer crossing = [";
+    for (int i=0; i<iint.size(); i++) {
+      std::cout << iint[i] << ", ";
+    }
+    std::cout << "]\n\n";
+  }
+
+  if (which_crossing > nints || which_crossing < -nints) {
+    std::cout << "Error: There are not " << which_crossing << " integer crossings for a grid of this size.\n";
+    std::cout << "You must select which_cross <= " << nints << "\n";
+    std::cout << "Exiting...\n";
+    exit(1);
+  }
+  else if (which_crossing <= 0) { // which_crossing can be negative to index from outermost zeros, i.e. which_crossing = -1 gives outermost zero
+    which_crossing = nints - abs(which_crossing) + 1;
+  }
+
+
+  ileft_ = iint[nints - which_crossing];
+  iright_ = iint[which_crossing + (nints-1)] + 1;
+  std::cout << "ileft, iright = " << ileft_ << ", " << iright_ << "\n";
+
+  for (int itheta=0; itheta<nzgrid; itheta++) {
+    data[itheta] = data[itheta] - (float) intval[nints - which_crossing];
+  }
+  for (int itheta=nzgrid+1; itheta<2*nzgrid+1; itheta++) {
+    data[itheta] = data[itheta] - (float) intval[which_crossing + (nints-1)];
+  }
+
+  int region = 2; // 2*region is number of interpolating points for spline in the function "get_revised_theta_zeros"
+  root_idx_left = iint[which_crossing + (nints-1)] - (region-1);
+  root_idx_right = min(iint[which_crossing + (nints-1)] + region, 2*nzgrid);
+  
+  std::vector<double> data_cut;
+  data_cut = slice(data,ileft,iright);
+  nzgrid_cut = (data_cut.size() - 1) / 2;
+}
+
 void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_cut, int& root_idx_left_, int& root_idx_right_) {
 
   if(verbose) {
@@ -1326,7 +1393,6 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
 
   ileft_ = isign[nzeros - which_crossing];
   iright_ = isign[which_crossing + (nzeros-1)] + 1;
-  std::cout << "ileft = " << ileft_ << ", iright = " << iright_ << "\n";
 
   int region = 2; // 2*region is number of interpolating points for spline in the function "get_revised_theta_zeros"
   root_idx_left = isign[which_crossing + (nzeros-1)] - (region-1);
@@ -1353,6 +1419,12 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
     std::cout << "Data after cut = [";
     for (int i=0; i<data_cut.size(); i++) {
       std::cout << data_cut[i] << ", ";
+    }
+    std::cout << "]\n\n";
+
+    std::cout << "theta after cut = [";
+    for (int i=0; i<theta_cut_.size(); i++) {
+      std::cout << theta_cut_[i] << ", ";
     }
     std::cout << "]\n\n";
   }

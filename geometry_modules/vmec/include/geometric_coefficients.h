@@ -24,6 +24,8 @@ class Geometric_coefficients {
   void get_cut_indices_zeros(std::vector<double>&, int&, int&, int&, int&, int&);
   void get_revised_theta_zeros(std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<double>&);
 
+  void get_cut_indices_ints(std::vector<double>&, int&, int&, int&, int&, int&);
+
   friend void solver_vmec_theta(double*, double*, int, double, double, VMEC_variables*, int*, double*);
 
   std::vector<double> slice(std::vector<double> const &, int, int);
