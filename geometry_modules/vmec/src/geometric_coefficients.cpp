@@ -1045,8 +1045,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
     cvdrift0_pest[itheta] = gbdrift0_pest[itheta];// + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);;
 
-    // this is the A - Ly_target/Lx_target, with A = 2 |grad x . grad y|/|grad x|^2 = Ly/Lx the aspect ratio, so that roots of aspect give locations where A = Ly_target/Lx_target
-    aspect_pest[itheta] = abs(2. * shat * gds21_pest[itheta] / gds22_pest[itheta]) - y0/x0;
+    // this is the A - Ly_target/Lx_target, with A = 2 |grad x . grad y|/(J * |grad x|^2) = Ly/Lx the aspect ratio, so that roots of aspect give locations where A = Ly_target/Lx_target
+    float twist_shift_geo_fac = 2.*shat*gds21_pest[0]/gds22_pest[0];
+    int jtwist = (int) round((twist_shift_geo_fac)/y0*x0)-1;
+    aspect_pest[itheta] = abs(2. * shat * gds21_pest[itheta] /(jtwist * gds22_pest[itheta])) - y0/x0;
 
   }
 
@@ -1312,7 +1314,7 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
     std::cout << "]\n\n";
   }
   
-  if (which_crossing > nzeros || which_crossing <= -nzeros) {
+  if (which_crossing > nzeros || which_crossing < -nzeros) {
     std::cout << "Error: There are not " << which_crossing << " zero crossings for a grid of this size.\n";
     std::cout << "You must select which_cross <= " << nzeros << "\n";
     std::cout << "Exiting...\n";
@@ -1324,10 +1326,11 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
 
   ileft_ = isign[nzeros - which_crossing];
   iright_ = isign[which_crossing + (nzeros-1)] + 1;
+  std::cout << "ileft = " << ileft_ << ", iright = " << iright_ << "\n";
 
   int region = 2; // 2*region is number of interpolating points for spline in the function "get_revised_theta_zeros"
   root_idx_left = isign[which_crossing + (nzeros-1)] - (region-1);
-  root_idx_right = isign[which_crossing + (nzeros-1)] + region;
+  root_idx_right = min(isign[which_crossing + (nzeros-1)] + region, 2*nzgrid);
   
   data_cut = slice(data,ileft,iright);
   nzgrid_cut = (data_cut.size() - 1) / 2;
@@ -1366,7 +1369,7 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   int ncoeff = 3;
   double coeff[ncoeff];
   // returns coefficients of P = coeff[0] + coeff[1]*x + coeff[2]*x^2 + ...
-  PolyFit( &theta_slice[0], &zero_slice[0], 2*region, ncoeff, &coeff[0] );
+  PolyFit( &theta_slice[0], &zero_slice[0], zero_slice.size(), ncoeff, &coeff[0] );
 
   if(verbose) {
     std::cout << "zero_slice = [";
@@ -1390,10 +1393,10 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   gsl_poly_solve_quadratic( coeff[2], coeff[1], coeff[0], &r1, &r2 );
   
   // Ensure that the root is within the interp region
-  if ( (r1 > theta_slice[0]) and (r1 < theta_slice[2*region-2]) ) {
+  if ( (r1 > theta_slice[0]) and (r1 < theta_slice[theta_slice.size()-1]) ) {
     theta_zero_loc = r1;
   }
-  else if ( (r2 > theta_slice[0]) and (r2 < theta_slice[2*region-2]) ) {
+  else if ( (r2 > theta_slice[0]) and (r2 < theta_slice[theta_slice.size()-1]) ) {
     theta_zero_loc = r2;
   }
   else {
