@@ -84,7 +84,7 @@ void Parameters::get_nml_vars(char* filename)
   // "forced periodic" (or simply "periodic"): use periodic BCs with no cutting of flux tube
   // "exact periodic": cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only)
   // "continuous drifts": cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only)
-  // "linked aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
+  // "fix aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
@@ -762,7 +762,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if( boundary == "periodic" || boundary == "exact periodic" || boundary == "forced periodic") { boundary_option_periodic = true;
   } else { boundary_option_periodic = false; }
-  
+
   if     ( init_field == "density") { initf = inits::density; }
   else if( init_field == "upar"   ) { initf = inits::upar   ; }
   else if( init_field == "tpar"   ) { initf = inits::tpar   ; }
@@ -1587,6 +1587,17 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
   float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
 
   printf("set_jtwist_x0: shat = %f, twist_shift_geo_fac = %f\n", shat, twist_shift_geo_fac);
+
+  // check consistency of boundary and geo_option
+  printf(ANSI_COLOR_RED);
+  if(boundary == "continuous drifts" || boundary == "fix aspect") {
+    if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard twist-shift BCs (boundary = \"linked\")\n", boundary.c_str()); 
+  }
+  if(boundary == "exact periodic") {
+    if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard periodic BCs (boundary = \"periodic\")\n", boundary.c_str()); 
+  }
+  printf(ANSI_COLOR_RESET);
+
   if (jtwist==0) {
     // this is an error
     printf(ANSI_COLOR_RED);
@@ -1676,6 +1687,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
     }
     printf(ANSI_COLOR_MAGENTA);
     printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, x0 = %f, y0 = %f\n", jtwist, x0, y0);
+  
     printf(ANSI_COLOR_RESET);
   }
 

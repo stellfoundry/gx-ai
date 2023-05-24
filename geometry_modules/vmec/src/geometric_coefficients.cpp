@@ -34,7 +34,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   float x0 = toml::find_or <float> (tnml, "x0", (double) y0 ); // default to aspect ratio = 1 in this module
   if (boundary == "exact periodic") flux_tube_cut = "gds21";
   else if (boundary == "continuous drifts") flux_tube_cut = "gbdrift0";
-  else if (boundary == "linked aspect") flux_tube_cut = "aspect";
+  else if (boundary == "fix aspect") flux_tube_cut = "aspect";
   else flux_tube_cut = "none";
 
   if (nml.contains("Geometry")) tnml = toml::find(nml, "Geometry");
