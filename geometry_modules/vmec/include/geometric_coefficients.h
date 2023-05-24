@@ -216,7 +216,7 @@ class Geometric_coefficients {
   int sign_psi;
   double desired_normalized_toroidal_flux = 0.25;
   int vmec_surface_option = 2;
-  int verbose = 1;
+  int verbose = 0;
   std::string flux_tube_cut = "none";
   double custom_length = M_PI;
   int which_crossing = 1;
