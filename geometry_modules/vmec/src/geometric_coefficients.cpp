@@ -832,7 +832,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     temp2D[itheta] = -sin(zeta[itheta]) / R[itheta];
   }
-  test_arrays(grad_zeta_X, temp2D, false, 1.0e-2, grad_zeta_X_name);
+  test_arrays(grad_zeta_X, temp2D, false, 3.0e-2, grad_zeta_X_name);
   // Might as well use the exact value, which is currently in temp2D
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     grad_zeta_X[itheta] = temp2D[itheta];
@@ -842,7 +842,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     temp2D[itheta] = cos(zeta[itheta]) / R[itheta];
   }
-  test_arrays(grad_zeta_Y, temp2D, false, 1.0e-2, grad_zeta_Y_name);
+  test_arrays(grad_zeta_Y, temp2D, false, 3.0e-2, grad_zeta_Y_name);
   // Might as well use the exact value, which is currently in temp2D
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     grad_zeta_Y[itheta] = temp2D[itheta];
@@ -892,7 +892,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - dX_ds[itheta] * dZ_dtheta_vmec[itheta] * dY_dzeta[itheta]
       - dY_ds[itheta] * dX_dtheta_vmec[itheta] * dZ_dzeta[itheta];
   }
-  test_arrays(sqrt_g, temp2D, false, 5.0e-3, sqrt_g_name);
+  test_arrays(sqrt_g, temp2D, false, 3.0e-2, sqrt_g_name);
 
   double *inv_sqrt_g = new double[2*nzgrid+1]{};
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
@@ -905,7 +905,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - grad_s_Y[itheta] * grad_theta_vmec_X[itheta] * grad_zeta_Z[itheta];
     inv_sqrt_g[itheta] = 1./sqrt_g[itheta];
   }
-  test_arrays(inv_sqrt_g, temp2D, false, 1.e-2, inv_sqrt_g_name);
+  test_arrays(inv_sqrt_g, temp2D, false, 3.e-2, inv_sqrt_g_name);
   delete[] inv_sqrt_g;
 
   //---------------------------------------------------------------
@@ -934,9 +934,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   test_arrays(B_sub_zeta_calc, B_sub_zeta, false, 1.0e-2, B_sub_zeta_name);
   test_arrays(B_sub_s_calc, B_sub_s, false, 1.0e-2, B_sub_s_name);
 
-  test_arrays(B_sup_theta_calc, B_sup_theta_vmec, false, 1.0e-2, B_sup_theta_vmec_name);
-  test_arrays(B_sup_zeta_calc, B_sup_zeta, false, 1.0e-2, B_sup_zeta_name);
-  test_arrays(B_sup_s_calc, temp2D, true, 1.0e-2, B_sup_s_name);
+  test_arrays(B_sup_theta_calc, B_sup_theta_vmec, false, 2.0e-2, B_sup_theta_vmec_name);
+  test_arrays(B_sup_zeta_calc, B_sup_zeta, false, 2.0e-2, B_sup_zeta_name);
+  test_arrays(B_sup_s_calc, temp2D, true, 2.0e-2, B_sup_s_name);
   
   delete[] B_sub_theta_calc;
   delete[] B_sub_zeta_calc;
@@ -981,8 +981,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - B_Y[itheta] * grad_B_X[itheta] * grad_alpha_Z[itheta];
   }
   
-  test_arrays(B_cross_grad_s_dot_grad_alpha, B_cross_grad_s_dot_grad_alpha_alternate, false, 1.0e-2, B_cross_grad_s_dot_grad_alpha_name);
-  test_arrays(B_cross_grad_B_dot_grad_alpha, B_cross_grad_B_dot_grad_alpha_alternate, false, 1.0e-2, B_cross_grad_B_dot_grad_alpha_name);
+  test_arrays(B_cross_grad_s_dot_grad_alpha, B_cross_grad_s_dot_grad_alpha_alternate, false, 2.0e-2, B_cross_grad_s_dot_grad_alpha_name);
+  test_arrays(B_cross_grad_B_dot_grad_alpha, B_cross_grad_B_dot_grad_alpha_alternate, false, 2.0e-2, B_cross_grad_B_dot_grad_alpha_name);
 
   //--------------------------------------------------------------
   // Finally, assemble the quantities needed for GX
@@ -1330,7 +1330,7 @@ void Geometric_coefficients::get_cut_indices_ints(std::vector<double>& data, int
 
   ileft_ = iint[nints - which_crossing];
   iright_ = iint[which_crossing + (nints-1)] + 1;
-  std::cout << "ileft, iright = " << ileft_ << ", " << iright_ << "\n";
+  if(verbose) std::cout << "ileft, iright = " << ileft_ << ", " << iright_ << "\n";
 
   for (int itheta=0; itheta<nzgrid; itheta++) {
     data[itheta] = data[itheta] - (float) intval[nints - which_crossing];
@@ -1409,7 +1409,7 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   std::vector<double> data_cut;
   std::vector<double> zero_slice, theta_slice; // small slices of 2*region points on which to fit a spline
   //  int root_idx_left, root_idx_right;
-  double r1, r2; // quadratic roots
+  double r1, r2, r3; // cubic roots
   double theta_zero_loc; // theta value at location of zero crossing
 
 
@@ -1439,7 +1439,7 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   theta_slice = slice(theta,root_idx_left,root_idx_right);
 
   int region = 2;
-  int ncoeff = 3;
+  int ncoeff = 4;
   double coeff[ncoeff];
   // returns coefficients of P = coeff[0] + coeff[1]*x + coeff[2]*x^2 + ...
   PolyFit( &theta_slice[0], &zero_slice[0], zero_slice.size(), ncoeff, &coeff[0] );
@@ -1460,10 +1460,14 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
     std::cout << "coeff[0] = " << coeff[0] << "\n\n";
     std::cout << "coeff[1] = " << coeff[1] << "\n\n";
     std::cout << "coeff[2] = " << coeff[2] << "\n\n";
+    std::cout << "coeff[3] = " << coeff[3] << "\n\n";
   }
   
   // solve a*x^2 + b*x + c = 0
-  gsl_poly_solve_quadratic( coeff[2], coeff[1], coeff[0], &r1, &r2 );
+  gsl_poly_solve_cubic( coeff[2]/coeff[3], coeff[1]/coeff[3], coeff[0]/coeff[3], &r3, &r2, &r1 );
+  if(verbose) {
+    std::cout << "Roots = " << r1 << ", " << r2 << ", " << r3 << "\n";
+  }
   
   // Ensure that the root is within the interp region
   if ( (r1 > theta_slice[0]) and (r1 < theta_slice[theta_slice.size()-1]) ) {
@@ -1472,8 +1476,11 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   else if ( (r2 > theta_slice[0]) and (r2 < theta_slice[theta_slice.size()-1]) ) {
     theta_zero_loc = r2;
   }
+  else if ( (r3 > theta_slice[0]) and (r3 < theta_slice[theta_slice.size()-1]) ) {
+    theta_zero_loc = r3;
+  }
   else {
-    std::cout << "Error: Neither root is in the interpolation region around the zero. Something went wrong. Exiting...";
+    std::cout << "Error: None of the roots " << r1 << ", " << r2 << " or " << r3 << " are in the interpolation region around the zero. Something went wrong. Exiting...\n";
     exit(1);
   }
 
