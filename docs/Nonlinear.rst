@@ -163,10 +163,11 @@ Dissipation
    D_hyper = 0.05                  # coefficient of hyperviscosity
    nu_hyper = 2                    # power of hyperviscosity
 
-In addition to ``hypercollisions``, we also include hyperviscosity (``hyper=true``) in this nonlinear simulation, which provides dissipation at the grid scale in the :math:`x` and :math:`y` dimensions. The hyperviscosity operator takes the form
+In addition to ``hypercollisions``, we also include hyperviscosity (``hyper=true``) in this nonlinear simulation, which provides dissipation at the grid scale in the :math:`x` and :math:`y` dimensions. 
+.. The hyperviscosity operator takes the form
 
-.. math::
-  \nu_\mathrm{hyp}G_{\ell,m} &= \texttt{D_hyper}\left(\frac{k_x^2 + k_y^2}{k_{x\,\mathrm{max}}^2+k_{y\,\mathrm{max}}^2}\right)^\texttt{nu_hyper} G_{\ell,m} \\
+.. .. math::
+..   \nu_\mathrm{hyp}G_{\ell,m} &= \texttt{D_hyper}\left(\frac{k_x^2 + k_y^2}{k_{x\,\mathrm{max}}^2+k_{y\,\mathrm{max}}^2}\right)^\texttt{nu_hyper} G_{\ell,m} \\
                     &= 0.05\left(\frac{k_x^2 + k_y^2}{k_{x\,\mathrm{max}}^2+k_{y\,\mathrm{max}}^2}\right)^2 G_{\ell, m}
 
 Diagnostics
