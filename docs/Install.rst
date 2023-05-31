@@ -80,3 +80,5 @@ After creating the environment (only needed once per system), one must always ha
 .. code-block:: bash
 
   conda activate gxenv
+
+.
