@@ -201,13 +201,13 @@ The ``[Dissipation]`` group controls numerical dissipation parameters.
    nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
    p_hyper_l = 6                   # power of laguerre hypercollisions
 
-We do not make any closure assumptions (``closure_model = "none"``), instead opting for a simple truncation of the moment series. In lieu of closures, hypercollisions can provide the necessary dissipation at small scales in velocity space (large hermite and laguerre index). Here we use a hypercollision operator of the form
+We do not make any closure assumptions (``closure_model = "none"``), instead opting for a simple truncation of the moment series. In lieu of closures, hypercollisions can provide the necessary dissipation at small scales in velocity space (large hermite and laguerre index). 
+.. Here we use a hypercollision operator of the form
 
-.. math::
-  \nu_\mathrm{hyp}G_{\ell,m} &= [\texttt{nu_hyper_m}M(m/M)^\texttt{p_hyper_m} + \texttt{nu_hyper_l}L(\ell/L)^\texttt{p_hyper_l}] G_{\ell, m} \\
-                    &= [0.5M(m/M)^6 + 0.5L(\ell/L)^6] G_{\ell, m}
+.. .. math::
+..   \nu_\mathrm{hyp}G_{\ell,m} &= [\texttt{nu_hyper_m}M(m/M)^\texttt{p_hyper_m} + \texttt{nu_hyper_l}L(\ell/L)^\texttt{p_hyper_l}] G_{\ell, m} = [0.5M(m/M)^6 + 0.5L(\ell/L)^6] G_{\ell, m}
 
-where :math:`L =` ``nlaguerre`` and :math:`M =` ``nhermite``.
+.. where :math:`L =` ``nlaguerre`` and :math:`M =` ``nhermite``.
   
 Diagnostics
 ===========
