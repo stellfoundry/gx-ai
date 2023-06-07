@@ -135,7 +135,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     }
   }
 
-  if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
+  if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
   if (pars->eqfix && (
 		      (pars->scheme_opt == Tmethod::k10) ||
