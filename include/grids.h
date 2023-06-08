@@ -37,6 +37,7 @@ class Grids {
   float * kx_outh;  float * kz_outh;
   float * kpar_outh;
   float *y_h, *x_h, *z_h;
+  int * m0_h;
   
   float * theta0_h ;
   float * th0; 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "device_funcs.h"
+#include <cmath>
 
 __device__ __constant__ int nx, ny, nyc, nz, nspecies, nm, nl, nj, zp, ikx_fixed, iky_fixed, is_lo, is_up, m_lo, m_up, m_ghost, nm_glob;
 
@@ -803,6 +804,68 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
       gb_d[idxyz] = ky[idy] * gb[idz] + kxs[idy+nyc*idx] * shatInv * gb0[idz] ;
       omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
     }
+  }
+}
+
+__global__ void init_ftwist(float* ftwist, const float* gds21, const float* gds22, float shat)
+{
+  unsigned int idz = get_id1();
+  if (idz < nz) {
+    ftwist[idz] = shat * gds21[idz] / gds22[idz]; //this can be changed depending on how you want to account for twist
+  }
+}
+__global__ void init_m0(int* m0, const float x0, const float* ky, const float* ftwist, float shat, const float kxfac)
+{
+  unsigned int idy = get_id1();
+  unsigned int idz = get_id2();
+  float delta = 0.01313; //arbitrary constant to make sure it never has to round(0.5)
+  if ((idy < nyc) && (idz < nz)) { 
+    unsigned int idyz = idy + nyc*idz; 
+    
+    // 2*pi*zp terms use global shear to extrapolate to z + delta_z at edge of domain, see (B.10) in Ball 2020
+    // floor and mod functions act as essentially an if statement for exrapolation conditions
+    // the last term makes sure that m0(ky, z=0) is 0, essentially a correction to the delta correction in the case of large ky
+    
+   m0[idyz] = -round(x0 * ky[idy] * ( (1 - delta) * (ftwist[idz%nz] - 2 * M_PI * zp* kxfac * shat * floorf(idz/(1.0*nz))) + delta * (ftwist[(idz+1)%nz] - 2 * M_PI * zp * kxfac * shat * floorf((idz+1)/(1.0*nz))))) + round(x0 * ky[idy] * ( (1 - delta) * ftwist[(nz/2)] + delta * ftwist[nz/2+1]));
+  
+  }
+  		
+}
+__global__ void init_deltaKx(float* deltaKx, const int* m0, const float x0, const float* ky, const float* ftwist)
+{
+  unsigned int idy = get_id1();
+  unsigned int idz = get_id2();
+  if ((idy < nyc) && (idz < nz)) {
+    unsigned int idyz = idy + nyc*idz;
+    deltaKx[idyz] = ky[idy] * ftwist[idz] + m0[idyz] / x0;
+  }
+}
+__global__ void init_kperp2_ntft(float* kperp2, const float* kx, const float* ky, const float* gds2, const float* gds21, const float* gds22, const float* ftwist, const float* bmagInv, float shat, const float* deltaKx)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  float shatInv = 1./shat;
+  if (unmasked(idx,idy) && idz<nz) {
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idyz = idy + nyc*idz;
+    kperp2[idxyz] = ( pow(ky[idy] , 2) * (gds2[idz] - 2 * ftwist[idz] * gds21[idz] * shatInv + pow(ftwist[idz], 2) * gds22[idz] * pow(shatInv, 2)) + pow(kx[idx] + deltaKx[idyz], 2) * gds22[idz] * pow(shatInv, 2) ) * pow(bmagInv[idz], 2);
+  }
+}
+__global__ void init_omegad_ntft(float* omegad, float* cv_d, float* gb_d, const float* kx, const float* ky, const float* cv, const float* gb, const float* cv0, const float* gb0, float shat, const int* m0, const float x0)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  // I don't think I need to worry about shat = 0 case for NTFT - would be periodic boundary condition and I don't allow this in the set_jtwist function
+  float shatInv = 1./shat;
+  if ( unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idyz = idy + nyc*idz;
+    cv_d[idxyz] = ky[idy] * cv[idz] + shatInv * (kx[idx] + m0[idyz] / x0) * cv0[idz] ;     
+    gb_d[idxyz] = ky[idy] * gb[idz] + shatInv * (kx[idx] + m0[idyz] / x0) * gb0[idz] ;
+    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
   }
 }
 

@@ -86,6 +86,7 @@ void Parameters::get_nml_vars(char* filename)
   // "continuous drifts": cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only)
   // "fix aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
+  nonTwist = toml::find_or <bool>        (tnml, "nonTwist", false);
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
@@ -979,6 +980,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_dom, "jtwist",        NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "boundary_dum",  NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_dom, ivar, "value", boundary.size(), boundary.c_str())) ERR(retval);
+  if (retval = nc_def_var (nc_dom, "nonTwist",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_dom, "long_wavelength_GK",      NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_ml, "Use_reservoir",  NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1216,6 +1218,7 @@ void Parameters::store_ncdf(int ncid) {
   if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );
   putint   (nc_dom, "zp",      Zp      );
   putint   (nc_dom, "jtwist",  jtwist  );
+  putbool  (nc_dom, "nonTwist",nonTwist);
   putbool  (nc_dom, "long_wavelength_GK", long_wavelength_GK);
 
   put_real (nc_time, "dt",      dt      );
@@ -1580,7 +1583,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
+void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22, bool nonTwist)
 {
   float shat = *shat_in;
   // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
@@ -1689,6 +1692,15 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
     printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, x0 = %f, y0 = %f\n", jtwist, x0, y0);
   
     printf(ANSI_COLOR_RESET);
+  }
+
+  if (nonTwist) {
+    if (boundary_option_periodic) {
+      printf("Cannot use both periodic boundary condition and the non-twisting flux tube. Setting nonTWist = false \n");
+      nonTwist = false;
+    } else {
+      printf("Using non-twisting flux tube. \n");
+    }
   }
 
 }

@@ -30,6 +30,7 @@ Grids::Grids(Parameters* pars) :
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
   y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
+  m0_h            = nullptr;
 
   Nspecies = pars->nspec_in;
   Nspecies_glob = Nspecies;
@@ -115,6 +116,7 @@ Grids::Grids(Parameters* pars) :
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
   z_h      = (float*) malloc(sizeof(float) * Nz       );
+  m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
@@ -172,6 +174,7 @@ Grids::~Grids() {
   if (x_h)             free(x_h);
   if (y_h)             free(y_h);
   if (z_h)             free(z_h);
+  if (m0_h)            free(m0_h);
   if (theta0_h)        free(theta0_h); 
  
   if(nprocs > 1) ncclCommDestroy(ncclComm);
