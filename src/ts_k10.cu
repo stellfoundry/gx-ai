@@ -28,6 +28,7 @@ Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   if(pars_->dealias_kz) {
     if (pars_->local_limit)                     { grad_par = new GradParallelLocal(grids_);
     } else if (pars_->boundary_option_periodic) { grad_par = new GradParallelPeriodic(grids_);
+    } else if (pars_->nonTwist)                 { grad_par = new GradParallelNTFT(grids_, pars_->jtwist);
     } else {                                      grad_par = new GradParallelLinked(grids_, pars_->jtwist);
     }
   }

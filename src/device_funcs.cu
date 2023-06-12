@@ -2097,6 +2097,22 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
   ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
 }
 
+__device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr) // JMH
+{
+  // kz[1] = nz/(zp * nLinks)
+  float *kz = (float*) kzData;
+  int nLinks = (int) lrintf(nz/(zp*kz[1]));
+  if (nLinks <= 2) {  // if the link has only two grid points or less, set it to 0
+    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  }
+  else {
+    unsigned int idz = offset % (nLinks);
+    cuComplex Ikz = make_cuComplex(0., kz[idz]);
+    float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
+    ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
+  }
+}
+
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz  = (float*) kzData;
@@ -2129,8 +2145,24 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
   }
 }
 
+__global__ void init_kzLinkedNTFT(float* kz, int nLinks, bool dealias_kz)
+{
+  int nzL = nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
+      kz[i] = (float) i*nz/(zp*nLinks);
+    } else {
+      kz[i] = (float) nz*(i-nzL)/(zp*nLinks);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {kz[i] = 0.0;}
+    }
+  }
+}
+
 __device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
 __device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
+__device__ cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr = i_kzLinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
@@ -2159,6 +2191,55 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
+  }
+}
+
+__global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
+			   int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms)
+{
+  unsigned int idp, idn, idk, idlm;
+  int ikx_ntft, idz, idpn;
+
+    idp  = get_id1(); // NTFT grid point number in chain
+    idn  = get_id2(); // NTFT chain number in class
+    idlm = get_id3();
+   
+    // changed nLinks -> 1 for different nns
+    if (idp < nLinks && idn < nChains && idlm < nMoms) {
+      // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nx * idz)
+      idpn = idp + nLinks * idn;
+      ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
+      idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+      
+      unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
+      unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
+      
+      
+      G_linked[idlink] = G[globalIdx];
+      
+    }
+  }
+
+__global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G,
+			       int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms)
+{
+  unsigned int idp, idn, idk, idlm;
+  int ikx_ntft, idz, idpn;  
+  
+  idp  = get_id1(); // NTFT grid point number in chain
+  idn  = get_id2(); // NTFT chain number in class
+  idlm = get_id3();
+  
+  if (idp < nLinks && idn < nChains && idlm < nMoms) {
+      // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nx * idz)      
+      idpn = idp + nLinks * idn;
+      ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
+      idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+      
+      unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
+      unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
+      
+      G[globalIdx] = G_linked[idlink];
   }
 }
 
@@ -2206,6 +2287,64 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
   }
 }
 
+__global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
+			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       cuComplex* GRhs)
+{
+
+  unsigned int idp, idn, idk, idlm;
+  int ikx_ntft, idz, idpn;
+
+  idp = get_id1();
+  idn = get_id2();
+  idlm = get_id3();
+
+  if (idp < nLinks && idn < nChains && idlm < nMoms) {
+
+    // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nakx * idz)
+    idpn = idp + nLinks * idn;
+    ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
+    idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+    
+    unsigned int idzl = idp;
+    unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx*(idz + nz*idlm));
+    unsigned int idxyz = iky[idpn] + nyc*(ikx_ntft + nx*idz);
+
+    float nu = 0.;
+    // width = width of damping region in number of grid points 
+    // set damping region width to 1/8 of extended domain (on either side)
+    int width = nz*nLinks/8;  
+
+    if (width == 0) width = 1; //somethings links are less than 8 long in NTFT
+
+    float L = 2*M_PI*zp*nLinks/(8*nz);
+    float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
+    if (idzl <= width ) {
+      float x = ((float) idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    } else if (idzl >= nLinks-width) {
+      float x = ((float) nLinks-idzl)/width;
+      nu = 1 - 2*x*x/(1+x*x*x*x);
+    }
+    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+    if(iky[idk]>0) {
+      unsigned int idl = idlm % nl;
+      unsigned int idm = idlm / nl;
+      const float kperp2_ = kperp2[idxyz];
+      const float zt_ = sp.zt;
+      const float vt_ = sp.vt;
+      const float rho2_ = sp.rho2;
+      const float b_ = kperp2_ * rho2_;
+      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+      cuComplex H_ = G[globalIdx];
+      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
+      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+    }
+  }
+}
+
+// Doesn't look like zeroEnds or linkedFilterEnds are used, not creating NTFT version yet // JMH
 __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms)
 {
