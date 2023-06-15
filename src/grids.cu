@@ -124,6 +124,7 @@ Grids::Grids(Parameters* pars) :
 
   checkCuda(cudaDeviceSynchronize());
 
+  DEBUGPRINT("Initializing NCCL comms...\n");
   //cudaStreamCreate(&ncclStream);
   if(iproc == 0) ncclGetUniqueId(&ncclId);
   if(nprocs > 1) {
@@ -142,6 +143,8 @@ Grids::Grids(Parameters* pars) :
     }
   }
 
+  DEBUGPRINT("Got NCCL IDs\n");
+
   checkCuda(ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc));
   // set up NCCL communicator that is per-species
   checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s], iproc_m));
@@ -152,6 +155,7 @@ Grids::Grids(Parameters* pars) :
     else
       ncclComm_m0 = ncclComm;
   }
+  DEBUGPRINT("Finished initializaing NCCL comms.\n");
 }
 
 Grids::~Grids() {

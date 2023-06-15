@@ -2556,8 +2556,8 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
 	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
-             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
-             + scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
+             - (nu_hyper_l*pow((float) l/nl, (float) p_hyper_l)                              
+             + nu_hyper_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
         }   
       }      
     }   
