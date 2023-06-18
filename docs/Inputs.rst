@@ -140,7 +140,7 @@ The ``[Domain]`` group controls the physical extents of the simulation domain an
        If zero magnetic shear: :math:`\texttt{y0}`
    * - ``[Domain]``
      - ``boundary``
-     - Controls the boundary condition in the :math:`z` (parallel) direction. Two options are possible: periodic (``"periodic"``) or twist-shift (``"linked"``).
+     - Controls the boundary condition in the :math:`z` (parallel) direction. The following options are possible: ``"linked"``: twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018). ``"forced periodic"`` (or simply ``"periodic"``): use periodic BCs with no cutting of flux tube. ``"exact periodic"``: cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only). ``"continuous drifts"``: cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only). ``"fix aspect"``: cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only).
      - **"linked"**
    * - ``[Domain]``
      - ``zp``
@@ -245,7 +245,9 @@ The ``[Initialization]`` group controls the initial conditions.
 Geometry
 ++++++++
 
-The ``[Geometry]`` group controls the simulation geometry. For more details about geometry options, see :ref:`geo`.
+The ``[Geometry]`` group controls the simulation geometry. 
+
+.. For more details about geometry options, see :ref:`geo`.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -260,10 +262,23 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
      - ``geo_option``
      - String specifying the geometry setup. Options are ``{"s-alpha", "miller", "vmec", "eik", "nc", "slab", "const-curv", "gs2_geo"}``
      - **"miller"**    
-   * - ``[Geometry]``
-     - ``geo_file``
-     - For ``geo_option = "eik"``, the geometric information is read from the file specified by ``geo_file``. 
-     - **"eik.out"**    
+
+Each ``geo_option`` has some parameters that control the geometry specification. The following groups of parameters are the parameters that can/should be specified for a particular choice of ``geo_option``. All parameters live in the ``[Geometry]`` block. Note that some parameters overlap between different ``geo_option``'s.
+
+geo_option = "miller"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option specifies a local Miller equilibrium for a tokamak.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
    * - ``[Geometry]``
      - ``Rmaj``
      - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`. 
@@ -285,12 +300,8 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
        Shafranov shift and is sometimes called alpha. It should normally be a non-negative number.
      - **0.0**
    * - ``[Geometry]``
-     - ``eps``
-     - This is the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`. Used only for ``geo_option = "s-alpha"``.
-     - **0.167**
-   * - ``[Geometry]``
      - ``rhoc``
-     - Flux surface label given by ratio of midplane diameter to the reference length, :math:`r/L_\mathrm{ref}`. 
+     - Flux surface label given by ratio of midplane diameter to the reference length, :math:`\rho = r/L_\mathrm{ref}`. 
      - 
    * - ``[Geometry]``
      - ``R_geo``
@@ -298,24 +309,243 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
      - 
    * - ``[Geometry]``
      - ``akappa``
-     - Elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Elongation of flux surface. 
      - 
    * - ``[Geometry]``
      - ``akappri``
-     - Radial gradient of elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Radial gradient of elongation of flux surface.
      - 
    * - ``[Geometry]``
      - ``tri``
-     - Triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Triangularity of flux surface.
      - 
    * - ``[Geometry]``
      - ``tripri``
-     - Radial gradient of triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Radial gradient of triangularity of flux surface.
      - 
    * - ``[Geometry]``
      - ``betaprim``
      - Radial gradient of equilibrium pressure. Used in the calculation of the Shafranov shift. 
      - 
+
+geo_option = "vmec"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option generates the geometry from a VMEC equilibrium output file in NetCDF format. This is typically used for stellarators.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``vmec_file``
+     - (Path to) the VMEC equilibrium NetCDF output file.
+     - 
+   * - ``[Geometry]``
+     - ``alpha``
+     - Field line label. 
+     - **0.0**
+   * - ``[Geometry]``
+     - ``npol``
+     - Number of poloidal turns. May be reduced based on ``boundary``.
+     - **1.0**
+   * - ``[Geometry]``
+     - ``desired_normalized_toroidal_flux`` or ``torflux``
+     - Flux surface label given by :math:`\rho = \sqrt{\Psi/\Psi_{LCFS}}`, where :math:`\Psi` is the toroidal flux.
+     - **0.25**
+   * - ``[Geometry]``
+     - ``vmec_surface_option``
+     - Controls how the flux surface is chosen. 0 = use exact radius requested. 1 = use nearest value of the VMEC half grid. 2 = use nearest value of the VMEC full grid.
+     - **0**
+   * - ``[Geometry]``
+     - ``which_crossing``
+     - For ``boundary = "exact periodic"``, ``boundary = "continuous drifts"``, or ``boundary = "fix aspect"``, this controls which crossing of the relevant quantity to cut the flux tube at. Negative values count from the end of the flux tube.
+     - **-1**
+   * - ``[Geometry]``
+     - ``verbose``
+     - Set to 1 to print lots of information from VMEC geometry module.
+     - **0**
+
+geo_option = "eik"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Read the geometry arrays from a text file in GS2's eik.out format.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``geo_file``
+     - (Path to) eik geometry file.
+     - "eik.out"
+
+
+geo_option = "nc"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Read the geometry arrays from a NetCDF file.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``geo_file``
+     - (Path to) NetCDF geometry file.
+     - 
+     
+
+geo_option = "s-alpha", geo_option = "const-curv"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``eps``
+     - Flux surface label given by the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`.
+     - **0.167**
+   * - ``[Geometry]``
+     - ``Rmaj``
+     - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`.  The choice of ``Rmaj`` can effectively choose the definition of :math:`L_\mathrm{ref}`. Setting ``Rmaj = 1.0`` effectively sets :math:`L_\mathrm{ref} = R`. Setting ``Rmaj`` to the aspect ratio :math:`R/a` (with :math:`a` the minor radius) effectively sets :math:`L_\mathrm{ref} = a`.
+     - **1.0**
+   * - ``[Geometry]``
+     - ``qinp``
+     - The magnetic safety factor, :math:`q = (r/R)(B_t/B_p)`.
+     - **1.4**
+   * - ``[Geometry]``
+     - ``shat``
+     - The global magnetic shear, :math:`\hat{s} = (r/q) dq/dr`. 
+     - **0.8**
+   * - ``[Geometry]``
+     - ``shift``
+     - This characterizes the Shafranov shift and is sometimes called alpha. It should normally be a non-negative number.
+     - **0.0**
+
+
+geo_option = "gs2_geo"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option calls GS2's eiktest executable to run GS2's geometry module directly. This is useful for generating geometry from a g-eqdsk equilibrium file, which is currently not natively supported in GX. This option requires separately building GS2's eiktest and setting ``GS2_PATH`` in the Makefile. For parameter definitions, see the GS2 documentation, or see the comments at the top of src/geo/geometry.f90 in the GS2 source code.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``rhoc``
+     - Value of flux surface label :math:`\rho`, depending on choice of ``irho``
+     - **0.5**    
+   * - ``[Geometry]``
+     - ``irho``
+     - | Choose flux surface label:
+       | case (1) :: sqrt(toroidal flux)/sqrt(toroidal flux of LCFS)
+       | case (2) :: diameter/(diameter of LCFS).  recommended
+       | case (3) :: poloidal flux/(poloidal flux of LCFS)
+     - **2**    
+   * - ``[Geometry]``
+     - ``eqfile``
+     - (Path to) numerical equilibrium file to read
+     -     
+   * - ``[Geometry]``
+     - ``iflux``
+     - Use ``iflux=1`` to use a numerical equilibrium (EFIT, CHEASE, etc)
+     - **0**    
+   * - ``[Geometry]``
+     - ``geoType``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``delrho``
+     - 
+     - **0.01**    
+   * - ``[Geometry]``
+     - ``bishop``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``isym``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``s_hat_input``
+     - 
+     - **1.0**    
+   * - ``[Geometry]``
+     - ``p_prime_input``
+     - 
+     - **-2.0**    
+   * - ``[Geometry]``
+     - ``invLp_input``
+     - 
+     - **5.0**    
+   * - ``[Geometry]``
+     - ``alpha_input``
+     - 
+     - **0.0**    
+   * - ``[Geometry]``
+     - ``efit_eq``
+     - Set true to use an EFIT (e.g. g-eqdsk) equilibrium.
+     - **false**    
+   * - ``[Geometry]``
+     - ``dfit_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``gen_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``ppl_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``local_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``idfit_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``chs_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``transp_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``gs2d_eq``
+     - 
+     - **false**    
 
 Species
 +++++++
