@@ -140,7 +140,12 @@ The ``[Domain]`` group controls the physical extents of the simulation domain an
        If zero magnetic shear: :math:`\texttt{y0}`
    * - ``[Domain]``
      - ``boundary``
-     - Controls the boundary condition in the :math:`z` (parallel) direction. The following options are possible: ``"linked"``: twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018). ``"forced periodic"`` (or simply ``"periodic"``): use periodic BCs with no cutting of flux tube. ``"exact periodic"``: cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only). ``"continuous drifts"``: cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only). ``"fix aspect"``: cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only).
+     - | Controls the boundary condition in the :math:`z` (parallel) direction. The following options are possible: 
+       | - ``"linked"``: twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018).
+       | - ``"forced periodic"`` (or simply ``"periodic"``): use periodic BCs with no cutting of flux tube. 
+       | - ``"exact periodic"``: cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only). 
+       | - ``"continuous drifts"``: cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only). 
+       | - ``"fix aspect"``: cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only).
      - **"linked"**
    * - ``[Domain]``
      - ``zp``
@@ -356,7 +361,7 @@ This option specifies a local Miller equilibrium for a tokamak.
 geo_option = "vmec"
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This option generates the geometry from a VMEC equilibrium output file in NetCDF format. This is typically used for stellarators.
+This option generates the geometry from a VMEC equilibrium output file in NetCDF format. This is typically used for stellarators. See also the ``boundary`` parameter in ``[Domain]``, where some options are only available for VMEC geometry.
 
 .. list-table::
    :widths: 20 20 50 10

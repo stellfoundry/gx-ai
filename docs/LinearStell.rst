@@ -130,7 +130,7 @@ The ``[Geometry]`` group controls the simulation geometry.
    # last closed flux surface.
    torflux = 0.64
 
-Here we generate the geometry using a VMEC equilibrium file from the W7-X experiment. GX uses a local flux-tube geometry, which means we must pick a particular value of :math:`alpha = \theta - \iota \phi` that labels the field line on which our flux tube is centered. In the non-axisymmetric geometry of a stellarator, the geometry will be different for different values of :math:`\alpha`. We extend the flux tube for ``npol = 6`` poloidal turns, resulting in a poloidal domain that ranges from :math:`[-6\pi, 6\pi]`. Note, however, that this extended grid is rescaled to an internal poloidal grid :math:`[-\pi, \pi]`; this is relevant for some diagnostic outputs. The flux surface where our flux tube is centered is specified by ``torflux``, which is :math:`s = \Psi/\Psi_{LCFS}`, the normalized toroidal flux. 
+Here we generate the geometry using a VMEC equilibrium file from the W7-X experiment. GX uses a local flux-tube geometry, which means we must pick a particular value of :math:`\alpha = \theta - \iota \phi` that labels the field line on which our flux tube is centered. In the non-axisymmetric geometry of a stellarator, the geometry will be different for different values of :math:`\alpha`. We extend the flux tube for ``npol = 6`` poloidal turns, resulting in a poloidal domain that ranges from :math:`[-6\pi, 6\pi]`. Note, however, that this extended grid is rescaled to an internal poloidal grid :math:`[-\pi, \pi]`; this is relevant for some diagnostic outputs. The flux surface where our flux tube is centered is specified by ``torflux``, which is :math:`s = \Psi/\Psi_{LCFS}`, the normalized toroidal flux. 
 
 .. _linstellspec:
 
