@@ -164,12 +164,25 @@ Parameters that control physics options are specified in the ``[Physics]`` group
    * - ``[Physics]``
      - ``beta``
      - This is the reference beta value, :math:`\beta_\mathrm{ref} = 8\pi n_\mathrm{ref} T_\mathrm{ref}/B^2`. Typically it would be approximately
-       half of the total beta. If ``beta > 0.0`` then electromagnetic terms will be used; otherwise, if ``beta <= 0.``, it is ignored and the calculation is electrostatic.
+       half of the total beta. If ``beta > 0.0`` then electromagnetic terms will be used (depending on ``fapar`` and ``fbpar`` values); otherwise, if ``beta <= 0.``, it is ignored and the calculation is electrostatic.
      - **0.0**
    * - ``[Physics]``
      - ``nonlinear_mode``
      - Set to true to include nonlinear terms in the equations. 
      - **false**
+   * - ``[Physics]``
+     - ``fphi``
+     - Factor multiplying electrostatic potential :math:`\Phi`
+     - **1.0**
+   * - ``[Physics]``
+     - ``fapar``
+     - Factor multiplying electromagnetic vector potential :math:`A_\parallel`
+     - **0.0**
+   * - ``[Physics]``
+     - ``fbpar``
+     - Factor multiplying electromagnetic compressional fluctuation :math:`\delta B_\parallel`
+     - **0.0**
+
   
 Time
 +++++
@@ -187,16 +200,28 @@ Parameters that control the time-stepping are set in the ``[Time]`` group:
      - Default
    * - ``[Time]``
      - ``dt``
-     - The maximum timestep allowed.
+     - The maximum timestep allowed. The actual timestep will be set by stability constraints.
      - **0.05**
    * - ``[Time]``
      - ``nstep``
-     - The number of timesteps to take. 
-     - **10000**
+     - The number of timesteps to take. Set this or ``t_max`` to control the length of the simulation.
+     - 
+   * - ``[Time]``
+     - ``t_max``
+     - End time of the simulation, in code units. Set this or ``nstep`` to control the length of the simulation.
+     - 
+   * - ``[Time]``
+     - ``t_add``
+     - If restarting the simulation, run for an additional ``t_add`` time units.
+     - 
    * - ``[Time]``
      - ``scheme``
-     - This string variable chooses the time-stepping scheme to be used. For options, see :ref:`timestep`.
-     - **"sspx3"**
+     - | This string variable chooses the time-stepping scheme to be used. Choices are:
+       | ``"rk3"``: 3rd order Runge-Kutta (recommended)
+       | ``"rk4"``: 4th order Runge-Kutta
+       | ``"sspx3"``: 3rd order SSP Runge-Kutta with extended stability 
+       | ``"k10"``: Ketcheson's 10 stage, 4th order low-storage method. Useful for problems with memory constraints.
+     - **"rk3"**
    * - ``[Time]``
      - ``stages``
      - The number of Runge-Kutta stages to be used for certain time-stepping schemes. Not relevant
@@ -204,8 +229,8 @@ Parameters that control the time-stepping are set in the ``[Time]`` group:
      - **10**    
    * - ``[Time]``
      - ``cfl``
-     - For nonlinear runs, the maximum timestep allowed is proportional to ``cfl``.
-     - **1.0**    
+     - Safety cushion factor on timestep size. The timestep used will be the computed allowable timestep multiplied by ``cfl``. If encountering numerical issues, decreasing ``cfl`` is one of the first things to try!
+     - **0.9**    
 
 Initialization
 +++++++++++++++
@@ -990,6 +1015,86 @@ The ``[Pspectra]`` group controls writes of various slices of :math:`P_s(k_x,k_y
    * - ``[Pspectra]``
      - kxky
      - P as a function of the magnitude of kx and ky.
+     - **false**
+
+The ``[Qspectra]`` group controls writes of various slices of :math:`Q_s(k_x,k_y,z)`, the heat flux.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Qspectra]``
+     - species
+     - Q as a function of species
+     - **false**
+   * - ``[Qspectra]``
+     - kx
+     - Q as a function of kx
+     - **false**
+   * - ``[Qspectra]``
+     - ky
+     - Q as a function of ky
+     - **false**
+   * - ``[Qspectra]``
+     - kz
+     - Q as a function of kz
+     - **false**
+   * - ``[Qspectra]``
+     - z
+     - Q as a function of z
+     - **false**
+   * - ``[Qspectra]``
+     - kperp
+     - Q as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - ``[Qspectra]``
+     - kxky
+     - Q as a function of the magnitude of kx and ky.
+     - **false**
+
+The ``[Gamspectra]`` group controls writes of various slices of :math:`\Gamma_s(k_x,k_y,z)`, the particle flux.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Gamspectra]``
+     - species
+     - :math:`\Gamma` as a function of species
+     - **false**
+   * - ``[Gamspectra]``
+     - kx
+     - :math:`\Gamma` as a function of kx
+     - **false**
+   * - ``[Gamspectra]``
+     - ky
+     - :math:`\Gamma` as a function of ky
+     - **false**
+   * - ``[Gamspectra]``
+     - kz
+     - :math:`\Gamma` as a function of kz
+     - **false**
+   * - ``[Gamspectra]``
+     - z
+     - :math:`\Gamma` as a function of z
+     - **false**
+   * - ``[Gamspectra]``
+     - kperp
+     - :math:`\Gamma` as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - ``[Gamspectra]``
+     - kxky
+     - :math:`\Gamma` as a function of the magnitude of kx and ky.
      - **false**
 
 Expert
