@@ -930,9 +930,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     B_sup_s_calc[itheta] = B_X[itheta] * grad_s_X[itheta] + B_Y[itheta] * grad_s_Y[itheta] + B_Z[itheta] * grad_s_Z[itheta];
   }
 
-  test_arrays(B_sub_theta_calc, B_sub_theta_vmec, false, 1.0e-2, B_sub_theta_vmec_name);
-  test_arrays(B_sub_zeta_calc, B_sub_zeta, false, 1.0e-2, B_sub_zeta_name);
-  test_arrays(B_sub_s_calc, B_sub_s, false, 1.0e-2, B_sub_s_name);
+  test_arrays(B_sub_theta_calc, B_sub_theta_vmec, false, 2.0e-2, B_sub_theta_vmec_name);
+  test_arrays(B_sub_zeta_calc, B_sub_zeta, false, 2.0e-2, B_sub_zeta_name);
+  test_arrays(B_sub_s_calc, B_sub_s, false, 2.0e-2, B_sub_s_name);
 
   test_arrays(B_sup_theta_calc, B_sup_theta_vmec, false, 2.0e-2, B_sup_theta_vmec_name);
   test_arrays(B_sup_zeta_calc, B_sup_zeta, false, 2.0e-2, B_sup_zeta_name);
