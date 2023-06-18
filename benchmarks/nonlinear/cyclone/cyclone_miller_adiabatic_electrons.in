@@ -22,10 +22,9 @@
  nonlinear_mode = true           # this is a nonlinear calculation
 
 [Time]
- dt = 0.5              # timestep size (in units of L_ref/vt_ref)
- nstep = 8000          # number of timesteps
- cfl = 1.0
- scheme = "sspx3"       # use SSPx3 timestepping scheme
+ t_max = 400.0         # end time (in units of L_ref/vt_ref)
+ cfl = 0.9             # safety cushion factor on timestep
+ scheme = "rk3"        # use RK3 timestepping scheme
 
 [Initialization]
  ikpar_init = 0                  # parallel wavenumber of initial perturbation

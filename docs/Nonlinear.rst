@@ -63,11 +63,11 @@ Time
 .. code-block:: toml
 
   [Time]
-   dt = 0.05              # timestep size (in units of L_ref/vt_ref)
-   nstep = 8000           # number of timesteps
-   scheme = "sspx3"       # use SSPx3 timestepping scheme
+   t_max = 400.0         # end time (in units of L_ref/vt_ref)
+   cfl = 0.9             # safety cushion factor on timestep
+   scheme = "rk3"        # use RK3 timestepping scheme
 
-As in the :ref:`linear <lintime>` case, the timestep size ``dt`` must be small enough to resolve all frequencies in the system. We can take larger (stable) timesteps here than in the linear case because ``nhermite`` is smaller here.
+Running for ``t_max = 400.0`` time units should be enough to get a converged heat flux. 
 
 Initialization
 ==============
@@ -87,12 +87,7 @@ Geometry
 .. code-block:: toml
 
   [Geometry]
-   igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
-   geofile = "cyclone_miller.eik.out"  # name of geometry file
-   # WARNING: the following Miller parameters are not read directly by GX, but can instead be used to create the above geometry file
-   # using the miller geometry module via
-   # python ../../../geometry_modules/miller/gx_geo.py cyclone_miller_adiabatic_electrons.in cyclone_miller.eik.out
-   # changing the parameters below without regenerating a new geometry file will have no effect on GX
+   geo_option = "miller"           # use Miller geometry
    rhoc = 0.5                      # flux surface label, r/a
    Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
    R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
@@ -105,16 +100,7 @@ Geometry
    tripri = 0.0                    # radial gradient of triangularity
    betaprim = 0.0                  # radial gradient of beta
 
-As in the :ref:`linear <lingeo>` case, we use a Miller equilibrium geometry (``igeo=1``). The geometry file was generated using
-
-.. code-block:: bash
-
-  python ../../../geometry_modules/miller/gx_geo.py cyclone_miller_adiabatic_electrons.in cyclone_miller.eik.out
-
-.. warning::
-
-  The Miller parameters are not read directly by GX, only by the geometry module. This means that changing the Miller parameters in the input file
-  without regenerating the ``geofile`` will have no effect on GX.
+As in the :ref:`linear <lingeo>` case, we specify a Miller local equilibrium geometry corresponding to unshifted circular flux surfaces. 
 
 Species
 =======
@@ -195,6 +181,12 @@ Diagnostics
   ky               = true         # P(ky) (summed over kx, z)
   kxky             = false
   z                = true         # P(z) (summed over kx, ky)
+
+  [Qspectra]                      # spectra of Q (heat flux)
+  kx               = false
+  ky               = true         # Q(ky) (summed over kx, z)
+  kxky             = false
+  z                = true         # Q(z) (summed over kx, ky)
   
 For nonlinear simulations, a key set of diagnostics are the turbulent fluxes of particles and energy, which are made available by setting ``fluxes=true``. Note that when using a single kinetic species with a Boltzmann species, the particle flux will be zero.
 
