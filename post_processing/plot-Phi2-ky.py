@@ -16,4 +16,6 @@ for fname in sys.argv[1:]:
 
 plt.xscale('log')
 plt.yscale('log')
+plt.xlabel(r'$k_y \rho_i$')
+plt.ylabel(r"$|\Phi|^2$")
 plt.show()

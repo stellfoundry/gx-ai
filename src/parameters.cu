@@ -94,7 +94,7 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
   nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
-  scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
+  scheme = toml::find_or <string> (tnml, "scheme",    "rk3"   );
   cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
   t_max = toml::find_or <float> (tnml, "t_max", 1.e20);
