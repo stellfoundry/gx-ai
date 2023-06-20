@@ -204,9 +204,9 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   float kpar_max = grids_->kz_max*geo_->gradpar;
   float gradB_max;
   if (geo_->shat == 0.0) {
-    gradB_max = abs(G->species->tz)*(grids_->kx_max*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift0_max));
+    gradB_max = abs(G->species->tz)*(grids_->kx_max*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift_max));
   } else {
-    gradB_max = abs(G->species->tz)*(grids_->kx_max/abs(geo_->shat)*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift0_max));
+    gradB_max = abs(G->species->tz)*(grids_->kx_max/abs(geo_->shat)*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift_max));
   }
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 		  						   gradB_max*pars_->nu_hyper_l,
