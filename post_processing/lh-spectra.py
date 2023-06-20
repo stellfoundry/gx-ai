@@ -4,7 +4,7 @@ import sys
 
 from netCDF4 import Dataset
 
-def lh_spectra(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None):
+def lh_spectra(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, normalize=False):
 
     t = data.variables['time'][:]
     try:
@@ -22,6 +22,10 @@ def lh_spectra(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None):
             nl = wl.shape[1]
         except:
             print('Error: W(l,m) spectra data was not written.')
+
+    if normalize:
+        wm = wm / wm[0]
+        wl = wl / wl[0]
 
     species_type = data.groups['Inputs'].groups['Species'].variables['species_type'][ispec]
     if species_type == 0:
