@@ -63,12 +63,7 @@
 
 [Dissipation]
  closure_model = "none"          # no closure assumptions (just truncation)
- hypercollisions = true          # use hypercollision model
- nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # exponent of hermite hypercollisions
- nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # exponent of laguerre hypercollisions
-
+ hypercollisions = true          # use hypercollision model (with default parameters)
  hyper = true                    # use hyperdiffusion
  D_hyper = 0.05                  # coefficient of hyperdiffusion
  p_hyper = 2                     # exponent of hyperdiffusion is 2*p_hyper = 4
@@ -78,11 +73,8 @@
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 10                    # write diagnostics every 100 timesteps
+ nwrite = 20                     # write diagnostics every nwrite timesteps
  fluxes = true                   # compute and write heat and particle fluxes
-
-[Expert]
- use_NCCL = false
 
 [Wspectra]                       # spectra of W = |G_lm|**2
 species          = false
