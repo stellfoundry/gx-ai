@@ -394,11 +394,11 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
 	 // add one to the mode length corresponding to that grid point, this is analagous to n_k
 	 mode_size[mode_nums[idy + naky * (idx + nakx * idz)]-1]++;
        	 mode_size_ref[mode_nums[idy + naky * (idx + nakx * idz)]-1]++; //should be identical arrays
-	 //printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
+	 printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
        }
-       //printf("\n");
+       printf("\n");
     }
-    //printf(" \n\n\n\n");
+    printf(" \n\n\n\n");
   }
   qsort(mode_size, mode, sizeof(int), compare_ntft); //sort mode_size into increasing order
   // count how many different classes
@@ -518,13 +518,13 @@ void GradParallelNTFT::linkPrint() {
   for(int c=0; c<nClasses; c++) {
     for(int n=0; n<nChains[c]; n++) {
       for(int p=0; p<nLinks[c]; p++) {
-	if(ikxLinked_h[c][p+nLinks[c]*n]<(grids_->Nx-1)/3+1) {
-          printf("(%d,%d) ", ikyLinked_h[c][p+nLinks[c]*n], ikxLinked_h[c][p+nLinks[c]*n]);
+	if(((-ikxLinked_h[c][p+nLinks[c]*n]-1) % grids_->Nx)<(grids_->Nx-1)/3+1) {
+          printf("(%d,%d) ", ikyLinked_h[c][p+nLinks[c]*n], ((-ikxLinked_h[c][p+nLinks[c]*n]-1) % grids_->Nx));
         }
         else {
-          printf("(%d,%d) ",ikyLinked_h[c][p+nLinks[c]*n], ikxLinked_h[c][p+nLinks[c]*n]-grids_->Nx);	
+          printf("(%d,%d) ",ikyLinked_h[c][p+nLinks[c]*n], ((-ikxLinked_h[c][p+nLinks[c]*n]-1) % grids_->Nx) - grids_->Nx);	
         }
-        if(ikxLinked_h[c][p+nLinks[c]*n]>(grids_->Nx-1)/3 && ikxLinked_h[c][p+nLinks[c]*n]<2*(grids_->Nx/3)+1) {
+        if(((-ikxLinked_h[c][p+nLinks[c]*n]-1) % grids_->Nx)>(grids_->Nx-1)/3 && ((-ikxLinked_h[c][p+nLinks[c]*n]-1) % grids_->Nx)<2*(grids_->Nx/3)+1) {
           printf("->DEALIASING ERROR");
         }	
         /* *counter= *counter+1; */
@@ -538,12 +538,12 @@ void GradParallelNTFT::linkPrint() {
 void GradParallelNTFT::set_callbacks()
 {
   cudaDeviceSynchronize();
-  cufftCallbackStoreC  zfts_Linked_callbackPtr_h;
+  cufftCallbackStoreC  zfts_LinkedNTFT_callbackPtr_h;
   cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr_h;
   cufftCallbackStoreC abs_kzLinked_callbackPtr_h;
-  checkCuda(cudaMemcpyFromSymbol(&zfts_Linked_callbackPtr_h, 
-                     zfts_Linked_callbackPtr, 
-                     sizeof(zfts_Linked_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&zfts_LinkedNTFT_callbackPtr_h, 
+                     zfts_LinkedNTFT_callbackPtr, 
+                     sizeof(zfts_LinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinkedNTFT_callbackPtr_h, 
                      i_kzLinkedNTFT_callbackPtr, 
                      sizeof(i_kzLinkedNTFT_callbackPtr_h)));
@@ -554,7 +554,7 @@ void GradParallelNTFT::set_callbacks()
   for(int c=0; c<nClasses; c++) {
     // set up callback functions
     checkCuda(cufftXtSetCallback(    zft_plan_forward[c],
-		       (void**)   &zfts_Linked_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
+		       (void**)   &zfts_LinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
 
     checkCuda(cufftXtSetCallback(    dz_plan_forward[c],
 		       (void**)   &i_kzLinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));

@@ -2121,6 +2121,14 @@ __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, 
   ((cuComplex*)dataOut)[offset] = element*normalization;
 }
 
+__device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz  = (float*) kzData;
+  int nLinks = (int) lrintf(nz/(zp*kz[1]));
+  float normalization = (float) 1./(nLinks);
+  ((cuComplex*)dataOut)[offset] = element*normalization;
+}
+
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -2161,6 +2169,7 @@ __global__ void init_kzLinkedNTFT(float* kz, int nLinks, bool dealias_kz)
 }
 
 __device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
+__device__ cufftCallbackStoreC  zfts_LinkedNTFT_callbackPtr = zfts_LinkedNTFT;
 __device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
 __device__ cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr = i_kzLinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
@@ -2313,7 +2322,7 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
-    int width = nz*nLinks/8;  
+    int width = nLinks/8;  
 
     if (width == 0) width = 1; //somethings links are less than 8 long in NTFT
 

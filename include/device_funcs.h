@@ -311,6 +311,7 @@ __global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuCom
 			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
+__device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
@@ -318,6 +319,7 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias);
 __global__ void init_kzLinkedNTFT(float* kz, int nLinks, bool dealias);
 
 extern __device__ cufftCallbackStoreC zfts_Linked_callbackPtr;
+extern __device__ cufftCallbackStoreC zfts_LinkedNTFT_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kzLinked_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kzLinkedNTFT_callbackPtr;
 extern __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr;

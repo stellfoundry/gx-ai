@@ -1694,13 +1694,8 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22, bool 
     printf(ANSI_COLOR_RESET);
   }
 
-  if (nonTwist) {
-    if (boundary_option_periodic) {
-      printf("Cannot use both periodic boundary condition and the non-twisting flux tube. Setting nonTWist = false \n");
-      nonTwist = false;
-    } else {
-      printf("Using non-twisting flux tube. \n");
-    }
+  if (nonTwist) { // might not need any changes to this section for NTFT, could likely remove this statement and put it in geometry.cu // JMH
+    printf("Using non-twisting flux tube. \n");
   }
 
 }

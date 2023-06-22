@@ -146,7 +146,7 @@ GradParallelLinked::GradParallelLinked(Grids* grids, int jtwist)
 
   set_callbacks();
   
-  //  this->linkPrint();
+  // this->linkPrint();
 }
 
 GradParallelLinked::~GradParallelLinked()
