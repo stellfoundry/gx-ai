@@ -2102,15 +2102,15 @@ __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex elemen
   // kz[1] = nz/(zp * nLinks)
   float *kz = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  if (nLinks <= 2) {  // if the link has only two grid points or less, set it to 0
-    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  }
-  else {
-    unsigned int idz = offset % (nLinks);
-    cuComplex Ikz = make_cuComplex(0., kz[idz]);
-    float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
-    ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
-  }
+  //if (nLinks <= 2) {  // if the link has only two grid points or less, set it to 0
+  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  //}
+  //else {
+  unsigned int idz = offset % (nLinks);
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
+  ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
+  //}
 }
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2125,8 +2125,12 @@ __device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex eleme
 {
   float *kz  = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
+  //if (nLinks <=2) {
+  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  //} else {
   float normalization = (float) 1./(nLinks);
   ((cuComplex*)dataOut)[offset] = element*normalization;
+  //}
 }
 
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)

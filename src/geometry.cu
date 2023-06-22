@@ -849,12 +849,12 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     dim3 dimBlock_ntft (32,4);
     dim3 dimGrid_ntft (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nz-1)/dimBlock.z);
 
-    // see (44), (45), and (87) in Ball 2020, respectively
-    init_m0 <<< dimGrid_ntft, dimBlock_ntft >>> (m0, pars->x0, grids->ky, ftwist, shat, pars->kxfac);
-    init_deltaKx <<<dimGrid_ntft, dimBlock_ntft >>> (deltaKx, m0, pars->x0, grids->ky, ftwist);
+    // see (87), (44), and (45) in Ball 2020, respectively
     init_ftwist <<< (1 + (grids->Nz-1)/dimBlock.z), 32 >>> (ftwist, gds21, gds22, shat);
-
+    init_m0 <<< dimGrid_ntft, dimBlock_ntft >>> (m0, pars->x0, grids->ky, ftwist, shat, pars->kxfac);
     CP_TO_GPU (grids->m0_h, m0, sizeof(float)*grids->NycNz);
+    init_deltaKx <<<dimGrid_ntft, dimBlock_ntft >>> (deltaKx, m0, pars->x0, grids->ky, ftwist);
+
 
     init_kperp2_ntft GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, ftwist, bmagInv, shat, deltaKx);
     init_omegad_ntft GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat, m0, pars->x0);

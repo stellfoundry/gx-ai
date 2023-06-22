@@ -116,7 +116,7 @@ Grids::Grids(Parameters* pars) :
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
   z_h      = (float*) malloc(sizeof(float) * Nz       );
-  m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
+  m0_h     = (int*)   malloc(sizeof(float) * Nyc * Nz );
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
