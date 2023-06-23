@@ -1583,7 +1583,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22, bool nonTwist)
+void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 {
   float shat = *shat_in;
   // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
@@ -1692,10 +1692,6 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22, bool 
     printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, x0 = %f, y0 = %f\n", jtwist, x0, y0);
   
     printf(ANSI_COLOR_RESET);
-  }
-
-  if (nonTwist) { // might not need any changes to this section for NTFT, could likely remove this statement and put it in geometry.cu // JMH
-    printf("Using non-twisting flux tube. \n");
   }
 
 }

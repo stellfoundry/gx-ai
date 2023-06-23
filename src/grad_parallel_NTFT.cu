@@ -43,7 +43,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
 
   get_nChains_nLinks_ntft(mode_size, nLinks, nChains, nClasses, nakx, naky, mode);
   
-  // ikxLinked for NTFT will be negative and stores both ikx and idz via combined index
+  // ikxLinked for NTFT stores both ikx and idz via combined index
   ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses); 
   ikyLinked_h = (int**) malloc(sizeof(int*)*nClasses);
 
@@ -351,36 +351,36 @@ int GradParallelNTFT::get_mode_nums_ntft(int *mode_nums, int nz, int naky, int n
       for(int idx=0; idx<nakx; idx++) {
         for(int idz=0; idz<nz; idz++) {
           if (mode_nums[idy + naky * (idx + nakx * idz)] == 0) { //if you find a grid point not assigned to a mode
-	    
-	    // once new mode is found, need to find farthest -z point to start assembling
+  	    
+  	    // once new mode is found, need to find farthest -z point to start assembling
             idz_start = idz;
-	    idx_constant = idx + m0[idy + nyc * idz];
-	    while (idx_constant - m0[idy + nyc * ((idz_start-1+nz)%nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy >= 0 && idx_constant - m0[idy + nyc * ((idz_start-1+nz) %nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy < nakx) {
-	      if (idz_start == 0) {
-		idx_constant = idx_constant + jtwist * idy;
-	        idz_start = nz - 1;
-	      } else {
-		idz_start--;
-	      }
-	    }
-	     
-	    mode++; // increment the mode number once you find start of mode
-  	    idz_prime = idz_start;
-	    while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
-		idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
-	        mode_nums[idy + naky * (idx_prime + nakx * idz_prime)] = mode;
-	        if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
-		  idx_constant = idx_constant - jtwist * idy;
-		  idz_prime = 0;
-		} else { 
-		  idz_prime++;
-		}
-	    }
-	  }
-	}
-      }
+  	    idx_constant = idx + m0[idy + nyc * idz];
+  	    while (idx_constant - m0[idy + nyc * ((idz_start-1+nz)%nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy >= 0 && idx_constant - m0[idy + nyc * ((idz_start-1+nz) %nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy < nakx) {
+  	      if (idz_start == 0) {
+  	        idx_constant = idx_constant + jtwist * idy;
+  	        idz_start = nz - 1;
+  	      } else {
+  	        idz_start--;
+  	      }
+  	    }
+  	     
+  	    mode++; // increment the mode number once you find start of mode
+    	    idz_prime = idz_start;
+  	    while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
+  	      idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
+  	      mode_nums[idy + naky * (idx_prime + nakx * idz_prime)] = mode;
+  	      if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
+  		idx_constant = idx_constant - jtwist * idy;
+  		idz_prime = 0;
+              } else { 
+  		idz_prime++;
+  	      }
+  	    }
+  	  }
+  	}
       }
     } 
+  }
   return mode;
 }
 int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int *mode_nums, int naky, int nakx, int nz, int mode)
@@ -394,11 +394,11 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
 	 // add one to the mode length corresponding to that grid point, this is analagous to n_k
 	 mode_size[mode_nums[idy + naky * (idx + nakx * idz)]-1]++;
        	 mode_size_ref[mode_nums[idy + naky * (idx + nakx * idz)]-1]++; //should be identical arrays
-	 printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
+	 //printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
        }
-       printf("\n");
+       //printf("\n");
     }
-    printf(" \n\n\n\n");
+    //printf(" \n\n\n\n");
   }
   qsort(mode_size, mode, sizeof(int), compare_ntft); //sort mode_size into increasing order
   // count how many different classes
@@ -425,14 +425,21 @@ void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int 
       nChains[c]++;
     } else {
       //note that here, nLinks[c] represents # of grid points, not segments
-      nLinks[c] = mode_size[k-1]; 
+      nLinks[c] = mode_size[k-1];
+
+     // consider adding a warning for nLinks / nz too low? Need to find out a good way fo quantifying this,
+     // but NTFT will not converge when there are too few grid points. This gets tricky because with nonmonotonic
+     // local shear, some of the grid points at the top will get separated into different modes and ignored, but 
+     // the NTFT will still converge. Possibly add the total number of grid points for nLinks / nz less than some value
+     // and make sure that the majority of the grid is larger modes
+
 //      printf("nLinks(%d) = %d, nChains(%d) = %d \n", c, nLinks[c], c, nChains[c]);
       c++;
     }
   }
   nLinks[nClasses-1] = mode_size[mode-1];
 }
-void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int **ikyNTFT, int **neg_ikxdzNTFT, int naky, int nakx, int jtwist, int nz, int mode, int *mode_size_ref, int *mode_nums, int nx, int* m0, int nyc) // JMH
+void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int **ikyNTFT, int **ikxdzNTFT, int naky, int nakx, int jtwist, int nz, int mode, int *mode_size_ref, int *mode_nums, int nx, int* m0, int nyc) // JMH
 {
  
   // this function fills the ky and kx index arrays corresponding to each class c
@@ -451,63 +458,64 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
         for(int idy=0; idy<naky; idy++) {
           if (idy == 0) { // special case for zonal mode, I thinkk idy = 0 is always zonal
             for(int idx=0; idx<nakx; idx++) {
-	      if (mode_nums[idy + naky * (idx + nakx * 0)] == i + 1) {
+              if (mode_nums[idy + naky * (idx + nakx * 0)] == i + 1) {
 	        if (idx >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
 	          idx0 = idx - nshift;
 	        }  else {
 	          idx0 = idx + nakx;
 	        }
 	        for (int idz=0; idz<nz; idz++) {
-	          neg_ikxdzNTFT[ic][p + nLinks[ic] * n] = -(1 + idx0 + nx * idz); 
+	          ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz;
 	          ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
 	          p++;
 	        }
               }
             }
 	  } else {
-          for(int idx=0; idx<nakx; idx++) {
-            for(int idz=0; idz<nz; idz++) {
-              if (mode_nums[idy + naky * (idx + nakx * idz)] == i+1) { //if you find a grid point assigned to the mode number you're looking for
-	    
-	      // find the start of the mode
-              idz_start = idz;
-	      idx_constant = idx + m0[idy + nyc * idz];
-	      while (idx_constant - m0[idy + nyc * ((idz_start-1+nz)%nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy >= 0 && idx_constant - m0[idy + nyc * ((idz_start-1+nz) %nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy < nakx) {
-	        if (idz_start == 0) {
-		  idx_constant = idx_constant + jtwist * idy;
-	          idz_start = nz - 1;
-	        } else {
-		  idz_start--;
-	        }
-	      }
-	      
-	      //assemble ikxdz and iky grids from -z to +z
-  	      idz_prime = idz_start;
-	      while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
-		idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
-	        if (idx_prime >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
-	          idx0 = idx_prime - nshift;
-	        }  else {
-	          idx0 = idx_prime + nakx;
-	        }
-	        neg_ikxdzNTFT[ic][p + nLinks[ic] * n] = -(1 + idx0 + nx * idz_prime); 
-	        ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
-	        p++;
-	        if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
-		  idx_constant = idx_constant - jtwist * idy;
-		  idz_prime = 0;
-		} else { 
-		  idz_prime++;
-		}
-	      }
-	      idx = nakx - 1; //terminate for loops after you find a mode once
-	      idz = nz - 1; //probably a better way to do this  
-	    }
+            for(int idx=0; idx<nakx; idx++) {
+              for(int idz=0; idz<nz; idz++) {
+                if (mode_nums[idy + naky * (idx + nakx * idz)] == i+1) { //if you find a grid point assigned to the mode number you're looking for
+      
+                  // find the start of the mode
+                  idz_start = idz;
+                  idx_constant = idx + m0[idy + nyc * idz];
+                  while (idx_constant - m0[idy + nyc * ((idz_start-1+nz)%nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy >= 0 && idx_constant - m0[idy + nyc * ((idz_start-1+nz) %nz)] - floor((idz_start-1)/(1.0*nz))*jtwist*idy < nakx) {
+                    if (idz_start == 0) {
+  	              idx_constant = idx_constant + jtwist * idy;
+                      idz_start = nz - 1;
+                    } else {
+  	              idz_start--;
+                    }
+                  }
+        
+                  //assemble ikxdz and iky grids from -z to +z
+  	          idz_prime = idz_start;
+              	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
+  	            idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
+                      if (idx_prime >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
+                        idx0 = idx_prime - nshift;
+                      } else {
+                        idx0 = idx_prime + nakx;
+                      }
+                      ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
+                      ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
+                      p++;
+                      if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
+  	                idx_constant = idx_constant - jtwist * idy;
+  	      		idz_prime = 0;
+  	      	      } else { 
+  	                idz_prime++;
+  	      	      }
+                  }
+                  idx = nakx - 1; //terminate for loops after you find a mode once
+                  idz = nz - 1; //probably a better way to do this  
+                }
+              }
+            }
+
 	  }
         }
-        }
-	}
-      }
+      }  
     }
   }
 }

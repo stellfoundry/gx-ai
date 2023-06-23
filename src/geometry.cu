@@ -840,7 +840,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
 
   // set jtwist and x0, now that we know the final value of shat from geometry
-  pars->set_jtwist_x0(&shat, gds21_h, gds22_h, pars->nonTwist);
+  pars->set_jtwist_x0(&shat, gds21_h, gds22_h);
   // initialize k and coordinate arrays
   grids->init_ks_and_coords();
 
@@ -849,10 +849,12 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     dim3 dimBlock_ntft (32,4);
     dim3 dimGrid_ntft (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nz-1)/dimBlock.z);
 
+    printf("Using non-twisting flux tube /n"); 
+
     // see (87), (44), and (45) in Ball 2020, respectively
     init_ftwist <<< (1 + (grids->Nz-1)/dimBlock.z), 32 >>> (ftwist, gds21, gds22, shat);
     init_m0 <<< dimGrid_ntft, dimBlock_ntft >>> (m0, pars->x0, grids->ky, ftwist, shat, pars->kxfac);
-    CP_TO_GPU (grids->m0_h, m0, sizeof(float)*grids->NycNz);
+    CP_TO_GPU (grids->m0_h, m0, sizeof(int)*grids->NycNz);
     init_deltaKx <<<dimGrid_ntft, dimBlock_ntft >>> (deltaKx, m0, pars->x0, grids->ky, ftwist);
 
 

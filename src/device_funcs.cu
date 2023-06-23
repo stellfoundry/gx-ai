@@ -2219,10 +2219,12 @@ __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __res
    
     // changed nLinks -> 1 for different nns
     if (idp < nLinks && idn < nChains && idlm < nMoms) {
-      // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nx * idz)
+      
       idpn = idp + nLinks * idn;
-      ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
-      idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+      
+      // pull out ikx and idz indices
+      ikx_ntft = ikx[idpn] % nx;
+      idz = ikx[idpn] / nx;
       
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
@@ -2244,10 +2246,12 @@ __global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuCom
   idlm = get_id3();
   
   if (idp < nLinks && idn < nChains && idlm < nMoms) {
-      // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nx * idz)      
+      
       idpn = idp + nLinks * idn;
-      ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
-      idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+      
+      // pull out ikx and idz indices
+      ikx_ntft = ikx[idpn] % nx;
+      idz = ikx[idpn] / nx;
       
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
@@ -2314,10 +2318,11 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
 
   if (idp < nLinks && idn < nChains && idlm < nMoms) {
 
-    // pull out ikx and idz indices - ikx = -( 1 + ikx_ntft + nakx * idz)
     idpn = idp + nLinks * idn;
-    ikx_ntft = (-ikx[idpn]-1) % nx; //(1 + 2 * (nx - 1) / 3); 
-    idz = -(ikx[idpn] + 1 + ikx_ntft) / nx; // / (1 + 2 * (nx - 1) / 3);
+
+    // pull out ikx and idz indices
+    ikx_ntft = ikx[idpn] % nx;
+    idz = ikx[idpn] / nx;
     
     unsigned int idzl = idp;
     unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx*(idz + nz*idlm));
