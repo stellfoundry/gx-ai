@@ -7,5 +7,7 @@ Getting started with GX
    :maxdepth: 2
 
    Linear
+   LinearStell
    Nonlinear
    Benchmarks
+   MultiGPU

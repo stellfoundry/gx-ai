@@ -7,15 +7,21 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   double time = 0;
 
   Fields    * fields    = nullptr;
-  MomentsG  * G         = nullptr;
   Solver    * solver    = nullptr;
   Linear    * linear    = nullptr;
   Nonlinear * nonlinear = nullptr;
+  MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
+  for(int is=0; is<grids->Nspecies; is++) {
+    G[is] = nullptr;
+  }
   Forcing   * forcing   = nullptr;
   
   // set up moments and fields objects
-  G         = new MomentsG (pars, grids);
-  fields    = new Fields(pars, grids);               
+  for(int is=0; is<grids->Nspecies; is++) {
+    int is_glob = is+grids->is_lo;
+    G[is] = new MomentsG (pars, grids, is_glob);
+  }
+  fields = new Fields(pars, grids);               
   
   /////////////////////////////////
   //                             //
@@ -24,9 +30,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   /////////////////////////////////
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
-    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo);    
+    if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
 
-    solver = new Solver_GK(pars, grids, geo, G);    
+    solver = new Solver_GK(pars, grids, geo);    
 
     if (pars->forcing_init) {
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
@@ -35,7 +41,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     }
 
     // set up initial conditions
-    G      -> initialConditions(&time);   
+    for(int is=0; is<grids->Nspecies; is++) {
+      int is_glob = is+grids->is_lo;
+      G[is] -> set_zero();
+      if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
+      G[is] -> initialConditions(&time);   
+      G[is] -> sync();
+    }
     solver -> fieldSolve(G, fields);                
   }
 
@@ -46,8 +58,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
-    G      -> initialConditions(&time);   
-    if(pars->harris_sheet) solver -> set_equilibrium_current(G, fields);
+    G[0] -> initialConditions(&time);   
+    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
     solver -> fieldSolve(G, fields);                
   }
 
@@ -63,7 +75,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     // no field solve for K-S
 
     // set up initial conditions
-    G -> initialConditions(&time);
+    G[0] -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
   }    
 
@@ -79,7 +91,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_VP(pars, grids);    
 
     // set up initial conditions
-    G -> initVP(&time);
+    G[0] -> initVP(&time);
     solver -> fieldSolve(G, fields);
   }    
 
@@ -90,6 +102,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     case Tmethod::k2    : timestep = new K2          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::g3    : timestep = new G3          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
@@ -103,29 +116,27 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   bool bvar; 
-  bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
 
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
   
-  while(counter<pars->nstep) {
-    counter++;
+  while(counter<pars->nstep && time<pars->t_max) {
 
-    timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    timestep -> advance(&time, G, fields);
     if (checkstop) break;
-    if (counter % pars->nreal == 0)  {
-      G -> reality(grids->Nl * grids->Nm * grids->Nspecies); 
-      solver -> fieldSolve(G, fields);
-    }
 
-    if (pars->save_for_restart && counter % pars->nsave == 0) G->restart_write(&time);
+    if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCudaErrors(cudaGetLastError());
+    counter++;
+    if (counter==pars->nstep || time>=pars->t_max) {
+      bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    }
   }
 
-  if (pars->save_for_restart) G->restart_write(&time);
+  if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
   if (pars->eqfix && (
 		      (pars->scheme_opt == Tmethod::k10) ||
@@ -151,12 +162,15 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 
   diagnostics->finish(G, fields, time);
 
-  if (G)         delete G;
-  if (solver)    delete solver;
+  for(int is=0; is<grids->Nspecies; is++) {
+    if (G[is])         delete G[is];
+  }
+  free(G);
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;
 
+  if (solver)    delete solver;
   if (fields)    delete fields;
   if (forcing)   delete forcing;     
 }    

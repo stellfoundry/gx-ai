@@ -24,11 +24,17 @@ class Geometric_coefficients {
   void get_cut_indices_zeros(std::vector<double>&, int&, int&, int&, int&, int&);
   void get_revised_theta_zeros(std::vector<double>&, std::vector<double>&, std::vector<double>&, std::vector<double>&);
 
+  void get_cut_indices_ints(std::vector<double>&, int&, int&, int&, int&, int&);
+
   friend void solver_vmec_theta(double*, double*, int, double, double, VMEC_variables*, int*, double*);
 
   std::vector<double> slice(std::vector<double> const &, int, int);
 
   VMEC_variables *vmec;
+  std::string outfile_name;
+  std::string outnc_name;
+  bool usenc;
+  std::string filestem;
 
   template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
@@ -208,11 +214,12 @@ class Geometric_coefficients {
   std::string file_tag;
   double alpha = 0.0;
   int nzgrid = 16;
-  int npol = 1;
+  int nzgrid_cut = 16;
+  double npol = 1;
   int sign_psi;
   double desired_normalized_toroidal_flux = 0.25;
   int vmec_surface_option = 2;
-  int verbose = 1;
+  int verbose = 0;
   std::string flux_tube_cut = "none";
   double custom_length = M_PI;
   int which_crossing = 1;

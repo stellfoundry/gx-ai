@@ -49,9 +49,11 @@ input_file = sys.argv[1]
 if len(sys.argv) > 2:
     stem = input_file.split(".")[0]
     eikfile = sys.argv[2]
+    eiknc = eikfile[-8:] + ".eiknc.nc"
 else:
     stem = input_file.split(".")[0]
     eikfile = stem + ".eik.out"
+    eiknc = stem + ".eiknc.nc"
 
 f = toml.load(input_file)
 
@@ -61,6 +63,8 @@ nperiod = f['Dimensions']['nperiod']
 rhoc = f['Geometry']['rhoc']
 qinp = f['Geometry']['qinp']
 s_hat_input = f['Geometry']['shat']
+if s_hat_input == 0.0:
+   s_hat_input = 1.e-8
 Rmaj =  f['Geometry']['Rmaj']
 R_geo = f['Geometry']['R_geo']
 shift = f['Geometry']['shift']

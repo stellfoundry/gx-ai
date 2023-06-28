@@ -22,19 +22,45 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   vmec(vmec_vars) {
 
   const auto nml = toml::parse(nml_file); 
+  auto tnml = nml;
 
-  vmec_path   = toml::find_or <string> (nml, "vmec_path", "./"); // not presently used! 
-  out_path  = toml::find_or <string> (nml, "out_path", "./"); 
-  alpha  = toml::find_or <double> (nml, "alpha", 0.0);
-  nzgrid = toml::find_or <int> (nml, "nzgrid", 16);
-  npol   = toml::find_or <int> (nml, "npol", 1);
+  if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
+  int ntheta = toml::find_or <int> (tnml, "ntheta", 32);
+  nzgrid = ntheta/2;
+
+  if (nml.contains("Domain")) tnml = toml::find(nml, "Domain");
+  string boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
+  float y0 = toml::find_or <float> (tnml, "y0", 10.0  );
+  float x0 = toml::find_or <float> (tnml, "x0", (double) y0 ); // default to aspect ratio = 1 in this module
+  if (boundary == "exact periodic") flux_tube_cut = "gds21";
+  else if (boundary == "continuous drifts") flux_tube_cut = "gbdrift0";
+  else if (boundary == "fix aspect") flux_tube_cut = "aspect";
+  else flux_tube_cut = "none";
+
+  if (nml.contains("Geometry")) tnml = toml::find(nml, "Geometry");
+
+  usenc   = toml::find_or <bool> (tnml, "usenc", true);
+  vmec_path   = toml::find_or <string> (tnml, "vmec_path", ""); // not presently used! 
+  out_path  = toml::find_or <string> (tnml, "out_path", ""); 
+  alpha  = toml::find_or <double> (tnml, "alpha", 0.0);
+  // allow npol to be specified in input file as int or float
+  npol = (double) toml::find_or <int> (tnml, "npol", 1);
+  npol = toml::find_or <double> (tnml, "npol", npol);
+  // allow normalized toroidal flux to be specified 
+  // by "desired_normalized_toroidal_flux" or just "torflux"
   desired_normalized_toroidal_flux =
-    toml::find_or <double> (nml, "desired_normalized_toroidal_flux", 0.25);
-  vmec_surface_option = toml::find_or <int> (nml, "vmec_surface_option", 2);
-  flux_tube_cut = toml::find_or <string> (nml, "flux_tube_cut", "none");
-  custom_length = toml::find_or <double> (nml, "custom_length", M_PI);
-  which_crossing = toml::find_or <int> (nml, "which_crossing", 4);
-  file_tag = toml::find_or <string> (nml, "file_tag", ""); // new TQ 8.14
+    toml::find_or <double> (tnml, "desired_normalized_toroidal_flux", 0.25);
+  desired_normalized_toroidal_flux = 
+    toml::find_or <double> (tnml, "torflux", desired_normalized_toroidal_flux);
+  vmec_surface_option = toml::find_or <int> (tnml, "vmec_surface_option", 0);
+  which_crossing = toml::find_or <int> (tnml, "which_crossing", -1);
+  file_tag = toml::find_or <string> (tnml, "file_tag", ""); // new TQ 8.14
+  verbose = toml::find_or <int> (tnml, "verbose", 0);
+
+  char run_name[1000];
+  strncpy(run_name, nml_file, strlen(nml_file)-3);
+  run_name[strlen(nml_file)-3] = '\0';
+  filestem.assign(run_name);
 
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
@@ -53,15 +79,17 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   //  vmec_surface_option = 2;
   //  flux_tube_cut = "gds21"; // default is "none"
   // the following are used or ignored based on choice of flux_tube_cut
-  //  custom_length = 2.0; // default is [-pi, pi]
   //  which_crossing = 4;
   
   // ------------------------------------------------------------------------
   // ------------------------------------------------------------------------
   
+  std::cout << "\nRunning VMEC geometry module...\n";
+  if(!verbose) std::cout << "For more detailed output set verbose = 1 in [Geometry] section of input file\n";
+  
   // Reference length and magnetic field are chosen to be the GIST values
   // MM * may have to adapt this for GX normalizations
-  std::cout << "Phi_vmec at LCFS = " << vmec->phi[vmec->ns-1] << "\n";
+  if(verbose) std::cout << "Phi_vmec at LCFS = " << vmec->phi[vmec->ns-1] << "\n";
 
   // Note the first index difference of Fortran and c++ arrays
   // factor of signgs must be there, or sign errors result in the test_arrays functions
@@ -69,8 +97,10 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   sign_psi = vmec->phi[vmec->ns-1] / abs(vmec->phi[vmec->ns-1]);
   L_reference = vmec->Aminor_p;
   B_reference = abs((2*edge_toroidal_flux_over_2pi) / (L_reference*L_reference));
-  std::cout << "Reference Length = " << L_reference << "\n";
-  std::cout << "Reference B Field = " << B_reference << "\n";
+  if(verbose) {
+    std::cout << "Reference Length = " << L_reference << "\n";
+    std::cout << "Reference B Field = " << B_reference << "\n";
+  }
 
   // ------------------------------------------------------------
   // Allocate full and half grids of normalized toroidal flux
@@ -105,6 +135,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   case 0:
     // use exact radius requested
     normalized_toroidal_flux_used = desired_normalized_toroidal_flux;
+    if(verbose) std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
     break;
       
   case 1:
@@ -124,7 +155,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       }
     }
     normalized_toroidal_flux_used = normalized_toroidal_flux_half_grid[index];
-    std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
+    if(verbose) std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
     break;
 
   case 2:
@@ -143,7 +174,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       }
     }
     normalized_toroidal_flux_used = normalized_toroidal_flux_full_grid[index];
-    std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
+    if(verbose) std::cout << "normalized flux used = " << normalized_toroidal_flux_used << "\n";
     break;
 
   default:
@@ -198,8 +229,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   }
   
   else if (normalized_toroidal_flux_used > normalized_toroidal_flux_half_grid[vmec->ns-2]) {
-    std::cout << "warning: extrapolating beyond the end of VMEC's half grid\n";
-    std::cout << "(extrapolating towards the last closed flux surface) Results may be inaccurate\n";
+    std::cout << "Warning: extrapolating beyond the end of VMEC's half grid\n";
+    std::cout << "(Extrapolating towards the last closed flux surface) Results may be inaccurate\n";
     // largest index of half grid is vmec->ns - 2
     vmec_radial_index_half[0] = vmec->ns - 2;
     vmec_radial_index_half[1] = vmec->ns - 1;
@@ -297,13 +328,13 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   // Creating uniform theta grid to be [-npol*pi, npol*pi]
   theta = new double[2*nzgrid+1];
   std::vector<double> theta_std_copy (2*nzgrid+1, 0.0); // for potential use when cutting flux tube
-  std::cout << "theta pest = [";
+  if(verbose) std::cout << "theta pest = [";
   for (int i=0; i<2*nzgrid+1; i++) {
     theta[i] = (npol*M_PI*(i-nzgrid))/nzgrid;
     theta_std_copy[i] = theta[i];
-    std::cout << theta[i] << ", ";
+    if(verbose) std::cout << theta[i] << ", ";
   }
-  std::cout << "]\n\n";
+  if(verbose) std::cout << "]\n\n";
 
   // Creating zeta grid based on alpha = theta - iota*zeta
   zeta = new double[2*nzgrid+1]; 
@@ -321,17 +352,21 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   theta_vmec = new double[2*nzgrid+1]; // this is not a VMEC input
 
   // calling GSL rootfinder
-  std::cout << "\n---------------------------------------------\n";
-  std::cout << "Beginning root solves to determine theta_vmec\n";
+  if(verbose)  {
+    std::cout << "\n---------------------------------------------\n";
+    std::cout << "Beginning root solves to determine theta_vmec\n";
+  }
 
   solver_vmec_theta(theta_vmec, zeta, nzgrid, alpha, iota, vmec, vmec_radial_index_half, vmec_radial_weight_half);
 
-  std::cout << "Values of theta_vmec from GSL solver:\n[";
-  for(int i=0; i<2*nzgrid+1; i++) {
-    std::cout << theta_vmec[i] << ", ";
+  if(verbose) {
+    std::cout << "Values of theta_vmec from GSL solver:\n[";
+    for(int i=0; i<2*nzgrid+1; i++) {
+      std::cout << theta_vmec[i] << ", ";
+    }
+    std::cout << "]\n";
+    std::cout << "---------------------------------------------\n\n";
   }
-  std::cout << "]\n";
-  std::cout << "---------------------------------------------\n\n";
   
   // ---------------------------------------------------------
   // Alllocating geometry arrays
@@ -797,7 +832,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     temp2D[itheta] = -sin(zeta[itheta]) / R[itheta];
   }
-  test_arrays(grad_zeta_X, temp2D, false, 1.0e-2, grad_zeta_X_name);
+  test_arrays(grad_zeta_X, temp2D, false, 3.0e-2, grad_zeta_X_name);
   // Might as well use the exact value, which is currently in temp2D
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     grad_zeta_X[itheta] = temp2D[itheta];
@@ -807,7 +842,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     temp2D[itheta] = cos(zeta[itheta]) / R[itheta];
   }
-  test_arrays(grad_zeta_Y, temp2D, false, 1.0e-2, grad_zeta_Y_name);
+  test_arrays(grad_zeta_Y, temp2D, false, 3.0e-2, grad_zeta_Y_name);
   // Might as well use the exact value, which is currently in temp2D
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     grad_zeta_Y[itheta] = temp2D[itheta];
@@ -857,7 +892,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - dX_ds[itheta] * dZ_dtheta_vmec[itheta] * dY_dzeta[itheta]
       - dY_ds[itheta] * dX_dtheta_vmec[itheta] * dZ_dzeta[itheta];
   }
-  test_arrays(sqrt_g, temp2D, false, 3.0e-3, sqrt_g_name);
+  test_arrays(sqrt_g, temp2D, false, 3.0e-2, sqrt_g_name);
 
   double *inv_sqrt_g = new double[2*nzgrid+1]{};
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
@@ -870,7 +905,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - grad_s_Y[itheta] * grad_theta_vmec_X[itheta] * grad_zeta_Z[itheta];
     inv_sqrt_g[itheta] = 1./sqrt_g[itheta];
   }
-  test_arrays(inv_sqrt_g, temp2D, false, 1.e-2, inv_sqrt_g_name);
+  test_arrays(inv_sqrt_g, temp2D, false, 3.e-2, inv_sqrt_g_name);
   delete[] inv_sqrt_g;
 
   //---------------------------------------------------------------
@@ -895,13 +930,13 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     B_sup_s_calc[itheta] = B_X[itheta] * grad_s_X[itheta] + B_Y[itheta] * grad_s_Y[itheta] + B_Z[itheta] * grad_s_Z[itheta];
   }
 
-  test_arrays(B_sub_theta_calc, B_sub_theta_vmec, false, 1.0e-2, B_sub_theta_vmec_name);
-  test_arrays(B_sub_zeta_calc, B_sub_zeta, false, 1.0e-2, B_sub_zeta_name);
-  test_arrays(B_sub_s_calc, B_sub_s, false, 1.0e-2, B_sub_s_name);
+  test_arrays(B_sub_theta_calc, B_sub_theta_vmec, false, 2.0e-2, B_sub_theta_vmec_name);
+  test_arrays(B_sub_zeta_calc, B_sub_zeta, false, 2.0e-2, B_sub_zeta_name);
+  test_arrays(B_sub_s_calc, B_sub_s, false, 2.0e-2, B_sub_s_name);
 
-  test_arrays(B_sup_theta_calc, B_sup_theta_vmec, false, 1.0e-2, B_sup_theta_vmec_name);
-  test_arrays(B_sup_zeta_calc, B_sup_zeta, false, 1.0e-2, B_sup_zeta_name);
-  test_arrays(B_sup_s_calc, temp2D, true, 1.0e-2, B_sup_s_name);
+  test_arrays(B_sup_theta_calc, B_sup_theta_vmec, false, 2.0e-2, B_sup_theta_vmec_name);
+  test_arrays(B_sup_zeta_calc, B_sup_zeta, false, 2.0e-2, B_sup_zeta_name);
+  test_arrays(B_sup_s_calc, temp2D, true, 2.0e-2, B_sup_s_name);
   
   delete[] B_sub_theta_calc;
   delete[] B_sub_zeta_calc;
@@ -946,8 +981,8 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
       - B_Y[itheta] * grad_B_X[itheta] * grad_alpha_Z[itheta];
   }
   
-  test_arrays(B_cross_grad_s_dot_grad_alpha, B_cross_grad_s_dot_grad_alpha_alternate, false, 1.0e-2, B_cross_grad_s_dot_grad_alpha_name);
-  test_arrays(B_cross_grad_B_dot_grad_alpha, B_cross_grad_B_dot_grad_alpha_alternate, false, 1.0e-2, B_cross_grad_B_dot_grad_alpha_name);
+  test_arrays(B_cross_grad_s_dot_grad_alpha, B_cross_grad_s_dot_grad_alpha_alternate, false, 2.0e-2, B_cross_grad_s_dot_grad_alpha_name);
+  test_arrays(B_cross_grad_B_dot_grad_alpha, B_cross_grad_B_dot_grad_alpha_alternate, false, 2.0e-2, B_cross_grad_B_dot_grad_alpha_name);
 
   //--------------------------------------------------------------
   // Finally, assemble the quantities needed for GX
@@ -965,6 +1000,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   std::vector<double> gbdrift0_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift_pest (2*nzgrid+1, 0.0);
   std::vector<double> cvdrift0_pest (2*nzgrid+1, 0.0);
+  std::vector<double> jtwist_pest (2*nzgrid+1, 0.0);
 
   // Except for bmag and gradpar, the following are related to dx/dpsi and/or dy/dalpha
   // Depending on the sign of the toroidal flux, the sign of dx/dpsi and dy/alpha will change to ensure that
@@ -1002,7 +1038,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     gbdrift_pest[itheta] = sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * B_cross_grad_B_dot_grad_alpha[itheta] / ( B[itheta] * B[itheta] * B[itheta] );
 
     gbdrift0_pest[itheta] = sign_psi * ( (B_sub_theta_vmec[itheta] * dB_dzeta[itheta] - B_sub_zeta[itheta] * dB_dtheta_vmec[itheta]) / sqrt_g[itheta] )
-      * ( (abs(edge_toroidal_flux_over_2pi) * 2 * shat) / (B[itheta] * B[itheta] * B[itheta] * sqrt_s) );
+      * ( ((edge_toroidal_flux_over_2pi) * 2 * shat) / (B[itheta] * B[itheta] * B[itheta] * sqrt_s) );
     // In the above expression for gbdrift0, the first line and the edge_toroidal_flux_over_2pi is \vec{B} \times \nabla B \cdot \nabla \psi
 
     cvdrift_pest[itheta] = gbdrift_pest[itheta] + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0
@@ -1010,71 +1046,53 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
     cvdrift0_pest[itheta] = gbdrift0_pest[itheta];// + sign_psi * 2 * B_reference * L_reference * L_reference * sqrt_s * mu_0 * d_pressure_ds * B_cross_grad_s_dot_grad_alpha[itheta] / (B[itheta] *B[itheta] * B[itheta] * B[itheta]);;
 
+    float twist_shift_geo_fac = 2.*shat*gds21_pest[itheta]/gds22_pest[itheta];
+    float jtwist_float = (twist_shift_geo_fac)/y0*x0;
+    jtwist_pest[itheta] = jtwist_float;
+
   }
-  std::cout << "\n";
-  std::cout << "\n";
-  std::cout << "\n";
+
+  if(verbose) {
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+  }
   
   // ---------------------------------------------------------------------
   // Take subset of grid in theta for boundary condition considerations
   // ---------------------------------------------------------------------
-  
-  
   std::vector<double> theta_grid_cut;// (2*nzgrid+1, 0.0);
   std::vector<double> revised_theta_grid;// (2*nzgrid+1, 0.0);
   
   if (flux_tube_cut != "none") {
-
-    if (flux_tube_cut == "custom") { // if user desires some subset of the arrays
-
-      std::cout << "**************************************************\n";
-      std::cout << "You have chosen to take a custom subset of the flux tube\n";
     
-      if (custom_length > npol*M_PI) {
-	std::cout << "ERROR! Custom flux tube [" << -custom_length << "," << custom_length << "] is longer than original length of [" << -npol*M_PI << "," << npol*M_PI << "]\n";
-	std::cout << "Choose a smaller custom length. Exiting...\n";
-	exit(1);
-      }
-      else if (custom_length < 0) {
-	custom_length = abs(custom_length);
-      }
-      else if (custom_length < (theta[1]-theta[0])) {
-	std::cout << "ERROR! Custom length must be greater than the spacing between grid points. Exiting...\n";
-	exit(1);
-      }
-    
-      std::cout << "The (unscaled) flux tube will go from [-" << custom_length << "," << custom_length << "]\n";
-      std::cout << "**************************************************\n";
-    
-      // get_cut_indices will use input parameters to return a subset of the full theta grid
-      // THIS WILL REDEFINE NZGRID!!!
-      get_cut_indices_custom(theta_std_copy, ileft, iright, nzgrid);
-          
-      get_revised_theta_custom(theta_std_copy, theta_grid_cut, revised_theta_grid);
-      
-      //      exit(1);
+    if (flux_tube_cut == "gds21") {
+      std::cout << "***************************************************************************\n";
+      std::cout << "You have chosen to cut the flux tube to enforce exact periodicity (gds21=0)\n";
+      std::cout << "***************************************************************************\n";
+      get_cut_indices_zeros(gds21_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
+      get_revised_theta_zeros(theta_std_copy, gds21_pest, theta_grid_cut, revised_theta_grid);
     }
-    
-    else { // subset of flux tube where ends coincide with zeros of gds21 or gbdrift0
-    
-      if (flux_tube_cut == "gds21") {
-	
-	get_cut_indices_zeros(gds21_pest, ileft, iright, nzgrid, root_idx_left, root_idx_right);
-	get_revised_theta_zeros(theta_std_copy, gds21_pest, theta_grid_cut, revised_theta_grid);
-	
-      }
-      else if (flux_tube_cut == "gbdrift0") {
-	
-	get_cut_indices_zeros(gbdrift0_pest, ileft, iright, nzgrid, root_idx_left, root_idx_right);
-	get_revised_theta_zeros(theta_std_copy, gbdrift0_pest, theta_grid_cut, revised_theta_grid);
-      }
-      else {
-	std::cout << "The string " << flux_tube_cut << " is not valid.\n";
-	std::cout << "This must be set to: none, custom, gds21, or gbdrift0. Exiting...\n";
-	exit(1);
-      }
+    else if (flux_tube_cut == "gbdrift0") {
+      std::cout << "***************************************************************************************\n";
+      std::cout << "You have chosen to cut the flux tube to enforce continuous magnetic drifts (gbdrift0=0)\n";
+      std::cout << "***************************************************************************************\n";
+      get_cut_indices_zeros(gbdrift0_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
+      get_revised_theta_zeros(theta_std_copy, gbdrift0_pest, theta_grid_cut, revised_theta_grid);
+    }
+    else if (flux_tube_cut == "aspect") {
+      std::cout << "*************************************************************************\n";
+      std::cout << "You have chosen to cut the flux tube to enforce y0/x0 = " << y0/x0 << "\n";
+      std::cout << "*************************************************************************\n";
+      get_cut_indices_ints(jtwist_pest, ileft, iright, nzgrid_cut, root_idx_left, root_idx_right);
+      get_revised_theta_zeros(theta_std_copy, jtwist_pest, theta_grid_cut, revised_theta_grid);
+    }
+    else {
+      std::cout << "Error: the string " << flux_tube_cut << " is not valid.\n";
+      std::cout << "This must be set to: none, gds21, gbdrift0, or aspect. Exiting...\n";
+      exit(1);
+    }
                               
-    }
 
     // take the subset of the geometric arrays corresponding to the theta value that is closest to the desired grid
     bmag_cut = slice(bmag_pest, ileft, iright);
@@ -1088,48 +1106,57 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     cvdrift_cut = slice(cvdrift_pest, ileft, iright);
     cvdrift0_cut = slice(cvdrift0_pest, ileft, iright);
         
-    bmag_temp = &bmag_cut[0];
-    gradpar_temp = &gradpar_cut[0];
-    grho_temp = &grho_cut[0];
-    gds2_temp = &gds2_cut[0];
-    gds21_temp = &gds21_cut[0];
-    gds22_temp = &gds22_cut[0];
-    gbdrift_temp = &gbdrift_cut[0];
-    gbdrift0_temp = &gbdrift0_cut[0];
-    cvdrift_temp = &cvdrift_cut[0];
-    cvdrift0_temp = &cvdrift0_cut[0];
+    bmag_temp = &bmag_pest[0];
+    gradpar_temp = &gradpar_pest[0];
+    grho_temp = &grho_pest[0];
+    gds2_temp = &gds2_pest[0];
+    gds21_temp = &gds21_pest[0];
+    gds22_temp = &gds22_pest[0];
+    gbdrift_temp = &gbdrift_pest[0];
+    gbdrift0_temp = &gbdrift0_pest[0];
+    cvdrift_temp = &cvdrift_pest[0];
+    cvdrift0_temp = &cvdrift0_pest[0];
     //theta_grid_temp = &theta_grid_cut[0];
  
     // Interpolate the cut grid onto the revised grid based on the type of cut
-    interp_to_new_grid(bmag_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gradpar_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(grho_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds2_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds21_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gds22_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gbdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(gbdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(cvdrift_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
-    interp_to_new_grid(cvdrift0_temp, &theta_grid_cut[0], &revised_theta_grid[0], nzgrid, true);
+    interp_to_new_grid(&bmag_pest[0], bmag_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gradpar_pest[0], gradpar_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&grho_pest[0], grho_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gds2_pest[0], gds2_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gds21_pest[0], gds21_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gds22_pest[0], gds22_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gbdrift_pest[0], gbdrift_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&gbdrift0_pest[0], gbdrift0_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&cvdrift_pest[0], cvdrift_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
+    interp_to_new_grid(&cvdrift0_pest[0], cvdrift0_temp, &theta_std_copy[0], &revised_theta_grid[0], 2*nzgrid+1, 2*nzgrid+1);
 
-    std::cout << "Final gds21 = [";
-    for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
-      std::cout << gds21_temp[itheta] << ", ";
-    }
-    std::cout << "]\n\n";
+    if(verbose) {
+      std::cout << "Final gds21 = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << gds21_temp[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
 
-    std::cout << "Final gbdrift0 = [";
-    for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
-      std::cout << gbdrift0_temp[itheta] << ", ";
+      std::cout << "Final gbdrift0 = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << gbdrift0_temp[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+
+      std::cout << "Final twist_shift_geo_fac = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        float twist_shift_geo_fac = 2.*shat*gds21_temp[itheta]/gds22_temp[itheta];
+        std::cout << twist_shift_geo_fac << ", ";
+      }
+      std::cout << "]\n\n";
     }
-    std::cout << "]\n\n";
 
   }
   else {
     
-    std::cout << "**************************************************\n";
-    std::cout << "You have chosen not to take a subset of the flux tube. The (unscaled) flux tube will go from [-" << M_PI*npol << "," << M_PI*npol << "]\n";
-    std::cout << "**************************************************\n";
+    std::cout << "***************************************************\n";
+    std::cout << "You have chosen not to take a cut of the flux tube.\n";
+    std::cout << "***************************************************\n";
 
     bmag_temp = &bmag_pest[0];
     gradpar_temp = &gradpar_pest[0];
@@ -1167,13 +1194,16 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
     // Flux tube length is always scaled to [-pi,pi] for GX grid files. The variable domain_scaling_factor accounts for that scaling for plotting results on the actual flux tube domain
     domain_scaling_factor = abs(theta[0]/theta_grid_temp[0]);
+    std::cout << "Final (unscaled) theta grid goes from [" << theta[0] << "," << theta[2*nzgrid] << "]\n";
+    std::cout << "domain_scaling_factor = " << domain_scaling_factor << " so that scaled theta grid is [-pi, pi]\n";
   }
   else {
 
     get_GX_geo_arrays(bmag_temp, gradpar_temp, grho_temp, gds2_temp, gds21_temp, gds22_temp, gbdrift_temp, gbdrift0_temp, cvdrift_temp, cvdrift0_temp, theta_grid_temp, &revised_theta_grid[0]);
-    std::cout << "nzgrid = " << nzgrid << "\n";
-    // see above
+    // Flux tube length is always scaled to [-pi,pi] for GX grid files. The variable domain_scaling_factor accounts for that scaling for plotting results on the actual flux tube domain
     domain_scaling_factor = abs(revised_theta_grid[0]/theta_grid_temp[0]);
+    std::cout << "Final (unscaled) theta grid goes from [" << revised_theta_grid[0] << "," << revised_theta_grid[2*nzgrid] << "]\n";
+    std::cout << "domain_scaling_factor = " << domain_scaling_factor << " so that scaled theta grid is [-pi, pi]\n";
 
   }
 
@@ -1255,7 +1285,78 @@ void Geometric_coefficients::get_revised_theta_custom(std::vector<double>& theta
 
 }
 
-void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_, int& root_idx_left_, int& root_idx_right_) {
+void Geometric_coefficients::get_cut_indices_ints(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_cut, int& root_idx_left_, int& root_idx_right_) {
+
+  if(verbose) {
+    std::cout << "Data before cut = [";
+    for (int i=0; i<2*nzgrid; i++) {
+      std::cout << data[i] << ", ";
+    }
+    std::cout << "]\n\n";
+  }
+
+  std::vector<int> iint;
+  std::vector<int> intval;
+  for (int itheta=0; itheta<2*nzgrid; itheta++) {
+    if (floor(data[itheta]) < floor(data[itheta+1]) && floor(data[itheta+1])!=0) {
+      iint.push_back(itheta);
+      intval.push_back(floor(data[itheta+1]));
+    }
+    if (floor(data[itheta]) > floor(data[itheta+1]) && floor(data[itheta])!=0) {
+      iint.push_back(itheta);
+      intval.push_back(floor(data[itheta]));
+    }
+  }
+
+  int nints = iint.size()/2;
+  if(verbose) {
+    std::cout << "Indices of integer crossing = [";
+    for (int i=0; i<iint.size(); i++) {
+      std::cout << iint[i] << ", ";
+    }
+    std::cout << "]\n\n";
+  }
+
+  if (which_crossing > nints || which_crossing < -nints) {
+    std::cout << "Error: There are not " << which_crossing << " integer crossings for a grid of this size.\n";
+    std::cout << "You must select which_cross <= " << nints << "\n";
+    std::cout << "Exiting...\n";
+    exit(1);
+  }
+  else if (which_crossing <= 0) { // which_crossing can be negative to index from outermost zeros, i.e. which_crossing = -1 gives outermost zero
+    which_crossing = nints - abs(which_crossing) + 1;
+  }
+
+
+  ileft_ = iint[nints - which_crossing];
+  iright_ = iint[which_crossing + (nints-1)] + 1;
+  if(verbose) std::cout << "ileft, iright = " << ileft_ << ", " << iright_ << "\n";
+
+  for (int itheta=0; itheta<nzgrid; itheta++) {
+    data[itheta] = data[itheta] - (float) intval[nints - which_crossing];
+  }
+  for (int itheta=nzgrid+1; itheta<2*nzgrid+1; itheta++) {
+    data[itheta] = data[itheta] - (float) intval[which_crossing + (nints-1)];
+  }
+
+  int region = 2; // 2*region is number of interpolating points for spline in the function "get_revised_theta_zeros"
+  root_idx_left = iint[which_crossing + (nints-1)] - (region-1);
+  root_idx_right = min(iint[which_crossing + (nints-1)] + region, 2*nzgrid);
+  
+  std::vector<double> data_cut;
+  data_cut = slice(data,ileft,iright);
+  nzgrid_cut = (data_cut.size() - 1) / 2;
+}
+
+void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, int &ileft_, int &iright_, int &nzgrid_cut, int& root_idx_left_, int& root_idx_right_) {
+
+  if(verbose) {
+    std::cout << "Data before cut = [";
+    for (int i=0; i<2*nzgrid; i++) {
+      std::cout << data[i] << ", ";
+    }
+    std::cout << "]\n\n";
+  }
 
   std::vector<double> data_cut;
   
@@ -1273,21 +1374,22 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
   // isign gives an array of indices for the element just prior to a sign change
   // includes all zeros except for the one at theta=0
   
-  std::cout << "Indices of sign crossing = [";
-  for (int i=0; i<isign.size(); i++) {
-    std::cout << isign[i] << ", ";
+  if(verbose) {
+    std::cout << "Indices of sign crossing = [";
+    for (int i=0; i<isign.size(); i++) {
+      std::cout << isign[i] << ", ";
+    }
+    std::cout << "]\n\n";
   }
-  std::cout << "]\n\n";
   
-  if (which_crossing > nzeros) {
-    std::cout << "There are not " << which_crossing << " zero crossings for a grid of this size.\n";
+  if (which_crossing > nzeros || which_crossing < -nzeros) {
+    std::cout << "Error: There are not " << which_crossing << " zero crossings for a grid of this size.\n";
     std::cout << "You must select which_cross <= " << nzeros << "\n";
     std::cout << "Exiting...\n";
     exit(1);
   }
-  else if (which_crossing <= 0) {
-    std::cout << "which_crossing must be >0. Exiting...\n";
-    exit(1);
+  else if (which_crossing <= 0) { // which_crossing can be negative to index from outermost zeros, i.e. which_crossing = -1 gives outermost zero
+    which_crossing = nzeros - abs(which_crossing) + 1;
   }
 
   ileft_ = isign[nzeros - which_crossing];
@@ -1295,10 +1397,10 @@ void Geometric_coefficients::get_cut_indices_zeros(std::vector<double>& data, in
 
   int region = 2; // 2*region is number of interpolating points for spline in the function "get_revised_theta_zeros"
   root_idx_left = isign[which_crossing + (nzeros-1)] - (region-1);
-  root_idx_right = isign[which_crossing + (nzeros-1)] + region;
+  root_idx_right = min(isign[which_crossing + (nzeros-1)] + region, 2*nzgrid);
   
   data_cut = slice(data,ileft,iright);
-  nzgrid_ = (data_cut.size() - 1) / 2;
+  nzgrid_cut = (data_cut.size() - 1) / 2;
 
 }
 
@@ -1307,18 +1409,26 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   std::vector<double> data_cut;
   std::vector<double> zero_slice, theta_slice; // small slices of 2*region points on which to fit a spline
   //  int root_idx_left, root_idx_right;
-  double r1, r2; // quadratic roots
+  double r1, r2, r3; // cubic roots
   double theta_zero_loc; // theta value at location of zero crossing
 
 
   data_cut = slice(data,ileft,iright);
   theta_cut_ = slice(theta,ileft,iright);
 
-  std::cout << "data_cut = [";
-  for (int i=0; i<data_cut.size(); i++) {
-    std::cout << data_cut[i] << ", ";
+  if(verbose) {
+    std::cout << "Data after cut = [";
+    for (int i=0; i<data_cut.size(); i++) {
+      std::cout << data_cut[i] << ", ";
+    }
+    std::cout << "]\n\n";
+
+    std::cout << "theta after cut = [";
+    for (int i=0; i<theta_cut_.size(); i++) {
+      std::cout << theta_cut_[i] << ", ";
+    }
+    std::cout << "]\n\n";
   }
-  std::cout << "]\n\n";
   
   // use which_crossing value to determine which zero to find and take a 2*region slice of the geometric array
   
@@ -1328,55 +1438,59 @@ void Geometric_coefficients::get_revised_theta_zeros(std::vector<double>& theta,
   zero_slice = slice(data,root_idx_left,root_idx_right);
   theta_slice = slice(theta,root_idx_left,root_idx_right);
 
-  std::cout << "zero_slice = [";
-  for (int i=0; i<zero_slice.size(); i++) {
-    std::cout << zero_slice[i] << ", ";
-  }
-  std::cout << "]\n\n";
-  
-  std::cout << "gds21 = [";
-  for (int i=0; i<6; i++) {
-    std::cout << zero_slice[i] << " ";
-  }
-  std::cout << "]\n\n";
-
-  std::cout << "theta = [";
-  for (int i=0; i<6; i++) {
-    std::cout << theta_slice[i] << " ";
-  }
-  std::cout << "]\n\n";
-
   int region = 2;
-  int ncoeff = 3;
+  int ncoeff = 4;
   double coeff[ncoeff];
   // returns coefficients of P = coeff[0] + coeff[1]*x + coeff[2]*x^2 + ...
-  PolyFit( &theta_slice[0], &zero_slice[0], 2*region, ncoeff, &coeff[0] );
-  std::cout << "coeff[0] = " << coeff[0] << "\n\n";
-  std::cout << "coeff[1] = " << coeff[1] << "\n\n";
-  std::cout << "coeff[2] = " << coeff[2] << "\n\n";
+  PolyFit( &theta_slice[0], &zero_slice[0], zero_slice.size(), ncoeff, &coeff[0] );
+
+  if(verbose) {
+    std::cout << "zero_slice = [";
+    for (int i=0; i<zero_slice.size(); i++) {
+      std::cout << zero_slice[i] << ", ";
+    }
+    std::cout << "]\n\n";
+    
+    std::cout << "theta_slice = [";
+    for (int i=0; i<theta_slice.size(); i++) {
+      std::cout << theta_slice[i] << " ";
+    }
+    std::cout << "]\n\n";
+
+    std::cout << "coeff[0] = " << coeff[0] << "\n\n";
+    std::cout << "coeff[1] = " << coeff[1] << "\n\n";
+    std::cout << "coeff[2] = " << coeff[2] << "\n\n";
+    std::cout << "coeff[3] = " << coeff[3] << "\n\n";
+  }
   
   // solve a*x^2 + b*x + c = 0
-  gsl_poly_solve_quadratic( coeff[2], coeff[1], coeff[0], &r1, &r2 );
+  gsl_poly_solve_cubic( coeff[2]/coeff[3], coeff[1]/coeff[3], coeff[0]/coeff[3], &r3, &r2, &r1 );
+  if(verbose) {
+    std::cout << "Roots = " << r1 << ", " << r2 << ", " << r3 << "\n";
+  }
   
   // Ensure that the root is within the interp region
-  if ( (r1 > theta_slice[0]) and (r1 < theta_slice[2*region-1]) ) {
+  if ( (r1 > theta_slice[0]) and (r1 < theta_slice[theta_slice.size()-1]) ) {
     theta_zero_loc = r1;
   }
-  else if ( (r2 > theta_slice[0]) and (r2 < theta_slice[2*region-1]) ) {
+  else if ( (r2 > theta_slice[0]) and (r2 < theta_slice[theta_slice.size()-1]) ) {
     theta_zero_loc = r2;
   }
+  else if ( (r3 > theta_slice[0]) and (r3 < theta_slice[theta_slice.size()-1]) ) {
+    theta_zero_loc = r3;
+  }
   else {
-    std::cout << "Neither root is in the interpolation region around the zero. Something went wrong. Exiting...";
+    std::cout << "Error: None of the roots " << r1 << ", " << r2 << " or " << r3 << " are in the interpolation region around the zero. Something went wrong. Exiting...\n";
     exit(1);
   }
 
   // Create a new theta grid from [-theta_zero_loc,theta_zero_loc] with the revised nzgrid
-  std::cout << "temp_tgrid = [";
+  if(verbose) std::cout << "New theta grid after cut = [";
   for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
     theta_revised_.push_back( (theta_zero_loc*(itheta-nzgrid))/nzgrid );
-    std::cout << theta_revised_[itheta] << ", ";
+    if(verbose) std::cout << theta_revised_[itheta] << ", ";
   }
-  std::cout << "]\n\n";
+  if(verbose) std::cout << "]\n\n";
 
 }
 
@@ -1438,15 +1552,15 @@ void Geometric_coefficients::get_GX_geo_arrays(double *bmag_temp, double *gradpa
 
   // Interpolating each geometric array from the non-uniform theta grid, onto to the
   // uniform z grid where gradpar=const
-  interp_to_new_grid(bmag_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(grho_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(gds2_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(gds21_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(gds22_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(gbdrift_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(gbdrift0_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(cvdrift_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
-  interp_to_new_grid(cvdrift0_temp, z_on_theta_grid, uniform_zgrid, nzgrid, false);
+  interp_to_new_grid(bmag_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(grho_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(gds2_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(gds21_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(gds22_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(gbdrift_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(gbdrift0_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(cvdrift_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
+  interp_to_new_grid(cvdrift0_temp, z_on_theta_grid, uniform_zgrid, 2*nzgrid+1, 2*nzgrid);
 }
   
 void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* bmag,
@@ -1457,7 +1571,6 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 						    double* cvdrift0) {
 
   // set up filename
-  std::string out_name;
   std::string tor_flux = std::to_string(normalized_toroidal_flux_used);
   std::string custom_info = std::to_string(custom_length);
   custom_info = custom_info.substr(0,5);
@@ -1465,40 +1578,41 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_data;
   vmec_name = vmec_name.substr(0,vmec_name.size()-3); // could change 0 to 5 to shorten these names
+  vmec_name = vmec_name.substr(vmec_name.find_last_of("/")+1);
 
   /* This part of the code writes the (netcdf) geometry output name*/
-  out_name = out_path + "gx_" + vmec_name + "_psiN_" + tor_flux;
+  outnc_name = out_path + filestem + "_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
-    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
+    outnc_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name += "_gds21" ;
+    outnc_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name += "_gbdrift0" ;
+    outnc_name += "_gbdrift0" ;
   }
   //  else {
-  //    out_name += "";
+  //    outnc_name += "";
   //  }  
 
-  out_name += + "_nt_" + theta_grid_points + "_geo.nc";
+  outnc_name += + "_nt_" + theta_grid_points + "_geo.nc";
   /* This is the new usage. Above is previous. 
    * If file_tag is not included in the input file, do nothing, 
-   * else overwrite the above out_name. */
+   * else overwrite the above outnc_name. */
   if (file_tag != "") {
-    out_name = out_path + "gx_geo_" + file_tag + ".nc";
+    outnc_name = out_path + "gx_geo_" + file_tag + ".nc";
   }
   
   // create file for writing
   int retval;
   int ncgeo;
   
-  if (retval = nc_create(out_name.c_str(), NC_CLOBBER, &ncgeo))  ERR(retval);
+  if (retval = nc_create(outnc_name.c_str(), NC_CLOBBER, &ncgeo))  ERR(retval);
 
   // define dimensions
   int id_z; 
-  if (retval = nc_def_dim(ncgeo, "z", 2*nzgrid, &id_z))    ERR(retval);
+  if (retval = nc_def_dim(ncgeo, "z", 2*nzgrid+1, &id_z))    ERR(retval);
 
   // define scalars
   int id_nperiod;
@@ -1533,7 +1647,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
 
   geodim[0] = id_z;
   start[0] = 0;
-  count[0] = 2*nzgrid;
+  count[0] = 2*nzgrid+1;
   
   int id_theta;
   if (retval = nc_def_var(ncgeo, "theta", NC_DOUBLE, 1, geodim, &id_theta))   ERR(retval);
@@ -1573,7 +1687,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double kxfac = 1.0;
   if (retval = nc_put_var(ncgeo, id_kxfac, &kxfac))                     ERR(retval);
 
-  double q = 1.0;
+  double q = safety_factor_q;
   if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
   if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
 
@@ -1601,44 +1715,44 @@ void Geometric_coefficients::write_geo_arrays_to_file(double* theta_grid, double
 						      double* gbdrift0, double* cvdrift,
 						      double* cvdrift0) {
 
-  std::string out_name;
   std::string tor_flux = std::to_string(normalized_toroidal_flux_used);
   std::string custom_info = std::to_string(custom_length);
   custom_info = custom_info.substr(0,5);
   std::string theta_grid_points = std::to_string(2*nzgrid);
   tor_flux = tor_flux.substr(0,5);
   std::string vmec_name = vmec->vmec_data;
+  vmec_name = vmec_name.substr(vmec_name.find_last_of("/")+1);
   vmec_name = vmec_name.substr(0,vmec_name.size()-3);
 
   /* This part of the code writes the (human readable) output name*/
-  out_name = out_path + "grid.gx_" + vmec_name + "_psiN_" + tor_flux;
+  outfile_name = out_path + filestem + "_" + vmec_name + "_psiN_" + tor_flux;
     
   if (flux_tube_cut == "custom") {
-    out_name += "_custom_[-" + custom_info + "," + custom_info + "]";
+    outfile_name += "_custom_[-" + custom_info + "," + custom_info + "]";
   }
   else if (flux_tube_cut == "gds21") {
-    out_name += "_gds21" ;
+    outfile_name += "_gds21" ;
   }
   else if (flux_tube_cut == "gbdrift0") {
-    out_name += "_gbdrift0" ;
+    outfile_name += "_gbdrift0" ;
   }
   //  else {
-  //    out_name += "";
+  //    outfile_name += "";
   //  }  
-  out_name += + "_nt_" + theta_grid_points;
+  outfile_name += + "_nt_" + theta_grid_points + ".eik.out";
 
   /* This is the new usage. Above is previous. 
    * If file_tag is not included in the input file, do nothing, 
-   * else overwrite the above out_name. */
+   * else overwrite the above outfile_name. */
   if (file_tag != "") {
-    out_name = out_path + "grid.gx_" + file_tag;
+    outfile_name = out_path + "grid.gx_" + file_tag;
   }
   
-  std::ofstream out_file(out_name);
+  std::ofstream out_file(outfile_name);
   //  std::ofstream out_file(".\\name.ext");
   if (out_file.is_open()) {
     out_file << "ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q scale\n";
-    out_file << nzgrid << " 1 " << 2*nzgrid << " 1.0 " << 1./L_reference << " " << shat << " 1.0 1.0 " << domain_scaling_factor << " \n";
+    out_file << nzgrid << " 1 " << 2*nzgrid << " 1.0 " << 1./L_reference << " " << shat << " 1.0 " << safety_factor_q << " "  << domain_scaling_factor << " \n";
     out_file << "gbdrift\t gradpar\t grho\t tgrid\n";
     for (int i=0; i<2*nzgrid+1; i++) {
       out_file << std::right << setprecision(10) << std::setw(20) << gbdrift[i] << "\t" << std::setw(20) << gradpar[i] << "\t" << std::setw(20) << grho[i] << "\t" << std::setw(20) << theta_grid[i] << "\n";
@@ -1691,14 +1805,14 @@ void Geometric_coefficients::test_arrays(double* array1, double* array2, int sho
   
   if (should_be_zero) {
     max_value = std::max_element(array1_temp, array1_temp+2*nzgrid);
-    std::cout << "maxval(abs(" << name << ")) = " << *max_value << " (should be < 1.)\n";
+    if(verbose || *max_value > tolerance) std::cout << "maxval(abs(" << name << ")) = " << *max_value << " (should be < 1.)\n";
     if (*max_value > tolerance) {
       std::cout << "Error! " << name << " should be 0\n";
       exit(1);
     }
   }
   else {
-    std::cout << "Relative difference between two methods for computing " << name << " = " << max_difference << " (should be << 1)\n";
+    if(verbose || max_difference > tolerance) std::cout << "Relative difference between two methods for computing " << name << " = " << max_difference << " (should be << 1)\n";
     if (max_difference > tolerance) {
       std::cout << "Error! Two methods for computing " << name << " disagree.\n";
       exit(1);

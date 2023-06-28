@@ -1,4 +1,6 @@
 #include "geometry.h"
+#include "vmec_variables.h"
+#include "geometric_coefficients.h"
 #define GGEO <<< dimGrid, dimBlock >>>
 
 #include "geometry_modules/vmec/include/solver.h"
@@ -30,30 +32,65 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   else if(geo_option=="miller") {
     // call python geometry module to write an eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
-    char command[300];
-    sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str());
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    pars->geofilename = std::string(pars->run_name) + ".eik.out";
+    if(grids->iproc == 0) {
+      char command[300];
+      sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s.in %s > %s.gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
     CUDA_DEBUG("Initializing miller geometry: %s \n");
   } 
   else if(geo_option=="vmec") {
-    printf("Error: geo_option = \"vmec\" is not yet implemented.\n");
-    printf("Use the geometry_modules/vmec/convert_VMEC_to_GX executable to generate an eik.out file,\n");
-    printf("and then use geo_option = \"eik\".\n");
-    exit(1);
+    bool usenc;
+    if(grids->iproc == 0) {
+      char nml_file[512];
+      strcpy (nml_file, pars->run_name);
+      strcat (nml_file, ".in");
+      VMEC_variables *vmec = new VMEC_variables(nml_file);
+      Geometric_coefficients *vmec_geo = new Geometric_coefficients(nml_file, vmec);
+      usenc = vmec_geo->usenc;
+      if(usenc) {
+        pars->geofilename = vmec_geo->outnc_name;
+      }
+      else {
+        pars->geofilename = vmec_geo->outfile_name;
+      }
+      delete vmec_geo;
+      delete vmec;
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    int size = pars->geofilename.size();
+    MPI_Bcast(&size, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if(grids->iproc != 0) pars->geofilename.resize(size);
+    MPI_Bcast((void*) pars->geofilename.c_str(), size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void*) &usenc, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // now read the eik file that was generated
+    if (usenc) {
+      geo = new geo_nc(pars, grids);
+    }
+    else {
+      geo = new Eik_geo(pars, grids);
+    }
   }
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
-    // write an eik.in file
-    write_eiktest_in(pars, grids);
-    char command[300];
-    sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
-    pars->geofilename = std::string(pars->run_name) + ".eik.eik.out";
-    printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
-    system(command);
+    if(grids->iproc == 0) {
+      // write an eik.in file
+      write_eiktest_in(pars, grids);
+      char command[300];
+      sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
+      pars->geofilename = std::string(pars->run_name) + ".eik.eik.out";
+      printf("Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+    pars->geofilename = std::string(pars->run_name) + ".eik.eik.out"; // need this on all procs
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
@@ -320,6 +357,13 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
       bgrad_h[k] = 0.;
       bmag_h[k] = 1.;
       gradpar = 1.;
+      if (pars->z0 > 0.) gradpar = 1./pars->z0;
+      if (pars->zero_shat) {
+	gds21_h[k] = 0.0;
+	gds22_h[k] = 1.0;
+	shat = 0.0;
+	pars->shat = 0.0;	
+      }
     }
     if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; gradpar = 1.; }
 
@@ -357,6 +401,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   printf("READING NC GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz;
+  size_t dsize = sizeof(double)*(grids->Nz+1);
 
   char stra[NC_MAX_NAME+1];
   char strb[513];
@@ -374,14 +419,27 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_inq_dim  (ncgeo, id_z, stra, &N))    ERR(retval);
 
   // do basic sanity check
-  if (grids->Nz != (int) N) {
-    printf("Number of points along the field line in geometry file %d does not match input %d \n", N, grids->Nz);
+  if (grids->Nz != (int) N-1) {
+    printf("Number of points along the field line in geometry file %d does not match input %d \n", N-1, grids->Nz);
     exit (1);
   }
 
   // allocate space for variables on the CPU
-  double * dtmp;
-  dtmp = (double*) malloc(sizeof(double)*N);
+  double* dtmp = (double*) malloc(dsize);
+  double* nc_z_h = (double*) malloc (dsize);
+  double* nc_bmag_h = (double*) malloc (dsize);
+  double* nc_bmagInv_h = (double*) malloc (dsize);
+  double* nc_gds2_h = (double*) malloc (dsize);
+  double* nc_gds21_h = (double*) malloc (dsize);
+  double* nc_gds22_h = (double*) malloc (dsize);
+  double* nc_gbdrift_h = (double*) malloc (dsize);
+  double* nc_gbdrift0_h = (double*) malloc (dsize);
+  double* nc_cvdrift_h = (double*) malloc (dsize);
+  double* nc_cvdrift0_h = (double*) malloc (dsize);
+  double* nc_grho_h = (double*) malloc (dsize);
+  double* nc_gradpar_h = (double*) malloc (dsize);
+  double* nc_jacobian_h = (double*) malloc (dsize);
+
   z_h = (float*) malloc (size);
   bmag_h = (float*) malloc (size);
   bmagInv_h = (float*) malloc (size);
@@ -394,55 +452,80 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   cvdrift0_h = (float*) malloc (size);
   grho_h = (float*) malloc (size);
   jacobian_h = (float*) malloc (size);
-  
+
   // read the data with nc_get_var
   int id;
   if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) z_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_z_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "bmag", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) bmag_h[n] = (float) dtmp[n];
-  for (int n=0; n<N; n++) bmagInv_h[n] = 1./bmag_h[n];
+  for (int n=0; n<N; n++) nc_bmag_h[n] = dtmp[n];
+  for (int n=0; n<N; n++) nc_bmagInv_h[n] = 1./nc_bmag_h[n];
 
   if (retval = nc_inq_varid(ncgeo, "gradpar", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  gradpar = (float) dtmp[0];
+  for (int n=0; n<N; n++) nc_gradpar_h[n] = dtmp[n];
+  if(nc_gradpar_h[0] != nc_gradpar_h[N/2]) {
+    printf("Error: GX requires an equal-arc theta coordinate, so that gradpar = const.\nFor gs2 geometry module, use equal_arc = true. Exiting...\n");
+    fflush(stdout);
+    abort();
+  } else {
+    gradpar = nc_gradpar_h[0];
+  }
 
   if (retval = nc_inq_varid(ncgeo, "grho", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) grho_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_grho_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds2", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds2_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds2_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds21_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds21_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gds22_h[n] = (float) dtmp[n];
+  for (int n=0; n<N; n++) nc_gds22_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_gbdrift_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) gbdrift0_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_gbdrift0_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_cvdrift_h[n] = dtmp[n] / 2.0;
   
   if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) cvdrift0_h[n] = (float) dtmp[n] / 2.0;
+  for (int n=0; n<N; n++) nc_cvdrift0_h[n] = dtmp[n] / 2.0;
   
   free(dtmp);
+
+  // interpolate to equally-spaced theta grid
+  for(int k=0; k<grids->Nz; k++) {
+    z_h[k] = 2.*M_PI *pars->Zp *(k-grids->Nz/2)/grids->Nz;
+  }
+  int ntgrid = N/2;
+
+  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
 
   double stmp; 
   
@@ -517,7 +600,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
 {
 
-  printf("READING FILE GEO\n");
+  printf("READING FILE GEO: %s\n", pars->geofilename.c_str());
   operator_arrays_allocated_=false;
 
   size_t eiksize = sizeof(double)*(grids->Nz+1); 
@@ -688,17 +771,17 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   for(int k=0; k<newNz; k++) {
     z_h[k] = 2.*M_PI *pars->Zp *(k-newNz/2)/newNz;
   }
-  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, ntgrid, false);
-  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, ntgrid, false);
+  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, newNz+1, newNz);
   
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
@@ -743,12 +826,24 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   dim3 dimGrid  (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nx-1)/dimBlock.y, 1+(grids->Nz-1)/dimBlock.z);
 
   // set jtwist and x0, now that we know the final value of shat from geometry
-  pars->set_jtwist_x0(&shat);
+  pars->set_jtwist_x0(&shat, gds21_h, gds22_h);
   // initialize k and coordinate arrays
   grids->init_ks_and_coords();
   // initialize operator arrays
   init_kperp2 GGEO (kperp2, grids->kx, grids->ky, gds2, gds21, gds22, bmagInv, shat);
   init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
+
+  // compute max values of gbdrift, cvdrift, gbdrift0, cvdrift0
+  gbdrift_max = 0.;
+  gbdrift0_max = 0.;
+  cvdrift_max = 0.;
+  cvdrift0_max = 0.;
+  for(int i=0; i<grids->Nz; i++) {
+    gbdrift_max = max(gbdrift_max, abs(gbdrift_h[i]));
+    gbdrift0_max = max(gbdrift0_max, abs(gbdrift0_h[i]));
+    cvdrift_max = max(cvdrift_max, abs(cvdrift_h[i]));
+    cvdrift0_max = max(cvdrift0_max, abs(cvdrift0_h[i]));
+  }
 
   /*
   kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);

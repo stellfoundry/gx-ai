@@ -2,6 +2,7 @@
 #include "get_error.h"
 #define GBK <<< dGk, dBk >>>
 #define GBX <<< dGx, dBx >>>
+#define GBX_single <<< dGx_single, dBx_single >>>
 
 //===========================================
 // Nonlinear_GK
@@ -9,12 +10,12 @@
 //===========================================
 Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  red(nullptr), laguerre(nullptr), grad_perp_G(nullptr), grad_perp_J0phi(nullptr), grad_perp_phi(nullptr)
+  red(nullptr), laguerre(nullptr), laguerre_single(nullptr), grad_perp_G(nullptr), grad_perp_J0f(nullptr), grad_perp_f(nullptr), grad_perp_G_single(nullptr)
 {
 
-  tmp_c      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
+  tmp_c      = nullptr;  G_tmp      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
-  dJ0apar_dy = nullptr;  dphi       = nullptr;  g_res       = nullptr;  
+  dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
 
   if (grids_ -> Nl < 2) {
@@ -24,23 +25,26 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     exit(1);
   }
 
-  laguerre =        new LaguerreTransform(grids_, 1);
+  laguerre = new LaguerreTransform(grids_, grids_->Nm);
+  laguerre_single = new LaguerreTransform(grids_, 1);
   int nR = grids_->NxNyNz;
   red = new Block_Reduce(nR); cudaDeviceSynchronize();
   
+  nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm); 
+
   nBatch = grids_->Nz*grids_->Nl; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
+  grad_perp_G_single = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
   
   nBatch = grids_->Nz*grids_->Nj; 
-  grad_perp_J0phi = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
+  grad_perp_J0f = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
 
   nBatch = grids_->Nz;
-  grad_perp_phi =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  grad_perp_f =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
   
-  checkCuda(cudaMalloc(&tmp_c,    sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
-  checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl));
-  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nj));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl*grids_->Nm));
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
 
   checkCuda(cudaMalloc(&J0phi,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
   checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
@@ -50,25 +54,33 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     checkCuda(cudaMalloc(&J0apar,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
+
+    checkCuda(cudaMalloc(&tmp_c,    sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
+    G_tmp = new MomentsG(pars_, grids_);
   }
 
   checkCuda(cudaMalloc(&dphi,  sizeof(float)*grids_->NxNyNz));
-  if (pars_->fapar > 0.) {
-    checkCuda(cudaMalloc(&dapar,  sizeof(float)*grids_->NxNyNz));
+  if (pars_->fapar > 0. || pars_->fbpar > 0.) {
+    checkCuda(cudaMalloc(&dchi,  sizeof(float)*grids_->NxNyNz));
   }
-  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
 
   int nxyz = grids_->NxNyNz;
   int nlag = grids_->Nj;
+  int nher = grids_->Nm;
 
   int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
-  int nby = min(16, nlag);  int ngy = 1 + (nlag-1)/nby;
+  int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
+  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
 
-  dBx = dim3(nbx, nby, 1);
-  dGx = dim3(ngx, ngy, 1);
+  dBx = dim3(nbx, nby, nbz);
+  dGx = dim3(ngx, ngy, ngz);
+
+  dBx_single = dim3(nbx, nby, 1);
+  dGx_single = dim3(ngx, ngy, 1);
 
   int nxkyz = grids_->NxNycNz;
   
@@ -91,10 +103,11 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( grad_perp_G     ) delete grad_perp_G;
   if ( red             ) delete red;
   if ( laguerre        ) delete laguerre;
-  if ( grad_perp_J0phi ) delete grad_perp_J0phi;
-  if ( grad_perp_phi   ) delete grad_perp_phi;
+  if ( grad_perp_J0f ) delete grad_perp_J0f;
+  if ( grad_perp_f   ) delete grad_perp_f;
 
   if ( tmp_c       ) cudaFree ( tmp_c       );
+  if ( G_tmp       ) delete  G_tmp;
   if ( dG          ) cudaFree ( dG          );
   if ( dg_dx       ) cudaFree ( dg_dx       );
   if ( dg_dy       ) cudaFree ( dg_dy       );
@@ -105,6 +118,7 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( dJ0apar_dx  ) cudaFree ( dJ0apar_dx  );
   if ( dJ0apar_dy  ) cudaFree ( dJ0apar_dy  );
   if ( dphi        ) cudaFree ( dphi        );
+  if ( dchi        ) cudaFree ( dchi        );
   if ( g_res       ) cudaFree ( g_res       );
   if ( J0phi       ) cudaFree ( J0phi       );
   if ( J0apar      ) cudaFree ( J0apar      );
@@ -142,91 +156,140 @@ void Nonlinear_GK::qvar (float* G, int N)
 
 void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
+  // BD  J0fToGrid does not use a Laguerre transform. Implications?
+  // BD  If we use alternate forms for <J0> then that would need to be reflected here
+
+  //    printf("\n");
+  //    printf("Phi:\n");
+  //    qvar(f->phi, grids_->NxNycNz);
+
+  float rho2s = G->species->rho2;
+  float vts = G->species->vt;
+  float tz = G->species->tz;
+  if(pars_->fbpar > 0.0) {
+    J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
+  } else {
+    J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
+  }
+
+  grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
+  grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
+
+  if (pars_->fapar > 0.) {
+
+    J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
+    
+    grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
+    grad_perp_J0f -> dyC2R(J0apar, dJ0apar_dy);
+  }
   
-  for(int s=0; s<grids_->Nspecies; s++) {
-
-    // BD  J0fToGrid does not use a Laguerre transform. Implications?
-    // BD  If we use alternate forms for <J0> then that would need to be reflected here
-
-    float rho2s = pars_->species_h[s].rho2;    
-    float vts = pars_->species_h[s].vt;    
-    float tz = pars_->species_h[s].tz;
-    if(pars_->fbpar > 0.0) {
-      J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
-    } else {
-      J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
-    }
-
-    grad_perp_J0phi -> dxC2R(J0phi, dJ0phi_dx);
-    grad_perp_J0phi -> dyC2R(J0phi, dJ0phi_dy);
-
-    if (pars_->fapar > 0.) {
-
-      J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
-      
-      grad_perp_J0phi -> dxC2R(J0apar, dJ0apar_dx);
-      grad_perp_J0phi -> dyC2R(J0apar, dJ0apar_dy);
-    }
+  // loop over m to save memory. also makes it easier to parallelize.
+  // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     
-    // loop over m to save memory. also makes it easier to parallelize later...
-    // no extra computation: just no batching in m in FFTs and in the matrix multiplies
+  grad_perp_G -> dxC2R(G->G(), dG);
+  laguerre    -> transformToGrid(dG, dg_dx);
+  
+  grad_perp_G -> dyC2R(G->G(), dG);      
+  laguerre    -> transformToGrid(dG, dg_dy);
      
-    for(int m=0; m<grids_->Nm; m++) {
-      
-      grad_perp_G -> dxC2R(G->Gm(m,s), dG);
-      laguerre    -> transformToGrid(dG, dg_dx);
-    
-      grad_perp_G -> dyC2R(G->Gm(m,s), dG);      
-      laguerre    -> transformToGrid(dG, dg_dy);
-         
-      // compute {G_m, phi}
-      bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
-      laguerre->transformToSpectral(g_res, dG);
-      // NL_m += {G_m, phi}
-      grad_perp_G->R2C(dG, G_res->Gm(m,s), true); // this R2C has accumulate=true
+  // compute {G_m, phi}
+  bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+  laguerre->transformToSpectral(g_res, dG);
+  // NL_m += {G_m, phi}
+  grad_perp_G->R2C(dG, G_res->G(), true); // this R2C has accumulate=true
 
-      if (pars_->fapar > 0.) {
-        // compute {G_m, Apar}
-        bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
-        laguerre->transformToSpectral(g_res, dG);
-        grad_perp_G->R2C(dG, tmp_c, false); // this R2C has accumulate=false
-        // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
-        if(m+1 < grids_->Nm) add_scaled_singlemom_kernel GBK (G_res->Gm(m+1,s), 1., G_res->Gm(m+1,s), -vts*sqrtf(m+1), tmp_c);
-        // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
-        if(m>0) add_scaled_singlemom_kernel GBK (G_res->Gm(m-1,s), 1., G_res->Gm(m-1,s), -vts*sqrtf(m), tmp_c);
-      }
+  if (pars_->fapar > 0.) {
+    // compute {G_m, Apar}
+    bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+    laguerre->transformToSpectral(g_res, dG);
+    grad_perp_G->R2C(dG, G_tmp->G(), false); // this R2C has accumulate=false
+
+    for(int m=grids_->m_lo; m<grids_->m_up; m++) {
+      int m_local = m - grids_->m_lo;
+
+      // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
+      if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), G_tmp->Gm(m_local));
+      // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
+      if(m>0) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), G_tmp->Gm(m_local));
+    }
+  }
+
+  // contributions from ghost cells (EM only)
+  if(pars_->fapar > 0. && grids_->nprocs_m>1) {
+    cudaStreamSynchronize(G->syncStream);
+
+    // lower ghost
+    int m = grids_->m_lo;
+    int m_local = m - grids_->m_lo;
+    if(m>0) {
+      grad_perp_G_single -> dxC2R(G->Gm(m_local-1), dG);
+      laguerre_single    -> transformToGrid(dG, dg_dx);
+  
+      grad_perp_G_single -> dyC2R(G->Gm(m_local-1), dG);      
+      laguerre_single    -> transformToGrid(dG, dg_dy);
+      bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+      laguerre_single->transformToSpectral(g_res, dG);
+      grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
+    }
+
+    // upper ghost
+    m = grids_->m_up-1;
+    m_local = m - grids_->m_lo;
+    if(m<pars_->nm_in-1) {
+      grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
+      laguerre_single    -> transformToGrid(dG, dg_dx);
+  
+      grad_perp_G_single -> dyC2R(G->Gm(m_local+1), dG);      
+      laguerre_single    -> transformToGrid(dG, dg_dy);
+      bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+      laguerre_single->transformToSpectral(g_res, dG);
+      grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
     }
   }
 }
-double Nonlinear_GK::cfl(Fields *f, double dt_max)
-{
-  float vpmax = sqrtf(2.*grids_->Nm)*pars_->vtmax; // estimate of max vpar on grid
 
-  grad_perp_phi -> dxC2R(f->phi, dphi); 
-  abs GBX (dphi, grids_->NxNyNz);
+void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
+{
+  float vpar_max = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
+  float muB_max = grids_->muB_max*pars_->tzmax; 
+
+  grad_perp_f -> dxC2R(f->phi, dphi); 
+  abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
-    grad_perp_phi -> dxC2R(f->apar, dapar); 
-    abs GBX (dapar, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dapar);
+    grad_perp_f -> dxC2R(f->apar, dchi); 
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, vpar_max, dchi);
+  }
+  if(pars_->fbpar > 0.0) {
+    grad_perp_f -> dxC2R(f->bpar, dchi); 
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
-  grad_perp_phi -> dyC2R(f->phi, dphi);  
-  abs GBX (dphi, grids_->NxNyNz);
+  grad_perp_f -> dyC2R(f->phi, dphi);  
+  abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
-    grad_perp_phi -> dyC2R(f->apar, dapar); 
-    abs GBX (dapar, grids_->NxNyNz);
-    add_scaled_singlemom_kernel GBX (dphi, 1., dphi, vpmax, dapar);
+    grad_perp_f -> dyC2R(f->apar, dchi); 
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, vpar_max, dchi);
+  }
+  if(pars_->fbpar > 0.0) {
+    grad_perp_f -> dyC2R(f->bpar, dchi); 
+    abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
+    add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
-  // need em evaluation if beta > 0
-  float vmax = max(vmax_x[0]*cfl_x_inv, vmax_y[0]*cfl_y_inv);
-  dt_cfl = min(dt_max, 1./vmax);
-  return dt_cfl;
-
+  double scale = 0.5;  // normalization scaling factor for C2R FFT
+  omega_max[0] = max(omega_max[0], pars_->kxfac*(grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = max(omega_max[1], pars_->kxfac*(grids_->ky_max*vmax_y[0])*scale);
 }
 
 //==============================================
@@ -234,42 +297,54 @@ double Nonlinear_GK::cfl(Fields *f, double dt_max)
 // object for handling non-linear terms in KREHM
 //==============================================
 Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), red(nullptr), grad_perp(nullptr)
+  pars_(pars), grids_(grids), red(nullptr), grad_perp_f(nullptr), grad_perp_G(nullptr)
 {
   tmp_c = nullptr;
-  tmp_r = nullptr;
+  dG = nullptr;
   dg_dx = nullptr;
   dg_dy = nullptr;
   dphi_dx = nullptr;
   dphi_dy = nullptr;
-  dapar_dx = nullptr;
-  dapar_dy = nullptr;
+  dchi_dx = nullptr;
+  dchi_dy = nullptr;
+  G_tmp = nullptr;
   
-  nBatch = grids_->Nz; 
-  grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz); 
+  nBatch = grids_->Nz*grids_->Nm; 
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nm); 
 
+  nBatch = grids_->Nz; 
+  grad_perp_f = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  
   int nR = grids_->NxNyNz;
   red = new Block_Reduce(nR); cudaDeviceSynchronize();
   
   checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
-  checkCuda(cudaMalloc(&tmp_r, sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz));
+  G_tmp = new MomentsG(pars_, grids_);
+
+  checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nm));
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nm));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*grids_->Nm));
 
   checkCuda(cudaMalloc(&dphi_dx,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dphi_dy,  sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dapar_dx,  sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dapar_dy,  sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMalloc(&dchi_dx,  sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMalloc(&dchi_dy,  sizeof(float)*grids_->NxNyNz));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
 
   int nxyz = grids_->NxNyNz;
+  int nher = grids_->Nm;
 
   int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
+  int nby = 1;  int ngy = 1;  // no laguerre in KREHM
+  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
 
-  dBx = dim3(nbx, 1, 1);
-  dGx = dim3(ngx, 1, 1);
+  dBx = dim3(nbx, nby, nbz);
+  dGx = dim3(ngx, ngy, ngz);
+
+  dBx_single = dim3(nbx, 1, 1);
+  dGx_single = dim3(ngx, 1, 1);
 
   int nxkyz = grids_->NxNycNz;
   
@@ -289,64 +364,101 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
 
 Nonlinear_KREHM::~Nonlinear_KREHM() 
 {
-  if ( grad_perp ) delete grad_perp;
+  if ( grad_perp_f ) delete grad_perp_f;
+  if ( grad_perp_G ) delete grad_perp_G;
   if ( dg_dx ) cudaFree ( dg_dx );
   if ( dg_dy ) cudaFree ( dg_dy );
-  if ( tmp_r ) cudaFree ( tmp_r );
+  if ( dG ) cudaFree ( dG );
   if ( tmp_c ) cudaFree ( tmp_c );
   if ( dphi_dx ) cudaFree ( dphi_dx );
   if ( dphi_dy ) cudaFree ( dphi_dy );
-  if ( dapar_dx ) cudaFree ( dapar_dx );
-  if ( dapar_dy ) cudaFree ( dapar_dy );
+  if ( dchi_dx ) cudaFree ( dchi_dx );
+  if ( dchi_dy ) cudaFree ( dchi_dy );
   if ( val1 ) cudaFree ( val1 ); 
   if ( red ) delete red;
 }
 
 void Nonlinear_KREHM::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
 {
-  grad_perp->dxC2R(f->phi, dphi_dx);
-  grad_perp->dyC2R(f->phi, dphi_dy);
-  grad_perp->dxC2R(f->apar, dapar_dx);
-  grad_perp->dyC2R(f->apar, dapar_dy);
+  grad_perp_f->dxC2R(f->phi, dphi_dx);
+  grad_perp_f->dyC2R(f->phi, dphi_dy);
+  grad_perp_f->dxC2R(f->apar, dchi_dx);
+  grad_perp_f->dyC2R(f->apar, dchi_dy);
 
-  // loop over m, computing all nonlinear terms involving a bracket of g_m
-  // this way each g_m only needs to be transformed twice (for d/dx and d/dy)
-  for(int m=0; m<grids_->Nm; m++) {
-    grad_perp->dxC2R(G->Gm(m), dg_dx);
-    grad_perp->dyC2R(G->Gm(m), dg_dy);      
+  grad_perp_G->dxC2R(G->G(), dg_dx);
+  grad_perp_G->dyC2R(G->G(), dg_dy);      
 
-    // compute {g_m, phi}
-    bracket GBX (tmp_r, dg_dx, dphi_dy, dg_dy, dphi_dx, 1.);
-    // NL_m += {g_m, phi}
-    grad_perp->R2C(tmp_r, G_nl->Gm(m), true); // this R2C has accumulate=true
+  // compute {g_m, phi}
+  bracket GBX (dG, dg_dx, dphi_dy, dg_dy, dphi_dx, 1.);
+  // NL_m += {g_m, phi}
+  grad_perp_G->R2C(dG, G_nl->G(), true); // this R2C has accumulate=true
 
-    // compute {g_m, Apar}
-    bracket GBX (tmp_r, dg_dx, dapar_dy, dg_dy, dapar_dx, 1.);
-    grad_perp->R2C(tmp_r, tmp_c, false); // this R2C has accumulate=false
+  // compute {g_m, Apar}
+  bracket GBX (dG, dg_dx, dchi_dy, dg_dy, dchi_dx, 1.);
+  grad_perp_G->R2C(dG, G_tmp->G(), false); // this R2C has accumulate=false
+
+  for(int m=grids_->m_lo; m<grids_->m_up; m++) {
+    int m_local = m - grids_->m_lo;
+
     // NL_{m+1} += -rho_s/d_e*sqrt(m+1)*{g_m, Apar}
-    if(m+1 < grids_->Nm) add_scaled_singlemom_kernel GBK (G_nl->Gm(m+1), 1., G_nl->Gm(m+1), -rho_s/d_e*sqrtf(m+1), tmp_c);
-    // NL_{m-1} += -rho_s/d_e*sqrt(m)*{g_m, Apar}
-    if(m>0) add_scaled_singlemom_kernel GBK (G_nl->Gm(m-1), 1., G_nl->Gm(m-1), -rho_s/d_e*sqrtf(m), tmp_c);
+    if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_nl->Gm(m_local+1), 1., G_nl->Gm(m_local+1), -rho_s/d_e*sqrtf(m+1), G_tmp->Gm(m_local));
+    // NL_{m-1} += -rho_s/d_e*sqrt(m)*{G_m, Apar}
+    if(m>0) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_nl->Gm(m_local-1), 1., G_nl->Gm(m_local-1), -rho_s/d_e*sqrtf(m), G_tmp->Gm(m_local));
+  }
+
+  // contributions from ghost cells (EM only)
+  if(grids_->nprocs_m>1) {
+    cudaStreamSynchronize(G->syncStream);
+
+    // lower ghost
+    int m = grids_->m_lo;
+    int m_local = m - grids_->m_lo;
+    if(m>0) {
+      grad_perp_f -> dxC2R(G->Gm(m_local-1), dg_dx);
+      grad_perp_f -> dyC2R(G->Gm(m_local-1), dg_dy);      
+      bracket GBX_single (dG, dg_dx, dchi_dy, dg_dy, dchi_dx, 1.0);
+      grad_perp_f->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -rho_s/d_e*sqrt(m)*{G_{m-1}, Apar}
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_nl->Gm(m_local), 1., G_nl->Gm(m_local), -rho_s/d_e*sqrtf(m), tmp_c);
+    }
+
+    // upper ghost
+    m = grids_->m_up-1;
+    m_local = m - grids_->m_lo;
+    if(m<pars_->nm_in-1) {
+      grad_perp_f -> dxC2R(G->Gm(m_local+1), dg_dx);
+      grad_perp_f -> dyC2R(G->Gm(m_local+1), dg_dy);
+      bracket GBX_single (dG, dg_dx, dchi_dy, dg_dy, dchi_dx, 1.0);
+      grad_perp_f->R2C(dG, tmp_c, false); // this R2C has accumulate=false
+      // NL_{m} += -rho_s/d_e*sqrt(m+1)*{G_{m+1}, Apar}
+      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_nl->Gm(m_local), 1., G_nl->Gm(m_local), -rho_s/d_e*sqrtf(m+1), tmp_c);
+    }
   }
 }
-double Nonlinear_KREHM::cfl(Fields *f, double dt_max)
+
+void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
 {
-  float vpmax = sqrtf(2.*grids_->Nm)*pars_->vtmax; // estimate of max vpar on grid
-  
-  abs GBX (dphi_dx, grids_->NxNyNz );
-  abs GBX (dapar_dx, grids_->NxNyNz );
-  add_scaled_singlemom_kernel GBX (dphi_dx, 1., dphi_dx, vpmax, dapar_dx);
-  red->Max(dphi_dx, val1); CP_TO_CPU(v_max_y, val1, sizeof(float));
+  float vpar_max = grids_->vpar_max; // estimate of max vpar on grid
 
-  abs GBX (dphi_dy, grids_->NxNyNz );
-  abs GBX (dapar_dy, grids_->NxNyNz );
-  add_scaled_singlemom_kernel GBX (dphi_dy, 1., dphi_dy, vpmax, dapar_dy);
-  red->Max(dphi_dy, val1); CP_TO_CPU(v_max_x, val1, sizeof(float));
+  grad_perp_f -> dxC2R(f->phi, dphi_dx); 
+  abs <<<dGx.x,dBx.x>>> (dphi_dx, grids_->NxNyNz);
+  grad_perp_f -> dxC2R(f->apar, dchi_dx); 
+  abs <<<dGx.x,dBx.x>>> (dchi_dx, grids_->NxNyNz);
+  add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi_dx, 1., dphi_dx, vpar_max, dchi_dx);
+  red->Max(dphi_dx, val1); 
+  CP_TO_CPU(vmax_y, val1, sizeof(float));
 
-  float vmax = max(v_max_x[0]*cfl_x_inv, v_max_y[0]*cfl_y_inv);
-  dt_cfl = min(dt_max, 1./vmax);
-  return dt_cfl;
+  grad_perp_f -> dyC2R(f->phi, dphi_dy);  
+  abs <<<dGx.x,dBx.x>>> (dphi_dy, grids_->NxNyNz);
+  grad_perp_f -> dyC2R(f->apar, dchi_dy); 
+  abs <<<dGx.x,dBx.x>>> (dchi_dy, grids_->NxNyNz);
+  add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi_dy, 1., dphi_dy, vpar_max, dchi_dy);
+  red->Max(dphi_dy, val1); 
+  CP_TO_CPU(vmax_x, val1, sizeof(float));
 
+  double scale = 0.5;  // normalization scaling factor for C2R FFT
+  omega_max[0] = max(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = max(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
 }
 
 //===========================================
@@ -433,7 +545,7 @@ double Nonlinear_KS::cfl(Fields *f, double dt_max)
 // object for handling non-linear terms in VP
 //===========================================
 Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), grad_perp_G(nullptr), grad_perp_phi(nullptr)
+  pars_(pars), grids_(grids), grad_perp_G(nullptr), grad_perp_f(nullptr)
 {
 
   Gy          = nullptr;  dphi_dy     = nullptr;  g_res       = nullptr;  
@@ -442,7 +554,7 @@ Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
   grad_perp_G =    new GradPerp(grids_, nBatch, grids_->Nyc*grids_->Nm);
   
   nBatch = 1;
-  grad_perp_phi =  new GradPerp(grids_, nBatch, grids_->Nyc);
+  grad_perp_f =  new GradPerp(grids_, nBatch, grids_->Nyc);
   
   checkCuda(cudaMalloc(&Gy,      sizeof(float)*grids_->Ny*grids_->Nm)); 
   checkCuda(cudaMalloc(&dphi_dy, sizeof(float)*grids_->Ny));              
@@ -459,7 +571,7 @@ Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
 Nonlinear_VP::~Nonlinear_VP() 
 {
   if ( grad_perp_G     ) delete grad_perp_G;
-  if ( grad_perp_phi   ) delete grad_perp_phi;
+  if ( grad_perp_f   ) delete grad_perp_f;
 
   if ( Gy          ) cudaFree ( Gy          );
   if ( dphi_dy     ) cudaFree ( dphi_dy     );
@@ -500,7 +612,7 @@ void Nonlinear_VP::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 {
 
   grad_perp_G -> C2R(G->G(), Gy);
-  grad_perp_phi -> dyC2R(f->phi, dphi_dy);
+  grad_perp_f -> dyC2R(f->phi, dphi_dy);
   nlvp GBX (g_res, Gy, dphi_dy);
   grad_perp_G -> R2C(g_res, G_res->G(), true);
 }

@@ -22,9 +22,9 @@
  nonlinear_mode = true           # this is a nonlinear calculation
 
 [Time]
- dt = 0.05              # timestep size (in units of L_ref/vt_ref)
- nstep = 8000          # number of timesteps
- scheme = "sspx3"       # use SSPx3 timestepping scheme
+ t_max = 400.0         # end time (in units of L_ref/vt_ref)
+ cfl = 0.9             # safety cushion factor on timestep
+ scheme = "rk3"        # use RK3 timestepping scheme
 
 [Initialization]
  ikpar_init = 0                  # parallel wavenumber of initial perturbation
@@ -63,12 +63,7 @@
 
 [Dissipation]
  closure_model = "none"          # no closure assumptions (just truncation)
- hypercollisions = true          # use hypercollision model
- nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
- p_hyper_m = 6                   # exponent of hermite hypercollisions
- nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
- p_hyper_l = 6                   # exponent of laguerre hypercollisions
-
+ hypercollisions = true          # use hypercollision model (with default parameters)
  hyper = true                    # use hyperdiffusion
  D_hyper = 0.05                  # coefficient of hyperdiffusion
  p_hyper = 2                     # exponent of hyperdiffusion is 2*p_hyper = 4
@@ -78,7 +73,7 @@
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 10                    # write diagnostics every 100 timesteps
+ nwrite = 20                     # write diagnostics every nwrite timesteps
  fluxes = true                   # compute and write heat and particle fluxes
 
 [Wspectra]                       # spectra of W = |G_lm|**2
@@ -97,4 +92,10 @@ kx               = false
 ky               = true         # P(ky) (summed over kx, z)
 kxky             = false
 z                = true         # P(z) (summed over kx, ky)
+
+[Qspectra]                      # spectra of Q (heat flux)
+kx               = false
+ky               = true         # Q(ky) (summed over kx, z)
+kxky             = false
+z                = true         # Q(z) (summed over kx, ky)
 

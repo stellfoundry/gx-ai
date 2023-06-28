@@ -14,6 +14,7 @@ class Nonlinear {
   virtual ~Nonlinear() {};
   virtual void nlps(MomentsG* G, Fields* f, MomentsG* G_res) = 0;
   virtual double cfl(Fields *f, double dt_max) = 0;
+  virtual void get_max_frequency(Fields *f, double *wmax) {};
 };
 
 class Nonlinear_GK : public Nonlinear {
@@ -22,7 +23,8 @@ class Nonlinear_GK : public Nonlinear {
   ~Nonlinear_GK();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(Fields *f, double dt_max);
+  double cfl(Fields *f, double dt_max) {};
+  void get_max_frequency(Fields *f, double *wmax);
   void qvar(cuComplex* G, int N);
   void qvar(float* G, int N);
   
@@ -31,7 +33,7 @@ class Nonlinear_GK : public Nonlinear {
   int nBatch;
   size_t Size; 
   bool ks, vp;
-  dim3 dGk, dBk, dGx, dBx;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -41,10 +43,13 @@ class Nonlinear_GK : public Nonlinear {
   
   Red               * red             ; 
   LaguerreTransform * laguerre        ;
+  LaguerreTransform * laguerre_single ;
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_J0phi ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_G_single ;
+  GradPerp          * grad_perp_J0f ;
+  GradPerp          * grad_perp_f   ;
 
+  MomentsG * G_tmp;
   cuComplex * tmp_c   ;
   float * dG          ;
   float * dg_dx       ;
@@ -57,7 +62,7 @@ class Nonlinear_GK : public Nonlinear {
   float * dJ0apar_dx ;
   float * dJ0apar_dy ;
   float * dphi        ;
-  float * dapar        ;
+  float * dchi        ;
   float * g_res       ;
   float vmax_x[1]     ;
   float vmax_y[1]     ;
@@ -71,12 +76,13 @@ class Nonlinear_KREHM : public Nonlinear {
   ~Nonlinear_KREHM();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(Fields *f, double dt_max);
+  double cfl(Fields *f, double dt_max) {};
+  void get_max_frequency(Fields *f, double *wmax);
   
  private:
 
   int nBatch;
-  dim3 dGk, dBk, dGx, dBx;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -84,20 +90,22 @@ class Nonlinear_KREHM : public Nonlinear {
   Grids             * grids_          ;  
   
   Red               * red             ; 
-  GradPerp          * grad_perp       ;
+  GradPerp          * grad_perp_f     ;
+  GradPerp          * grad_perp_G     ;
 
   float * dg_dx       ;
   float * dg_dy       ;
   float * dphi_dx     ;
   float * dphi_dy     ;
-  float * dapar_dx     ;
-  float * dapar_dy     ;
-  float * tmp_r;
+  float * dchi_dx     ;
+  float * dchi_dy     ;
+  float * dG;
   cuComplex * tmp_c;
+  MomentsG * G_tmp;
 
   float * val1        ;
-  float v_max_x[1]     ;
-  float v_max_y[1]     ;
+  float vmax_x[1]     ;
+  float vmax_y[1]     ;
 
   float rho_s;
   float d_e;
@@ -147,7 +155,7 @@ class Nonlinear_VP : public Nonlinear {
   Grids             * grids_          ;  
   
   GradPerp          * grad_perp_G     ;
-  GradPerp          * grad_perp_phi   ;
+  GradPerp          * grad_perp_f   ;
 
   float * Gy          ;
   float * dphi_dy     ;
