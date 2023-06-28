@@ -276,7 +276,7 @@ __global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, 
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
-    G1[idxyz] = G1[idxyz] + (1. + d_e*d_e*kperp2)*apar_ext[idxyz]/(rho_s*d_e);
+    G1[idxyz] = G1[idxyz] - (1. + d_e*d_e*kperp2)*apar_ext[idxyz]/(rho_s*d_e);
   }
 }
 
@@ -2504,7 +2504,7 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
        // collision term
        if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
        // for m=1, there are additional terms that add to the above
-       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*apar_/(rhos*de) + nu_ei*de/rhos*kperp2*apar_ext_;
+       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*apar_/(rhos*de) - nu_ei*de/rhos*kperp2*apar_ext_;
     }
   }
 }
