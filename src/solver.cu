@@ -251,13 +251,13 @@ Solver_KREHM::~Solver_KREHM()
 
 void Solver_KREHM::fieldSolve(MomentsG** G, Fields* fields)
 {
-  phiSolve_krehm<<<dG, dB>>>(fields->phi, G[0]->G(0), grids_->kx, grids_->ky, pars_->rho_i);
-  aparSolve_krehm<<<dG, dB>>>(fields->apar, G[0]->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+  phiSolve_krehm<<<dG, dB>>>(fields->phi, G[0]->Gm(0), grids_->kx, grids_->ky, pars_->rho_i);
+  aparSolve_krehm<<<dG, dB>>>(fields->apar, G[0]->Gm(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
 }
 
 void Solver_KREHM::set_equilibrium_current(MomentsG* G, Fields* fields)
 {
-  equilibrium_current_krehm<<<dG, dB>>>(G->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e, fields->apar_ext);
+  equilibrium_current_krehm<<<dG, dB>>>(G->Gm(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e, fields->apar_ext);
 }
 
 //=======================================

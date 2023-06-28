@@ -246,10 +246,10 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  else if(pars_->boundary_option_periodic) {
-    DEBUGPRINT("Using periodic for grad parallel.\n");
-    grad_par = new GradParallelPeriodic(grids_);
-  }
+  //else if(pars_->boundary_option_periodic) {
+  //  DEBUGPRINT("Using periodic for grad parallel.\n");
+  //  grad_par = new GradParallelPeriodic(grids_);
+  //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
@@ -350,7 +350,7 @@ void Linear_KREHM::get_max_frequency(double *omega_max)
   // estimate max linear frequency from kz_max*vpar_max
   omega_max[0] = 0.0;
   omega_max[1] = 0.0;
-  omega_max[2] = grids_->vpar_max*grids_->kz_max;
+  omega_max[2] = rho_s/d_e*grids_->vpar_max*grids_->kz_max;
 }
 
 //=======================================

@@ -819,7 +819,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
 
-  if(all_kinetic && beta == 0.0) {
+  if(all_kinetic && beta == 0.0 && !krehm) {
     printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
     printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
     printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
