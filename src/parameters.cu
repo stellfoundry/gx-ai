@@ -1,5 +1,6 @@
 #include "parameters.h"
 #include <netcdf.h>
+#include <netcdf_par.h>
 #include "toml.hpp"
 #include <iostream>
 #include "version.h"
@@ -884,7 +885,7 @@ void Parameters::store_ncdf(int ncid) {
     strcpy(strb, run_name); 
     strcat(strb, "_nonZonal_xy.nc");
     
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &nczid)) ERR(retval);
+    if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, mpcom, MPI_INFO_NULL, &nczid)) ERR(retval);
     if (retval = nc_def_dim (nczid, "x",       nx_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "y",       ny_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
