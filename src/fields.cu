@@ -78,7 +78,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
 	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
 	   float A0 = 1.29904; // this value makes B_ext_max = 1
-	   apar_ext_realspace_h[index] = A0/pow(cosh((x-M_PI*pars_->x0)/pars_->x0),2);
+	   apar_ext_realspace_h[index] = A0/pow(cosh((x-M_PI*pars_->x0)/pars_->x0),2)*((pow(tanh(x/pars_->x0),2)+(pow(tanh(x/pars_->x0-2*M_PI),2))-(pow(tanh(2*M_PI),2)))/(2*pow(tanh(M_PI),2)-pow(tanh(2*M_PI),2)));
 	}
       }
     }
