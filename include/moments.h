@@ -19,7 +19,7 @@ class MomentsG {
     // glm[ky, kx, z]
   }
   
-  cuComplex * Gm(int m) {   return G(0,m);   }
+  cuComplex * Gm(int m_loc) {   return G(0,m_loc);   }
 
   // accessor to G array including ghosts
   cuComplex * Gghost(int l=0, int m=0) {

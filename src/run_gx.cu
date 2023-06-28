@@ -59,8 +59,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 
     // set up initial conditions
     G[0] -> initialConditions(&time);   
-    G[0] -> sync();
     if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync();
     solver -> fieldSolve(G, fields);                
   }
 

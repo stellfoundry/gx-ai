@@ -65,8 +65,10 @@ class Solver_KREHM : public Solver {
 private:
 
   dim3 dG, dB, dg, db;
+  int count;
 
   cuComplex * tmp ;
+  cuComplex *moms, *density, *current;
 
   // local private copies
   Parameters * pars_  ;
