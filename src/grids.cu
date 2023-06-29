@@ -174,7 +174,9 @@ Grids::~Grids() {
   if (z_h)             free(z_h);
   if (theta0_h)        free(theta0_h); 
  
-  if(nprocs > 1) ncclCommDestroy(ncclComm);
+  ncclCommDestroy(ncclComm);
+  ncclCommDestroy(ncclComm_s);
+  if(nprocs_m > 1) ncclCommDestroy(ncclComm_m0);
 }
 
 void Grids::init_ks_and_coords()

@@ -87,6 +87,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
     grad_perp->R2C(apar_ext_realspace, apar_ext, true);
     
+    delete grad_perp;
 
     //debug part
 

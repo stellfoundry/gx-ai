@@ -2301,6 +2301,8 @@ NetCDF_ids::~NetCDF_ids() {
   
   if (red)          delete red;
   if (pot)          delete pot;
+  if (red_qflux)    delete red_qflux;
+  if (red_pflux)    delete red_pflux;
   if (ph2)          delete ph2;
   if (a2)          delete a2;
   if (all_red)      delete all_red;
@@ -3333,6 +3335,7 @@ void NetCDF_ids::write_fields_realspace(nca *D, cuComplex *a, bool endrun)
     //grad_apar->qvar(D->cpu,grids_->NxNyNz);   
 
     write_nc(D, endrun);
+    delete grad_apar;
   } 
 }
 

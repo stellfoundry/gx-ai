@@ -1,7 +1,5 @@
 #include "run_gx.h"
 
-void getDeviceMemoryUsage();
-
 void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
 {
   double time = 0;

@@ -36,6 +36,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   vol_fac = nullptr;
   flux_fac = nullptr;
   kvol_fac = nullptr;
+  rc = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
 
@@ -204,6 +205,11 @@ Diagnostics_GK::~Diagnostics_GK()
   if (tmp_omg_h)  free  ( tmp_omg_h );
   if (gy_h)       free  ( gy_h      );
   if (ry_h)       free  ( ry_h      );
+
+  if(grad_perp) delete grad_perp;
+  if(grad_par) delete grad_par;
+
+  if (rc) delete rc;
 }
 
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
@@ -475,6 +481,7 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
       id -> write_nc(id -> time, time);
       id -> write_ks_data (id -> g_y, gy_d);
     }
+    cudaFree(gy_double);
   }
 }
 
