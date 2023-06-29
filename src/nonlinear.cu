@@ -438,7 +438,7 @@ void Nonlinear_KREHM::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
 
 void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
 {
-  float vpar_max = grids_->vpar_max; // estimate of max vpar on grid
+  float vpar_max = grids_->vpar_max*rho_s/d_e; // estimate of max vpar on grid
 
   grad_perp_f -> dxC2R(f->phi, dphi_dx); 
   abs <<<dGx.x,dBx.x>>> (dphi_dx, grids_->NxNyNz);
