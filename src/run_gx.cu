@@ -58,6 +58,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
+    G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
     if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
     G[0] -> sync();

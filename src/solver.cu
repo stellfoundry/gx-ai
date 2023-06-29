@@ -259,13 +259,14 @@ Solver_KREHM::~Solver_KREHM()
 void Solver_KREHM::fieldSolve(MomentsG** G, Fields* fields)
 {
   if(grids_->iproc_m==0) {
-    density = G[0]->Gm(0);  // density is a pointer to moms + 0
-    current = G[0]->Gm(1);  // current is a pointer to moms + NxNycNz
+    CP_ON_GPU(density, G[0]->Gm(0), sizeof(cuComplex)*grids_->NxNycNz);
+    CP_ON_GPU(current, G[0]->Gm(1), sizeof(cuComplex)*grids_->NxNycNz);
   }
   if(grids_->nprocs>1) {
     // broadcast moments to all procs
     // factor of 2 in count*2 is from cuComplex -> float conversion
-    checkCuda(ncclBroadcast((void*) moms, (void*) moms, count*2, ncclFloat, 0, grids_->ncclComm_s, 0));
+    // moms includes both density and current
+    checkCuda(ncclBroadcast((void*) moms, (void*) moms, count*2, ncclFloat, 0, grids_->ncclComm, 0));
     cudaStreamSynchronize(0);
   } 
   phiSolve_krehm<<<dG, dB>>>(fields->phi, density, grids_->kx, grids_->ky, pars_->rho_i);

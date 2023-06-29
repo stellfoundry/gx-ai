@@ -2498,8 +2498,9 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
     const cuComplex apar_ext_ = apar_ext[idxyz];
     const float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
-    for (int m = 1; m < nm; m++) {
-       unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
+    for (int m = m_lo; m < m_up; m++) {
+       int m_local = m - m_lo;
+       int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m_local)));	
        
        // collision term
        if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
