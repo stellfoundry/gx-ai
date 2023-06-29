@@ -456,7 +456,7 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
   red->Max(dphi_dy, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
-  double scale = 0.5;  // normalization scaling factor for C2R FFT
+  double scale = 1.0;  // normalization scaling factor for C2R FFT
   omega_max[0] = max(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
   omega_max[1] = max(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
 }

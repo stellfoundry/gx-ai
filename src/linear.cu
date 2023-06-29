@@ -325,7 +325,7 @@ void Linear_KREHM::get_max_frequency(double *omega_max)
   // estimate max linear frequency from kz_max*vpar_max
   omega_max[0] = 0.0;
   omega_max[1] = 0.0;
-  omega_max[2] = rho_s/d_e*grids_->vpar_max*grids_->kz_max;
+  omega_max[2] = max(rho_s/d_e*grids_->vpar_max*grids_->kz_max, pars_->nm_in*nu_ei);
 }
 
 //=======================================
