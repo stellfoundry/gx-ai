@@ -17,4 +17,5 @@
 #include "get_error.h"
 
 void run_gx(Parameters * parameters, Grids * grids, Geometry * geo, Diagnostics * diagnostics);
-void getDeviceMemoryUsage();
+void printDeviceMemoryUsage(int iproc);
+void printDeviceID();

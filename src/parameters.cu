@@ -35,7 +35,7 @@ void Parameters::get_nml_vars(char* filename)
   strcpy(nml_file, run_name);
   strcat(nml_file, ".in");
 
-  printf(ANSI_COLOR_MAGENTA);
+  //printf(ANSI_COLOR_MAGENTA);
 
   const auto nml = toml::parse(nml_file);
 
@@ -185,7 +185,7 @@ void Parameters::get_nml_vars(char* filename)
   size_t maxSharedSize = prop.sharedMemPerBlockOptin;
   int i_share_max = maxSharedSize/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
   if(i_share > i_share_max) {
-    printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
+    if(iproc==0) printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
     i_share = i_share_max;
   }
   
@@ -757,7 +757,7 @@ void Parameters::get_nml_vars(char* filename)
   //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = Closure::none   ;
   if( closure_model == "beer4+2") {
-    printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
+    if(iproc==0) printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
     nm_in = 4;
     nl_in = 2;
     closure_model_opt = Closure::beer42;
@@ -793,7 +793,7 @@ void Parameters::get_nml_vars(char* filename)
   if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
   if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
-  if (eqfix && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
+  if (eqfix && iproc==0 && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -812,18 +812,20 @@ void Parameters::get_nml_vars(char* filename)
     
   if( source == "phiext_full") {
     source_option = PHIEXT;
-    printf("Running Rosenbluth-Hinton zonal flow calculation\n");
+    if(iproc==0) printf("Running Rosenbluth-Hinton zonal flow calculation\n");
   }
 
-  if(hypercollisions) printf("Using hypercollisions.\n");
-  if(hyper) printf("Using hyperdiffusion.\n");
+  if(iproc==0) {
+    if(hypercollisions) printf("Using hypercollisions.\n");
+    if(hyper) printf("Using hyperdiffusion.\n");
 
-  if(debug) printf("nspec_in = %i \n",nspec_in);
+    if(debug) printf("nspec_in = %i \n",nspec_in);
 
-  if(all_kinetic && beta == 0.0 && !krehm) {
-    printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
-    printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
-    printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+    if(all_kinetic && beta == 0.0 && !krehm) {
+      printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
+      printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
+      printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+    }
   }
 
   nspec = nspec_in;
@@ -1397,7 +1399,7 @@ void Parameters::init_species(specie* species)
     if (long_wavelength_GK) {
       species[s].rho2  = 0; // setting rho2 = 0.
       species[s].rho2_long_wavelength_GK  = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2. This rho2 is used for quasineutrality 1-Gam0 --> b_s approximation, whereas rho2 = 0 elsewhere for long_wavelength_GK.
-      printf("You are running GX with the long wavelength approximation.");
+      if(iproc==0) printf("You are running GX with the long wavelength approximation.");
     }
     if (debug) {
       printf("species = %d \n",s);
@@ -1593,27 +1595,31 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
   // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
   float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
 
-  printf("set_jtwist_x0: shat = %f, twist_shift_geo_fac = %f\n", shat, twist_shift_geo_fac);
+  if(iproc==0) {
+    if(debug) printf("set_jtwist_x0: shat = %f, twist_shift_geo_fac = %f\n", shat, twist_shift_geo_fac);
 
-  // check consistency of boundary and geo_option
-  printf(ANSI_COLOR_RED);
-  if(boundary == "continuous drifts" || boundary == "fix aspect") {
-    if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard twist-shift BCs (boundary = \"linked\")\n", boundary.c_str()); 
+    // check consistency of boundary and geo_option
+    printf(ANSI_COLOR_RED);
+    if(boundary == "continuous drifts" || boundary == "fix aspect") {
+      if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard twist-shift BCs (boundary = \"linked\")\n", boundary.c_str()); 
+    }
+    if(boundary == "exact periodic") {
+      if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard periodic BCs (boundary = \"periodic\")\n", boundary.c_str()); 
+    }
+    printf(ANSI_COLOR_RESET);
   }
-  if(boundary == "exact periodic") {
-    if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard periodic BCs (boundary = \"periodic\")\n", boundary.c_str()); 
-  }
-  printf(ANSI_COLOR_RESET);
 
   if (jtwist==0) {
     // this is an error
-    printf(ANSI_COLOR_RED);
-    printf("************************** \n");
-    printf("************************** \n");
-    printf("jtwist = 0 is not allowed! \n");
-    printf("************************** \n");
-    printf("************************** \n");
-    printf(ANSI_COLOR_RESET);
+    if(iproc==0) {
+      printf(ANSI_COLOR_RED);
+      printf("************************** \n");
+      printf("************************** \n");
+      printf("jtwist = 0 is not allowed! \n");
+      printf("************************** \n");
+      printf("************************** \n");
+      printf(ANSI_COLOR_RESET);
+    }
   }
   if (abs(shat) < 1e-5) {
     zero_shat = true;
@@ -1629,13 +1635,15 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
     if (x0 == -1) {
       x0 = y0;
     }
-    if (geo_option=="slab") {
+    if (geo_option=="slab" && iproc==0) {
       printf("Parallel box size is 2 * pi * z0 = %f \n",2*M_PI*z0);
       if(zero_shat) printf("And regardless of other messages, the magnetic shear is zero.\n");      
     }
-    printf(ANSI_COLOR_MAGENTA);
-    printf("Using periodic BCs with x0 = %f, y0 = %f\n", x0, y0);
-    printf(ANSI_COLOR_RESET);
+    if(iproc==0) {
+      printf(ANSI_COLOR_MAGENTA);
+      printf("Using periodic BCs with x0 = %f, y0 = %f\n", x0, y0);
+      printf(ANSI_COLOR_RESET);
+    }
   } else { // use twist-and-shift BCs
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1000 && x0 < 0.0) {
@@ -1652,11 +1660,13 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 	// this will produce recommendations for nx that can be quite large.
 	// But that is probably the best thing to do.
 	//      
-        printf(ANSI_COLOR_RED);
-        printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
-        printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
-        printf("Consider using an alternative boundary option.\n");
-        printf(ANSI_COLOR_RESET);
+        if(iproc==0) {
+          printf(ANSI_COLOR_RED);
+          printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+          printf("Consider using an alternative boundary option.\n");
+          printf(ANSI_COLOR_RESET);
+        }
 
         jtwist = 1;
       } 
@@ -1676,15 +1686,17 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       // and print warning if not.
       if (jtwist != -1000) {
         if (jtwist_0 != jtwist) {
-          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
+          if(iproc==0) printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
         }
       }
       if(jtwist_0 == 0) {
-        printf(ANSI_COLOR_RED);
-        printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
-        printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
-        printf("Consider using an alternative boundary option.\n");
-        printf(ANSI_COLOR_RESET);
+        if(iproc==0) {
+          printf(ANSI_COLOR_RED);
+          printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+          printf("Consider using an alternative boundary option.\n");
+          printf(ANSI_COLOR_RESET);
+        }
 
         jtwist_0 = 1;
       } 
@@ -1693,7 +1705,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       x0 = y0 * abs(jtwist)/(Zp*abs(twist_shift_geo_fac));
     }
     printf(ANSI_COLOR_MAGENTA);
-    printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, x0 = %f, y0 = %f\n", jtwist, x0, y0);
+    if(iproc==0) printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, shat = %f, x0 = %f, y0 = %f\n", jtwist, shat, x0, y0);
   
     printf(ANSI_COLOR_RESET);
   }
