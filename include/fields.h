@@ -12,6 +12,10 @@ class Fields {
   cuComplex * phi_h  ;
   cuComplex * apar   ;
   cuComplex * apar_h ;
+  cuComplex * apar_ext   ;
+  cuComplex * apar_ext_h ;
+  float *apar_ext_realspace_h;
+  float *apar_ext_realspace;
   cuComplex * bpar   ;
   cuComplex * bpar_h ;
 
@@ -40,6 +44,7 @@ class Fields {
   
 private:
   const size_t size_;
+  const size_t sizeReal_;
   int N;
   Parameters * pars_  ;
   Grids * grids_ ;

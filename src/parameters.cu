@@ -1,5 +1,6 @@
 #include "parameters.h"
 #include <netcdf.h>
+#include <netcdf_par.h>
 #include "toml.hpp"
 #include <iostream>
 #include "version.h"
@@ -166,9 +167,12 @@ void Parameters::get_nml_vars(char* filename)
   if(krehm) gx = false;
   rho_i             = toml::find_or <float> (tnml, "rho_i",       1.0 );
   d_e               = toml::find_or <float> (tnml, "d_e",         1.0 );
-  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       1.0 );
+  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       0.0 );
+  eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
+  harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   rho_s = rho_i*sqrtf(zt/2);
+  if(eta>0.0) nu_ei = eta/d_e/d_e;
 
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
@@ -268,9 +272,10 @@ void Parameters::get_nml_vars(char* filename)
 
   if (write_all_xymom) {
     write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyPhi = write_xyden = write_xyUpar = write_xyqpar = true;
+    write_xyPhi = write_xyApar = write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
     write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
+    write_xyApar   = toml::find_or <bool> (tnml, "xyApar",   false );
     write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
     write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
     write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
@@ -299,7 +304,7 @@ void Parameters::get_nml_vars(char* filename)
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi);
+  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi || write_xyApar);
   
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -815,7 +820,7 @@ void Parameters::get_nml_vars(char* filename)
 
   if(debug) printf("nspec_in = %i \n",nspec_in);
 
-  if(all_kinetic && beta == 0.0) {
+  if(all_kinetic && beta == 0.0 && !krehm) {
     printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
     printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
     printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
@@ -880,7 +885,7 @@ void Parameters::store_ncdf(int ncid) {
     strcpy(strb, run_name); 
     strcat(strb, "_nonZonal_xy.nc");
     
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &nczid)) ERR(retval);
+    if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, mpcom, MPI_INFO_NULL, &nczid)) ERR(retval);
     if (retval = nc_def_dim (nczid, "x",       nx_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "y",       ny_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
@@ -1031,6 +1036,7 @@ void Parameters::store_ncdf(int ncid) {
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyPhi" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyApar" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEx",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1260,6 +1266,7 @@ void Parameters::store_ncdf(int ncid) {
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
   putbool  (nc_diag, "xyPhi",        write_xyPhi       );
+  putbool  (nc_diag, "xyApar",       write_xyApar       );
   putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );
