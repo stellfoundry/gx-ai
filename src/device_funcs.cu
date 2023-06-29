@@ -858,7 +858,6 @@ __global__ void init_omegad_ntft(float* omegad, float* cv_d, float* gb_d, const 
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  // I don't think I need to worry about shat = 0 case for NTFT - would be periodic boundary condition and I don't allow this in the set_jtwist function
   float shatInv = 1./shat;
   if ( unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
@@ -866,6 +865,37 @@ __global__ void init_omegad_ntft(float* omegad, float* cv_d, float* gb_d, const 
     cv_d[idxyz] = ky[idy] * cv[idz] + shatInv * (kx[idx] + m0[idyz] / x0) * cv0[idz] ;     
     gb_d[idxyz] = ky[idy] * gb[idz] + shatInv * (kx[idx] + m0[idyz] / x0) * gb0[idz] ;
     omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+  }
+}
+
+__global__ void init_iKx(cuComplex* iKx, const float* kx, const float* deltaKx)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (unmasked(idx, idy) && idz<nz) {
+    unsigned int idxyz = idy + nyc * (idx + nx * idz);
+    unsigned int idyz = idy + nyc * idz;
+
+    iKx[idxyz] = make_cuComplex(0., kx[idx] + deltaKx[idyz]);
+  }
+}
+
+__global__ void init_phasefac_ntft(cuComplex* phasefac, const float* x, const float* deltaKx, bool sign)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz<nz) {
+    unsigned int idxyz = idy + nyc * (idx + nx * idz);
+    unsigned int idyz = idy + nyc * idz;
+    if (sign) {
+      phasefac[idxyz] = make_cuComplex(0., x[idx] * deltaKx[idyz]);
+    } else {
+      phasefac[idxyz] = make_cuComplex(0., -1.0 * x[idx] * deltaKx[idyz]);
+    }
   }
 }
 
@@ -1004,6 +1034,29 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
   }
 }
 
+__global__ void iKxJ0ftoGrid(cuComplex* f, const cuComplex* iKx)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idj = get_id2();
+  if (idxyz < nx*nyc*nz && idj < nj) {
+    unsigned int ig = idxyz + nx*nyc*nz*idj;
+    
+    f[ig] = f[ig] * iKx[idxyz];
+  }
+}
+
+__global__ void iKxgtoGrid(cuComplex* __restrict__ g, const cuComplex* __restrict__ iKx)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idj = get_id2();
+  unsigned int idm = get_id3();
+
+  if (idxyz < nx*ny*nz && idj < nj && idm < nm) {
+    unsigned int ig = idxyz + nx*ny*nz*(idj + nj*idm);
+    g[ig] = g[ig] * iKx[idxyz];
+  }
+}
+
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size) {
   for (unsigned int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }
@@ -1119,10 +1172,15 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
   }
 }
 
+__device__ void scale_ky(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
+{
+  ((cuComplex*)dataOut)[offset] = element/(ny);
+}
 __device__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
 __device__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
 __device__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
 __device__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
+__device__ cufftCallbackStoreC scale_ky_callbackPtr = scale_ky;
 
 // Multiplies by i kz / Nz 
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -1216,6 +1274,7 @@ __global__ void bracket(float* __restrict__ g_res, const float* __restrict__ dg_
     
   }
 }
+
 
 # define LM(L, M) idxyz + nx*nyc*nz*((L) + nl*(M))
 __global__ void beer_toroidal_closures(const cuComplex* g, cuComplex* gRhs,

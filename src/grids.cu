@@ -30,7 +30,8 @@ Grids::Grids(Parameters* pars) :
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
   y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
-  m0_h            = nullptr;
+  m0_h            = nullptr;  phasefac_ntft   = nullptr;  phasefacminus_ntft = nullptr;
+  iKx             = nullptr;
 
   Nspecies = pars->nspec_in;
   Nspecies_glob = Nspecies;
@@ -116,7 +117,15 @@ Grids::Grids(Parameters* pars) :
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
   z_h      = (float*) malloc(sizeof(float) * Nz       );
-  m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
+  if (pars->nonTwist) {
+    m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
+    if (!pars->linear) {
+      phasefac_ntft = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
+      phasefacminus_ntft = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
+      iKx = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
+    }
+  }
+
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
@@ -175,6 +184,9 @@ Grids::~Grids() {
   if (y_h)             free(y_h);
   if (z_h)             free(z_h);
   if (m0_h)            free(m0_h);
+  if (phasefac_ntft)   free(phasefac_ntft);
+  if (phasefacminus_ntft) free(phasefacminus_ntft);
+  if (iKx)	       free(iKx);
   if (theta0_h)        free(theta0_h); 
  
   if(nprocs > 1) ncclCommDestroy(ncclComm);

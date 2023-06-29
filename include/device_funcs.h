@@ -154,7 +154,8 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
 
 __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, const cuComplex* bpar, const float* kperp2,
 			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar);
-
+__global__ void iKxJ0ftoGrid(cuComplex* f, const cuComplex* iKx);
+__global__ void iKxgtoGrid(cuComplex* __restrict__ g, const cuComplex* __restrict__ iKx);
 __global__ void acc(float *a, const float *b);
 
 __global__ void bracket(float* __restrict__ g_res,
@@ -211,7 +212,8 @@ __global__ void init_kperp2_ntft(float* kperp2, const float* kx, const float* ky
 __global__ void init_omegad_ntft(float* omegad, float* cv_d, float* gb_d, const float* kx, const float* ky,
 			         const float* cv, const float* gb, const float* cv0, const float* gb0,
 				 float shat, const int* m0, const float x0);
-
+__global__ void init_iKx(cuComplex* iKx, const float* kx, const float* deltaKx);
+__global__ void init_phasefac_ntft(cuComplex* phasefac, const float* x, const float* deltaKx, bool sign);
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat);
@@ -236,7 +238,9 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
 extern __device__ cufftCallbackLoadC i_kxs_callbackPtr;
 extern __device__ cufftCallbackLoadC i_kx_callbackPtr;
 extern __device__ cufftCallbackLoadC i_ky_callbackPtr;
+extern __device__ cufftCallbackLoadC phasefac_callbackPtr;
 extern __device__ cufftCallbackStoreC mask_and_scale_callbackPtr;
+extern __device__ cufftCallbackStoreC scale_ky_callbackPtr;
   
 __device__ void zfts(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr);
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);

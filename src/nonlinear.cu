@@ -172,29 +172,54 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
   }
 
-  grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
   grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
+  
+  if (pars_->nonTwist) { // d/dx and positive exponential phase factor calulation
+    // this is very messy... brainstorm how to do this better once I get it working?
+    iKxJ0ftoGrid GBK (J0phi, grids_->iKx);
+    grad_perp_J0f -> C2R(J0phi, dJ0phi_dx);
+    grad_perp_J0f -> phase_mult_ntft(dJ0phi_dx);
+    grad_perp_J0f -> phase_mult_ntft(dJ0phi_dy);
+  } else { //perform d/dx as normal for conventional flux tube
+    grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
+  }
 
   if (pars_->fapar > 0.) {
 
     J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
     
-    grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
     grad_perp_J0f -> dyC2R(J0apar, dJ0apar_dy);
+    
+    /*if (pars_->nonTwist) {
+      iKxJ0ftoGrid GBK (ikxJ0apar, J0apar, grids_->iKx);
+      iKxJ0ftoGrid GBK (ikxJ0phi, J0phi, grids_->iKx);
+      grad_perp_J0f -> phase_multi_ntft(dJ0apar_dy);
+    } else { */
+    grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
+    //}
+  
   }
   
   // loop over m to save memory. also makes it easier to parallelize.
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
-    
-  grad_perp_G -> dxC2R(G->G(), dG);
+  
+  if (pars_->nonTwist) {
+    iKxgtoGrid GBX (G->G(), grids_->iKx);
+    grad_perp_G->C2R(G->G(), dG);
+    grad_perp_G->phase_mult_ntft(dG);
+  } else {
+    grad_perp_G -> dxC2R(G->G(), dG);
+  }
   laguerre    -> transformToGrid(dG, dg_dx);
   
   grad_perp_G -> dyC2R(G->G(), dG);      
+  if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
   laguerre    -> transformToGrid(dG, dg_dy);
      
   // compute {G_m, phi}
   bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);
+  if (pars_->nonTwist) grad_perp_G -> phase_mult_ntft(dG, false);
   // NL_m += {G_m, phi}
   grad_perp_G->R2C(dG, G_res->G(), true); // this R2C has accumulate=true
 
@@ -202,6 +227,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     // compute {G_m, Apar}
     bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
     laguerre->transformToSpectral(g_res, dG);
+    //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG, false);
     grad_perp_G->R2C(dG, G_tmp->G(), false); // this R2C has accumulate=false
 
     for(int m=grids_->m_lo; m<grids_->m_up; m++) {
@@ -223,12 +249,15 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     int m_local = m - grids_->m_lo;
     if(m>0) {
       grad_perp_G_single -> dxC2R(G->Gm(m_local-1), dG);
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dx);
   
       grad_perp_G_single -> dyC2R(G->Gm(m_local-1), dG);      
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dy);
       bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
       laguerre_single->transformToSpectral(g_res, dG);
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG, false);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
       add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
@@ -239,12 +268,15 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     m_local = m - grids_->m_lo;
     if(m<pars_->nm_in-1) {
       grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dx);
   
       grad_perp_G_single -> dyC2R(G->Gm(m_local+1), dG);      
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dy);
       bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
       laguerre_single->transformToSpectral(g_res, dG);
+      //if (pars_->nonTwist) grad_perp_G->phase_multi_ntft(dG, false);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
       add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);

@@ -38,6 +38,9 @@ class Grids {
   float * kpar_outh;
   float *y_h, *x_h, *z_h;
   int * m0_h;
+  cuComplex * phasefac_ntft;
+  cuComplex * phasefacminus_ntft;
+  cuComplex * iKx;
   
   float * theta0_h ;
   float * th0; 
