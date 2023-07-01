@@ -139,7 +139,7 @@ class Parameters {
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
-  float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
+  float forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m, nu_hyper_lm;
   float nu_hyper_z;
   float D_HB, w_osc;
@@ -161,6 +161,7 @@ class Parameters {
   // parameters for KREHM system
   bool krehm;
   float rho_s, rho_i, d_e, zt;
+  bool harris_sheet;
   
   cuComplex phi_test, smith_perp_w0;
 
@@ -180,6 +181,7 @@ class Parameters {
   bool write_xyvEx, write_xyvEy, write_xykxvEy, write_xyden, write_xyUpar;
   bool write_xyTpar, write_xyTperp, write_xyqpar;
   bool write_xyPhi; 
+  bool write_xyApar; 
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool hyperz;

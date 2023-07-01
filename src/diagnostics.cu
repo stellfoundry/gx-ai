@@ -36,9 +36,9 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   vol_fac = nullptr;
   flux_fac = nullptr;
   kvol_fac = nullptr;
+  rc = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_, geo_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
-  fields_old = new     Fields(pars_, grids_);       cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
   if (pars_->fixed_amplitude) cudaMalloc (&phi_max, sizeof(float) * nX * nY);
 
@@ -100,6 +100,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   if (id -> omg -> write_v_time) {
+    fields_old = new     Fields(pars_, grids_);       cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
     tmp_omg_h = (cuComplex*) malloc (sizeof(cuComplex) * nX * nY);
     int nn = nX*nY; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
@@ -204,6 +205,11 @@ Diagnostics_GK::~Diagnostics_GK()
   if (tmp_omg_h)  free  ( tmp_omg_h );
   if (gy_h)       free  ( gy_h      );
   if (ry_h)       free  ( ry_h      );
+
+  if(grad_perp) delete grad_perp;
+  if(grad_par) delete grad_par;
+
+  if (rc) delete rc;
 }
 
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
@@ -402,6 +408,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
     // Plot f(x,y,z=0)
     id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyApar,  fields->apar,    vol_fac);
     
     // Plot the non-zonal components as functions of (x, y)
     id -> write_moment ( id -> xykxvEy, fields->phi,    vol_fac);
@@ -474,6 +481,7 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
       id -> write_nc(id -> time, time);
       id -> write_ks_data (id -> g_y, gy_d);
     }
+    cudaFree(gy_double);
   }
 }
 
@@ -577,7 +585,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   vEk         = nullptr;  phi_max     = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
-  fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
 
   float *vol_fac_h;
   vol_fac_h = (float*) malloc (sizeof(float) * nZ);
@@ -610,6 +617,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   cudaMalloc (&P2s, sizeof(float) * nR * nS);
 
   if (id -> omg -> write_v_time) {
+    fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
     cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
     tmp_omg_h = (cuComplex*) malloc (sizeof(cuComplex) * nX * nY);
     int nn = nX*nY; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
@@ -707,11 +715,14 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 
     fflush(NULL);
     id -> write_nc(id -> time, time);
-    printf("%s: Step %d: Time = %f\n",  pars_->run_name, counter, time);
+    if (grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e\n",  pars_->run_name, counter, time, dt);
  
     //if (pars_->write_phi) id->write_nc(id->phi, phi);
 
+    // Plot f(x,y,z=0)
     if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
+    id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    id -> write_moment ( id -> xyApar,  fields->apar,   vol_fac);
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
       int nt = min(512, grids_->NxNyc) ;
@@ -727,13 +738,18 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
       
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
       id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
-      id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
+      id->write_Phi2z    (P2() );    id->write_Phi2ky   (P2() );    id->write_Phi2kx   (P2() );    id->write_Phi2kxky (P2());    
+     
       
+      Wapar_summand_krehm loop_R (P2(), fields->apar, fields->apar_ext, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
+      id->write_Aparky (P2()); id->write_Aparkx (P2());
+      //id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
       // Do not change the order of these four calls because totW is accumulated in order when it is requested:
       //id->write_Ps(P2s);    id->write_Ws(G2);   // id->write_As(Phi2);    id->write_Wtot();
     }
 
     nc_sync(id->file);
+    nc_sync(id->z_file);
   }
 
   // check to see if we should stop simulation
@@ -743,6 +759,12 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 
 void Diagnostics_KREHM::finish(MomentsG** G, Fields* fields, double time) 
 {
+  if (pars_->write_fields) {
+    id -> write_fields(id -> fields_phi,  fields->phi );
+    id -> write_fields(id -> fields_apar, fields->apar);
+    id -> write_fields(id -> fields_bpar, fields->bpar);
+    id -> write_fields_realspace(id -> fields_apar_realspace, fields->apar);
+  }
 }
 
 void Diagnostics_KREHM::print_omg(cuComplex *W)

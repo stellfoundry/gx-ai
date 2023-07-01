@@ -242,17 +242,44 @@ Solver_KREHM::Solver_KREHM(Parameters* pars, Grids* grids) :
   
   dB = dim3(nt1, nt2, nt3);
   dG = dim3(nb1, nb2, nb3);
+
+  count = grids_->NxNycNz*2; // 2 moments, density and current
+  size_t cgrid = sizeof(cuComplex)*count;
+  checkCuda(cudaMalloc((void**) &moms, cgrid)); 
+  // set offset pointers
+  density = moms;
+  current = moms + grids_->NxNycNz;
 }
 
 Solver_KREHM::~Solver_KREHM() 
 {
-  // nothing
+  cudaFree(moms);
 }
 
 void Solver_KREHM::fieldSolve(MomentsG** G, Fields* fields)
 {
-  phiSolve_krehm<<<dG, dB>>>(fields->phi, G[0]->G(0), grids_->kx, grids_->ky, pars_->rho_i);
-  aparSolve_krehm<<<dG, dB>>>(fields->apar, G[0]->G(1), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+  if(grids_->iproc_m==0) {
+    CP_ON_GPU(density, G[0]->Gm(0), sizeof(cuComplex)*grids_->NxNycNz);
+    CP_ON_GPU(current, G[0]->Gm(1), sizeof(cuComplex)*grids_->NxNycNz);
+  }
+  if(grids_->nprocs>1) {
+    // broadcast moments to all procs
+    // factor of 2 in count*2 is from cuComplex -> float conversion
+    // moms includes both density and current
+    checkCuda(ncclBroadcast((void*) moms, (void*) moms, count*2, ncclFloat, 0, grids_->ncclComm, 0));
+    cudaStreamSynchronize(0);
+  } 
+  phiSolve_krehm<<<dG, dB>>>(fields->phi, density, grids_->kx, grids_->ky, pars_->rho_i);
+  aparSolve_krehm<<<dG, dB>>>(fields->apar, current, grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e);
+}
+
+void Solver_KREHM::set_equilibrium_current(MomentsG* G, Fields* fields)
+{
+  if(grids_->m_lo <= 1 && grids_->m_up > 1) { // only compute current on procs with m=1
+    int m = 1;
+    int m_local = m - grids_->m_lo;
+    equilibrium_current_krehm<<<dG, dB>>>(G->Gm(m_local), grids_->kx, grids_->ky, pars_->rho_s, pars_->d_e, fields->apar_ext);
+  }
 }
 
 //=======================================

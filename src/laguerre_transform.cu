@@ -30,6 +30,7 @@ LaguerreTransform::~LaguerreTransform()
   if (toGrid)     cudaFree(toGrid);
   if (toSpectral) cudaFree(toSpectral);
   if (roots)      cudaFree(roots);
+  cublasDestroy(handle);
 }
 
 void LaguerreTransform::initTransforms(float* toGrid_h, float* toSpectral_h, float* roots_h)

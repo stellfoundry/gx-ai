@@ -63,6 +63,7 @@ public:
 
   //  void rhs(cuComplex *G, cuComplex *GRhs);
   void rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt);
+  void get_max_frequency(double* wmax);
 
   //  int zderiv(MomentsG *G);
 
