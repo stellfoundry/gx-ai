@@ -334,6 +334,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m, const float nu_hyper_lm,
 				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt);
+__global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int p, cuComplex* res);
 
 
 

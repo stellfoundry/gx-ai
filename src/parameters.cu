@@ -129,17 +129,18 @@ void Parameters::get_nml_vars(char* filename)
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
   nu_hyper_z = toml::find_or <float>  (tnml, "nu_hyper_z",    0.0   ); 
   nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.0   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.0   ); 
-  nu_hyper_lm = toml::find_or <float> (tnml, "nu_hyper_lm",   1.0   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   ); 
+  nu_hyper_lm = toml::find_or <float> (tnml, "nu_hyper_lm",   0.0   ); 
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
   p_hyper_z  = toml::find_or <int>    (tnml, "p_hyper_z",       6   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       6   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       nm_in/2   ); 
   p_hyper_lm = toml::find_or <int>    (tnml, "p_hyper_lm",      6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
+  hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions_kz", false);
   hyperz = toml::find_or <bool> (tnml, "hyperz", false);
 
   tnml = nml;

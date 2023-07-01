@@ -2556,8 +2556,27 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
 	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
-             - (nu_hyper_l*pow((float) l/nl, (float) p_hyper_l)                              
-             + nu_hyper_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
+             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+             + scaled_nu_hyp_m*pow((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
+        }   
+      }      
+    }   
+  }
+}
+
+__global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int p, cuComplex* res) {
+  unsigned int idxyz = get_id1();
+  
+  if (idxyz < nx*nyc*nz) {
+    // blockIdx for y and z are unity in the kernel invocation      
+    unsigned int l = get_id2();                                                                
+    if (l<nl) {
+      unsigned int m = get_id3() + m_lo;
+      if (m>=m_lo && m<m_up) {                                                                 
+        int m_local = m - m_lo;
+        int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
+        if (m>2) { 
+          res[globalIdx] = -nu*pow((float) m, p)*g[globalIdx];                 
         }   
       }      
     }   

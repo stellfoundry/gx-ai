@@ -17,6 +17,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   s10  = nullptr;
   s11  = nullptr;
   vol_fac = nullptr;
+  tmpG = nullptr;
   
   // set up parallel ffts
   if(pars_->local_limit) {
@@ -78,6 +79,10 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(upar_bar, 0., size);
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
+
+  if(pars_->hypercollisions_kz) {
+    tmpG = new MomentsG (pars_, grids_);
+  }
 
   int nn1 = grids_->Nyc;             int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
   int nn2 = grids_->Nx;              int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
@@ -152,6 +157,7 @@ Linear_GK::~Linear_GK()
   if (uperp_bar)  cudaFree(uperp_bar);
   if (t_bar)      cudaFree(t_bar);
   if (vol_fac)    cudaFree(vol_fac);
+  if (tmpG) delete tmpG;
 }
 
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
@@ -201,21 +207,25 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   }
 
   // hypercollisions
-  float kpar_max = grids_->kz_max*geo_->gradpar;
-  float gradB_max;
-  if (geo_->shat == 0.0) {
-    gradB_max = abs(G->species->tz)*(grids_->kx_max*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift_max));
-  } else {
-    gradB_max = abs(G->species->tz)*(grids_->kx_max/abs(geo_->shat)*abs(geo_->gbdrift0_max) + grids_->ky_max*abs(geo_->gbdrift_max));
-  }
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
-		  						   gradB_max*pars_->nu_hyper_l,
-								   kpar_max*G->species->vt*pars_->nu_hyper_m,
+		  						   pars_->nu_hyper_l,
+								   pars_->nu_hyper_m,
 								   G->species->vt/pars_->vtmax*pars_->nu_hyper_lm/dt,
 								   pars_->p_hyper_l,
 								   pars_->p_hyper_m, 
 								   pars_->p_hyper_lm, 
 								   GRhs->G(), G->species->vt);
+
+  if(pars_->hypercollisions_kz) {
+    float M = (float) grids_->Nm_glob-1;
+    float p = (float) pars_->p_hyper_m;
+    float vt = G->species->vt;
+    float nu_hyp_m = pars_->nu_hyper_m*(p + 0.5)/powf(M, p + 0.5)*2.3*vt*geo_->gradpar;
+    tmpG->set_zero();
+    hypercollisions_kz<<<dimGridh, dimBlockh>>>(G->G(), nu_hyp_m, p, tmpG->G());
+    grad_par->abs_dz(tmpG, GRhs, true);
+  }
+
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());

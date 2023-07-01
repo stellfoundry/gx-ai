@@ -36,7 +36,7 @@ public:
   Grids          * grids_   ;  
   GradParallel   * grad_par ;
   Closures       * closures ;
-  MomentsG       * GRhs_par ;
+  MomentsG       * tmpG ;
 
   // conservation terms
   cuComplex * upar_bar      ;
