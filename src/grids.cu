@@ -176,7 +176,7 @@ Grids::~Grids() {
  
   ncclCommDestroy(ncclComm);
   ncclCommDestroy(ncclComm_s);
-  if(nprocs_m > 1) ncclCommDestroy(ncclComm_m0);
+  if(nprocs_m > 1 && iproc_m == 0) ncclCommDestroy(ncclComm_m0);
 }
 
 void Grids::init_ks_and_coords()
