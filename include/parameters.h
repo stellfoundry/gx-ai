@@ -160,7 +160,8 @@ class Parameters {
   bool krehm;
   float rho_s, rho_i, d_e, zt;
   bool harris_sheet;
-  
+  bool periodic_equilibrium;
+  float k0 
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;

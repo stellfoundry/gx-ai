@@ -105,7 +105,28 @@ Fields::Fields(Parameters* pars, Grids* grids) :
     //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
   }
 }
-
+ if (pars_->periodic_equilibrium) {
+    int nBatch = grids_->Nz;
+    GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+    
+    //set up harris sheet in real space   
+    for(int idz = 0; idz < grids_->Nz; idz++) {
+      for(int idx = 0; idx < grids_->Nx; idx++) {
+        for(int idy = 0; idy < grids_->Ny; idy++) {
+           float x = grids_->x_h[idx];
+	   float y = grids_->y_h[idy]
+	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
+	   float A0 = 1.0; // this value makes B_ext_max = 1
+	   apar_ext_realspace_h[index] = A0*cos(pars_->k0 * (x - M_PI*pars_->x0))*cos(pars_->k0 * (y-M_PI*pars_->y0))
+         }
+       }
+     }
+     //copy apar_ext to GPU and do Fourier transformation
+     CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
+     grad_perp->R2C(apar_ext_realspace, apar_ext, true);
+     
+     delete grad_perp
+}
 Fields::~Fields() {
   if (phi)     cudaFree(phi);
   if (phi_h)   free(phi_h);

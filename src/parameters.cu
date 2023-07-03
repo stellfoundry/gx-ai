@@ -171,6 +171,8 @@ void Parameters::get_nml_vars(char* filename)
   eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
+  periodic_equilibrium = toml::find_or <bool> (tnml, "periodic_equilibrium", false);
+  k0                = toml::find_or <float> (tnml, "k0", 10.0)
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
 
