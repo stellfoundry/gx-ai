@@ -394,11 +394,11 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
 	 // add one to the mode length corresponding to that grid point, this is analagous to n_k
 	 mode_size[mode_nums[idy + naky * (idx + nakx * idz)]-1]++;
        	 mode_size_ref[mode_nums[idy + naky * (idx + nakx * idz)]-1]++; //should be identical arrays
-	 printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
+	 //printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
        }
-       printf("\n");
+       //printf("\n");
     }
-    printf(" \n\n\n\n");
+    //printf(" \n\n\n\n");
   }
   qsort(mode_size, mode, sizeof(int), compare_ntft); //sort mode_size into increasing order
   // count how many different classes

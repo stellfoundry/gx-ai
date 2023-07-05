@@ -874,11 +874,12 @@ __global__ void init_iKx(cuComplex* iKx, const float* kx, const float* deltaKx)
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
-  if (unmasked(idx, idy) && idz<nz) {
+  if (idx < nx && idy < nyc && idz<nz) {
     unsigned int idxyz = idy + nyc * (idx + nx * idz);
     unsigned int idyz = idy + nyc * idz;
 
     iKx[idxyz] = make_cuComplex(0., kx[idx] + deltaKx[idyz]);
+    //printf("iKx(%d=%d,%d,%d) = %f \n", idxyz,idx, idy, idz, iKx[idxyz].y);
   }
 }
 
@@ -892,10 +893,13 @@ __global__ void init_phasefac_ntft(cuComplex* phasefac, const float* x, const fl
     unsigned int idxyz = idy + nyc * (idx + nx * idz);
     unsigned int idyz = idy + nyc * idz;
     if (sign) {
-      phasefac[idxyz] = make_cuComplex(0., x[idx] * deltaKx[idyz]);
+      float exp = x[idx] * deltaKx[idyz];
+      sincosf(exp, &phasefac[idxyz].y, &phasefac[idxyz].x);
     } else {
-      phasefac[idxyz] = make_cuComplex(0., -1.0 * x[idx] * deltaKx[idyz]);
+      float exp = -1.0 * x[idx] * deltaKx[idyz];
+      sincosf(exp, &phasefac[idxyz].y, &phasefac[idxyz].x);
     }
+    //printf("phasefac(%d=%d,%d,%d).x = %f, phasefac.y = %f \n", idxyz, idx, idy, idz, phasefac[idxyz].x, phasefac[idxyz].y);
   }
 }
 
@@ -1018,6 +1022,7 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     J0f[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * f[idxyz] * fac;
+    //printf("J0f.x = %f, J0f.y = %f \n", J0f[ig].x, J0f[ig].y);
   }
 }
 
@@ -1034,26 +1039,28 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
   }
 }
 
-__global__ void iKxJ0ftoGrid(cuComplex* f, const cuComplex* iKx)
+__global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuComplex* iKx)
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     
-    f[ig] = f[ig] * iKx[idxyz];
+    iKxf[ig] = f[ig] * iKx[idxyz];
+    //printf("f[%d].x = %f, f[%d].y = %f iKx[%d].x = %f, iKx[%d].y = %f \n",ig, f[ig].x, ig, f[ig].y, idxyz, iKx[idxyz].x, idxyz, iKx[idxyz].y);
   }
 }
 
-__global__ void iKxgtoGrid(cuComplex* __restrict__ g, const cuComplex* __restrict__ iKx)
+__global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex* iKx)
 {
   unsigned int idxyz = get_id1();
-  unsigned int idj = get_id2();
+  unsigned int idl = get_id2();
   unsigned int idm = get_id3();
 
-  if (idxyz < nx*ny*nz && idj < nj && idm < nm) {
-    unsigned int ig = idxyz + nx*ny*nz*(idj + nj*idm);
-    g[ig] = g[ig] * iKx[idxyz];
+  if (idxyz < nx*nyc*nz && idl < nl && idm < nm) {
+    unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
+    iKxg[ig] = g[ig] * iKx[idxyz];
+    //printf("g[%d].x = %f, g[%d].y = %f iKx[%d].x = %f, iKx[%d].y = %f \n", ig, g[ig].x, ig, g[ig].y, idxyz, iKx[idxyz].x, idxyz, iKx[idxyz].y);
   }
 }
 
@@ -2269,27 +2276,26 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
 __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
 			   int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms)
 {
-  unsigned int idp, idn, idk, idlm;
-  int ikx_ntft, idz, idpn;
 
-    idp  = get_id1(); // NTFT grid point number in chain
-    idn  = get_id2(); // NTFT chain number in class
-    idlm = get_id3();
+    unsigned int idp  = get_id1(); // NTFT grid point number in chain
+    unsigned int idn  = get_id2(); // NTFT chain number in class
+    unsigned int idlm = get_id3();
    
     // changed nLinks -> 1 for different nns
     if (idp < nLinks && idn < nChains && idlm < nMoms) {
       
-      idpn = idp + nLinks * idn;
+      int idpn = idp + nLinks * idn;
       
       // pull out ikx and idz indices
-      ikx_ntft = ikx[idpn] % nx;
-      idz = ikx[idpn] / nx;
+      int ikx_ntft = ikx[idpn] % nx;
+      int idz = ikx[idpn] / nx;
       
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
       
       
       G_linked[idlink] = G[globalIdx];
+      //printf("G_linked[%d].x = %f, G_linked[%d].y = %f \n", idlink, G_linked[idlink].x, idlink, G_linked[idlink].y);
       
     }
   }
@@ -2297,25 +2303,24 @@ __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __res
 __global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G,
 			       int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms)
 {
-  unsigned int idp, idn, idk, idlm;
-  int ikx_ntft, idz, idpn;  
   
-  idp  = get_id1(); // NTFT grid point number in chain
-  idn  = get_id2(); // NTFT chain number in class
-  idlm = get_id3();
+  unsigned int idp  = get_id1(); // NTFT grid point number in chain
+  unsigned int idn  = get_id2(); // NTFT chain number in class
+  unsigned int idlm = get_id3();
   
   if (idp < nLinks && idn < nChains && idlm < nMoms) {
       
-      idpn = idp + nLinks * idn;
+      int idpn = idp + nLinks * idn;
       
       // pull out ikx and idz indices
-      ikx_ntft = ikx[idpn] % nx;
-      idz = ikx[idpn] / nx;
+      int ikx_ntft = ikx[idpn] % nx;
+      int idz = ikx[idpn] / nx;
       
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
       
       G[globalIdx] = G_linked[idlink];
+      //printf("G_linkedback[%d].x = %f, G_linkedback[%d].y = %f \n", idlink, G_linked[idlink].x, idlink, G_linked[idlink].y);
   }
 }
 
@@ -2368,20 +2373,17 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
 			       cuComplex* GRhs)
 {
 
-  unsigned int idp, idn, idk, idlm;
-  int ikx_ntft, idz, idpn;
-
-  idp = get_id1();
-  idn = get_id2();
-  idlm = get_id3();
+  unsigned int idp = get_id1();
+  unsigned int idn = get_id2();
+  unsigned idlm = get_id3();
 
   if (idp < nLinks && idn < nChains && idlm < nMoms) {
 
-    idpn = idp + nLinks * idn;
+    int idpn = idp + nLinks * idn;
 
     // pull out ikx and idz indices
-    ikx_ntft = ikx[idpn] % nx;
-    idz = ikx[idpn] / nx;
+    int ikx_ntft = ikx[idpn] % nx;
+    int idz = ikx[idpn] / nx;
     
     unsigned int idzl = idp;
     unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx*(idz + nz*idlm));
@@ -2392,7 +2394,7 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
     // set damping region width to 1/8 of extended domain (on either side)
     int width = nLinks/8;  
 
-    if (width == 0) width = 1; //somethings links are less than 8 long in NTFT
+    if (width == 0) width = 1; //sometimes links are less than 8 long in NTFT
 
     float L = 2*M_PI*zp*nLinks/(8*nz);
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
@@ -2404,7 +2406,7 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
       nu = 1 - 2*x*x/(1+x*x*x*x);
     }
     // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
-    if(iky[idk]>0) {
+    if(iky[idpn]>0) {
       unsigned int idl = idlm % nl;
       unsigned int idm = idlm / nl;
       const float kperp2_ = kperp2[idxyz];

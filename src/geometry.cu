@@ -849,7 +849,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     dim3 dimBlock_ntft (32,4);
     dim3 dimGrid_ntft (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nz-1)/dimBlock.z);
 
-    printf("Using non-twisting flux tube /n"); 
+    printf("Using non-twisting flux tube \n"); 
 
     // see (87), (44), and (45) in Ball 2020, respectively
     init_ftwist <<< (1 + (grids->Nz-1)/dimBlock.z), 32 >>> (ftwist, gds21, gds22, shat);
@@ -862,9 +862,12 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     init_omegad_ntft GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat, m0, pars->x0);
 
     if (!pars->linear) {
+      CP_TO_GPU (grids->x, grids->x_h, sizeof(float)*grids->Nx);
       init_iKx GGEO (grids->iKx, grids->kx, deltaKx);
-      init_phasefac_ntft GGEO (grids->phasefac_ntft, grids->x_h, deltaKx, true);
-      init_phasefac_ntft GGEO (grids->phasefacminus_ntft, grids->x_h, deltaKx, false);
+      cudaDeviceSynchronize();
+      init_phasefac_ntft GGEO (grids->phasefac_ntft, grids->x, deltaKx, true);
+      cudaDeviceSynchronize();
+      init_phasefac_ntft GGEO (grids->phasefacminus_ntft, grids->x, deltaKx, false);
     }
   }
   else { 

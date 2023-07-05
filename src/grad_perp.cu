@@ -4,10 +4,11 @@
 #define GBK <<< dGk, dBk >>>
 #define GBX <<< dGx, dBx >>>
 #define GBX_single <<< dGx_single, dBx_single >>>
+#define GBX_ntft <<< dGx_ntft, dBx_ntft >>>
 
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
-  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr)
+  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr), iKxtmp(nullptr)
 {
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_C2R);
@@ -19,7 +20,11 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   // Use MakePlanMany to enable callbacks
   // Order of Nx, Ny is correct here
 
-  cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_);
+  checkCuda(cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_));
+  if (grids_->iKx) { //I don't want to add pars to the class declaration, this functions as if(nonTwist)
+    checkCuda(cudaMalloc (&iKxtmp, sizeof(cuComplex)*mem_size_));
+  }
+
 
   int maxthreads = 1024; 
   int nthreads = min(maxthreads, mem_size_);
@@ -42,7 +47,6 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftCallbackLoadC i_kxs_callbackPtr_h;
   cufftCallbackLoadC i_kx_callbackPtr_h; 
   cufftCallbackLoadC i_ky_callbackPtr_h; 
-  cufftCallbackLoadC phasefac_callbackPtr_h;
   cufftCallbackStoreC mask_and_scale_callbackPtr_h;
   cufftCallbackStoreC scale_ky_callbackPtr_h;
 
@@ -92,6 +96,12 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   dBx = dim3(nbx, nby, nbz);
   dGx = dim3(ngx, ngy, ngz);
 
+  // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
+  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx;
+  int nby_ntft = min(4, grids_->Nl);  int ngy_ntft = 1 + (grids_->Nl-1)/nby;
+  dBx_ntft = dim3(nbx_ntft, nby_ntft, nbz);
+  dGx_ntft = dim3(ngx_ntft, ngy_ntft, ngz);
+
   dBx_single = dim3(nbx, nby, 1);
   dGx_single = dim3(ngx, ngy, 1);
 
@@ -108,42 +118,48 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 GradPerp::~GradPerp()
 {
   if (tmp)      cudaFree (tmp);
+  if (iKxtmp)   cudaFree (iKxtmp);
   cufftDestroy ( gradperp_plan_R2C    );
   cufftDestroy ( gradperp_plan_C2R    );
   cufftDestroy ( gradperp_plan_dxC2R  );
   cufftDestroy ( gradperp_plan_dyC2R  );
-  cufftDestroy ( gradperp_plan_R2Cntft   );
-  cufftDestroy ( gradperp_plan_C2Rntft  );
+  cufftDestroy ( gradperp_plan_R2Cntft);
+  cufftDestroy ( gradperp_plan_C2Rntft);
 }
 
 // Out-of-place 2D transforms in cufft now overwrite the input data. 
 
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
+  cudaDeviceSynchronize();
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
   checkCuda(cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG));
 }
 
 void GradPerp::phase_mult_ntft(float* G, bool positive_phase)
 {
   cufftExecR2C(gradperp_plan_R2Cntft, G, tmp); //1D FFT in y
+  cudaDeviceSynchronize();
 
   // multiplying by exp(i*deltaKx*x) or exp(-i*deltaKx*x)
   if (positive_phase) {
     if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-      iKxgtoGrid GBX (tmp, grids_->phasefac_ntft);
+      printf("phase mult G forward \n");
+      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+      cudaDeviceSynchronize();
     } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-      iKxJ0ftoGrid GBK (tmp, grids_->phasefac_ntft); 
+      printf("phase mult J0phi forward \n");
+      iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft); 
+      cudaDeviceSynchronize();
     } // add in an else for single moment here?
-  } else {
-    if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-      iKxgtoGrid GBX (tmp, grids_->phasefacminus_ntft);
-    } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-      iKxJ0ftoGrid GBK (tmp, grids_->phasefacminus_ntft); 
-    } // add in an else statement for single moment here?
+  } else { // if reverse, will be size of G grid
+    printf("phase mult G backward \n");
+    iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
+    cudaDeviceSynchronize();
   }
   
-  cufftExecC2R(gradperp_plan_C2Rntft, tmp, G); //1D FFT in y
+  cufftExecC2R(gradperp_plan_C2Rntft, iKxtmp, G); //1D FFT in y
+  cudaDeviceSynchronize();
 
 }
 
@@ -179,12 +195,17 @@ void GradPerp::qvar (float* G, int N)
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
+  //printf("sizeof(tmp) = %d, sizeof(tmp[0] = %d, sizeof(tmp) / sizeof(tmp[0] = %d \n", sizeof(tmp), sizeof(tmp[0]), sizeof(tmp) / sizeof(tmp[0]));
+  //printf("sizeof(G) = %d, sizeof(G[0] = %d, sizeof(G) / sizeof(G[0] = %d \n", sizeof(G), sizeof(G[0]), sizeof(G) / sizeof(G[0]));
+  //printf("sizeof(cuComplex) = %d, memsize = %d, sizeof(cuComplex)*memsize = %d \n", sizeof(cuComplex), mem_size_, sizeof(cuComplex)*mem_size_);
+  cudaDeviceSynchronize();
+  checkCuda(CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_));
   checkCuda(cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG));
 }
 
 void GradPerp::C2R(cuComplex* G, float* Gy)
 {
+  cudaDeviceSynchronize();
   CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
   checkCuda(cufftExecC2R(gradperp_plan_C2R, tmp, Gy));
 }

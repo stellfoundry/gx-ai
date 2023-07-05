@@ -20,10 +20,11 @@ class GradPerp {
  private:
   const int batch_size_;
   const int mem_size_;
-  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single, dGx_ntft, dBx_ntft;
   dim3 dG, dB;
   Grids     * grids_ ;
   cuComplex * tmp    ;
+  cuComplex * iKxtmp ;
   cufftHandle gradperp_plan_R2C;
   cufftHandle gradperp_plan_C2R;
   cufftHandle gradperp_plan_dxC2R;

@@ -33,7 +33,7 @@ class Nonlinear_GK : public Nonlinear {
   int nBatch;
   size_t Size; 
   bool ks, vp;
-  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single, dGx_ntft, dBx_ntft;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -68,6 +68,8 @@ class Nonlinear_GK : public Nonlinear {
   float vmax_y[1]     ;
   cuComplex * J0phi   ;
   cuComplex * J0apar ;
+  cuComplex * iKxJ0phi;
+  cuComplex * iKxG    ;
 };
 
 class Nonlinear_KREHM : public Nonlinear {

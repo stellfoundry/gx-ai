@@ -31,7 +31,7 @@ Grids::Grids(Parameters* pars) :
   y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
   m0_h            = nullptr;  phasefac_ntft   = nullptr;  phasefacminus_ntft = nullptr;
-  iKx             = nullptr;
+  iKx             = nullptr;  x               = nullptr;
 
   Nspecies = pars->nspec_in;
   Nspecies_glob = Nspecies;
@@ -120,12 +120,12 @@ Grids::Grids(Parameters* pars) :
   if (pars->nonTwist) {
     m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
     if (!pars->linear) {
-      phasefac_ntft = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
-      phasefacminus_ntft = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
-      iKx = (cuComplex*) malloc(sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &phasefac_ntft,         sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &phasefacminus_ntft,    sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &iKx,      sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &x,        sizeof(float) * Nx       );
     }
   }
-
   cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
   checkCuda(cudaGetLastError());
 
@@ -173,6 +173,10 @@ Grids::~Grids() {
   if (kzm)             cudaFree(kzm);
   if (kzp)             cudaFree(kzp);
   if (th0)             cudaFree(th0);
+  if (phasefac_ntft)   cudaFree(phasefac_ntft);
+  if (phasefacminus_ntft) cudaFree(phasefacminus_ntft);
+  if (iKx)	       cudaFree(iKx);
+  if (x)               cudaFree(x);
   
   if (kpar_outh)       free(kpar_outh);
   if (kz_outh)         free(kz_outh);
@@ -184,9 +188,6 @@ Grids::~Grids() {
   if (y_h)             free(y_h);
   if (z_h)             free(z_h);
   if (m0_h)            free(m0_h);
-  if (phasefac_ntft)   free(phasefac_ntft);
-  if (phasefacminus_ntft) free(phasefacminus_ntft);
-  if (iKx)	       free(iKx);
   if (theta0_h)        free(theta0_h); 
  
   if(nprocs > 1) ncclCommDestroy(ncclComm);
