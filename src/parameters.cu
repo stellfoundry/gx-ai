@@ -1650,7 +1650,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
     // if both jtwist and x0 were not set in input file
     if (jtwist == -1000 && x0 < 0.0) {
       // set jtwist so that x0~y0
-      jtwist = (int) round((twist_shift_geo_fac)*Zp);
+      jtwist = (int) round(twist_shift_geo_fac);
       if(jtwist == 0) {
 	//
 	// Per the discussion in April, 2023, we want to change the logic in this section.
@@ -1665,7 +1665,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
         if(iproc==0) {
           printf(ANSI_COLOR_RED);
           printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
-          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/abs(twist_shift_geo_fac), ((int)(nx_in-1)/3)/y0*abs(twist_shift_geo_fac), nx_in);
           printf("Consider using an alternative boundary option.\n");
           printf(ANSI_COLOR_RESET);
         }
@@ -1673,16 +1673,16 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
         jtwist = 1;
       } 
 
-      x0 = y0 * abs(jtwist)/(abs(twist_shift_geo_fac)*Zp);
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * abs(jtwist)/(Zp*abs(twist_shift_geo_fac));
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round((twist_shift_geo_fac)*Zp/y0*x0);
+      int jtwist_0 = (int) round(twist_shift_geo_fac/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
@@ -1695,7 +1695,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
         if(iproc==0) {
           printf(ANSI_COLOR_RED);
           printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
-          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)*Zp), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)*Zp), nx_in);
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)), nx_in);
           printf("Consider using an alternative boundary option.\n");
           printf(ANSI_COLOR_RESET);
         }
@@ -1704,7 +1704,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       } 
       jtwist = jtwist_0;
       // reset x0 to be consistent with the integer jtwist we just computed
-      x0 = y0 * abs(jtwist)/(Zp*abs(twist_shift_geo_fac));
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     }
     printf(ANSI_COLOR_MAGENTA);
     if(iproc==0) printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, shat = %f, x0 = %f, y0 = %f\n", jtwist, shat, x0, y0);
