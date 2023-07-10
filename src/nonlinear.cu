@@ -185,24 +185,17 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
   } else {
     J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
-    cudaDeviceSynchronize();
   }
 
-  // NTFT modifies the array for d/dx, make sure to do y operations first
-  // can add a temp array if this is an issue
-  //printf("grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);\n");
-  grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
-
   if (pars_->nonTwist) { // d/dx and positive exponential phase factor calulation
-    printf("iKxJ0phi to grid \n");
     iKxJ0ftoGrid GBK (iKxJ0phi, J0phi, grids_->iKx);
-    cudaDeviceSynchronize();
     grad_perp_J0f -> C2R(iKxJ0phi, dJ0phi_dx);
-    //grad_perp_J0f -> phase_mult_ntft(dJ0phi_dx);
-    //grad_perp_J0f -> phase_mult_ntft(dJ0phi_dy);
+    grad_perp_J0f -> phase_mult_ntft(dJ0phi_dx);
+    grad_perp_J0f -> phase_mult_ntft(dJ0phi_dy);
   } else { //perform d/dx as normal for conventional flux tube
     grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
   }
+  grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
 
   if (pars_->fapar > 0.) {
 
@@ -217,15 +210,13 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
   
   grad_perp_G -> dyC2R(G->G(), dG);      
-  //if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
+  if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
   laguerre    -> transformToGrid(dG, dg_dy);
   
   if (pars_->nonTwist) {
-    printf("iKxG to grid \n");
     iKxgtoGrid GBX_ntft (iKxG, G->G(), grids_->iKx);
-    cudaDeviceSynchronize();
     grad_perp_G->C2R(iKxG, dG);
-    //grad_perp_G->phase_mult_ntft(dG);
+    grad_perp_G->phase_mult_ntft(dG);
   } else {
     grad_perp_G -> dxC2R(G->G(), dG);
   }
@@ -234,7 +225,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // compute {G_m, phi}
   bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);
-  //if (pars_->nonTwist) grad_perp_G -> phase_mult_ntft(dG, false);
+  if (pars_->nonTwist) grad_perp_G -> phase_mult_ntft(dG, false);
   // NL_m += {G_m, phi}
   grad_perp_G->R2C(dG, G_res->G(), true); // this R2C has accumulate=true
 

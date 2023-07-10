@@ -1181,8 +1181,15 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
 
 __device__ void scale_ky(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
 {
-  ((cuComplex*)dataOut)[offset] = element/(ny);
+  unsigned int idy = offset % nyc;
+  if (idy < ny && ( (idy ==0) || (idy > (ny-1)/3) ) ) { // this should function as mask(idy)... is this needed? Jason just had scale ky // JMH
+    ((cuComplex*)dataOut)[offset].x = 0.;
+    ((cuComplex*)dataOut)[offset].y = 0.;
+  } else { //scale 
+    ((cuComplex*)dataOut)[offset] = element/(ny);
+  }
 }
+
 __device__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
 __device__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
 __device__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
@@ -2168,15 +2175,15 @@ __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex elemen
   // kz[1] = nz/(zp * nLinks)
   float *kz = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  //if (nLinks <= 2) {  // if the link has only two grid points or less, set it to 0
-  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  //}
-  //else {
-  unsigned int idz = offset % (nLinks);
-  cuComplex Ikz = make_cuComplex(0., kz[idz]);
-  float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
-  ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
-  //}
+  if (nLinks <= 10) {  // if the link has only two grid points or less, set it to 0
+    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  }
+  else {
+    unsigned int idz = offset % (nLinks);
+    cuComplex Ikz = make_cuComplex(0., kz[idz]);
+    float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
+    ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
+  }
 }
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2191,12 +2198,12 @@ __device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex eleme
 {
   float *kz  = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  //if (nLinks <=2) {
-  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  //} else {
-  float normalization = (float) 1./(nLinks);
-  ((cuComplex*)dataOut)[offset] = element*normalization;
-  //}
+  if (nLinks <=10) {
+    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  } else {
+    float normalization = (float) 1./(nLinks);
+    ((cuComplex*)dataOut)[offset] = element*normalization;
+  }
 }
 
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2285,15 +2292,15 @@ __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __res
     if (idp < nLinks && idn < nChains && idlm < nMoms) {
       
       int idpn = idp + nLinks * idn;
-      
       // pull out ikx and idz indices
       int ikx_ntft = ikx[idpn] % nx;
       int idz = ikx[idpn] / nx;
+      //printf("idp = %d, idn = %d, ikx_ntft = %d idz = %d, idy = %d, blockIdx.x = %d, threadIdx.x = %d, blockIdx.y = %d , threadIdx.y = %d \n", idp, idn, ikx_ntft, idz, iky[idpn], blockIdx.x, threadIdx.x,  blockIdx.y, threadIdx.y);
       
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
       
-      
+     
       G_linked[idlink] = G[globalIdx];
       //printf("G_linked[%d].x = %f, G_linked[%d].y = %f \n", idlink, G_linked[idlink].x, idlink, G_linked[idlink].y);
       

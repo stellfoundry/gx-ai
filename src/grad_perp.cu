@@ -131,7 +131,6 @@ GradPerp::~GradPerp()
 
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
 {
-  cudaDeviceSynchronize();
   CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
   checkCuda(cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG));
 }
@@ -139,27 +138,19 @@ void GradPerp::dxC2R(cuComplex* G, float* dxG)
 void GradPerp::phase_mult_ntft(float* G, bool positive_phase)
 {
   cufftExecR2C(gradperp_plan_R2Cntft, G, tmp); //1D FFT in y
-  cudaDeviceSynchronize();
 
   // multiplying by exp(i*deltaKx*x) or exp(-i*deltaKx*x)
   if (positive_phase) {
     if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-      printf("phase mult G forward \n");
       iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
-      cudaDeviceSynchronize();
     } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-      printf("phase mult J0phi forward \n");
       iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft); 
-      cudaDeviceSynchronize();
     } // add in an else for single moment here?
   } else { // if reverse, will be size of G grid
-    printf("phase mult G backward \n");
     iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
-    cudaDeviceSynchronize();
   }
   
   cufftExecC2R(gradperp_plan_C2Rntft, iKxtmp, G); //1D FFT in y
-  cudaDeviceSynchronize();
 
 }
 
@@ -195,11 +186,7 @@ void GradPerp::qvar (float* G, int N)
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
 {
-  //printf("sizeof(tmp) = %d, sizeof(tmp[0] = %d, sizeof(tmp) / sizeof(tmp[0] = %d \n", sizeof(tmp), sizeof(tmp[0]), sizeof(tmp) / sizeof(tmp[0]));
-  //printf("sizeof(G) = %d, sizeof(G[0] = %d, sizeof(G) / sizeof(G[0] = %d \n", sizeof(G), sizeof(G[0]), sizeof(G) / sizeof(G[0]));
-  //printf("sizeof(cuComplex) = %d, memsize = %d, sizeof(cuComplex)*memsize = %d \n", sizeof(cuComplex), mem_size_, sizeof(cuComplex)*mem_size_);
-  cudaDeviceSynchronize();
-  checkCuda(CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_));
+  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
   checkCuda(cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG));
 }
 

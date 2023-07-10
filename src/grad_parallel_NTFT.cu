@@ -460,9 +460,9 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
             for(int idx=0; idx<nakx; idx++) {
               if (mode_nums[idy + naky * (idx + nakx * 0)] == i + 1) {
 	        if (idx >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
-	          idx0 = idx - nshift;
+	          idx0 = idx - nshift + 2; // added +2 based on conversation with Noah and Jason 7/10, needed to make sure idx0 valuess line up with as expected
 	        }  else {
-	          idx0 = idx + nakx;
+	          idx0 = idx + nakx + 2;
 	        }
 	        for (int idz=0; idz<nz; idz++) {
 	          ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz;
@@ -493,9 +493,9 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
               	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
   	            idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
                       if (idx_prime >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
-                        idx0 = idx_prime - nshift;
+                        idx0 = idx_prime - nshift + 2;
                       } else {
-                        idx0 = idx_prime + nakx;
+                        idx0 = idx_prime + nakx + 2;
                       }
                       ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
                       ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
@@ -546,12 +546,12 @@ void GradParallelNTFT::linkPrint() {
 void GradParallelNTFT::set_callbacks()
 {
   cudaDeviceSynchronize();
-  cufftCallbackStoreC  zfts_LinkedNTFT_callbackPtr_h;
+  cufftCallbackStoreC  zfts_Linked_callbackPtr_h;
   cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr_h;
   cufftCallbackStoreC abs_kzLinked_callbackPtr_h;
-  checkCuda(cudaMemcpyFromSymbol(&zfts_LinkedNTFT_callbackPtr_h, 
-                     zfts_LinkedNTFT_callbackPtr, 
-                     sizeof(zfts_LinkedNTFT_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&zfts_Linked_callbackPtr_h, 
+                     zfts_Linked_callbackPtr, 
+                     sizeof(zfts_Linked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinkedNTFT_callbackPtr_h, 
                      i_kzLinkedNTFT_callbackPtr, 
                      sizeof(i_kzLinkedNTFT_callbackPtr_h)));
@@ -562,7 +562,7 @@ void GradParallelNTFT::set_callbacks()
   for(int c=0; c<nClasses; c++) {
     // set up callback functions
     checkCuda(cufftXtSetCallback(    zft_plan_forward[c],
-		       (void**)   &zfts_LinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
+		       (void**)   &zfts_Linked_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
 
     checkCuda(cufftXtSetCallback(    dz_plan_forward[c],
 		       (void**)   &i_kzLinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));

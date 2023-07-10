@@ -864,9 +864,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     if (!pars->linear) {
       CP_TO_GPU (grids->x, grids->x_h, sizeof(float)*grids->Nx);
       init_iKx GGEO (grids->iKx, grids->kx, deltaKx);
-      cudaDeviceSynchronize();
       init_phasefac_ntft GGEO (grids->phasefac_ntft, grids->x, deltaKx, true);
-      cudaDeviceSynchronize();
       init_phasefac_ntft GGEO (grids->phasefacminus_ntft, grids->x, deltaKx, false);
     }
   }
