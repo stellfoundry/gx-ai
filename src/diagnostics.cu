@@ -733,19 +733,17 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 
     if (pars_->diagnosing_spectra) {                                        // Various spectra
       W_summand GALL (G2(), G[0]->G(), vol_fac, G[0]->species->nt);
+      id->write_Wm    (G2()   );    id->write_Wlm   (G2()   );
+      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );
 
       Wphi_summand_krehm loop_R (P2(), fields->phi, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
-      
-      id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
-      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
-      id->write_Phi2z    (P2() );    id->write_Phi2ky   (P2() );    id->write_Phi2kx   (P2() );    id->write_Phi2kxky (P2());    
-     
-      
+      id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());   id->write_Ps(P2());
+
+      Wphi2_summand loop_R (P2(), fields->phi, vol_fac);
+      id->write_Phi2z    (P2() );    id->write_Phi2ky   (P2() );    id->write_Phi2kx   (P2() );    id->write_Phi2kxky (P2()); id->write_Phi2t(P2());
+
       Wapar_summand_krehm loop_R (P2(), fields->apar, fields->apar_ext, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
-      id->write_Aparky (P2()); id->write_Aparkx (P2());
-      //id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
-      // Do not change the order of these four calls because totW is accumulated in order when it is requested:
-      //id->write_Ps(P2s);    id->write_Ws(G2);   // id->write_As(Phi2);    id->write_Wtot();
+      id->write_Mky (P2()); id->write_Mkx (P2()); id->write_Mkxky(P2());  id->write_Ms(P2());
     }
 
     nc_sync(id->file);

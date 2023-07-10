@@ -1538,7 +1538,7 @@ __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuCo
       if (idy==0) fac = 1.0;
 
       float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
-      cuComplex apar_perturb = apar[idxyz] - apar_ext[idxyz];
+      cuComplex apar_perturb = apar[idxyz]; // - apar_ext[idxyz];
       tmp = kperp2 * cuConjf( apar_perturb ) * apar_perturb * fac;
       p2[idxyz] = 0.5 * tmp.x;
     } else {
