@@ -54,7 +54,6 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
 
   kFill_ntft(nClasses, nChains, nLinks, ikyLinked_h, ikxLinked_h, naky, nakx, jtwist, nz, mode, mode_size_ref, mode_nums, nx, grids_->m0_h, grids_->Nyc);
 
-  ///// I stopped here - next stuff I have to be really careful about
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
 
@@ -99,6 +98,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
 
     cudaMalloc((void**) &kzLinked[c], sizeof(float)*nLinks[c]);
     cudaMemset(kzLinked[c], 0.,       sizeof(float)*nLinks[c]);
+
 
     // set up transforms
     cufftCreate(    &zft_plan_forward[c]);
@@ -148,7 +148,6 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
     //		 1 + (nLinks[c]*nChains[c]-1)/dB[c].y,
     //		 1 + (grids_->Nmoms-1)/dB[c].z);
   }
-
   set_callbacks();
   
   //  this->linkPrint();
@@ -385,7 +384,7 @@ int GradParallelNTFT::get_mode_nums_ntft(int *mode_nums, int nz, int naky, int n
 }
 int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int *mode_nums, int naky, int nakx, int nz, int mode)
 { // JMH
- 	
+ 
   // this uses the data from the get mode nums function to identify the number of classes
   // loop through grid and count how many grid points in each ballooning mode
   for(int idy=0; idy<naky; idy++) {
@@ -445,8 +444,8 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
   // this function fills the ky and kx index arrays corresponding to each class c
   // again, fill order depends on sign of jtwist, but will always fill from -z to +z
  
-  int nshift = nx-nakx;
-  int n,p, idx0, idy, idx, idz;
+  int nshift = nx - nakx;
+  int n, p, idy, idx, idx0, idz;
   int idz_prime, idx_constant, idx_prime, idz_start; 
   for(int ic=0; ic<nClasses; ic++) {
     n = -1; //keeps track of number of chains with same nLinks for indexing purposes
@@ -459,11 +458,7 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
           if (idy == 0) { // special case for zonal mode, I thinkk idy = 0 is always zonal
             for(int idx=0; idx<nakx; idx++) {
               if (mode_nums[idy + naky * (idx + nakx * 0)] == i + 1) {
-	        if (idx >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
-	          idx0 = idx - nshift + 2; // added +2 based on conversation with Noah and Jason 7/10, needed to make sure idx0 valuess line up with as expected
-	        }  else {
-	          idx0 = idx + nakx + 2;
-	        }
+		idx0 = calc_idx0(idx, nshift, nakx);
 	        for (int idz=0; idz<nz; idz++) {
 	          ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz;
 	          ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
@@ -492,32 +487,52 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
   	          idz_prime = idz_start;
               	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
   	            idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
-                      if (idx_prime >= (nakx - 1)/2) { // transform idx to ikx (nonsequential)
-                        idx0 = idx_prime - nshift + 2;
-                      } else {
-                        idx0 = idx_prime + nakx + 2;
-                      }
-                      ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
-                      ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
-                      p++;
-                      if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
-  	                idx_constant = idx_constant - jtwist * idy;
-  	      		idz_prime = 0;
-  	      	      } else { 
-  	                idz_prime++;
-  	      	      }
+		    idx0 = calc_idx0(idx_prime, nshift, nakx);
+                    ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
+                    ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
+                    p++;
+                    if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
+  	              idx_constant = idx_constant - jtwist * idy;
+  	      	      idz_prime = 0;
+  	      	     } else { 
+  	              idz_prime++;
+  	      	    }
                   }
                   idx = nakx - 1; //terminate for loops after you find a mode once
-                  idz = nz - 1; //probably a better way to do this  
+                  idz = nz - 1; 
                 }
               }
             }
-
 	  }
         }
       }  
     }
   }
+}
+
+int GradParallelNTFT::calc_idx0(int idx, int nshift, int nakx) {
+// this function converts the idx in NTFT terms [0->nakx-1] in sequential indexing from neg to pos
+// to the nonsequential idx0 used in the rest of the code [0->nx-1]
+// note: nakx is always odd // JMH
+
+  int idx0;
+
+  // this converts from NTFT neg to pos idx grid to nonsequential idx grid used in conventional,
+  // both in range [0->nakx-1]
+  if (idx < (nakx/2)) {
+    idx0 = idx + (nakx/2) + 1;
+  } else {
+    idx0 = idx - (nakx/2);
+  }
+
+  // this is copied from fill function, converts nonsequential [0->nakx-1] to nonsequential [0->nx-1]
+  if (idx0 < (nakx+1)/2) {
+    idx0 = idx0;
+  } else {
+    idx0 = idx0 + nshift;
+  }
+
+  return idx0;
 }
 
 void GradParallelNTFT::linkPrint() {
@@ -546,12 +561,12 @@ void GradParallelNTFT::linkPrint() {
 void GradParallelNTFT::set_callbacks()
 {
   cudaDeviceSynchronize();
-  cufftCallbackStoreC  zfts_Linked_callbackPtr_h;
+  cufftCallbackStoreC  zfts_LinkedNTFT_callbackPtr_h;
   cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr_h;
   cufftCallbackStoreC abs_kzLinked_callbackPtr_h;
-  checkCuda(cudaMemcpyFromSymbol(&zfts_Linked_callbackPtr_h, 
-                     zfts_Linked_callbackPtr, 
-                     sizeof(zfts_Linked_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&zfts_LinkedNTFT_callbackPtr_h, 
+                     zfts_LinkedNTFT_callbackPtr, 
+                     sizeof(zfts_LinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinkedNTFT_callbackPtr_h, 
                      i_kzLinkedNTFT_callbackPtr, 
                      sizeof(i_kzLinkedNTFT_callbackPtr_h)));
@@ -562,7 +577,7 @@ void GradParallelNTFT::set_callbacks()
   for(int c=0; c<nClasses; c++) {
     // set up callback functions
     checkCuda(cufftXtSetCallback(    zft_plan_forward[c],
-		       (void**)   &zfts_Linked_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
+		       (void**)   &zfts_LinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
 
     checkCuda(cufftXtSetCallback(    dz_plan_forward[c],
 		       (void**)   &i_kzLinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));

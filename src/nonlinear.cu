@@ -187,15 +187,17 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
   }
 
+
   if (pars_->nonTwist) { // d/dx and positive exponential phase factor calulation
     iKxJ0ftoGrid GBK (iKxJ0phi, J0phi, grids_->iKx);
     grad_perp_J0f -> C2R(iKxJ0phi, dJ0phi_dx);
     grad_perp_J0f -> phase_mult_ntft(dJ0phi_dx);
-    grad_perp_J0f -> phase_mult_ntft(dJ0phi_dy);
   } else { //perform d/dx as normal for conventional flux tube
     grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
   }
+  
   grad_perp_J0f -> dyC2R(J0phi, dJ0phi_dy);
+  if (pars_->nonTwist) grad_perp_J0f -> phase_mult_ntft(dJ0phi_dy);
 
   if (pars_->fapar > 0.) {
 
@@ -209,10 +211,6 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // loop over m to save memory. also makes it easier to parallelize.
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
   
-  grad_perp_G -> dyC2R(G->G(), dG);      
-  if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
-  laguerre    -> transformToGrid(dG, dg_dy);
-  
   if (pars_->nonTwist) {
     iKxgtoGrid GBX_ntft (iKxG, G->G(), grids_->iKx);
     grad_perp_G->C2R(iKxG, dG);
@@ -222,6 +220,10 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   }
   laguerre    -> transformToGrid(dG, dg_dx);
      
+  grad_perp_G -> dyC2R(G->G(), dG);      
+  if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
+  laguerre    -> transformToGrid(dG, dg_dy);
+
   // compute {G_m, phi}
   bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);

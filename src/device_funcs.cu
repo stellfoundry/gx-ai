@@ -1182,12 +1182,7 @@ __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex elemen
 __device__ void scale_ky(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
 {
   unsigned int idy = offset % nyc;
-  if (idy < ny && ( (idy ==0) || (idy > (ny-1)/3) ) ) { // this should function as mask(idy)... is this needed? Jason just had scale ky // JMH
-    ((cuComplex*)dataOut)[offset].x = 0.;
-    ((cuComplex*)dataOut)[offset].y = 0.;
-  } else { //scale 
-    ((cuComplex*)dataOut)[offset] = element/(ny);
-  }
+  ((cuComplex*)dataOut)[offset] = element/(ny);
 }
 
 __device__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
@@ -2175,15 +2170,16 @@ __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex elemen
   // kz[1] = nz/(zp * nLinks)
   float *kz = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  if (nLinks <= 10) {  // if the link has only two grid points or less, set it to 0
-    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  }
-  else {
-    unsigned int idz = offset % (nLinks);
-    cuComplex Ikz = make_cuComplex(0., kz[idz]);
-    float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
-    ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
-  }
+  //if (nLinks <= 10) {  // if the link has only two grid points or less, set it to 0
+  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  //  printf("nLinks = %d, kz[1] = %f \n", nLinks, kz[1]);
+  //}
+  //else {
+  unsigned int idz = offset % (nLinks);
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
+  ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
+  //}
 }
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2198,12 +2194,12 @@ __device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex eleme
 {
   float *kz  = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  if (nLinks <=10) {
-    ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  } else {
-    float normalization = (float) 1./(nLinks);
-    ((cuComplex*)dataOut)[offset] = element*normalization;
-  }
+  //if (nLinks <=10) {
+  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
+  //} else {
+  float normalization = (float) 1./(nLinks);
+  ((cuComplex*)dataOut)[offset] = element*normalization;
+  //}
 }
 
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
