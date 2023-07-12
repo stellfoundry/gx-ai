@@ -4,6 +4,7 @@
 #define GBX <<< dGx, dBx >>>
 #define GBX_single <<< dGx_single, dBx_single >>>
 #define GBX_ntft <<<dGx_ntft, dBx_ntft >>>
+#define GBX_single_ntft <<<dGx_single_ntft, dBx_single_ntft>>>
 
 //===========================================
 // Nonlinear_GK
@@ -18,7 +19,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
   dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
-  iKxJ0phi   = nullptr;  iKxG       = nullptr; 
+  iKxJ0phi   = nullptr;  iKxG       = nullptr;  iKxJ0apar   = nullptr;  iKxG_single = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -55,6 +56,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   if (pars_->nonTwist) {
     checkCuda(cudaMalloc(&iKxJ0phi, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&iKxG,     sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
+    if (pars_->fapar > 0.) {
+      checkCuda(cudaMalloc(&iKxJ0apar, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+      checkCuda(cudaMalloc(&iKxG_single, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
+    }
   }
 
   if (pars_->fapar > 0.) {
@@ -82,18 +87,22 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
   int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
   int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
+  
+  // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
+  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft; // note changed division by nbx and nby to nbx_ntft and nby_ntft because I think it was a mistake... check this
+  int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
 
   dBx = dim3(nbx, nby, nbz);
   dGx = dim3(ngx, ngy, ngz);
   
-  // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
-  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx; 
-  int nby_ntft = min(4, grids_->Nl);  int ngy_ntft = 1 + (grids_->Nl-1)/nby;
   dBx_ntft = dim3(nbx_ntft, nby_ntft, nbz);
   dGx_ntft = dim3(ngx_ntft, ngy_ntft, ngz);
 
   dBx_single = dim3(nbx, nby, 1);
   dGx_single = dim3(ngx, ngy, 1);
+
+  dBx_single_ntft= dim3(nbx_ntft, nby_ntft, 1);
+  dGx_single_ntft= dim3(ngx_ntft, ngy_ntft, 1);
 
   int nxkyz = grids_->NxNycNz;
   
@@ -137,6 +146,8 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( J0apar      ) cudaFree ( J0apar      );
   if ( iKxJ0phi    ) cudaFree ( iKxJ0phi    );
   if ( iKxG        ) cudaFree ( iKxG        );
+  if ( iKxJ0apar   ) cudaFree ( iKxJ0apar   );
+  if ( iKxG_single ) cudaFree ( iKxG_single );
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)
@@ -202,9 +213,17 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   if (pars_->fapar > 0.) {
 
     J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
-    
-    grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
+   
+    if (pars_->nonTwist) {
+      iKxJ0ftoGrid GBK (iKxJ0apar, J0apar, grids_->iKx);
+      grad_perp_J0f -> C2R(iKxJ0apar, dJ0apar_dx);
+      grad_perp_J0f -> phase_mult_ntft(dJ0apar_dx);
+    } else {
+      grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
+    }
+
     grad_perp_J0f -> dyC2R(J0apar, dJ0apar_dy);
+    if (pars_->nonTwist) grad_perp_J0f -> phase_mult_ntft(dJ0apar_dy);
   }
   
   
@@ -213,8 +232,8 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   
   if (pars_->nonTwist) {
     iKxgtoGrid GBX_ntft (iKxG, G->G(), grids_->iKx);
-    grad_perp_G->C2R(iKxG, dG);
-    grad_perp_G->phase_mult_ntft(dG);
+    grad_perp_G -> C2R(iKxG, dG);
+    grad_perp_G -> phase_mult_ntft(dG);
   } else {
     grad_perp_G -> dxC2R(G->G(), dG);
   }
@@ -223,7 +242,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   grad_perp_G -> dyC2R(G->G(), dG);      
   if (pars_->nonTwist) grad_perp_G->phase_mult_ntft(dG);
   laguerre    -> transformToGrid(dG, dg_dy);
-
+  
   // compute {G_m, phi}
   bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);
@@ -235,6 +254,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     // compute {G_m, Apar}
     bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
     laguerre->transformToSpectral(g_res, dG);
+    if (pars_->nonTwist) grad_perp_G -> phase_mult_ntft(dG, false);
     grad_perp_G->R2C(dG, G_tmp->G(), false); // this R2C has accumulate=false
 
     for(int m=grids_->m_lo; m<grids_->m_up; m++) {
@@ -255,13 +275,21 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     int m = grids_->m_lo;
     int m_local = m - grids_->m_lo;
     if(m>0) {
+      if (pars_->nonTwist) {
+        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local-1), grids_->iKx);
+	grad_perp_G_single -> C2R(iKxG_single, dG);
+	grad_perp_G_single -> phase_mult_ntft(dG);
+      } else {
       grad_perp_G_single -> dxC2R(G->Gm(m_local-1), dG);
+      }
       laguerre_single    -> transformToGrid(dG, dg_dx);
   
       grad_perp_G_single -> dyC2R(G->Gm(m_local-1), dG);      
+      if (pars_->nonTwist) grad_perp_G_single -> phase_mult_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dy);
       bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
       laguerre_single->transformToSpectral(g_res, dG);
+      if(pars_->nonTwist) grad_perp_G -> phase_mult_ntft(dG, false);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
       add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
@@ -271,13 +299,21 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     m = grids_->m_up-1;
     m_local = m - grids_->m_lo;
     if(m<pars_->nm_in-1) {
+      if (pars_->nonTwist) {
+        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local+1), grids_->iKx);
+	grad_perp_G_single -> C2R(iKxG_single, dG);
+	grad_perp_G_single -> phase_mult_ntft(dG);
+      } else {
       grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
+      }
       laguerre_single    -> transformToGrid(dG, dg_dx);
   
       grad_perp_G_single -> dyC2R(G->Gm(m_local+1), dG);      
+      if (pars_->nonTwist) grad_perp_G_single -> phase_mult_ntft(dG);
       laguerre_single    -> transformToGrid(dG, dg_dy);
       bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
       laguerre_single->transformToSpectral(g_res, dG);
+      if (pars_->nonTwist) grad_perp_G_single -> phase_mult_ntft(dG, false);
       grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
       // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
       add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
@@ -304,6 +340,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   }
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_y, val1, sizeof(float));
+
   grad_perp_f -> dyC2R(f->phi, dphi);  
   abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {

@@ -2,9 +2,8 @@
 #include "device_funcs.h"
 #include "get_error.h"
 #define GBK <<< dGk, dBk >>>
-#define GBX <<< dGx, dBx >>>
-#define GBX_single <<< dGx_single, dBx_single >>>
 #define GBX_ntft <<< dGx_ntft, dBx_ntft >>>
+#define GBX_single_ntft <<< dGx_single_ntft, dBx_single_ntft >>>
 
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
@@ -20,7 +19,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   // Use MakePlanMany to enable callbacks
   // Order of Nx, Ny is correct here
 
-  checkCuda(cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_));
+  cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_);
   if (grids_->iKx) { //I don't want to add pars to the class declaration, this functions as if(nonTwist)
     checkCuda(cudaMalloc (&iKxtmp, sizeof(cuComplex)*mem_size_));
   }
@@ -85,30 +84,23 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   
   cudaDeviceSynchronize();
   
-  int nxyz = grids_->NxNyNz;
   int nlag = grids_->Nj;
   int nher = grids_->Nm;
-
-  int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx;
-  int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
-  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
-
-  dBx = dim3(nbx, nby, nbz);
-  dGx = dim3(ngx, ngy, ngz);
+  int nxkyz = grids_->NxNycNz;
 
   // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
-  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx;
-  int nby_ntft = min(4, grids_->Nl);  int ngy_ntft = 1 + (grids_->Nl-1)/nby;
+  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft; // note changed division by nbx and nby to nbx_ntft and nby_ntft because I think it was a mistake... check this
+  int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
+  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
+  
   dBx_ntft = dim3(nbx_ntft, nby_ntft, nbz);
   dGx_ntft = dim3(ngx_ntft, ngy_ntft, ngz);
 
-  dBx_single = dim3(nbx, nby, 1);
-  dGx_single = dim3(ngx, ngy, 1);
+  dBx_single_ntft= dim3(nbx_ntft, nby_ntft, 1);
+  dGx_single_ntft= dim3(ngx_ntft, ngy_ntft, 1);
 
-  int nxkyz = grids_->NxNycNz;
-
-  nbx = min(32, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
-  nby = min(16, nlag);       ngy = 1 + (nlag-1)/nby;
+  int nbx = min(32, nxkyz);      int ngx = 1 + (nxkyz-1)/nbx;
+  int nby = min(16, nlag);       int ngy = 1 + (nlag-1)/nby;
 
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
@@ -144,8 +136,10 @@ void GradPerp::phase_mult_ntft(float* G, bool positive_phase)
     if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
       iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
     } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-      iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft); 
-    } // add in an else for single moment here?
+      iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft);
+    } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
+      iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+    }
   } else { // if reverse, will be size of G grid
     iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
   }

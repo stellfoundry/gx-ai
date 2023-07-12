@@ -154,8 +154,10 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
 
 __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, const cuComplex* bpar, const float* kperp2,
 			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar);
+
 __global__ void iKxJ0ftoGrid(cuComplex* iKxf, const cuComplex* f, const cuComplex* iKx);
 __global__ void iKxgtoGrid(cuComplex* iKxg, const cuComplex* g, const cuComplex* iKx);
+__global__ void iKxgsingletoGrid(cuComplex* iKxg_single, const cuComplex* g_single, const cuComplex* iKx);
 __global__ void acc(float *a, const float *b);
 
 __global__ void bracket(float* __restrict__ g_res,

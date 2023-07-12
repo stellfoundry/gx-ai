@@ -1022,7 +1022,6 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     J0f[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * f[idxyz] * fac;
-    //printf("J0f.x = %f, J0f.y = %f \n", J0f[ig].x, J0f[ig].y);
   }
 }
 
@@ -1045,9 +1044,7 @@ __global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuCompl
   unsigned int idj = get_id2();
   if (idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
-    
     iKxf[ig] = f[ig] * iKx[idxyz];
-    //printf("f[%d].x = %f, f[%d].y = %f iKx[%d].x = %f, iKx[%d].y = %f \n",ig, f[ig].x, ig, f[ig].y, idxyz, iKx[idxyz].x, idxyz, iKx[idxyz].y);
   }
 }
 
@@ -1060,7 +1057,17 @@ __global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex
   if (idxyz < nx*nyc*nz && idl < nl && idm < nm) {
     unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
     iKxg[ig] = g[ig] * iKx[idxyz];
-    //printf("g[%d].x = %f, g[%d].y = %f iKx[%d].x = %f, iKx[%d].y = %f \n", ig, g[ig].x, ig, g[ig].y, idxyz, iKx[idxyz].x, idxyz, iKx[idxyz].y);
+  }
+}
+
+__global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_single, const cuComplex* iKx)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idl = get_id2();
+
+  if (idxyz < nx*nyc*nz && idl < nl) {
+    unsigned int ig = idxyz + nx*nyc*nz*idl;
+    iKxg_single[ig] = g_single[ig] * iKx[idxyz];
   }
 }
 
