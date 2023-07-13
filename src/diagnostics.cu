@@ -669,8 +669,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   dBk = dim3(nt1, nt2, 1);
   dGk = dim3(nb1, nb2, 1);
   
-  if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
-
   nt1 = min(grids_->Ny, 512);
   nb1 = 1 + (grids_->Ny-1)/nt1;
 

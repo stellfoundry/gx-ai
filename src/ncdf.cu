@@ -81,7 +81,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   dgxy = dim3(nb1, nb2, 1);
 
   // Single loop, over Nx*Nyc elements
-  nt1 = min(128, grids_->Nx);
+  nt1 = min(256, grids_->Nx);
   nb1 = 1 + (grids_->Nx*grids_->Nyc-1)/nt1;
 
   dbfla = dim3(nt1, 1, 1);
@@ -3403,7 +3403,7 @@ void NetCDF_ids::write_moment(nca *D, cuComplex *f, float* vol_fac) {
   
   if (!D->write_v_time) return;
 
-  cuComplex zz = make_cuComplex(0., 0.);  setval loop_R (amom, zz, D->N_);
+  cuComplex zz = make_cuComplex(0., 0.);  setval loop_R (amom, zz, grids_->NxNycNz);
   
   // Perform any desired derivatives
   if (D->d2x) {    d2x Gmom (amom, f, grids_->kx);   } else
