@@ -128,16 +128,21 @@ void Parameters::get_nml_vars(char* filename)
   D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   ); 
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
-  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
-  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
-  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
+  nu_hyper_z = toml::find_or <float>  (tnml, "nu_hyper_z",    0.0   ); 
+  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.0   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   ); 
+  nu_hyper_lm = toml::find_or <float> (tnml, "nu_hyper_lm",   0.0   ); 
+  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
+  p_hyper_z  = toml::find_or <int>    (tnml, "p_hyper_z",       6   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       6   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       nm_in/2   ); 
+  p_hyper_lm = toml::find_or <int>    (tnml, "p_hyper_lm",      6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
+  hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions_kz", false);
+  hyperz = toml::find_or <bool> (tnml, "hyperz", false);
 
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
@@ -209,6 +214,8 @@ void Parameters::get_nml_vars(char* filename)
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
   hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
   use_NCCL    = toml::find_or <bool>   (tnml, "use_NCCL",    true );
+  damp_ends_widthfrac = toml::find_or <float> (tnml, "damp_ends_widthfrac", 1./8.);
+  damp_ends_amp = toml::find_or <float> (tnml, "damp_ends_amp", 0.1);
 
   if( hegna ){
     printf("\nIn order to recover the Hegna model, setting nm=4, nl=2.\n");

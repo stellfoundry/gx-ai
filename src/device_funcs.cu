@@ -2081,6 +2081,25 @@ __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, 
   ((cuComplex*)dataOut)[offset] = element*normalization;
 }
 
+__device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element, void *hyperData, void *sharedPtr)
+{
+  int *data = (int*) hyperData;
+  int nLinks = data[0];
+  int p_hyper_z = data[1];
+  unsigned int nzL = nz*nLinks;
+  unsigned int idz = offset % (nzL);
+  float zpnLinv = (float) 1./zp*nLinks;
+  float hypkz;
+  if (idz < nzL/2+1) {
+    hypkz = pow((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  } else {
+    int idzs = idz-nzL;
+    hypkz = pow((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  }
+  float normalization = (float) 1./nzL;
+  ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
+}
+
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
@@ -2105,8 +2124,24 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
   }
 }
 
+__global__ void init_hyperkzLinked(float* hyperkz, int nLinks, bool dealias_kz, int p_hyper_z)
+{
+  int nzL = nz*nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
+      hyperkz[i] = pow((float) i/(zp*nLinks), p_hyper_z);
+    } else {
+      hyperkz[i] = pow((float) (i-nzL)/(zp*nLinks), p_hyper_z);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {hyperkz[i] = 0.0;}
+    }
+  }
+}
+
 __device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
 __device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
+__device__ cufftCallbackStoreC   hyperkzLinked_callbackPtr = hyperkzLinked;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked,
@@ -2138,9 +2173,23 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
   }
 }
 
+__global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G,
+			       int nLinks, int nChains, const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale)
+{
+  unsigned int idz = get_id1();
+  unsigned int idk = get_id2();
+  unsigned int idlm = get_id3();
+
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+    G[globalIdx] = G[globalIdx] + scale*G_linked[idlink];
+  }
+}
+
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
-			       cuComplex* GRhs)
+			       cuComplex* GRhs, float widthfrac, float amp)
 {
   unsigned int idz = get_id1();
   unsigned int idk = get_id2();
@@ -2154,8 +2203,9 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
-    int width = nz*nLinks/8;  
-    float L = 2*M_PI*zp*nLinks/8;
+    // widthfac = 1./8.;
+    int width = (int) nz*nLinks*widthfrac;  
+    float L = (float) 2*M_PI*zp*nLinks*widthfrac;
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
     if (idzl <= width ) {
       float x = ((float) idzl)/width;
@@ -2177,7 +2227,8 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
       cuComplex H_ = G[globalIdx];
       if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
       if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
+      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
 }
@@ -2539,8 +2590,8 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
   }
 }
 
-__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
-				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt) {
+__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m, const float nu_hyper_lm,
+				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt) {
   unsigned int idxyz = get_id1();
   
   if (idxyz < nx*nyc*nz) {
@@ -2555,8 +2606,28 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
-            vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
-             +scaled_nu_hyp_m*pow((float) m/nm_glob, p_hyper_m))*g[globalIdx];                 
+	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
+             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+             + scaled_nu_hyp_m*pow((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
+        }   
+      }      
+    }   
+  }
+}
+
+__global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int p, cuComplex* res) {
+  unsigned int idxyz = get_id1();
+  
+  if (idxyz < nx*nyc*nz) {
+    // blockIdx for y and z are unity in the kernel invocation      
+    unsigned int l = get_id2();                                                                
+    if (l<nl) {
+      unsigned int m = get_id3() + m_lo;
+      if (m>=m_lo && m<m_up) {                                                                 
+        int m_local = m - m_lo;
+        int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
+        if (m>2) { 
+          res[globalIdx] = -nu*pow((float) m, p)*g[globalIdx];                 
         }   
       }      
     }   
