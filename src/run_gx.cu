@@ -44,7 +44,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> set_zero();
       if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
-      G[is] -> sync();
+      G[is] -> sync(true);
     }
     solver -> fieldSolve(G, fields);                
   }
@@ -59,7 +59,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
     if(pars->harris_sheet or pars->periodic_equilibrium) solver -> set_equilibrium_current(G[0], fields);
-    G[0] -> sync();
+    G[0] -> sync(true);
     solver -> fieldSolve(G, fields);                
   }
 

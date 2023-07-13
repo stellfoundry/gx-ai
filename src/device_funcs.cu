@@ -1496,6 +1496,7 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJa
   }
 }
 
+// kinetic energy
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i)
 {
   unsigned int idy = get_id1();
@@ -1514,7 +1515,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
       float gam0 = g0(kperp2*rho_i*rho_i/2.);
 
       tmp = cuConjf( phi[idxyz] ) * ( 1.0 - gam0 ) * phi[idxyz] * fac * volJac[idz];
-      p2[idxyz] = 0.5 * tmp.x;
+      p2[idxyz] = 0.5 * tmp.x * 2. / (rho_i * rho_i);
 
     } else {
       p2[idxyz] = 0.;
@@ -1522,7 +1523,7 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
   }
 }
 
-// WApar_summand_krehm
+// magnetic energy
 __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac, const float* kx, const float* ky, float rho_i)
 {
   unsigned int idy = get_id1();
