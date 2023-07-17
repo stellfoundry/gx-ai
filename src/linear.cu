@@ -332,7 +332,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
-								   0., dt/pars_->nm_in, 0.,
+								   0., 1./dt/pars_->nm_in, 0.,
 								   1, pars_->p_hyper_m, 1, 
 								   GRhs->G(), 1.);
   // hyper in k-space
