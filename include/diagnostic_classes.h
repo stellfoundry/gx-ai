@@ -109,8 +109,8 @@ class GrowthRateDiagnostic {
 
 class EigenfunctionDiagnostic {
  public:
-  EigenFunctionDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
-  ~EigenFunctionDiagnostic();
+  EigenfunctionDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
+  ~EigenfunctionDiagnostic();
   void calculate_and_write(Fields* f);
  private:
   void dealias_and_reorder(cuComplex* fold, float* fnew);

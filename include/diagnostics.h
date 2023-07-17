@@ -92,6 +92,8 @@ private:
 
   vector<unique_ptr<SpectraDiagnostic>> spectraDiagnosticList;
   GrowthRateDiagnostic *growthRateDiagnostic;
+  EigenfunctionDiagnostic *eigenfunctionDiagnostic;
+  //MomentsDiagnostic *momentsDiagnostic;
 };
 
 class Diagnostics_KREHM : public Diagnostics {

@@ -377,7 +377,7 @@ EigenfunctionDiagnostic::EigenfunctionDiagnostic(Parameters* pars, Grids* grids,
   cpu = (float*) malloc  (sizeof(float) * Nwrite);
 }
 
-EigenfunctionDiagnostic::calculate_and_write(Fields* f)
+void EigenfunctionDiagnostic::calculate_and_write(Fields* f)
 {
   int retval;
 
@@ -400,7 +400,7 @@ EigenfunctionDiagnostic::calculate_and_write(Fields* f)
 // condense a (ky,kx,z) object for netcdf output, taking into account the mask
 // and changing the type from cuComplex to float
 // and transposing to put z as fastest index
-EigenFunctionDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
+void EigenfunctionDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
 {
   int Nx   = grids_->Nx;
   int Nakx = grids_->Nakx;
