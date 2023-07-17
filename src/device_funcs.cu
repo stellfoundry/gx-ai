@@ -2307,8 +2307,8 @@ __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __res
       // pull out ikx and idz indices
       int ikx_ntft = ikx[idpn] % nx;
       int idz = ikx[idpn] / nx;
-      //printf("idp = %d, idn = %d, ikx_ntft = %d idz = %d, idy = %d, blockIdx.x = %d, threadIdx.x = %d, blockIdx.y = %d , threadIdx.y = %d \n", idp, idn, ikx_ntft, idz, iky[idpn], blockIdx.x, threadIdx.x,  blockIdx.y, threadIdx.y);
-      
+      //printf("idp = %d, idn = %d, ikx_ntft = %d idz = %d, idy = %d, blockIdx.x = %d, threadIdx.x = %d, blockIdx.y = %d , threadIdx.y = %d \n", idp, idn, ikx_ntft, idz, iky[idpn], blockIdx.x, threadIdx.x,  blockIdx.y, threadIdx.y); 
+      //printf("idp = %d, idn = %d, ikx_ntft = %d idz = %d, idy = %d, nLinks = %d \n", idp, idn, ikx_ntft, idz, iky[idpn], nLinks);
       unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
       unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
       
