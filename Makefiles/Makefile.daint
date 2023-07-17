@@ -33,7 +33,8 @@ C_LIB = -ldl -lm -lpthread
 
 # piz daint has NVIDIA P100, so compute capability is 6.0
 CUDAARCH=60
-CC=g++
+
+CXX = g++
 
 NVCC   = nvcc
 CFLAGS = -fPIC

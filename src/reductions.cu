@@ -21,8 +21,8 @@ Reduction::Reduction(Grids *grids, std::vector<int32_t> modeFull, std::vector<in
   for (auto mode : modeReduced_) extentReduced.push_back(extent[mode]);;
 
   cutensorInit(&handle);
-  cutensorInitTensorDescriptor(&handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_ABS);
-  cutensorInitTensorDescriptor(&handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
 }
 
 Reduction::~Reduction()
@@ -103,8 +103,8 @@ Grid_Reduce::Grid_Reduce(Grids *grids, std::vector<int> spectra) :
       //      printf("0 =? %d \n",iModes[0].size());
       
       cutensorInit(&handle);
-      cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_ABS);
-      cutensorInitTensorDescriptor(&handle, &desc[j], iModes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
+      cutensorInitTensorDescriptor(&handle, &dI, nImode, extent_I.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+      cutensorInitTensorDescriptor(&handle, &desc[j], iModes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
 
     }
   }
@@ -165,8 +165,8 @@ All_Reduce::All_Reduce(Grids *grids, std::vector<int> spectra) :
       for (auto mode : Modes[j]) extents[j].push_back(extent[mode]);
 
       cutensorInit(&handle);
-      cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, cfloat, CUTENSOR_OP_ABS);
-      cutensorInitTensorDescriptor(&handle, &desc[j], Modes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_ABS);
+      cutensorInitTensorDescriptor(&handle, &dW, nWmode, extent_W.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+      cutensorInitTensorDescriptor(&handle, &desc[j], Modes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
     }
   }
 }
@@ -223,8 +223,8 @@ Block_Reduce::Block_Reduce(int N) : N_(N)
   for (auto mode : Bmode) extent_B.push_back(extent[mode]); // target scalar output
 
   cutensorInit(&handle);
-  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, cfloat, CUTENSOR_OP_ABS);
-  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, cfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
 }
 
 Block_Reduce::~Block_Reduce()
@@ -296,8 +296,8 @@ dBlock_Reduce::dBlock_Reduce(int N) : N_(N)
   for (auto mode : Bmode) extent_B.push_back(extent[mode]); // target scalar output
 
   cutensorInit(&handle);
-  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, dfloat, CUTENSOR_OP_ABS);
-  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, dfloat, CUTENSOR_OP_ABS);
+  cutensorInitTensorDescriptor(&handle, &dA, nAmode, extent_A.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &dB, nBmode, extent_B.data(), NULL, dfloat, CUTENSOR_OP_IDENTITY);
 }
 
 dBlock_Reduce::~dBlock_Reduce()

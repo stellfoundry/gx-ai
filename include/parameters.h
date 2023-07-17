@@ -64,6 +64,22 @@ enum QSpectra {QSPECTRA_species,
 	       QSPECTRA_kxky,
 	       QSPECTRA_z,	       
 	       QSPECTRA_kz};
+
+enum GamSpectra {GamSPECTRA_species,
+	       GamSPECTRA_kx,
+	       GamSPECTRA_ky,
+	       GamSPECTRA_kperp,
+	       GamSPECTRA_kxky,
+	       GamSPECTRA_z,	       
+	       GamSPECTRA_kz};
+
+enum Phi2Spectra {PHI2SPECTRA_t,
+	       PHI2SPECTRA_kx,
+	       PHI2SPECTRA_ky,
+	       PHI2SPECTRA_kperp,
+	       PHI2SPECTRA_kxky,
+	       PHI2SPECTRA_z,	       
+	       PHI2SPECTRA_kz};
 	       
 #define RH_equilibrium 3
 #define PHIEXT 1
@@ -85,11 +101,13 @@ class Parameters {
   const int np_spectra = 7;  // should match # of elements in PSpectra
   const int na_spectra = 7;  // should match # of elements in ASpectra
   const int nq_spectra = 7;  // should match # of elements in PSpectra
+  const int ngam_spectra = 7;  // should match # of elements in PSpectra
+  const int nphi2_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
   void store_ncdf(int ncid, NcDims* nc_dims);
 
   void init_species(specie* species);
-  void set_jtwist_x0(float* shat);
+  void set_jtwist_x0(float* shat, float *gds21, float *gds22);
 
   int nczid, nzid, ncresid, ncbid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
@@ -120,9 +138,9 @@ class Parameters {
   float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
-  float x0, y0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
+  float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
-  float forcing_amp, me_ov_mi, nu_ei, nu_hyper, D_hyper;
+  float forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
   float D_HB, w_osc;
   float low_cutoff, high_cutoff, nlpm_max, tau_nlpm;
@@ -143,6 +161,7 @@ class Parameters {
   // parameters for KREHM system
   bool krehm;
   float rho_s, rho_i, d_e, zt;
+  bool harris_sheet;
   
   cuComplex phi_test, smith_perp_w0;
 
@@ -162,6 +181,7 @@ class Parameters {
   bool write_xyvEx, write_xyvEy, write_xykxvEy, write_xyden, write_xyUpar;
   bool write_xyTpar, write_xyTperp, write_xyqpar;
   bool write_xyPhi; 
+  bool write_xyApar; 
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions;
@@ -191,6 +211,7 @@ class Parameters {
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
   bool use_NCCL;
+  bool long_wavelength_GK;
     
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
@@ -205,10 +226,14 @@ class Parameters {
   int pspecdim[1]; // dimension of control structure for spectral plots (1-Gamma_0) Phi**2
   int wspecdim[1]; // dimension of control structure for spectral plots G**2
   int qspecdim[1]; // dimension of control structure for spectral plots Q
+  int gamspecdim[1]; // dimension of control structure for spectral plots Gamma
+  int phi2specdim[1]; // dimension of control structure for spectral plots phi**2
   size_t aspectra_start[1], aspectra_count[1]; 
   size_t pspectra_start[1], pspectra_count[1]; 
   size_t wspectra_start[1], wspectra_count[1]; 
   size_t qspectra_start[1], qspectra_count[1]; 
+  size_t gamspectra_start[1], gamspectra_count[1]; 
+  size_t phi2spectra_start[1], phi2spectra_count[1]; 
   
   std::string Btype;
   std::string code_info;
@@ -233,6 +258,8 @@ class Parameters {
   std::vector<int> pspectra;
   std::vector<int> aspectra;
   std::vector<int> qspectra;
+  std::vector<int> gamspectra;
+  std::vector<int> phi2spectra;
   
   cudaDeviceProp prop;
   int maxThreadsPerBlock;
@@ -250,6 +277,8 @@ class Parameters {
   void  put_pspectra (int ncid, std::vector<int> s);
   void  put_aspectra (int ncid, std::vector<int> s);
   void  put_qspectra (int ncid, std::vector<int> s);
+  void  put_gamspectra (int ncid, std::vector<int> s);
+  void  put_phi2spectra (int ncid, std::vector<int> s);
   bool initialized;
 };
 

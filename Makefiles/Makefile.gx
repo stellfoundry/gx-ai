@@ -5,8 +5,8 @@ export MAKEFLAGS='-I Makefiles'\n
 
 USE_LOCAL_SPFUNC=on
 
-NETCDF_INC = -I/usr/include
-NETCDF_LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdf
+NETCDF_INC = -I/usr/lib/x86_64-linux-gnu/netcdf/mpi/include/
+NETCDF_LIB = -L/usr/lib/x86_64-linux-gnu -lnetcdf -lnetcdff -L/usr/lib/x86_64-linux-gnu/hdf5/openmpi/lib -lhdf5
 
 ifdef USE_LAPACK
 	LAPACK_LIB = -L/usr/lib/x86_64-linux-gnu -llapack
@@ -15,20 +15,24 @@ endif
 MPI_INC= -I/usr/lib/x86_64-linux-gnu/openmpi/include/
 MPI_LIB= -L/usr/lib/x86_64-linux-gnu/openmpi/lib -lmpi
 
-FORT_LIB = -lgfortran
+GSL_LIB = -lgsl -lgslcblas
 
-GSL_LIB = -lgsl -lgslcblas -lm
-
-FC=gfortran
-NVCC=nvcc
 CUDAARCH=70
-CUTENSOR_INC = -I/usr/local/lib/libcutensor/include/
-CUTENSOR_LIB = -L/usr/local/lib/libcutensor/lib/11.0 -lcutensor -lcudart
+CUTENSOR_INC = 
+CUTENSOR_LIB = -lcutensor -lcudart
 
 CUDA_INC = ${CUTENSOR_INC}
-CUDA_LIB = -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver ${CUTENSOR_LIB}
+CUDA_LIB = -L/usr/local/cuda-12/lib64 -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver ${CUTENSOR_LIB} -lnccl
 
-NVCCFLAGS = -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true
+CXX = g++
+
+C_LIB = -ldl -lm -lpthread
+
+CFLAGS = -fPIC
+
+NVCC=/usr/local/cuda-12/bin/nvcc
+
+NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_${CUDAARCH} -code=sm_${CUDAARCH} -use_fast_math -prec-sqrt=true -fPIC -rdc=true
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

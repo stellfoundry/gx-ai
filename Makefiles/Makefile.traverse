@@ -37,7 +37,7 @@ C_LIB = -ldl -lm -lpthread
 GS2_PATH = /home/nmandell/gs2
 
 CUDAARCH=70
-CC=g++
+CXX = g++
 
 NVCC   = nvcc
 CFLAGS = -fPIC

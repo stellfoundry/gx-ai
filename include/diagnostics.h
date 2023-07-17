@@ -19,7 +19,12 @@ class Diagnostics {
   virtual ~Diagnostics() {};
   virtual bool loop(MomentsG** G, Fields* fields, double dt, int counter, double time) = 0 ;
   virtual void finish(MomentsG** G, Fields* fields, double time) = 0;  
+  void restart_write(MomentsG** G, double *time);
   //virtual void write_init(MomentsG** G, Fields* f) = 0;
+ protected:
+  Parameters   * pars_         ;
+  Grids        * grids_        ;
+  
 };
 
 class Diagnostics_GK : public Diagnostics {
@@ -33,7 +38,7 @@ class Diagnostics_GK : public Diagnostics {
 
 private:
   float* P2(int s=0) {return &P2s[grids_->NxNycNz*s];}
-  float* G2(int s=0) {return &G2s[grids_->NxNycNz*s];}
+  float* G2(int s=0) {return &G2s[grids_->NxNycNz*grids_->Nmoms*s];}
 
   int ndiag; 
   int ikx_local, iky_local, iz_local;
@@ -48,8 +53,6 @@ private:
   
   cuComplex valphi;
 
-  Parameters   * pars_         ;
-  Grids        * grids_        ;
   Geometry     * geo_          ;  
 
   GradPerp     * grad_perp     ; 
@@ -117,8 +120,6 @@ private:
   
   cuComplex valphi;
 
-  Parameters   * pars_         ;
-  Grids        * grids_        ;
   Geometry     * geo_          ;  
 
   GradPerp     * grad_perp     ; 

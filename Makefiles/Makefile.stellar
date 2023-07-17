@@ -5,6 +5,7 @@
 #
 # export GK_SYSTEM=stellar
 # module load nvhpc-nocompiler/22.5
+# module load cudatoolkit/11.7
 # module load gcc/8
 # module load openmpi/cuda-11.1/gcc/4.1.1 
 # module load netcdf/gcc/hdf5-1.10.6/openmpi-4.1.0/4.7.4
@@ -23,8 +24,8 @@ MPI_INC = -I ${OMPI_DIR}/include
 MPI_LIB = -L ${OMPI_DIR}/lib64 -lmpi 
 
 # paths to cuda 
-CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
-CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl
+CUDA_INC = -I ${CUDA_HOME}/include -I ${NVHPC_ROOT}/math_libs/include -I ${NVHPC_ROOT}/comm_libs/include
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NVHPC_ROOT}/comm_libs/nccl/lib -lnccl -L ${CUDA_HOME}/lib64 -lculibos -lnvToolsExt -lcudart 
 
 GSL_LIB = -lgsl -lgslcblas
 
@@ -34,7 +35,7 @@ C_LIB = -ldl -lm  -lpthread
 GS2_PATH = /home/nmandell/gs2-amd
 
 CUDAARCH=80
-CC=g++
+CXX = g++
 
 NVCC      = nvcc
 CFLAGS = -fPIC

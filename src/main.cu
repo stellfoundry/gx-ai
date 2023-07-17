@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
 
   char run_name[1000];
   if ( argc < 1) {
-    fprintf(stderr, "The correct usage is:\n gx <runname>.in\n");
+    if(iproc==0) fprintf(stderr, "The correct usage is:\n gx <runname>.in\n");
     exit(1);
   } else {    
     // if input filename ends in .in, remove .in
@@ -39,14 +39,16 @@ int main(int argc, char* argv[])
       strncpy(run_name, argv[1], strlen(argv[1])-3);
       run_name[strlen(argv[1])-3] = '\0';
     } else {
-      fprintf(stderr, "Argument for input filename must now include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
+      if(iproc==0) fprintf(stderr, "Argument for input filename must now include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
       exit(1);
     }
 
-    printf("Running %s \n",run_name);
+    printf(ANSI_COLOR_GREEN);
+    if(iproc==0) printf("Running %s \n",run_name);
+    printf(ANSI_COLOR_RESET);
   }
    
-  printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
+  if(iproc==0) printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
 
   Parameters * pars = nullptr;
   pars = new Parameters(iproc, nprocs, mpcom);
@@ -54,11 +56,11 @@ int main(int argc, char* argv[])
   
   Grids * grids = nullptr;
   
-  DEBUGPRINT("Initializing grids...\n");
+  if(iproc==0) DEBUGPRINT("Initializing grids...\n");
   grids = new Grids(pars);
-  CUDA_DEBUG("Initializing grids: %s \n");
+  if(iproc==0) CUDA_DEBUG("Initializing grids: %s \n");
 
-  DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
+  if(iproc==0) DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
 	     grids->iproc, grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
   Geometry    * geo         = nullptr;
@@ -68,9 +70,9 @@ int main(int argc, char* argv[])
     geo = init_geo(pars, grids);
 
 
-    DEBUGPRINT("Initializing diagnostics...\n");
+    if(iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
     diagnostics = new Diagnostics_GK(pars, grids, geo);
-    CUDA_DEBUG("Initializing diagnostics: %s \n");    
+    if(iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
 
     //    DEBUGPRINT("Initializing Hermite transforms...\n");
     //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec

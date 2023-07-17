@@ -64,12 +64,12 @@ obj/%.o: %.cu $(HEADERS)
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
+	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
 
 .SILENT: src/version.c obj/version.o
 
 obj/version.o: src/version.c
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
+	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
 
 src/version.c: 
 	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
@@ -86,12 +86,12 @@ VMEC_GEO_OBJS = solver.o vmec_variables.o geometric_coefficients.o
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
 obj/geo/%.o: %.cpp $(VMEC_GEO_HEADERS)
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I geometry_modules/vmec/include
+	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I geometry_modules/vmec/include
 
 # main program
 gx: obj/main.o libgx.a
 	$(NVCC) -dlink $(NVCCFLAGS) -o obj/gx.o $< -L. -lgx $(LIBS) 
-	$(CC) -o $@ obj/gx.o obj/main.o -L. -lgx $(LIBS) 
+	$(CXX) -o $@ obj/gx.o obj/main.o -L. -lgx $(LIBS) 
 	@rm src/version.c
 
 libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
@@ -99,10 +99,10 @@ libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_
 
 libgx.so: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
 	$(NVCC) -dlink $(NVCCFLAGS) -o obj/device.o $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
-	$(CC) -shared -o libgx.so obj/device.o $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
+	$(CXX) -shared -o libgx.so obj/device.o $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))
 
 geometry_modules/vmec/convert_VMEC_to_GX: obj/geo/main.o $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
-	$(CC) -o $@ $< $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(LIBS)
+	$(CXX) -o $@ $< $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(LIBS)
 
 all: gx
 
@@ -111,7 +111,7 @@ all: gx
 ########################
 
 clean: 
-	rm -rf obj/*.o obj/geo/*.o *~ libgx.a \#*
+	rm -rf obj/*.o obj/geo/*.o *~ libgx.a gx \#*
 
 distclean: clean clean_tests
 	rm -rf $(TARGET)

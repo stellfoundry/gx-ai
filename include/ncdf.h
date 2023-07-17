@@ -39,7 +39,11 @@ class NetCDF_ids {
   void write_Pky   (float * P2, bool endrun = false);
   void write_Pkx   (float * P2, bool endrun = false);  
   void write_Pkxky (float * P2, bool endrun = false);
-  
+ 
+  void write_Aparky (float * P2, bool endrun = false);
+  void write_Aparkx (float * P2, bool endrun = false);
+  void write_Aparkxky (float * P2, bool endrun = false);
+
   void write_As    (float * P2, bool endrun = false);
   void write_Az    (float * P2, bool endrun = false);
   void write_Akz   (float * G2, bool endrun = false);
@@ -47,7 +51,18 @@ class NetCDF_ids {
   void write_Akx   (float * P2, bool endrun = false);
   void write_Akxky (float * P2, bool endrun = false);
 
-  void write_P     (float * P,   bool endrun = false);
+  void write_Phi2t    (float * P2, bool endrun = false);
+  void write_Phi2z    (float * P2, bool endrun = false);
+  void write_Phi2kz   (float * P2, bool endrun = false);
+  void write_Phi2ky   (float * P2, bool endrun = false);
+  void write_Phi2kx   (float * P2, bool endrun = false);
+  void write_Phi2kxky (float * P2, bool endrun = false);
+
+  void write_Gam     (float * Gam,   bool endrun = false);
+  void write_Gamz   (float * Gam,   bool endrun = false);
+  void write_Gamky   (float * Gam,   bool endrun = false);
+  void write_Gamkx   (float * Gam,   bool endrun = false);
+  void write_Gamkxky (float * Gam,   bool endrun = false);
   void write_Q     (float * Q,   bool endrun = false);
   void write_Qz   (float * Q,   bool endrun = false);
   void write_Qky   (float * Q,   bool endrun = false);
@@ -56,6 +71,7 @@ class NetCDF_ids {
   void write_omg   (cuComplex *W, bool endrun = false);
   void write_moment(nca *D, cuComplex *f, float* vol_fac);
   void write_fields(nca *D, cuComplex *a, bool endrun = true);
+  void write_fields_realspace(nca *D, cuComplex *a, bool endrun=true);
   void write_gy    (float * gy_d,     bool endrun = false);
   
   void write_zonal(nca *D, cuComplex* f, bool shear, float adj);
@@ -70,10 +86,13 @@ class NetCDF_ids {
   nca *rh, *omg, *den, *wphi, *denk, *wphik, *den0, *wphi0, *qs, *ps; 
   nca *Wm, *Wl, *Wlm, *Pzt, *pZt, *pzT, *Wtot;
   nca *Ps, *Pky, *Pkx, *Pkxky, *Pz, *Pkz;
+  nca *Aparky, *Aparkx, *Aparkxky;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
   nca *Qs, *Qky, *Qkx, *Qkxky, *Qz, *Qkz;
-  nca *fields_phi, *fields_apar, *fields_bpar;
+  nca *Gams, *Gamky, *Gamkx, *Gamkxky, *Gamz, *Gamkz;
+  nca *Phi2t, *Phi2ky, *Phi2kx, *Phi2kxky, *Phi2z, *Phi2kz;
+  nca *fields_phi, *fields_apar, *fields_apar_realspace, *fields_bpar;
   nca *g_y;
   nca *r_y; 
 
@@ -81,6 +100,7 @@ class NetCDF_ids {
   nca *kxvEy,  *xykxvEy,  *avg_zkxvEy;
   //  nca *kyvE,   *xykyvE,   *avg_zkyvE;
   nca *xyPhi; 
+  nca *xyApar; 
   nca *kden,   *xyden,    *avg_zkden;
   nca *kUpar,  *xyUpar,   *avg_zkUpar;
   nca *kTpar,  *xyTpar,   *avg_zkTpar;
@@ -141,8 +161,10 @@ class NetCDF_ids {
   Red        * red     ;
   Red        * pot     ;
   Red        * ph2     ;
+  Red        * a2     ;
   Red        * all_red ;
   Red        * red_qflux ;
+  Red        * red_pflux ;
   
   float primary[1], secondary[1], tertiary[1];
   cuComplex * t_bar     ;

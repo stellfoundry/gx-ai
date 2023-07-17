@@ -28,8 +28,8 @@ def growth_rates(fname, ikx=0, navgfac=0.5, label=None, plot=True, ax=None, Lref
         if ax.any() == None:
             fig, ax = plt.subplots(2)
         
-        ax[0].plot(ky, gamavg, 'o')
-        ax[1].plot(ky, omavg, 'o', label=label)
+        ax[0].plot(ky, gamavg, 'o', fillstyle='none')
+        ax[1].plot(ky, omavg, 'o', fillstyle='none', label=label)
         
         ax[0].xaxis.set_minor_locator(AutoMinorLocator())
         ax[1].xaxis.set_minor_locator(AutoMinorLocator())

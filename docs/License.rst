@@ -3,7 +3,7 @@
 License
 +++++++++++++++
 
-Copyright (c) 2011-2022 Noah R. Mandell, William D. Dorland, and the GX team.
+Copyright (c) 2011-2023 Noah R. Mandell, William D. Dorland, and the GX team.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
