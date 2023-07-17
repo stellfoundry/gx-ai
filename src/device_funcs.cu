@@ -1071,6 +1071,15 @@ __global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_sin
   }
 }
 
+__global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuComplex* iKx)
+{
+  unsigned int idxyz = get_id1();
+
+  if (idxyz < nx*nyc*nz) {
+    iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+  }
+}
+
 __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *array_f, int size) {
   for (unsigned int i = 0; i < size; i++) array_f[i] = cuComplexDoubleToFloat(array_d[i]);
 }

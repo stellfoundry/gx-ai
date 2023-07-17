@@ -20,7 +20,7 @@ class GradPerp {
  private:
   const int batch_size_;
   const int mem_size_;
-  dim3 dGk, dBk, dGx_single_ntft, dBx_single_ntft, dGx_ntft, dBx_ntft;
+  dim3 dGk, dBk, dGx_single_ntft, dBx_single_ntft, dGx_ntft, dBx_ntft, dGphi_ntft, dBphi_ntft;
   dim3 dG, dB;
   Grids     * grids_ ;
   cuComplex * tmp    ;

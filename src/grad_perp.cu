@@ -4,6 +4,7 @@
 #define GBK <<< dGk, dBk >>>
 #define GBX_ntft <<< dGx_ntft, dBx_ntft >>>
 #define GBX_single_ntft <<< dGx_single_ntft, dBx_single_ntft >>>
+#define GBPhi_ntft <<<dGphi_ntft, dBphi_ntft>>>
 
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
@@ -105,6 +106,9 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
 
+  dBphi_ntft = dim3(nbx, 1, 1);
+  dGphi_ntft = dim3(ngx, 1, 1);
+
 }
 
 GradPerp::~GradPerp()
@@ -139,6 +143,8 @@ void GradPerp::phase_mult_ntft(float* G, bool positive_phase)
       iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft);
     } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
       iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+    } else if (batch_size_ == grids_->Nz) {
+      iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
     }
   } else { // if reverse, will be size of G grid
     iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);

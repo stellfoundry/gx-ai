@@ -5,6 +5,7 @@
 #define GBX_single <<< dGx_single, dBx_single >>>
 #define GBX_ntft <<<dGx_ntft, dBx_ntft >>>
 #define GBX_single_ntft <<<dGx_single_ntft, dBx_single_ntft>>>
+#define GBPhi_ntft <<<dGphi_ntft, dBphi_ntft>>>
 
 //===========================================
 // Nonlinear_GK
@@ -19,7 +20,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
   dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
-  iKxJ0phi   = nullptr;  iKxG       = nullptr;  iKxJ0apar   = nullptr;  iKxG_single = nullptr;
+  iKxJ0phi   = nullptr;  iKxG       = nullptr;  iKxJ0apar   = nullptr;  iKxG_single = nullptr; iKxphi = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -56,8 +57,9 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   if (pars_->nonTwist) {
     checkCuda(cudaMalloc(&iKxJ0phi, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&iKxG,     sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
+    checkCuda(cudaMalloc(&iKxphi,      sizeof(cuComplex)*grids_->NxNycNz));
     if (pars_->fapar > 0.) {
-      checkCuda(cudaMalloc(&iKxJ0apar, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+      checkCuda(cudaMalloc(&iKxJ0apar,   sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
       checkCuda(cudaMalloc(&iKxG_single, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
     }
   }
@@ -112,6 +114,9 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
 
+  dBphi_ntft = dim3(nbx, 1, 1);
+  dGphi_ntft = dim3(ngx, 1, 1);
+
   cfl_x_inv = (float) grids_->Nx/2 / (pars_->cfl * pars_->x0);
   cfl_y_inv = (float) grids_->Ny/2 / (pars_->cfl * pars_->y0); 
 //  cfl_x_inv = (float) grids_->Nx / (pars_->cfl * 2 * M_PI * pars_->x0);
@@ -148,6 +153,7 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( iKxG        ) cudaFree ( iKxG        );
   if ( iKxJ0apar   ) cudaFree ( iKxJ0apar   );
   if ( iKxG_single ) cudaFree ( iKxG_single );
+  if ( iKxphi      ) cudaFree ( iKxphi      );
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)
@@ -304,7 +310,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 	grad_perp_G_single -> C2R(iKxG_single, dG);
 	grad_perp_G_single -> phase_mult_ntft(dG);
       } else {
-      grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
+        grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
       }
       laguerre_single    -> transformToGrid(dG, dg_dx);
   
@@ -326,7 +332,14 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   float vpar_max = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
   float muB_max = grids_->muB_max*pars_->tzmax; 
 
+  
+  //if (pars_->nonTwist) {
+  //  iKxphitoGrid GBPhi_ntft (iKxphi, f->phi, grids_->iKx);
+  //  grad_perp_f -> C2R(iKxphi, dphi);
+  //  grad_perp_f -> phase_mult_ntft(dphi);
+  //} else {
   grad_perp_f -> dxC2R(f->phi, dphi); 
+  //}
   abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
     grad_perp_f -> dxC2R(f->apar, dchi); 
@@ -342,6 +355,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
   grad_perp_f -> dyC2R(f->phi, dphi);  
+  //if (pars_->nonTwist) grad_perp_f ->phase_mult_ntft(dphi);
   abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
   if(pars_->fapar > 0.0) {
     grad_perp_f -> dyC2R(f->apar, dchi); 

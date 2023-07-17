@@ -11,6 +11,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
   ikxLinked    = nullptr;  ikyLinked    = nullptr;
   kzLinked     = nullptr;  G_linked     = nullptr;
   dG           = nullptr;  dB           = nullptr;
+  nExtra       = nullptr;
  
   zft_plan_forward           = nullptr;
   zft_plan_inverse           = nullptr;
@@ -40,8 +41,9 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
     
   nChains = (int*) malloc(sizeof(int)*nClasses);
   nLinks = (int*) malloc(sizeof(int)*nClasses); //this is number of grid points, not 2pi segments
+  nExtra = (int*) malloc(sizeof(int)*nClasses); // this is used when chains are extremely long (>3000 grid points), cut off nExtra grid points to make nLinks integer multiple of nz for fft efficiency
 
-  get_nChains_nLinks_ntft(mode_size, nLinks, nChains, nClasses, nakx, naky, mode);
+  get_nChains_nLinks_ntft(mode_size, nLinks, nChains, nExtra, nClasses, nakx, naky, mode, nz);
   
   // ikxLinked for NTFT stores both ikx and idz via combined index
   ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses); 
@@ -52,7 +54,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
     ikyLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
   }
 
-  kFill_ntft(nClasses, nChains, nLinks, ikyLinked_h, ikxLinked_h, naky, nakx, jtwist, nz, mode, mode_size_ref, mode_nums, nx, grids_->m0_h, grids_->Nyc);
+  kFill_ntft(nClasses, nChains, nLinks, nExtra, ikyLinked_h, ikxLinked_h, naky, nakx, jtwist, nz, mode, mode_size_ref, mode_nums, nx, grids_->m0_h, grids_->Nyc);
 
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
@@ -77,7 +79,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
 
   //  printf("nClasses = %d\n", nClasses);
   for(int c=0; c<nClasses; c++) {
-    //    printf("\tClass %d: nChains = %d, nLinks = %d\n", c, nChains[c], nLinks[c]);
+        printf("\tClass %d: nChains = %d, nLinks = %d\n", c, nChains[c], nLinks[c]);
 
     // The NTFT treats nLinks as the number of grid points per chain because it is not always a
     // a multiple of Nz, so this section is the same as the linked version without multiplying by Nz
@@ -393,23 +395,25 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
 	 // add one to the mode length corresponding to that grid point, this is analagous to n_k
 	 mode_size[mode_nums[idy + naky * (idx + nakx * idz)]-1]++;
        	 mode_size_ref[mode_nums[idy + naky * (idx + nakx * idz)]-1]++; //should be identical arrays
-	 //printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
+	 printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
        }
-       //printf("\n");
+       printf("\n");
     }
-    //printf(" \n\n\n\n");
+    printf(" \n\n\n\n");
   }
   qsort(mode_size, mode, sizeof(int), compare_ntft); //sort mode_size into increasing order
   // count how many different classes
   int nClasses = 1;
   for(int k=0; k<mode-1; k++){
-    if(mode_size[k] != mode_size[k+1]) {
+    if(mode_size[k] != mode_size[k+1] && mode_size[k] <= 3000) {
+      nClasses++;
+    } else if (mode_size[k] > 3000 && (mode_size[k] / nz) != (mode_size[k+1] / nz) ) { // need this condition in case we cut down chains and they end up being the same length
       nClasses++;
     }
   }
   return nClasses;
 }
-void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int *nChains, int nClasses, int nakx, int naky, int mode) // JMH
+void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int *nChains, int *nExtra, int nClasses, int nakx, int naky, int mode, int nz) // JMH
 {
   // this function fills nLinks and nChains arrays for each class (where a class represents a ballooning mode of different size)
   // nLinks[c] = number of GRID POINTS (not 2pi segments) in a ballooning mode of class c
@@ -420,11 +424,16 @@ void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int 
   }
   int c=0;
   for(int k=1; k<mode; k++) {
-    if(mode_size[k] == mode_size[k-1]) {
+    if((mode_size[k] == mode_size[k-1]) || (mode_size[k] > 3000 && (mode_size[k] / nz) == (mode_size[k-1] / nz))) {
       nChains[c]++;
     } else {
-      //note that here, nLinks[c] represents # of grid points, not segments
       nLinks[c] = mode_size[k-1];
+      // Because NTFT doesn't require multiple of nz grid points per chain, nLinks can get messy in high resolution scans (large non-prime factors). 
+      // This makes long chains (more than ~3000 grid points) a multiple of nz by cutting off the highest kperp grid points when we do kFill below
+      if (nLinks[c] > 3000) { 
+        nExtra[c] = nLinks[c] % nz;
+	nLinks[c] = nLinks[c] - nExtra[c];
+      }
 
      // consider adding a warning for nLinks / nz too low? Need to find out a good way fo quantifying this,
      // but NTFT will not converge when there are too few grid points. This gets tricky because with nonmonotonic
@@ -432,13 +441,17 @@ void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int 
      // the NTFT will still converge. Possibly add the total number of grid points for nLinks / nz less than some value
      // and make sure that the majority of the grid is larger modes
 
-//      printf("nLinks(%d) = %d, nChains(%d) = %d \n", c, nLinks[c], c, nChains[c]);
       c++;
     }
   }
   nLinks[nClasses-1] = mode_size[mode-1];
+  if (nLinks[nClasses-1] > 3000) {
+    nExtra[nClasses-1] = nLinks[nClasses-1] % nz;
+    nLinks[nClasses-1] = nLinks[nClasses-1] - nExtra[nClasses-1];
+  }
 }
-void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int **ikyNTFT, int **ikxdzNTFT, int naky, int nakx, int jtwist, int nz, int mode, int *mode_size_ref, int *mode_nums, int nx, int* m0, int nyc) // JMH
+
+void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *nExtra, int **ikyNTFT, int **ikxdzNTFT, int naky, int nakx, int jtwist, int nz, int mode, int *mode_size_ref, int *mode_nums, int nx, int* m0, int nyc) // JMH
 {
  
   // this function fills the ky and kx index arrays corresponding to each class c
@@ -447,6 +460,7 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
   int nshift = nx - nakx;
   int n, p, idy, idx, idx0, idz;
   int idz_prime, idx_constant, idx_prime, idz_start; 
+  int extraLinkCounter;
   for(int ic=0; ic<nClasses; ic++) {
     n = -1; //keeps track of number of chains with same nLinks for indexing purposes
     for(int i=0; i<mode; i++) { 
@@ -455,7 +469,7 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
 	n++; //chain number index
 	p=0; //grid point number in chain index
         for(int idy=0; idy<naky; idy++) {
-          if (idy == 0) { // special case for zonal mode, I thinkk idy = 0 is always zonal
+          if (idy == 0) { // special case for zonal mode
             for(int idx=0; idx<nakx; idx++) {
               if (mode_nums[idy + naky * (idx + nakx * 0)] == i + 1) {
 		idx0 = calc_idx0(idx, nshift, nakx);
@@ -469,8 +483,9 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
 	  } else {
             for(int idx=0; idx<nakx; idx++) {
               for(int idz=0; idz<nz; idz++) {
-                if (mode_nums[idy + naky * (idx + nakx * idz)] == i+1) { //if you find a grid point assigned to the mode number you're looking for
+                if (mode_nums[idy + naky * (idx + nakx * idz)] == i + 1) { //if you find a grid point assigned to the mode number you're looking for
       
+		  extraLinkCounter = 0; // used to cut down long chains by nExtra[ic] grid points	
                   // find the start of the mode
                   idz_start = idz;
                   idx_constant = idx + m0[idy + nyc * idz];
@@ -487,10 +502,14 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
   	          idz_prime = idz_start;
               	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
   	            idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
-		    idx0 = calc_idx0(idx_prime, nshift, nakx);
-                    ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
-                    ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
-                    p++;
+		    if (extraLinkCounter <= nExtra[ic]/2) { //only fill the k grids if we're not cutting off these points, nExtra[ic]/2 on each side
+		      extraLinkCounter++;
+		    } else {	      
+		      idx0 = calc_idx0(idx_prime, nshift, nakx);
+                      ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
+                      ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
+                      p++;
+		    }
                     if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
   	              idx_constant = idx_constant - jtwist * idy;
   	      	      idz_prime = 0;
@@ -576,6 +595,7 @@ void GradParallelNTFT::set_callbacks()
 
   for(int c=0; c<nClasses; c++) {
     // set up callback functions
+    printf("class = %d \n", c);
     checkCuda(cufftXtSetCallback(    zft_plan_forward[c],
 		       (void**)   &zfts_LinkedNTFT_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
 
@@ -589,6 +609,7 @@ void GradParallelNTFT::set_callbacks()
 		       (void**) &abs_kzLinked_callbackPtr_h, CUFFT_CB_ST_COMPLEX, (void**)&kzLinked[c]));
 
   }
+  printf("I made it out\n");
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 }
