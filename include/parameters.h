@@ -157,6 +157,7 @@ class Parameters {
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
+  float zero_shat_threshold;
 
   // parameters for KREHM system
   bool krehm;

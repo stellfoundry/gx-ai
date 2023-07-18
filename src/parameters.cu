@@ -88,6 +88,7 @@ void Parameters::get_nml_vars(char* filename)
   // "fix aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
+  zero_shat_threshold = toml::find_or <float>   (tnml, "zero_shat_threshold", 1e-5);
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
   
@@ -1628,7 +1629,7 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       printf(ANSI_COLOR_RESET);
     }
   }
-  if (abs(shat) < 1e-5) {
+  if (abs(shat) < zero_shat_threshold) {
     zero_shat = true;
     boundary_option_periodic = true;
   }
