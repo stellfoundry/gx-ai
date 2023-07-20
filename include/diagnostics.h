@@ -59,10 +59,12 @@ private:
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
   NetCDF       * ncdf_         ;
+  NetCDF       * ncdf_big_         ;
   Reservoir    * rc            ;
   AllSpectraCalcs * allSpectra_;
 
   float * tmpf;
+  cuComplex * tmpC;
   float * tmpG;
   float *P2s;
   float *G2s;
@@ -92,8 +94,8 @@ private:
 
   vector<unique_ptr<SpectraDiagnostic>> spectraDiagnosticList;
   GrowthRateDiagnostic *growthRateDiagnostic;
-  EigenfunctionDiagnostic *eigenfunctionDiagnostic;
-  //MomentsDiagnostic *momentsDiagnostic;
+  vector<unique_ptr<MomentsDiagnostic>> momentsDiagnosticList;
+  FieldsDiagnostic *fieldsDiagnostic;
 };
 
 class Diagnostics_KREHM : public Diagnostics {

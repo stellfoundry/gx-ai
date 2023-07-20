@@ -21,8 +21,10 @@ using namespace std;
 // for example, |Phi|**2 is a diagnostic quantity that 
 // can be summed over various indices to get
 // e.g. |Phi|**2(kx), |Phi|**2(ky), etc. 
+// the output is real-valued
 class SpectraDiagnostic {
  public:
+  SpectraDiagnostic::SpectraDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
   ~SpectraDiagnostic() {};
   virtual void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf) = 0;
  protected:
@@ -41,6 +43,7 @@ class SpectraDiagnostic {
   Grids* grids_;
   Geometry* geo_;
   NetCDF* ncdf_;
+  string description = "";
 };
 
 // The following classes each define a particular diagnostic quantity
@@ -52,10 +55,24 @@ class Phi2Diagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// |Apar|**2
+class Apar2Diagnostic : public SpectraDiagnostic {
+ public:
+  Apar2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // Wphi = (1-Gamma0(b_s))|Phi|**2
 class WphiDiagnostic : public SpectraDiagnostic {
  public:
   WphiDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+// Wapar = |k_perp Apar|**2
+class WaparDiagnostic : public SpectraDiagnostic {
+ public:
+  WaparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
@@ -73,6 +90,12 @@ class HeatFluxDiagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+class HeatFluxESDiagnostic : public SpectraDiagnostic {
+ public:
+  HeatFluxESDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // ParticleFlux (Gamma)
 class ParticleFluxDiagnostic : public SpectraDiagnostic {
  public:
@@ -84,8 +107,7 @@ class GrowthRateDiagnostic {
  public:
   GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
   ~GrowthRateDiagnostic();
-  void calculate(Fields* f, Fields* f_old, double dt);
-  void write();
+  void calculate_and_write(Fields* f, Fields* f_old, double dt);
  private:
   void dealias_and_reorder(cuComplex* fold, float* fnew);
 
@@ -107,10 +129,10 @@ class GrowthRateDiagnostic {
   float *cpu;
 };
 
-class EigenfunctionDiagnostic {
+class FieldsDiagnostic {
  public:
-  EigenfunctionDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
-  ~EigenfunctionDiagnostic();
+  FieldsDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf);
+  ~FieldsDiagnostic();
   void calculate_and_write(Fields* f);
  private:
   void dealias_and_reorder(cuComplex* fold, float* fnew);
@@ -133,3 +155,85 @@ class EigenfunctionDiagnostic {
   float *cpu;
 };
 
+class MomentsDiagnostic {
+ public:
+  MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, string varname);
+  ~MomentsDiagnostic() {
+    free(f_h);
+    free(cpu);
+  }
+  void calculate_and_write(MomentsG** G, Fields* f, cuComplex* tmp);
+ protected:
+  virtual void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d) = 0;
+  void transform(cuComplex* mom, cuComplex* out);
+  void dealias_and_reorder(cuComplex* fold, float* fnew);
+
+  string tag;
+  int ndim, N, Nwrite;
+  int dims[6];
+  size_t count[6] = {0};
+  size_t start[6] = {0};
+  size_t dummy_count[6] = {0};
+  size_t dummy_start[6] = {0};
+  int varid;
+  string varname_;
+
+  int nc_group, nc_type;
+  dim3 dG, dB;
+  Parameters* pars_;
+  Grids* grids_;
+  Geometry* geo_;
+  NetCDF* ncdf_;
+
+  cuComplex *f_h;
+  float *cpu;
+  bool skipWrite;
+};
+
+class DensityDiagnostic : public MomentsDiagnostic {
+ public:
+  DensityDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class UparDiagnostic : public MomentsDiagnostic {
+ public:
+  UparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class TparDiagnostic : public MomentsDiagnostic {
+ public:
+  TparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class TperpDiagnostic : public MomentsDiagnostic {
+ public:
+  TperpDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class ParticleDensityDiagnostic : public MomentsDiagnostic {
+ public:
+  ParticleDensityDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class ParticleUparDiagnostic : public MomentsDiagnostic {
+ public:
+  ParticleUparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class ParticleUperpDiagnostic : public MomentsDiagnostic {
+ public:
+  ParticleUperpDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};
+
+class ParticleTempDiagnostic : public MomentsDiagnostic {
+ public:
+  ParticleTempDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
+  void calculate(MomentsG** G, Fields* f, cuComplex* f_h, cuComplex* tmp_d);
+};

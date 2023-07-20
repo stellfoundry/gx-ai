@@ -11,7 +11,7 @@ def heat_flux(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref=
     # read data from file
     t = data.groups['Grids'].variables['time'][:]
     try:
-        q = data.groups['Diagnostics'].groups['Spectra'].variables['HeatFlux_st'][:,ispec]
+        q = data.groups['Diagnostics'].variables['HeatFlux_st'][:,ispec]
     except:
         print('Error: heat flux data was not written. Make sure to use \'fluxes = true\' in the input file.')
     species_type = data.groups['Inputs'].groups['Species'].variables['species_type'][ispec]

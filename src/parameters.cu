@@ -221,91 +221,13 @@ void Parameters::get_nml_vars(char* filename)
 
   nwrite  = toml::find_or <int>   (tnml, "nwrite", (long)  nwrite_time    );
   navg    = toml::find_or <int>   (tnml, "navg",   (long)    navg_time    );
+  nwrite_big  = toml::find_or <int>   (tnml, "nwrite_big", (long)  nwrite*100 );
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
   write_omega       = toml::find_or <bool> (tnml, "omega",          false );
   write_free_energy = toml::find_or <bool> (tnml, "free_energy",    true  ); if (ks) write_free_energy = false;
   write_fluxes      = toml::find_or <bool> (tnml, "fluxes",         false );
-  write_moms        = toml::find_or <bool> (tnml, "moms",           false );
-  write_rh          = toml::find_or <bool> (tnml, "rh",             false );
-  write_pzt         = toml::find_or <bool> (tnml, "pzt",            false );
+  write_moms        = toml::find_or <bool> (tnml, "moments",           false );
   write_fields      = toml::find_or <bool> (tnml, "fields",         false );
-  write_eigenfuncs  = toml::find_or <bool> (tnml, "eigenfunctions", false );
-  
-  write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
-
-  if (write_all_avgz) {
-    write_avg_zvE = write_avg_zkxvEy = write_avg_zkden = true;
-    write_avg_zkUpar = write_avg_zkTpar = write_avg_zkqpar = write_avg_zkTperp = true;
-  } else {
-    write_avg_zvE     = toml::find_or <bool> (tnml, "avg_zvE",     false );
-    write_avg_zkxvEy  = toml::find_or <bool> (tnml, "avg_zkxvEy",  false );
-    write_avg_zkden   = toml::find_or <bool> (tnml, "avg_zkden",   false );
-    write_avg_zkUpar  = toml::find_or <bool> (tnml, "avg_zkUpar",  false );
-    write_avg_zkTpar  = toml::find_or <bool> (tnml, "avg_zkTpar",  false );
-    write_avg_zkTperp = toml::find_or <bool> (tnml, "avg_zkTperp", false );
-    write_avg_zkqpar  = toml::find_or <bool> (tnml, "avg_zkqpar",  false );
-  }
-  if (nm_in < 2) write_avg_zkUpar = false;
-  if (nm_in < 3) write_avg_zkTpar = false;
-  if (nm_in < 4) write_avg_zkqpar = false;
-  if (nl_in < 2) write_avg_zkTperp = false;
-
-  write_all_kmom    = toml::find_or <bool> (tnml, "all_zonal", false );
-
-  if (write_all_kmom) {
-    write_vEy = write_kxvEy = write_kden = write_kUpar = true;
-    write_kTpar = write_kTperp = write_kqpar = true;
-  } else { 
-    write_vEy     = toml::find_or <bool> (tnml, "vEy",    false );
-    write_kxvEy   = toml::find_or <bool> (tnml, "kxvEy",  false );
-    write_kden    = toml::find_or <bool> (tnml, "kden",   false );
-    write_kUpar   = toml::find_or <bool> (tnml, "kUpar",  false );
-    write_kTpar   = toml::find_or <bool> (tnml, "kTpar",  false );
-    write_kTperp  = toml::find_or <bool> (tnml, "kTperp", false );
-    write_kqpar   = toml::find_or <bool> (tnml, "kqpar",  false );
-  }
-  if (nm_in < 2) write_kUpar = false;
-  if (nm_in < 3) write_kTpar = false;
-  if (nm_in < 4) write_kqpar = false;
-  if (nl_in < 2) write_kTperp = false;
-  
-  write_all_xymom   = toml::find_or <bool> (tnml, "all_non_zonal", false );
-
-  if (write_all_xymom) {
-    write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyPhi = write_xyApar = write_xyden = write_xyUpar = write_xyqpar = true;
-  } else {
-    write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
-    write_xyApar   = toml::find_or <bool> (tnml, "xyApar",   false );
-    write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
-    write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
-    write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
-    write_xyden    = toml::find_or <bool> (tnml, "xyden",    false );
-    write_xyUpar   = toml::find_or <bool> (tnml, "xyUpar",   false );
-    write_xyTpar   = toml::find_or <bool> (tnml, "xyTpar",   false );
-    write_xyqpar   = toml::find_or <bool> (tnml, "xyqpar",   false );
-    write_xyTperp  = toml::find_or <bool> (tnml, "xyTperp",  false );
-  }
-  if (nm_in < 2) write_xyUpar = false;
-  if (nm_in < 3) write_xyTpar = false;
-  if (nm_in < 4) write_xyqpar = false;
-  if (nl_in < 2) write_xyTperp = false;
-  
-  write_phi         = toml::find_or <bool> (tnml, "phi",         false );
-  write_phi_kpar    = toml::find_or <bool> (tnml, "phi_kpar",    false );
-  write_h_spectrum  = toml::find_or <bool> (tnml, "h_spectrum",  false );
-  write_l_spectrum  = toml::find_or <bool> (tnml, "l_spectrum",  false );
-  write_lh_spectrum = toml::find_or <bool> (tnml, "lh_spectrum", false );
-
-  write_kmom  = (write_vEy   || write_kxvEy       || write_kden        || write_kUpar);
-  write_kmom  = (write_kmom  || write_kTpar       || write_kTperp      || write_kqpar);
-
-  write_kmom  = (write_kmom  || write_avg_zvE    || write_avg_zkxvEy || write_avg_zkTperp);
-  write_kmom  = (write_kmom  || write_avg_zkden  || write_avg_zkUpar || write_avg_zkTpar);
-  write_kmom  = (write_kmom  || write_avg_zkqpar );
-  
-  write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi || write_xyApar);
   
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -556,6 +478,7 @@ void Parameters::get_nml_vars(char* filename)
     fbpar = 0.0;
   }
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
+  coll_conservation = toml::find_or <bool> (tnml, "coll_conservation", true);
 
   gx = (!ks && !vp && !krehm);
   assert (!(ks && vp));
@@ -746,6 +669,7 @@ void Parameters::get_nml_vars(char* filename)
   else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
   else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
   else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
+  else if( init_field == "all"  ) { initf = inits::all  ; }
   
   if     ( stir_field == "density") { stirf = stirs::density; }
   else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }

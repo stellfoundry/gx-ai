@@ -73,7 +73,9 @@
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 20                     # write diagnostics every nwrite timesteps
- fluxes = true                   # compute and write heat and particle fluxes
- free_energy = true
+ nwrite = 500                   # write diagnostics every nwrite timesteps
+ free_energy = true             # compute and write free energy spectra (Wg, Wphi, Phi**2)
+ fluxes = true                  # compute and write flux spectra (Q, Gamma)
+ fields = true                  # write fields on the grid
+ moments = true                 # write moments on the grid
 

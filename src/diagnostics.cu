@@ -9,56 +9,72 @@
 #define loop_y <<< dgp, dbp >>> 
 
 Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
-  geo_(geo), fields_old(nullptr)
+  geo_(geo), fields_old(nullptr), ncdf_(nullptr), ncdf_big_(nullptr)
 {
   pars_ = pars;
   grids_ = grids;
   
-  ncdf_ = new NetCDF(pars_, grids_, geo_); 
+  ncdf_ = new NetCDF(pars_, grids_, geo_, ".out.nc"); 
+  // write input parameters to netcdf
+  pars->store_ncdf(ncdf_->fileid, ncdf_->nc_dims);
+
+  if (pars_->write_fields || pars_->write_moms) {
+    ncdf_big_ = new NetCDF(pars_, grids_, geo_, ".big.nc"); 
+  }
 
   // set up spectra calculators
   if(pars_->write_free_energy || pars_->write_fluxes) {
     allSpectra_ = new AllSpectraCalcs(grids_, ncdf_->nc_dims);
-    cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
     cudaMalloc (&tmpG, sizeof(float) * grids_->NxNycNz * grids_->Nmoms * grids_->Nspecies); 
+    cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
+  }
+  if(pars_->write_moms) {
+    cudaMalloc (&tmpC, sizeof(cuComplex) * grids_->NxNycNz * grids_->Nspecies);
   }
 
   // initialize energy spectra diagnostics
+  spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   if(pars_->write_free_energy) {
     spectraDiagnosticList.push_back(std::make_unique<WgDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<WphiDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
-    spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<WaparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<Apar2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   }
 
   // initialize flux spectra diagnostics
   if(pars_->write_fluxes) {
     spectraDiagnosticList.push_back(std::make_unique<HeatFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<HeatFluxESDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    //spectraDiagnosticList.push_back(std::make_unique<HeatFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    //spectraDiagnosticList.push_back(std::make_unique<HeatFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<ParticleFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxESDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   }
   
   // initialize growth rate diagnostic
   if(pars_->write_omega) {
     growthRateDiagnostic = new GrowthRateDiagnostic(pars_, grids_, ncdf_);
+    fields_old = new Fields(pars_, grids_);       
   }
 
-  // initialize eigenfunction diagnostics
-  if(pars_->write_eigenfuncs) {
-    //eigenfunctionDiagnosticList.push_back(std::make_unique<PhiEigenfunction>(pars_, grids_, ncdf_));
-    //eigenfunctionDiagnosticList.push_back(std::make_unique<AparEigenfunction>(pars_, grids_, ncdf_));
-    eigenfunctionDiagnostic = new EigenfunctionDiagnostic(pars_, grids_, ncdf_);
+  // initialize fields diagnostics
+  if(pars_->write_fields) {
+    fieldsDiagnostic = new FieldsDiagnostic(pars_, grids_, ncdf_big_);
   }
 
-//  // set up fields diagnostics
-//  if(pars_->write_fields) {
-//    FieldsDiagnostic *fieldsDiagnostic = new FieldsDiagnostic(pars_, geo_, ncdf_);
-//  }
-//
-//  // set up moments diagnostics
-//  if(pars_->write_moments) {
-//    momentsDiagnostic = new MomentsDiagnostic(pars_, geo_, ncdf_);
-//  }
-
-  fields_old = new Fields(pars_, grids_);       
+  // set up moments diagnostics
+  if(pars_->write_moms) {
+    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<TperpDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleDensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleUparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleUperpDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleTempDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+  }
 
   // set up stop file
   sprintf(stopfilename_, "%s.stop", pars_->run_name);
@@ -66,18 +82,27 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
 Diagnostics_GK::~Diagnostics_GK()
 {
-  if(pars_->write_omega) delete growthRateDiagnostic;
+  if(pars_->write_omega) {
+    delete growthRateDiagnostic;
+    delete fields_old;
+  }
   if(pars_->write_free_energy || pars_->write_fluxes) {
     spectraDiagnosticList.clear();
     delete allSpectra_;
   }
+  if(pars_->write_moms) {
+    momentsDiagnosticList.clear();
+  }
+
+  if(ncdf_) delete ncdf_;
+  if(ncdf_big_) delete ncdf_big_;
 }
 
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
 {
   bool stop = false;
-  if(pars_->write_omega && counter >= 0) {
-    growthRateDiagnostic->calculate(fields, fields_old, dt);
+  if(pars_->write_omega && counter % pars_->nwrite == 0) {
+    fields_old->copyPhiFrom(fields);
   }
 
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
@@ -86,21 +111,32 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
     }
 
-    if(pars_->write_omega) growthRateDiagnostic->write();
-
-    //if(write_fields) {
-    //  for(int i=0; i<eigenfunctionDiagnosticList.size(); i++) {
-    //    eigenfunctionDiagnosticList[i].calculate_and_write(G, fields, tmpG, tmpFields);
-    //  }
-    //}
+    if(pars_->write_omega) {
+      growthRateDiagnostic->calculate_and_write(fields, fields_old, dt);
+    }
 
     ncdf_->nc_grids->write_time(time);
     ncdf_->sync();
 
-    if(grids_->iproc == 0) {
+    if(grids_->iproc_m == 0) {
       printf("\n");
-      fflush(NULL);
     }
+    fflush(NULL);
+  }
+
+  // write out full grid (big) diagnostics less frequently
+  if(counter % pars_->nwrite_big == 1 || time > pars_->t_max) {
+    if(pars_->write_fields) {
+      fieldsDiagnostic->calculate_and_write(fields);
+    }
+
+    for(int i=0; i<momentsDiagnosticList.size(); i++) {
+      momentsDiagnosticList[i]->calculate_and_write(G, fields, tmpC);
+    }
+
+    ncdf_big_->nc_grids->write_time(time);
+    ncdf_big_->sync();
+  }
 
 //  int retval;
 //  int nw;
@@ -322,7 +358,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 //    }
 //    fields->rescale(phi_max);
 //  }
-  }
+//  }
   
   // check to see if we should stop simulation
   stop = checkstop();
@@ -358,11 +394,6 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
 //  }
 }
 
-void Diagnostics_GK::print_omg(cuComplex *W)
-{
-  CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
-  if(grids_->iproc==0) print_growth_rates_to_screen(tmp_omg_h);
-}
 
   // For each kx, z, l and m, sum the moments of G**2 + Phi**2 (1-Gamma_0) with weights:
   //

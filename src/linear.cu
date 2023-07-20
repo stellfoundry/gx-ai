@@ -158,13 +158,15 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
-  if (pars_->collisions)  conservation_terms <<< nb1, nt1 >>>
+  if (pars_->collisions && pars_->coll_conservation)  conservation_terms <<< nb1, nt1 >>>
 			    (upar_bar, uperp_bar, t_bar, G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, *(G->species));
 
-  // Free-streaming requires parallel FFTs, so do that first
   cudaStreamSynchronize(G->syncStream);
-  streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
-  grad_par->dz(GRhs);
+  // Free-streaming requires parallel FFTs, so do that first
+  if(grids_->Nz>1) {
+    streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
+    grad_par->dz(GRhs);
+  }
   
   // calculate most of the RHS
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, maxSharedSize);
@@ -228,8 +230,8 @@ void Linear_GK::get_max_frequency(double *omega_max)
   }
   omega_max[1] = pars_->tzmax*grids_->ky_max*
     (grids_->vpar_max*grids_->vpar_max*geo_->cvdrift_max + grids_->muB_max*geo_->gbdrift_max);
-  if(pars_->linear && pars_->etamax < 1e5) {omega_max[1] = (omega_max[1] + grids_->ky_max*
-	     (1 + pars_->etamax*(grids_->vpar_max*grids_->vpar_max/2 + grids_->muB_max - 1.5)));}
+//  if(pars_->linear && pars_->etamax < 1e5) {omega_max[1] = (omega_max[1] + grids_->ky_max*
+//	     (1 + pars_->etamax*(grids_->vpar_max*grids_->vpar_max/2 + grids_->muB_max - 1.5)));}
   omega_max[2] = pars_->vtmax*grids_->vpar_max*grids_->kz_max*geo_->gradpar;
   
 }

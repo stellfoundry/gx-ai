@@ -1,13 +1,13 @@
 #include "ncdf.h"
 
-NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo) :
+NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo, string suffix) :
   pars_(pars), grids_(grids), geo_(geo)
 {
   // create netcdf file
   int retval;
   char strb[263];
   strcpy(strb, pars_->run_name); 
-  strcat(strb, ".nc");
+  strcat(strb, suffix.c_str()); // suffix = ".out.nc" by default
   if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &fileid)) ERR(retval);
 
   // get netcdf handles for the dimensions
@@ -18,9 +18,6 @@ NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo) :
 
   // set-up and write geometry variables to netcdf
   nc_geo = new NcGeo(grids_, geo_, nc_dims, fileid);
-
-  // write input parameters to netcdf
-  pars->store_ncdf(fileid, nc_dims);
 
   nc_diagnostics = new NcDiagnostics(fileid);
 }

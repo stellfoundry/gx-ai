@@ -26,7 +26,7 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-enum class inits {density, upar, tpar, tperp, qpar, qperp};
+enum class inits {density, upar, tpar, tperp, qpar, qperp, all};
 enum class stirs {density, upar, tpar, tperp, qpar, qperp, ppar, pperp};
 enum class Tmethod {sspx2, sspx3, rk2, rk3, rk4, k10, g3, k2}; 
 enum class Closure {none, beer42, smithperp, smithpar};
@@ -112,7 +112,7 @@ class Parameters {
   int nczid, nzid, ncresid, ncbid;
   int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
-  int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
+  int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, nwrite_big, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, icovering;
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
@@ -206,7 +206,7 @@ class Parameters {
   bool Reservoir, ResFakeData, ResWrite, ResBatch;
   bool dealias_kz;
   bool hegna;  // bb6126 - hegna test
-  bool ei_colls;
+  bool ei_colls, coll_conservation;
   bool efit_eq, dfit_eq, gen_eq, ppl_eq, local_eq, idfit_eq, chs_eq, transp_eq, gs2d_eq;
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;

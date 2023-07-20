@@ -8,6 +8,9 @@
 #include "nca.h"
 #include "netcdf.h"
 #include "netcdf_par.h"
+#include <string>
+
+using namespace std;
 
 class NetCDF_ids {
 
@@ -183,7 +186,7 @@ class NcDiagnostics;
 
 class NetCDF {
  public:
-  NetCDF(Parameters* pars, Grids* grids, Geometry* geo = nullptr);
+  NetCDF(Parameters* pars, Grids* grids, Geometry* geo = nullptr, string suffix = ".out.nc");
   ~NetCDF();
 
   int fileid;
@@ -307,21 +310,7 @@ class NcDiagnostics {
     int retval;
     // create ncdf group id for Diagnostics
     if (retval = nc_def_grp(fileid, "Diagnostics", &diagnostics_id)) ERR(retval);
-
-    // create sub-group for Spectra diagnostics
-    if (retval = nc_def_grp(diagnostics_id, "Spectra", &spectra)) ERR(retval);
-
-    // create sub-group for Fields diagnostics
-    if (retval = nc_def_grp(diagnostics_id, "Fields", &fields)) ERR(retval);
-
-    // create sub-group for Moments diagnostics
-    if (retval = nc_def_grp(diagnostics_id, "Moments", &moments)) ERR(retval);
-
-    // create sub-group for Eigenfunction diagnostics
-    if (retval = nc_def_grp(diagnostics_id, "Eigenfunctions", &eigenfunctions)) ERR(retval);
   };
   ~NcDiagnostics() {};
   int diagnostics_id; // ncdf id for diagnostics group
-  // ncdf ids for diagnostics sub-groups
-  int spectra, fields, moments, eigenfunctions;
 };
