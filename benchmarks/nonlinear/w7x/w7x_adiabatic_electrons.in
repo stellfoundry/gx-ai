@@ -100,7 +100,7 @@ z                = true         # P(z) (summed over kx, ky)
 [Qspectra]                      # spectra of Q (heat flux)
 kx               = false
 ky               = true         # Q(ky) (summed over kx, z)
-kxky             = false
+kxky             = true
 z                = true         # Q(z) (summed over kx, ky)
 
 
