@@ -2582,13 +2582,13 @@ __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky
 	  float kp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 	  float df2 = df[idxyz].x*df[idxyz].x + df[idxyz].y*df[idxyz].y;
 
-	  s10[idz] += 2. * powf(ky[idy], 4) * df2; 
-	  s11[idz] += 2. * powf(kp2, 2)     * df2;
+	  s10[idz] += 2. * pow(ky[idy], 4) * df2; 
+	  s11[idz] += 2. * pow(kp2, 2)     * df2;
 	}
       }      
     }
-    s10[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s10[idz]));
-    s11[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s11[idz]));
+    s10[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s10[idz]));
+    s11[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s11[idz]));
   }
 }
 
@@ -2597,7 +2597,7 @@ __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, con
   for (int idx = 0; idx < nx; idx++) {
     s01[0] += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
   }
-  s01[0] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01[0]));
+  s01[0] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s01[0]));
 }
 
 __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
@@ -2619,9 +2619,9 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
 	  float kpmax2 = kxmax*kxmax + kymax*kymax;
 	  float kp2 = (kx[idx]*kx[idx] + ky[idy]*ky[idy])/kpmax2;
 	  
-	  float D10 = D_HB * powf(kx[idx]/kxmax, 4);
-	  float D01 = D_HB * powf(kx[idx]/kxmax, 4) * ky[idy]/kymax;
-	  float D11 = D_HB * powf(kp2, p_HB);
+	  float D10 = D_HB * pow(kx[idx]/kxmax, 4);
+	  float D01 = D_HB * pow(kx[idx]/kxmax, 4) * ky[idy]/kymax;
+	  float D11 = D_HB * pow(kp2, p_HB);
 	  
 	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01[0] * D01;
 	  RHS[ig] = RHS[ig] - sfac * G[ig];
