@@ -1,4 +1,5 @@
 #include "parameters.h"
+#include "ncdf.h"
 #include <netcdf.h>
 #include <netcdf_par.h>
 #include "toml.hpp"
@@ -221,91 +222,13 @@ void Parameters::get_nml_vars(char* filename)
 
   nwrite  = toml::find_or <int>   (tnml, "nwrite", (long)  nwrite_time    );
   navg    = toml::find_or <int>   (tnml, "navg",   (long)    navg_time    );
+  nwrite_big  = toml::find_or <int>   (tnml, "nwrite_big", (long)  nwrite*100 );
   fixed_amplitude   = toml::find_or <bool> (tnml, "fixed_amplitude", false);
   write_omega       = toml::find_or <bool> (tnml, "omega",          false );
   write_free_energy = toml::find_or <bool> (tnml, "free_energy",    true  ); if (ks) write_free_energy = false;
   write_fluxes      = toml::find_or <bool> (tnml, "fluxes",         false );
-  write_moms        = toml::find_or <bool> (tnml, "moms",           false );
-  write_rh          = toml::find_or <bool> (tnml, "rh",             false );
-  write_pzt         = toml::find_or <bool> (tnml, "pzt",            false );
+  write_moms        = toml::find_or <bool> (tnml, "moments",           false );
   write_fields      = toml::find_or <bool> (tnml, "fields",         false );
-  write_eigenfuncs  = toml::find_or <bool> (tnml, "eigenfunctions", false );
-  
-  write_all_avgz    = toml::find_or <bool> (tnml, "all_zonal_scalars", false);
-
-  if (write_all_avgz) {
-    write_avg_zvE = write_avg_zkxvEy = write_avg_zkden = true;
-    write_avg_zkUpar = write_avg_zkTpar = write_avg_zkqpar = write_avg_zkTperp = true;
-  } else {
-    write_avg_zvE     = toml::find_or <bool> (tnml, "avg_zvE",     false );
-    write_avg_zkxvEy  = toml::find_or <bool> (tnml, "avg_zkxvEy",  false );
-    write_avg_zkden   = toml::find_or <bool> (tnml, "avg_zkden",   false );
-    write_avg_zkUpar  = toml::find_or <bool> (tnml, "avg_zkUpar",  false );
-    write_avg_zkTpar  = toml::find_or <bool> (tnml, "avg_zkTpar",  false );
-    write_avg_zkTperp = toml::find_or <bool> (tnml, "avg_zkTperp", false );
-    write_avg_zkqpar  = toml::find_or <bool> (tnml, "avg_zkqpar",  false );
-  }
-  if (nm_in < 2) write_avg_zkUpar = false;
-  if (nm_in < 3) write_avg_zkTpar = false;
-  if (nm_in < 4) write_avg_zkqpar = false;
-  if (nl_in < 2) write_avg_zkTperp = false;
-
-  write_all_kmom    = toml::find_or <bool> (tnml, "all_zonal", false );
-
-  if (write_all_kmom) {
-    write_vEy = write_kxvEy = write_kden = write_kUpar = true;
-    write_kTpar = write_kTperp = write_kqpar = true;
-  } else { 
-    write_vEy     = toml::find_or <bool> (tnml, "vEy",    false );
-    write_kxvEy   = toml::find_or <bool> (tnml, "kxvEy",  false );
-    write_kden    = toml::find_or <bool> (tnml, "kden",   false );
-    write_kUpar   = toml::find_or <bool> (tnml, "kUpar",  false );
-    write_kTpar   = toml::find_or <bool> (tnml, "kTpar",  false );
-    write_kTperp  = toml::find_or <bool> (tnml, "kTperp", false );
-    write_kqpar   = toml::find_or <bool> (tnml, "kqpar",  false );
-  }
-  if (nm_in < 2) write_kUpar = false;
-  if (nm_in < 3) write_kTpar = false;
-  if (nm_in < 4) write_kqpar = false;
-  if (nl_in < 2) write_kTperp = false;
-  
-  write_all_xymom   = toml::find_or <bool> (tnml, "all_non_zonal", false );
-
-  if (write_all_xymom) {
-    write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyPhi = write_xyApar = write_xyden = write_xyUpar = write_xyqpar = true;
-  } else {
-    write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
-    write_xyApar   = toml::find_or <bool> (tnml, "xyApar",   false );
-    write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
-    write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
-    write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
-    write_xyden    = toml::find_or <bool> (tnml, "xyden",    false );
-    write_xyUpar   = toml::find_or <bool> (tnml, "xyUpar",   false );
-    write_xyTpar   = toml::find_or <bool> (tnml, "xyTpar",   false );
-    write_xyqpar   = toml::find_or <bool> (tnml, "xyqpar",   false );
-    write_xyTperp  = toml::find_or <bool> (tnml, "xyTperp",  false );
-  }
-  if (nm_in < 2) write_xyUpar = false;
-  if (nm_in < 3) write_xyTpar = false;
-  if (nm_in < 4) write_xyqpar = false;
-  if (nl_in < 2) write_xyTperp = false;
-  
-  write_phi         = toml::find_or <bool> (tnml, "phi",         false );
-  write_phi_kpar    = toml::find_or <bool> (tnml, "phi_kpar",    false );
-  write_h_spectrum  = toml::find_or <bool> (tnml, "h_spectrum",  false );
-  write_l_spectrum  = toml::find_or <bool> (tnml, "l_spectrum",  false );
-  write_lh_spectrum = toml::find_or <bool> (tnml, "lh_spectrum", false );
-
-  write_kmom  = (write_vEy   || write_kxvEy       || write_kden        || write_kUpar);
-  write_kmom  = (write_kmom  || write_kTpar       || write_kTperp      || write_kqpar);
-
-  write_kmom  = (write_kmom  || write_avg_zvE    || write_avg_zkxvEy || write_avg_zkTperp);
-  write_kmom  = (write_kmom  || write_avg_zkden  || write_avg_zkUpar || write_avg_zkTpar);
-  write_kmom  = (write_kmom  || write_avg_zkqpar );
-  
-  write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi || write_xyApar);
   
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -556,136 +479,108 @@ void Parameters::get_nml_vars(char* filename)
     fbpar = 0.0;
   }
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
-  
-  wspectra.resize(nw_spectra);
-  pspectra.resize(np_spectra);
-  aspectra.resize(na_spectra);
-  qspectra.resize(nq_spectra);
-  gamspectra.resize(ngam_spectra);
-  phi2spectra.resize(nphi2_spectra);
-
-  wspectra.assign(nw_spectra, 0);
-  pspectra.assign(np_spectra, 0);
-  aspectra.assign(na_spectra, 0);
-  qspectra.assign(nq_spectra, 0);
-  gamspectra.assign(ngam_spectra, 0);
-  phi2spectra.assign(nphi2_spectra, 0);
-
-  tnml = nml;
-  if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
-
-  wspectra [WSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_l]       = (toml::find_or <bool> (tnml, "laguerre",         false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_m]       = (toml::find_or <bool> (tnml, "hermite",          false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_lm]      = (toml::find_or <bool> (tnml, "hermite_laguerre", false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  wspectra [WSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Pspectra")) tnml = toml::find (nml, "Pspectra");  
-
-  pspectra [PSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Qspectra")) tnml = toml::find (nml, "Qspectra");  
-
-  qspectra [QSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Gamspectra")) tnml = toml::find (nml, "Gamspectra");  
-
-  gamspectra [GamSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  gamspectra [GamSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
-
-  tnml = nml;
-  if (nml.contains("Phi2spectra")) tnml = toml::find (nml, "Phi2spectra");  
-
-  phi2spectra [PHI2SPECTRA_t]       = (toml::find_or <bool> (tnml, "time",             true)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               true)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               true)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                true)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
-  phi2spectra [PHI2SPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             true)) == true ? 1 : 0;
-
-  // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
-  if (!all_kinetic) {
-    aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
-    aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
-    aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
-    aspectra [ ASPECTRA_kz      ] = wspectra [ WSPECTRA_kz      ];
-    aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
-    aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
-    aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
-  }
-  // for backwards compatibility
-  if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
-  if (write_h_spectrum)  wspectra[WSPECTRA_m] = 1;
-  if (write_lh_spectrum) wspectra[WSPECTRA_lm] = 1;
-  
-  // Some diagnostics are not yet available:
-  wspectra[ WSPECTRA_kperp] = 0;
-  pspectra[ PSPECTRA_kperp] = 0;
-  aspectra[ ASPECTRA_kperp] = 0;
-  qspectra[ QSPECTRA_kperp] = 0;
-  gamspectra[ GamSPECTRA_kperp] = 0;
-  phi2spectra[ PHI2SPECTRA_kperp] = 0;
-  
-  // If Wtot is requested, turn Ws, Ps, Phi2 on:
-  if (write_free_energy) {
-    wspectra[WSPECTRA_species] = 1;
-    pspectra[PSPECTRA_species] = 1;
-    if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
-  }
+  coll_conservation = toml::find_or <bool> (tnml, "coll_conservation", true);
 
   gx = (!ks && !vp && !krehm);
   assert (!(ks && vp));
   assert (ks || vp || gx || krehm);
-
-  int ksize = 0;
-  for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
-  for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
-  for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
-  for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
-  for (int k=0; k<gamspectra.size(); k++) ksize = max(ksize, gamspectra[k]);
-  for (int k=0; k<phi2spectra.size(); k++) ksize = max(ksize, phi2spectra[k]);
-
-  tnml = nml;
-  if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
-
-  diagnosing_pzt = write_pzt;
   
-  diagnosing_spectra = false;
-  if (ksize > 0) diagnosing_spectra = true;
-
-  diagnosing_kzspec = false;
-  if ((wspectra[ WSPECTRA_kz ] == 1) || (pspectra[ PSPECTRA_kz ] == 1) || (aspectra[ ASPECTRA_kz ] == 1)) {
-    diagnosing_kzspec = true;
-  }
-  
-  diagnosing_moments = false;
-  if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
+//  wspectra.resize(nw_spectra);
+//  pspectra.resize(np_spectra);
+//  aspectra.resize(na_spectra);
+//  qspectra.resize(nq_spectra);
+//
+//  wspectra.assign(nw_spectra, 0);
+//  pspectra.assign(np_spectra, 0);
+//  aspectra.assign(na_spectra, 0);
+//  qspectra.assign(nq_spectra, 0);
+//
+//  tnml = nml;
+//  if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
+//
+//  wspectra [WSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_l]       = (toml::find_or <bool> (tnml, "laguerre",         false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_m]       = (toml::find_or <bool> (tnml, "hermite",          false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_lm]      = (toml::find_or <bool> (tnml, "hermite_laguerre", false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  wspectra [WSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  tnml = nml;
+//  if (nml.contains("Pspectra")) tnml = toml::find (nml, "Pspectra");  
+//
+//  pspectra [PSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  pspectra [PSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  tnml = nml;
+//  if (nml.contains("Qspectra")) tnml = toml::find (nml, "Qspectra");  
+//
+//  qspectra [QSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+//  qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+//
+//  // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
+//  if (!all_kinetic) {
+//    aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
+//    aspectra [ ASPECTRA_kx      ] = wspectra [ WSPECTRA_kx      ];
+//    aspectra [ ASPECTRA_ky      ] = wspectra [ WSPECTRA_ky      ];
+//    aspectra [ ASPECTRA_kz      ] = wspectra [ WSPECTRA_kz      ];
+//    aspectra [ ASPECTRA_z       ] = wspectra [ WSPECTRA_z       ];
+//    aspectra [ ASPECTRA_kperp   ] = wspectra [ WSPECTRA_kperp   ];
+//    aspectra [ ASPECTRA_kxky    ] = wspectra [ WSPECTRA_kxky    ];
+//  }
+//  // for backwards compatibility
+//  if (write_l_spectrum)  wspectra[WSPECTRA_l] = 1;
+//  if (write_h_spectrum)  wspectra[WSPECTRA_m] = 1;
+//  if (write_lh_spectrum) wspectra[WSPECTRA_lm] = 1;
+//  
+//  // Some diagnostics are not yet available:
+//  wspectra[ WSPECTRA_kperp] = 0;
+//  pspectra[ PSPECTRA_kperp] = 0;
+//  aspectra[ ASPECTRA_kperp] = 0;
+//  qspectra[ QSPECTRA_kperp] = 0;
+//  
+//  // If Wtot is requested, turn Ws, Ps, Phi2 on:
+//  if (write_free_energy) {
+//    wspectra[WSPECTRA_species] = 1;
+//    pspectra[PSPECTRA_species] = 1;
+//    if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
+//  }
+//
+//
+//  int ksize = 0;
+//  for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
+//  for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
+//  for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
+//  for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
+//
+//  tnml = nml;
+//  if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
+//
+//  diagnosing_pzt = write_pzt;
+//  
+//  diagnosing_spectra = false;
+//  if (ksize > 0) diagnosing_spectra = true;
+//
+//  diagnosing_kzspec = false;
+//  if ((wspectra[ WSPECTRA_kz ] == 1) || (pspectra[ PSPECTRA_kz ] == 1) || (aspectra[ ASPECTRA_kz ] == 1)) {
+//    diagnosing_kzspec = true;
+//  }
+//  
+//  diagnosing_moments = false;
+//  if (write_moms || write_phi || write_phi_kpar) diagnosing_moments = true;
   
   species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
@@ -775,6 +670,7 @@ void Parameters::get_nml_vars(char* filename)
   else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
   else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
   else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
+  else if( init_field == "all"  ) { initf = inits::all  ; }
   
   if     ( stir_field == "density") { stirf = stirs::density; }
   else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }
@@ -835,7 +731,7 @@ void Parameters::get_nml_vars(char* filename)
   printf(ANSI_COLOR_RESET);    
 }
 
-void Parameters::store_ncdf(int ncid) {
+void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
   int retval, idim, sdim, wdim, pdim, adim, qdim, gamdim, phi2dim, nc_out, nc_inputs, nc_diss;
@@ -854,14 +750,13 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_diag,   "SetSpectra",     &nc_sp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Resize",         &nc_resize)) ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Reservoir",      &nc_ml))     ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Geometry",       &nc_geo))    ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Species",        &nc_spec))   ERR(retval);
   if (retval = nc_def_grp(nc_spec,   "Boltzmann",      &nc_bz))     ERR(retval);  
-  if (retval = nc_def_grp(ncid,      "Special",        &nc_out))    ERR(retval);  
-  if (retval = nc_def_grp(ncid,      "Spectra",        &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Non_zonal",      &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
-  if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Special",        &nc_out))    ERR(retval);  
+  //if (retval = nc_def_grp(ncid,      "Spectra",        &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Non_zonal",      &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
+  //if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
 
   char strb[263];
   if (ResWrite) {
@@ -894,21 +789,6 @@ void Parameters::store_ncdf(int ncid) {
     if (retval = nc_def_dim (nczid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
     if (retval = nc_enddef (nczid)) ERR(retval);
   }
-
-  int ri = 2;
-  if (retval = nc_def_dim (ncid, "ri",      ri,            &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "x",       nx_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "y",       ny_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "m",       nm_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "l",       nl_in,         &idim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "s",       nspec_in,      &sdim)) ERR(retval);
-  if (retval = nc_def_dim (ncid, "time",    NC_UNLIMITED,  &idim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "nw",     nw_spectra,    &wdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
-  if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
-  //if (retval = nc_def_dim (nc_sp, "ng",     ngam_spectra,    &gamdim)) ERR(retval);
-  //if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -951,25 +831,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
-  specs[0] = wdim;
-  if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = pdim;
-  if (retval = nc_def_var (nc_sp, "pspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = adim;
-  if (retval = nc_def_var (nc_sp, "aspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = qdim;
-  if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  //specs[0] = gamdim;
-  //if (retval = nc_def_var (nc_sp, "gamspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  //specs[0] = phi2dim;
-  //if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
-
-  specs[0] = sdim;
+  specs[0] = nc_dims->species;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_spec, "z",            NC_FLOAT, 1, specs, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_spec, "m",            NC_FLOAT, 1, specs, &ivar)) ERR(retval);
@@ -1133,30 +995,30 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_put_att_text (nc_bz, ivar, "value", Btype.size(), Btype.c_str() ) ) ERR(retval);
   
   // geometry
-  if (retval = nc_def_var (nc_geo, "igeo",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "slab",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "const_curv",            NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "geofile_dum",           NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_put_att_text (nc_geo, ivar, "value", geofilename.size(), geofilename.c_str())) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "igeo",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "slab",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "const_curv",            NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "geofile_dum",           NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_put_att_text (nc_inputs, ivar, "value", geofilename.size(), geofilename.c_str())) ERR(retval);
 
-  if (retval = nc_def_var (nc_geo, "drhodpsi",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kxfac",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "Rmaj",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "shift",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "eps",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "q",                     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "shat",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kappa",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "kappa_prime",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "tri",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "drhodpsi",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kxfac",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "Rmaj",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "shift",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "eps",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "q",                     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "shat",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kappa",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "kappa_prime",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "tri",                   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "tri_prime",             NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
-  if (retval = nc_def_var (nc_geo, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "B_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "a_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "grhoavg",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_geo, "surfarea",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "beta",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "zero_shat",             NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "B_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "a_ref",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "grhoavg",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_inputs, "surfarea",              NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_resize, "domain_change",      NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_resize, "x0_mult",            NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1353,33 +1215,32 @@ void Parameters::store_ncdf(int ncid) {
       
   //  putbool  (ncid, "snyder_electrons", snyder_electrons);
 
-  putbool  (nc_geo, "slab",        slab       );
-  putbool  (nc_geo, "const_curv",  const_curv );
-  putint   (nc_geo, "igeo",        igeo       );
-  put_real (nc_geo, "drhodpsi",    drhodpsi   );
-  put_real (nc_geo, "kxfac",       kxfac      );
+  putbool  (nc_inputs, "slab",        slab       );
+  putbool  (nc_inputs, "const_curv",  const_curv );
+  putint   (nc_inputs, "igeo",        igeo       );
+  put_real (nc_inputs, "drhodpsi",    drhodpsi   );
+  put_real (nc_inputs, "kxfac",       kxfac      );
   if (igeo == 0) {
-    put_real (nc_geo, "Rmaj",        rmaj       );
-    put_real (nc_geo, "shift",       shift      );
-    put_real (nc_geo, "eps",         eps        );
-    put_real (nc_geo, "q",           qsf        );
-    put_real (nc_geo, "shat",        shat       );
+    put_real (nc_inputs, "Rmaj",        rmaj       );
+    put_real (nc_inputs, "shift",       shift      );
+    put_real (nc_inputs, "eps",         eps        );
+    put_real (nc_inputs, "q",           qsf        );
+    put_real (nc_inputs, "shat",        shat       );
   }
-  put_real (nc_geo, "beta",        beta       );
-  putbool  (nc_geo, "zero_shat",   zero_shat  );
-  put_real (nc_geo, "B_ref", B_ref);
-  put_real (nc_geo, "a_ref", a_ref);
-  put_real (nc_geo, "grhoavg", grhoavg);
-  put_real (nc_geo, "surfarea", surfarea);
+  put_real (nc_inputs, "beta",        beta       );
+  putbool  (nc_inputs, "zero_shat",   zero_shat  );
+  put_real (nc_inputs, "B_ref", B_ref);
+  put_real (nc_inputs, "a_ref", a_ref);
+  put_real (nc_inputs, "grhoavg", grhoavg);
+  put_real (nc_inputs, "surfarea", surfarea);
 
   // record the values of jtwist and x0 used in runname.nc
   putint (nc_dom, "jtwist", jtwist);
   put_real (nc_dom, "x0", x0);
 
-  put_wspectra (nc_sp, wspectra); 
-  put_pspectra (nc_sp, pspectra); 
-  put_aspectra (nc_sp, aspectra); 
-  put_qspectra (nc_sp, qspectra); 
+  //put_wspectra (nc_sp, wspectra); 
+  //put_pspectra (nc_sp, pspectra); 
+  //put_aspectra (nc_sp, aspectra); 
   //put_phi2spectra (nc_sp, phi2spectra); 
   //put_gamspectra (nc_sp, gamspectra); 
   putspec (nc_spec, nspec_in, species_h);

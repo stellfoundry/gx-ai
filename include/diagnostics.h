@@ -8,6 +8,11 @@
 #include "grad_parallel.h"
 #include "grad_perp.h"
 #include "reservoir.h"
+#include "diagnostic_classes.h"
+#include "spectra_calc.h"
+#include <memory>
+
+using namespace std;
 
 class Diagnostics {
  public:
@@ -53,13 +58,17 @@ private:
   GradPerp     * grad_perp     ; 
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
-  NetCDF_ids   * id            ;
+  NetCDF       * ncdf_         ;
+  NetCDF       * ncdf_big_         ;
   Reservoir    * rc            ;
+  AllSpectraCalcs * allSpectra_;
+
+  float * tmpf;
+  cuComplex * tmpC;
+  float * tmpG;
+  float *P2s;
+  float *G2s;
   
-  float        * G2s            ;
-  float        * P2s           ;
-  float        * A2            ;
-  float        * Phi2          ;
   float        * val           ;
   cuComplex    * omg_d         ;
   cuComplex    * tmp_omg_h     ;
@@ -82,6 +91,11 @@ private:
   //  void pzt(MomentsG** G, Fields* f);
 
   char stopfilename_[2000];
+
+  vector<unique_ptr<SpectraDiagnostic>> spectraDiagnosticList;
+  GrowthRateDiagnostic *growthRateDiagnostic;
+  vector<unique_ptr<MomentsDiagnostic>> momentsDiagnosticList;
+  FieldsDiagnostic *fieldsDiagnostic;
 };
 
 class Diagnostics_KREHM : public Diagnostics {

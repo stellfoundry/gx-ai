@@ -1,45 +1,43 @@
 #include "reductions.h"
 #include <iostream>
 
-// ======= Grid_Species_Reduce ==========
-Grid_Species_Reduce::Grid_Species_Reduce(Grids *grids, std::vector<int> spectra) :
-  grids_(grids), spectra_(spectra)
+Reduction::Reduction(Grids *grids, std::vector<int32_t> modeFull, std::vector<int32_t> modeReduced) 
+ : grids_(grids), modeFull_(modeFull), modeReduced_(modeReduced)
 {
   Addwork = nullptr;     sizeWork = 0;         sizeAdd = 0;
 
-  int J;  J = spectra_.size();
-  initialized.assign(J, 0);   desc.resize(J);   extents.resize(J);
-  
+  // initialize all possible extents
   extent['y'] = grids_->Nyc;
   extent['x'] = grids_->Nx;
   extent['z'] = grids_->Nz;
-  extent['s'] = grids_->Nspecies;;
+  extent['l'] = grids_->Nl;
+  extent['m'] = grids_->Nm;
+  extent['s'] = grids_->Nspecies;
 
-  for (auto mode : Pmode) extent_P.push_back(extent[mode]);;
-  for (int j = 0; j < J; j++) {
-    if (spectra_[j] == 1) {
-      for (auto mode : pModes[j]) extents[j].push_back(extent[mode]);
+  // create a vector of extents for the full tensor
+  for (auto mode : modeFull_) extentFull.push_back(extent[mode]);;
 
-      cutensorInit(&handle);
-      cutensorInitTensorDescriptor(&handle, &dP, nPmode, extent_P.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
-      cutensorInitTensorDescriptor(&handle, &desc[j], pModes[j].size(), extents[j].data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
-    }
-  }
+  // create a vector of extents for the reduced tensor
+  for (auto mode : modeReduced_) extentReduced.push_back(extent[mode]);;
+
+  cutensorInit(&handle);
+  cutensorInitTensorDescriptor(&handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
+  cutensorInitTensorDescriptor(&handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
 }
 
-Grid_Species_Reduce::~Grid_Species_Reduce()
+Reduction::~Reduction()
 {
   if (Addwork) cudaFree(Addwork);
+  if (Maxwork) cudaFree(Maxwork);
 }
 
-// ======== Grid_Species_Reduce  ==============
-void Grid_Species_Reduce::Sum(float* P2, float* res, int ispec)
+void Reduction::Sum(float* dataFull, float* dataReduced)
 {
-  if (initialized[ispec] == 0) {
+  if (!initialized_Sum) {
   
-    cutensorReductionGetWorkspace(&handle, P2, &dP, Pmode.data(),
-				  res, &desc[ispec], pModes[ispec].data(),
-				  res, &desc[ispec], pModes[ispec].data(),
+    cutensorReductionGetWorkspace(&handle, dataFull, &descFull, modeFull_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
 				  opAdd, typeCompute, &sizeAdd);
     if (sizeAdd > sizeWork) {
       sizeWork = sizeAdd;
@@ -48,14 +46,39 @@ void Grid_Species_Reduce::Sum(float* P2, float* res, int ispec)
 	Addwork = nullptr;	sizeWork = 0;
       }
     }
-    initialized[ispec]  = 1;
+    initialized_Sum = true;
   }
   
   cutensorReduction(&handle,
-		    (const void*) &alpha, P2, &dP, Pmode.data(),
-		    (const void*) &beta,  res,  &desc[ispec], pModes[ispec].data(),
-		    res,  &desc[ispec], pModes[ispec].data(),
+		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
+		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
+		    dataReduced,  &descReduced, modeReduced_.data(),
 		    opAdd, typeCompute, Addwork, sizeWork, 0);
+}		     
+
+void Reduction::Max(float* dataFull, float* dataReduced)
+{
+  if (!initialized_Max) {
+  
+    cutensorReductionGetWorkspace(&handle, dataFull, &descFull, modeFull_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  opMax, typeCompute, &sizeMax);
+    if (sizeMax > sizeWork) {
+      sizeWork = sizeMax;
+      if (Maxwork) cudaFree (Maxwork);
+      if (cudaSuccess != cudaMalloc(&Maxwork, sizeWork)) {
+	Maxwork = nullptr;	sizeWork = 0;
+      }
+    }
+    initialized_Max = true;
+  }
+  
+  cutensorReduction(&handle,
+		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
+		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
+		    dataReduced,  &descReduced, modeReduced_.data(),
+		    opMax, typeCompute, Maxwork, sizeWork, 0);
 }		     
 
 // ======= Grid_Reduce ==========

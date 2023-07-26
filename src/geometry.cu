@@ -873,6 +873,21 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     init_omegad GGEO (omegad, cv_d, gb_d, grids->kx, grids->ky, cvdrift, gbdrift, cvdrift0, gbdrift0, shat);
   }
 
+  // initialize volume integral weight quantities needed for some diagnostics
+  float volDenom = 0.;  
+  vol_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
+  cudaMalloc (&vol_fac, sizeof(float) * grids->Nz);
+  for (int i=0; i < grids->Nz; i++) volDenom   += jacobian_h[i]; 
+  for (int i=0; i < grids->Nz; i++) vol_fac_h[i]  = jacobian_h[i] / volDenom;
+  CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*grids->Nz);
+
+  float fluxDenom = 0.;  
+  flux_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
+  cudaMalloc(&flux_fac, sizeof(float)*grids->Nz);
+  for (int i=0; i<grids->Nz; i++) fluxDenom   += jacobian_h[i]*grho_h[i];
+  for (int i=0; i<grids->Nz; i++) flux_fac_h[i]  = jacobian_h[i] / fluxDenom;
+  CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*grids->Nz);
+
   // compute max values of gbdrift, cvdrift, gbdrift0, cvdrift0
   gbdrift_max = 0.;
   gbdrift0_max = 0.;

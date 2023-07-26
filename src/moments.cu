@@ -276,6 +276,14 @@ void MomentsG::initialConditions(double* time) {
     case inits::tperp   : if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize); break; 
     case inits::qpar    : if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize); break;
     case inits::qperp   : if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize); break;
+    case inits::all     :
+      if(dens_ptr) CP_TO_GPU(dens_ptr, init_h, momsize);
+      if(upar_ptr) CP_TO_GPU(upar_ptr, init_h, momsize);
+      if(tpar_ptr) CP_TO_GPU(tpar_ptr, init_h, momsize);
+      if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize);
+      if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize);
+      if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize);
+      break;
     }
   checkCuda(cudaGetLastError());    
   free(init_h);     

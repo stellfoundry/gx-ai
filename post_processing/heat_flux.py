@@ -9,9 +9,9 @@ from netCDF4 import Dataset
 
 def heat_flux(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=None, Lref="a", refsp=None):
     # read data from file
-    t = data.variables['time'][:]
+    t = data.groups['Grids'].variables['time'][:]
     try:
-        q = data.groups['Fluxes'].variables['qflux'][:,ispec]
+        q = data.groups['Diagnostics'].variables['HeatFlux_st'][:,ispec]
     except:
         print('Error: heat flux data was not written. Make sure to use \'fluxes = true\' in the input file.')
     species_type = data.groups['Inputs'].groups['Species'].variables['species_type'][ispec]
