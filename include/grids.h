@@ -47,6 +47,7 @@ class Grids {
   float * th0; 
   float Zp;
   float kx_max, ky_max, kz_max, vpar_max, muB_max;
+  int m0_max;
 
   ncclComm_t ncclComm, ncclComm_s, ncclComm_m0;
   ncclUniqueId ncclId, ncclId_m;

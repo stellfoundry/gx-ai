@@ -885,6 +885,19 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     cvdrift0_max = max(cvdrift0_max, abs(cvdrift0_h[i]));
   }
 
+  if (pars->nonTwist) {
+    grids->m0_max = 0;
+    float m0_omega0 = 0; // need to maximize this quantity to find max frequency for the NTFT
+    for (int idz = 0; idz < grids->Nz; idz++) { //only need to loop through Nz since m0 scales with ky, max ky will have max m0
+      if (m0[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]))) {
+        m0_omega0 = m0[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));
+	grids->m0_max = m0[grids->Nyc-1 + grids->Nyc*idz];
+	gbdrift0_max = gbdrift0_h[idz];
+	cvdrift0_max = cvdrift0_h[idz];
+      }
+    }
+  }
+
   /*
   kperp2_h = (float*) malloc(sizeof(float)*grids->NxNycNz);
   CP_TO_GPU (kperp2_h,    kperp2, sizeof(float)*grids->NxNycNz);

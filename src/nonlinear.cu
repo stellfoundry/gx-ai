@@ -371,6 +371,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
   double scale = 0.5;  // normalization scaling factor for C2R FFT
+  //printf("nonlinear: omega_max_nl[0]  = %f, omega_max_nl[1] = %f\n", pars_->kxfac*(grids_->kx_max*vmax_x[0])*scale, pars_->kxfac*(grids_->ky_max*vmax_y[0])*scale);
   omega_max[0] = max(omega_max[0], pars_->kxfac*(grids_->kx_max*vmax_x[0])*scale);
   omega_max[1] = max(omega_max[1], pars_->kxfac*(grids_->ky_max*vmax_y[0])*scale);
 }

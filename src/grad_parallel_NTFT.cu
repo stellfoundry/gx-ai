@@ -407,10 +407,9 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
   // This section makes long chains (more than ~3000 grid points) a multiple of nz by cutting off the highest kperp (damped) grid points when we do kFill below
   for (int k=0; k<mode; k++) {
     if (mode_size[k] > 3000) {
-      //nExtra[k] = mode_size[k] % nz;
-      //mode_size[k] = mode_size[k] - nExtra[k]; // modes with different sizes that are cut down to the same length are in the same class
-      //mode_size_ref[k] = mode_size_ref[k] - nExtra[k];
-      nExtra[k] = 0;
+      nExtra[k] = mode_size[k] % nz;
+      mode_size[k] = mode_size[k] - nExtra[k]; // modes with different sizes that are cut down to the same length are in the same class
+      mode_size_ref[k] = mode_size_ref[k] - nExtra[k];
     } else {
       nExtra[k] = 0;
     }
@@ -469,6 +468,7 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
     for(int i=0; i<mode; i++) { 
       //check if the # of grid points at that class index is = to the # of grid points of the mode
       if (nLinks[ic] == mode_size_ref[i]) {
+	//printf("nLinks = %d, nExtra = %d \n", nLinks[ic], nExtra[i]);
 	n++; //chain number index
 	p=0; //grid point number in chain index
         for(int idy=0; idy<naky; idy++) {
@@ -503,15 +503,17 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
         
                   //assemble ikxdz and iky grids from -z to +z
   	          idz_prime = idz_start;
-              	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0) {
+              	  while(idx_constant - m0[idy + nyc * idz_prime] < nakx && idx_constant - m0[idy + nyc * idz_prime] >= 0 && p < nLinks[ic]) {
 		    if (extraLinkCounter < nExtra[i]/2) { //only fill the k grids if we're not cutting off these points, nExtra[i]/2 on each side
 		      extraLinkCounter++;
+		      //printf("extraLinkCounter = %d\n", extraLinkCounter);
 		    } else {
   	              idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
 		      idx0 = calc_idx0(idx_prime, nshift, nakx);
-                      ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; 
-                      ikyNTFT[ic][p+ nLinks[ic] * n] = idy;
+                      ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; // overwriting by nExtra/2 points
+                      ikyNTFT[ic][p + nLinks[ic] * n] = idy;
                       p++;
+		      //printf("p = %d, nLinks = %d\n", p, nLinks[ic]);
 		    }
                     if (idz_prime == nz - 1) { // if at end of row, shift upwards and restart from right
   	              idx_constant = idx_constant - jtwist * idy;

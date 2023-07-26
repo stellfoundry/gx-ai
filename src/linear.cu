@@ -226,8 +226,13 @@ void Linear_GK::get_max_frequency(double *omega_max)
     omega_max[0] = pars_->tzmax*grids_->kx_max
       * (grids_->vpar_max*grids_->vpar_max*abs(geo_->cvdrift0_max) + grids_->muB_max*abs(geo_->gbdrift0_max));
   } else {
-    omega_max[0] = pars_->tzmax*grids_->kx_max/abs(geo_->shat)
-      * (grids_->vpar_max*grids_->vpar_max*abs(geo_->cvdrift0_max) + grids_->muB_max*abs(geo_->gbdrift0_max));
+    if (pars_->nonTwist) {
+      omega_max[0] = pars_->tzmax*(grids_->kx_max + grids_->m0_max / pars_->x0)
+        * (grids_->vpar_max*grids_->vpar_max*abs(geo_->cvdrift0_max) + grids_->muB_max*abs(geo_->gbdrift0_max));
+    } else {
+      omega_max[0] = pars_->tzmax*grids_->kx_max/abs(geo_->shat)
+        * (grids_->vpar_max*grids_->vpar_max*abs(geo_->cvdrift0_max) + grids_->muB_max*abs(geo_->gbdrift0_max));
+    }
   }
   omega_max[1] = pars_->tzmax*grids_->ky_max*
     (grids_->vpar_max*grids_->vpar_max*geo_->cvdrift_max + grids_->muB_max*geo_->gbdrift_max);
