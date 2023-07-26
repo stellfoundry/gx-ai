@@ -5,6 +5,7 @@
 
 [Dimensions]
  ntheta = 256           # number of points along field line (theta)
+ nperiod = 1            # number of 2pi segments along field line is 2*nperiod-1
  nky = 28               # number of (de-aliased) fourier modes in y
  nkx = 1                # number of (de-aliased) fourier modes in x
 
@@ -46,9 +47,7 @@
  # Normalized toroidal flux (or s) is how vmec labels surfaces.
  # s goes from [0,1] where 0 is the magnetic axis and 1 is the
  # last closed flux surface.
- desired_normalized_toroidal_flux = 0.64
-
- vmec_surface_option = 0
+ torflux = 0.64
 
 # it is okay to have extra species data here; only the first nspecies elements of each item are used
 [species]

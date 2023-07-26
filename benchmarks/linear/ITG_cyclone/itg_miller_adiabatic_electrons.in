@@ -63,16 +63,15 @@
 [Dissipation]
  closure_model = "none"          # no closure assumptions (just truncation)
  hypercollisions = true          # use hypercollision model
- nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
+ nu_hyper_m = 0.1                # coefficient of hermite hypercollisions
  p_hyper_m = 6                   # exponent of hermite hypercollisions
- nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
+ nu_hyper_l = 0.1                # coefficient of laguerre hypercollisions
  p_hyper_l = 6                   # exponent of laguerre hypercollisions
 
 [Diagnostics]
  nwrite = 1000                   # write diagnostics every 1000 timesteps
  omega  = true                   # compute and write growth rates and frequencies
- fixed_amplitude = true          # avoid silly large numbers, but use only without linked cells
- fluxes = true
+ fixed_amplitude = true          # avoid silly large numbers, but use only in linear cases, and without linked boundary option
  
 [Wspectra]                       # spectra of W = |G_lm|**2
 species          = false

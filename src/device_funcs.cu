@@ -259,11 +259,25 @@ __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, floa
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
   if ( unmasked(idx, idy) && idz < nz ) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
     apar[idxyz] = -G1[idxyz]*rho_s*d_e/(1. + d_e*d_e*kperp2);
+  }
+}
+
+__global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+  if ( unmasked(idx, idy) && idz < nz ) { 
+    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+
+    float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+
+    G1[idxyz] = G1[idxyz] - (1. + d_e*d_e*kperp2)*apar_ext[idxyz]/(rho_s*d_e);
   }
 }
 
@@ -1655,6 +1669,31 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
   }
 }
 
+// WApar_summand_krehm
+__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac, const float* kx, const float* ky, float rho_i)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+
+  if (idy < nyc && idx < nx && idz<nz) {
+    if(unmasked(idx, idy)) {
+      cuComplex tmp;
+      float fac=2.;
+      if (idy==0) fac = 1.0;
+
+      float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
+      cuComplex apar_perturb = apar[idxyz] - apar_ext[idxyz];
+      tmp = kperp2 * cuConjf( apar_perturb ) * apar_perturb * fac;
+      p2[idxyz] = 0.5 * tmp.x;
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo))]
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts)
@@ -2705,59 +2744,71 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
   } // idxyz < NxNycNz
 }
 
-__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, 
+__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* apar_ext, 
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par)
+{
+  unsigned int idy  = get_id1();
+  unsigned int idx  = get_id2();
+  unsigned int idz = get_id3();
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  const float rhos_ov_de = rhos/de;
+  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+
+    int globalIdx;
+    const cuComplex phi_ = phi[idxyz];
+    const cuComplex apar_ = apar[idxyz];
+
+    for (int m = m_lo; m < m_up; m++) {
+      int m_local = m - m_lo;
+      globalIdx = idy + nyc*( idx + nx*(idz + nz*(m_local)));	
+      int mp1 = idy + nyc*( idx + nx*(idz + nz*(m_local+1)));
+      int mm1 = idy + nyc*( idx + nx*(idz + nz*(m_local-1)));
+      cuComplex gmp1 = make_cuComplex(0.,0.);
+      cuComplex gmm1 = make_cuComplex(0.,0.);
+      if(m>0) gmm1 = g[mm1];
+      if(m<nm_glob-1) gmp1 = g[mp1];
+      
+      rhs_par[globalIdx] = rhs_par[globalIdx] -rhos_ov_de * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1);
+      
+      // field terms
+      if(m == 1) {  // m = 1 has Phi term
+	rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de);
+      }
+      if(m == 0) {  // m = 0 has Apar term
+        rhs_par[globalIdx] = rhs_par[globalIdx] - apar_/(de*de);
+      }
+      if(m == 2) {  // m = 2 has Apar term
+        rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2.) * apar_/(de*de);
+      }
+    }
+  }
+}
+
+
+__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, const float* kx, const float* ky,
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs)
 {
   unsigned int idy  = get_id1();
   unsigned int idx  = get_id2();
   unsigned int idz = get_id3();
   const float rhos_ov_de = rhos/de;
   if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
-
-    int m = 0;       // m = 0 case
-    unsigned int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
-    unsigned int mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
-    rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m+1) * g[mp1];
-    
-    m = nm - 1;     // m = nm-1 case
-    globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));
-    unsigned int mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
-    rhs_par[globalIdx] = -rhos_ov_de * sqrtf(m) * g[mm1];
-    
-    for (int m = 1; m < nm-1; m++) {
-       globalIdx = idy + nyc*( idx + nx*(idz + nz*(m  )));	
-       mp1       = idy + nyc*( idx + nx*(idz + nz*(m+1)));
-       mm1       = idy + nyc*( idx + nx*(idz + nz*(m-1)));
-       
-       rhs_par[globalIdx] = -rhos_ov_de * (sqrtf(m+1)*g[mp1] + sqrtf(m)*g[mm1]);
-       // collision term
-       if(m!=2) rhs_par[globalIdx] = rhs_par[globalIdx] - nu_ei*m*g[globalIdx];
-    }
-
-    // additional field terms in m<=2 equations
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    const cuComplex phi_ = phi[idxyz];
     const cuComplex apar_ = apar[idxyz];
+    const cuComplex apar_ext_ = apar_ext[idxyz];
+    const float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
-    m = 0;          
-    globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
-    rhs_par[globalIdx] = rhs_par[globalIdx] - apar_/(de*de);
-
-    m = 1;          
-    if (nm > 1) {
-      globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
-      rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de) - nu_ei*apar_/(rhos*de);
-    }    
-
-    m = 2;         
-    if (nm > 2) {
-      globalIdx = idy + nyc*( idx + nx*(idz + nz*(m)));
-      rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2)*apar_/(de*de);
-    }    
+    for (int m = m_lo; m < m_up; m++) {
+       int m_local = m - m_lo;
+       int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m_local)));	
+       
+       // collision term
+       if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
+       // for m=1, there are additional terms that add to the above
+       if(m==1) rhs[globalIdx] = rhs[globalIdx] - nu_ei*apar_/(rhos*de) - nu_ei*de/rhos*kperp2*apar_ext_;
+    }
   }
 }
-
-
 
 
 
@@ -2831,13 +2882,13 @@ __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky
 	  float kp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 	  float df2 = df[idxyz].x*df[idxyz].x + df[idxyz].y*df[idxyz].y;
 
-	  s10[idz] += 2. * powf(ky[idy], 4) * df2; 
-	  s11[idz] += 2. * powf(kp2, 2)     * df2;
+	  s10[idz] += 2. * pow(ky[idy], 4) * df2; 
+	  s11[idz] += 2. * pow(kp2, 2)     * df2;
 	}
       }      
     }
-    s10[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s10[idz]));
-    s11[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s11[idz]));
+    s10[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s10[idz]));
+    s11[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s11[idz]));
   }
 }
 
@@ -2846,7 +2897,7 @@ __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, con
   for (int idx = 0; idx < nx; idx++) {
     s01[0] += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
   }
-  s01[0] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01[0]));
+  s01[0] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s01[0]));
 }
 
 __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
@@ -2868,9 +2919,9 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
 	  float kpmax2 = kxmax*kxmax + kymax*kymax;
 	  float kp2 = (kx[idx]*kx[idx] + ky[idy]*ky[idy])/kpmax2;
 	  
-	  float D10 = D_HB * powf(kx[idx]/kxmax, 4);
-	  float D01 = D_HB * powf(kx[idx]/kxmax, 4) * ky[idy]/kymax;
-	  float D11 = D_HB * powf(kp2, p_HB);
+	  float D10 = D_HB * pow(kx[idx]/kxmax, 4);
+	  float D01 = D_HB * pow(kx[idx]/kxmax, 4) * ky[idy]/kymax;
+	  float D11 = D_HB * pow(kp2, p_HB);
 	  
 	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01[0] * D01;
 	  RHS[ig] = RHS[ig] - sfac * G[ig];

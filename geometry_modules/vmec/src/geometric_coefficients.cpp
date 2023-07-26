@@ -56,6 +56,7 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   which_crossing = toml::find_or <int> (tnml, "which_crossing", -1);
   file_tag = toml::find_or <string> (tnml, "file_tag", ""); // new TQ 8.14
   verbose = toml::find_or <int> (tnml, "verbose", 0);
+  shift_grad_alpha = toml::find_or <bool> (tnml, "shift_grad_alpha", true);
 
   char run_name[1000];
   strncpy(run_name, nml_file, strlen(nml_file)-3);
@@ -338,14 +339,16 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
   // Creating zeta grid based on alpha = theta - iota*zeta
   zeta = new double[2*nzgrid+1]; 
-  //std::cout << "zeta = [";
+  if(verbose) std::cout << "zeta = [";
   //  for (int i=0; i<2*nzgrid+1; i++) {
   for (int i=0; i<2*nzgrid+1; i++) {
     //zeta[i] = (npol*M_PI*(i-nzgrid))/nzgrid;
     zeta[i] = (theta[i] - alpha) / iota;
-    //std::cout << zeta[i] << ", ";
+    if(verbose) std::cout << zeta[i] << ", ";
   }
-  //  std::cout << "]\n\n";
+  if(verbose) std::cout << "]\n\n";
+  double zeta_center = 0;
+  if(shift_grad_alpha) zeta_center = zeta[nzgrid];
   
   // theta_pest = alpha + iota*zeta
   // Need to determine ---> theta_vmec = theta_pest - Lambda
@@ -863,9 +866,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
     grad_psi_Y[itheta] = grad_s_Y[itheta] * (edge_toroidal_flux_over_2pi);
     grad_psi_Z[itheta] = grad_s_Z[itheta] * (edge_toroidal_flux_over_2pi);
 
-    grad_alpha_X[itheta] = (dLambda_ds[itheta] - zeta[itheta]*d_iota_ds) * grad_s_X[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_X[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_X[itheta];
-    grad_alpha_Y[itheta] = (dLambda_ds[itheta] - zeta[itheta]*d_iota_ds) * grad_s_Y[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_Y[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_Y[itheta];
-    grad_alpha_Z[itheta] = (dLambda_ds[itheta] - zeta[itheta]*d_iota_ds) * grad_s_Z[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_Z[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_Z[itheta];
+    grad_alpha_X[itheta] = (dLambda_ds[itheta] - (zeta[itheta]-zeta_center)*d_iota_ds) * grad_s_X[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_X[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_X[itheta];
+    grad_alpha_Y[itheta] = (dLambda_ds[itheta] - (zeta[itheta]-zeta_center)*d_iota_ds) * grad_s_Y[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_Y[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_Y[itheta];
+    grad_alpha_Z[itheta] = (dLambda_ds[itheta] - (zeta[itheta]-zeta_center)*d_iota_ds) * grad_s_Z[itheta] + (1.0 + dLambda_dtheta_vmec[itheta]) * grad_theta_vmec_Z[itheta] + (-iota + dLambda_dzeta[itheta]) * grad_zeta_Z[itheta];
 
     grad_B_X[itheta] = dB_ds[itheta] * grad_s_X[itheta] + dB_dtheta_vmec[itheta] * grad_theta_vmec_X[itheta] + dB_dzeta[itheta] * grad_zeta_X[itheta];
     grad_B_Y[itheta] = dB_ds[itheta] * grad_s_Y[itheta] + dB_dtheta_vmec[itheta] * grad_theta_vmec_Y[itheta] + dB_dzeta[itheta] * grad_zeta_Y[itheta];
@@ -877,6 +880,44 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
   }
     
   sqrt_s = sqrt(normalized_toroidal_flux_used);
+
+  if(verbose) {
+      std::cout << "dLambda_ds = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << dLambda_ds[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_s_X = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_s_X[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_s_Y = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_s_Y[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_s_Z = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_s_Z[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_alpha_X = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_alpha_X[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_alpha_Y = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_alpha_Y[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+      std::cout << "grad_alpha_Z = [";
+      for (int itheta=0; itheta<2*nzgrid+1; itheta++) {
+        std::cout << grad_alpha_Z[itheta] << ", ";
+      }
+      std::cout << "]\n\n";
+  }
 
   //---------------------------------------------------------------
   // Sanity Tests: Verify that the Jacobian equals the appropriate
@@ -966,9 +1007,9 @@ Geometric_coefficients::Geometric_coefficients(char *nml_file, VMEC_variables *v
 
     B_cross_grad_B_dot_grad_alpha[itheta] = 0
       + (B_sub_s[itheta] * dB_dtheta_vmec[itheta] * (dLambda_dzeta[itheta] - iota)
-	 + B_sub_theta_vmec[itheta] * dB_dzeta[itheta] * (dLambda_ds[itheta] - zeta[itheta] * d_iota_ds)
+	 + B_sub_theta_vmec[itheta] * dB_dzeta[itheta] * (dLambda_ds[itheta] - (zeta[itheta]-zeta_center) * d_iota_ds)
 	 + B_sub_zeta[itheta] * dB_ds[itheta] * (1.0 + dLambda_dtheta_vmec[itheta])
-	 - B_sub_zeta[itheta] * dB_dtheta_vmec[itheta] * (dLambda_ds[itheta] - zeta[itheta] * d_iota_ds)
+	 - B_sub_zeta[itheta] * dB_dtheta_vmec[itheta] * (dLambda_ds[itheta] - (zeta[itheta]-zeta_center) * d_iota_ds)
 	 - B_sub_theta_vmec[itheta] * dB_ds[itheta] * (dLambda_dzeta[itheta] - iota)
 	 - B_sub_s[itheta] * dB_dzeta[itheta] * (1.0 + dLambda_dtheta_vmec[itheta])) / sqrt_g[itheta];
 

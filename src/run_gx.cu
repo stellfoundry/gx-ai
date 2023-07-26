@@ -1,7 +1,5 @@
 #include "run_gx.h"
 
-void getDeviceMemoryUsage();
-
 void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
 {
   double time = 0;
@@ -58,7 +56,10 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
+    G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
+    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync();
     solver -> fieldSolve(G, fields);                
   }
 
@@ -107,7 +108,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     }
 
-  getDeviceMemoryUsage();
+  fflush(stdout);
+  MPI_Barrier(pars->mpcom);
+  printDeviceMemoryUsage(pars->iproc);
+  MPI_Barrier(pars->mpcom);
+  fflush(stdout);
   
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);
 	 
@@ -175,17 +180,27 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 }    
 
 void uuid_print(cudaUUID_t a){
-  std::cout << "GPU";
+  std::cout << "GPU ID: ";
   std::vector<std::tuple<int, int> > r = {{0,4}, {4,6}, {6,8}, {8,10}, {10,16}};
+  bool first = true;
   for (auto t : r){
-    std::cout << "-";
+    if(!first) std::cout << "-";
+    first = false;
     for (int i = std::get<0>(t); i < std::get<1>(t); i++)
       std::cout << std::hex << (unsigned)(unsigned char)a.bytes[i];
   }
-  std::cout << std::endl;
 }
 
-void getDeviceMemoryUsage()
+void printDeviceID()
+{
+  int dev;
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
+  uuid_print(prop.uuid);
+}
+
+void printDeviceMemoryUsage(int iproc)
 {
   cudaDeviceSynchronize();
   // show memory usage of GPU
@@ -204,9 +219,12 @@ void getDeviceMemoryUsage()
   double free_db = (double) free_byte;
   double total_db = (double) prop.totalGlobalMem;
   double used_db = total_db - free_db ;
-  printf("GPU type: %s\n", prop.name);
-  uuid_print(prop.uuid);
+  printf(ANSI_COLOR_GREEN);
+  printf("Device %d: ", iproc);
+  printDeviceID();
+  printf(", GPU type: %s, ", prop.name);
   printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%)\n",
 	 used_db /1024.0/1024.0, used_db/total_db*100.,
 	 free_db /1024.0/1024.0, free_db/total_db*100.);
+  printf(ANSI_COLOR_RESET);
 }

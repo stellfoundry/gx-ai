@@ -82,12 +82,13 @@ class Nonlinear_KREHM : public Nonlinear {
   ~Nonlinear_KREHM();
 
   void nlps(MomentsG* G, Fields* f, MomentsG* G_res);
-  double cfl(Fields *f, double dt_max);
+  double cfl(Fields *f, double dt_max) {};
+  void get_max_frequency(Fields *f, double *wmax);
   
  private:
 
   int nBatch;
-  dim3 dGk, dBk, dGx, dBx;
+  dim3 dGk, dBk, dGx, dBx, dGx_single, dBx_single;
   float cfl_x_inv, cfl_y_inv;
   double dt_cfl;
 
@@ -95,7 +96,8 @@ class Nonlinear_KREHM : public Nonlinear {
   Grids             * grids_          ;  
   
   Red               * red             ; 
-  GradPerp          * grad_perp       ;
+  GradPerp          * grad_perp_f     ;
+  GradPerp          * grad_perp_G     ;
 
   float * dg_dx       ;
   float * dg_dy       ;
@@ -103,14 +105,13 @@ class Nonlinear_KREHM : public Nonlinear {
   float * dphi_dy     ;
   float * dchi_dx     ;
   float * dchi_dy     ;
-  float * tmp_r;
+  float * dG;
   cuComplex * tmp_c;
+  MomentsG * G_tmp;
 
   float * val1        ;
-  float vPhi_max_x[1]     ;
-  float vPhi_max_y[1]     ;
-  float vA_max_x[1]     ;
-  float vA_max_y[1]     ;
+  float vmax_x[1]     ;
+  float vmax_y[1]     ;
 
   float rho_s;
   float d_e;

@@ -254,14 +254,14 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  else if(pars_->boundary_option_periodic) {
-    DEBUGPRINT("Using periodic for grad parallel.\n");
-    grad_par = new GradParallelPeriodic(grids_);
-  }
   else if(pars_->nonTwist) {
     DEBUGPRINT("Using NTFT twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelNTFT(grids_, pars_->jtwist);
   }
+  //else if(pars_->boundary_option_periodic) {
+  //  DEBUGPRINT("Using periodic for grad parallel.\n");
+  //  grad_par = new GradParallelPeriodic(grids_);
+  //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
@@ -277,35 +277,16 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
       break;
     }
   
-  int nn1 = grids_->Nyc;             int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
-  int nn2 = grids_->Nx;              int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
-  int nn3 = grids_->Nz*grids_->Nl;   int nt3 = min(nn3,  4);   int nb3 = 1 + (nn3-1)/nt3;
+  int nn1 = grids_->Nyc;   int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
+  int nn2 = grids_->Nx;    int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
+  int nn3 = grids_->Nz;    int nt3 = min(nn3,  4);   int nb3 = 1 + (nn3-1)/nt3;
   
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
-
-  nn1 = grids_->Nyc;                              nt1 = min(nn1, 16);    nb1 = (nn1-1)/nt1 + 1;
-  nn2 = grids_->Nx*grids_->Nz;                    nt2 = min(nn2, 16);    nb2 = (nn2-1)/nt2 + 1;
-  nn3 = grids_->Nspecies*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  4);    nb3 = (nn3-1)/nt3 + 1;
   
-  dB_all = dim3(nt1, nt2, nt3);
-  dG_all = dim3(nb1, nb2, nb3);	 
-
-  // set up CUDA grids for main linear kernel.  
-  // NOTE: nt1 = sharedSize = 32 gives best performance, but using 8 is only 5% worse.
-  // this allows use of 4x more LH resolution without changing shared memory layouts
-  // so i_share = 8 is used by default.
-
-  nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
-  nn2 = 1;                       nt2 = min(grids_->Nm, 4 );   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = 1;                     nb3 = 1;
-
-  dimBlock = dim3(nt1, nt2, nt3);
-  dimGrid  = dim3(nb1, nb2, nb3);
-
   nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, 32) ;   nb1 = 1 + (nn1-1)/nt1;
-  nn2 = grids_->Nm;              nt2 = min(grids_->Nm, 4 )      ;   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = 1                        ;   nb3 = 1;
+  nn2 = 1;                       nt2 = 1;   nb2 = 1;
+  nn3 = grids_->Nm;              nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlockh = dim3(nt1, nt2, nt3);
   dimGridh  = dim3(nb1, nb2, nb3);
@@ -323,14 +304,11 @@ Linear_KREHM::~Linear_KREHM()
 
 void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
-  // to be safe, start with zeros on RHS
-  GRhs->set_zero();
-  
-  // calculate conservation terms for collision operator
-  int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
-
-  rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, nu_ei, rho_s, d_e, GRhs->G());
-  grad_par->dz(GRhs);
+  if(grids_->Nz>1) {
+    cudaStreamSynchronize(G->syncStream);
+    rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->apar_ext, nu_ei, rho_s, d_e, GRhs->G());
+    grad_par->dz(GRhs);
+  }
   
   // closures
   switch (pars_->closure_model_opt) {
@@ -340,8 +318,10 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   case Closure::smithpar : closures->apply_closures(G, GRhs); break;
   }
 
+  krehm_collisions <<< dGs, dBs >>> (G->G(), f->apar, f->apar_ext, grids_->kx, grids_->ky, nu_ei, rho_s, d_e, GRhs->G());
+
   // hypercollisions
-  if(pars_->hypercollisions) hypercollisions<<<dimGrid,dimBlock>>>(G->G(),
+  if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 								   0.,
 								   1./pars_->dt/pars_->nm_in,
 								   1.,
@@ -350,6 +330,14 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
 
+}
+
+void Linear_KREHM::get_max_frequency(double *omega_max)
+{
+  // estimate max linear frequency from kz_max*vpar_max
+  omega_max[0] = 0.0;
+  omega_max[1] = 0.0;
+  omega_max[2] = max(rho_s/d_e*grids_->vpar_max*grids_->kz_max, pars_->nm_in*nu_ei);
 }
 
 //=======================================
