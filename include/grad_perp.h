@@ -9,7 +9,7 @@ class GradPerp {
   GradPerp(Grids* grids, int batch, int mem);
   ~GradPerp();
 
-  void phase_mult_ntft (float* G, bool positive_phase=true);
+  void phase_mult (float* G, bool positive_phase=true);
   void dxC2R (cuComplex* G, float* dxG);
   void dyC2R (cuComplex* G, float* g);
   void C2R   (cuComplex* G, float* Gy);
@@ -29,6 +29,7 @@ class GradPerp {
   cufftHandle gradperp_plan_C2R;
   cufftHandle gradperp_plan_dxC2R;
   cufftHandle gradperp_plan_dyC2R;
-  cufftHandle gradperp_plan_R2Cntft;
-  cufftHandle gradperp_plan_C2Rntft;
+  cufftHandle gradperp_plan_R2Cy;
+  cufftHandle gradperp_plan_C2Ry;
+  cufftHandle gradperp_plan_C2Ryminus;
 };

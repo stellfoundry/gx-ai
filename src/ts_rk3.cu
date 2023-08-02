@@ -4,9 +4,9 @@
 // ============= RK3 =============
 // Heun's method
 RungeKutta3::RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
+			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in),
+  forcing_(forcing), exb_(exb), dt_max(dt_in), dt_(dt_in),
   GRhs1(nullptr), GRhs2(nullptr), G_q1(nullptr), G_q2(nullptr)
 {
   GRhs1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
@@ -62,6 +62,8 @@ void RungeKutta3::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
       for(int i=0; i<3; i++) wmax += omega_max[i];
       dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
     }
+
+    if (pars_->ExBshear) exb_->flow_shear_shift(G[is], f, dt_);
 
     // compute and increment nonlinear term
     Rhs[is]->set_zero();

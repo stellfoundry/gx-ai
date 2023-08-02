@@ -8,6 +8,7 @@
 #include "solver.h"
 #include "forcing.h"
 #include "grad_parallel.h"
+#include "exb.h"
 
 class Timestepper {
  public:
@@ -45,7 +46,7 @@ class RungeKutta2 : public Timestepper {
 class RungeKutta3 : public Timestepper {
  public:
   RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-	      Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
+	      Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in);
   ~RungeKutta3();
   void advance(double* t, MomentsG** G, Fields* fields);
   void partial(MomentsG** G, MomentsG** Gt, Fields *f,
@@ -64,6 +65,7 @@ class RungeKutta3 : public Timestepper {
   Parameters * pars_      ;
   Grids      * grids_     ;
   Forcing    * forcing_   ;
+  ExB        * exb_       ;
   MomentsG  ** GRhs1      ;
   MomentsG  ** GRhs2      ;
   MomentsG  ** G_q1       ;

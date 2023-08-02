@@ -28,10 +28,12 @@ Grids::Grids(Parameters* pars) :
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
-  y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
+  y_h             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
   m0_h            = nullptr;  phasefac_ntft   = nullptr;  phasefacminus_ntft = nullptr;
   iKx             = nullptr;  x               = nullptr;
+  kxstar          = nullptr;  kxbar_ikx       = nullptr;  phasefac_exb    = nullptr;
+
 
   Nspecies = pars->nspec_in;
   Nspecies_glob = Nspecies;
@@ -119,14 +121,19 @@ Grids::Grids(Parameters* pars) :
   z_h      = (float*) malloc(sizeof(float) * Nz       );
   if (pars->nonTwist) {
     m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
-    if (!pars->linear) {
+    if (!pars->linear) {      
       cudaMalloc     ( (void**) &phasefac_ntft,         sizeof(cuComplex) * Nx * Nyc * Nz);
       cudaMalloc     ( (void**) &phasefacminus_ntft,    sizeof(cuComplex) * Nx * Nyc * Nz);
       cudaMalloc     ( (void**) &iKx,      sizeof(cuComplex) * Nx * Nyc * Nz);
       cudaMalloc     ( (void**) &x,        sizeof(float) * Nx       );
     }
   }
-  cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
+  if (pars_->ExBshear) {
+    cudaMalloc     ( (void**) &phasefac_exb,         sizeof(float) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxstar,     sizeof(float) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxbar_ikx,  sizeof(int) * Nx * Nyc);
+  }
+
   checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
@@ -166,17 +173,19 @@ Grids::Grids(Parameters* pars) :
 }
 
 Grids::~Grids() {
-  if (kxs)             cudaFree(kxs);
   if (kx)              cudaFree(kx);
   if (ky)              cudaFree(ky);
   if (kz)              cudaFree(kz);
   if (kzm)             cudaFree(kzm);
   if (kzp)             cudaFree(kzp);
   if (th0)             cudaFree(th0);
-  if (phasefac_ntft)   cudaFree(phasefac_ntft);
-  if (phasefacminus_ntft) cudaFree(phasefacminus_ntft);
+  if (phasefac_ntft)        cudaFree(phasefac_ntft);
+  if (phasefacminus_ntft)   cudaFree(phasefacminus_ntft);
+  if (phasefac_exb)         cudaFree(phasefac_exb);
   if (iKx)	       cudaFree(iKx);
   if (x)               cudaFree(x);
+  if (kxstar)          cudaFree(kxstar);
+  if (kxbar_ikx)       cudaFree(kxbar_ikx);
   
   if (kpar_outh)       free(kpar_outh);
   if (kz_outh)         free(kz_outh);
@@ -208,7 +217,7 @@ void Grids::init_ks_and_coords()
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
 
-  // If this is a restarted run, should get kxs from the restart file
+  // If this is a restarted run, should get kxstar from the restart file
   // otherwise:
   if (pars_->ExBshear) {
     int nn1, nt1, nb1, nn2, nt2, nb2, nn3, nt3, nb3;
@@ -217,8 +226,8 @@ void Grids::init_ks_and_coords()
     nn3 = 1;         nt3 = 1;                nb3 = 1;
     dim3 dB = (nt1, nt2, nt3);
     dim3 dG = (nb1, nb2, nb3);
-    init_kxs <<< dG, dB >>> (kxs, kx, th0);
-    CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);    
+    init_kxstar_kxbar_phasefac <<< dG, dB >>> (kxstar, kxbar_ikx, phasefac_exb, kx); // Do we really need th0 here? // JFP
+    //CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);  
   }
   
   if (Nx<4) {

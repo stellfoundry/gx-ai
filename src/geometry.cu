@@ -306,6 +306,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   float qsf = pars->qsf;
   float beta_e = pars->beta;
   float rmaj = pars->rmaj;
+  float rhoc = pars->rhoc;
   specie* species = pars->species_h;
   
   gradpar = (float) abs(1./(qsf*rmaj));
@@ -904,11 +905,11 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     grids->m0_max = 0;
     float m0_omega0 = 0; // need to maximize this quantity to find max frequency for the NTFT
     for (int idz = 0; idz < grids->Nz; idz++) { //only need to loop through Nz since m0 scales with ky, max ky will have max m0
-      if (m0[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]))) {
-        m0_omega0 = m0[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));
-	grids->m0_max = m0[grids->Nyc-1 + grids->Nyc*idz];
-	gbdrift0_max = gbdrift0_h[idz];
-	cvdrift0_max = cvdrift0_h[idz];
+      if (grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]))) {
+        m0_omega0 = grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));
+	grids->m0_max = abs(grids->m0_h[grids->Nyc-1 + grids->Nyc*idz]);
+	gbdrift0_max = abs(gbdrift0_h[idz]);
+	cvdrift0_max = abs(cvdrift0_h[idz]);
       }
     }
   }
@@ -949,7 +950,6 @@ void Geometry::calculate_bgrad(Grids* grids)
 
   calc_bgrad <<< 1 + (grids->Nz-1)/512, 512 >>> (bgrad, bgrad_temp, bmag, gradpar);
 
-  CP_TO_CPU (bgrad_h, bgrad, size);
   if (bgrad_temp) cudaFree(bgrad_temp);
 
   delete grad_par;

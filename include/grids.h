@@ -42,6 +42,10 @@ class Grids {
   cuComplex * phasefacminus_ntft;
   cuComplex * iKx;
   float * x;
+  float * phasefac_exb;
+  float * kxstar;
+  int * kxbar_ikx;
+
   
   float * theta0_h ;
   float * th0; 
