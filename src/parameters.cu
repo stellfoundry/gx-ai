@@ -111,6 +111,12 @@ void Parameters::get_nml_vars(char* filename)
   ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
+  densfac = toml::find_or <float> (tnml, "densfac", 1.0);
+  uparfac = toml::find_or <float> (tnml, "uparfac", 1.0);
+  tparfac = toml::find_or <float> (tnml, "tparfac", 1.0);
+  tprpfac = toml::find_or <float> (tnml, "tprpfac", 1.0);
+  qparfac = toml::find_or <float> (tnml, "qparfac", 1.0);
+  qprpfac = toml::find_or <float> (tnml, "qprpfac", 1.0);
   if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");

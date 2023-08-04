@@ -140,6 +140,7 @@ class Parameters {
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
+  float densfac, uparfac, tparfac, tprpfac, qparfac, qprpfac;
   float forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
   float D_HB, w_osc;

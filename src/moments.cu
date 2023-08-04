@@ -277,12 +277,30 @@ void MomentsG::initialConditions(double* time) {
     case inits::qpar    : if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize); break;
     case inits::qperp   : if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize); break;
     case inits::all     :
-      if(dens_ptr) CP_TO_GPU(dens_ptr, init_h, momsize);
-      if(upar_ptr) CP_TO_GPU(upar_ptr, init_h, momsize);
-      if(tpar_ptr) CP_TO_GPU(tpar_ptr, init_h, momsize);
-      if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize);
-      if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize);
-      if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize);
+      if(dens_ptr) {
+        CP_TO_GPU(dens_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (dens_ptr, dens_ptr, pars_->densfac);
+      }
+      if(upar_ptr) {
+        CP_TO_GPU(upar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (upar_ptr, upar_ptr, pars_->uparfac);
+      }
+      if(tpar_ptr) {
+        CP_TO_GPU(tpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tpar_ptr, tpar_ptr, 1/sqrtf(2.)*pars_->tparfac);
+      }
+      if(tprp_ptr) {
+        CP_TO_GPU(tprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tprp_ptr, tprp_ptr, pars_->tprpfac);
+      }
+      if(qpar_ptr) {
+        CP_TO_GPU(qpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qpar_ptr, qpar_ptr, 1/sqrtf(6.)*pars_->qparfac);
+      }
+      if(qprp_ptr) {
+        CP_TO_GPU(qprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qprp_ptr, qprp_ptr, pars_->qprpfac);
+      }
       break;
     }
   checkCuda(cudaGetLastError());    

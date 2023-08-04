@@ -2540,7 +2540,6 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
                              + sqrtf(m  )* l   *S_H(sl,sm-1) + sqrtf(m  )*(l+1)*S_H(sl+1,sm-1) )
 	  - icv_d_s * ( sqrtf((m+1)*(m+2))*S_H(sl,sm+2) + (2*m+1)*S_H(sl,sm) + sqrtf(m*(m-1))*S_H(sl,sm-2) )
 	  - igb_d_s * (              (l+1)*S_H(sl+1,sm) + (2*l+1)*S_H(sl,sm)              + l*S_H(sl-1,sm) )
-	  
 	  - (nu_ + nuei_) * ( b_s + 2*l + m ) * ( S_H(sl,sm) );
 
 	// add drive and conservation terms in low hermite moments
@@ -2556,7 +2555,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
 	    + JflrB(l,  b_s)*(fprim_ + 2*l*tprim_)
 	    + JflrB(l+1,b_s,false)*(l+1)*tprim_ 
 	   )
-	   + nu_ * sqrtf(b_s) * ( Jflr(l, b_s) + Jflr(l-1, b_s) ) * uperp_bar_
+	   + nu_ * sqrtf(b_s) * JflrB(l, b_s) * uperp_bar_
 	   + ( nu_ + nuei_ ) * 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar_; 
 	}
 
@@ -2574,7 +2573,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
 	}
 	if (m==2) {
 	  rhs[globalIdx] = rhs[globalIdx] + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ 
-	     + iky_/zt_*bpar_*JflrB(l, b_s)/sqrtf(2.)*tprim_ + 
+	     + iky_/zt_*bpar_*JflrB(l, b_s)/sqrtf(2.)*tprim_ 
 	     + ( nu_ + nuei_ ) * sqrtf(2.) * Jflr(l,b_s) * t_bar_;
 	}  
 
