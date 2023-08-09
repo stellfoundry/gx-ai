@@ -69,6 +69,8 @@ class Grids {
   int procLeft() {return proc(iproc_m-1, iproc_s);}
   int procRight() {return proc(iproc_m+1, iproc_s);}
 
+  dim3 dB, dG;
+
   /* Flow shear arrays*/
   //  float * kx_shift ;
   //  int * jump ;

@@ -236,13 +236,13 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale);
   
-__device__ cuComplex i_kxs(void *dataIn, size_t offset, void *kxsData, void *sharedPtr);
+__device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, void *sharedPtr);
 
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr);
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
 
-extern __device__ cufftCallbackLoadC i_kxs_callbackPtr;
+extern __device__ cufftCallbackLoadC i_kxstar_callbackPtr;
 extern __device__ cufftCallbackLoadC i_kx_callbackPtr;
 extern __device__ cufftCallbackLoadC i_ky_callbackPtr;
 extern __device__ cufftCallbackLoadC phasefac_exb_callbackPtr;
@@ -379,7 +379,8 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
 __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                                const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                                const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
-			       const float* ftwist, const float* deltaKx, const int* m0, const float x0);
+			       const float* ftwist, float* deltaKx, const int* m0, const float x0, cuComplex* iKx,
+			       const float g_exb, const double dt, const float* kx);
 __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0);
 __global__ void field_shift(cuComplex* field, const int* kxbar_ikx);
 __global__ void g_shift(cuComplex* g, const int* kxbar_ikx);

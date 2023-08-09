@@ -18,6 +18,7 @@ class ExB_GK : public ExB {
     Parameters     * pars_    ;
     Grids          * grids_   ;  
     MomentsG       * GRhs_par ;
-    dim3 dGk, dBk, dimGridNxNyc, dimBlockNxNyc, dimGridNxNycNz, dimBlockNxNycNz;
+    dim3 dGk, dBk;
+    dim3 dimGrid_xy, dimBlock_xy, dimGrid_xyz, dimBlock_xyz, dimGrid_xyzlm, dimBlock_xyzlm;
     int nt1, dimBlockfield, dimGridfield;
 };

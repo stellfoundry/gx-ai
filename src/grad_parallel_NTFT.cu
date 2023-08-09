@@ -31,6 +31,8 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
   int nakx = grids_->Nakx;
   int nz = grids_->Nz;
   int nx = grids_->Nx;
+  int nLinks_max = 3000; // above this value, we cut off nLinks to be multiple of nz or else we are fft-ing chains with large prime factors
+  int nLinks_min = 0;   // below this value, we do not fft since it causes severe timestep reduction
   
   int mode_nums[naky*nakx*nz] = {0}; //array that lists what mode a point is part of
     
@@ -38,12 +40,12 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
   int mode_size[mode] = {0}; // this will be sorted, used for nLinks/nChains
   int mode_size_ref[mode] = {0}; //this won't be sorted, used for filling kx/ky grids
   nExtra = (int*) malloc(sizeof(int)*mode); // this is used when chains are extremely long (>3000 grid points), cut off nExtra grid points to make nLinks integer multiple of nz for fft efficiency
-  nClasses = get_nClasses_ntft(mode_size, mode_size_ref, mode_nums, nExtra, naky, nakx, nz, mode);
+  nClasses = get_nClasses_ntft(mode_size, mode_size_ref, mode_nums, nExtra, naky, nakx, nz, mode, nLinks_max, nLinks_min);
     
   nChains = (int*) malloc(sizeof(int)*nClasses);
   nLinks = (int*) malloc(sizeof(int)*nClasses); //this is number of grid points, not 2pi segments
 
-  get_nChains_nLinks_ntft(mode_size, nLinks, nChains, nClasses, nakx, naky, nz, mode);
+  get_nChains_nLinks_ntft(mode_size, nLinks, nChains, nClasses, nakx, naky, nLinks_min, mode);
   
   // ikxLinked for NTFT stores both ikx and idz via combined index
   ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses); 
@@ -385,7 +387,7 @@ int GradParallelNTFT::get_mode_nums_ntft(int *mode_nums, int nz, int naky, int n
   }
   return mode;
 }
-int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int *mode_nums, int *nExtra, int naky, int nakx, int nz, int mode)
+int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int *mode_nums, int *nExtra, int naky, int nakx, int nz, int mode, int nLinks_max, int nLinks_min)
 { // JMH
  
   // this uses the data from the get mode nums function to identify the number of classes
@@ -396,17 +398,17 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
 	 // add one to the mode length corresponding to that grid point, this is analagous to n_k
 	 mode_size[mode_nums[idy + naky * (idx + nakx * idz)]-1]++;
        	 mode_size_ref[mode_nums[idy + naky * (idx + nakx * idz)]-1]++; //should be identical arrays
-	 //printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
+	 printf("%3d ", mode_nums[idy + naky * (idx + nakx * idz)]); //uncomment these three print statements to see a visual of the NTFT kx/z grid
        }
-       //printf("\n");
+       printf("\n");
     }
-    //printf(" \n\n\n\n");
+    printf(" \n\n\n\n");
   }
   
   // Because NTFT doesn't require multiple of nz grid points per chain, nLinks at low ky can get messy in high resolution scans (large prime factors). 
-  // This section makes long chains (more than ~3000 grid points) a multiple of nz by cutting off the highest kperp (damped) grid points when we do kFill below
+  // This section makes long chains (more than nLinks_max grid points) a multiple of nz by cutting off the highest kperp (damped) grid points when we do kFill below
   for (int k=0; k<mode; k++) {
-    if (mode_size[k] > 3000) {
+    if (mode_size[k] > nLinks_max) {
       nExtra[k] = mode_size[k] % nz;
       mode_size[k] = mode_size[k] - nExtra[k]; // modes with different sizes that are cut down to the same length are in the same class
       mode_size_ref[k] = mode_size_ref[k] - nExtra[k];
@@ -419,13 +421,13 @@ int GradParallelNTFT::get_nClasses_ntft(int *mode_size, int *mode_size_ref, int 
   // count how many different classes
   int nClasses = 1;
   for(int k=0; k<mode-1; k++){
-    if(mode_size[k] != mode_size[k+1] && mode_size[k] > 10) { // we don't fft extremely short links in the NTFT, creates unphysical timestep restriction
+    if(mode_size[k] != mode_size[k+1] && mode_size[k] > nLinks_min) { // we don't fft extremely short links (<nLinks_min) in the NTFT, creates unphysical timestep restriction
       nClasses++;
     }
   }
   return nClasses;
 }
-void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int *nChains, int nClasses, int nakx, int naky, int nz, int mode) // JMH
+void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int *nChains, int nClasses, int nakx, int naky, int nLinks_min, int mode) // JMH
 {
   // this function fills nLinks and nChains arrays for each class (where a class represents a ballooning mode of different size)
   // nLinks[c] = number of GRID POINTS (not 2pi segments) in a ballooning mode of class c
@@ -436,7 +438,7 @@ void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int 
   }
   int c=0;
   for(int k=1; k<mode; k++) {
-    if(mode_size[k-1] > 10) {
+    if(mode_size[k-1] > nLinks_min) {
       if(mode_size[k] == mode_size[k-1]) {
        nChains[c]++;
       } else {
@@ -446,6 +448,7 @@ void GradParallelNTFT::get_nChains_nLinks_ntft(int *mode_size, int *nLinks, int 
     }
   }
   nLinks[nClasses-1] = mode_size[mode-1];
+  printf("minimum nLinks = %d \n", nLinks[0]);
 }
 
 void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *nExtra, int **ikyNTFT, int **ikxdzNTFT, int naky, int nakx, int jtwist, int nz, int mode, int *mode_size_ref, int *mode_nums, int nx, int* m0, int nyc) // JMH
@@ -503,7 +506,6 @@ void GradParallelNTFT::kFill_ntft(int nClasses, int *nChains, int *nLinks, int *
 		    } else {
   	              idx_prime = idx_constant - m0[idy+ nyc * idz_prime];
 		      idx0 = calc_idx0(idx_prime, nshift, nakx);
-		      //printf("p = %d n = %d nLinks = %d idx0 = %d idz = %d, idy = %d \n", p, n, nLinks[ic], idx0, idz_prime, idy);
                       ikxdzNTFT[ic][p + nLinks[ic] * n] = idx0 + nx * idz_prime; // overwriting by nExtra/2 points
                       ikyNTFT[ic][p + nLinks[ic] * n] = idy;
                       p++;

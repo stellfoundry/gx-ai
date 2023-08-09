@@ -119,16 +119,17 @@ Grids::Grids(Parameters* pars) :
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
   z_h      = (float*) malloc(sizeof(float) * Nz       );
+  cudaMalloc     ( (void**) &x,        sizeof(float) * Nx       );
   if (pars->nonTwist) {
     m0_h     = (int*)   malloc(sizeof(int) * Nyc * Nz );
     if (!pars->linear) {      
       cudaMalloc     ( (void**) &phasefac_ntft,         sizeof(cuComplex) * Nx * Nyc * Nz);
       cudaMalloc     ( (void**) &phasefacminus_ntft,    sizeof(cuComplex) * Nx * Nyc * Nz);
       cudaMalloc     ( (void**) &iKx,      sizeof(cuComplex) * Nx * Nyc * Nz);
-      cudaMalloc     ( (void**) &x,        sizeof(float) * Nx       );
     }
   }
   if (pars_->ExBshear) {
+    printf("initializing ExB parameters\n");
     cudaMalloc     ( (void**) &phasefac_exb,         sizeof(float) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxstar,     sizeof(float) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxbar_ikx,  sizeof(int) * Nx * Nyc);
@@ -222,10 +223,10 @@ void Grids::init_ks_and_coords()
   if (pars_->ExBshear) {
     int nn1, nt1, nb1, nn2, nt2, nb2, nn3, nt3, nb3;
     nn1 = Nyc;       nt1 = min(32, nn1);     nb1 = 1 + (nn1-1)/nt1;
-    nn2 = Nx;        nt2 = min(32, nn2);     nb2 = 1 + (nn2-1)/nt2;
+    nn2 = Nx;        nt2 = min(16, nn2);     nb2 = 1 + (nn2-1)/nt2;
     nn3 = 1;         nt3 = 1;                nb3 = 1;
-    dim3 dB = (nt1, nt2, nt3);
-    dim3 dG = (nb1, nb2, nb3);
+    dB = dim3(nt1, nt2, nt3);
+    dG = dim3(nb1, nb2, nb3);
     init_kxstar_kxbar_phasefac <<< dG, dB >>> (kxstar, kxbar_ikx, phasefac_exb, kx); // Do we really need th0 here? // JFP
     //CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);  
   }

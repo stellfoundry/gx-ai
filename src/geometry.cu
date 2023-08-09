@@ -847,8 +847,8 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
 
   // initialize operator arrays
   if (pars->nonTwist) {
-    dim3 dimBlock_ntft (32,4);
-    dim3 dimGrid_ntft (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nz-1)/dimBlock.z);
+    dim3 dimBlock_ntft (32,16);
+    dim3 dimGrid_ntft (1+(grids->Nyc-1)/dimBlock.x, 1+(grids->Nz-1)/dimBlock.y);
 
     printf("Using non-twisting flux tube \n"); 
 
@@ -950,6 +950,7 @@ void Geometry::calculate_bgrad(Grids* grids)
 
   calc_bgrad <<< 1 + (grids->Nz-1)/512, 512 >>> (bgrad, bgrad_temp, bmag, gradpar);
 
+  CP_TO_CPU (bgrad_h, bgrad, size);
   if (bgrad_temp) cudaFree(bgrad_temp);
 
   delete grad_par;

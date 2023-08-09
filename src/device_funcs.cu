@@ -788,7 +788,7 @@ __global__ void init_m0(int* m0, const float x0, const float* ky, const float* f
   unsigned int idy = get_id1();
   unsigned int idz = get_id2();
   float delta = 0.01313; //arbitrary constant to make sure it never has to round(0.5)
-  if ((idy < nyc) && (idz < nz)) { 
+  if (idy < nyc && idz < nz) { 
     unsigned int idyz = idy + nyc*idz; 
     
     // 2*pi*zp terms use global shear to extrapolate to z + delta_z at edge of domain, see (B.10) in Ball 2020
@@ -804,7 +804,7 @@ __global__ void init_deltaKx(float* deltaKx, const int* m0, const float x0, cons
 {
   unsigned int idy = get_id1();
   unsigned int idz = get_id2();
-  if ((idy < nyc) && (idz < nz)) {
+  if (idy < nyc && idz < nz) {
     unsigned int idyz = idy + nyc*idz;
     deltaKx[idyz] = ky[idy] * ftwist[idz] + m0[idyz] / x0;
   }
@@ -828,7 +828,7 @@ __global__ void init_omegad_ntft(float* omegad, float* cv_d, float* gb_d, const 
   unsigned int idz = get_id3();
 
   float shatInv = 1./shat;
-  if ( unmasked(idx, idy) && idz < nz) {
+  if (unmasked(idx, idy) && idz < nz) {
     unsigned int idxyz = idy + nyc*(idx + nx*idz);
     unsigned int idyz = idy + nyc*idz;
     cv_d[idxyz] = ky[idy] * cv[idz] + shatInv * (kx[idx] + m0[idyz] / x0) * cv0[idz] ;     
@@ -848,7 +848,6 @@ __global__ void init_iKx(cuComplex* iKx, const float* kx, const float* deltaKx)
     unsigned int idyz = idy + nyc * idz;
 
     iKx[idxyz] = make_cuComplex(0., kx[idx] + deltaKx[idyz]);
-    //printf("iKx(%d=%d,%d,%d) = %f \n", idxyz,idx, idy, idz, iKx[idxyz].y);
   }
 }
 
@@ -868,7 +867,6 @@ __global__ void init_phasefac_ntft(cuComplex* phasefac, const float* x, const fl
       float exp = -1.0 * x[idx] * deltaKx[idyz];
       sincosf(exp, &phasefac[idxyz].y, &phasefac[idxyz].x);
     }
-    //printf("phasefac(%d=%d,%d,%d).x = %f, phasefac.y = %f \n", idxyz, idx, idy, idz, phasefac[idxyz].x, phasefac[idxyz].y);
   }
 }
 
@@ -1133,12 +1131,12 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
   return Ikx*((cuComplex*)dataIn)[offset];
 }
 
-__device__ cuComplex i_kxs(void *dataIn, size_t offset, void *kxsData, void *sharedPtr)
+__device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, void *sharedPtr)
 {
-  float *kxs = (float*) kxsData;
+  float *kxstar = (float*) kxstarData;
   unsigned int idxy = offset % (nyc*nx);
-  cuComplex Ikxs = make_cuComplex(0., kxs[idxy]);
-  return Ikxs*((cuComplex*)dataIn)[offset];
+  cuComplex Ikxstar = make_cuComplex(0., kxstar[idxy]);
+  return Ikxstar*((cuComplex*)dataIn)[offset];
 }
 
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr)
@@ -1153,10 +1151,13 @@ __device__ cuComplex phase_fac_exb(void *dataIn, size_t offset, void *phaseData,
   float *phase = (float*) phaseData;
   unsigned int idx = offset / nyc % nx;
   unsigned int idy = offset % nyc;
+  printf("idy = %d \n", idy);
+  unsigned int idxy = idy + nyc*idx;
   // Complex expoential calculation.
+  printf("idx = %d, idy = %d, phase = %f \n", idx, idy, phase[idxy]);
   // exp(phase) = exp(phase.x)*(cos(phase.y) + 1i*sin(phase.y))) = cos(phase.y) + 1i*sin(phase.y), since phase.x = 0.
   cuComplex compexp;
-  sincosf(phase[idy+nyc*idx], &compexp.y, &compexp.x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
+  sincosf(phase[idxy], &compexp.y, &compexp.x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
   return compexp*((cuComplex*)dataIn)[offset];
 }
 
@@ -1172,6 +1173,7 @@ __device__ cuComplex phase_fac_minus_exb(void *dataIn, size_t offset, void *phas
   return compexp*((cuComplex*)dataIn)[offset];
 }
 
+// for ExB shear, still need to take care of the phase factors associated with kx grid misses
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr)
 {
   //  unsigned int idz = offset / (nyc*nx) % nz;
@@ -1192,7 +1194,7 @@ __device__ void scale_ky(void *dataOut, size_t offset, cufftComplex element, voi
   ((cuComplex*)dataOut)[offset] = element/(ny);
 }
 
-__device__ cufftCallbackLoadC i_kxs_callbackPtr = i_kxs;
+__device__ cufftCallbackLoadC i_kxstar_callbackPtr = i_kxstar;
 __device__ cufftCallbackLoadC i_kx_callbackPtr = i_kx;
 __device__ cufftCallbackLoadC i_ky_callbackPtr = i_ky;
 __device__ cufftCallbackStoreC mask_and_scale_callbackPtr = mask_and_scale;
@@ -2341,16 +2343,10 @@ __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex elemen
   // kz[1] = nz/(zp * nLinks)
   float *kz = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  //if (nLinks <= 10) {  // if the link has only nz/8 grid points or less, set it to 0
-  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-   //printf("nLinks = %d, kz[1] = %f \n", nLinks, kz[1]);
-  //}
-  //else {
-    unsigned int idz = offset % (nLinks);
-    cuComplex Ikz = make_cuComplex(0., kz[idz]);
-    float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
-    ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
-  //}
+  unsigned int idz = offset % (nLinks);
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  float normalization = (float) 1./(nLinks); // nLinks is number of grid points already
+  ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
 }
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2365,12 +2361,8 @@ __device__ void zfts_LinkedNTFT(void *dataOut, size_t offset, cufftComplex eleme
 {
   float *kz  = (float*) kzData;
   int nLinks = (int) lrintf(nz/(zp*kz[1]));
-  //if (nLinks <=10) {
-  //  ((cuComplex*)dataOut)[offset] = make_cuComplex(0., 0.);
-  //} else {
   float normalization = (float) 1./(nLinks);
   ((cuComplex*)dataOut)[offset] = element*normalization;
-  //}
 }
 
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
@@ -2568,15 +2560,15 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
     // set damping region width to 1/8 of extended domain (on either side)
     int width = nLinks/8;  
 
-    if (width == 0) width = 1; //sometimes links are less than 8 long in NTFT
+    if (width == 0) width = 1; //sometimes links are less than 8 long in NTFT, these should be damped by kx function below anyway
 
     float L = 2*M_PI*zp*nLinks/(8*nz);
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
-    if (idzl <= width ) {
+    if (idzl < width ) {
       float x = ((float) idzl)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
-    } else if (idzl >= nLinks-width) {
-      float x = ((float) nLinks-idzl)/width;
+    } else if (idzl > nLinks-width-1) {
+      float x = ((float) nLinks-idzl-1)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
     }
     // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
@@ -2592,7 +2584,21 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
       cuComplex H_ = G[globalIdx];
       if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
       if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+      // apply damping to high Kx modes at top of ntft grid that drive unphysical growth rates
+      // arbitrarily chose nakx/20 to damp on both high negative and positive kx
+      // damping increases for each kx closer to grid end
+      //const int nakx = 1 + 2*((nx-1)/3);
+      //const int numdamp = nakx / 20; // damp this many modes on each side
+      //if (nakx/2 - ikx_ntft < numdamp && nakx/2 - ikx_ntft >= 0) {
+      //  GRhs[globalIdx] = pow(0.1, numdamp - (nakx/2 - ikx_ntft)) * GRhs[globalIdx];
+      //} else if ((ikx_ntft - (nx-nakx/2) < numdamp && ikx_ntft - (nx-nakx/2) >= 0)) {
+      //  GRhs[globalIdx] = pow(0.1, numdamp - (ikx_ntft - (nx-nakx/2))) * GRhs[globalIdx];
+      //} else {
+      if (nu != 0) {
+        GRhs[globalIdx] = GRhs[globalIdx] * 0.;
+      } else {
+        GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+      }
     }
   }
 }
@@ -3107,10 +3113,12 @@ __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx, float*
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
-  if (unmasked(idx, idy)) {
-    kxstar[idy+nyc*idx] = kx[idx]; // should read this from a file if this is a restarted case
-    kxbar_ikx[idy+nyc*idx] = kx[idx]; // should read this from a file if this is a restarted case
-    phasefac[idy+nyc*idx] = 0; // should read this from a file if this is a restarted case
+
+  if (idx < nx && idy < nyc) {
+    unsigned int idxy = idy + nyc * idx;
+    kxstar[idxy] = kx[idx]; // should read this from a file if this is a restarted case
+    kxbar_ikx[idxy] = kx[idx]; // should read this from a file if this is a restarted case
+    phasefac[idxy] = 0; // should read this from a file if this is a restarted case
   }
   // JFP: note: to normalize kxstar, theta0, and ky*g_exb*dt correctly for stellarators with different connection lengths.
   // JFP: note: add read-in kxstar option.
@@ -3123,24 +3131,25 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
   if (idy>0 && unmasked(idx, idy) && idz < nz) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxy  = idy + nyc * idx;
+    unsigned int idxyz = idy + nyc * (idx + nx * idz);
 
     if (shat == 0.0) {
-      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxstar[idy+nyc*idx] * gds21[idz]) 
-			+ pow( kxstar[idy+nyc*idx], 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxstar[idxy] * gds21[idz]) 
+			+ pow( kxstar[idxy], 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
     
-      cv_d[idxyz] = ky[idy] * cv[idz] + kxstar[idy+nyc*idx] * cv0[idz] ;     
-      gb_d[idxyz] = ky[idy] * gb[idz] + kxstar[idy+nyc*idx] * gb0[idz] ;
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxstar[idxy] * cv0[idz] ;     
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxstar[idxy] * gb0[idz] ;
       omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
 
     } else {
       float shatInv = 1./shat; 
     
-      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxstar[idy+nyc*idx] * shatInv * gds21[idz])
-			+ pow( kxstar[idy+nyc*idx] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
+      kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxstar[idxy] * shatInv * gds21[idz])
+			+ pow( kxstar[idxy] * shatInv, 2) * gds22[idz] ) * pow( bmagInv[idz], 2);
       
-      cv_d[idxyz] = ky[idy] * cv[idz] + kxstar[idy+nyc*idx] * shatInv * cv0[idz]; // JFP: worth updating only radial component of drifts?
-      gb_d[idxyz] = ky[idy] * gb[idz] + kxstar[idy+nyc*idx] * shatInv * gb0[idz] ;
+      cv_d[idxyz] = ky[idy] * cv[idz] + kxstar[idxy] * shatInv * cv0[idz]; // JFP: worth updating only radial component of drifts?
+      gb_d[idxyz] = ky[idy] * gb[idz] + kxstar[idxy] * shatInv * gb0[idz] ;
       omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
     }
   }
@@ -3149,20 +3158,29 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
 __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
-			   const float * ftwist, const float* deltaKx, const int* m0, const float x0)
+			   const float * ftwist, float* deltaKx, const int* m0, const float x0, cuComplex* iKx, 
+			   const float g_exb, const double dt, const float * kx)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
   float shatInv = 1./shat; // note: no point in putting shat = 0 condition for NTFT so we don't check for it
   // for NTFT: Kxstar = scriptKxstar (existing kx grid) + deltaKx = scriptKx - ky*g_exb*t + deltaKx
-  if (idy>0 && unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
-    kperp2[idxyz] = ( pow(ky[idy] , 2) * (gds2[idz] - 2 * ftwist[idz] * gds21[idz] * shatInv + pow(ftwist[idz], 2) * gds22[idz] * pow(shatInv, 2)) 
-		    + pow(kxstar[idy+nyc*idx] + deltaKx[idy+nyc*nz], 2) * gds22[idz] * pow(shatInv, 2) ) * pow(bmagInv[idz], 2);
-    cv_d[idxyz] = ky[idy] * cv[idz] + (kxstar[idy+nyc*idx] + m0[idy+nyc*nz] / x0) * shatInv * cv0[idz]; // JFP: worth updating only radial component of drifts?
-    gb_d[idxyz] = ky[idy] * gb[idz] + (kxstar[idy+nyc*idx] + m0[idy+nyc*nz] / x0) * shatInv * gb0[idz];
-    omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+  if (idx < nx && idy < nyc && idz < nz) {
+    unsigned int idyz  = idy + nyc * idz;
+    unsigned int idxy  = idy + nyc * idx;
+    unsigned int idxyz = idy + nyc * (idx + nx * idz);
+
+    deltaKx[idxy] = deltaKx[idxy] - ky[idy]*g_exb*dt; // this becomes deltaKxstar for NTFT + ExB
+    iKx[idxyz] = make_cuComplex(0., kx[idx] + deltaKx[idyz]); // this is iKxstar
+    
+    if (idy > 0 && unmasked(idx, idy)) {
+      kperp2[idxyz] = ( pow(ky[idy] , 2) * (gds2[idz] - 2 * ftwist[idz] * gds21[idz] * shatInv + pow(ftwist[idz], 2) * gds22[idz] * pow(shatInv, 2)) 
+		      + pow(kx[idx] + deltaKx[idyz], 2) * gds22[idz] * pow(shatInv, 2) ) * pow(bmagInv[idz], 2);
+      cv_d[idxyz] = ky[idy] * cv[idz] + (kxstar[idxy] + m0[idyz] / x0) * shatInv * cv0[idz]; // m0 not time dependent
+      gb_d[idxyz] = ky[idy] * gb[idz] + (kxstar[idxy] + m0[idyz] / x0) * shatInv * gb0[idz];
+      omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];
+    }
   }
 }
 
@@ -3171,15 +3189,18 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx, const float* k
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   float dkx = (float) 1./x0;
-  float kxalias_max = (float) dkx*(nx-1)/3;
-  if(idy<ny/2+1) {
+  int nakx = 1 + 2*((nx-1)/3);
+  float kxalias_max = (float) dkx*(nakx/2);
+  if(idx < nx && idy < nyc) {
+    unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
-    kxstar[idy+nyc*idx] = kxstar[idy+nyc*idx] - ky[idy]*g_exb*dt; // kx_star
-    kxbar_ikx[idy+nyc*idx] = roundf(kxstar[idy+nyc*idx]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
-    phasefac[idy+nyc*idx] = (kxstar[idy+nyc*idx] - kxbar_ikx[idy+nyc*idx]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
+    kxstar[idxy] = kxstar[idxy] - ky[idy]*g_exb*dt; // kx_star
+    kxbar_ikx[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
+    phasefac[idxy] = (kxstar[idxy] - kxbar_ikx[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
+    printf("phasefac[idx = %d,idy = %d] = %f \n", idx, idy, phasefac[idxy]);
     //if field is sheared beyond resolution or mask, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
-    if(kxbar_ikx[idy+nyc*idx] > (nx-1)/3 || kxbar_ikx[idy+nyc*idx] < -(nx-1)/3 ) {
-      kxstar[idy+nyc*idx] = kxstar[idy+nyc*idx] + g_exb/abs(g_exb)*2*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
+    if(kxbar_ikx[idxy] > nakx/2 || kxbar_ikx[idxy] < -(nakx/2)) {
+      kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*2*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
     }
   }
 }
@@ -3199,13 +3220,17 @@ __global__ void field_shift(cuComplex* field, const int* kxbar_ikx)
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
-  if(idx<nx && idy<(ny/2+1) && idz<nz) {
-    int index = idy + (ny/2+1)*idx + nx*(ny/2+1)*idz;
-    int ikx_shifted = kxbar_ikx[idy+nyc*idx];
+
+  int nakx = 1 + 2*((nx-1)/3);
+
+  if(idx < nx && idy < nyc && idz < nz) {
+    int idxyz = idy + nyc * (idx + nx * idz);
+    int idxy  = idy + nyc * idx;
+    int ikx_shifted = kxbar_ikx[idxy];
     //if field is sheared beyond resolution or mask, set field to zero
-    if( kxbar_ikx[idy+nyc*idx] > (nx-1)/3 || kxbar_ikx[idy+nyc*idx] < -(nx-1)/3 ) {
-      field[index].x = 0.;
-      field[index].y = 0.;
+    if( kxbar_ikx[idxy] > nakx/2 || kxbar_ikx[idxy] < -nakx/2 ) {
+      field[idxyz].x = 0.;
+      field[idxyz].y = 0.;
     }
     else {
       int idx_shifted;
@@ -3213,22 +3238,29 @@ __global__ void field_shift(cuComplex* field, const int* kxbar_ikx)
         idx_shifted = ikx_shifted + nx;
       }
       else idx_shifted = ikx_shifted;
-      int index_shifted = idy + (ny/2+1)*idx_shifted + nx*(ny/2+1)*idz;
-      field[index] = field[index_shifted];
+      int idxyz_shifted = idy + nyc * (idx_shifted + nx * idz);
+      field[idxyz] = field[idxyz_shifted];
     }
   }
 }
 
 __global__ void g_shift(cuComplex* g, const int* kxbar_ikx)
 {
-  unsigned int idxyz = get_id1();
-  unsigned int idj = get_id2();
-  if(idxyz<nx*nyc*nz && idj<nj) {
-    unsigned int ig = idxyz + nx*nyc*nz*idj;
-    unsigned int idxy = idxyz / (nx*nyc);
+  unsigned int idy = get_id1();
+  unsigned int idxz = get_id2();
+  unsigned int idlm = get_id3();
+
+  int nakx = 1 + 2*((nx-1)/3);
+
+  if(idy < nyc && idxz < nx*nz && idlm < nl*nm) {
+    unsigned int idx = idxz % nx;
+    unsigned int idz = idxz / nx;
+    unsigned int idxy = idy + nyc*idx;
+    unsigned int ig = idy + nyc*(idxz + nx*nz*idlm);
+
     int ikx_shifted = kxbar_ikx[idxy];
     //if field is sheared beyond resolution or mask, set field to zero
-    if( kxbar_ikx[idxy] > (nx-1)/3 || kxbar_ikx[idxy] < -(nx-1)/3 ) {
+    if( kxbar_ikx[idxy] > nakx/2 || kxbar_ikx[idxy] < -nakx/2 ) {
       g[ig].x = 0.;
       g[ig].y = 0.;
     }
@@ -3238,10 +3270,8 @@ __global__ void g_shift(cuComplex* g, const int* kxbar_ikx)
         idx_shifted = ikx_shifted + nx;
       }
       else idx_shifted = ikx_shifted;
-      unsigned int idy = idxyz % nyc;
-      unsigned int idx = ((idxyz-idy)/nyc)%nx;
-      unsigned int idz = (((idxyz-idy)/nyc)-idx)/nx;
-      int ig_shifted = idy + nyc*(idx_shifted + nx*(idz + nz * idj));
+      int ig_shifted = idy + nyc*(idx_shifted + nx*(idz + nz*idlm));
+      //printf("idx_shifted = %d, idy = %d, idz = %d, idl = %d g[ig_shifted].x = %f \n", idx_shifted, idy, idz, idl, g[ig_shifted].x);
       g[ig] = g[ig_shifted];
     }
   }

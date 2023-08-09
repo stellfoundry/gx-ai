@@ -46,7 +46,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftMakePlanMany(gradperp_plan_C2Ryminus,   1, &NLPSfftdimy, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_*grids_->Nx, &workSize);
 
   cudaDeviceSynchronize();
-  cufftCallbackLoadC i_kxs_callbackPtr_h;
+  cufftCallbackLoadC i_kxstar_callbackPtr_h;
   cufftCallbackLoadC i_kx_callbackPtr_h; 
   cufftCallbackLoadC i_ky_callbackPtr_h; 
   cufftCallbackStoreC mask_and_scale_callbackPtr_h;
@@ -55,9 +55,9 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftCallbackLoadC phasefacminus_exb_callbackPtr_h; 
 
 
-  checkCuda(cudaMemcpyFromSymbol(&i_kxs_callbackPtr_h, 
-                     i_kxs_callbackPtr, 
-                     sizeof(i_kxs_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&i_kxstar_callbackPtr_h, 
+                     i_kxstar_callbackPtr, 
+                     sizeof(i_kxstar_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kx_callbackPtr_h, 
                      i_kx_callbackPtr, 
                      sizeof(i_kx_callbackPtr_h)));
@@ -77,9 +77,17 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
                      phasefac_exb_callbackPtr, 
                      sizeof(phasefac_exb_callbackPtr_h)));
 
-  checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kx_callbackPtr_h, 
+  if (grids_->phasefac_exb) { 
+  // this will only be called if using twisting flux tube, otherwise it's incorporated into iKxstar grid
+  // multiplication in nonlinear.cu - 2D callback with ikxstar
+	  checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kxstar_callbackPtr_h, 
+                     CUFFT_CB_LD_COMPLEX, 
+                     (void**)&grids_->kxstar));
+  } else {
+	  checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kx_callbackPtr_h, 
                      CUFFT_CB_LD_COMPLEX, 
                      (void**)&grids_->kx));
+  }
 
   checkCuda(cufftXtSetCallback(gradperp_plan_dyC2R, (void**) &i_ky_callbackPtr_h, 
                      CUFFT_CB_LD_COMPLEX, 
@@ -94,10 +102,10 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
                      NULL));
   
   if (grids_->phasefac_exb) { // add phasefac_exb callbacks to 1D R2C transforms in y if using ExBshear
-	  checkCuda(cufftXtSetCallback(gradperp_plan_R2Cy,   (void**) &phasefac_exb_callbackPtr, 
+	  checkCuda(cufftXtSetCallback(gradperp_plan_C2Ry,   (void**) &phasefac_exb_callbackPtr_h, 
                      CUFFT_CB_LD_COMPLEX, 
                      (void**)&grids_->phasefac_exb));
-	  checkCuda(cufftXtSetCallback(gradperp_plan_C2Ryminus, (void**) &phasefacminus_exb_callbackPtr,
+	  checkCuda(cufftXtSetCallback(gradperp_plan_C2Ryminus, (void**) &phasefacminus_exb_callbackPtr_h,
                      CUFFT_CB_LD_COMPLEX,
                      (void**)&grids_->phasefac_exb));
   }
