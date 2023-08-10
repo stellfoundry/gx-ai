@@ -3164,7 +3164,7 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
   }
 }
 
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar_ikx_new, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0)
+__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar_ikx_new, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -3177,7 +3177,11 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
     kxbar_ikx_old[idxy] = kxbar_ikx_new[idxy];
     kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
-    phasefac[idxy] = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
+    if (ExBshear_phase){
+      phasefac[idxy] = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
+    } else {
+      phasefac[idxy] = 0.0;
+    }
     //if field is sheared beyond resolution or mask, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
     if (unmasked(idx, idy)) { 
       if(kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -(nakx/2)) {
@@ -3216,7 +3220,7 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
     if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
-      printf("I jumped in field shift\n");
+      //printf("I jumped in field shift\n");
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
       if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
       int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);

@@ -50,7 +50,7 @@ ExB_GK::~ExB_GK()
 void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
 {
   // shift moments and fields in kx to account for ExB shear
-  kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0);
+  kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
   // update geometry
   if (pars_->nonTwist) {
     geo_shift_ntft<<<dimBlock_xyz, dimGrid_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,

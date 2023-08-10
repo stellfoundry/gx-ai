@@ -381,6 +381,6 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
                                const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
 			       const float* ftwist, float* deltaKx, const int* m0, const float x0, cuComplex* iKx,
 			       const float g_exb, const double dt, const float* kx);
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0);
+__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase);
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);
 __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);
