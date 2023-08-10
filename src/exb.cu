@@ -4,8 +4,11 @@
 // object for handling flow shear terms.
 //=======================================
 ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
-  pars_(pars_), grids_(grids), geo_(geo)
-{
+  pars_(pars_), grids_(grids), geo_(geo), phi_tmp(nullptr), g_tmp(nullptr)
+{ 
+  checkCuda(cudaMalloc(&phi_tmp, sizeof(cuComplex)*grids_->NxNycNz));
+  checkCuda(cudaMalloc(&g_tmp  , sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
+
   //unsigned int nxkyz = grids_->NxNycNz;
   //unsigned int nlag = grids_->Nj;
   //int nbx = min(32, grids_->NxNycNz);   int ngx = 1 + (grids_->NxNycNz-1)/nbx;
@@ -34,16 +37,20 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   dimBlock_xyzlm = dim3(nt1, nt2, nt3);
   dimGrid_xyzlm  = dim3(nb1, nb2, nb3);
 
+  CP_TO_GPU (grids_->x, grids_->x_h, sizeof(float)*grids_->Nx); //find a better place for this? only need to do it once for exb/ntft
+
 }
 ExB_GK::~ExB_GK()
 {
   //if (closures) delete closures;
   //if (favg)       cudaFree(favg);
+  if (phi_tmp)  cudaFree(phi_tmp);
+  if (g_tmp)    cudaFree(g_tmp);
 }
 void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
 {
   // shift moments and fields in kx to account for ExB shear
-  kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0);
+  kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0);
   // update geometry
   if (pars_->nonTwist) {
     geo_shift_ntft<<<dimBlock_xyz, dimGrid_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
@@ -57,8 +64,10 @@ void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat);
   }
   // shift fields
-  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>(f->phi,grids_->kxbar_ikx);
-  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(),grids_->kxbar_ikx);
+  CP_TO_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
+  CP_TO_GPU (g_tmp,   G->G(),  sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm);
+  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>(f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_new, pars_->g_exb);
   //if (pars_->fapar > 0.) {
   //  field_shift<<<<dimGridfield,dimBlockfield>>>(f->apar,grids_->kxbar_ikx);
   //}

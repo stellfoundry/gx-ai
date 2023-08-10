@@ -161,10 +161,13 @@ void GradPerp::dxC2R(cuComplex* G, float* dxG)
 
 void GradPerp::phase_mult(float* G, bool positive_phase)
 {
+// this function is called if you are using the NTFT and/or ExB shear, there are different cases for each
+
   cufftExecR2C(gradperp_plan_R2Cy, G, tmp); //1D FFT in y
 
-  // multiplying by phasefac or -phasefac for NTFT/ExB - NTFT done via iKx multiplication between ffts (since it's 3D and callbacks would be tough), ExB done in C2R callback
+  // multiplying by phasefac or -phasefac for NTFT/ExB - NTFT done via exp(i*deltaKx*x) multiplication between ffts (since it's 3D and callbacks would be tough), ExB performed in C2R callback
   if (grids_->phasefac_ntft) { //if nonTwist
+    
     if (positive_phase) {
       if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
         iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
@@ -172,24 +175,30 @@ void GradPerp::phase_mult(float* G, bool positive_phase)
         iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft);
       } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
         iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
-      } else if (batch_size_ == grids_->Nz) {
+      } else if (batch_size_ == grids_->Nz) { // if multiplying phi (can delete this if I don't need timestep correction)
         iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
       }
     } else { // if reverse, will be size of G grid only
       iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
     }
-  }
-
-  if (grids_->phasefac_exb) { // if ExBshear, use exb phase_factor in callback since it's only 2D, not 3D like NTFT
-    if (positive_phase) {
-      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
+    
+    if (grids_->phasefac_exb) { // if ExBShear
+      if (positive_phase) {
+        cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
+      } else {
+        cufftExecC2R(gradperp_plan_C2Ryminus, iKxtmp, G);
+      }
     } else {
-      cufftExecC2R(gradperp_plan_C2Ryminus, iKxtmp, G);
+      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
     }
-  } else { // if only NTFT, just to normal 1D C2R no callback
-    cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
-  }
 
+  } else { // if ExBshear only, use ExB phase factor exp(i(kxstar-kxbar)*x) within callback
+    if (positive_phase) {
+      cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
+    } else {
+      cufftExecC2R(gradperp_plan_C2Ryminus, tmp, G);
+    }
+  }
 }
 
 void GradPerp::qvar (cuComplex* G, int N)

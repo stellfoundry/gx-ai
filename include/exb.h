@@ -13,6 +13,8 @@ class ExB_GK : public ExB {
     ExB_GK(Parameters* pars, Grids* grids, Geometry* geo); 
     ~ExB_GK();
     void flow_shear_shift(MomentsG* G, Fields* f, double dt);
+
+    cuComplex * phi_tmp, * g_tmp;
   private:
     Geometry       * geo_     ;
     Parameters     * pars_    ;

@@ -44,7 +44,7 @@ class Grids {
   float * x;
   float * phasefac_exb;
   float * kxstar;
-  int * kxbar_ikx;
+  int * kxbar_ikx_new, * kxbar_ikx_old;
 
   
   float * theta0_h ;
