@@ -111,7 +111,7 @@ __host__ __device__ float g0(float b) {
     tk  = tk * b2sq * xi * xi;
     g += tk;
     x  += 1.;
-    err = abs(tk/g);
+    err = fabsf(tk/g);
   }
   
   if (g<tol) g=tol; 
@@ -141,7 +141,7 @@ __host__ __device__ float g1(float b) {
     tk  = tk * b2sq * xi * xp1i;
     g += tk;
     x += 1.;
-    err = abs(tk/g);
+    err = fabsf(tk/g);
   }
   
   if (g<tol) g=tol; 
@@ -149,7 +149,7 @@ __host__ __device__ float g1(float b) {
 
 }
 
-__host__ __device__ float sgam0 (float b) {return sqrt(g0(b));}
+__host__ __device__ float sgam0 (float b) {return sqrtf(g0(b));}
 __host__ __device__ bool operator>(cuComplex f, cuComplex g) { return f.x*f.x+f.y*f.y > g.x*g.x+g.y*g.y; }
 __host__ __device__ bool operator<(cuComplex f, cuComplex g) { return f.x*f.x+f.y*f.y < g.x*g.x+g.y*g.y; }
 __host__ __device__ cuComplex operator+(cuComplex f, cuComplex g) { return cuCaddf(f,g); }
@@ -331,7 +331,7 @@ __global__ void rhs_ks(const cuComplex *G, cuComplex *GRhs, float *ky, float eps
 __global__ void abs(float *f, int N)
 {
   unsigned int i = get_id1();
-  if (i < N) f[i] = abs(f[i]);
+  if (i < N) f[i] = fabsf(f[i]);
 }
 
 __global__ void add_section(cuComplex *res, const cuComplex *tmp, int ntot)
@@ -2091,10 +2091,10 @@ __device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element
   float zpnLinv = (float) 1./zp*nLinks;
   float hypkz;
   if (idz < nzL/2+1) {
-    hypkz = pow((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+    hypkz = powf((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
   } else {
     int idzs = idz-nzL;
-    hypkz = pow((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+    hypkz = powf((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
   }
   float normalization = (float) 1./nzL;
   ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
@@ -2574,8 +2574,8 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
     if (unmasked(idx, idy)) {	
       float kxmax = kx[(nx-1)/3];
       float kymax = ky[(ny-1)/3];
-      float k2s = 1./pow((kxmax*kxmax + kymax*kymax), nu_hyper);      
-      float Dfac = D_hyper*k2s*pow((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
+      float k2s = 1./powf((kxmax*kxmax + kymax*kymax), nu_hyper);      
+      float Dfac = D_hyper*k2s*powf((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
       
       unsigned int l = get_id2();
       if (l<nl) {
@@ -2606,9 +2606,9 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
-	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
-             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
-             + scaled_nu_hyp_m*pow((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
+	    nu_hyper_lm*powf((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
+             - vt*(scaled_nu_hyp_l*powf((float) l/nl, (float) p_hyper_l)                              
+             + scaled_nu_hyp_m*powf((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
         }   
       }      
     }   
@@ -2627,7 +2627,7 @@ __global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int
         int m_local = m - m_lo;
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
         if (m>2) { 
-          res[globalIdx] = -nu*pow((float) m, p)*g[globalIdx];                 
+          res[globalIdx] = -nu*powf((float) m, p)*g[globalIdx];                 
         }   
       }      
     }   
@@ -2653,22 +2653,22 @@ __global__ void get_s1 (float* s10, float* s11, const float* kx, const float* ky
 	  float kp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 	  float df2 = df[idxyz].x*df[idxyz].x + df[idxyz].y*df[idxyz].y;
 
-	  s10[idz] += 2. * pow(ky[idy], 4) * df2; 
-	  s11[idz] += 2. * pow(kp2, 2)     * df2;
+	  s10[idz] += 2. * powf(ky[idy], 4) * df2; 
+	  s11[idz] += 2. * powf(kp2, 2)     * df2;
 	}
       }      
     }
-    s10[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s10[idz]));
-    s11[idz] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s11[idz]));
+    s10[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s10[idz]));
+    s11[idz] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s11[idz]));
   }
 }
 
 __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, const float w_osc) {
   s01[0] = 0.;
   for (int idx = 0; idx < nx; idx++) {
-    s01[0] += pow(kx[idx], 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
+    s01[0] += powf(fabsf(kx[idx]), 4) * (favg[idx].x*favg[idx].x + favg[idx].y*favg[idx].y);
   }
-  s01[0] = 0.5 * (-w_osc + sqrtf(pow(w_osc, 2) + 2 * s01[0]));
+  s01[0] = 0.5 * (-w_osc + sqrtf(powf(w_osc, 2) + 2 * s01[0]));
 }
 
 __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
@@ -2687,12 +2687,13 @@ __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10
 
 	  float kxmax = kx[(nx-1)/3];
 	  float kymax = ky[(ny-1)/3];
+          float akx = fabsf(kx[idx]);
 	  float kpmax2 = kxmax*kxmax + kymax*kymax;
 	  float kp2 = (kx[idx]*kx[idx] + ky[idy]*ky[idy])/kpmax2;
 	  
-	  float D10 = D_HB * pow(kx[idx]/kxmax, 4);
-	  float D01 = D_HB * pow(kx[idx]/kxmax, 4) * ky[idy]/kymax;
-	  float D11 = D_HB * pow(kp2, p_HB);
+	  float D10 = D_HB * powf(akx/kxmax, 4);
+	  float D01 = D_HB * powf(akx/kxmax, 4) * ky[idy]/kymax;
+	  float D11 = D_HB * powf(kp2, p_HB);
 	  
 	  float sfac = (idy == 0) ? s10[idz] * D10 : s11[idz] * D11 + s01[0] * D01;
 	  RHS[ig] = RHS[ig] - sfac * G[ig];

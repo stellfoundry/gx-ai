@@ -206,8 +206,8 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   case Closure::smithpar : closures->apply_closures(G, GRhs); break;
   }
 
-  // hypercollisions
-  if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
+  // hypercollisions with const coefficient
+  if(pars_->hypercollisions_const) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 		  						   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
 								   G->species->vt/pars_->vtmax*pars_->nu_hyper_lm/dt,
@@ -216,6 +216,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 								   pars_->p_hyper_lm, 
 								   GRhs->G(), G->species->vt);
 
+  // hypercollisions with coefficient propto kz
   if(pars_->hypercollisions_kz) {
     float M = (float) grids_->Nm_glob-1;
     float p = (float) pars_->p_hyper_m;
@@ -331,7 +332,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   krehm_collisions <<< dGs, dBs >>> (G->G(), f->apar, f->apar_ext, grids_->kx, grids_->ky, nu_ei, rho_s, d_e, GRhs->G());
 
   // hypercollisions
-  if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
+  if(pars_->hypercollisions_const) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
 								   0., dt/pars_->nm_in, 0.,
 								   1, pars_->p_hyper_m, 1, 
 								   GRhs->G(), 1.);
