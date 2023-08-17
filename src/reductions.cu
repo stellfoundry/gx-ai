@@ -14,11 +14,34 @@ Reduction::Reduction(Grids *grids, std::vector<int32_t> modeFull, std::vector<in
   extent['m'] = grids_->Nm;
   extent['s'] = grids_->Nspecies;
 
+  // whether a reduction over m index is required (which may be parallelized)
+  reduce_m = false;
+  // whether a reduction over s index is required (which may be parallelized)
+  reduce_s = false;
+
   // create a vector of extents for the full tensor
-  for (auto mode : modeFull_) extentFull.push_back(extent[mode]);;
+  for (auto mode : modeFull_) {
+    extentFull.push_back(extent[mode]);;
+    if(mode == 'm') {
+      reduce_m = true;
+    }
+    if(mode == 's') {
+      reduce_s = true;
+    }
+  }
 
   // create a vector of extents for the reduced tensor
-  for (auto mode : modeReduced_) extentReduced.push_back(extent[mode]);;
+  nelementsReduced = 1;
+  for (auto mode : modeReduced_) {
+    extentReduced.push_back(extent[mode]);;
+    nelementsReduced *= extent[mode];
+    if(mode == 'm') {
+      reduce_m = false;
+    }
+    if(mode == 's') {
+      reduce_s = false;
+    }
+  }
 
   cutensorInit(&handle);
   cutensorInitTensorDescriptor(&handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY);
@@ -54,6 +77,21 @@ void Reduction::Sum(float* dataFull, float* dataReduced)
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
 		    dataReduced,  &descReduced, modeReduced_.data(),
 		    opAdd, typeCompute, Addwork, sizeWork, 0);
+
+  if(reduce_m && reduce_s && grids_->nprocs > 1) {
+    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm, 0);
+  }
+  // reduce across parallelized m blocks
+  if(reduce_m && grids_->nprocs_m > 1) {
+    // ncclComm_s is the per-species communicator
+    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm_s, 0);
+  }
+  // reduce across parallelized s blocks
+  if(reduce_s && grids_->nprocs_s > 1) {
+    // ncclComm_m is the per-m-block communicator
+    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm_m, 0);
+  }
+
 }		     
 
 void Reduction::Max(float* dataFull, float* dataReduced)

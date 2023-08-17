@@ -40,6 +40,9 @@ class Reduction {
   std::unordered_map<int32_t, int64_t> extent;
   std::vector<int32_t> modeFull_;
   std::vector<int32_t> modeReduced_;
+
+  bool reduce_m, reduce_s;
+  int nelementsReduced;
 };
 
 class Red {
