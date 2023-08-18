@@ -28,7 +28,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   laguerre = new LaguerreTransform(grids_, grids_->Nm);
   laguerre_single = new LaguerreTransform(grids_, 1);
   int nR = grids_->NxNyNz;
-  red = new Block_Reduce(nR); cudaDeviceSynchronize();
+  std::vector<int32_t> modes{'r', 'x', 'z'};
+  std::vector<int32_t> modesRed{};
+  red = new Reduction<float>(grids_, modes, modesRed); 
+  cudaDeviceSynchronize();
   
   nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm); 
@@ -316,7 +319,8 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   grad_perp_f = new GradPerp(grids_, nBatch, grids_->NxNycNz);
   
   int nR = grids_->NxNyNz;
-  red = new Block_Reduce(nR); cudaDeviceSynchronize();
+  red = new Reduction<float>(grids_, {'r', 'x', 'z'}, {}); 
+  cudaDeviceSynchronize();
   
   checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
   G_tmp = new MomentsG(pars_, grids_);

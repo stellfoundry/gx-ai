@@ -41,7 +41,7 @@ class Nonlinear_GK : public Nonlinear {
   Grids             * grids_          ;  
   Geometry          * geo_            ;
   
-  Red               * red             ; 
+  Reduction<float>         * red             ; 
   LaguerreTransform * laguerre        ;
   LaguerreTransform * laguerre_single ;
   GradPerp          * grad_perp_G     ;
@@ -89,7 +89,7 @@ class Nonlinear_KREHM : public Nonlinear {
   Parameters        * pars_           ;
   Grids             * grids_          ;  
   
-  Red               * red             ; 
+  Reduction<float>         * red             ; 
   GradPerp          * grad_perp_f     ;
   GradPerp          * grad_perp_G     ;
 

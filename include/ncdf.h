@@ -161,13 +161,6 @@ class NetCDF_ids {
   Geometry   * geo_    ;
   GradPerp   * grad_phi;
   GradPerp   * grad_perp; 
-  Red        * red     ;
-  Red        * pot     ;
-  Red        * ph2     ;
-  Red        * a2     ;
-  Red        * all_red ;
-  Red        * red_qflux ;
-  Red        * red_pflux ;
   
   float primary[1], secondary[1], tertiary[1];
   cuComplex * t_bar     ;

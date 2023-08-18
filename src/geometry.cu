@@ -841,6 +841,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   for (int i=0; i < grids->Nz; i++) vol_fac_h[i]  = jacobian_h[i] / volDenom;
   CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*grids->Nz);
 
+  // volume integrals for fluxes contain a factor of 1/grho == 1/|\nabla x|
   float fluxDenom = 0.;  
   flux_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
   cudaMalloc(&flux_fac, sizeof(float)*grids->Nz);
