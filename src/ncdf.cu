@@ -2354,6 +2354,7 @@ NetCDF_ids::~NetCDF_ids() {
   delete wphik;
   delete fields_phi;
   delete fields_apar;
+  delete fields_apar_realspace;
   delete fields_bpar;
   delete omg;
   delete rh;
