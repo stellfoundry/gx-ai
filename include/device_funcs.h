@@ -242,6 +242,7 @@ extern __device__ cufftCallbackStoreC zfts_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kz_callbackPtr;
 extern __device__ cufftCallbackStoreC mkz2_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kz_1d_callbackPtr;
+extern __device__ cufftCallbackStoreC mkz2_1d_callbackPtr;
 extern __device__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
