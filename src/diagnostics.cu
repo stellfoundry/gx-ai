@@ -994,13 +994,12 @@ bool Diagnostics_cetg::loop(MomentsG** G, Fields* fields, double dt, int counter
       int is_glob = 0;
       float p_s = pars_->species_h[0].nt;      
       heat_flux_summand_cetg loop_R (P2(), fields->phi, G[0]->G(), grids_->ky, flux_fac, p_s);
-      }
-      id -> write_Qky(P2());
-      id -> write_Qkx(P2());
-      id -> write_Qkxky(P2());
-      id -> write_Qz(P2());
-      id -> write_Q(P2()); 
     }
+    id -> write_Qky(P2());
+    id -> write_Qkx(P2());
+    id -> write_Qkxky(P2());
+    id -> write_Qz(P2());
+    id -> write_Q(P2());   
     
     if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
       print_omg(omg_d);  id -> write_omg(omg_d);
