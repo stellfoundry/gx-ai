@@ -224,7 +224,7 @@ void GradParallelLocal::dz(cuComplex* mom, cuComplex* res) {
 }
 // single moment
 void GradParallelLocal::dz2(cuComplex* mom, cuComplex* res) {
-  scale_singlemom_kernel GGP (res, mom, mkpar2));
+  scale_singlemom_kernel GGP (res, mom, mkpar2);
 }
 // single moment
 void GradParallelLocal::abs_dz(cuComplex* mom, cuComplex* res) {

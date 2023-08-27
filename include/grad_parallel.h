@@ -137,8 +137,8 @@ class GradParallel1D {
  private:
   Grids * grids_ ;
   
-  cufftHandle * dz_plan_forward; cufftHandle * dz2_plan_forward; 
-  cufftHandle * dz_plan_inverse;
+  cufftHandle dz_plan_forward; cufftHandle dz2_plan_forward; 
+  cufftHandle dz_plan_inverse;
 
   cuComplex * b_complex ;
 };
