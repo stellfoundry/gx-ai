@@ -202,6 +202,9 @@ __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuCo
   
 __global__ void Wphi_summand_cetg(float* p2, const cuComplex* phi, const float* volJac);
 
+__global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				       const float* flxJac, float p_s);
+
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
 

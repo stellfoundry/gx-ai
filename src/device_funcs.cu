@@ -2831,6 +2831,31 @@ __global__ void Wphi_summand_cetg(float* p2, const cuComplex* phi, const float* 
   }
 }
 
+# define Gh_(XYZ, L) g[(XYZ) + nx*nyc*nz*(L)]
+__global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				       const float* flxJac, float pres)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  cuComplex fg;
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+    
+      fg = (cuConjf(vPhi_r) * Gh_(idxyz, 1)) * 2. * flxJac[idz];
+      qflux[idxyz] = fg.x * pres;
+
+    } else {
+      qflux[idxyz] = 0.;
+    }
+  }
+}
+
 
 
 // uperp_bar(ky, kx, z, s) = sqrt(b(s)) * sum_l [Jflr(ky, kx, z, l,  b(s)) + Jflr(ky, kx, z, l-1, b(s))] *
