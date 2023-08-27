@@ -2635,12 +2635,10 @@ __global__ void hyper_cetg(const cuComplex* g, const float* kx, const float* ky,
   if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
 
     float Dfac = D_hyper*pow((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
-      
+    
     for (int l = 0; l < 2; l++) {
-	  unsigned int ig = idxyz + nx*nyc*nz*l;
-	  rhs[ig] = rhs[ig] - Dfac * g[ig];
-	}
-      }
+      unsigned int ig = idxyz + nx*nyc*nz*l;
+      rhs[ig] = rhs[ig] - Dfac * g[ig];
     }
   }
 }
