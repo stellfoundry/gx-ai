@@ -71,7 +71,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
   if (pars_->harris_sheet) {
 
-    assert((fapar > 0.) && "Harris sheet equilibrium requires setting fapar = 1.0");
+    assert((pars_->fapar > 0.) && "Harris sheet equilibrium requires setting fapar = 1.0");
     
     int nBatch = grids_->Nz;
     GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);

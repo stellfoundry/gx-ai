@@ -125,6 +125,7 @@ class GradParallelLocal : public GradParallel {
 
   dim3 dG, dB;
   float kpar;
+  float mkpar2;
 };
 
 class GradParallel1D {
@@ -136,8 +137,8 @@ class GradParallel1D {
  private:
   Grids * grids_ ;
   
-  cufftHandle dz_plan_forward;
-  cufftHandle dz_plan_inverse;
+  cufftHandle * dz_plan_forward; cufftHandle * dz2_plan_forward; 
+  cufftHandle * dz_plan_inverse;
 
   cuComplex * b_complex ;
 };

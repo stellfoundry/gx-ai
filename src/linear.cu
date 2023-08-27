@@ -365,7 +365,7 @@ Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids) :
   // Defined in Adkins, Eq (B38) 
   c1 = (217./64. + 151./(sqrt(128.)*Z_ion) + 9./(2.*Z_ion*Z_ion)) / denom ;
   c2 = 2.5 * (33./16. + 45./(sqrt(128.)*Z_ion)) / denom ;
-  c3 = 25./4. * (13./4. 45./(sqrt(128.)*Z_ion)) / denom - c2*c2/c1 ; 
+  c3 = 25./4. * (13./4. + 45./(sqrt(128.)*Z_ion)) / denom - c2*c2/c1 ; 
   // two useful combinations
   C12 = 1. + c2/c1;
   C23 = c3/c1 + C12*C12;
@@ -380,7 +380,7 @@ Linear_cetg::~Linear_cetg()
 void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   cudaStreamSynchronize(G->syncStream);
-  rhs_diff_cetg <<< dGs, dBs >>> (G->G(l=0), G->G(l=1), f->phi, c1, C12, C23, GRhs->G());
+  rhs_diff_cetg <<< dGs, dBs >>> (G->G(0, 0), G->G(1, 0), f->phi, c1, C12, C23, GRhs->G());
   grad_par->dz2(GRhs);
   rhs_lin_cetg <<< dGs, dBs >>> (f->phi, grids_->ky, GRhs->G());
   hyper_cetg <<< dGs, dBs >>> (G->G(), grids_->kx, grids_->ky, pars_->nu_hyper, pars_->D_hyper, GRhs->G());    

@@ -257,7 +257,7 @@ __global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, 
 __global__ void phiSolve_cetg (cuComplex *phi, cuComplex *G0, float tau_bar);
 __global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* temperature, const cuComplex* phi,
 			      const float c1, const float C21, const float C23, cuComplex* rhs_diff);
-__global__ void rhs_lin_cetg(const cuComplex* temperature, const cuComplex* phi, const float* ky, cuComplex* rhs);
+__global__ void rhs_lin_cetg(const cuComplex* phi, const float* ky, cuComplex* rhs);
 __global__ void hyper_cetg(const cuComplex* g, const float* kx, const float* ky,
 			   const float nu_hyper, const float D_hyper, cuComplex* rhs);
 
