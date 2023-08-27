@@ -626,12 +626,16 @@ void GradParallelLinked::set_callbacks()
   cudaDeviceSynchronize();
   cufftCallbackStoreC  zfts_Linked_callbackPtr_h;
   cufftCallbackStoreC   i_kzLinked_callbackPtr_h;
+  cufftCallbackStoreC  mkz2_Linked_callbackPtr_h;
   cufftCallbackStoreC abs_kzLinked_callbackPtr_h;
   checkCuda(cudaMemcpyFromSymbol(&zfts_Linked_callbackPtr_h, 
                      zfts_Linked_callbackPtr, 
                      sizeof(zfts_Linked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinked_callbackPtr_h, 
                      i_kzLinked_callbackPtr, 
+                     sizeof(i_kzLinked_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&mkz2_Linked_callbackPtr_h, 
+                     mkz2_Linked_callbackPtr, 
                      sizeof(i_kzLinked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&abs_kzLinked_callbackPtr_h, 
                      abs_kzLinked_callbackPtr, 
