@@ -871,7 +871,7 @@ Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids) :
   
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
   G2s         = nullptr;  P2s         = nullptr;  
-  omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
+  omg_d       = nullptr;  tmp_omg_h   = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
@@ -938,7 +938,7 @@ Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids) :
 
   printf(ANSI_COLOR_RESET);
   ndiag = 1;
-  Dks = 0.;
+
 }
 
 Diagnostics_cetg::~Diagnostics_cetg()
@@ -1035,30 +1035,4 @@ bool Diagnostics_cetg::checkstop()
   return stop;
 }
 
-void Diagnostics_KREHM::print_growth_rates_to_screen(cuComplex* w)
-{
-  int Nx   = grids_->Nx;
-  int Naky = grids_->Naky;
-  int Nyc  = grids_->Nyc;
-
-  printf("ky\tkx\t\tomega\t\tgamma\n");
-
-  for(int j=0; j<Naky; j++) {
-    for(int i= 1 + 2*Nx/3; i<Nx; i++) {
-      int index = j + Nyc*i;
-      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-      printf("\n");
-    }
-    for(int i=0; i < 1 + (Nx-1)/3; i++) {
-      int index = j + Nyc*i;
-      if(index!=0) {
-	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-	printf("\n");
-      } else {
-	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
-      }
-    }
-    if (Nx>1) printf("\n");
-  }
-}
 

@@ -436,7 +436,7 @@ void Parameters::get_nml_vars(char* filename)
 
   // Get the value of Z when running the Adkins collisional ETG equations
 
-  ion_z                 = toml::find_or <flat>   (tnml, "Z_ion",                   1. );
+  ion_z                 = toml::find_or <float>   (tnml, "Z_ion",                   1. );
   
   // For backward compatibility, check if iphi00 was specified and act accordingly
   if (iphi00 > 0) {

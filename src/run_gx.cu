@@ -75,7 +75,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   //////////////////////////////  
   if (pars->cetg) {
     linear = new Linear_cetg(pars, grids);          
-    if (!pars->linear) nonlinear = new Nonlinear_cetgM(pars, grids);    
+    if (!pars->linear) nonlinear = new Nonlinear_cetg(pars, grids);    
 
     solver = new Solver_cetg(pars, grids);
 
