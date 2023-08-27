@@ -49,6 +49,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver -> fieldSolve(G, fields);                
   }
 
+  //////////////////////////////
+  //                          //
+  //     KREHM eq             // 
+  //                          //
+  //////////////////////////////  
   if (pars->krehm) {
     linear = new Linear_KREHM(pars, grids);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
@@ -61,6 +66,48 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
     G[0] -> sync();
     solver -> fieldSolve(G, fields);                
+  }
+
+  //////////////////////////////
+  //                          //
+  //     cETG eq              // 
+  //                          //
+  //////////////////////////////  
+  if (pars->cetg) {
+    linear = new Linear_cetg(pars, grids);          
+    if (!pars->linear) nonlinear = new Nonlinear_cetgM(pars, grids);    
+
+    solver = new Solver_cetg(pars, grids);
+
+    // set up initial conditions
+    G[0] -> set_zero();
+    G[0] -> initialConditions(&time);   
+    G[0] -> sync();
+    solver -> fieldSolve(G, fields);                
+
+    // 
+    // Adkins defines tau_bar = Ti/(Te Z). Set value for tau_bar with tau_fac in the Boltzmann section of the input file
+    // The default value of tau_bar = 1.0.
+    //
+    // Separately, one can set Z, which enters into the calculations of the c_(1,2,3) coefficients.
+    // Set Z by defining Z_ion in the Boltzmann section of the input file. The default value is 1.0. 
+    //
+    // Adkins defines a hyperdiffusion model with parameters N_nu and nu_perp.
+    // Set nu_perp by defining D_hyper in the Dissipation section of the input file. The default value in GX is 0.1, 
+    // which is quite large for the Adkins model. It is important, therefore, to set the value to what you want.
+    // With Tony's definitions, a typical value would be 0.0005 or smaller. 
+    //
+    // Set N_nu by defining nu_hyper in the Dissipation namelist. The default value is nu_hyper = 2
+    // Actually, the input variable nu_hyper is deprecated and one should set this using p_hyper = 2
+    //
+    // IMPORTANT: You must set hyper = true in the Dissipation namelist to turn this operator on.
+    //
+    // The only remaining parameters to be set are x0, y0, z0, nx, ny, and nz.
+    // Note that Adkins' Lz = 2 pi z0, Ly = 2 pi y0, Lx = 2 pi x0.
+    //
+    // Adkins has no magnetic shear, so set zero_shat = true in the Geometry section of the input file
+    // and choose slab = true to get his slab equations.
+    //
   }
 
   //////////////////////////////

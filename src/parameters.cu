@@ -47,7 +47,10 @@ void Parameters::get_nml_vars(char* filename)
   strcat(default_restart_filename, ".restart.nc");
 
   auto tnml = nml;
-   
+
+  //
+  // This next line seems to be completely superfluous!
+  //
   tnml = nml;
   if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
   
@@ -129,7 +132,7 @@ void Parameters::get_nml_vars(char* filename)
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
   nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   );
   nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
@@ -139,6 +142,14 @@ void Parameters::get_nml_vars(char* filename)
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
 
+  tnml = nml;
+  if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 
+
+  cetg              = toml::find_or <bool>  (tnml, "cetg",         false );
+
+  if (cetg) nm_in = 1;
+  if (cetg) nl_in = 2;
+  
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
   
@@ -189,7 +200,7 @@ void Parameters::get_nml_vars(char* filename)
     i_share = i_share_max;
   }
   
-  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
+  dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -423,6 +434,10 @@ void Parameters::get_nml_vars(char* filename)
   Btype                 = toml::find_or <string> (tnml, "Boltzmann_type", "electrons" );
   iphi00                = toml::find_or <int>    (tnml, "iphi00",                  -2 );
 
+  // Get the value of Z when running the Adkins collisional ETG equations
+
+  ion_z                 = toml::find_or <flat>   (tnml, "Z_ion",                   1. );
+  
   // For backward compatibility, check if iphi00 was specified and act accordingly
   if (iphi00 > 0) {
     if (iphi00 == 1) Btype = "Ions";
@@ -449,6 +464,8 @@ void Parameters::get_nml_vars(char* filename)
   
   if (tau_fac > 0.) ti_ov_te = tau_fac;                 // new definition has priority if it was provided
   tau_fac = ti_ov_te;                                   // In the body of the code, use tau_fac instead of ti_ov_te
+  
+  // For the Adkins collisional ETG model, tau_fac should be set to Ti/(Te Z) = tau_bar
   
   ///////////////////////////////////////////////////////////////////////
   //                                                                   //
@@ -708,6 +725,9 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].temp = 1.0;
     species_h[0].mass = 1.0;
     species_h[0].type = 1;
+  } else if(cetg) {
+    species_h[0].dens = 1.0;
+    species_h[0].temp = 1.0;    
   }
   
   float numax = -1.;

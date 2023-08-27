@@ -36,7 +36,7 @@ public:
   Grids          * grids_   ;  
   GradParallel   * grad_par ;
   Closures       * closures ;
-  MomentsG       * GRhs_par ;
+  //  MomentsG       * GRhs_par ;
 
   // conservation terms
   cuComplex * upar_bar      ;
@@ -77,11 +77,34 @@ public:
   Grids          * grids_   ;  
   GradParallel   * grad_par ;
   Closures       * closures ;
-  MomentsG       * GRhs_par ;
+  //  MomentsG       * GRhs_par ;
 
   float rho_s;
   float d_e;
   float nu_ei;
+};
+
+class Linear_cetg : public Linear {
+public:
+  Linear_cetg(Parameters* pars, Grids* grids); 
+  ~Linear_cetg();
+
+  void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
+  void get_max_frequency(double* wmax);
+
+  dim3 dGs, dBs;
+  
+ private:
+
+  Geometry       * geo_     ;
+  Parameters     * pars_    ;
+  Grids          * grids_   ;  
+  GradParallel   * grad_par ;
+
+  float Z_ion;
+  float tau_bar;
+  float c1, c2, c3, C12, C23;
+  
 };
 
 class Linear_KS : public Linear {

@@ -161,6 +161,10 @@ __global__ void bracket(float* __restrict__ g_res,
 			const float* __restrict__ dg_dx, const float* __restrict__ dJ0phi_dy,
 			const float* __restrict__ dg_dy, const float* __restrict__ dJ0Phi_dx, float kxfac);
 
+__global__ void bracket_cetg(float* __restrict__ g_res,
+			const float* __restrict__ dg_dx, const float* __restrict__ dphi_dy,
+			const float* __restrict__ dg_dy, const float* __restrict__ dPhi_dx, float kxfac);
+
 __global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddy (cuComplex *res, cuComplex *f, float *ky);
@@ -230,11 +234,13 @@ extern __device__ cufftCallbackStoreC mask_and_scale_callbackPtr;
   
 __device__ void zfts(void *dataOut, size_t offset, cufftComplex element, void *data, void *sharedPtr);
 __device__ void i_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
+__device__ void mkz2(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kz(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kz_1d(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 
 extern __device__ cufftCallbackStoreC zfts_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kz_callbackPtr;
+extern __device__ cufftCallbackStoreC mkz2_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kz_1d_callbackPtr;
 extern __device__ cufftCallbackStoreC abs_kz_callbackPtr;
 
@@ -247,6 +253,13 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
 __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i);
 __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e);
 __global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext);
+
+__global__ void phiSolve_cetg (cuComplex *phi, cuComplex *G0, float tau_bar);
+__global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* temperature, const cuComplex* phi,
+			      const float c1, const float C21, const float C23, cuComplex* rhs_diff);
+__global__ void rhs_lin_cetg(const cuComplex* temperature, const cuComplex* phi, const float* ky, cuComplex* rhs);
+__global__ void hyper_cetg(const cuComplex* g, const float* kx, const float* ky,
+			   const float nu_hyper, const float D_hyper, cuComplex* rhs);
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie sp);
 __global__ void real_space_par_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const specie sp);
@@ -295,11 +308,13 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
 
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
+__device__ void mkz2_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __global__ void init_kzLinked(float* kz, int nLinks, bool dealias);
 
 extern __device__ cufftCallbackStoreC zfts_Linked_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kzLinked_callbackPtr;
+extern __device__ cufftCallbackStoreC mkz2_Linked_callbackPtr;
 extern __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky);
