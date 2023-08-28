@@ -474,10 +474,9 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   dg_dy = nullptr;
   dphi_dx = nullptr;
   dphi_dy = nullptr;
-  G_tmp = nullptr;
   
   nBatch = grids_->Nz; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz); 
+  grad_perp_G =     new GradPerp(grids_, nBatch, 2 * grids_->NxNycNz); 
 
   nBatch = grids_->Nz; 
   grad_perp_f = new GradPerp(grids_, nBatch, grids_->NxNycNz);
@@ -486,11 +485,10 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   red = new Block_Reduce(nR); cudaDeviceSynchronize();
   
   checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
-  G_tmp = new MomentsG(pars_, grids_);
 
-  checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMalloc(&dG,    sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dG,    0., 2*grids_->NxNyNz);
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dx, 0., 2*grids_->NxNyNz);
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dy, 0., 2*grids_->NxNyNz);
 
   checkCuda(cudaMalloc(&dphi_dx,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dphi_dy,  sizeof(float)*grids_->NxNyNz));

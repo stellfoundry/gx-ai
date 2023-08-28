@@ -726,6 +726,8 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].mass = 1.0;
     species_h[0].type = 1;
   } else if(cetg) {
+    species_h[0].mass = 1.0;
+    species_h[0].z    = 1.0;
     species_h[0].dens = 1.0;
     species_h[0].temp = 1.0;    
   }
@@ -864,6 +866,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "cETG",           &nc_cetg))   ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -969,6 +972,8 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_cetg, "cetg",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   specs[0] = wdim;
   if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1144,6 +1149,7 @@ void Parameters::store_ncdf(int ncid) {
 
   // for boltzmann opts need attribute BD bug
 
+  if (retval = nc_def_var (nc_cetg, "cetg",                NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1238,6 +1244,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
   put_real (nc_bz, "tau_fac",               tau_fac               );
+  put_real (nc_bz, "Z_ion",                 ion_z                 );
   
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
@@ -1267,6 +1274,7 @@ void Parameters::store_ncdf(int ncid) {
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
 
+  putbool  (nc_cetg,  "cetg", cetg);
   putbool  (nc_krehm, "krehm", krehm);
   put_real (nc_krehm, "rho_i", rho_i);
   put_real (nc_krehm, "d_e", d_e);

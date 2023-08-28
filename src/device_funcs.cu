@@ -2831,7 +2831,6 @@ __global__ void Wphi_summand_cetg(float* p2, const cuComplex* phi, const float* 
   }
 }
 
-# define Gh_(XYZ, L) g[(XYZ) + nx*nyc*nz*(L)]
 __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				       const float* flxJac, float pres)
 {
@@ -2847,7 +2846,7 @@ __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
     
-      fg = (cuConjf(vPhi_r) * Gh_(idxyz, 1)) * 2. * flxJac[idz];
+      fg = cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz] * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
 
     } else {

@@ -9,10 +9,13 @@
  nx = 96                # number of real-space grid-points in x
  
 [Domain]
- x0 = 6.0
- y0 = 6.0
- z0 = 10.0 
+ x0 = 6.366
+ y0 = 6.366
+ z0 = 3.183
  boundary = "periodic"   
+
+[Collisional_slab_ETG]
+ cetg = true
 
 [Physics]
  nonlinear_mode = true           # this is a nonlinear calculation

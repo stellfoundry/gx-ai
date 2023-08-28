@@ -108,7 +108,7 @@ class Parameters {
   void set_jtwist_x0(float* shat, float *gds21, float *gds22);
 
   int nczid, nzid, ncresid, ncbid;
-  int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm;
+  int nc_geo, nc_time, nc_ks, nc_vp, nc_rst, nc_dom, nc_diag, nc_krehm, nc_cetg;
   int nc_expert, nc_resize, nc_con, nc_frc, nc_bz, nc_ml, nc_sp, nc_spec;
   int p_HB, p_hyper_l, p_hyper_m, irho, nwrite, navg, nsave, igeo, nreal;
   int nz_in, nperiod, Zp, bishop, scan_number, icovering;
