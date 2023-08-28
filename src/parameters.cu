@@ -178,6 +178,7 @@ void Parameters::get_nml_vars(char* filename)
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   periodic_equilibrium = toml::find_or <bool> (tnml, "periodic_equilibrium", false);
   k0                = toml::find_or <float> (tnml, "k0", 10.0);
+  gaussian_tube     = toml::find_or <bool> (tnml, "gaussian_tube", false);
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
 

@@ -142,8 +142,30 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   //  }
     //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
   }
-}
+  if (pars_->gaussian_tube) {
+    int nBatch = grids_->Nz;
+    GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+    
+    //set up Gaussian tube in real space   
+    for(int idz = 0; idz < grids_->Nz; idz++) {
+      for(int idx = 0; idx < grids_->Nx; idx++) {
+        for(int idy = 0; idy < grids_->Ny; idy++) {
+           float x = grids_->x_h[idx];
+           float y = grids_->y_h[idy];
 
+	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
+	   float A0 = 0.5829; // this value makes B_eq_max = 1
+	   apar_ext_realspace_h[index] = A0*exp(-pow(((x-pars_->x0)*4*M_PI/pars_->x0),2))*exp(-pow(((y-M_PI*pars_->y0)*4*M_PI/pars_->y0),2));
+	}
+      }
+    }   
+    //copy apar_ext to GPU and do Fourier transformation
+    CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
+    grad_perp->R2C(apar_ext_realspace, apar_ext, true);
+    
+    delete grad_perp;
+  }
+  }
 
 
 Fields::~Fields() {

@@ -164,6 +164,7 @@ class Parameters {
   bool harris_sheet;
   bool periodic_equilibrium;
   float k0; 
+  bool gaussian_tube;
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;
