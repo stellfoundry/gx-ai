@@ -12,17 +12,17 @@ void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int
   cudaMemcpyToSymbol ( nz,        &Nz,        sizeof(int));
   cudaMemcpyToSymbol ( nspecies,  &Nspecies,  sizeof(int));
   cudaMemcpyToSymbol ( nm,        &Nm,        sizeof(int));
-  cudaMemcpyToSymbol ( nm_glob,        &Nm_glob,        sizeof(int));
+  cudaMemcpyToSymbol ( nm_glob,   &Nm_glob,   sizeof(int));
   cudaMemcpyToSymbol ( nl,        &Nl,        sizeof(int));
   cudaMemcpyToSymbol ( nj,        &Nj,        sizeof(int));
   cudaMemcpyToSymbol ( zp,        &Zp,        sizeof(int));
   cudaMemcpyToSymbol ( ikx_fixed, &ikxf,      sizeof(int));
   cudaMemcpyToSymbol ( iky_fixed, &ikyf,      sizeof(int));
-  cudaMemcpyToSymbol ( is_lo, &is_lo_in,      sizeof(int));
-  cudaMemcpyToSymbol ( is_up, &is_up_in,      sizeof(int));
-  cudaMemcpyToSymbol ( m_lo, &m_lo_in,      sizeof(int));
-  cudaMemcpyToSymbol ( m_up, &m_up_in,      sizeof(int));
-  cudaMemcpyToSymbol ( m_ghost, &m_ghost_in,      sizeof(int));
+  cudaMemcpyToSymbol ( is_lo,     &is_lo_in,  sizeof(int));
+  cudaMemcpyToSymbol ( is_up,     &is_up_in,  sizeof(int));
+  cudaMemcpyToSymbol ( m_lo,      &m_lo_in,   sizeof(int));
+  cudaMemcpyToSymbol ( m_up,      &m_up_in,   sizeof(int));
+  cudaMemcpyToSymbol ( m_ghost,   &m_ghost_in, sizeof(int));
   
 }
 
@@ -2845,8 +2845,8 @@ __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const
     if (unmasked(idx, idy) && idy > 0) {    
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
-    
-      fg = cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz] * 2. * flxJac[idz];
+
+      fg = (cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz]) * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
 
     } else {

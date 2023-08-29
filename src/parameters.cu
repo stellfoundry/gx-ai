@@ -146,7 +146,8 @@ void Parameters::get_nml_vars(char* filename)
   if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 
 
   cetg              = toml::find_or <bool>  (tnml, "cetg",         false );
-
+  if (cetg) gx = false;
+  
   if (cetg) nm_in = 1;
   if (cetg) nl_in = 2;
   
@@ -675,9 +676,9 @@ void Parameters::get_nml_vars(char* filename)
     if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
-  gx = (!ks && !vp && !krehm);
+  gx = (!ks && !vp && !krehm && !cetg);
   assert (!(ks && vp));
-  assert (ks || vp || gx || krehm);
+  assert (ks || vp || gx || krehm | cetg);
 
   int ksize = 0;
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
@@ -866,7 +867,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
-  if (retval = nc_def_grp(nc_inputs, "cETG",           &nc_cetg))   ERR(retval);
+  if (retval = nc_def_grp(nc_inputs, "collisionalETG", &nc_cetg))   ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -1149,7 +1150,7 @@ void Parameters::store_ncdf(int ncid) {
 
   // for boltzmann opts need attribute BD bug
 
-  if (retval = nc_def_var (nc_cetg, "cetg",                NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_bz, "Z_ion",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1245,7 +1246,7 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
   put_real (nc_bz, "tau_fac",               tau_fac               );
   put_real (nc_bz, "Z_ion",                 ion_z                 );
-  
+
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
   if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );

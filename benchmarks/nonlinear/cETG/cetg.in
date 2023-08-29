@@ -4,9 +4,9 @@
  debug = false
 
 [Dimensions]
- ntheta = 48            # number of points along field line
- ny = 96                # number of real-space grid-points in y
- nx = 96                # number of real-space grid-points in x
+ ntheta = 48             # number of points along field line
+ ny = 192                # number of real-space grid-points in y
+ nx = 192                # number of real-space grid-points in x
  
 [Domain]
  x0 = 6.366
@@ -22,9 +22,9 @@
 
 [Time]
  t_max = 500.0        # run to t = t_max (units of L_ref/vt_ref)
- dt = 0.1             # maximum timestep (units of L_ref/vt_ref), will be adapted dynamically
+ dt = 0.005            # maximum timestep (units of L_ref/vt_ref), will be adapted dynamically
  cfl = 1.0            # safety cushion factor on timestep size
- scheme = "rk3"       # use SSPx3 timestepping scheme
+ scheme = "sspx3"       # use SSPx3 timestepping scheme
 
 [Initialization]
  ikpar_init = 1                  # parallel wavenumber of initial perturbation
@@ -44,16 +44,16 @@
 
 [Dissipation]
  hyper = true                    # use hyperdiffusion
- D_hyper = 0.0005                # coefficient of hyperdiffusion
+ D_hyper = 0.05                # coefficient of hyperdiffusion
 
 [Restart]
  restart = false
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 20                     # write diagnostics every nwrite timesteps
+ nwrite = 200                    # write diagnostics every nwrite timesteps
  fluxes = true                   # compute and write heat and particle fluxes
-
+ 
 [Wspectra]                       # spectra of W = |G_lm|**2
  laguerre         = true
  kx               = true
@@ -69,9 +69,9 @@
  z                = false         # P(z) (summed over kx, ky)
 
 [Qspectra]                      # spectra of Q (heat flux)
- kx               = false
- ky               = false         # Q(ky) (summed over kx, z)
- kxky             = false
- z                = false         # Q(z) (summed over kx, ky)
+ kx               = true
+ ky               = true         # Q(ky) (summed over kx, z)
+ kxky             = true
+ z                = true         # Q(z) (summed over kx, ky)
 
 

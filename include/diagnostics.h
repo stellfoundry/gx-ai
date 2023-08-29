@@ -19,7 +19,7 @@ class Diagnostics {
  protected:
   Parameters   * pars_         ;
   Grids        * grids_        ;
-  
+
 };
 
 class Diagnostics_GK : public Diagnostics {
@@ -48,8 +48,7 @@ private:
   
   cuComplex valphi;
 
-  Geometry     * geo_          ;  
-
+  Geometry     * geo_          ;
   GradPerp     * grad_perp     ; 
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
@@ -110,8 +109,6 @@ private:
   
   cuComplex valphi;
 
-  Geometry     * geo_          ;  
-
   GradPerp     * grad_perp     ; 
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
@@ -149,7 +146,7 @@ private:
 
 class Diagnostics_cetg : public Diagnostics {
  public:
-  Diagnostics_cetg(Parameters *pars, Grids *grids);
+  Diagnostics_cetg(Parameters *pars, Grids *grids, Geometry *geo);
   ~Diagnostics_cetg();
 
   bool loop(MomentsG** G, Fields* fields, double dt, int counter, double time) ;
@@ -168,34 +165,18 @@ private:
  
   float fluxDenom; float * flux_fac; 
   float  volDenom; float * vol_fac ;
-  float * kvol_fac;
   
-  cuComplex valphi;
-
   Geometry     * geo_          ;  
 
-  GradPerp     * grad_perp     ; 
-  GradParallel * grad_par      ;
   Fields       * fields_old    ;
   NetCDF_ids   * id            ;
   
   float        * G2s           ;
   float        * P2s           ;
-  float        * Phi2          ;
-  float        * val           ;
-  cuComplex    * field_d       ;
-  cuComplex    * field_h       ;
   cuComplex    * omg_d         ;
   cuComplex    * tmp_omg_h     ;
-  cuComplex    * favg          ;
-  cuComplex    * df            ;
-  cuComplex    * amom_d        ;
   cuComplex    * vEk           ;
-  float        * phi_max       ; 
 
-  float *gy_d, *gy_h;
-  double *ry_h;
-  
   void print_omg (cuComplex *W);
 
   //  void reduce2z  (float* fk, cuComplex* f);

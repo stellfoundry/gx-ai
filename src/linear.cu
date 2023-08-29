@@ -352,9 +352,9 @@ Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids) :
   }
  
   int nn1 = grids_->Nyc;   int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
-  int nn2 = grids_->Nx;    int nt2 = min(nn2, 16);   int nb2 = 1 + (nn2-1)/nt2;
-  int nn3 = grids_->Nz;    int nt3 = min(nn3, 16);   int nb3 = 1 + (nn3-1)/nt3;
-  
+  int nn2 = grids_->Nx;    int nt2 = min(nn2, 4);    int nb2 = 1 + (nn2-1)/nt2;
+  int nn3 = grids_->Nz;    int nt3 = min(nn3, 4);    int nb3 = 1 + (nn3-1)/nt3;
+
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
     
@@ -380,21 +380,20 @@ Linear_cetg::~Linear_cetg()
 void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   cudaStreamSynchronize(G->syncStream);
-  rhs_diff_cetg <<< dGs, dBs >>> (G->G(0, 0), G->G(1, 0), f->phi, c1, C12, C23, GRhs->G());
+  rhs_diff_cetg <<< dGs, dBs >>> (G->G(0,0), G->G(1,0), f->phi, c1, C12, C23, GRhs->G());
   grad_par->dz2(GRhs);
   rhs_lin_cetg <<< dGs, dBs >>> (f->phi, grids_->ky, GRhs->G());
   hyper_cetg <<< dGs, dBs >>> (G->G(), grids_->kx, grids_->ky, pars_->nu_hyper, pars_->D_hyper, GRhs->G());    
-
 }
 
 void Linear_cetg::get_max_frequency(double *omega_max)
 {
-  // estimate max linear frequency as ~ 0.5 c1 ( nz/(3 z0) )**2 where c1 ~ 2 for ion_z = 1.
+  // estimate max linear frequency as ~ 0.5 c1 sqrt(nz/(3 z0)) ny /(3 y0) where c1 ~ 2 for ion_z = 1.
 
   omega_max[0] = 0.0; 
   omega_max[1] = 0.0;
-  omega_max[3] = 0.5 * c1 * ( pow((float) grids_->Nz/3./pars_->z0, 2) );
-  
+  omega_max[2] = 0.5 * c1 * pow(((float) grids_->Nz/3./pars_->z0),0.5)*grids_->Ny/3./pars_->y0;
+  omega_max[2] = 0.5; // temporary
 }
 
 //=======================================

@@ -107,7 +107,6 @@ void RungeKutta3::advance(double *t, MomentsG** G, Fields* f)
   // G = G_q1 + dt/4*GRhs1
   for(int is=0; is<grids_->Nspecies; is++) {
     G[is]->add_scaled(1., G_q1[is], 0.25*dt_, GRhs1[is]);
-
     if (forcing_ != nullptr) forcing_->stir(G[is]);
   }
 

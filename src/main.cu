@@ -52,8 +52,7 @@ int main(int argc, char* argv[])
   }
    
   if(iproc==0) printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
-
-
+ 
   // 
   // Read the input file by instantiating and using a Parameters object
   // 
@@ -90,7 +89,6 @@ int main(int argc, char* argv[])
   // 
   if (pars->gx) {
     geo = init_geo(pars, grids);
-    
     if(iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
     diagnostics = new Diagnostics_GK(pars, grids, geo);
     if(iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
@@ -108,8 +106,10 @@ int main(int argc, char* argv[])
     diagnostics = new Diagnostics_KREHM(pars, grids);
   }
   if (pars->cetg) {
-    //    geo = init_geo(pars, grids);    
-    diagnostics = new Diagnostics_cetg(pars, grids);
+    geo = init_geo(pars, grids);    
+    if(iproc==0) DEBUGPRINT("Initializing cETG diagnostics...\n");
+    diagnostics = new Diagnostics_cetg(pars, grids, geo);
+    if(iproc==0) CUDA_DEBUG("Initializing cETG diagnostics...\n");
   }
   
 
