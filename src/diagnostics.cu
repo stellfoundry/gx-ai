@@ -29,7 +29,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
-  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
+  G2s         = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
   ry_h        = nullptr;  gy_h        = nullptr;  gy_d        = nullptr;
@@ -57,8 +57,9 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   float *flux_fac_h;
   flux_fac_h = (float*) malloc (sizeof(float) * nZ);
   cudaMalloc(&flux_fac, sizeof(float)*nZ);
-  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
+  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i] * geo_->grho_h[i];
   for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
+
   CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);
   free(flux_fac_h);
   
@@ -128,7 +129,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
+  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
@@ -243,7 +244,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_Qkx(P2());
       id -> write_Qkxky(P2());
       id -> write_Qz(P2());
-      id -> write_Q(P2()); 
+      id -> write_Q(P2());
     }      
 
     if ( id -> ps -> write_v_time) {
@@ -848,8 +849,7 @@ void Diagnostics::restart_write(MomentsG** G, double *time)
   if (retval = nc_close(ncres)) ERR(retval);
 }
 
-Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids) :
-  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
+Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids, Geometry* geo) : geo_(geo), fields_old(nullptr), id(nullptr)
 {
   printf(ANSI_COLOR_BLUE);
   pars_ = pars;
@@ -868,20 +868,33 @@ Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids) :
   int nG  = nR * grids_->Nmoms;
 
   assert( (nS == 1) && "number of species must be one \n");
-  
-  favg        = nullptr;  df          = nullptr;  val         = nullptr;  
+    
   G2s         = nullptr;  P2s         = nullptr;  
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  
-  vEk         = nullptr;  phi_max     = nullptr;
+  vEk         = nullptr;
+  vol_fac     = nullptr;
+  flux_fac    = nullptr;
 
   id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
 
   float *vol_fac_h;
+  volDenom = 0.;
   vol_fac_h = (float*) malloc (sizeof(float) * nZ);
   cudaMalloc (&vol_fac, sizeof(float) * nZ);
-  for (int i=0; i < nZ; i++) vol_fac_h[i]  = 1;
+  for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i];
+  for (int i=0; i < nZ; i++) vol_fac_h[i]  =  geo_->jacobian_h[i] / volDenom;
   CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*nZ);
   free(vol_fac_h);
+
+  fluxDenom = 0.;  
+  float *flux_fac_h;
+  flux_fac_h = (float*) malloc (sizeof(float) * nZ);
+  cudaMalloc(&flux_fac, sizeof(float)*nZ);
+  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i] * geo_->grho_h[i];
+  for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
+
+  CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);
+  free(flux_fac_h);  
 
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2s, sizeof(float) * nG); 
   cudaMalloc (&P2s, sizeof(float) * nR);
@@ -908,16 +921,16 @@ Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids) :
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
-  int nslm = nL * nM * nS;
+  int nlm = nL * nM;
 
-  int nt1 = 32;
+  int nt1 = 16;
   int nb1 = 1 + (nyx-1)/nt1;
 
-  int nt2 = 32;
+  int nt2 = 16;
   int nb2 = 1 + (grids_->Nz-1)/nt2;
   
   dB_all = dim3(nt1, nt2, 1);
-  dG_all = dim3(nb1, nb2, nslm);
+  dG_all = dim3(nb1, nb2, nlm);
   
   nt1 = min(32, grids_->Nyc);
   nb1 = 1 + (grids_->Nyc-1)/nt1;
@@ -949,14 +962,9 @@ Diagnostics_cetg::~Diagnostics_cetg()
   if (G2s)        cudaFree      ( G2s       );
   if (P2s)        cudaFree      ( P2s       );
   if (omg_d)      cudaFree      ( omg_d     );
-  if (amom_d)     cudaFree      ( amom_d    );
-
-  if (vEk)        cudaFree      ( vEk       );
-  if (phi_max)    cudaFree      ( phi_max   );
   
-  if (vol_fac)    cudaFree  ( vol_fac  );
-  if (kvol_fac)   cudaFree  ( kvol_fac  );
-  if (val)        free  ( val       );
+  if (vol_fac)    cudaFree      ( vol_fac   );
+  if (flux_fac)   cudaFree      ( flux_fac  );
   if (tmp_omg_h)  free  ( tmp_omg_h );
 }
 

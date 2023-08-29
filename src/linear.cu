@@ -388,12 +388,14 @@ void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
 void Linear_cetg::get_max_frequency(double *omega_max)
 {
+
   // estimate max linear frequency as ~ 0.5 c1 sqrt(nz/(3 z0)) ny /(3 y0) where c1 ~ 2 for ion_z = 1.
 
   omega_max[0] = 0.0; 
   omega_max[1] = 0.0;
   omega_max[2] = 0.5 * c1 * pow(((float) grids_->Nz/3./pars_->z0),0.5)*grids_->Ny/3./pars_->y0;
   omega_max[2] = 0.5; // temporary
+
 }
 
 //=======================================
