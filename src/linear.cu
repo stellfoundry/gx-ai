@@ -17,7 +17,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   s10  = nullptr;
   s11  = nullptr;
   vol_fac = nullptr;
-  
+
   // set up parallel ffts
   if(pars_->local_limit) {
     DEBUGPRINT("Using local limit for grad parallel.\n");
@@ -333,8 +333,8 @@ void Linear_KREHM::get_max_frequency(double *omega_max)
 // Linear_cetg
 // object for handling linear terms in the collisional ETG model
 //===============================================================
-Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids),
+Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids, Geometry* geo) :
+  pars_(pars), grids_(grids), geo_(geo), 
   grad_par(nullptr)
 {
   // set up parallel ffts
@@ -380,7 +380,8 @@ Linear_cetg::~Linear_cetg()
 void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   cudaStreamSynchronize(G->syncStream);
-  rhs_diff_cetg <<< dGs, dBs >>> (G->G(0,0), G->G(1,0), f->phi, c1, C12, C23, GRhs->G());
+  
+  rhs_diff_cetg <<< dGs, dBs >>> (G->G(0,0), G->G(1,0), f->phi, geo_->gradpar, c1, C12, C23, GRhs->G());
   grad_par->dz2(GRhs);
   rhs_lin_cetg <<< dGs, dBs >>> (f->phi, grids_->ky, GRhs->G());
   hyper_cetg <<< dGs, dBs >>> (G->G(), grids_->kx, grids_->ky, pars_->nu_hyper, pars_->D_hyper, GRhs->G());    
@@ -389,13 +390,13 @@ void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 void Linear_cetg::get_max_frequency(double *omega_max)
 {
 
-  // estimate max linear frequency as ~ 0.5 c1 sqrt(nz/(3 z0)) ny /(3 y0) where c1 ~ 2 for ion_z = 1.
-
+  float kymax_ = (float) grids_->Ny/3./pars_->y0;
+  float kzmax_ = (float) grids_->Nz/3./pars_->z0*geo_->gradpar;
+  float cfac_  = 0.5 * c1 * sqrt(1.0+c2/c1);
+  
   omega_max[0] = 0.0; 
   omega_max[1] = 0.0;
-  omega_max[2] = 0.5 * c1 * pow(((float) grids_->Nz/3./pars_->z0),0.5)*grids_->Ny/3./pars_->y0;
-  omega_max[2] = 0.5; // temporary
-
+  omega_max[2] = cfac_ * sqrt(kymax_) * kzmax_;
 }
 
 //=======================================

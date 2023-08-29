@@ -2589,7 +2589,7 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
 // Calculate terms proportional to kz**2
 //
 __global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* temperature, const cuComplex* phi,
-			      const float c1, const float C12, const float C23, cuComplex* rhs_diff)
+			      const float gpar, const float c1, const float C12, const float C23, cuComplex* rhs_diff)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -2598,8 +2598,10 @@ __global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* tempera
 
   if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
 
-    rhs_diff[            idxyz] = 1./2. * c1 * (      density[idxyz] + C12 * temperature[idxyz] -       phi[idxyz]);
-    rhs_diff[nx*nyc*nz + idxyz] = 1./3. * c1 * (C12 * density[idxyz] + C23 * temperature[idxyz] - C12 * phi[idxyz]); 
+    float gpar2 = gpar * gpar;
+    
+    rhs_diff[            idxyz] = gpar2/2. * c1 * (      density[idxyz] + C12 * temperature[idxyz] -       phi[idxyz]);
+    rhs_diff[nx*nyc*nz + idxyz] = gpar2/3. * c1 * (C12 * density[idxyz] + C23 * temperature[idxyz] - C12 * phi[idxyz]); 
       
   }
 }

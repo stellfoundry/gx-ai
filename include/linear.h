@@ -86,7 +86,7 @@ public:
 
 class Linear_cetg : public Linear {
 public:
-  Linear_cetg(Parameters* pars, Grids* grids); 
+  Linear_cetg(Parameters* pars, Grids* grids, Geometry* geo); 
   ~Linear_cetg();
 
   void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
