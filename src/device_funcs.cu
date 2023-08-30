@@ -1209,7 +1209,7 @@ __global__ void bracket_cetg(float* __restrict__ g_res, const float* __restrict_
   if (idxyz < nx*ny*nz) {
     unsigned int iphi = idxyz;
     unsigned int ig = idxyz + nx*ny*nz;
-    g_res[ig] = -( dg_dx[ig] * dphi_dy[iphi] - dg_dy[ig] * dphi_dx[iphi] ) * kxfac;
+    g_res[ig] = ( dg_dx[ig] * dphi_dy[iphi] - dg_dy[ig] * dphi_dx[iphi] ) * kxfac;
     
   }
 }
