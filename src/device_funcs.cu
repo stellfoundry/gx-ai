@@ -1651,6 +1651,72 @@ __global__ void heat_flux_ES_summand(float* qflux, const cuComplex* phi, const c
   }
 }
 
+__global__ void heat_flux_Apar_summand(float* qflux, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts, float tzs)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  cuComplex fg;
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy) && idy > 0 && m_lo == 0) {    
+      
+      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex q_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	q_bar = q_bar + Jfac(il, b_s)*Gh_(idxyz, il, 1) + Jflr(il, b_s)*(sqrtf(1.5)*Gh_(idxyz, il, 3)+ Gh_(idxyz, il, 1));
+      }
+    
+      fg = (- vts * cuConjf(vA_r) * q_bar) * 2. * flxJac[idz];
+      qflux[idxyz] = fg.x * pres;
+
+    } else {
+      qflux[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void heat_flux_Bpar_summand(float* qflux, const cuComplex* bpar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts, float tzs)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  cuComplex fg;
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy) && idy > 0 && m_lo == 0) {    
+      
+      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex qB_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	qB_bar = qB_bar + (Jfac(il, b_s)+Jfac(il-1,b_s))*Gh_(idxyz, il, 0) + rsqrtf(2.)*JflrB(il, b_s)*Gh_(idxyz, il, 2);
+      }
+    
+      fg = (tzs * cuConjf(vB_r) * qB_bar) * 2. * flxJac[idz];
+      qflux[idxyz] = fg.x * pres;
+
+    } else {
+      qflux[idxyz] = 0.;
+    }
+  }
+}
+
 __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs)
 {
@@ -1691,7 +1757,7 @@ __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const 
 }
 
 __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* volJac, const float *kperp2, const float* upar_bar, const float *uperp_bar, const float *t_bar, const float rho2_s, const float p_s, const float nu_ss)
+				  const float* volJac, const float *kperp2, const float* upar_bar, const float *uperp_bar, const float *t_bar, const specie sp)
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -1705,10 +1771,21 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
         unsigned int idm = idlm / nl;
 
         unsigned int idy = idxy % nyc;
-        unsigned int idx = idxy / nyc;// % nx;
+        unsigned int idx = idxy / nyc;
         cuComplex fg;
+
+        const float vt_ = sp.vt;
+        const float zt_ = sp.zt;
+        const float tz_ = sp.tz;
+        const float nz_ = sp.nz;
+        const float nu_ = sp.nu_ss; 
+        const float rho2_ = sp.rho2; 
+        const float tprim_ = sp.tprim;
+        const float uprim_ = sp.uprim;
+        const float fprim_ = sp.fprim;
+
         if (unmasked(idx, idy)) {
-          float b_s = kperp2[idxyz]*rho2_s;
+          float b_s = kperp2[idxyz]*rho2_;
           int l = idl;
           int m = idm + mlo;
           cuComplex H_ = g[ig];

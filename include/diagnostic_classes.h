@@ -97,6 +97,18 @@ class HeatFluxESDiagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+class HeatFluxAparDiagnostic : public SpectraDiagnostic {
+ public:
+  HeatFluxAparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+class HeatFluxBparDiagnostic : public SpectraDiagnostic {
+ public:
+  HeatFluxBparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // ParticleFlux (Gamma)
 class ParticleFluxDiagnostic : public SpectraDiagnostic {
  public:

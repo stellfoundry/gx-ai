@@ -45,8 +45,8 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Li
   if(pars_->write_fluxes) {
     spectraDiagnosticList.push_back(std::make_unique<HeatFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<HeatFluxESDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
-    //spectraDiagnosticList.push_back(std::make_unique<HeatFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
-    //spectraDiagnosticList.push_back(std::make_unique<HeatFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<HeatFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<HeatFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<ParticleFluxDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxESDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
