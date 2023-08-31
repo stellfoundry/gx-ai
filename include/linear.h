@@ -12,6 +12,10 @@ class Linear {
   virtual ~Linear() {};
   virtual void rhs(MomentsG* G, Fields* f, MomentsG* GRhs) = 0;
   virtual void get_max_frequency(double *wmax) {};
+  // conservation terms
+  cuComplex * upar_bar      ;
+  cuComplex * uperp_bar     ;
+  cuComplex * t_bar         ;
 };
 
 class Linear_GK : public Linear {
@@ -38,10 +42,6 @@ public:
   Closures       * closures ;
   MomentsG       * GRhs_par ;
 
-  // conservation terms
-  cuComplex * upar_bar      ;
-  cuComplex * uperp_bar     ;
-  cuComplex * t_bar         ;
 
   // Hammett-Belli hyper
   cuComplex * df            ;

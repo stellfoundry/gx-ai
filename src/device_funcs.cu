@@ -1579,8 +1579,8 @@ __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuCo
 }
 
 # define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo))]
-__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts)
+__global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts, float tzs)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1594,19 +1594,22 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
       cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
     
       float b_s = kperp2[idxyz]*rho2_s;
     
       // sum over l
       cuComplex p_bar = make_cuComplex(0.,0.);
       cuComplex q_bar = make_cuComplex(0.,0.);
+      cuComplex qB_bar = make_cuComplex(0.,0.);
 
       for (int il=0; il < nl; il++) {
 	p_bar = p_bar + Jfac(il, b_s)*Gh_(idxyz, il, 0) + rsqrtf(2.)*Jflr(il, b_s)*Gh_(idxyz, il, 2);
 	q_bar = q_bar + Jfac(il, b_s)*Gh_(idxyz, il, 1) + Jflr(il, b_s)*(sqrtf(1.5)*Gh_(idxyz, il, 3)+ Gh_(idxyz, il, 1));
+	qB_bar = qB_bar + (Jfac(il, b_s)+Jfac(il-1,b_s))*Gh_(idxyz, il, 0) + rsqrtf(2.)*JflrB(il, b_s)*Gh_(idxyz, il, 2);
       }
     
-      fg = (cuConjf(vPhi_r) * p_bar - vts * cuConjf(vA_r) * q_bar) * 2. * flxJac[idz];
+      fg = (cuConjf(vPhi_r) * p_bar - vts * cuConjf(vA_r) * q_bar + tzs * cuConjf(vB_r) * qB_bar) * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
 
     } else {
@@ -1648,8 +1651,8 @@ __global__ void heat_flux_ES_summand(float* qflux, const cuComplex* phi, const c
   }
 }
 
-__global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts)
+__global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1663,19 +1666,133 @@ __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const 
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
       cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
     
       float b_s = kperp2[idxyz]*rho2_s;
     
       // sum over l
       cuComplex n_bar = make_cuComplex(0.,0.);
       cuComplex u_bar = make_cuComplex(0.,0.);
+      cuComplex uB_bar = make_cuComplex(0.,0.);
 
       for (int il=0; il < nl; il++) {
 	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
 	u_bar = u_bar + Jflr(il, b_s)*Gh_(idxyz, il, 1);
+	uB_bar = uB_bar + JflrB(il, b_s)*Gh_(idxyz, il, 0);
       }
     
-      fg = (cuConjf(vPhi_r) * n_bar - vts*cuConjf(vA_r)*u_bar) * 2. * flxJac[idz];
+      fg = (cuConjf(vPhi_r) * n_bar - vts*cuConjf(vA_r)*u_bar + tzs*cuConjf(vB_r)*uB_bar) * 2. * flxJac[idz];
+      pflux[idxyz] = fg.x * n_s;
+
+    } else {
+      pflux[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
+				  const float* volJac, const float *kperp2, const float* upar_bar, const float *uperp_bar, const float *t_bar, const float rho2_s, const float p_s, const float nu_ss)
+{
+  unsigned int idxy = get_id1(); 
+  if (idxy < nx*nyc) {
+    unsigned int idz = get_id2();
+    if (idz < nz) {
+      unsigned int idlm = get_id3();
+      if (idlm < nm*nl) {
+        unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
+        unsigned int idxyz = idxy + nx*nyc*idz;
+        unsigned int idl = idlm % nl;
+        unsigned int idm = idlm / nl;
+
+        unsigned int idy = idxy % nyc;
+        unsigned int idx = idxy / nyc;// % nx;
+        cuComplex fg;
+        if (unmasked(idx, idy)) {
+          float b_s = kperp2[idxyz]*rho2_s;
+          int l = idl;
+          int m = idm + mlo;
+          cuComplex H_ = g[ig];
+          if(m==0) H_ = H_ + zt_*Jflr(l, b_s)*phi[idxyz] + JflrB(l, b_s)*bpar[idxyz];
+          if(m==1) H_ = H_ - zt_*vt_*Jflr(l, b_s)*apar[idxyz]; 
+
+          cuComplex coll, drive;
+          coll = -(b_s + 2*l + m)*H_;
+          drive = make_cuComplex(0,0);
+
+          if(m==0) {
+            coll = coll + sqrtf(b_s) * JflrB(l, b_s) * uperp_bar[idxyz] 
+               + 2. * ( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) ) * t_bar[idxyz];  
+            drive = drive  
+               + iky_ * phi_ * (
+                  Jflr(l-1,b_s)*l*tprim_
+	        + Jflr(l,  b_s)*(fprim_ + 2*l*tprim_)
+	        + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	       )
+               + iky_/zt_ * bpar_ * (
+                  JflrB(l-1,b_s)*l*tprim_
+	        + JflrB(l,  b_s)*(fprim_ + 2*l*tprim_)
+	        + JflrB(l+1,b_s,false)*(l+1)*tprim_ 
+	       )
+          }
+          if(m==1) {
+            coll = coll + Jflr(l, b_s)*upar_bar[idxyz];
+            drive = drive 
+               - vt_ * iky_ * apar_ * (
+                  Jflr(l-1,b_s)*l*tprim_
+	        + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
+	        + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
+	       )
+          }
+          if(m==2) {
+            coll = coll + sqrtf(2.)*Jflr(l, b_s)*t_bar[idxyz];
+            drive = drive + iky_*phi_*Jflr(l,b_s)/sqrtf(2.)*tprim_ + iky_/zt_*bpar_*JflrB(l, b_s)/sqrtf(2.)*tprim_;
+          }
+          if(m==3) {
+             drive = drive - vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
+          }
+
+          Hcoll = -nu_ss * p_s * cuConjf(H_) * coll;
+          Hdrive = p_s * cuConjf(H_) * drive;
+
+          float fac = 2.0;
+          if (idy==0) fac = 1.0;
+        
+          heat[ig] = (Hcoll.x + Hdrive.x) * volJac[idz] * fac;
+        } else {
+          heat[ig] = 0.;
+        }
+      }
+    }
+  }
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  cuComplex fg;
+
+  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex n_bar = make_cuComplex(0.,0.);
+      cuComplex u_bar = make_cuComplex(0.,0.);
+      cuComplex uB_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
+	u_bar = u_bar + Jflr(il, b_s)*Gh_(idxyz, il, 1);
+	uB_bar = uB_bar + JflrB(il, b_s)*Gh_(idxyz, il, 0);
+      }
+    
+      fg = (cuConjf(vPhi_r) * n_bar - vts*cuConjf(vA_r)*u_bar + tzs*cuConjf(vB_r)*uB_bar) * 2. * flxJac[idz];
       pflux[idxyz] = fg.x * n_s;
 
     } else {

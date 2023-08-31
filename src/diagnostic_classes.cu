@@ -196,7 +196,8 @@ void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmp
     float rho2s = pars_->species_h[is_glob].rho2;
     float p_s = pars_->species_h[is_glob].nt;
     float vts = pars_->species_h[is_glob].vt;
-    heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, vts); 	
+    float tzs = pars_->species_h[is_glob].tz;
+    heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, f->bpar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, vts, tzs); 	
   }
   write_spectra(tmpf);
 
@@ -261,9 +262,10 @@ void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
   for(int is=0; is<grids_->Nspecies; is++) {
     int is_glob = is + grids_->is_lo;
     float rho2s = pars_->species_h[is_glob].rho2;
-    float n_s = pars_->nspec>1 ? pars_->species_h[is].dens : 0.;
+    float n_s = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
     float vts = pars_->species_h[is_glob].vt;
-    particle_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, n_s, vts); 	
+    float tzs = pars_->species_h[is_glob].tz;
+    particle_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, f->bpar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, n_s, vts, tzs); 	
   }
   write_spectra(tmpf);
 
@@ -277,6 +279,38 @@ void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
       printf ("Gam_%s = %.3e   ", spec_string, fluxes[is]);
     }
   }
+}
+
+TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+ : SpectraDiagnostic(pars, grids, geo, ncdf)
+{
+  varname = "TurbulentHeating";
+  description = "Turbulent heating from collisions in gyroBohm units"; 
+  isMoments = true;
+  set_kernel_dims();
+
+  add_spectra(allSpectra->st_spectra);
+  add_spectra(allSpectra->kxst_spectra);
+  add_spectra(allSpectra->kyst_spectra);
+  add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->lmst_spectra);
+
+  linear_ = linear;
+}
+
+void TurbulentHeatingDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
+    if (pars_->collisions && pars_->coll_conservation)  conservation_terms <<< nb1, nt1 >>>
+  			    (linear_->upar_bar, linear_->uperp_bar, linear_->t_bar, G[is]->G(), f->phi, f->apar, f->bpar, geo_->kperp2, *(G[is]->species));
+    int is_glob = is + grids_->is_lo;
+    float p_s = pars_->species_h[is_glob].nt;
+    float rho2s = pars_->species_h[is_glob].rho2;
+    float nu_ss = pars_->species_h[is_glob].nu_ss;
+    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, G[is]->G(), grids_->ky, geo_->vol_fac, geo_->kperp2, linear_->upar_bar, linear__>uperp_bar, linear_->t_bar, rho2s, p_s, nu_ss);
+  }
+  write_spectra(tmpG);
 }
 
 GrowthRateDiagnostic::GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)

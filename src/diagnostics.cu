@@ -8,8 +8,8 @@
 #define KXKY <<< dGk, dBk >>>
 #define loop_y <<< dgp, dbp >>> 
 
-Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
-  geo_(geo), fields_old(nullptr), ncdf_(nullptr), ncdf_big_(nullptr)
+Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, Nonlinear* nonlinear) :
+  geo_(geo), fields_old(nullptr), ncdf_(nullptr), ncdf_big_(nullptr), linear_(linear), nonlinear_(nonlinear)
 {
   pars_ = pars;
   grids_ = grids;
@@ -51,6 +51,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxESDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<TurbulentHeatingDiagnostic>(pars_, grids_, geo_, linear_, ncdf_, allSpectra_));
   }
   
   // initialize growth rate diagnostic

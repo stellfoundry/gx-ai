@@ -2,6 +2,7 @@
 #include "parameters.h"
 #include "grids.h"
 #include "geometry.h"
+#include "linear.h"
 #include "moments.h"
 #include "fields.h"
 #include "ncdf.h"
@@ -101,6 +102,16 @@ class ParticleFluxDiagnostic : public SpectraDiagnostic {
  public:
   ParticleFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+// TurbulentHeating (H)
+class TurbulentHeatingDiagnostic : public SpectraDiagnostic {
+ public:
+  TurbulentHeatingDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+
+ private:
+  Linear *linear_;
 };
 
 class GrowthRateDiagnostic {

@@ -3,6 +3,8 @@
 #include "parameters.h"
 #include "grids.h"
 #include "moments.h"
+#include "linear.h"
+#include "nonlinear.h"
 #include "fields.h"
 #include "ncdf.h"
 #include "grad_parallel.h"
@@ -29,7 +31,7 @@ class Diagnostics {
 
 class Diagnostics_GK : public Diagnostics {
  public:
-  Diagnostics_GK(Parameters *pars, Grids *grids, Geometry *geo);
+  Diagnostics_GK(Parameters *pars, Grids *grids, Geometry *geo, Linear *linear, Nonlinear *nonlinear);
   ~Diagnostics_GK();
 
   bool loop(MomentsG** G, Fields* fields, double dt, int counter, double time) ;
@@ -62,6 +64,8 @@ private:
   NetCDF       * ncdf_big_         ;
   Reservoir    * rc            ;
   AllSpectraCalcs * allSpectra_;
+  Linear * linear_;
+  Nonlinear * nonlinear_;
 
   float * tmpf;
   cuComplex * tmpC;

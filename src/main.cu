@@ -69,29 +69,22 @@ int main(int argc, char* argv[])
   if (pars->gx) {
     geo = init_geo(pars, grids);
 
-
-    if(iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
-    diagnostics = new Diagnostics_GK(pars, grids, geo);
-    if(iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
-
     //    DEBUGPRINT("Initializing Hermite transforms...\n");
     //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
     //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
   }
   if (pars->krehm) {
     geo = init_geo(pars, grids);
-    diagnostics = new Diagnostics_KREHM(pars, grids);
   }
 
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
   
-  run_gx(pars, grids, geo, diagnostics); 
+  run_gx(pars, grids, geo); 
 
   delete pars;
   delete grids;
   delete geo;
-  delete diagnostics;
 
   MPI_Finalize();
   cudaDeviceReset();

@@ -1,6 +1,6 @@
 #include "run_gx.h"
 
-void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
+void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 {
   double time = 0;
 
@@ -8,6 +8,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   Solver    * solver    = nullptr;
   Linear    * linear    = nullptr;
   Nonlinear * nonlinear = nullptr;
+  Diagnostics * diagnostics = nullptr;
   MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
   for(int is=0; is<grids->Nspecies; is++) {
     G[is] = nullptr;
@@ -47,6 +48,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> sync();
     }
     solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    if(grids->iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics_GK(pars, grids, geo, linear, nonlinear);
+    if(grids->iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
   }
 
   if (pars->krehm) {
@@ -61,6 +67,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
     G[0] -> sync();
     solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    diagnostics = new Diagnostics_KREHM(pars, grids);
   }
 
   //////////////////////////////
@@ -170,6 +179,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     if (G[is])         delete G[is];
   }
   free(G);
+  if (diagnostics) delete diagnostics;
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;
