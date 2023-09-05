@@ -203,20 +203,20 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
 __global__ void heat_flux_ES_summand(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
 __global__ void heat_flux_Apar_summand(float* qflux, const cuComplex* apar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts);
 __global__ void heat_flux_Bpar_summand(float* qflux, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float tzs);
 
 __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs);
 
-__global__ void n_bar(cuComplex* n_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
-__global__ void upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex* apar, const float *kperp2, const specie sp);
-__global__ void uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
-__global__ void T_bar(cuComplex* T_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
+__global__ void calc_n_bar(cuComplex* n_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
+__global__ void calc_upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex* apar, const float *kperp2, const specie sp);
+__global__ void calc_uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
+__global__ void calc_T_bar(cuComplex* T_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
 
 __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* volJac, const float *kperp2, const float* upar_bar, const float *uperp_bar, const float *t_bar, const specie sp);
+				  const float* volJac, const float *kperp2, const cuComplex* upar_bar, const cuComplex *uperp_bar, const cuComplex *t_bar, const specie sp);
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,

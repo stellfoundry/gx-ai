@@ -291,8 +291,8 @@ void HeatFluxBparDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float*
     int is_glob = is + grids_->is_lo;
     float rho2s = pars_->species_h[is_glob].rho2;
     float p_s = pars_->species_h[is_glob].nt;
-    float vts = pars_->species_h[is_glob].vt;
-    heat_flux_Bpar_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->bpar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, vts); 	
+    float tzs = pars_->species_h[is_glob].tz;
+    heat_flux_Bpar_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->bpar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, tzs); 	
   }
   write_spectra(tmpf);
 }
@@ -360,7 +360,7 @@ void TurbulentHeatingDiagnostic::calculate_and_write(MomentsG** G, Fields* f, fl
     int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
     if (pars_->collisions && pars_->coll_conservation)  conservation_terms <<< nb1, nt1 >>>
   			    (linear_->upar_bar, linear_->uperp_bar, linear_->t_bar, G[is]->G(), f->phi, f->apar, f->bpar, geo_->kperp2, *(G[is]->species));
-    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, G[is]->G(), grids_->ky, geo_->vol_fac, geo_->kperp2, linear_->upar_bar, linear_>uperp_bar, linear_->t_bar, *(G[is]->species))
+    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, f->bpar, G[is]->G(), grids_->ky, geo_->vol_fac, geo_->kperp2, linear_->upar_bar, linear_->uperp_bar, linear_->t_bar, *(G[is]->species));
   }
   write_spectra(tmpG);
 }
@@ -788,7 +788,7 @@ ParticleDensityDiagnostic::ParticleDensityDiagnostic(Parameters* pars, Grids* gr
 void ParticleDensityDiagnostic::calculate(MomentsG** G, Fields* fields, cuComplex* f_h, cuComplex* tmp_d)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    n_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
+    calc_n_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
     
     CP_TO_CPU(f_h + is*grids_->NxNycNz, tmp_d, sizeof(cuComplex)*grids_->NxNycNz);
   }
@@ -803,7 +803,7 @@ ParticleUparDiagnostic::ParticleUparDiagnostic(Parameters* pars, Grids* grids, G
 void ParticleUparDiagnostic::calculate(MomentsG** G, Fields* fields, cuComplex* f_h, cuComplex* tmp_d)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    upar_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->apar, geo_->kperp2, *G[is]->species);
+    calc_upar_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->apar, geo_->kperp2, *G[is]->species);
     
     CP_TO_CPU(f_h + is*grids_->NxNycNz, tmp_d, sizeof(cuComplex)*grids_->NxNycNz);
   }
@@ -818,7 +818,7 @@ ParticleUperpDiagnostic::ParticleUperpDiagnostic(Parameters* pars, Grids* grids,
 void ParticleUperpDiagnostic::calculate(MomentsG** G, Fields* fields, cuComplex* f_h, cuComplex* tmp_d)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    uperp_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
+    calc_uperp_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
     
     CP_TO_CPU(f_h + is*grids_->NxNycNz, tmp_d, sizeof(cuComplex)*grids_->NxNycNz);
   }
@@ -833,7 +833,7 @@ ParticleTempDiagnostic::ParticleTempDiagnostic(Parameters* pars, Grids* grids, G
 void ParticleTempDiagnostic::calculate(MomentsG** G, Fields* fields, cuComplex* f_h, cuComplex* tmp_d)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    T_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
+    calc_T_bar <<<dG, dB>>> (tmp_d, G[is]->G(), fields->phi, fields->bpar, geo_->kperp2, *G[is]->species);
     
     CP_TO_CPU(f_h + is*grids_->NxNycNz, tmp_d, sizeof(cuComplex)*grids_->NxNycNz);
   }

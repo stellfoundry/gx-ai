@@ -1652,7 +1652,7 @@ __global__ void heat_flux_ES_summand(float* qflux, const cuComplex* phi, const c
 }
 
 __global__ void heat_flux_Apar_summand(float* qflux, const cuComplex* apar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts, float tzs)
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1685,7 +1685,7 @@ __global__ void heat_flux_Apar_summand(float* qflux, const cuComplex* apar, cons
 }
 
 __global__ void heat_flux_Bpar_summand(float* qflux, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts, float tzs)
+				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float tzs)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1757,7 +1757,7 @@ __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const 
 }
 
 __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* volJac, const float *kperp2, const float* upar_bar, const float *uperp_bar, const float *t_bar, const specie sp)
+				  const float* volJac, const float *kperp2, const cuComplex* upar_bar, const cuComplex *uperp_bar, const cuComplex *t_bar, const specie sp)
 {
   unsigned int idxy = get_id1(); 
   if (idxy < nx*nyc) {
@@ -1778,19 +1778,26 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
         const float zt_ = sp.zt;
         const float tz_ = sp.tz;
         const float nz_ = sp.nz;
+        const float nt_ = sp.nt;
         const float nu_ = sp.nu_ss; 
         const float rho2_ = sp.rho2; 
         const float tprim_ = sp.tprim;
         const float uprim_ = sp.uprim;
         const float fprim_ = sp.fprim;
 
+        const cuComplex phi_ = phi[idxyz];
+        const cuComplex apar_ = apar[idxyz];
+        const cuComplex bpar_ = bpar[idxyz];
+
+        const cuComplex iky_ = make_cuComplex(0., ky[idy]); 
+
         if (unmasked(idx, idy)) {
           float b_s = kperp2[idxyz]*rho2_;
           int l = idl;
-          int m = idm + mlo;
+          int m = idm + m_lo;
           cuComplex H_ = g[ig];
-          if(m==0) H_ = H_ + zt_*Jflr(l, b_s)*phi[idxyz] + JflrB(l, b_s)*bpar[idxyz];
-          if(m==1) H_ = H_ - zt_*vt_*Jflr(l, b_s)*apar[idxyz]; 
+          if(m==0) H_ = H_ + zt_*Jflr(l, b_s)*phi_ + JflrB(l, b_s)*bpar_;
+          if(m==1) H_ = H_ - zt_*vt_*Jflr(l, b_s)*apar_; 
 
           cuComplex coll, drive;
           coll = -(b_s + 2*l + m)*H_;
@@ -1809,7 +1816,7 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
                   JflrB(l-1,b_s)*l*tprim_
 	        + JflrB(l,  b_s)*(fprim_ + 2*l*tprim_)
 	        + JflrB(l+1,b_s,false)*(l+1)*tprim_ 
-	       )
+	       );
           }
           if(m==1) {
             coll = coll + Jflr(l, b_s)*upar_bar[idxyz];
@@ -1818,7 +1825,7 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
                   Jflr(l-1,b_s)*l*tprim_
 	        + Jflr(l,  b_s)*(fprim_ + (2*l+1)*tprim_)
 	        + Jflr(l+1,b_s,false)*(l+1)*tprim_ 
-	       )
+	       );
           }
           if(m==2) {
             coll = coll + sqrtf(2.)*Jflr(l, b_s)*t_bar[idxyz];
@@ -1828,8 +1835,8 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
              drive = drive - vt_ * iky_ * apar_ * sqrtf(3./2.) * tprim_ * Jflr(l,b_s);
           }
 
-          Hcoll = -nu_ss * p_s * cuConjf(H_) * coll;
-          Hdrive = p_s * cuConjf(H_) * drive;
+          cuComplex Hcoll = -nu_ * nt_ * cuConjf(H_) * coll;
+          cuComplex Hdrive = nt_ * cuConjf(H_) * drive;
 
           float fac = 2.0;
           if (idy==0) fac = 1.0;
@@ -1841,44 +1848,9 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
       }
     }
   }
-
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  cuComplex fg;
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
-  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
-    if (unmasked(idx, idy) && idy > 0) {    
-      
-      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
-      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
-      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
-    
-      float b_s = kperp2[idxyz]*rho2_s;
-    
-      // sum over l
-      cuComplex n_bar = make_cuComplex(0.,0.);
-      cuComplex u_bar = make_cuComplex(0.,0.);
-      cuComplex uB_bar = make_cuComplex(0.,0.);
-
-      for (int il=0; il < nl; il++) {
-	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
-	u_bar = u_bar + Jflr(il, b_s)*Gh_(idxyz, il, 1);
-	uB_bar = uB_bar + JflrB(il, b_s)*Gh_(idxyz, il, 0);
-      }
-    
-      fg = (cuConjf(vPhi_r) * n_bar - vts*cuConjf(vA_r)*u_bar + tzs*cuConjf(vB_r)*uB_bar) * 2. * flxJac[idz];
-      pflux[idxyz] = fg.x * n_s;
-
-    } else {
-      pflux[idxyz] = 0.;
-    }
-  }
 }
 
-__global__ void n_bar(cuComplex* n_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
+__global__ void calc_n_bar(cuComplex* n_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1898,7 +1870,7 @@ __global__ void n_bar(cuComplex* n_bar, cuComplex* g, const cuComplex* phi, cons
   }
 }
 
-__global__ void upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex* apar, const float *kperp2, const specie sp)
+__global__ void calc_upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex* apar, const float *kperp2, const specie sp)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1918,7 +1890,7 @@ __global__ void upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex* apa
   }
 }
 
-__global__ void uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
+__global__ void calc_uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -1939,7 +1911,7 @@ __global__ void uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* p
   }
 }
 
-__global__ void T_bar(cuComplex* T_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
+__global__ void calc_T_bar(cuComplex* T_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
