@@ -89,6 +89,7 @@ void Parameters::get_nml_vars(char* filename)
   // "fix aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
+  zero_shat_threshold = toml::find_or <float>   (tnml, "zero_shat_threshold", 1e-5);
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
   
@@ -147,8 +148,9 @@ void Parameters::get_nml_vars(char* filename)
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
-  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
+  hypercollisions_const = toml::find_or <bool> (tnml, "hypercollisions_const", false);
   hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions_kz", false);
+  hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions_kz); // "hypercollisions" now gives hypercollisions_kz
   hyperz = toml::find_or <bool> (tnml, "hyperz", false);
 
   tnml = nml;
@@ -311,7 +313,6 @@ void Parameters::get_nml_vars(char* filename)
   p_HB       = toml::find_or <int>    (tnml, "p_HB",          (long)  p_HB   ); // included for backwards-compat. now specified in Dissipation
   hyper      = toml::find_or <bool>   (tnml, "hyper",         hyper ); // included for backwards-compat. now specified in Dissipation
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      HB_hyper ); // included for backwards-compat. now specified in Dissipation
-  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions); // included for backwards-compat. now specified in Dissipation
   random_init     = toml::find_or <bool> (tnml, "random_init",     random_init); // include for backwards-compat. now specified in Initialization
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     init_electrons_only); // include for backwards-compat. now specified in Initialization
   if (random_init) ikpar_init = 0; 
@@ -461,6 +462,9 @@ void Parameters::get_nml_vars(char* filename)
   isym = toml::find_or <int> (tnml, "isym", 0); 
   eqfile = toml::find_or <string> (tnml, "eqfile", "none" );  
   s_hat_input = toml::find_or <float> (tnml, "s_hat_input", 1.0 );
+  if(abs(s_hat_input) < zero_shat_threshold) {
+    s_hat_input = 1e-8;
+  }
   p_prime_input = toml::find_or <float> (tnml, "p_prime_input", -2.0 );
   invLp_input = toml::find_or <float> (tnml, "invLp_input", 5.0 );
   alpha_input = toml::find_or <float> (tnml, "alpha_input", 0.0 );
@@ -725,7 +729,8 @@ void Parameters::get_nml_vars(char* filename)
   }
 
   if(iproc==0) {
-    if(hypercollisions) printf("Using hypercollisions.\n");
+    if(hypercollisions_kz) printf("Using hypercollisions with coefficient proportional to kz (default).\n");
+    if(hypercollisions_const) printf("Using hypercollisions with const coefficient.\n");
     if(hyper) printf("Using hyperdiffusion.\n");
 
     if(debug) printf("nspec_in = %i \n",nspec_in);
@@ -957,7 +962,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (nc_diss, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "D_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diss, "hypercollisions",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "hypercollisions_const",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "hypercollisions_kz",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper_l",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper_m",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "p_hyper",               NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1206,7 +1212,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   
   putbool  (nc_diss, "hyper",           hyper           );
   put_real (nc_diss, "D_hyper",         D_hyper         );
-  putbool  (nc_diss, "hypercollisions", hypercollisions );
+  putbool  (nc_diss, "hypercollisions_const", hypercollisions_const );
+  putbool  (nc_diss, "hypercollisions_kz", hypercollisions_kz );
   put_real (nc_diss, "nu_hyper_l",      nu_hyper_l      );
   put_real (nc_diss, "nu_hyper_m",      nu_hyper_m      );
   putint   (nc_diss, "nu_hyper",        nu_hyper        );
@@ -1495,7 +1502,11 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       printf(ANSI_COLOR_RESET);
     }
   }
-  if (abs(shat) < 1e-5) {
+  if (abs(shat) < zero_shat_threshold) {
+    if(iproc==0) {
+      printf("Magnetic shear shat is smaller than threshold value. Setting shat = 1e-8.\n");
+    }
+    shat = 1e-8;
     zero_shat = true;
     boundary_option_periodic = true;
   }
