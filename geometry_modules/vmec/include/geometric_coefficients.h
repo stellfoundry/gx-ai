@@ -220,6 +220,7 @@ class Geometric_coefficients {
   double desired_normalized_toroidal_flux = 0.25;
   int vmec_surface_option = 2;
   int verbose = 0;
+  bool shift_grad_alpha;
   std::string flux_tube_cut = "none";
   double custom_length = M_PI;
   int which_crossing = 1;

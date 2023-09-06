@@ -64,4 +64,5 @@ else
   NVCCFLAGS += -O3
 endif
 
+GS2_PATH = /global/homes/n/nmandell/gs2
 
