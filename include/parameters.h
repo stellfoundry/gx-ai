@@ -157,6 +157,7 @@ class Parameters {
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
+  float zero_shat_threshold;
 
   // parameters for KREHM system
   bool krehm;
@@ -185,7 +186,7 @@ class Parameters {
 
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool hyperz;
-  bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions, hypercollisions_kz;
+  bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions_const, hypercollisions_kz;
   bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
   bool fixed_amplitude, write_fields, write_eigenfuncs; 
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;

@@ -65,6 +65,12 @@ qinp = f['Geometry']['qinp']
 s_hat_input = f['Geometry']['shat']
 if s_hat_input == 0.0:
    s_hat_input = 1.e-8
+try:
+   zero_shat_threshold = f['Domain']['zero_shat_threshold']
+   if abs(s_hat_input) < zero_shat_threshold:
+      s_hat_input = 1.e-8
+except:
+   pass
 Rmaj =  f['Geometry']['Rmaj']
 R_geo = f['Geometry']['R_geo']
 shift = f['Geometry']['shift']
