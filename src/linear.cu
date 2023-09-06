@@ -17,6 +17,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   s10  = nullptr;
   s11  = nullptr;
   vol_fac = nullptr;
+  tmpG = nullptr;
   
   // set up parallel ffts
   if(pars_->local_limit) {
@@ -31,7 +32,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  grad_par = new GradParallelPeriodic(grids_);
   //}
   else {
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
 
   switch (pars_->closure_model_opt)
@@ -78,6 +79,10 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaMemset(upar_bar, 0., size);
   cudaMemset(uperp_bar, 0., size);
   cudaMemset(t_bar, 0., size);
+
+  if(pars_->hypercollisions_kz) {
+    tmpG = new MomentsG (pars_, grids_);
+  }
 
   int nn1 = grids_->Nyc;             int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
   int nn2 = grids_->Nx;              int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
@@ -152,9 +157,10 @@ Linear_GK::~Linear_GK()
   if (uperp_bar)  cudaFree(uperp_bar);
   if (t_bar)      cudaFree(t_bar);
   if (vol_fac)    cudaFree(vol_fac);
+  if (tmpG) delete tmpG;
 }
 
-void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
@@ -165,7 +171,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   // Free-streaming requires parallel FFTs, so do that first
   if(grids_->Nz>1) {
     streaming_rhs <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->bpar, geo_->kperp2, geo_->gradpar, *(G->species), GRhs->G());
-    grad_par->dz(GRhs);
+    grad_par->dz(GRhs, GRhs, false);
   }
   
   // calculate most of the RHS
@@ -204,17 +210,33 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
-								   pars_->nu_hyper_l,
+		  						   pars_->nu_hyper_l,
 								   pars_->nu_hyper_m,
+								   G->species->vt/pars_->vtmax*pars_->nu_hyper_lm/dt,
 								   pars_->p_hyper_l,
-								   pars_->p_hyper_m, GRhs->G(), G->species->vt);
+								   pars_->p_hyper_m, 
+								   pars_->p_hyper_lm, 
+								   GRhs->G(), G->species->vt);
+
+  if(pars_->hypercollisions_kz) {
+    float M = (float) grids_->Nm_glob-1;
+    float p = (float) pars_->p_hyper_m;
+    float vt = G->species->vt;
+    float nu_hyp_m = pars_->nu_hyper_m*(p + 0.5)/powf(M, p + 0.5)*2.3*vt*geo_->gradpar;
+    tmpG->set_zero();
+    hypercollisions_kz<<<dimGridh, dimBlockh>>>(G->G(), nu_hyp_m, p, tmpG->G());
+    grad_par->abs_dz(tmpG, GRhs, true);
+  }
+
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
+
+  if(pars_->hyperz) grad_par->hyperz(G, GRhs, pars_->nu_hyper_z/dt, true);
   
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
-  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2);
+  if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2, dt);
 }
 
 void Linear_GK::get_max_frequency(double *omega_max)
@@ -254,7 +276,7 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
   //}
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
-    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    grad_par = new GradParallelLinked(pars_, grids_);
   }
  
   switch (pars_->closure_model_opt)
@@ -292,12 +314,12 @@ Linear_KREHM::~Linear_KREHM()
   if (grad_par) delete grad_par;
 }
 
-void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   if(grids_->Nz>1) {
     cudaStreamSynchronize(G->syncStream);
     rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->apar_ext, nu_ei, rho_s, d_e, GRhs->G());
-    grad_par->dz(GRhs);
+    grad_par->dz(GRhs, GRhs, false);
   }
   
   // closures
@@ -312,10 +334,9 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   // hypercollisions
   if(pars_->hypercollisions) hypercollisions<<<dimGridh,dimBlockh>>>(G->G(),
-								   0.,
-								   1./pars_->dt/pars_->nm_in,
-								   1.,
-								   pars_->p_hyper_m, GRhs->G(), 1.);
+								   0., 1./dt/pars_->nm_in, 0.,
+								   1, pars_->p_hyper_m, 1, 
+								   GRhs->G(), 1.);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
 						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
@@ -346,7 +367,7 @@ Linear_KS::~Linear_KS()
   // nothing
 }
 
-void Linear_KS::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_KS::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();
@@ -374,7 +395,7 @@ Linear_VP::~Linear_VP()
   // nothing
 }
 
-void Linear_VP::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
+void Linear_VP::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   // to be safe, start with zeros on RHS
   GRhs->set_zero();

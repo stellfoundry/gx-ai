@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <ctime>
 #include "run_gx.h"
 #include "version.h"
 #include "helper_cuda.h"
@@ -45,6 +46,8 @@ int main(int argc, char* argv[])
 
     printf(ANSI_COLOR_GREEN);
     if(iproc==0) printf("Running %s \n",run_name);
+    std::time_t time = std::time(0);
+    if(iproc==0) std::cout << "Start time: " << std::ctime(&time) << std::endl;
     printf(ANSI_COLOR_RESET);
   }
    
@@ -81,6 +84,9 @@ int main(int argc, char* argv[])
   checkCudaErrors(cudaGetLastError());
   
   run_gx(pars, grids, geo); 
+
+  std::time_t time = std::time(0);
+  if(iproc==0) std::cout << "End time: " << std::ctime(&time) << std::endl;
 
   delete pars;
   delete grids;

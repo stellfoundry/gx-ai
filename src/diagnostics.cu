@@ -515,7 +515,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
 //  //    grad_par = new GradParallelPeriodic(grids_);
 //  //  }
 //  //  else {
-//  //    grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+//  //    grad_par = new GradParallelLinked(pars_, grids_);
 //  //  }
 //  //}
 //  // need if (pars_->write_flux || "diagnosing potential) {

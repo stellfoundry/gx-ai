@@ -295,7 +295,7 @@ __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar, const float* q
 
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
-			       cuComplex* GRhs);
+			       cuComplex* GRhs, float widthfrac, float amp);
 
 __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, float* kperp2, specie sp,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
@@ -309,13 +309,18 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restric
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
 			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
+__global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
+			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
+
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
+__device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);
 __global__ void init_kzLinked(float* kz, int nLinks, bool dealias);
 
 extern __device__ cufftCallbackStoreC zfts_Linked_callbackPtr;
 extern __device__ cufftCallbackStoreC i_kzLinked_callbackPtr;
+extern __device__ cufftCallbackStoreC hyperkzLinked_callbackPtr;
 extern __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr;
 
 __global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky);
@@ -347,8 +352,9 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 			  float nu_hyper, float D_hyper, cuComplex* rhs);
 
-__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
-				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt);
+__global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m, const float nu_hyper_lm,
+				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt);
+__global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int p, cuComplex* res);
 
 
 
