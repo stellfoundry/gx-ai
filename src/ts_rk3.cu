@@ -63,7 +63,7 @@ void RungeKutta3::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
       dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
     }
 
-    if (pars_->ExBshear) exb_->flow_shear_shift(G[is], f, dt_);
+    if (pars_->ExBshear) exb_->flow_shear_shift(G[is], f, adt*dt_);
 
     // compute and increment nonlinear term
     Rhs[is]->set_zero();
