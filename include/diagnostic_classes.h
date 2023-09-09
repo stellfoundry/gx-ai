@@ -28,6 +28,7 @@ class SpectraDiagnostic {
   SpectraDiagnostic::SpectraDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
   ~SpectraDiagnostic() {};
   virtual void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf) = 0;
+  virtual void set_dt_data(MomentsG** G_old, Fields* f_old, float dt) {};
  protected:
   void add_spectra(SpectraCalc *spectra);
   void write_spectra(float* data);
@@ -121,9 +122,13 @@ class TurbulentHeatingDiagnostic : public SpectraDiagnostic {
  public:
   TurbulentHeatingDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+  void set_dt_data(MomentsG** G_old, Fields* f_old, float dt);
 
  private:
   Linear *linear_;
+  MomentsG** G_old_;
+  Fields* f_old_;
+  float dt_;
 };
 
 class GrowthRateDiagnostic {

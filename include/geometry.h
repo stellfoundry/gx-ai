@@ -62,6 +62,12 @@ class Geometry {
   float bi;
   float aminor;
   float shat;
+  float qsf;
+  float kxfac;
+  float shift;
+  float rmaj;
+  float theta_scale = 1.0;
+  int nperiod;
   bool zero_shat_; 
   
   cuComplex * bmag_complex ;

@@ -60,6 +60,7 @@ private:
   GradPerp     * grad_perp     ; 
   GradParallel * grad_par      ;
   Fields       * fields_old    ;
+  MomentsG     ** G_old    ;
   NetCDF       * ncdf_         ;
   NetCDF       * ncdf_big_         ;
   Reservoir    * rc            ;

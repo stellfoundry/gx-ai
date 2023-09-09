@@ -215,8 +215,9 @@ __global__ void calc_upar_bar(cuComplex* upar_bar, cuComplex* g, const cuComplex
 __global__ void calc_uperp_bar(cuComplex* uperp_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
 __global__ void calc_T_bar(cuComplex* T_bar, cuComplex* g, const cuComplex* phi, const cuComplex* bpar, const float *kperp2, const specie sp);
 
-__global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
-				  const float* volJac, const float *kperp2, const cuComplex* upar_bar, const cuComplex *uperp_bar, const cuComplex *t_bar, const specie sp);
+__global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, 
+                                          const cuComplex* phi_old, const cuComplex* apar_old, const cuComplex* bpar_old, 
+                                          const cuComplex* g, const cuComplex* g_old, const float* volJac, const float* kperp2, const specie sp, float dt);
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,

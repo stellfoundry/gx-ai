@@ -31,6 +31,12 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Li
   if(pars_->write_moms) {
     cudaMalloc (&tmpC, sizeof(cuComplex) * grids_->NxNycNz * grids_->Nspecies);
   }
+  G_old = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
+  for(int is=0; is<grids_->Nspecies; is++) {
+    int is_glob = is+grids->is_lo;
+    G_old[is] = new MomentsG (pars_, grids_, is_glob);
+  }
+  fields_old = new Fields(pars_, grids_);       
 
   // initialize energy spectra diagnostics
   spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
@@ -52,12 +58,12 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Li
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxAparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     //spectraDiagnosticList.push_back(std::make_unique<ParticleFluxBparDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<TurbulentHeatingDiagnostic>(pars_, grids_, geo_, linear_, ncdf_, allSpectra_));
+
   }
   
   // initialize growth rate diagnostic
   if(pars_->write_omega) {
     growthRateDiagnostic = new GrowthRateDiagnostic(pars_, grids_, ncdf_);
-    fields_old = new Fields(pars_, grids_);       
   }
 
   // initialize fields diagnostics
@@ -102,13 +108,19 @@ Diagnostics_GK::~Diagnostics_GK()
 bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
 {
   bool stop = false;
-  if(pars_->write_omega && counter % pars_->nwrite == 0) {
+  if(counter % pars_->nwrite == 0 || time + dt > pars_->t_max) {
     fields_old->copyPhiFrom(fields);
+    fields_old->copyAparFrom(fields);
+    fields_old->copyBparFrom(fields);
+    for(int is=0; is<grids_->Nspecies; is++) {
+      G_old[is]->copyFrom(G[is]);
+    }
   }
 
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
     if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
     for(int i=0; i<spectraDiagnosticList.size(); i++) {
+      spectraDiagnosticList[i]->set_dt_data(G_old, fields_old, dt);
       spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
     }
 

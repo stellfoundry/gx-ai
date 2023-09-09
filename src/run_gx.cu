@@ -171,7 +171,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   }  
   
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
-  printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
+  printf("Total runtime = %f min (%f s / timestep)\n", timer/1000./60., timer/1000./counter);
 
   diagnostics->finish(G, fields, time);
 

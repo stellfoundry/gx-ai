@@ -187,6 +187,7 @@ HeatFluxDiagnostic::HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry*
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 }
 
 void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -227,6 +228,7 @@ HeatFluxESDiagnostic::HeatFluxESDiagnostic(Parameters* pars, Grids* grids, Geome
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 }
 
 void HeatFluxESDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -255,6 +257,7 @@ HeatFluxAparDiagnostic::HeatFluxAparDiagnostic(Parameters* pars, Grids* grids, G
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 }
 
 void HeatFluxAparDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -283,6 +286,7 @@ HeatFluxBparDiagnostic::HeatFluxBparDiagnostic(Parameters* pars, Grids* grids, G
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 }
 
 void HeatFluxBparDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -311,6 +315,7 @@ ParticleFluxDiagnostic::ParticleFluxDiagnostic(Parameters* pars, Grids* grids, G
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 }
 
 void ParticleFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -350,6 +355,7 @@ TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* 
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
   add_spectra(allSpectra->lmst_spectra);
+  add_spectra(allSpectra->zst_spectra);
 
   linear_ = linear;
 }
@@ -357,12 +363,28 @@ TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* 
 void TurbulentHeatingDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
-    if (pars_->collisions && pars_->coll_conservation)  conservation_terms <<< nb1, nt1 >>>
-  			    (linear_->upar_bar, linear_->uperp_bar, linear_->t_bar, G[is]->G(), f->phi, f->apar, f->bpar, geo_->kperp2, *(G[is]->species));
-    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, f->bpar, G[is]->G(), grids_->ky, geo_->vol_fac, geo_->kperp2, linear_->upar_bar, linear_->uperp_bar, linear_->t_bar, *(G[is]->species));
+    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, f->bpar, 
+                                            f_old_->phi, f_old_->apar, f_old_->bpar, 
+                                            G[is]->G(), G_old_[is]->G(), geo_->vol_fac, geo_->kperp2, *(G[is]->species), dt_);
   }
   write_spectra(tmpG);
+
+  // get Heat(t) data to write to screen
+  float *heat = spectraList[0]->get_data();
+
+  if(!skipWrite) {
+    for (int is=0; is<grids_->Nspecies; is++) {
+      int is_glob = is + grids_->is_lo;
+      const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
+      printf ("Heat_%s = %.3e   ", spec_string, heat[is]);
+    }
+  }
+}
+
+void TurbulentHeatingDiagnostic::set_dt_data(MomentsG** G_old, Fields* f_old, float dt) {
+  G_old_ = G_old;
+  f_old_ = f_old;
+  dt_ = dt;
 }
 
 GrowthRateDiagnostic::GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
