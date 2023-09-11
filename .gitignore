@@ -25,3 +25,4 @@ src/version.c
 *.log
 *.tmp
 unit_tests/test_*
+*.png

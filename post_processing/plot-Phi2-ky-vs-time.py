@@ -8,10 +8,10 @@ from netCDF4 import Dataset
 plt.figure(0)
 for fname in sys.argv[1:]:
   data = Dataset("%s"%fname, mode='r')
-  t = data.variables['time'][:]
-  ky = data.variables['ky'][:]
+  t = data.groups['Grids'].variables['time'][:]
+  ky = data.groups['Grids'].variables['ky'][:]
   for i in np.arange(0, len(ky)):
-    y = data.groups['Spectra'].variables['Phi2kyt'][:,i]
+    y = data.groups['Diagnostics'].variables['Phi2_kyt'][:,i]
     if i==0:
        fmt = '--'
     else:
