@@ -542,6 +542,12 @@ FieldsDiagnostic::FieldsDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
   cpu = (float*) malloc  (sizeof(float) * Nwrite);
 }
 
+FieldsDiagnostic::~FieldsDiagnostic() 
+{
+  free(f_h);
+  free(cpu);
+}
+
 void FieldsDiagnostic::calculate_and_write(Fields* f)
 {
   int retval;

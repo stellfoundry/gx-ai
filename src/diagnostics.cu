@@ -91,7 +91,6 @@ Diagnostics_GK::~Diagnostics_GK()
 {
   if(pars_->write_omega) {
     delete growthRateDiagnostic;
-    delete fields_old;
   }
   if(pars_->write_free_energy || pars_->write_fluxes) {
     spectraDiagnosticList.clear();
@@ -101,6 +100,8 @@ Diagnostics_GK::~Diagnostics_GK()
     momentsDiagnosticList.clear();
   }
 
+  if(pars_->write_fields) delete fieldsDiagnostic;
+  if(fields_old) delete fields_old;
   if(ncdf_) delete ncdf_;
   if(ncdf_big_) delete ncdf_big_;
 }
@@ -138,7 +139,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
   }
 
   // write out full grid (big) diagnostics less frequently
-  if(counter % pars_->nwrite_big == 1 || time > pars_->t_max) {
+  if((counter % pars_->nwrite_big == 1 || time > pars_->t_max) && ( pars_->write_moms || pars_->write_fields) ) {
     if(pars_->write_fields) {
       fieldsDiagnostic->calculate_and_write(fields);
     }
