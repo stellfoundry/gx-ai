@@ -66,8 +66,8 @@ void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
   // shift fields
   CP_TO_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
   CP_TO_GPU (g_tmp,   G->G(),  sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm);
-  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>(f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
-  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_new, pars_->g_exb);
+  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
   //if (pars_->fapar > 0.) {
   //  field_shift<<<<dimGridfield,dimBlockfield>>>(f->apar,grids_->kxbar_ikx);
   //}

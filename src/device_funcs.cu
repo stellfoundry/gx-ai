@@ -3175,6 +3175,9 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
     //kxbar_ikx_old[idxy] = kxbar_ikx_new[idxy];
+    if (idx == 11 && idy == 1) {
+	printf("kxstar = %f, ky = %f, g_exb = %f, dt = %f \n", kxstar[idxy], ky[idy], g_exb, dt);
+    }
     kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx);
     kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
