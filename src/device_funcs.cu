@@ -66,6 +66,12 @@ void setdev_constants(int Nx, int Ny, int Nyc, int Nz, int Nspecies, int Nm, int
 __device__ unsigned int get_id1(void) {return __umul24(blockIdx.x,blockDim.x)+threadIdx.x;}
 __device__ unsigned int get_id2(void) {return __umul24(blockIdx.y,blockDim.y)+threadIdx.y;}
 __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+threadIdx.z;}
+// i is the x-index
+// j is the y-index
+// k is the z-index
+// For compatibility with cuFFT layouts, the y-data is first, followed by x-data and then z-data
+__device__ unsigned int get_idxyz(unsigned int i, unsigned int j, unsigned int k) {return j + nyc*(i + nx*k);}
+
 
 // use stirling's approximation
 __host__ __device__ float factorial(int m) {
@@ -239,11 +245,10 @@ __global__ void getPhi (cuComplex *phi, cuComplex *G, float* ky)
 
 __global__ void phiSolve_cetg (cuComplex *phi, cuComplex *G0, float tau_bar)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
+
   if ( unmasked(idx, idy) && idz < nz ) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     phi[idxyz] = -G0[idxyz] * tau_bar;
   }
@@ -251,11 +256,10 @@ __global__ void phiSolve_cetg (cuComplex *phi, cuComplex *G0, float tau_bar)
 
 __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
+    
   if ( unmasked(idx, idy) && idz < nz ) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
     float gam0 = g0(kperp2*rho_i*rho_i/2.);
@@ -266,11 +270,10 @@ __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float*
 
 __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
+    
   if ( unmasked(idx, idy) && idz < nz ) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
@@ -280,11 +283,10 @@ __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, floa
 
 __global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
+  
   if ( unmasked(idx, idy) && idz < nz ) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
@@ -803,13 +805,10 @@ __global__ void update_geo(float* kxs, float* ky, float* cv_d, float* gb_d, floa
 			   float* cv, float* cv0, float* gb, float* gb0, float* omegad, 
 			   float* gds2, float* gds21, float* gds22, float* bmagInv, float shat)
 {
-
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
 
   if (idy>0 && unmasked(idx, idy) && idz < nz) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     if (shat == 0.0) {
       kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] + 2. * kxs[idy+nyc*idx] * gds21[idz]) 
@@ -837,17 +836,15 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
 			    const float* bmagInv, float shat) 
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ;
+  
   if (unmasked(idx, idy) && idz < nz) { 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     if (shat == 0.0) {
       kperp2[idxyz] = ( ky[idy] * ( ky[idy] * gds2[idz] 
-		      + 2. * kx[idx]      * gds21[idz] ) 
-		      + pow( kx[idx], 2)  * gds22[idz] )
+		      + 2. * kx[idx]       * gds21[idz] ) 
+		      + pow( kx[idx], 2)   * gds22[idz] )
 	              * pow( bmagInv[idz], 2);
     } else {	      
       float shatInv = 1./shat; 
@@ -863,15 +860,13 @@ __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float* kx, const float* ky,
 			    const float* cv, const float* gb, const float* cv0, const float* gb0, float shat) 
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ;
+  
   // cv/gb is the y-directed part of the curvature / grad-B drift
   // cv0/gb0 is the part proportional to the theta_0, aka the x-directed component
 
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     if (shat == 0.0) {
 
@@ -895,9 +890,12 @@ __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float
 // in a clumsy way
 __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi, const float *kperp2) // crude diagnostic
 {
-  // should re-do this with real space/wavenumber indexing and using unmasked function
+
   unsigned int idxyz = get_id1();
-  if (idxyz < nx*nyc*nz) {
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
+
+  if (unmasked(idx, idy) && (idxyz < nx*nyc*nz)) {
     cuComplex phi_ = phi[idxyz];
     //    int index = idxyz;
     t_bar[idxyz] = make_cuComplex(0., 0.);
@@ -973,73 +971,47 @@ __global__ void castDoubleToFloat (const cuDoubleComplex *array_d, cuComplex *ar
 
 __global__ void ddx (cuComplex *res, cuComplex *f, float *kx)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	if (idz < nz) {
-	  cuComplex Ikx = make_cuComplex(0., kx[idx]);
-	  unsigned int ig = idy + nyc*(idx + nx*idz);
-	  res[ig] = Ikx*f[ig]; 
-	}
-      }
-    }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    cuComplex Ikx = make_cuComplex(0., kx[idx]);
+    
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    res[idxyz] = Ikx*f[idxyz]; 
   }
 }
 
 __global__ void ddy (cuComplex *res, cuComplex *f, float *ky)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	if (idz < nz) {
-	  cuComplex Iky = make_cuComplex(0., ky[idy]);
-	  unsigned int ig = idy + nyc*(idx + nx*idz);
-	  res[ig] = Iky*f[ig];
-	}
-      }
-    }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    cuComplex Iky = make_cuComplex(0., ky[idy]);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    res[idxyz] = Iky*f[idxyz];
   }
 }
 
 __global__ void mddy (cuComplex *res, cuComplex *f, float *ky)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	if (idz < nz) {
-	  cuComplex Iky = make_cuComplex(0., ky[idy]);
-	  unsigned int ig = idy + nyc*(idx + nx*idz);
-	  res[ig] = -Iky*f[ig];
-	}
-      }
-    }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    
+    cuComplex Iky = make_cuComplex(0., ky[idy]);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    res[idxyz] = -Iky*f[idxyz];
   }
 }
 
 __global__ void d2x (cuComplex *res, cuComplex *f, float *kx)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	if (idz < nz) {
-	  cuComplex Ikx = make_cuComplex(0., kx[idx]);
-	  unsigned int ig = idy + nyc*(idx + nx*idz);
-	  res[ig] = Ikx*Ikx*f[ig];
-	}
-      }
-    }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    cuComplex Ikx = make_cuComplex(0., kx[idx]);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    res[idxyz] = Ikx*Ikx*f[idxyz];
   }
 }
 
@@ -1203,8 +1175,6 @@ __global__ void bracket_cetg(float* __restrict__ g_res, const float* __restrict_
 			const float* __restrict__ dg_dy, const float* __restrict__ dphi_dx, float kxfac)
 {
   unsigned int idxyz = get_id1();
-  unsigned int idj = get_id2();
-  unsigned int idm = get_id3();
 
   if (idxyz < nx*ny*nz) {
     unsigned int iphi = idxyz;
@@ -1365,11 +1335,9 @@ __global__ void W_summand(float *G2, const cuComplex* g, const float* volJac, co
 
 __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g, const float* volJac)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz < nz) {
     if (unmasked(idx, idy)) {      
@@ -1382,59 +1350,6 @@ __global__ void vol_summand(float *rmom, const cuComplex* f, const cuComplex* g,
       rmom[idxyz] = fg.x;
     } else {
       rmom[idxyz] = 0.;
-    }
-  }
-}
-
-__global__ void get_pzt(float* primary, float* secondary, float* tertiary, const cuComplex* phi, const cuComplex* tbar)
-{
-  float Psum = 0.;
-  float Zsum = 0.;
-  float Tsum = 0.;
-  
-  cuComplex P2, T2;
-  for (unsigned int idxyz = blockIdx.x*blockDim.x+threadIdx.x;idxyz < nx*nyc*nz; idxyz += blockDim.x*gridDim.x) {
-
-    unsigned int idy = idxyz % nyc; 
-    unsigned int idx = idxyz / nyc % nx;
-
-    if ( unmasked(idx, idy)) {
-
-      // Ultimately:
-      // For this xyz, get:
-
-      // phi_zonal(kx) = 0.
-      // phi_zonal(kx) = int dz Phi (kx, ky=0, z)
-      // secondary = sum phi_zonal**2 (kx)
-      //
-      // primary = 0.
-      // primary = sum Phi(kx=0, ky, z)**2
-      //
-      // tertiary = 0.
-      // tertiary = sum (Phi(kx, ky=0, z)**2 ) - secondary
-
-      // for now:
-      // secondary = sum Phi (kx, ky=0, z)**2
-      // primary   = sum tbar(kx=0, ky, z)**2
-      // tertiary  = sum tbar(kx!=0,ky, z)**2
-
-      // Caution: missing all geometry 
-      
-      float fac = 2.;
-      if (idy==0) fac = 1.0;
-      
-      P2 = cuConjf(phi[idxyz])*phi[idxyz]*fac;
-      T2 = cuConjf(tbar[idxyz])*tbar[idxyz]*fac; // assumes main species only
-
-      if (idx==0) {
-	Psum = T2.x;   atomicAdd(primary, Psum);       // P2
-      } else {
-	Tsum = T2.x;   atomicAdd(tertiary, Tsum);       // T2
-      }
-            
-      if (idy==0) {
-	Zsum = P2.x;   atomicAdd(secondary,Zsum);       // Z2
-      }
     }
   }
 }
@@ -1452,7 +1367,7 @@ __global__ void rescale_kernel(cuComplex* f, float* phi_max, int N)
   }
 }
 
-// the following is only useful for linear runs
+// the following is only used for some linear runs
 __global__ void maxPhi(float* phi_max, const cuComplex *phi)
 {
   unsigned int idy = get_id1();
@@ -1466,7 +1381,8 @@ __global__ void maxPhi(float* phi_max, const cuComplex *phi)
 	return;
       }
       for (int idz = 0; idz<nz; idz++) {
-	unsigned int idxyz = idy + nyc*(idx + nx*idz);
+	unsigned int idxyz = get_idxyz(idx, idy, idz);
+
 	tmp = cuConjf( phi[idxyz] ) * phi[idxyz];
 	pmax = max(pmax, tmp.x);
       }
@@ -1479,11 +1395,9 @@ __global__ void maxPhi(float* phi_max, const cuComplex *phi)
 
 __global__ void Wphi_scale(float* p2, float alpha)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {
@@ -1496,11 +1410,9 @@ __global__ void Wphi_scale(float* p2, float alpha)
 
 __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJac)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ; 
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {    
@@ -1519,11 +1431,9 @@ __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJ
 
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {    
@@ -1544,11 +1454,9 @@ __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJa
 
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz < nz) { 
     if (unmasked(idx, idy)) {    
@@ -1569,13 +1477,12 @@ __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float*
 }
 
 // WApar_summand_krehm
-__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac, const float* kx, const float* ky, float rho_i)
+__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac,
+				    const float* kx, const float* ky, float rho_i)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
   if (idy < nyc && idx < nx && idz<nz) {
     if(unmasked(idx, idy)) {
@@ -1597,18 +1504,17 @@ __global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuCo
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float vts)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ;
+  
   cuComplex fg;
 
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
+
   if (idy < nyc && idx < nx && idz < nz) { 
-    if (unmasked(idx, idy) && idy > 0 && m_lo == 0) {    
+    if (unmasked(idx, idy) && m_lo == 0) {    
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
-      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+      cuComplex vA_r   = make_cuComplex(0., ky[idy]) * apar[idxyz];
     
       float b_s = kperp2[idxyz]*rho2_s;
     
@@ -1633,13 +1539,12 @@ __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuCo
 __global__ void part_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   cuComplex fg;
 
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
+
   if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
     if (unmasked(idx, idy) && idy > 0) {    
       
@@ -1698,77 +1603,61 @@ __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, con
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie sp)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	unsigned int idxyz = idy + nyc*(idx + nx*idz);
-	const float b_s = kperp2[idxyz] * sp.rho2;
-	for (int l=0; l < nl; l++) {
-	  unsigned int m = 0; // only m=0 components needed here
-          int m_local = m - m_lo;
-	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
-	  nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.nz;
-	}
-      }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+
+    const float b_s = kperp2[idxyz] * sp.rho2;
+    for (int l=0; l < nl; l++) {
+      unsigned int m = 0; // only m=0 components needed here
+      int m_local = m - m_lo;
+      unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
+      nbar[idxyz] = nbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.nz;
     }
   }
 }
 
 __global__ void real_space_par_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const specie sp)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	unsigned int idxyz = idy + nyc*(idx + nx*idz);
-	const float b_s = kperp2[idxyz] * sp.rho2;
-	for (int l=0; l < nl; l++) {
-	  unsigned int m = 1; // only m=1 components needed here
-          int m_local = m - m_lo;
-	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
-	  // jparfac = beta_ref/2*Z_s*n_s*v_ts
-	  jbar[idxyz] = jbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.jparfac;
-	}
-      }
+  idXYZ;
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    const float b_s = kperp2[idxyz] * sp.rho2;
+    for (int l=0; l < nl; l++) {
+      unsigned int m = 1; // only m=1 components needed here
+      int m_local = m - m_lo;
+      unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
+      // jparfac = beta_ref/2*Z_s*n_s*v_ts
+      jbar[idxyz] = jbar[idxyz] + Jflr(l, b_s) * g[ig] * sp.jparfac;
     }
   }
 }
 
 __global__ void real_space_perp_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const float *bmagInv, const specie sp)
 {
-  unsigned int idy = get_id1();
-  if (idy < nyc) {
-    unsigned int idx = get_id2();
-    if (idx < nx) {
-      if (unmasked(idx, idy)) {
-	unsigned int idz = get_id3();
-	unsigned int idxyz = idy + nyc*(idx + nx*idz);
-	const float b_s = kperp2[idxyz] * sp.rho2;
-	for (int l=0; l < nl; l++) {
-	  unsigned int m = 0; // only m=0 components needed here
-          int m_local = m - m_lo;
-	  unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
-	  // jperpfac = -beta_ref/2*n_s*T_s
-	  jbar[idxyz] = jbar[idxyz] + JflrB(l, b_s) * bmagInv[idz]*bmagInv[idz] * g[ig] * sp.jperpfac;
-	}
-      }
+  idXYZ; 
+  
+  if (unmasked(idx, idy) && idz < nz) {
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    const float b_s = kperp2[idxyz] * sp.rho2;
+    for (int l=0; l < nl; l++) {
+      unsigned int m = 0; // only m=0 components needed here
+      int m_local = m - m_lo;
+      unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
+      // jperpfac = -beta_ref/2*n_s*T_s
+      jbar[idxyz] = jbar[idxyz] + JflrB(l, b_s) * bmagInv[idz]*bmagInv[idz] * g[ig] * sp.jperpfac;
     }
   }
 }
 
 __global__ void qneut(cuComplex* Phi, const cuComplex* nbar, const float* denom, float fphi)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     
     Phi[idxyz] = fphi * nbar[idxyz] / denom[idxyz];    
   }
@@ -1776,12 +1665,10 @@ __global__ void qneut(cuComplex* Phi, const cuComplex* nbar, const float* denom,
 
 __global__ void ampere_apar(cuComplex* apar, cuComplex* jbar, float* denom, float fapar)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     
     apar[idxyz] = fapar * jbar[idxyz] / denom[idxyz];
   }
@@ -1790,12 +1677,10 @@ __global__ void ampere_apar(cuComplex* apar, cuComplex* jbar, float* denom, floa
 __global__ void qneut_and_ampere_perp(cuComplex* Phi, cuComplex* Bpar, const cuComplex* SQ, const cuComplex* SA, 
 		      const float* QPhi, const float* QB, const float* APhi, const float* AB, const float fphi, const float fbpar)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     float denom = QPhi[idxyz]*AB[idxyz] - QB[idxyz]*APhi[idxyz]; 
     Phi[idxyz]  = fphi * (AB[idxyz]*SQ[idxyz] - QB[idxyz]*SA[idxyz])/denom;
@@ -1809,14 +1694,13 @@ __global__ void qneut_and_ampere_perp(cuComplex* Phi, cuComplex* Bpar, const cuC
 //         amperePerpFacPhi  = beta/(2*B^2)*sum_s z_s*n_s*sum_l J_l*(J_l + J_{l-1})
 //         amperePerpFacBpar = 1 + beta/(2*B^2)*sum_s n_s*t_s*sum_l (J_l + J_{l-1})^2
 __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* ampereParFac, float* amperePerpFacPhi, float* amperePerpFacBpar,
-                               const float* kperp2, const float* bmag, const float* bmagInv, const specie sp, const float beta, const bool first, const float fapar, const float fbpar, bool long_wavelength_GK)
+                               const float* kperp2, const float* bmag, const float* bmagInv, const specie sp, const float beta,
+			       const bool first, const float fapar, const float fbpar, bool long_wavelength_GK)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz); 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
         
     const float kperp2_ = kperp2[idxyz];
     float b_s;
@@ -1857,145 +1741,14 @@ __global__ void sum_solverFacs(float* qneutFacPhi, float* qneutFacBpar, float* a
 }
 
 
-/*
-========================
-
-Given 
-
-phi = <<phi>> + D      (1)
-
-we have
-
-nbar = tau (phi - <<phi>>) + (1-G) phi
-
-or 
-
-nbar = tau phi + (1-G) phi - tau << phi >>.          (2) 
-
-Use (1) to rewrite this as 
-
-nbar = tau <<phi>> + tau D + (1-G) <<phi>> + (1-G) D - tau <<phi>>
-
-nbar = tau D + (1-G) <<phi>> + (1-G) D         
-
-<<phi>> = [ nbar - tau D ] / (1-G).
-
-This is fine, but solve for D to make it useful:
-
-D = nbar/(tau + 1 - G) + (1-G)/(tau + 1 - G) <<phi>>
-
-Since by definition <<D>> = 0, we have 
-
-<<nbar/(tau + 1 - G)>> = << (1-G)/(tau+1-G)>> <<phi>>
-
-so <<phi>> = <<nbar/(tau + 1 - G)>> / << (1-G)/(tau+1-G) >>.    (3)
-
-Use (2) with (3): 
-
-nbar = (tau + 1 - G) phi - tau <<phi>>
-
-phi = (nbar + tau <<phi>>) / (tau + 1 - G)  (4)
-
-Eq. (4) is the result. Note that there is an implied sum over 
-species everywhere (1-G) appears, and that nbar is the actual 
-density from summing over all the ions at fixed r. 
-
-
-The denominator of the RHS of Eq. (3) is precalculated when 
-the solver object is instantiated using the calc_phiavgdenom
-kernel here.
-
-The <<...>> averages below can be off by a constant as they 
-end up in ratios.
-
-The variables in parts 1 and 2 of the quasineutrality solver 
-for iphi00 == 2 are:
-
-====
-
-nbar = tau phi - tau <<phi>> + (1-G) phi
-
-phi = [ nbar + tau <<phi>> ] / (tau + 1 - G)
-
-phi = nbar / (tau + 1 - G) + tau <<nbar/(tau+1-G)>> / <<(1-G)/(tau + 1 - G)>>
-
-PhiAvgNum_tmp is integrand for second term on RHS:
-
-PhiAvgNum_tmp = J nbar / (tau + 1 - G)
-
-PhiAvgNum_zSum = int dz PhiAvgNum_tmp == <<nbar/(tau+1-G)>>
-
-PhiAvgDenom == <<(1-G)/(tau + 1 - G)>>
-
-PhiAvg == <<nbar/(tau+1-G)>> / <<(1-G)/(tau + 1 - G)>> == <<phi>>
-
-Phi = nbar / (tau + 1 - G) + tau PhiAvg / (tau + 1 - G)
-
-=====================
-*/
-
-/*
-This proposed substitute routine fails because pfilter2 is not thread-local memory
-
-__global__ void qneut_fieldlineaveraged(cuComplex *Phi, const cuComplex *nbar, const float *PhiAvgDenom, 
-					const float *kperp2, const float *jacobian,
-					const specie *species, const float tau_fac, float *pfilter2)
-{
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-
-  if ( unmasked(idx, idy)) {
-    unsigned int idxy  = idy + nyc*idx;
-
-    cuDoubleComplex PhiAvg; // this is thread-local
-    PhiAvg.x = (double) 0.;
-    PhiAvg.y = (double) 0.;
-   
-    for (int idz=0; idz < nz; idz++) {
-      pfilter2[idz] = 0.;
-      for (int is=0; is < nspecies; is++) {
-	specie s = species[is];
-	pfilter2[idz] += s.dens*s.z*s.zt*( 1. - g0(kperp2[idxy + idz*nx*nyc]*s.rho2) );
-      }
-    }
-    
-    if (idy == 0) { 
-      for (int idz=0; idz < nz; idz++) {
-	int idxyz = idxy + idz*nx*nyc;	
-	PhiAvg.x = (double) PhiAvg.x + ( nbar[idxyz].x / (tau_fac + pfilter2[idz] ) ) * jacobian[idz];
-	PhiAvg.y = (double) PhiAvg.y + ( nbar[idxyz].y / (tau_fac + pfilter2[idz] ) ) * jacobian[idz];
-      }      
-      PhiAvg.x = PhiAvg.x/( (double) PhiAvgDenom[idx] );
-      PhiAvg.y = PhiAvg.y/( (double) PhiAvgDenom[idx] );      
-    }
-    
-    for (int idz=0; idz < nz; idz++) {
-      int idxyz = idxy + idz*nx*nyc;
-      Phi[idxyz].x = ( nbar[idxyz].x + tau_fac * PhiAvg.x ) / (tau_fac + pfilter2[idz]);
-      Phi[idxyz].y = ( nbar[idxyz].y + tau_fac * PhiAvg.y ) / (tau_fac + pfilter2[idz]);
-    }
-  }
-  
-  // No need for the memset to zero if we do this:
-  if ( masked(idx, idy)) {
-    for (int idz=0; idz < nz; idz++) {
-      unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
-      Phi[idxyz].x = 0.;
-      Phi[idxyz].y = 0.;
-    }
-  }
-}
-*/
 __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* jacobian, const float* qneutDenom, float tau_fac)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
   
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     float pfilter2 = qneutDenom[idxyz];
     
     PhiAvgNum_tmp[idxyz] = ( nbar[idxyz] / (tau_fac + pfilter2 ) ) * jacobian[idz];
@@ -2006,13 +1759,11 @@ __global__ void qneutAdiab_part1(cuComplex* PhiAvgNum_tmp, const cuComplex* nbar
 __global__ void qneutAdiab_part2(cuComplex* Phi, const cuComplex* PhiAvgNum_tmp, const cuComplex* nbar,
 				 const float* PhiAvgDenom, const float* qneutDenom, float tau_fac, float fphi)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ; 
   
   if ( unmasked(idx, idy) && idz < nz) {
 
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     unsigned int idxy  = idy + nyc*idx;
 
     float pfilter2 = qneutDenom[idxyz];
@@ -2045,32 +1796,27 @@ __global__ void calc_phiavgdenom(float* PhiAvgDenom, const float* jacobian,
 				 const float* qneutDenom, float tau_fac)
 {   
   unsigned int idx = get_id1();
+  unsigned int idy = 0;
+
+  if ( unmasked(idx, idy)) {
   
-  if ( idx > 0 && idx < nx) {
-    int ikx = get_ikx(idx);
-    if (ikx <  (nx-1)/3+1 && ikx > -(nx-1)/3-1) {
-
-      PhiAvgDenom[idx] = 0.;  
-
-      for (int idz=0; idz < nz; idz++) {
-	int idy = 0;
-	int idxyz = idy + nyc*(idx + idz*nx);
-	float pfilter2 = qneutDenom[idxyz];
-	PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[idz] * pfilter2 / (tau_fac + pfilter2);
-      }
+    PhiAvgDenom[idx] = 0.;  
+    
+    for (unsigned int idz=0; idz < nz; idz++) {
+      
+      unsigned int idxyz = get_idxyz(idx, idy, idz);
+      float pfilter2 = qneutDenom[idxyz];
+      PhiAvgDenom[idx] = PhiAvgDenom[idx] + jacobian[idz] * pfilter2 / (tau_fac + pfilter2);
     }
   }
 }
 
-// Is this really set up correctly? 
 __global__ void add_source(cuComplex* f, const float source)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ; 
   
   if ( unmasked(idx, idy) && idz < nz) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     f[idxyz].x = f[idxyz].x + source;
   }
 }
@@ -2078,13 +1824,11 @@ __global__ void add_source(cuComplex* f, const float source)
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar,
 			   const float* qneutDenom, float tau_fac, float fphi)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ; 
+  
   if ( unmasked(idx, idy) && idz < nz) {
     
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
     Phi[idxyz].x = fphi * ( nbar[idxyz].x / (tau_fac + qneutDenom[idxyz] ) );  
     Phi[idxyz].y = fphi * ( nbar[idxyz].y / (tau_fac + qneutDenom[idxyz] ) );  
@@ -2224,8 +1968,11 @@ __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, c
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idzl = idz + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
-    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
-
+    //    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+    unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
+    // Question: why are we using ikx and iky in the definition of idxyz? Surely this should be idx and idy?
+    // Answer: in grad_parallel_linked, we use ky and kx to hold index values rather than k values. Confusing.
+    
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
@@ -2267,7 +2014,7 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idzl = idz + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
-    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+    unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
 
     // only zero ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
     if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {
@@ -2317,14 +2064,14 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* 
   unsigned int idzl = get_id3();
   unsigned int idz = idzl % nz;     
   unsigned int l   = idzl / nz;
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
   const cuComplex phi_ = phi[idxyz];
   const cuComplex apar_ = apar[idxyz];
   const cuComplex bpar_ = bpar[idxyz];
   const float b_s = sp.rho2 * kperp2[idxyz];
   const float zt_ = sp.zt;
 
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idzl < nz*nl)) {
+  if (unmasked(idx, idy) && (idzl < nz*nl)) {
     const float vt_ = sp.vt;
     int globalIdx;
 
@@ -2357,22 +2104,21 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* 
 
 // main kernel function for calculating RHS
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar, const cuComplex* __restrict__ bpar,
+__global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi, const cuComplex* __restrict__ apar,
+			   const cuComplex* __restrict__ bpar,
 			   const cuComplex* __restrict__ upar_bar, const cuComplex* __restrict__ uperp_bar, const cuComplex* __restrict__ t_bar,
 			   const float* __restrict__ kperp2, const float* __restrict__ cv_d, const float* __restrict__ gb_d,
 			   const float* __restrict__ bmag, const float* __restrict__ bgrad,
-			   const float* __restrict__ ky, const specie sp, const specie sp_i, cuComplex* __restrict__ rhs, bool hegna, bool ei_colls)  // bb6126 - hegna test
+			   const float* __restrict__ ky, const specie sp, const specie sp_i, cuComplex* __restrict__ rhs, bool hegna, bool ei_colls)
 {
   extern __shared__ cuComplex s_h[]; // aliased below by macro S_H, defined above
   
-  //  unsigned int idxyz = threadIdx.x + blockIdx.x*blockDim.x;
-  unsigned int idxyz = get_id1();
+  const unsigned int idxyz = get_id1();
   const unsigned int idy = idxyz % nyc; 
   const unsigned int idx = idxyz / nyc % nx;
-  if (idxyz < nx*nyc*nz && unmasked(idx, idy)) {
-    const unsigned int sidxyz = threadIdx.x;
-    // these modulo operations are expensive... better way to get these indices?
-    const unsigned int idz = idxyz / (nx*nyc);
+  const unsigned int idz = idxyz / (nx*nyc);
+  if (unmasked(idx, idy) && idz < nz) {
+    //    const unsigned int sidxyz = threadIdx.x;
     
     // shared memory blocks of size blockDim.x * (nl+2) * (nm+4)
     const int sDimx = blockDim.x;
@@ -2522,12 +2268,12 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
 __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* apar_ext, 
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par)
 {
-  unsigned int idy  = get_id1();
-  unsigned int idx  = get_id2();
-  unsigned int idz = get_id3();
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ; 
+
+  unsigned int idxyz= get_idxyz(idx, idy, idz);
+  
   const float rhos_ov_de = rhos/de;
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+  if (unmasked(idx, idy) && (idz < nz)) {
 
     int globalIdx;
     const cuComplex phi_ = phi[idxyz];
@@ -2563,19 +2309,18 @@ __global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const
 __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, const float* kx, const float* ky,
 			  const float nu_ei, const float rhos, const float de, cuComplex* rhs)
 {
-  unsigned int idy  = get_id1();
-  unsigned int idx  = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ; 
+
   const float rhos_ov_de = rhos/de;
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
-    unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  if (unmasked(idx, idy) && (idz < nz)) {
+    const unsigned int idxyz = get_idxyz(idx, idy, idz);
     const cuComplex apar_ = apar[idxyz];
     const cuComplex apar_ext_ = apar_ext[idxyz];
     const float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
 
-    for (int m = m_lo; m < m_up; m++) {
-       int m_local = m - m_lo;
-       int globalIdx = idy + nyc*( idx + nx*(idz + nz*(m_local)));	
+    for (unsigned int m = m_lo; m < m_up; m++) {
+       unsigned int m_local = m - m_lo;
+       unsigned int globalIdx = idxyz + nyc*nx*nz*m_local;
        
        // collision term
        if(m!=2) rhs[globalIdx] = rhs[globalIdx] - nu_ei*m*g[globalIdx];
@@ -2591,12 +2336,11 @@ __global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, cons
 __global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* temperature, const cuComplex* phi,
 			      const float gpar, const float c1, const float C12, const float C23, cuComplex* rhs_diff)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ; 
 
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
+
+  if (unmasked(idx, idy) && (idz < nz)) {
 
     float gpar2 = gpar * gpar;
     
@@ -2611,13 +2355,12 @@ __global__ void rhs_diff_cetg(const cuComplex* density, const cuComplex* tempera
 //
 __global__ void rhs_lin_cetg(const cuComplex* phi, const float* ky, cuComplex* rhs)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
   unsigned int idxyzt = idxyz + nx*nyc*nz; 
   
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
+  if (unmasked(idx, idy) && (idz < nz)) {
     
     const cuComplex iky = make_cuComplex(0., ky[idy]);
     
@@ -2629,13 +2372,12 @@ __global__ void rhs_lin_cetg(const cuComplex* phi, const float* ky, cuComplex* r
 __global__ void hyper_cetg(const cuComplex* g, const float* kx, const float* ky,
 			  const float nu_hyper, const float D_hyper, cuComplex* rhs)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
-  if ((idy < nyc) && (idx < nx) && unmasked(idx, idy) && (idz < nz)) {
-
+  if (unmasked(idx, idy) && (idz < nz)) {
+    
     float Dfac = D_hyper*pow((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
     
     for (int l = 0; l < 2; l++) {
@@ -2676,10 +2418,13 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt) {
   unsigned int idxyz = get_id1();
   
-  if (idxyz < nx*nyc*nz) {
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
+  
+  if ( unmasked(idx, idy) && idxyz < nx*nyc*nz) {
     float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
     float scaled_nu_hyp_m = (float) nm_glob * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
-    // blockIdx for y and z are unity in the kernel invocation      
+
     unsigned int l = get_id2();                                                                
     if (l<nl) {
       unsigned int m = get_id3() + m_lo;
@@ -2776,8 +2521,10 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 				   const float *kperp2, const specie sp)
 {
   unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
 
-  if (idxyz < nx*nyc*nz) {
+  if ( unmasked(idx, idy) && (idxyz < nx*nyc*nz)) {
     cuComplex phi_  = phi[idxyz];
     cuComplex apar_ = apar[idxyz];
     cuComplex bpar_ = bpar[idxyz];
@@ -2812,13 +2559,11 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 
 __global__ void Wphi_summand_cetg(float* p2, const cuComplex* phi, const float* volJac)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
+  idXYZ;
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
 
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
-
-  if (idy < nyc && idx < nx && idz < nz) { 
+  if (idxyz < nx*nyc*nz) {
     if (unmasked(idx, idy)) {    
       cuComplex tmp;
       float fac=2.;
@@ -2836,15 +2581,13 @@ __global__ void Wphi_summand_cetg(float* p2, const cuComplex* phi, const float* 
 __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
 				       const float* flxJac, float pres)
 {
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idz = get_id3();
-
+  idXYZ;
+  
   cuComplex fg;
 
-  unsigned int idxyz = idy + nyc*(idx + nx*idz);
-  if (idy < nyc && idx < nx && idz < nz) { 
-    if (unmasked(idx, idy) && idy > 0) {    
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
+  if (idxyz < nx*nyc*nz) {
+    if (unmasked(idx, idy)) {    
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
 
