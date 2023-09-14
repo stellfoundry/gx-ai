@@ -931,8 +931,10 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
 			    const float* muB, const float rho2_s, const float fac)
 {
   unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
   unsigned int idj = get_id2();
-  if (idxyz < nx*nyc*nz && idj < nj) {
+  if (unmasked(idx, idy) && idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     J0f[ig] = j0f(sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s)) * f[idxyz] * fac;
   }
@@ -942,8 +944,10 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
 			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar)
 {
   unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
   unsigned int idj = get_id2();
-  if (idxyz < nx*nyc*nz && idj < nj) {
+  if (unmasked(idx, idy) && idxyz < nx*nyc*nz && idj < nj) {
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     float alpha = sqrtf(2. * muB[idj] * kperp2[idxyz]*rho2_s);
     float j1_over_alpha = alpha < 1e-8 ? 0.5 : j1f(alpha)/alpha;
@@ -2569,15 +2573,13 @@ __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const
 {
   idXYZ;
   
-  cuComplex fg;
-
   unsigned int idxyz = get_idxyz(idx, idy, idz);
   if (idxyz < nx*nyc*nz) {
     if (unmasked(idx, idy)) {    
       
       cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
 
-      fg = (cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz]) * 2. * flxJac[idz];
+      cuComplex fg = (cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz]) * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
 
     } else {

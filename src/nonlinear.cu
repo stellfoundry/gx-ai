@@ -544,10 +544,10 @@ void Nonlinear_cetg::nlps(MomentsG* G, Fields* f, MomentsG* G_nl)
   grad_perp_G->dxC2R(G->G(), dg_dx);
   grad_perp_G->dyC2R(G->G(), dg_dy);      
 
-  // compute {g, phi}
+  // compute {g, phi} / 2.
   bracket_cetg GBX (dG, dg_dx, dphi_dy, dg_dy, dphi_dx, 0.5);
-  // NL += {g, phi}
-  grad_perp_G->R2C(dG, G_nl->G(), true); // this R2C has accumulate=true
+  // NL = {g, phi} / 2. 
+  grad_perp_G->R2C(dG, G_nl->G(), false); // this R2C has accumulate=false
 
 }
 

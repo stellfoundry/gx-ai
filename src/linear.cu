@@ -342,18 +342,18 @@ Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids, Geometry* geo) :
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
-  //else if(pars_->boundary_option_periodic) {
-  //  DEBUGPRINT("Using periodic for grad parallel.\n");
-  //  grad_par = new GradParallelPeriodic(grids_);
-  //}
+  //  else if(pars_->boundary_option_periodic) {
+  //    DEBUGPRINT("Using periodic for grad parallel.\n");
+  //    grad_par = new GradParallelPeriodic(grids_);
+  //  }
   else {
     DEBUGPRINT("Using twist-and-shift for grad parallel.\n");
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
  
   int nn1 = grids_->Nyc;   int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
-  int nn2 = grids_->Nx;    int nt2 = min(nn2, 4);    int nb2 = 1 + (nn2-1)/nt2;
-  int nn3 = grids_->Nz;    int nt3 = min(nn3, 4);    int nb3 = 1 + (nn3-1)/nt3;
+  int nn2 = grids_->Nx;    int nt2 = min(nn2, 8);    int nb2 = 1 + (nn2-1)/nt2;
+  int nn3 = grids_->Nz;    int nt3 = min(nn3, 8);    int nb3 = 1 + (nn3-1)/nt3;
 
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);

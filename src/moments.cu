@@ -295,7 +295,7 @@ void MomentsG::initialConditions(double* time) {
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
   // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
-    set_zero();
+    //    set_zero(); // Do not zero out G when restarting
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
