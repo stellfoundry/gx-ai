@@ -2104,7 +2104,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g, const cuComplex* __r
   const unsigned int idx = idxyz / nyc % nx;
   const unsigned int idz = idxyz / (nx*nyc);
   if (unmasked(idx, idy) && idz < nz) {
-    //    const unsigned int sidxyz = threadIdx.x;
+    const unsigned int sidxyz = threadIdx.x;
     
     // shared memory blocks of size blockDim.x * (nl+2) * (nm+4)
     const int sDimx = blockDim.x;
