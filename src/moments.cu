@@ -283,7 +283,7 @@ void MomentsG::initialConditions(double* time) {
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
   // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
-    set_zero();
+    //    set_zero(); // As noted in the comment above, setting G = 0 here is not correct. Doing so breaks the kh01a regression test
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
@@ -616,20 +616,20 @@ void MomentsG::restart_read(double* time)
         for (int k=0; k < Nz; k++) {
           for (int i=0; i < 1 + (Nx-1)/3; i++) {
             for (int j=0; j < Naky; j++) {
-      	unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*m)));
-      	unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*m)));
-      	G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-      	G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*m)));
+	      unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*m)));
+	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
             }
           }
           
           for (int i=2*Nx/3+1; i < Nx; i++) {
             for (int j=0; j < Naky; j++) {
-      	int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
-      	unsigned int index    = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*m)));
-      	unsigned int index_in = j + Naky*(it + Nakx*(k + Nz*(l + Nl*m)));
-      	G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-      	G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
+	      unsigned int index    = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*m)));
+	      unsigned int index_in = j + Naky*(it + Nakx*(k + Nz*(l + Nl*m)));
+	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
             }
           }
         }
