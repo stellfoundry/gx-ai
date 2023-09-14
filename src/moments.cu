@@ -308,9 +308,6 @@ void MomentsG::scale(double    scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::mask(void) {maskG GALL (G());}
 
-void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G(), J0phi);}
-void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G(), J0phi);}
-
 void MomentsG::rescale(float * phi_max) {
   rescale_kernel GALL (G(), phi_max, grids_->Nm*grids_->Nl);
 }

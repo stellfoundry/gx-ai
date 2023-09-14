@@ -738,26 +738,12 @@ __device__ bool unmasked(int idx, int idy) {
     return false;
 }
 
-// not the opposite of unmasked b/c indices could simply be out of range
 __device__ bool masked(int idx, int idy) {
   int ikx = get_ikx(idx);
-  if ( idx < nx           // index should be in range to be actively masked
-    && idy < ny           // index should be in range to be actively masked
-       && ( (idx==0 && idy==0) || idy > (ny-1)/3  || ikx > (nx-1)/3 || ikx < -(nx-1)/3 ))
+  if ( (idx < nx) && (idy < ny) && ( (idx==0 && idy==0) || idy > (ny-1)/3  || ikx > (nx-1)/3 || ikx < -(nx-1)/3 ))
     return true;
   else
     return false;
-}
-
-__global__ void Hkernel (cuComplex *G, cuComplex* J0phi)
-{
-  // For the m=0 components (all values of ky, kx, z, l, s) add J0phi * zt_
-  // G = G + J0phi*zt_   ... if m = 0
-}
-__global__ void Gkernel (cuComplex *G, cuComplex* J0phi)
-{
-  // For the m=0 components (all values of ky, kx, z, l, s) subtract J0phi * zt_
-  // G = G - J0phi*zt_   ... if m = 0
 }
 
 __global__ void maskG(cuComplex* g)
