@@ -2027,7 +2027,7 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
     unsigned int idzl = idz + nz*(idk % nLinks);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     //    unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
-    unsigned int idxyz = iky[idx] + nyc*(ikx[idk] + nx*idz);
+    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
 
     // only zero ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
     if(iky[idk]>0 && (idzl==0 || idzl==nz*nLinks)) {
