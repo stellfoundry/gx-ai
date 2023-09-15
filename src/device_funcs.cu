@@ -2633,7 +2633,7 @@ __global__ void heat_flux_summand_cetg(float* qflux, const cuComplex* phi, const
   if (idxyz < nx*nyc*nz) {
     if (unmasked(idx, idy)) {    
       
-      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+      cuComplex vPhi_r = - make_cuComplex(0., ky[idy]) * phi[idxyz];
 
       cuComplex fg = (cuConjf(vPhi_r) * g[idxyz+nx*nyc*nz]) * 2. * flxJac[idz];
       qflux[idxyz] = fg.x * pres;
