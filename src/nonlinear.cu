@@ -475,7 +475,7 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   dphi_dx = nullptr;
   dphi_dy = nullptr;
   
-  nBatch = grids_->Nz; 
+  nBatch = 2*grids_->Nz; 
   grad_perp_G =     new GradPerp(grids_, nBatch, 2 * grids_->NxNycNz); 
 
   nBatch = grids_->Nz; 
@@ -498,9 +498,9 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
 
   int nxyz = grids_->NxNyNz;
 
-  int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
-  int nby = 1;              int ngy = 1; 
-  int nbz = 1;              int ngz = 1;  
+  int nbx = min(256, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
+  int nby = 1;               int ngy = 1; 
+  int nbz = 1;               int ngz = 1;  
 
   dBx = dim3(nbx, nby, nbz);
   dGx = dim3(ngx, ngy, ngz);
@@ -510,7 +510,7 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
 
   int nxkyz = grids_->NxNycNz;
   
-  nbx = min(32, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
+  nbx = min(128, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
 
   dBk = dim3(nbx, 1, 1);
   dGk = dim3(ngx, 1, 1);

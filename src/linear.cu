@@ -171,7 +171,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, f-> bpar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
-	grids_->ky, *(G->species), pars_->species_h[0], GRhs->G(), pars_->hegna, pars_->ei_colls);
+	grids_->ky, *(G->species), pars_->species_h[0], GRhs->G(), pars_->ei_colls);
 
   // hyper model by Hammett and Belli
   if (pars_->HB_hyper) {
