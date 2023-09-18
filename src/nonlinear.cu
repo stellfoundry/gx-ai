@@ -10,7 +10,8 @@
 //===========================================
 Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  red(nullptr), laguerre(nullptr), laguerre_single(nullptr), grad_perp_G(nullptr), grad_perp_J0f(nullptr), grad_perp_f(nullptr), grad_perp_G_single(nullptr)
+  red(nullptr), laguerre(nullptr), laguerre_single(nullptr), grad_perp_G(nullptr),
+  grad_perp_J0f(nullptr), grad_perp_f(nullptr), grad_perp_G_single(nullptr)
 {
 
   tmp_c      = nullptr;  G_tmp      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
@@ -64,6 +65,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     checkCuda(cudaMalloc(&dchi,  sizeof(float)*grids_->NxNyNz));
   }
   checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
+  checkCudaErrors(cudaGetLastError());
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
@@ -159,13 +161,13 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // BD  J0fToGrid does not use a Laguerre transform. Implications?
   // BD  If we use alternate forms for <J0> then that would need to be reflected here
 
-  //    printf("\n");
-  //    printf("Phi:\n");
-  //    qvar(f->phi, grids_->NxNycNz);
+  //  printf("\n");
+  //  printf("Phi:\n");
+  //  qvar(f->phi, grids_->NxNycNz);
 
   float rho2s = G->species->rho2;
-  float vts = G->species->vt;
-  float tz = G->species->tz;
+  float vts   = G->species->vt;
+  float tz    = G->species->tz;
   if(pars_->fbpar > 0.0) {
     J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
   } else {
@@ -259,6 +261,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
 
   grad_perp_f -> dxC2R(f->phi, dphi); 
   abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
+
   if(pars_->fapar > 0.0) {
     grad_perp_f -> dxC2R(f->apar, dchi); 
     abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
@@ -468,7 +471,6 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
 Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   pars_(pars), grids_(grids), red(nullptr), grad_perp_f(nullptr), grad_perp_G(nullptr)
 {
-  tmp_c = nullptr;
   dG = nullptr;
   dg_dx = nullptr;
   dg_dy = nullptr;
@@ -484,8 +486,6 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   int nR = grids_->NxNyNz;
   red = new Block_Reduce(nR); cudaDeviceSynchronize();
   
-  checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
-
   checkCuda(cudaMalloc(&dG,    sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dG,    0., 2*grids_->NxNyNz);
   checkCuda(cudaMalloc(&dg_dx, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dx, 0., 2*grids_->NxNyNz);
   checkCuda(cudaMalloc(&dg_dy, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dy, 0., 2*grids_->NxNyNz);
@@ -529,7 +529,6 @@ Nonlinear_cetg::~Nonlinear_cetg()
   if ( dg_dx )   cudaFree ( dg_dx );
   if ( dg_dy )   cudaFree ( dg_dy );
   if ( dG )      cudaFree ( dG );
-  if ( tmp_c )   cudaFree ( tmp_c );
   if ( dphi_dx ) cudaFree ( dphi_dx );
   if ( dphi_dy ) cudaFree ( dphi_dy );
   if ( val1 )    cudaFree ( val1 ); 

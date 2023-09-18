@@ -157,7 +157,7 @@ void Fields::print_bpar(void)
 
 void Fields::rescale(float * phi_max) {
   int nn1 = grids_->NxNyc; int nt1 = min(nn1, 32); int nb1 = 1 + (nn1-1)/nt1;
-  int nn2 = grids_->Nz;    int nt2 = min(nn2, 32); int nb2 = 1 + (nn2-1)/nt2;
+  int nn2 = grids_->Nz;    int nt2 = min(nn2, 16); int nb2 = 1 + (nn2-1)/nt2;
   dim3 dB, dG;
   dB = dim3(nt1, nt2, 1);
   dG = dim3(nb1, nb2, 1);

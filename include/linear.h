@@ -61,11 +61,8 @@ public:
   Linear_KREHM(Parameters* pars, Grids* grids); 
   ~Linear_KREHM();
 
-  //  void rhs(cuComplex *G, cuComplex *GRhs);
   void rhs(MomentsG* G, Fields* f, MomentsG* GRhs);
   void get_max_frequency(double* wmax);
-
-  //  int zderiv(MomentsG *G);
 
   dim3 dimGrid, dimBlock, dG, dB, dGs, dBs, dimGridh, dimBlockh, dB_all, dG_all;
   int sharedSize;
@@ -77,7 +74,6 @@ public:
   Grids          * grids_   ;  
   GradParallel   * grad_par ;
   Closures       * closures ;
-  //  MomentsG       * GRhs_par ;
 
   float rho_s;
   float d_e;

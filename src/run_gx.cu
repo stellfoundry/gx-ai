@@ -20,6 +20,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[is] = new MomentsG (pars, grids, is_glob);
   }
   fields = new Fields(pars, grids);               
+  checkCudaErrors(cudaGetLastError());
   
   /////////////////////////////////
   //                             //
@@ -29,8 +30,10 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
+    checkCudaErrors(cudaGetLastError());
 
     solver = new Solver_GK(pars, grids, geo);    
+    checkCudaErrors(cudaGetLastError());
 
     if (pars->forcing_init) {
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
@@ -46,7 +49,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> initialConditions(&time);   
       G[is] -> sync();
     }
-    solver -> fieldSolve(G, fields);                
+    solver -> fieldSolve(G, fields);
+    checkCudaErrors(cudaGetLastError());    
   }
 
   //////////////////////////////
@@ -67,7 +71,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> sync();
     solver -> fieldSolve(G, fields);                
   }
-
+  checkCudaErrors(cudaGetLastError());
+  
   //////////////////////////////
   //                          //
   //     cETG eq              // 
@@ -109,6 +114,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     // and choose slab = true to get his slab equations.
     //
   }
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -125,6 +131,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -141,6 +148,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initVP(&time);
     solver -> fieldSolve(G, fields);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   Timestepper * timestep;
   switch (pars->scheme_opt)

@@ -11,8 +11,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   red(nullptr), pot(nullptr), a2(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
 {
 
-  amom = nullptr;
-  df          = nullptr;  favg        = nullptr;
+  amom = nullptr;  df          = nullptr;  favg        = nullptr;
 
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;

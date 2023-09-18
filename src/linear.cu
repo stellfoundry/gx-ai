@@ -351,7 +351,7 @@ Linear_cetg::Linear_cetg(Parameters* pars, Grids* grids, Geometry* geo) :
     grad_par = new GradParallelLinked(grids_, pars_->jtwist);
   }
  
-  int nn1 = grids_->Nyc;   int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
+  int nn1 = grids_->Nyc;   int nt1 = min(nn1, 8);    int nb1 = 1 + (nn1-1)/nt1;
   int nn2 = grids_->Nx;    int nt2 = min(nn2, 8);    int nb2 = 1 + (nn2-1)/nt2;
   int nn3 = grids_->Nz;    int nt3 = min(nn3, 8);    int nb3 = 1 + (nn3-1)/nt3;
 
@@ -380,7 +380,9 @@ Linear_cetg::~Linear_cetg()
 void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs) {
 
   cudaStreamSynchronize(G->syncStream);
-  
+
+  GRhs->set_zero();
+
   rhs_diff_cetg <<< dGs, dBs >>> (G->G(0,0), G->G(1,0), f->phi, geo_->gradpar, c1, C12, C23, GRhs->G());
   grad_par->dz2(GRhs);
   rhs_lin_cetg <<< dGs, dBs >>> (f->phi, grids_->ky, GRhs->G());
@@ -432,7 +434,7 @@ Linear_VP::Linear_VP(Parameters* pars, Grids* grids) :
 {
   
   int nnx = grids_->Nyc;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
-  int nny = grids_->Nm;     int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
+  int nny = grids_->Nm;     int nby = min(16, nny);    int ngy = 1 + (nny-1)/nby;
   
   dB = dim3(nbx, nby, 1);
   dG = dim3(ngx, ngy, 1);

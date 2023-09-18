@@ -160,6 +160,7 @@ void Parameters::get_nml_vars(char* filename)
   vp_nuh            = toml::find_or <float> (tnml, "vp_nuh",      -1.0 );
   vp_alpha          = toml::find_or <int>   (tnml, "vp_alpha",       1 );
   vp_alpha_h        = toml::find_or <int>   (tnml, "vp_alpha_h",     2 );
+  if (vp) gx = false;
   
   tnml = nml;
   if (nml.contains("KS")) tnml = toml::find (nml, "KS");
@@ -171,7 +172,8 @@ void Parameters::get_nml_vars(char* filename)
   ks_tf             = toml::find_or <float> (tnml, "ks_tf",       -1.0 );
   ks_eps0           = toml::find_or <float> (tnml, "ks_eps0",     -1.0 );
   ks_epsf           = toml::find_or <float> (tnml, "ks_epsf",     -1.0 );
-
+  if (ks) gx = false;
+  
   tnml = nml;
   if (nml.contains("KREHM")) tnml = toml::find (nml, "KREHM");
   

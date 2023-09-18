@@ -112,15 +112,6 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
   }
   
-  /*
-  if (pars_->diagnosing_pzt) {
-    primary = (float*) malloc (sizeof(float));    primary[0] = 0.;  
-    secondary = (float*) malloc (sizeof(float));  secondary[0] = 0.;  
-    tertiary = (float*) malloc (sizeof(float));    tertiary[0] = 0.;  
-    cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
-  }
-  */
-    
   // Remember that delta theta is a constant in this formalism!   
 
   // set up stop file
@@ -129,7 +120,8 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
+  // Making the product = 1024 should work but it does not
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
@@ -147,7 +139,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   nt1 = min(32, grids_->Nyc);
   nb1 = 1 + (grids_->Nyc-1)/nt1;
 
-  nt2 = min(32, grids_->Nx);
+  nt2 = min(16, grids_->Nx);
   nb2 = 1 + (grids_->Nx-1)/nt2;
 
   dBk = dim3(nt1, nt2, 1);
@@ -235,8 +227,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       for(int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
 	float rho2s = pars_->species_h[is_glob].rho2;
-	float p_s = pars_->species_h[is_glob].nt;
-	float vt_s = pars_->species_h[is_glob].vt;
+	float p_s   = pars_->species_h[is_glob].nt;
+	float vt_s  = pars_->species_h[is_glob].vt;
 	heat_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s, vt_s);
       }
@@ -252,8 +244,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       for(int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
 	float rho2s = pars_->species_h[is_glob].rho2;
-        float n_s = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
-	float vt_s = pars_->species_h[is_glob].vt;
+        float n_s   = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
+	float vt_s  = pars_->species_h[is_glob].vt;
 	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
@@ -347,7 +339,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       }
       
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
-      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
+      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
       id->write_Az    (A2 );    id->write_Aky   (A2 );    id->write_Akx   (A2 );    id->write_Akxky (A2);
       id->write_Phi2z    (Phi2 );    id->write_Phi2ky   (Phi2 );    id->write_Phi2kx   (Phi2 );    id->write_Phi2kxky (Phi2);
@@ -359,17 +351,6 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     // Rosenbluth-Hinton diagnostic
     if(id -> rh -> write) {get_rh(fields);   id -> write_nc (id->rh, val);}
     
-    /*
-      if( counter%nw == 0 && id -> Pzt -> write_v_time) {
-      pzt(G, fields);  // calculate each of P, Z, and T (very very rough diagnostic)
-      cudaDeviceSynchronize();
-      
-      write_nc (id -> Pzt, primary);
-      write_nc (id -> pZt, secondary);
-      write_nc (id -> pzT, tertiary);
-      }
-    */
-
     // Plot ky=kz=0 components of various quantities as functions of x
     id -> write_moment ( id -> vEy,     fields->phi,    vol_fac);
     id -> write_moment ( id -> kxvEy,   fields->phi,    vol_fac);
@@ -391,7 +372,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_moment ( id -> avg_zkTperp, G[is]->tprp_ptr, vol_fac);
       id -> write_moment ( id -> avg_zkqpar,  G[is]->qpar_ptr, vol_fac);
     }
-
+    
     // Plot f(x,y,z=0)
     id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
     id -> write_moment ( id -> xyApar,  fields->apar,    vol_fac);
@@ -408,11 +389,13 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_moment ( id -> xyqpar,  G[is]->qpar_ptr, vol_fac);
     }
 
-    if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
-      if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G[0]->G());
-    }
-    if (!pars_->Reservoir) {
-      id -> write_ks_data ( id -> g_y, G[0]->G());
+    if (pars_->ks) {
+      if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
+	if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G[0]->G());
+      }
+      if (!pars_->Reservoir) {
+	id -> write_ks_data ( id -> g_y, G[0]->G());
+      }
     }
 
     if (pars_->write_fields) {
@@ -420,6 +403,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_fields(id -> fields_apar, fields->apar);
       id -> write_fields(id -> fields_bpar, fields->bpar);
     }
+      
 
     nc_sync(id->file);
     fflush(NULL);
@@ -547,7 +531,7 @@ void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
 
 
 Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
-  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
+  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr) 
 {
   printf(ANSI_COLOR_BLUE);
   pars_ = pars;
@@ -614,14 +598,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
     cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
   }
   
-  /*
-  if (pars_->diagnosing_pzt) {
-    primary = (float*) malloc (sizeof(float));    primary[0] = 0.;  
-    secondary = (float*) malloc (sizeof(float));  secondary[0] = 0.;  
-    tertiary = (float*) malloc (sizeof(float));    tertiary[0] = 0.;  
-    cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
-  }
-  */
     
   // Remember that delta theta is a constant in this formalism!   
 
@@ -631,7 +607,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
@@ -917,7 +893,7 @@ Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids, Geometry* geo
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;

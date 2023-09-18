@@ -35,7 +35,6 @@
  zero_shat = true
  geo_option = "slab"
 
-
 [Boltzmann]
  add_Boltzmann_species = true    # use a Boltzmann species
  Boltzmann_type = "ions"         # the Boltzmann species will be ions
