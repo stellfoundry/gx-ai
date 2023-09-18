@@ -78,6 +78,22 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       geo = new Eik_geo(pars, grids);
     }
   }
+  else if(geo_option=="desc") {
+    // call python geometry module to write an eik.out geo file
+    // GX_PATH is defined at compile time via a -D flag
+    pars->geofilename = std::string(pars->run_name) + ".eik.out";
+    if(grids->iproc == 0) {
+      char command[300];
+      sprintf(command, "python %s/geometry_modules/desc/gx_desc_geo.py %s.in %s > %s.gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
+      printf("Using DESC geometry. Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      system(command);
+    }
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // now read the eik file that was generated
+    geo = new Eik_geo(pars, grids);
+    if(grids->iproc==0) CUDA_DEBUG("Initializing miller geometry: %s \n");
+  } 
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
     if(grids->iproc == 0) {
