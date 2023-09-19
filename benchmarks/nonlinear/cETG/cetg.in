@@ -1,0 +1,77 @@
+# This test runs a nonlinear collisional ETG (slab) case. 
+# This model uses a Boltzmann adiabatic ion response.
+
+ debug = false
+
+[Dimensions]
+ ntheta = 32             # number of points along field line
+ ny = 4                # number of real-space grid-points in y
+ nx = 1                # number of real-space grid-points in x
+ 
+[Domain]
+ x0 = 6.366
+ y0 = 1.0
+ z0 = 10.0
+ boundary = "periodic"   
+
+[Collisional_slab_ETG]
+ cetg = true
+
+[Physics]
+ nonlinear_mode = false           # this is a nonlinear calculation
+
+[Time]
+ t_max = 20.0        # run to t = t_max (units of L_ref/vt_ref)
+ dt = 0.02            # maximum timestep (units of L_ref/vt_ref), will be adapted dynamically
+ cfl = 1.0            # safety cushion factor on timestep size
+ scheme = "sspx3"       # use SSPx3 timestepping scheme
+
+[Initialization]
+ ikpar_init = 1                  # parallel wavenumber of initial perturbation
+ init_field = "density"          # initial condition set in density
+ init_amp = 1.0e-8               # amplitude of initial condition
+
+[Geometry]
+ zero_shat = true
+ geo_option = "slab"
+
+[Boltzmann]
+ add_Boltzmann_species = true    # use a Boltzmann species
+ Boltzmann_type = "ions"         # the Boltzmann species will be ions
+ tau_fac = 1.0                   # generalized temperature ratio, T_i/(Z T_e)
+ Z_ion = 1.0                     # ion charge
+
+[Dissipation]
+ hyper = true                    # use hyperdiffusion
+ D_hyper = 5.0e-20                # coefficient of hyperdiffusion
+
+[Restart]
+ restart = false
+ save_for_restart = true
+
+[Diagnostics]
+ nwrite = 500                    # write diagnostics every nwrite timesteps
+ fluxes = false                   # compute and write heat and particle fluxes
+ omega  = true
+ 
+[Wspectra]                       # spectra of W = |G_lm|**2
+ laguerre         = true
+ kx               = true
+ ky               = true          # W(ky) (summed over kx, z, l, m)
+ kxky             = true
+ z                = true
+
+[Pspectra]                      # spectra of P = ( 1 - Gamma_0(b_s) ) |Phi|**2
+ species          = false
+ kx               = false
+ ky               = false         # P(ky) (summed over kx, z)
+ kxky             = false
+ z                = false         # P(z) (summed over kx, ky)
+
+[Qspectra]                      # spectra of Q (heat flux)
+ kx               = true
+ ky               = true         # Q(ky) (summed over kx, z)
+ kxky             = true
+ z                = true         # Q(z) (summed over kx, ky)
+
+
