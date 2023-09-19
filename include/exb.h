@@ -6,13 +6,15 @@
 class ExB {
   public:
     virtual ~ExB() {};
-    virtual void flow_shear_shift(MomentsG* G, Fields* f, double dt) = 0;
+    virtual void flow_shear_shift(Fields* f, double dt) = 0;
+    virtual void flow_shear_g_shift(MomentsG* G) = 0;
 };
 class ExB_GK : public ExB {
   public:
     ExB_GK(Parameters* pars, Grids* grids, Geometry* geo); 
     ~ExB_GK();
-    void flow_shear_shift(MomentsG* G, Fields* f, double dt);
+    void flow_shear_shift(Fields* f, double dt);
+    void flow_shear_g_shift(MomentsG* G);
 
     cuComplex * phi_tmp, * g_tmp;
   private:

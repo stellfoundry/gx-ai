@@ -63,8 +63,6 @@ void RungeKutta3::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
       dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
     }
 
-    if (pars_->ExBshear) exb_->flow_shear_shift(G[is], f, adt*dt_);
-
     // compute and increment nonlinear term
     Rhs[is]->set_zero();
     if (nonlinear_ != nullptr) {
@@ -89,6 +87,17 @@ void RungeKutta3::advance(double *t, MomentsG** G, Fields* f)
     G[is]   -> update_tprim(*t);
     G_q1[is]-> update_tprim(*t);
     G_q2[is]-> update_tprim(*t);
+  }
+  
+  // update flow shear terms if using ExB
+  // need to confirm with Noah if this copy and paste from above is valid here for ExB //JMH
+  if (pars_->ExBshear) {
+    exb_->flow_shear_shift(f, dt_);
+    for(int is=0; is<grids_->Nspecies; is++) {
+      exb_->flow_shear_g_shift(G[is]);
+      exb_->flow_shear_g_shift(G_q1[is]);
+      exb_->flow_shear_g_shift(G_q2[is]);
+    }
   }
   // end updates
 

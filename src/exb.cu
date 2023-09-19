@@ -9,18 +9,6 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&phi_tmp, sizeof(cuComplex)*grids_->NxNycNz));
   checkCuda(cudaMalloc(&g_tmp  , sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
 
-  //unsigned int nxkyz = grids_->NxNycNz;
-  //unsigned int nlag = grids_->Nj;
-  //int nbx = min(32, grids_->NxNycNz);   int ngx = 1 + (grids_->NxNycNz-1)/nbx;
-  //int nby = min(16, grids_->Nj);   int ngy = 1 + (grids_->Nj-1)/nby;
-  //dBk = dim3(nbx, nby, 1);
-  //dGk = dim3(ngx, ngy, 1);
-  // Dimensions for the field_shift kernels.
-  //nt1 = pars_->i_share;   int nb1 = 1 + (nbx-1)/nt1;
-  // JFP: this is likely wrong.
-  //dimBlockfield = nt1;
-  //dimGridfield = nb1;
-  
   // Nx*Nyc kernels
   dimBlock_xy = dim3(32,16);
   dimGrid_xy  = dim3(1+(grids->Nyc-1)/dimBlock_xy.x, 1+(grids->Nx-1)/dimBlock_xy.y);
@@ -37,20 +25,19 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   dimBlock_xyzlm = dim3(nt1, nt2, nt3);
   dimGrid_xyzlm  = dim3(nb1, nb2, nb3);
 
-  CP_TO_GPU (grids_->x, grids_->x_h, sizeof(float)*grids_->Nx); //find a better place for this? only need to do it once for exb/ntft
+  CP_TO_GPU (grids_->x, grids_->x_h, sizeof(float)*grids_->Nx); //find a better place for this? only need to do it once for exb/ntft // JMH
 
 }
 ExB_GK::~ExB_GK()
 {
-  //if (closures) delete closures;
-  //if (favg)       cudaFree(favg);
   if (phi_tmp)  cudaFree(phi_tmp);
   if (g_tmp)    cudaFree(g_tmp);
 }
-void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
+void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per timestep
 {
-  // shift moments and fields in kx to account for ExB shear
+  // update kxstar terms and phasefactor
   kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
+
   // update geometry
   if (pars_->nonTwist) {
     geo_shift_ntft<<<dimBlock_xyz, dimGrid_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
@@ -63,19 +50,14 @@ void ExB_GK::flow_shear_shift(MomentsG* G, Fields* f, double dt)
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat);
   }
-  // shift fields
+  // update fields
   CP_TO_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
-  CP_TO_GPU (g_tmp,   G->G(),  sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm);
   field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+}
+
+void ExB_GK::flow_shear_g_shift(MomentsG* G) // this is called for each G used in the timestepping scheme per timestep
+{
+  // update G
+  CP_TO_GPU (g_tmp,   G->G(),  sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm);
   g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
-  //if (pars_->fapar > 0.) {
-  //  field_shift<<<<dimGridfield,dimBlockfield>>>(f->apar,grids_->kxbar_ikx);
-  //}
-  //if (pars_->fbpar > 0.) field_shift<<<dimGridfield,dimBlockfield>>>(f->bpar,kxbar_ikx); // JFP: note: to update once we have bpar.
-  // shift dist function, batching in m.
-  //for(int m=grids_->m_lo; m<grids_->m_up; m++) {
-  //  int m_local = m - grids_->m_lo;
-  //  printf("m_local = %d \n", m_local);
-  //  g_shift <<< dimGrid_xyzl, dimBlock_xyzl >>> (G->Gm(m_local),grids_->kxbar_ikx, m_local);
-  //}
 }

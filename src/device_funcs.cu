@@ -3174,14 +3174,10 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
   if(idx < nx && idy < nyc) {
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
-    //kxbar_ikx_old[idxy] = kxbar_ikx_new[idxy];
-    if (idx == 11 && idy == 1) {
-	printf("kxstar = %f, ky = %f, g_exb = %f, dt = %f \n", kxstar[idxy], ky[idy], g_exb, dt);
-    }
     kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx);
     kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
-    if (ExBshear_phase){
+    if (ExBshear_phase) {
       phasefac[idxy] = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
     } else {
       phasefac[idxy] = 0.0;
@@ -3189,13 +3185,12 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
     //if field is sheared beyond resolution or mask, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
     if (unmasked(idx, idy)) { 
       if(kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -(nakx/2)) {
-        printf("kxstar = %f, kxbar_ikx = %d \n", kxstar[idxy], kxbar_ikx_new[idxy]);
         kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*2*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
-        printf("kxstar = %f, kxalias_max = %f, idx = %d, idy = %d \n", kxstar[idxy], kxalias_max, idx, idy);
+        printf("shifting kxstar! new kxstar = %f, idx = %d, idy = %d \n", kxstar[idxy], idx, idy);
       }
     } else {
       if(kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < -(nx/2)) {
-        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*nx*dkx; // shifting kxs to opposite side of dealiased kx grid.
+        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*nx*dkx;
       }
     }
   }
