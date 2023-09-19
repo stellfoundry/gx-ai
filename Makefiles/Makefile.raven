@@ -10,7 +10,7 @@
 # module load openmpi/4.1
 # module load hdf5-mpi/1.12.2
 # module load netcdf-mpi/4.8.1
-# LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NVHPC_ROOT/comm_libs/nccl/lib:$OPENMPI_HOME/lib:$NETCDF_HOME/lib:$HDF5_HOME/lib:$GSL_HOME/lib
+# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$NVHPC_ROOT/comm_libs/nccl/lib:$OPENMPI_HOME/lib:$NETCDF_HOME/lib:$HDF5_HOME/lib:$GSL_HOME/lib
 
 
 # paths to netcdf
