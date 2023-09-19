@@ -1,9 +1,10 @@
 #include "fields.h"
 #include "get_error.h"
+#include "grad_perp.h"
 
 Fields::Fields(Parameters* pars, Grids* grids) :
-  size_(sizeof(cuComplex)*grids->NxNycNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
-  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_h(nullptr), bpar(nullptr), bpar_h(nullptr),
+  size_(sizeof(cuComplex)*grids->NxNycNz), sizeReal_(sizeof(float)*grids->NxNyNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
+  phi(nullptr), phi_h(nullptr), apar(nullptr), apar_ext(nullptr), apar_ext_h(nullptr), apar_h(nullptr), apar_ext_realspace_h(nullptr), apar_ext_realspace(nullptr), bpar(nullptr), bpar_h(nullptr),
   ne(nullptr), ne_h(nullptr), ue(nullptr), ue_h(nullptr), Te(nullptr), Te_h(nullptr)
 {
   checkCuda(cudaMalloc((void**) &phi, size_));
@@ -22,7 +23,16 @@ Fields::Fields(Parameters* pars, Grids* grids) :
 
     setval <<< nb, nt >>> (apar, zero, nn);
 
+    checkCuda(cudaMalloc((void**) &apar_ext, size_));
+    if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
+
+    checkCuda(cudaMalloc((void**) &apar_ext_realspace, sizeReal_));
+
+    setval <<< nb, nt >>> (apar_ext, zero, nn);
+
     apar_h = (cuComplex*) malloc(size_);
+    apar_ext_realspace_h = (float*) malloc(sizeReal_);
+    apar_ext_h = (cuComplex*) malloc(size_);
 
     checkCuda(cudaMalloc((void**) &bpar, size_));
     if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -56,6 +66,44 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   //  }
   //}
 
+  if (pars_->harris_sheet) {
+    int nBatch = grids_->Nz;
+    GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+    
+    //set up harris sheet in real space   
+    for(int idz = 0; idz < grids_->Nz; idz++) {
+      for(int idx = 0; idx < grids_->Nx; idx++) {
+        for(int idy = 0; idy < grids_->Ny; idy++) {
+           float x = grids_->x_h[idx];
+
+	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
+	   float A0 = 1.29904; // this value makes B_ext_max = 1
+	   apar_ext_realspace_h[index] = A0/pow(cosh((x-M_PI*pars_->x0)/pars_->x0),2)*((pow(tanh(x/pars_->x0),2)+(pow(tanh(x/pars_->x0-2*M_PI),2))-(pow(tanh(2*M_PI),2)))/(2*pow(tanh(M_PI),2)-pow(tanh(2*M_PI),2)));
+	}
+      }
+    }
+    
+    //copy apar_ext to GPU and do Fourier transformation
+    CP_TO_GPU(apar_ext_realspace, apar_ext_realspace_h, sizeof(float) * grids_->NxNyNz); 
+    grad_perp->R2C(apar_ext_realspace, apar_ext, true);
+    
+    delete grad_perp;
+
+    //debug part
+
+    //grad_perp->qvar(apar_ext_realspace, grids_->NxNyNz); 
+    //CP_TO_CPU(apar_ext_h, apar_ext, sizeof(cuComplex) * grids_->NxNycNz);
+  //  for(int idz = 0; idz < grids_->Nz; idz++){
+  //    for(int idx = 0; idx < grids_->Nx; idx++){
+  //      for(int idy = 0; idy < grids_->Nyc; idy++){
+  //         unsigned int idxyz = idy + grids_->Nyc *(idx + grids_->Nx*idz); 
+  //         printf("idxyz%d:",idxyz);
+  //         printf("%f\n",apar_ext_h[idxyz].x);
+  //      }
+  //    }
+  //  }
+    //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
+  }
 }
 
 Fields::~Fields() {

@@ -1,7 +1,7 @@
 # Makefile for perlmutter (NERSC)
-# Maintainer: Noah Mandell (nrm@mit.edu)
+# Maintainer: Noah Mandell (nmandell@pppl.gov)
 #
-# add and uncomment the following in your .bashrc.ext (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
+# add and uncomment the following in your .bashrc (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=perlmutter
 # module load PrgEnv-gnu
@@ -18,27 +18,37 @@
 # module load nccl
 #
 
-
-
 # paths to netcdf
-NETCDF_INC = -I ${NETCDF_DIR}/include
-NETCDF_LIB = -L ${NETCDF_DIR}/lib -lnetcdf -lnetcdff -L${HDF5_DIR}/lib -lhdf5 
+# NETCDF_DIR is defined by cray-netcdf-hdf5parallel module
+NETCDF_ROOT = ${NETCDF_DIR}
+# HDF5_DIR is defined by cray-hdf5-parallel module
+HDF5_ROOT = ${HDF5_DIR}
+NETCDF_INC = -I ${NETCDF_ROOT}/include
+NETCDF_LIB = -L ${NETCDF_ROOT}/lib -lnetcdf -lnetcdff -L${HDF5_ROOT}/lib -lhdf5
 
 # paths to mpich
-MPI_DIR = ${MPICH_DIR}
-MPI_INC = -I ${MPI_DIR}/include
-MPI_LIB = -L ${MPI_DIR}/lib -lmpi
+# MPICH_DIR is defined by cray-mpich module
+MPI_ROOT = ${MPICH_DIR}
+MPI_INC = -I ${MPI_ROOT}/include
+MPI_LIB = -L ${MPI_ROOT}/lib -lmpi
 
 # paths to cuda 
-CUDA_INC = -I ${NVIDIA_PATH}/math_libs/include -I ${NCCL_HOME}/include
-CUDA_LIB = -L ${NVIDIA_PATH}/math_libs/lib64 -lcudart -lcufft_static -lculibos -lnvToolsExt -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_HOME}/lib -lnccl
+# NVIDIA_PATH is defined by nvhpc-mixed module
+NVHPC_ROOT = ${NVIDIA_PATH}
+# NCCL_HOME is defined by nccl module
+NCCL_ROOT = ${NCCL_HOME}
+CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NCCL_ROOT}/include
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_HOME}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
 
 # paths to gsl 
+# GSL_ROOT is defined by gsl module
 GSL_INC = -I ${GSL_ROOT}/include
 GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas
 
-C_LIB = -lm
+# additional c libraries required for linking. these are already in LD_LIBRARY_PATH
+C_LIB = -lm -lpthread -ldl
 
+# A100 is compute architecture 8.0
 CUDAARCH=80
 
 # Cray names their C++ compiler CC (C compiler is cc)
@@ -54,4 +64,5 @@ else
   NVCCFLAGS += -O3
 endif
 
+GS2_PATH = /global/homes/n/nmandell/gs2
 

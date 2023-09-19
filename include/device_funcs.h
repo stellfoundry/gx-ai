@@ -194,6 +194,7 @@ __global__ void Wphi2_summand(float *p2, const cuComplex *phi, const float *volJ
   
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s);
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i);
+__global__ void Wapar_summand_krehm(float* p2, const cuComplex* apar, const cuComplex* apar_ext, const float* volJac, const float* kx, const float* ky, float rho_i);
   
 __global__ void heat_flux_summand(float* qflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float p_s, float vts);
@@ -239,10 +240,13 @@ extern __device__ cufftCallbackStoreC abs_kz_callbackPtr;
 
 __global__ void kInit(float* kx, float* ky, float* kz, int* kzm, float* kzp, const float X0, const float Y0, const int Zp, bool dealias_kz);  
 
-__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar,
-			  const float nu_ei, const float rhos, const float de, cuComplex* rhs_par);
+__global__ void rhs_linear_krehm(const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* apar_ext,
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs);
+__global__ void krehm_collisions(const cuComplex* g, const cuComplex* apar, const cuComplex* apar_ext, const float* kx, const float* ky,
+			  const float nu_ei, const float rhos, const float de, cuComplex* rhs);
 __global__ void phiSolve_krehm (cuComplex *phi, cuComplex *G0, float* kx, float* ky, float rho_i);
 __global__ void aparSolve_krehm (cuComplex *apar, cuComplex *G1, float* kx, float* ky, float rho_s, float d_e);
+__global__ void equilibrium_current_krehm (cuComplex *G1, float* kx, float* ky, float rho_s, float d_e, cuComplex* apar_ext);
 
 __global__ void real_space_density(cuComplex* nbar, const cuComplex* g, const float *kperp2, const specie sp);
 __global__ void real_space_par_current(cuComplex* jbar, const cuComplex* g, const float *kperp2, const specie sp);

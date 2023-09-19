@@ -1,7 +1,7 @@
 .. _quicklin:
 
-Running your first linear simulation
-++++++++++++++++++++++++++++++++++++
+Running your first linear simulation (tokamak)
+++++++++++++++++++++++++++++++++++++++++++++++
 
 In this tutorial we set up a linear ion-temperature-gradient (ITG) instability calculation using a circular tokamak geometry given by a Miller equilibrium with Cyclone-base-case-like parameters and adiabatic electrons.
 
@@ -12,7 +12,7 @@ In this tutorial we set up a linear ion-temperature-gradient (ITG) instability c
 Setting up the input file
 -------------------------
 
-The :doc:`input file <inputFiles/itg_miller_adiabatic_electrons>` for this case is included in the GX repository in ``benchmarks/linear/ITG/itg_miller_adiabatic_electrons.in``.
+The :doc:`input file <inputFiles/itg_miller_adiabatic_electrons>` for this case is included in the GX repository in ``benchmarks/linear/ITG_cyclone/itg_miller_adiabatic_electrons.in``.
 
 All GX input files consist of several groups. For more details about input parameters, see :ref:`input_file`.
 
@@ -85,11 +85,10 @@ The ``[Time]`` group controls the timestepping scheme and parameters.
 .. code-block:: toml
 
   [Time]
-   dt = 0.005             # timestep size (in units of L_ref/vt_ref)
-   nstep  = 30000         # number of timesteps
-   scheme = "sspx3"       # use SSPx3 timestepping scheme
+    t_max = 150.0          # end time (in units of L_ref/vt_ref)
+    scheme = "rk4"         # use RK4 timestepping scheme (with adaptive timestepping)
 
-Since GX uses explicit timestepping methods, the timestep size ``dt`` must be set small enough to resolve all frequencies in the system. Using too large of a timestep will result in numerical instabilities (often giving ``nan`` growth rates). Since some of the fastest frequencies in the system scale as :math:`k_{\parallel\,\mathrm{rm}} v_{\parallel\,\mathrm{max}}`, using larger ``nhermite`` (which increases :math:`v_{\parallel\,\mathrm{max}}` will require smaller ``dt``.
+GX uses explicit timestepping methods, and the timestep size ``dt`` will be automatically set based on an estimate of the fastest frequencies in the system. Here we specify an end time with ``t_max``, which means the code will take as many timesteps as it needs to reach this time. We will use the 4th order Runge-Kutta (``rk4``) timestepper.
 
 .. _lininit:
 
@@ -103,9 +102,9 @@ The ``[Initialization]`` group controls the initial conditions.
   [Initialization]
    ikpar_init = 0                  # parallel wavenumber of initial perturbation
    init_field = "density"          # initial condition set in density
-   init_amp = 1.0e-10              # amplitude of initial condition
+   init_amp = 1.0                  # amplitude of initial condition
 
-Here we set up an initial condition that is constant along the field line (``ikpar_init = 0``) with initial perturbation amplitude ``init_amp = 1.0e-10`` in the density moment (``init_field = "density"``). By default, a random initial condition satisfying these constraints is used.
+Here we set up an initial condition that is constant along the field line (``ikpar_init = 0``) with initial perturbation amplitude ``init_amp = 1.0`` in the density moment (``init_field = "density"``). By default, a random initial condition satisfying these constraints is used. For some linear cases, it can be useful to set ``fixed_amplitude = true`` in the ``[Diagnostics]`` block below, which will ensure that the amplitude never gets too large. When using this option, it is safe to use an order unity value for ``init_amp``, as we do here. Otherwise, ``init_amp`` should be set to something small (e.g. ``1e-10`` for a linear calculation).
 
 .. _lingeo:
   
@@ -117,12 +116,7 @@ The ``[Geometry]`` group controls the simulation geometry.
 .. code-block:: toml
 
   [Geometry]
-   igeo = 1                        # use Miller geometry, and read geometry coefficients from "eik"-style text file
-   geofile = "itg_miller.eik.out"  # name of geometry file
-   # WARNING: the following Miller parameters are not read directly by GX, but can instead be used to create the above geometry file
-   # using the miller geometry module via
-   # python ../../../geometry_modules/miller/gx_geo.py itg_miller_adiabatic_electrons.in itg_miller.eik.out
-   # changing the parameters below without regenerating a new geometry file will have no effect on GX
+   geo_option = "miller"           # use Miller geometry
    rhoc = 0.5                      # flux surface label, r/a
    Rmaj = 2.77778                  # major radius of center of flux surface, normalized to L_ref
    R_geo = 2.77778                 # major radius of magnetic field reference point, normalized to L_ref (i.e. B_t(R_geo) = B_ref)
@@ -135,18 +129,7 @@ The ``[Geometry]`` group controls the simulation geometry.
    tripri = 0.0                    # radial gradient of triangularity
    betaprim = 0.0                  # radial gradient of beta
 
-When ``igeo = 1``, GX reads the geometry file specified by ``geofile`` to set up a Miller equilibrium geometry for the calculation. When the Miller parameters are specified in the input file (as they are here), this "eik"-style geometry file can be created in a pre-processing step using the ``geometry_modules/miller/gx_geo.py`` script in the GX repository. From the directory containing the input file, this can be done by executing
-
-.. code-block:: bash
-
-  python ../../../geometry_modules/miller/gx_geo.py itg_miller_adiabatic_electrons.in itg_miller.eik.out
-
-The resulting ``itg_miller.eik.out`` file can now be read by GX to initialize the Miller geometry for the calculation.
-
-.. warning::
-
-  The Miller parameters are not read directly by GX, only by the geometry module. This means that changing the Miller parameters in the input file
-  without regenerating the ``geofile`` will have no effect on GX.
+Here we specify a Miller local equilibrium geometry corresponding to unshifted circular flux surfaces. 
 
 .. _linspec:
 
@@ -196,18 +179,18 @@ The ``[Dissipation]`` group controls numerical dissipation parameters.
   [Dissipation]
    closure_model = "none"          # no closure assumptions (just truncation)
    hypercollisions = true          # use hypercollision model
-   nu_hyper_m = 0.5                # coefficient of hermite hypercollisions
+   nu_hyper_m = 0.1                # coefficient of hermite hypercollisions
    p_hyper_m = 6                   # power of hermite hypercollisions
-   nu_hyper_l = 0.5                # coefficient of laguerre hypercollisions
+   nu_hyper_l = 0.1                # coefficient of laguerre hypercollisions
    p_hyper_l = 6                   # power of laguerre hypercollisions
 
-We do not make any closure assumptions (``closure_model = "none"``), instead opting for a simple truncation of the moment series. In lieu of closures, hypercollisions can provide the necessary dissipation at small scales in velocity space (large hermite and laguerre index). Here we use a hypercollision operator of the form
+We do not make any closure assumptions (``closure_model = "none"``), instead opting for a simple truncation of the moment series. In lieu of closures, hypercollisions can provide the necessary dissipation at small scales in velocity space (large hermite and laguerre index). 
+.. Here we use a hypercollision operator of the form
 
-.. math::
-  \nu_\mathrm{hyp}G_{\ell,m} &= [\texttt{nu_hyper_m}M(m/M)^\texttt{p_hyper_m} + \texttt{nu_hyper_l}L(\ell/L)^\texttt{p_hyper_l}] G_{\ell, m} \\
-                    &= [0.5M(m/M)^6 + 0.5L(\ell/L)^6] G_{\ell, m}
+.. .. math::
+..   \nu_\mathrm{hyp}G_{\ell,m} &= [\texttt{nu_hyper_m}M(m/M)^\texttt{p_hyper_m} + \texttt{nu_hyper_l}L(\ell/L)^\texttt{p_hyper_l}] G_{\ell, m} = [0.5M(m/M)^6 + 0.5L(\ell/L)^6] G_{\ell, m}
 
-where :math:`L =` ``nlaguerre`` and :math:`M =` ``nhermite``.
+.. where :math:`L =` ``nlaguerre`` and :math:`M =` ``nhermite``.
   
 Diagnostics
 ===========
@@ -219,6 +202,8 @@ The ``[Diagnostics]`` group controls the diagnostic quantities that are computed
   [Diagnostics]
    nwrite = 1000                   # write diagnostics every 1000 timesteps
    omega  = true                   # compute and write growth rates and frequencies
+   fixed_amplitude = true          # avoid silly large numbers, but use only in linear cases, and without linked boundary option
+
 
   # spectra of W = |G_lm|**2
   [Wspectra]
@@ -245,7 +230,7 @@ For linear calculations, we can request to compute and write growth rates and re
 Running the simulation
 ----------------------
 
-To run the simulation from the ``benchmarks/linear/ITG`` directory, we can use
+To run the simulation from the ``benchmarks/linear/ITG_cyclone`` directory, we can use
 
 .. code-block:: bash
 
