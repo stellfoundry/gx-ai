@@ -212,12 +212,18 @@ void MomentsG::initialConditions(double* time) {
       srand(22);
       float samp;
       int idx;
+      //
       //      printf("Hacking the initial condition! \n");
+      //
+      // Loop over the kx>=0 modes. Below, the kx<=0 modes are handled explicitly, to help with
+      // specific phase relationships
       for(int i=0; i < 1 + (grids_->Nx - 1)/3; i++) {
+	// No perturbation inserted for ky=0 mode because loop starts with j=1
 	for(int j=1; j < 1 + (grids_->Ny - 1)/3; j++) {
 	  samp = pars_->init_amp;
 	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+	  // js used to find positive and negative kx indices, primarily
 	  for (int js=0; js < 2; js++) {
 	    if (i==0) {
 	      idx = i;
@@ -231,12 +237,17 @@ void MomentsG::initialConditions(double* time) {
 	      } else {
 		init_h[index].x = rb;		init_h[index].y = ra;
 	      }
+	      // Choosing ikpar_init < 0 triggers a superposition of two kz modes
+	      // which is useful for some particular tests
 	      if (pars_->ikpar_init < 0) {		
 		init_h[index].x *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
 				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
 		init_h[index].y *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
 				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
-	      } else {
+	      }
+	      // This is a common option for debugging. We choose perturbations which are
+	      // monochromatic in z. 
+	      else {
 		init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 		init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 	      }
@@ -248,6 +259,7 @@ void MomentsG::initialConditions(double* time) {
 		init_h[index].x = 0.;
 		init_h[index].y = 0.;
 	      }
+	      // Starting with jj=1 avoids choosing an initial perturbation with kz=0
 	      for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
 		float ka = (float) (samp * (float) rand() / RAND_MAX);
 		float pa = (float) (M_PI * ((float) rand()-RAND_MAX/2) / RAND_MAX);
@@ -295,9 +307,6 @@ void MomentsG::initialConditions(double* time) {
 void MomentsG::scale(double    scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::mask(void) {maskG GALL (G());}
-
-void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G(), J0phi);}
-void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G(), J0phi);}
 
 void MomentsG::rescale(float * phi_max) {
   rescale_kernel GALL (G(), phi_max, grids_->Nm*grids_->Nl);

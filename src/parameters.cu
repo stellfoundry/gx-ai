@@ -47,7 +47,10 @@ void Parameters::get_nml_vars(char* filename)
   strcat(default_restart_filename, ".restart.nc");
 
   auto tnml = nml;
-   
+
+  //
+  // This next line seems to be completely superfluous!
+  //
   tnml = nml;
   if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
   
@@ -129,7 +132,7 @@ void Parameters::get_nml_vars(char* filename)
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
   nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   );
   nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
@@ -140,6 +143,15 @@ void Parameters::get_nml_vars(char* filename)
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
 
   tnml = nml;
+  if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 
+
+  cetg              = toml::find_or <bool>  (tnml, "cetg",         false );
+
+  if (cetg) gx = false;
+  if (cetg) nm_in = 1;
+  if (cetg) nl_in = 2;
+  
+  tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
   
   vp                = toml::find_or <bool>  (tnml, "vp",         false );
@@ -148,6 +160,7 @@ void Parameters::get_nml_vars(char* filename)
   vp_nuh            = toml::find_or <float> (tnml, "vp_nuh",      -1.0 );
   vp_alpha          = toml::find_or <int>   (tnml, "vp_alpha",       1 );
   vp_alpha_h        = toml::find_or <int>   (tnml, "vp_alpha_h",     2 );
+  if (vp) gx = false;
   
   tnml = nml;
   if (nml.contains("KS")) tnml = toml::find (nml, "KS");
@@ -159,7 +172,8 @@ void Parameters::get_nml_vars(char* filename)
   ks_tf             = toml::find_or <float> (tnml, "ks_tf",       -1.0 );
   ks_eps0           = toml::find_or <float> (tnml, "ks_eps0",     -1.0 );
   ks_epsf           = toml::find_or <float> (tnml, "ks_epsf",     -1.0 );
-
+  if (ks) gx = false;
+  
   tnml = nml;
   if (nml.contains("KREHM")) tnml = toml::find (nml, "KREHM");
   
@@ -189,7 +203,7 @@ void Parameters::get_nml_vars(char* filename)
     i_share = i_share_max;
   }
   
-  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
+  dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -423,6 +437,10 @@ void Parameters::get_nml_vars(char* filename)
   Btype                 = toml::find_or <string> (tnml, "Boltzmann_type", "electrons" );
   iphi00                = toml::find_or <int>    (tnml, "iphi00",                  -2 );
 
+  // Get the value of Z when running the Adkins collisional ETG equations
+
+  ion_z                 = toml::find_or <float>   (tnml, "Z_ion",                   1. );
+  
   // For backward compatibility, check if iphi00 was specified and act accordingly
   if (iphi00 > 0) {
     if (iphi00 == 1) Btype = "Ions";
@@ -449,6 +467,8 @@ void Parameters::get_nml_vars(char* filename)
   
   if (tau_fac > 0.) ti_ov_te = tau_fac;                 // new definition has priority if it was provided
   tau_fac = ti_ov_te;                                   // In the body of the code, use tau_fac instead of ti_ov_te
+  
+  // For the Adkins collisional ETG model, tau_fac should be set to Ti/(Te Z) = tau_bar
   
   ///////////////////////////////////////////////////////////////////////
   //                                                                   //
@@ -658,9 +678,10 @@ void Parameters::get_nml_vars(char* filename)
     if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
-  gx = (!ks && !vp && !krehm);
+  gx = (!ks && !vp && !krehm && !cetg);
   assert (!(ks && vp));
-  assert (ks || vp || gx || krehm);
+  assert (ks || vp || gx || krehm || cetg);
+
 
   int ksize = 0;
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
@@ -708,6 +729,11 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].temp = 1.0;
     species_h[0].mass = 1.0;
     species_h[0].type = 1;
+  } else if(cetg) {
+    species_h[0].mass = 1.0;
+    species_h[0].z    = 1.0;
+    species_h[0].dens = 1.0;
+    species_h[0].temp = 1.0;    
   }
   
   float numax = -1.;
@@ -844,6 +870,7 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "collisionalETG", &nc_cetg))   ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -949,6 +976,8 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_cetg, "cetg",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   specs[0] = wdim;
   if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -1124,6 +1153,7 @@ void Parameters::store_ncdf(int ncid) {
 
   // for boltzmann opts need attribute BD bug
 
+  if (retval = nc_def_var (nc_bz, "Z_ion",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1218,7 +1248,8 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
   put_real (nc_bz, "tau_fac",               tau_fac               );
-  
+  put_real (nc_bz, "Z_ion",                 ion_z                 );
+
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
   if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );
@@ -1247,6 +1278,7 @@ void Parameters::store_ncdf(int ncid) {
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
 
+  putbool  (nc_cetg,  "cetg", cetg);
   putbool  (nc_krehm, "krehm", krehm);
   put_real (nc_krehm, "rho_i", rho_i);
   put_real (nc_krehm, "d_e", d_e);
