@@ -11,8 +11,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   red(nullptr), pot(nullptr), a2(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
 {
 
-  amom = nullptr;
-  df          = nullptr;  favg        = nullptr;
+  amom = nullptr;  df          = nullptr;  favg        = nullptr;
 
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;
@@ -2042,7 +2041,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     ps -> time_count[1] = grids_->Nspecies;
     ps -> time_start[1] = grids_->is_lo;
 
-    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
+    //    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   } else {
     ps = new nca(0); 
   }
@@ -2304,7 +2303,7 @@ NetCDF_ids::~NetCDF_ids() {
   if (red_qflux)    delete red_qflux;
   if (red_pflux)    delete red_pflux;
   if (ph2)          delete ph2;
-  if (a2)          delete a2;
+  if (a2)           delete a2;
   if (all_red)      delete all_red;
   if (grad_phi) delete grad_phi;
   
@@ -3031,6 +3030,7 @@ void NetCDF_ids::write_As(float *P2, bool endrun)
 void NetCDF_ids::write_Q (float* Q, bool endrun)
 {
   if (qs -> write_v_time) {// && grids_->m_lo==0) {
+
     all_red->Sum(Q, qs->data);                   CP_TO_CPU (qs->cpu, qs->data, sizeof(float)*grids_->Nspecies);
 
     // this is sort of a hack to prevent procs with higher hermite modes

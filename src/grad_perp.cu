@@ -35,17 +35,10 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftCallbackLoadC i_ky_callbackPtr_h; 
   cufftCallbackStoreC mask_and_scale_callbackPtr_h;
 
-  checkCuda(cudaMemcpyFromSymbol(&i_kxs_callbackPtr_h, 
-                     i_kxs_callbackPtr, 
-                     sizeof(i_kxs_callbackPtr_h)));
-  checkCuda(cudaMemcpyFromSymbol(&i_kx_callbackPtr_h, 
-                     i_kx_callbackPtr, 
-                     sizeof(i_kx_callbackPtr_h)));
-  checkCuda(cudaMemcpyFromSymbol(&i_ky_callbackPtr_h, 
-                     i_ky_callbackPtr, 
-                     sizeof(i_ky_callbackPtr_h)));
-  checkCuda(cudaMemcpyFromSymbol(&mask_and_scale_callbackPtr_h, 
-                     mask_and_scale_callbackPtr, 
+  checkCuda(cudaMemcpyFromSymbol(&i_kxs_callbackPtr_h, i_kxs_callbackPtr, sizeof(i_kxs_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&i_kx_callbackPtr_h,   i_kx_callbackPtr,  sizeof(i_kx_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&i_ky_callbackPtr_h,   i_ky_callbackPtr,  sizeof(i_ky_callbackPtr_h)));
+  checkCuda(cudaMemcpyFromSymbol(&mask_and_scale_callbackPtr_h, mask_and_scale_callbackPtr, 
                      sizeof(mask_and_scale_callbackPtr_h)));
 
   checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kx_callbackPtr_h, 

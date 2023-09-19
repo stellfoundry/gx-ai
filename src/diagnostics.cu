@@ -29,7 +29,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
-  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
+  G2s         = nullptr;  P2s         = nullptr;  Phi2        = nullptr; A2 = nullptr;
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
   ry_h        = nullptr;  gy_h        = nullptr;  gy_d        = nullptr;
@@ -57,8 +57,9 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   float *flux_fac_h;
   flux_fac_h = (float*) malloc (sizeof(float) * nZ);
   cudaMalloc(&flux_fac, sizeof(float)*nZ);
-  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i]*geo_->grho_h[i];
+  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i] * geo_->grho_h[i];
   for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
+
   CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);
   free(flux_fac_h);
   
@@ -111,15 +112,6 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
   }
   
-  /*
-  if (pars_->diagnosing_pzt) {
-    primary = (float*) malloc (sizeof(float));    primary[0] = 0.;  
-    secondary = (float*) malloc (sizeof(float));  secondary[0] = 0.;  
-    tertiary = (float*) malloc (sizeof(float));    tertiary[0] = 0.;  
-    cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
-  }
-  */
-    
   // Remember that delta theta is a constant in this formalism!   
 
   // set up stop file
@@ -128,6 +120,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
+  // Making the product = 1024 should work but it does not
   dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
@@ -146,7 +139,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   nt1 = min(32, grids_->Nyc);
   nb1 = 1 + (grids_->Nyc-1)/nt1;
 
-  nt2 = min(32, grids_->Nx);
+  nt2 = min(16, grids_->Nx);
   nb2 = 1 + (grids_->Nx-1)/nt2;
 
   dBk = dim3(nt1, nt2, 1);
@@ -162,21 +155,7 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   printf(ANSI_COLOR_RESET);
   ndiag = 1;
-  Dks = 0.;
   
-  if (pars_->ks) {
-    cudaMalloc     (&gy_d, sizeof(float)*grids_->Ny);
-    gy_h = (float*) malloc (sizeof(float)*grids_->Ny);
-
-    if (pars_->ResWrite) {
-      ry_h = (double*) malloc(sizeof(double)*pars_->ResQ*grids_->NxNyNz*grids_->Nmoms);
-    }
-  }
-  
-  if (pars_->Reservoir) {
-    int nbatch = 1;
-    grad_perp = new GradPerp(grids_, nbatch, grids_->Nyc);    
-  }    
 }
 
 Diagnostics_GK::~Diagnostics_GK()
@@ -223,7 +202,6 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
   if(id -> omg -> write_v_time && (counter == 0 || counter%nw==0)) {  // complex frequencies
     int nt = min(512, grids_->NxNyc) ;
     growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
-    //    fields_old->copyPhiFrom(fields);
   }
 
   if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
@@ -249,8 +227,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       for(int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
 	float rho2s = pars_->species_h[is_glob].rho2;
-	float p_s = pars_->species_h[is_glob].nt;
-	float vt_s = pars_->species_h[is_glob].vt;
+	float p_s   = pars_->species_h[is_glob].nt;
+	float vt_s  = pars_->species_h[is_glob].vt;
 	heat_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, p_s, vt_s);
       }
@@ -258,7 +236,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_Qkx(P2());
       id -> write_Qkxky(P2());
       id -> write_Qz(P2());
-      id -> write_Q(P2()); 
+      id -> write_Q(P2());
     }      
 
     if ( id -> ps -> write_v_time) {
@@ -266,8 +244,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       for(int is=0; is<grids_->Nspecies; is++) {
         int is_glob = is + grids_->is_lo;
 	float rho2s = pars_->species_h[is_glob].rho2;
-        float n_s = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
-	float vt_s = pars_->species_h[is_glob].vt;
+        float n_s   = pars_->nspec>1 ? pars_->species_h[is_glob].dens : 0.;
+	float vt_s  = pars_->species_h[is_glob].vt;
 	part_flux_summand loop_R (P2(is), fields->phi, fields->apar, G[is]->G(),
 				  grids_->ky, flux_fac, geo_->kperp2, rho2s, n_s, vt_s);
       }
@@ -361,7 +339,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       }
       
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
-      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
+      id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );
       id->write_Pz    (P2() );    id->write_Pky   (P2() );    id->write_Pkx   (P2() );    id->write_Pkxky (P2());    
       id->write_Az    (A2 );    id->write_Aky   (A2 );    id->write_Akx   (A2 );    id->write_Akxky (A2);
       id->write_Phi2z    (Phi2 );    id->write_Phi2ky   (Phi2 );    id->write_Phi2kx   (Phi2 );    id->write_Phi2kxky (Phi2);
@@ -373,17 +351,6 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
     // Rosenbluth-Hinton diagnostic
     if(id -> rh -> write) {get_rh(fields);   id -> write_nc (id->rh, val);}
     
-    /*
-      if( counter%nw == 0 && id -> Pzt -> write_v_time) {
-      pzt(G, fields);  // calculate each of P, Z, and T (very very rough diagnostic)
-      cudaDeviceSynchronize();
-      
-      write_nc (id -> Pzt, primary);
-      write_nc (id -> pZt, secondary);
-      write_nc (id -> pzT, tertiary);
-      }
-    */
-
     // Plot ky=kz=0 components of various quantities as functions of x
     id -> write_moment ( id -> vEy,     fields->phi,    vol_fac);
     id -> write_moment ( id -> kxvEy,   fields->phi,    vol_fac);
@@ -405,7 +372,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_moment ( id -> avg_zkTperp, G[is]->tprp_ptr, vol_fac);
       id -> write_moment ( id -> avg_zkqpar,  G[is]->qpar_ptr, vol_fac);
     }
-
+    
     // Plot f(x,y,z=0)
     id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
     id -> write_moment ( id -> xyApar,  fields->apar,    vol_fac);
@@ -422,11 +389,13 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_moment ( id -> xyqpar,  G[is]->qpar_ptr, vol_fac);
     }
 
-    if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
-      if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G[0]->G());
-    }
-    if (!pars_->Reservoir) {
-      id -> write_ks_data ( id -> g_y, G[0]->G());
+    if (pars_->ks) {
+      if (pars_->Reservoir && counter > pars_->nstep-pars_->ResPredict_Steps*pars_->ResTrainingDelta) {
+	if (!pars_->ResFakeData) id -> write_ks_data ( id -> g_y, G[0]->G());
+      }
+      if (!pars_->Reservoir) {
+	id -> write_ks_data ( id -> g_y, G[0]->G());
+      }
     }
 
     if (pars_->write_fields) {
@@ -434,6 +403,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       id -> write_fields(id -> fields_apar, fields->apar);
       id -> write_fields(id -> fields_bpar, fields->bpar);
     }
+      
 
     nc_sync(id->file);
     fflush(NULL);
@@ -561,7 +531,7 @@ void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
 
 
 Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
-  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr), grad_perp(nullptr)//, grad_phi(nullptr)
+  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr) 
 {
   printf(ANSI_COLOR_BLUE);
   pars_ = pars;
@@ -580,7 +550,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   int nG  = nR * grids_->Nmoms * nS;
 
   favg        = nullptr;  df          = nullptr;  val         = nullptr;  
-  G2s          = nullptr;  P2s         = nullptr;  Phi2        = nullptr;
+  G2s          = nullptr;  P2s         = nullptr;  
   omg_d       = nullptr;  tmp_omg_h   = nullptr;  t_bar       = nullptr;  
   vEk         = nullptr;  phi_max     = nullptr;
 
@@ -628,14 +598,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
     cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
   }
   
-  /*
-  if (pars_->diagnosing_pzt) {
-    primary = (float*) malloc (sizeof(float));    primary[0] = 0.;  
-    secondary = (float*) malloc (sizeof(float));  secondary[0] = 0.;  
-    tertiary = (float*) malloc (sizeof(float));    tertiary[0] = 0.;  
-    cudaMalloc     (&t_bar,     sizeof(cuComplex) * nR * nS);
-  }
-  */
     
   // Remember that delta theta is a constant in this formalism!   
 
@@ -645,7 +607,7 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
   //  dB_scale = min(512, nR);
   //  dG_scale = 1 + (nR-1)/dB_scale.x;
 
-  dB_spectra = dim3(min(16, nY), min(8, nX), min(8, nZ));
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
   dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
 
   int nyx =  nY * nX;
@@ -679,7 +641,6 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
 
   printf(ANSI_COLOR_RESET);
   ndiag = 1;
-  Dks = 0.;
 }
 
 Diagnostics_KREHM::~Diagnostics_KREHM()
@@ -689,7 +650,6 @@ Diagnostics_KREHM::~Diagnostics_KREHM()
 
   if (G2s)        cudaFree      ( G2s       );
   if (P2s)        cudaFree      ( P2s       );
-  if (Phi2)       cudaFree      ( Phi2      );
   if (t_bar)      cudaFree      ( t_bar     );
   if (omg_d)      cudaFree      ( omg_d     );
   if (amom_d)     cudaFree      ( amom_d    );
@@ -738,7 +698,7 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
       
       id->write_Wm    (G2()   );    id->write_Wl    (G2()   );    id->write_Wlm   (G2()   );    
       id->write_Wz    (G2()   );    id->write_Wky   (G2()   );    id->write_Wkx   (G2()   );    id->write_Wkxky (G2()  );    
-      id->write_Phi2z    (P2() );    id->write_Phi2ky   (P2() );    id->write_Phi2kx   (P2() );    id->write_Phi2kxky (P2());    
+      id->write_Phi2z    (P2() );   id->write_Phi2ky(P2()   );    id->write_Phi2kx(P2()   );    id->write_Phi2kxky (P2());    
      
       
       Wapar_summand_krehm loop_R (P2(), fields->apar, fields->apar_ext, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
@@ -864,4 +824,236 @@ void Diagnostics::restart_write(MomentsG** G, double *time)
 
   if (retval = nc_close(ncres)) ERR(retval);
 }
+
+Diagnostics_cetg::Diagnostics_cetg(Parameters* pars, Grids* grids, Geometry* geo) : geo_(geo), fields_old(nullptr), id(nullptr)
+{
+  printf(ANSI_COLOR_BLUE);
+  pars_ = pars;
+  grids_ = grids;
+  
+  int nL  = grids_->Nl;
+  int nM  = grids_->Nm;
+  int nS  = grids_->Nspecies;
+  int nX  = grids_->Nx;
+  int nXk = grids_->Nakx;
+  int nY  = grids_->Nyc;
+  int nYk = grids_->Naky;
+  int nZ  = grids_->Nz;
+  int nR  = nX  * nY  * nZ; // nY is *not* the number of grid points in the y-direction. 
+  int nK  = nXk * nYk * nZ;
+  int nG  = nR * grids_->Nmoms;
+
+  assert( (nS == 1) && "number of species must be one \n");
+    
+  G2s         = nullptr;  P2s         = nullptr;  
+  omg_d       = nullptr;  tmp_omg_h   = nullptr;  
+  vEk         = nullptr;
+  vol_fac     = nullptr;
+  flux_fac    = nullptr;
+
+  id         = new NetCDF_ids(grids_, pars_); cudaDeviceSynchronize(); CUDA_DEBUG("NetCDF_ids: %s \n");
+
+  float *vol_fac_h;
+  volDenom = 0.;
+  vol_fac_h = (float*) malloc (sizeof(float) * nZ);
+  cudaMalloc (&vol_fac, sizeof(float) * nZ);
+  for (int i=0; i < nZ; i++) volDenom   += geo_->jacobian_h[i];
+  for (int i=0; i < nZ; i++) vol_fac_h[i]  =  geo_->jacobian_h[i] / volDenom;
+  CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*nZ);
+  free(vol_fac_h);
+
+  fluxDenom = 0.;  
+  float *flux_fac_h;
+  flux_fac_h = (float*) malloc (sizeof(float) * nZ);
+  cudaMalloc(&flux_fac, sizeof(float)*nZ);
+  for (int i=0; i<grids_->Nz; i++) fluxDenom   += geo_->jacobian_h[i] * geo_->grho_h[i];
+  for (int i=0; i<grids_->Nz; i++) flux_fac_h[i]  = geo_->jacobian_h[i] / fluxDenom;
+
+  CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*nZ);
+  free(flux_fac_h);  
+
+  if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) cudaMalloc (&G2s, sizeof(float) * nG); 
+  cudaMalloc (&P2s, sizeof(float) * nR);
+
+  if (id -> omg -> write_v_time) {
+    fields_old = new      Fields(pars_, grids_);      cudaDeviceSynchronize(); CUDA_DEBUG("Fields: %s \n");
+    cudaMalloc     (    &omg_d,   sizeof(cuComplex) * nX * nY);//     cudaMemset (omg_d, 0., sizeof(cuComplex) * nX * nY);
+    tmp_omg_h = (cuComplex*) malloc (sizeof(cuComplex) * nX * nY);
+    int nn = nX*nY; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
+    setval <<< nb, nt >>> (omg_d, zero, nn);
+  }  
+
+  if (id -> kxvEy -> write_v_time || id -> xykxvEy -> write_v_time) {
+    cudaMalloc     (&vEk,        sizeof(cuComplex) * grids_->NxNycNz);
+  }
+     
+  // set up stop file
+  sprintf(stopfilename_, "%s.stop", pars_->run_name);
+
+  //  dB_scale = min(512, nR);
+  //  dG_scale = 1 + (nR-1)/dB_scale.x;
+
+  dB_spectra = dim3(min(8, nY), min(8, nX), min(8, nZ));
+  dG_spectra = dim3(1 + (nY-1)/dB_spectra.x, 1 + (nX-1)/dB_spectra.y, 1 + (nZ-1)/dB_spectra.z);  
+
+  int nyx =  nY * nX;
+  int nlm = nL * nM;
+
+  int nt1 = 16;
+  int nb1 = 1 + (nyx-1)/nt1;
+
+  int nt2 = 16;
+  int nb2 = 1 + (grids_->Nz-1)/nt2;
+  
+  dB_all = dim3(nt1, nt2, 1);
+  dG_all = dim3(nb1, nb2, nlm);
+  
+  nt1 = min(32, grids_->Nyc);
+  nb1 = 1 + (grids_->Nyc-1)/nt1;
+
+  nt2 = min(32, grids_->Nx);
+  nb2 = 1 + (grids_->Nx-1)/nt2;
+
+  dBk = dim3(nt1, nt2, 1);
+  dGk = dim3(nb1, nb2, 1);
+  
+  if (grids_->Nakx > 1024) {printf("Need to redefine GFLA in diagnostics \n"); exit(1);}
+
+  nt1 = min(grids_->Ny, 512);
+  nb1 = 1 + (grids_->Ny-1)/nt1;
+
+  dbp = dim3(nt1, 1, 1);
+  dgp = dim3(nb1, 1, 1);
+
+  printf(ANSI_COLOR_RESET);
+  ndiag = 1;
+
+}
+
+Diagnostics_cetg::~Diagnostics_cetg()
+{
+  if (fields_old) delete fields_old;
+  if (id)         delete id;
+
+  if (G2s)        cudaFree      ( G2s       );
+  if (P2s)        cudaFree      ( P2s       );
+  if (omg_d)      cudaFree      ( omg_d     );
+  
+  if (vol_fac)    cudaFree      ( vol_fac   );
+  if (flux_fac)   cudaFree      ( flux_fac  );
+  if (tmp_omg_h)  free  ( tmp_omg_h );
+}
+
+bool Diagnostics_cetg::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
+{
+  int retval;
+  bool stop = false;
+  int nw;
+
+  nw = pars_->nwrite;
+
+  if (counter == 0 && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
+
+  if(id -> omg -> write_v_time && (counter == 0 || counter%nw==0)) {  // complex frequencies
+    int nt = min(512, grids_->NxNyc) ;
+    growthRates <<< 1 + (grids_->NxNyc-1)/nt, nt >>> (fields->phi, fields_old->phi, dt, omg_d);
+  }
+
+  if ((counter % nw == nw-1) && id -> omg -> write_v_time) fields_old->copyPhiFrom(fields);
+
+    
+  if(counter%nw == 0 || time > pars_->t_max) {
+
+    fflush(NULL);
+    id -> write_nc(id -> time, time);
+    if (grids_->iproc==0) printf("%s: Step %7d: Time = %10.5f,  dt = %.3e\n",  pars_->run_name, counter, time, dt);
+ 
+    //if (pars_->write_phi) id->write_nc(id->phi, phi);
+
+    // Plot f(x,y,z=0)
+    if (pars_->write_xymom) id -> write_nc( id -> z_time, time);
+    id -> write_moment ( id -> xyPhi,   fields->phi,    vol_fac);
+    
+    if ( id -> qs -> write_v_time) {                                                                // heat flux
+      float p_s = pars_->species_h[0].nt;      
+      heat_flux_summand_cetg loop_R (P2(), fields->phi, G[0]->G(), grids_->ky, flux_fac, p_s);
+    }
+    id -> write_Qky(P2());
+    id -> write_Qkx(P2());
+    id -> write_Qkxky(P2());
+    id -> write_Qz(P2());
+    id -> write_Q(P2());   
+    
+    if(id -> omg -> write_v_time && counter > 0) {                    // complex frequencies
+      print_omg(omg_d);  id -> write_omg(omg_d);
+    }
+
+    if (pars_->diagnosing_spectra) {                                        // Various spectra
+      W_summand GALL (G2(), G[0]->G(), vol_fac, G[0]->species->nt);
+
+      Wphi_summand_cetg loop_R (P2(), fields->phi, vol_fac);
+      
+      id->write_Wl    (G2());  
+      id->write_Wz    (G2());    id->write_Wky    (G2() );    id->write_Wkx    (G2()   );    id->write_Wkxky (G2()  );    
+      id->write_Phi2z (P2());    id->write_Phi2ky (P2() );    id->write_Phi2kx (P2()   );    id->write_Phi2kxky (P2());    
+     
+    }
+
+    nc_sync(id->file);
+    nc_sync(id->z_file);
+  }
+
+  // check to see if we should stop simulation
+  stop = checkstop();
+  return stop;
+}
+
+void Diagnostics_cetg::finish(MomentsG** G, Fields* fields, double time) 
+{
+  if (pars_->write_fields) {
+    id -> write_fields(id -> fields_phi,  fields->phi );
+  }
+}
+
+void Diagnostics_cetg::print_omg(cuComplex *W)
+{
+  CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
+  print_growth_rates_to_screen(tmp_omg_h);
+}
+
+bool Diagnostics_cetg::checkstop() 
+{
+  struct stat buffer;   
+  bool stop = (stat (stopfilename_, &buffer) == 0);
+  if (stop) remove(stopfilename_);
+  return stop;
+}
+
+void Diagnostics_cetg::print_growth_rates_to_screen(cuComplex* w)
+{
+  int Nx = grids_->Nx;
+  int Naky = grids_->Naky;
+  int Nyc  = grids_->Nyc;
+
+  printf("ky\tkx\t\tomega\t\tgamma\n");
+
+  for(int j=0; j<Naky; j++) {
+    for(int i= 1 + 2*Nx/3; i<Nx; i++) {
+      int index = j + Nyc*i;
+      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
+      printf("\n");
+    }
+    for(int i=0; i < 1 + (Nx-1)/3; i++) {
+      int index = j + Nyc*i;
+      if(index!=0) {
+	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
+	printf("\n");
+      } else {
+	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
+      }
+    }
+    if (Nx>1) printf("\n");
+  }
+}
+
 
