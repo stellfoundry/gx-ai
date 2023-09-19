@@ -282,6 +282,47 @@ void Solver_KREHM::set_equilibrium_current(MomentsG* G, Fields* fields)
   }
 }
 
+//==========================================
+// Solver_cetg
+// object for handling field solve in the Adkins collisional ETG model
+//==========================================
+Solver_cetg::Solver_cetg(Parameters* pars, Grids* grids) :
+  pars_(pars), grids_(grids)
+{
+  int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
+  
+  nn1 = grids_->Nyc;        nt1 = min(nn1, 32 );   nb1 = 1 + (nn1-1)/nt1;
+  nn2 = grids_->Nx;         nt2 = min(nn2,  4 );   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = grids_->Nz;         nt3 = min(nn3,  4 );   nb3 = 1 + (nn3-1)/nt3;
+  
+  dB = dim3(nt1, nt2, nt3);
+  dG = dim3(nb1, nb2, nb3);
+
+  count = grids_->NxNycNz; 
+  size_t cgrid = sizeof(cuComplex)*count;
+  checkCuda(cudaMalloc((void**) &moms, cgrid)); 
+  // set offset pointers
+  density = moms;
+  temperature = moms + grids_->NxNycNz;
+}
+
+Solver_cetg::~Solver_cetg() 
+{
+  cudaFree(moms);
+}
+
+void Solver_cetg::fieldSolve(MomentsG** G, Fields* fields)
+{
+  if(grids_->iproc_m==0) {
+    CP_ON_GPU(density, G[0]->Gm(0), sizeof(cuComplex)*grids_->NxNycNz);
+  }
+  if(grids_->nprocs>1) {
+    assert(false && "Cannot use multiple GPUs for the Adkins collisional ETG model. \n");
+  }
+  
+  phiSolve_cetg<<<dG, dB>>>(fields->phi, density, pars_->tau_fac);
+}
+
 //=======================================
 // Solver_VP
 // object for handling field solve in VP

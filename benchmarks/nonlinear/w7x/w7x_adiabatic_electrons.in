@@ -37,7 +37,7 @@
  # Name of the vmec file
  vmec_file = "wout_w7x.nc"
 
- #Field line label zeta - q*theta. alpha = 0.0 usually coerresponds to a
+ #Field line label alpha_t = theta - iota * zeta. alpha = 0.0 usually corresponds to a
  #field line on the outboard side
  alpha = 0.0
 
