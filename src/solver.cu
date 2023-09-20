@@ -301,6 +301,7 @@ Solver_cetg::Solver_cetg(Parameters* pars, Grids* grids) :
   count = grids_->NxNycNz; 
   size_t cgrid = sizeof(cuComplex)*count;
   checkCuda(cudaMalloc((void**) &moms, cgrid)); 
+
   // set pointer for convenience
   density = moms;
 }

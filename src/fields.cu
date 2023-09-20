@@ -11,14 +11,13 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc((void**) &phi, size_));
 
   int nn = grids->NxNycNz; int nt = min(nn, 512); int nb = 1 + (nn-1)/nt;  cuComplex zero = make_cuComplex(0.,0.);
-  setval <<< nb, nt >>> (phi, zero, nn);
+  setval <<< nb, nt >>> (phi, zero, nn); // should replace this with cudaMemset
 
   //  cudaMemset(phi, 0., size_);
   bool debug = pars->debug;
 
   phi_h = (cuComplex*) malloc(size_);
   DEBUGPRINT("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
-
   
   checkCuda(cudaMalloc((void**) &apar, size_));
   DEBUGPRINT("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -35,7 +34,6 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   apar_h = (cuComplex*) malloc(size_);
   apar_ext_realspace_h = (float*) malloc(sizeReal_);
   apar_ext_h = (cuComplex*) malloc(size_);
-
     
   checkCuda(cudaMalloc((void**) &bpar, size_));
   if(debug) printf("Allocated a field array of size %.2f MB\n", size_/1024./1024.);
@@ -81,10 +79,17 @@ Fields::Fields(Parameters* pars, Grids* grids) :
       for(int idx = 0; idx < grids_->Nx; idx++) {
         for(int idy = 0; idy < grids_->Ny; idy++) {
            float x = grids_->x_h[idx];
-
+	   float xn = x/pars_->x0;
+	   float pi = M_PI;
+	   
 	   int index = idy + idx * grids_->Ny + idz * grids_->NxNy;
 	   float A0 = 1.29904; // this value makes B_ext_max = 1
-	   apar_ext_realspace_h[index] = A0/pow(cosh((x-M_PI*pars_->x0)/pars_->x0),2)*((pow(tanh(x/pars_->x0),2)+(pow(tanh(x/pars_->x0-2*M_PI),2))-(pow(tanh(2*M_PI),2)))/(2*pow(tanh(M_PI),2)-pow(tanh(2*M_PI),2)));
+	   apar_ext_realspace_h[index] = A0 / pow(cosh(xn - pi), 2)
+	     * (
+		( pow( tanh(xn), 2) + pow( tanh(xn - 2*pi), 2) -  pow(tanh(2*pi), 2) )
+		/
+		( 2*pow( tanh(pi), 2) - pow(tanh( 2*pi), 2) )
+		);
 	}
       }
     }

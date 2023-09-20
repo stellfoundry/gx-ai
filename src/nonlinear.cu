@@ -185,6 +185,11 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     grad_perp_J0f -> dyC2R(J0apar, dJ0apar_dy);
   }
   
+  // Note that when parallelizing over m, Nm = Nm/nprocs_m < total Nm
+  // so that if the input Nm = 16 but each node has four Hermites (for example),
+  // then here Nm = 4.
+  // On the other hand, there are ghost cells required when fapar = 1. (finite A_parallel) 
+  //
   // loop over m to save memory. also makes it easier to parallelize.
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
     
@@ -206,6 +211,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     laguerre->transformToSpectral(g_res, dG);
     grad_perp_G->R2C(dG, G_tmp->G(), false); // this R2C has accumulate=false
 
+    // m_lo:m_up ranges over the non-ghost Hermites on this GPU. m_up is correctly excluded
     for(int m=grids_->m_lo; m<grids_->m_up; m++) {
       int m_local = m - grids_->m_lo;
 
