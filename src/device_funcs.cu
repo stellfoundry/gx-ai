@@ -438,7 +438,7 @@ __global__ void add_scaled_kernel(cuComplex* res,
   unsigned int idxy = get_id1(); 
   unsigned int idz  = get_id2();
   unsigned int idlm = get_id3(); 
-  if (idxy < nx*nyc && idz < nz && ildm < nl*nm) {
+  if (idxy < nx*nyc && idz < nz && idlm < nl*nm) {
     if (neqfix || not_fixed_eq(idxy)) {
       
       unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
@@ -2225,18 +2225,11 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g,
       rhs_par[globalIdx] = rhs_par[globalIdx] -vt_ * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1) * gradpar;
       
       // field terms
-      if(m == 1) {  // m = 1 has Phi & Bpar terms
-	rhs_par[globalIdx] = rhs_par[globalIdx]
-	  - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar
-	  - JflrB(l, b_s) * bpar_ * vt_ * gradpar;
-      }
+      if(m == 1) rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar
+		   - JflrB(l, b_s) * bpar_ * vt_ * gradpar; // m = 1 has Phi & Bpar terms
       // the following Apar terms are only needed in the formulation without dA/dt
-      if(m == 0) {  // m = 0 has Apar term
-        rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
-      }
-      if(m == 2) {  // m = 2 has Apar term
-        rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar;
-      }
+      if(m == 0) rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 0 has Apar term
+      if(m == 2) rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 2 has Apar term
     }
   }
 }
@@ -2427,7 +2420,7 @@ __global__ void rhs_linear_krehm(const cuComplex* g,
   idXYZ; 
 
   if (unmasked(idx, idy) && (idz < nz)) {
-    unsigned int idxyz= get_idxyz(idx, idy, idz);
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
     unsigned int globalIdx;
     
     const float rhos_ov_de = rhos/de;
@@ -2451,11 +2444,9 @@ __global__ void rhs_linear_krehm(const cuComplex* g,
       if(m == 0) rhs_par[globalIdx] = rhs_par[globalIdx] - apar_/(de*de);  // m = 0 has Apar term      
       if(m == 1) rhs_par[globalIdx] = rhs_par[globalIdx] + phi_/(rhos*de); // m = 1 has Phi term      
       if(m == 2) rhs_par[globalIdx] = rhs_par[globalIdx] - sqrtf(2.) * apar_/(de*de); // m = 2 has Apar term
-      }
     }
   }
 }
-
 
 __global__ void krehm_collisions(const cuComplex* g,
 				 const cuComplex* apar,
@@ -2565,7 +2556,7 @@ __global__ void hyperdiff(const cuComplex* g,
   unsigned int l       = get_id2();
   unsigned int m_local = get_id3();
   
-  if (idxyz < nx*nyc*nz && l<nl && m<nm) {
+  if (idxyz < nx*nyc*nz && l<nl && m_local<nm) {
     unsigned int idy = idxyz % nyc;
     unsigned int idx = (idxyz / nyc) % nx;
     if (unmasked(idx, idy)) {	
@@ -2587,25 +2578,26 @@ __global__ void hypercollisions(const cuComplex* g,
 				const int p_hyper_m,
 				cuComplex* rhs,
 				const float vt) 
-{  
-  unsigned int idxyz = get_id1();
-  unsigned int l     = get_id2();
-  unsigned int m     = get_id3();
-
-  if (idxyz < nx*nyc*nz && l<nl && m<nm) {
+{
+  unsigned int idxyz   = get_id1();
+  unsigned int l       = get_id2();
+  unsigned int m_local = get_id3();
+  
+  if (idxyz < nx*nyc*nz && l<nl && m_local<nm) {
     unsigned int idy = idxyz % nyc;
     unsigned int idx = (idxyz / nyc) % nx;
     
     if ( unmasked(idx, idy) ) {
-    float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
-    float scaled_nu_hyp_m = (float) nm_glob * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
-
-    int globalIdx = idxyz + nx*nyc*nz*(l + nl*m);                                    
-    if (m+m_lo>2 || l>1) { 
-      rhs[globalIdx] = rhs[globalIdx] -
-	vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
-	    +scaled_nu_hyp_m*pow((float) (m+m_lo)/nm_glob, p_hyper_m))*g[globalIdx];
-    }   
+      float scaled_nu_hyp_l = (float) nl * nu_hyper_l;
+      float scaled_nu_hyp_m = (float) nm_glob * nu_hyper_m; // scaling appropriate for curvature. Too big for slab
+      
+      int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
+      if (m_local+m_lo>2 || l>1) { 
+	rhs[globalIdx] = rhs[globalIdx] -
+	  vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+	      +scaled_nu_hyp_m*pow((float) (m_local+m_lo)/nm_glob, p_hyper_m))*g[globalIdx];
+      }   
+    }
   }
 }
 
@@ -2648,13 +2640,13 @@ __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, con
 }
 
 // This hyperdiffusivity is not applied to Hermite ghost cells
- __global__ void hb_hyper (const cuComplex* G,
+ __global__ void HB_hyper (const cuComplex* G,
 			  const float* s01,
 			  const float* s10,
 			  const float* s11,
 			  const float* kx,
 			  const float* ky,
-			  const float d_HB,
+			  const float D_HB,
 			  const int p_HB,
 			  cuComplex* RHS)
 {
@@ -2742,6 +2734,7 @@ __global__ void conservation_terms(cuComplex* upar_bar,
 	    + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, m0);
 	}
       }
+      uperp_bar[idxyz] = uperp_bar[idxyz]*sqrtf(b_s);
     }
   }
 }
