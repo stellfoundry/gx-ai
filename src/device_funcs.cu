@@ -2961,9 +2961,9 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 
       // Hc_(...) is defined by macro above. Only use here for m=0. 
       m_glob = 0 + m_lo;
-      if(m_glob == 0) {
+      //if(m_glob == 0) {
         uperp_bar[idxyz] = uperp_bar[idxyz] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0);
-      }
+      //}
 
       // H1c_(...) is defined by macro above. Only use here for m=1.
       m_glob = 1 + m_lo;
