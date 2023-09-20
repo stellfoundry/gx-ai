@@ -301,9 +301,8 @@ Solver_cetg::Solver_cetg(Parameters* pars, Grids* grids) :
   count = grids_->NxNycNz; 
   size_t cgrid = sizeof(cuComplex)*count;
   checkCuda(cudaMalloc((void**) &moms, cgrid)); 
-  // set offset pointers
+  // set pointer
   density = moms;
-  temperature = moms + grids_->NxNycNz;
 }
 
 Solver_cetg::~Solver_cetg() 
