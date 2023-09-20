@@ -57,6 +57,13 @@ class Phi2Diagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+// |Phi(ky=0)|**2
+class Phi2ZonalDiagnostic : public SpectraDiagnostic {
+ public:
+  Phi2ZonalDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // |Apar|**2
 class Apar2Diagnostic : public SpectraDiagnostic {
  public:

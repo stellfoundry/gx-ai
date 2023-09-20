@@ -78,6 +78,27 @@ void Phi2Diagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, f
   }
 }
 
+// |Phi(ky=0)|**2 diagnostic class
+Phi2ZonalDiagnostic::Phi2ZonalDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+ : SpectraDiagnostic(pars, grids, geo, ncdf)
+{
+  varname = "Phi2_zonal";
+  isMoments = false;
+  set_kernel_dims();
+
+  add_spectra(allSpectra->t_spectra);
+  add_spectra(allSpectra->kxt_spectra);
+  add_spectra(allSpectra->zt_spectra);
+}
+
+void Phi2ZonalDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  // compute |Phi|**2(ky, kx, z, t)
+  Phi2_zonal_summand <<<dG, dB>>> (tmpf, f->phi, geo_->vol_fac); 	
+  // compute and write spectra of |Phi|**2
+  write_spectra(tmpf);
+}
+
 Apar2Diagnostic::Apar2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
  : SpectraDiagnostic(pars, grids, geo, ncdf)
 {

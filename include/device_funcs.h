@@ -196,6 +196,7 @@ __global__ void maxPhi(float* phi_max, const cuComplex *phi);
 __global__ void Wphi_scale(float* p2, float alpha);
 
 __global__ void Phi2_summand(float *p2, const cuComplex *phi, const float *volJac);
+__global__ void Phi2_zonal_summand(float *p2, const cuComplex *phi, const float *volJac);
   
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s);
 __global__ void Wphi_summand_krehm(float* p2, const cuComplex* phi, const float* volJac, const float* kx, const float* ky, float rho_i);

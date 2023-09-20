@@ -1425,6 +1425,28 @@ __global__ void Phi2_summand(float *p2, const cuComplex *phi, const float *volJa
   }
 }
 
+__global__ void Phi2_zonal_summand(float *p2, const cuComplex *phi, const float *volJac)
+{
+  idXYZ; 
+  
+  unsigned int idxyz = get_idxyz(idx, idy, idz);
+
+  if (idy < nyc && idx < nx && idz < nz) { 
+    if (unmasked(idx, idy)) {    
+      cuComplex tmp;
+      float fac;
+      if (idy==0) fac = 1.0;
+      else fac = 0.0;  // zero out non-zonal modes
+
+      tmp = cuConjf( phi[idxyz] ) * phi[idxyz] *fac * volJac[idz] ;
+      p2[idxyz] = 0.5 * tmp.x;
+
+    } else {
+      p2[idxyz] = 0.;
+    }
+  }
+}
+
 __global__ void Wphi_summand(float* p2, const cuComplex* phi, const float* volJac, const float* kperp2, float rho2_s)
 {
   idXYZ;
