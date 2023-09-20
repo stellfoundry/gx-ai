@@ -2582,22 +2582,38 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
     t_bar[idxyz]     = make_cuComplex(0., 0.);
     
     float b_s = kperp2[idxyz] * sp.rho2;
+
+    int m_glob;
+    int m2 = 2 - m_lo; // local index corresponding to global m = 2
+    int m0 = 0 - m_lo; // local index corresponding to global m = 0
+
     // sum over l
     for (int l=0; l < nl; l++) {
 
       // Hc_(...) is defined by macro above. Only use here for m=0. 
-      uperp_bar[idxyz] = uperp_bar[idxyz] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0);
+      m_glob = 0 + m_lo;
+      if(m_glob == 0) {
+        uperp_bar[idxyz] = uperp_bar[idxyz] + (Jflr(l,b_s) + Jflr(l-1,b_s))*Hc_(idxyz, l, 0);
+      }
 
       // H1c_(...) is defined by macro above. Only use here for m=1.
-      upar_bar[idxyz] = upar_bar[idxyz] + Jflr(l,b_s)*H1c_(idxyz, l, 1);
+      m_glob = 1 + m_lo;
+      if(m_glob == 1) {
+        upar_bar[idxyz] = upar_bar[idxyz] + Jflr(l,b_s)*H1c_(idxyz, l, 1);
+      }
 
       // energy conservation correction for nlaguerre = 1
-      if (nl == 1) {
-          t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)*Jflr(l,b_s)*Gc_(idxyz, l, 2);
-      } else {
-          t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)/3.*Jflr(l,b_s)*Gc_(idxyz, l, 2)
-            + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, 0);
+      m_glob = 2 + m_lo;
+      if (nl == 1 && m_glob == 2) {
+        t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)*Jflr(l,b_s)*Gc_(idxyz, l, 2);
+      } else if ( m0 >= -m_ghost && m2 < nm + m_ghost ) {
+        // t_bar needs to be correct on procs containing m=0 and m=2. 
+        // note: if nm = 1 (one Hermite per GPU), this will only work if m_ghost = 2, which is now enforced in grids.
+        // for m_ghost = 1 multi-gpu comms would be required for nm = 1...
+        t_bar[idxyz] = t_bar[idxyz] + sqrtf(2.)/3.*Jflr(l,b_s)*Gc_(idxyz, l, m2)
+          + 2./3.*( l*Jflr(l-1,b_s) + 2.*l*Jflr(l,b_s) + (l+1)*Jflr(l+1,b_s) )*Hc_(idxyz, l, m0);
       }
+
     }
     uperp_bar[idxyz] = uperp_bar[idxyz]*sqrtf(b_s);
   }
