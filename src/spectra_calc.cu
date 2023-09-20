@@ -96,8 +96,18 @@ SpectraCalc_kxst::SpectraCalc_kxst(Grids* grids, NcDims *nc_dims)
 void SpectraCalc_kxst::dealias_and_reorder(float *fold, float *fnew)
 {
   for (int is = 0; is < grids_->Nspecies; is++) {
-    for (int ik = 0; ik < grids_->Nakx; ik++) {
-      fnew[ik + is*grids_->Nakx] = fold[ik + is*grids_->Nx];
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    int it = 0;
+    int itp = it + NK;
+    fnew[itp + is*grids_->Nakx] = fold[it + is*grids_->Nx];
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
+
+      fnew[itp + is*grids_->Nakx] = fold[it + is*grids_->Nx];
+      fnew[itn + is*grids_->Nakx] = fold[itm + is*grids_->Nx];
     }
   }
 }
@@ -349,8 +359,18 @@ SpectraCalc_kxt::SpectraCalc_kxt(Grids* grids, NcDims *nc_dims)
 
 void SpectraCalc_kxt::dealias_and_reorder(float *fold, float *fnew)
 {
-  for (int ik = 0; ik < grids_->Nakx; ik++) {
-    fnew[ik] = fold[ik];
+  int NK = grids_->Nakx/2;
+  int NX = grids_->Nx; 
+  int it = 0;
+  int itp = it + NK;
+  fnew[itp] = fold[it];
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = NX - it;
+
+    fnew[itp] = fold[it];
+    fnew[itn] = fold[itm];
   }
 }
 

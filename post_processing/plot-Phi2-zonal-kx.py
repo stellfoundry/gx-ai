@@ -12,7 +12,7 @@ for fname in sys.argv[1:]:
   kx = data.groups['Grids'].variables['kx'][:]
   ky = data.groups['Grids'].variables['ky'][:]
   dkx = kx[1] - kx[0]
-  Akxky0t = data.groups['Diagnostics'].variables['Phi2_kxkyt'][:,0,:]
+  Akxky0t = data.groups['Diagnostics'].variables['Phi2_zonal_kxt'][:,:]
   Akx = np.mean(Akxky0t[-int(len(t)/2):], axis=0)/dkx
   plt.plot(kx, Akx, 'o-')
 
