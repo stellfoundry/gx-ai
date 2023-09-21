@@ -175,7 +175,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
   set_callbacks();
   
-  //  this->linkPrint();
+  if(pars_->debug)  this->linkPrint();
 }
 
 GradParallelLinked::~GradParallelLinked()
