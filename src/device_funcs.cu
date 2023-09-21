@@ -885,8 +885,8 @@ __global__ void init_omegad(float* omegad,
   }
 }
 
-# define H_(XYZ, L, M, S) (g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_)
-# define G_(XYZ, L, M, S)  g[(XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
+# define H_(XYZ, L, M, S) (g[(int) (XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))] + Jflr(L,b_s)*phi_)
+# define G_(XYZ, L, M, S)  g[(int) (XYZ) + nx*nyc*nz*((L) + nl*((M) + nm*(S)))]
 // H = G, except for m = 0
 // C = C(H) but H and G are the same function for all m!=0. Our main array defines g so the correction to produce
 // H is only appropriate for m=0. In other words, the usage here is basically handling the delta_{m0} terms
@@ -1548,7 +1548,7 @@ __global__ void Wapar_summand_krehm(float* p2,
   }
 }
 
-# define Gh_(XYZ, L, M) g[(XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo))]
+# define Gh_(XYZ, L, M) g[(int) (XYZ) + nx*nyc*nz*((L) + nl*(M-m_lo))]
 __global__ void heat_flux_summand(float* qflux,
 				  const cuComplex* phi,
 				  const cuComplex* apar,
@@ -2675,9 +2675,9 @@ __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, con
   }
 }
  
-# define Hc_(XYZ, L, M) (g[(XYZ) + nx*nyc*nz*((L) + nl*(M))] + Jflr(L,b_s)*phi_*zt_ + JflrB(L,b_s)*bpar_)
-# define H1c_(XYZ, L, M) (g[(XYZ) + nx*nyc*nz*((L) + nl*(M))] - Jflr(L,b_s)*apar_*zt_*vt_)
-# define Gc_(XYZ, L, M)  g[(XYZ) + nx*nyc*nz*((L) + nl*(M))]
+# define Hc_(XYZ, L, M) (g[(int) (XYZ) + nx*nyc*nz*((L) + nl*(M))] + Jflr(L,b_s)*phi_*zt_ + JflrB(L,b_s)*bpar_)
+# define H1c_(XYZ, L, M) (g[(int) (XYZ) + nx*nyc*nz*((L) + nl*(M))] - Jflr(L,b_s)*apar_*zt_*vt_)
+# define Gc_(XYZ, L, M)  g[(int) (XYZ) + nx*nyc*nz*((L) + nl*(M))]
 // H = G, except for m = 0, 1, 2
 __global__ void conservation_terms(cuComplex* upar_bar,
 				   cuComplex* uperp_bar,
