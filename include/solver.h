@@ -88,7 +88,7 @@ private:
   dim3 dG, dB, dg, db;
   int count;
 
-  cuComplex *moms, *density, *temperature;
+  cuComplex *moms, *density;
 
   // local private copies
   Parameters * pars_  ;

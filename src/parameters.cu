@@ -644,7 +644,8 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].mass = 1.0;
     species_h[0].z    = 1.0;
     species_h[0].dens = 1.0;
-    species_h[0].temp = 1.0;    
+    species_h[0].temp = 1.0;
+    species_h[0].type = 1; 
   }
   
   float numax = -1.;

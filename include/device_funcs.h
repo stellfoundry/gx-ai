@@ -230,10 +230,10 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
 
 __global__ void init_kperp2(float* kperp2, const float* kx, const float* ky,
 			    const float* gds2, const float* gds21, const float* gds22,
-			    const float* bmagInv, float shat);
+			    const float* bmagInv, const float shat);
 
 __global__ void init_omegad(float* omegad, float* cv_d, float* gb_d, const float* kx, const float* ky,
-			    const float* cv, const float* gb, const float* cv0, const float* gb0, float shat);
+			    const float* cv, const float* gb, const float* cv0, const float* gb0, const float shat);
 
 __global__ void calc_bgrad(float* bgrad, const float* bgrad_temp, const float* bmag, float scale);
 __global__ void init_kxs(float* kxs, float* kx, float* th0);
@@ -354,10 +354,14 @@ __global__ void nlks(float *res, const float *Gy, const float *dG);
 __global__ void nlks1(float *res, const float *Gy);
 __global__ void nlks2(cuComplex *res, const float *ky);
 __global__ void rhs_ks (const cuComplex *G, cuComplex *GRhs, float *ky, float eps_ks);
-__global__ void streaming_rhs(const cuComplex* __restrict__ g, const cuComplex* __restrict__ phi,
-			      const cuComplex* __restrict__ apar, const cuComplex* __restrict__ bpar,
+__global__ void streaming_rhs(const cuComplex* __restrict__ g,
+			      const cuComplex* __restrict__ phi,
+			      const cuComplex* __restrict__ apar,
+			      const cuComplex* __restrict__ bpar,
 			      const float* __restrict__ kperp2, 
-			      const float gradpar, const specie sp, cuComplex* __restrict__ rhs_par);
+			      const float gradpar,
+			      const specie sp,
+			      cuComplex* __restrict__ rhs_par);
 
 __global__ void rhs_linear(const cuComplex* __restrict__ g,
 			   const cuComplex* __restrict__ phi,
@@ -382,8 +386,14 @@ __global__ void get_s01 (float* s01, const cuComplex* favg, const float* kx, con
 __global__ void HB_hyper (const cuComplex* G, const float* s01, const float* s10, const float* s11,
 			  const float* kx, const float* ky, const float D_HB, const int p_HB, cuComplex* RHS);
 
-__global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cuComplex* t_bar,
-				   const cuComplex* g, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const float *kperp2,
+__global__ void conservation_terms(cuComplex* upar_bar,
+				   cuComplex* uperp_bar,
+				   cuComplex* t_bar,
+				   const cuComplex* g,
+				   const cuComplex* phi,
+				   const cuComplex* apar,
+				   const cuComplex* bpar,
+				   const float *kperp2,
 				   const specie sp);
 
 __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,

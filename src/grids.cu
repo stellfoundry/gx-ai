@@ -79,8 +79,8 @@ Grids::Grids(Parameters* pars) :
       // this is now the local Nm on this proc
       Nm = Nm/nprocs_m;
 
-      m_lo = iproc_m*Nm;
-      m_up = (iproc_m+1)*Nm;
+      m_lo = (iproc_m    )*Nm;
+      m_up = (iproc_m + 1)*Nm;
 
       // add ghosts in m
       if(pars->slab && Nm>1) {

@@ -161,6 +161,8 @@ Linear_GK::~Linear_GK()
 }
 
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
+  // finish Hermite ghost exchange
+  cudaStreamSynchronize(G->syncStream);
 
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
