@@ -1232,6 +1232,14 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
 {
   moments[forcing_index] = moments[forcing_index] + force; }
 
+__global__ void kz_stirring_kernel(const cuComplex force, cuComplex *moments, int kx, int ky, int kz)
+{
+  unsigned int idz = get_id1();
+  int z = idz/nz* 2*M_PI*zp
+  forcing_index = ky + Nyc*kx + NxNyc*idz 
+  moments[forcing_index] = moments[forcing_index] + force*cos(kz*z); }
+
+
 __global__ void yzavg(float *vE, float *vEavg, float *vol_fac)
 {
   unsigned int idx = get_id1();
@@ -2575,9 +2583,8 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
     if (unmasked(idx, idy)) {	
       float kxmax = kx[(nx-1)/3];
       float kymax = ky[(ny-1)/3];
-      float k2s = 1./pow((kxmax*kxmax + kymax*kymax), nu_hyper);      
-      float Dfac = D_hyper*k2s*pow((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
-      
+      double Dfac = D_hyper*pow((double) (kx[idx]*kx[idx] + ky[idy]*ky[idy])/(kxmax*kxmax + kymax*kymax), nu_hyper);
+      //printf("Dfac = %lf , (kxmax, kymax) = (%lf, %lf), nu_hyper = %lf , (kxmax*kxmax + kymax*kymax)^nu_hyper = %lf \n", Dfac, kxmax, kymax, nu_hyper, pow((kxmax*kxmax + kymax*kymax), nu_hyper)); 
       unsigned int l = get_id2();
       if (l<nl) {
 	unsigned int m = get_id3() + m_lo;
