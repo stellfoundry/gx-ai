@@ -741,7 +741,7 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
       id->write_Phi2z    (P2() );    id->write_Phi2ky   (P2() );    id->write_Phi2kx   (P2() );    id->write_Phi2kxky (P2()); id->write_Phi2t(P2());
 
       Wapar_summand_krehm loop_R (P2(), fields->apar, fields->apar_ext, vol_fac, grids_->kx, grids_->ky, pars_->rho_i);
-      id->write_Mky (P2()); id->write_Mkx (P2()); id->write_Mkxky(P2());  id->write_Ms(P2());
+      id->write_Mky (P2()); id->write_Mkx (P2()); id->write_Mkxky(P2());  id->write_Ms(P2()); id->write_Mkperp(P2());
     }
 
     nc_sync(id->file);
