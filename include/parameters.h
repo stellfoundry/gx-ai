@@ -116,7 +116,7 @@ class Parameters {
   int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
   int nm_add, nl_add, ns_add;
-  int forcing_index, smith_par_q, smith_perp_q;
+  int forcing_index, smith_par_q, smith_perp_q, forcing_kz, forcing_k2min, forcing_k2max;
   int equilibrium_type, source_option, inlpm, p_hyper, iphi00;
   int dorland_phase_ifac, ivarenna, iflr, i_share;
   int iky_single, ikx_single, iky_fixed, ikx_fixed;
@@ -139,7 +139,7 @@ class Parameters {
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
-  float forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
+  float forcing_amp, pos_forcing_amp, neg_forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m, nu_hyper_lm;
   float nu_hyper_z;
   float D_HB, w_osc;

@@ -400,10 +400,14 @@ void Parameters::get_nml_vars(char* filename)
   forcing_type  = toml::find_or <string> (tnml, "forcing_type",    "Kz" );
   stir_field    = toml::find_or <string> (tnml, "stir_field", "density" );
   forcing_amp   = toml::find_or <float>  (tnml, "forcing_amp",      1.0 );
+  pos_forcing_amp = toml::find_or <float> (tnml, "pos_forcing_amp",  1.0); 
+  neg_forcing_amp = toml::find_or <float> (tnml, "neg_forcing_amp",  1.0); 
   forcing_index = toml::find_or <int>    (tnml, "forcing_index",    1   );
   forcing_init  = toml::find_or <bool>   (tnml, "forcing_init",   false );
   no_fields     = toml::find_or <bool>   (tnml, "no_fields",      false );
-  
+  forcing_kz    = toml::find_or <int>    (tnml, "forcing_kz",         0 );
+  forcing_k2min = toml::find_or <int>    (tnml, "forcing_k2min",      0 );
+  forcing_k2max = toml::find_or <int>    (tnml, "forcing_k2max",      0 );
 
   ///////////////////////////////////////////////////////////////////////
   //

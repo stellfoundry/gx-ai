@@ -1,4 +1,5 @@
 #include "forcing.h"
+#include <cuda_runtime.h>
 #define GSINGLE <<< 1, 1 >>>
 
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
@@ -46,14 +47,15 @@ void KzForcing::stir(MomentsG *G) {
     }
                              
 }
-void HeliInjForcing::HeliInjForcing(Parameters *pars, Grids* grids) : pars_(pars), grids_(grids)
+
+HeliInjForcing::HeliInjForcing(Parameters *pars) : pars_(pars)
 {
-  pos_forcing_amp_ = pars_->pos_forcing_amp
-  neg_forcing_amp_ = pars_->neg_forcing_amp
-  k2min = pars_->forcing_k2min
-  k2max = pars_->forcing_k2max
-  kz = pars_->forcing_kz
-  nz = grids_->Nz
+  pos_forcing_amp_ = pars_->pos_forcing_amp;
+  neg_forcing_amp_ = pars_->neg_forcing_amp;
+  k2min = pars_->forcing_k2min;
+  k2max = pars_->forcing_k2max;
+  kz = pars_->forcing_kz;
+  Nz = grids_->Nz;
   // Define the maximum size of the list (adjust as needed)
   const int maxListSize = 4*((k2max+1)*(k2max+1) - k2min*k2min); // Basically the max number of points possible to be found 
   // Create an array to store the (i, j) pairs
@@ -74,13 +76,17 @@ void HeliInjForcing::HeliInjForcing(Parameters *pars, Grids* grids) : pars_(pars
   printf("pos_forcing_amp = %f \n neg_forcing_amp = %f", pos_forcing_amp_, neg_forcing_amp_);
 }
 
+HeliInjForcing::~HeliInjForcing()
+{
+}
+
 void HeliInjForcing::stir(MomentsG *G) {
   float random_real, random_imag;
   int randomIndex = rand() % numPairs;
   int2 randomPair = indexs[randomIndex];
   heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_ pars_->dt);
-  rf.x = random_real
-  rf.y = random_imag
+  rf.x = random_real;
+  rf.y = random_imag;
   switch (pars_->stirf)
     {
     case stirs::density : kz_stirring_kernell <<Nz,1>> (rf,           G->dens_ptr, randomPair.x, randomPair.y, kz); break;
@@ -179,19 +185,21 @@ void generate_random_numbers(float *random_real, float *random_imag, float forci
   *random_imag = amp*sin(phase);
 }
 
-void heli_generate_random_numbers(float *random_real, float *random_imag, float pos_forcing_amp_, float neg_forcing_amp_, float dt) {
-  
+void heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_, pars_->dt);
+ 
   // dt term in timestepper scheme accounted for in amp
   float phase = M_PI * (2.0 * static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) + 1.0) - 1.0);
   
-  float ran_amp;  // Variable to hold the amplitude
+  float amp;  // Variable to hold the amplitude
+
+  float ran_amp;
 
   if (phase <= M_PI / 2.0 && phase >= -M_PI / 2.0) {
-    amp = pos_forcing_amp_;
+    ran_amp = pos_forcing_amp_;
   } else {
-    amp = neg_forcing_amp_;
+    ran_amp = neg_forcing_amp_;
   }
-  float amp = sqrt(abs(amp*dt));
+  amp = sqrt(abs(ran_amp*dt));
   *random_real = amp*cos(phase);
   *random_imag = amp*sin(phase);
 }
