@@ -78,8 +78,6 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
                      sizeof(phasefac_exb_callbackPtr_h)));
 
   if (grids_->phasefac_exb) { 
-  // this will only be called if using twisting flux tube, otherwise it's incorporated into iKxstar grid
-  // multiplication in nonlinear.cu - 2D callback with ikxstar
 	  checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kxstar_callbackPtr_h, 
                      CUFFT_CB_LD_COMPLEX, 
                      (void**)&grids_->kxstar));
