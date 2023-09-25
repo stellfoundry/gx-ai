@@ -3167,7 +3167,7 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
   }
 }
 
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar_ikx_new, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
+__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -3190,17 +3190,17 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
 
     //if field is sheared beyond unmasked region, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
     if (abs(get_ikx(idx)) <= nakx/2) {
-      //if(kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -(nakx/2)) {
       if (abs(kxbar_ikx_new[idxy]) > nakx/2) {
         kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
         //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
       }
-    } else { //for masked modes, if you fall into unmasked region, jump over unmasked region  2*kxalias. if you fall out of entire region, jump to opposite side
-      //if(kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < -(nx/2)) {
-      if (kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < -nx/2 + 1) {
+    } else { //for masked modes, if you fall into unmasked region, jump over unmasked region kxalias_max. if you fall out of entire region, jump to opposite side
+      if (kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < (-nx/2 + 1)) {
         kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*nx*dkx;
+        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
       } else if (abs(kxbar_ikx_new[idxy]) <= nakx/2) {
         kxstar[idxy] = kxstar[idxy] - g_exb/abs(g_exb)*kxalias_max;
+        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
       }
     }
   }
@@ -3216,25 +3216,24 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
 // otherwise, we shift fields to the appropriate new kx index.
 // this should work for multistep schemes.
 
-__global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_old, const int* kxbar_ikx_new, const float g_exb)
+__global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
 
   int nakx = 1 + 2*((nx-1)/3);
-  // note: kxbar_idx = kxbar_ikx + nx;
 
   if(unmasked(idx, idy) && idz < nz) {
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
-    //if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
-    if(abs(kxbar_ikx_new[idxy] > nakx/2)) {
+    if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
       if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
       int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
+      //if (idz == 0) printf("off the grid field shift! idy = %d, idx = %d, kxbar_ikx_old = %d -> kxbar_ikx_new = %d \n", idy, idx, kxbar_ikx_old[idxy], kxbar_ikx_new[idxy] + nakx);
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
       int idx_old = kxbar_ikx_old[idxy];
       int idx_new = kxbar_ikx_new[idxy];
@@ -3243,6 +3242,7 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int idxyz_old = idy + nyc * (idx_old + nx * idz);
       int idxyz_new = idy + nyc * (idx_new + nx * idz);
       field_new[idxyz_new] = field_old[idxyz_old];
+      //if (idz == 0) printf("field shift! idy = %d, idx = %d, kxbar_ikx_old = %d -> kxbar_ikx_new = %d \n", idy, idx, kxbar_ikx_old[idxy], kxbar_ikx_new[idxy]);
     }
   }
 }
@@ -3263,7 +3263,7 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
 
       //if g is sheared beyond resolution or mask, set incoming field to 0
       //if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
-      if(abs(kxbar_ikx_new[idxy] > nakx/2)) {
+      if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
         int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
         if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
         int ig_remap = idy + nyc * (kxbar_ikx_remap + nx * (idz + nz * idlm));
