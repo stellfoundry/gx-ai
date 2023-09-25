@@ -3098,9 +3098,9 @@ __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, in
   if (idx < nx && idy < nyc) {
     unsigned int idxy = idy + nyc * idx;
     kxstar[idxy] = kx[idx]; // should read this from a file if this is a restarted case
-    kxbar_ikx_new[idxy] = idx; // should read this from a file if this is a restarted case
-    kxbar_ikx_old[idxy] = idx; // should read this from a file if this is a restarted case
-    phasefac[idxy] = 0; // should read this from a file if this is a restarted case
+    kxbar_ikx_new[idxy] = get_ikx(idx); // should read this from a file if this is a restarted case
+    kxbar_ikx_old[idxy] = get_ikx(idx); // should read this from a file if this is a restarted case
+    phasefac[idxy] = 1.0; // should read this from a file if this is a restarted case
   }
   // JFP: note: to normalize kxstar, theta0, and ky*g_exb*dt correctly for stellarators with different connection lengths.
   // JFP: note: add read-in kxstar option.
@@ -3173,31 +3173,34 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_old, int* kxbar
   unsigned int idx = get_id2();
   float dkx = (float) 1./x0;
   int nakx = 1 + 2*((nx-1)/3);
-  float kxalias_max = (float) dkx*((nakx-1)/2);
+  //float kxalias_max = (float) dkx*((nakx-1)/2);
+  float kxalias_max = (float) dkx*nakx;
   if(idx < nx && idy < nyc) {
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
     kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx);
     kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
+
     if (ExBshear_phase) {
       phasefac[idxy] = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
     } else {
-      phasefac[idxy] = 0.0;
+      phasefac[idxy] = 1.0; // JMH // this should be 1.0 not zero right? So we are multiplying by 1 not zeroing everything?
     }
 
     //if field is sheared beyond unmasked region, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
-    if (unmasked(idx, idy)) { 
+    if (abs(get_ikx(idx)) <= nakx/2) {
       //if(kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -(nakx/2)) {
       if (abs(kxbar_ikx_new[idxy]) > nakx/2) {
-        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*2*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
+        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
+        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
       }
     } else { //for masked modes, if you fall into unmasked region, jump over unmasked region  2*kxalias. if you fall out of entire region, jump to opposite side
       //if(kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < -(nx/2)) {
-      if (abs(kxbar_ikx_new[idxy] > nx/2)) {
+      if (kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < -nx/2 + 1) {
         kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*nx*dkx;
-      } else if (abs(kxbar_ikx_new[idxy] <= nakx/2)) {
-        kxstar[idxy] = kxstar[idxy] - g_exb/abs(g_exb)*2*kxalias_max;
+      } else if (abs(kxbar_ikx_new[idxy]) <= nakx/2) {
+        kxstar[idxy] = kxstar[idxy] - g_exb/abs(g_exb)*kxalias_max;
       }
     }
   }

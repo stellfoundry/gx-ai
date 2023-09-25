@@ -37,6 +37,7 @@ void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per t
 {
   // update kxstar terms and phasefactor
   kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
+  cudaDeviceSynchronize();
 
   // update geometry
   if (pars_->nonTwist) {
