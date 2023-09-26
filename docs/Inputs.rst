@@ -140,7 +140,12 @@ The ``[Domain]`` group controls the physical extents of the simulation domain an
        If zero magnetic shear: :math:`\texttt{y0}`
    * - ``[Domain]``
      - ``boundary``
-     - Controls the boundary condition in the :math:`z` (parallel) direction. Two options are possible: periodic (``"periodic"``) or twist-shift (``"linked"``).
+     - | Controls the boundary condition in the :math:`z` (parallel) direction. The following options are possible: 
+       | - ``"linked"``: twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018).
+       | - ``"forced periodic"`` (or simply ``"periodic"``): use periodic BCs with no cutting of flux tube. 
+       | - ``"exact periodic"``: cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only). 
+       | - ``"continuous drifts"``: cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only). 
+       | - ``"fix aspect"``: cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only).
      - **"linked"**
    * - ``[Domain]``
      - ``zp``
@@ -164,12 +169,25 @@ Parameters that control physics options are specified in the ``[Physics]`` group
    * - ``[Physics]``
      - ``beta``
      - This is the reference beta value, :math:`\beta_\mathrm{ref} = 8\pi n_\mathrm{ref} T_\mathrm{ref}/B^2`. Typically it would be approximately
-       half of the total beta. If ``beta > 0.0`` then electromagnetic terms will be used; otherwise, if ``beta <= 0.``, it is ignored and the calculation is electrostatic.
+       half of the total beta. If ``beta > 0.0`` then electromagnetic terms will be used (depending on ``fapar`` and ``fbpar`` values); otherwise, if ``beta <= 0.``, it is ignored and the calculation is electrostatic.
      - **0.0**
    * - ``[Physics]``
      - ``nonlinear_mode``
      - Set to true to include nonlinear terms in the equations. 
      - **false**
+   * - ``[Physics]``
+     - ``fphi``
+     - Factor multiplying electrostatic potential :math:`\Phi`
+     - **1.0**
+   * - ``[Physics]``
+     - ``fapar``
+     - Factor multiplying electromagnetic vector potential :math:`A_\parallel`
+     - **0.0**
+   * - ``[Physics]``
+     - ``fbpar``
+     - Factor multiplying electromagnetic compressional fluctuation :math:`\delta B_\parallel`
+     - **0.0**
+
   
 Time
 +++++
@@ -187,16 +205,28 @@ Parameters that control the time-stepping are set in the ``[Time]`` group:
      - Default
    * - ``[Time]``
      - ``dt``
-     - The maximum timestep allowed.
+     - The maximum timestep allowed. The actual timestep will be set by stability constraints.
      - **0.05**
    * - ``[Time]``
      - ``nstep``
-     - The number of timesteps to take. 
-     - **10000**
+     - The number of timesteps to take. Set this or ``t_max`` to control the length of the simulation.
+     - 
+   * - ``[Time]``
+     - ``t_max``
+     - End time of the simulation, in code units. Set this or ``nstep`` to control the length of the simulation.
+     - 
+   * - ``[Time]``
+     - ``t_add``
+     - If restarting the simulation, run for an additional ``t_add`` time units.
+     - 
    * - ``[Time]``
      - ``scheme``
-     - This string variable chooses the time-stepping scheme to be used. For options, see :ref:`timestep`.
-     - **"sspx3"**
+     - | This string variable chooses the time-stepping scheme to be used. Choices are:
+       | ``"rk3"``: 3rd order Runge-Kutta (recommended)
+       | ``"rk4"``: 4th order Runge-Kutta
+       | ``"sspx3"``: 3rd order SSP Runge-Kutta with extended stability 
+       | ``"k10"``: Ketcheson's 10 stage, 4th order low-storage method. Useful for problems with memory constraints.
+     - **"rk3"**
    * - ``[Time]``
      - ``stages``
      - The number of Runge-Kutta stages to be used for certain time-stepping schemes. Not relevant
@@ -204,8 +234,8 @@ Parameters that control the time-stepping are set in the ``[Time]`` group:
      - **10**    
    * - ``[Time]``
      - ``cfl``
-     - For nonlinear runs, the maximum timestep allowed is proportional to ``cfl``.
-     - **1.0**    
+     - Safety cushion factor on timestep size. The timestep used will be the computed allowable timestep multiplied by ``cfl``. If encountering numerical issues, decreasing ``cfl`` is one of the first things to try!
+     - **0.9**    
 
 Initialization
 +++++++++++++++
@@ -245,7 +275,9 @@ The ``[Initialization]`` group controls the initial conditions.
 Geometry
 ++++++++
 
-The ``[Geometry]`` group controls the simulation geometry. For more details about geometry options, see :ref:`geo`.
+The ``[Geometry]`` group controls the simulation geometry. 
+
+.. For more details about geometry options, see :ref:`geo`.
 
 .. list-table::
    :widths: 20 20 50 10
@@ -260,10 +292,23 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
      - ``geo_option``
      - String specifying the geometry setup. Options are ``{"s-alpha", "miller", "vmec", "eik", "nc", "slab", "const-curv", "gs2_geo"}``
      - **"miller"**    
-   * - ``[Geometry]``
-     - ``geo_file``
-     - For ``geo_option = "eik"``, the geometric information is read from the file specified by ``geo_file``. 
-     - **"eik.out"**    
+
+Each ``geo_option`` has some parameters that control the geometry specification. The following groups of parameters are the parameters that can/should be specified for a particular choice of ``geo_option``. All parameters live in the ``[Geometry]`` block. Note that some parameters overlap between different ``geo_option``'s.
+
+geo_option = "miller"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option specifies a local Miller equilibrium for a tokamak.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
    * - ``[Geometry]``
      - ``Rmaj``
      - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`. 
@@ -285,12 +330,8 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
        Shafranov shift and is sometimes called alpha. It should normally be a non-negative number.
      - **0.0**
    * - ``[Geometry]``
-     - ``eps``
-     - This is the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`. Used only for ``geo_option = "s-alpha"``.
-     - **0.167**
-   * - ``[Geometry]``
      - ``rhoc``
-     - Flux surface label given by ratio of midplane diameter to the reference length, :math:`r/L_\mathrm{ref}`. 
+     - Flux surface label given by ratio of midplane diameter to the reference length, :math:`\rho = r/L_\mathrm{ref}`. 
      - 
    * - ``[Geometry]``
      - ``R_geo``
@@ -298,24 +339,243 @@ The ``[Geometry]`` group controls the simulation geometry. For more details abou
      - 
    * - ``[Geometry]``
      - ``akappa``
-     - Elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Elongation of flux surface. 
      - 
    * - ``[Geometry]``
      - ``akappri``
-     - Radial gradient of elongation of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Radial gradient of elongation of flux surface.
      - 
    * - ``[Geometry]``
      - ``tri``
-     - Triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Triangularity of flux surface.
      - 
    * - ``[Geometry]``
      - ``tripri``
-     - Radial gradient of triangularity of flux surface for Miller geometry (``geo_option = "miller"``). 
+     - Radial gradient of triangularity of flux surface.
      - 
    * - ``[Geometry]``
      - ``betaprim``
      - Radial gradient of equilibrium pressure. Used in the calculation of the Shafranov shift. 
      - 
+
+geo_option = "vmec"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option generates the geometry from a VMEC equilibrium output file in NetCDF format. This is typically used for stellarators. See also the ``boundary`` parameter in ``[Domain]``, where some options are only available for VMEC geometry.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``vmec_file``
+     - (Path to) the VMEC equilibrium NetCDF output file.
+     - 
+   * - ``[Geometry]``
+     - ``alpha``
+     - Field line label. 
+     - **0.0**
+   * - ``[Geometry]``
+     - ``npol``
+     - Number of poloidal turns. May be reduced based on ``boundary``.
+     - **1.0**
+   * - ``[Geometry]``
+     - ``desired_normalized_toroidal_flux`` or ``torflux``
+     - Flux surface label given by :math:`\rho = \sqrt{\Psi/\Psi_{LCFS}}`, where :math:`\Psi` is the toroidal flux.
+     - **0.25**
+   * - ``[Geometry]``
+     - ``vmec_surface_option``
+     - Controls how the flux surface is chosen. 0 = use exact radius requested. 1 = use nearest value of the VMEC half grid. 2 = use nearest value of the VMEC full grid.
+     - **0**
+   * - ``[Geometry]``
+     - ``which_crossing``
+     - For ``boundary = "exact periodic"``, ``boundary = "continuous drifts"``, or ``boundary = "fix aspect"``, this controls which crossing of the relevant quantity to cut the flux tube at. Negative values count from the end of the flux tube.
+     - **-1**
+   * - ``[Geometry]``
+     - ``verbose``
+     - Set to 1 to print lots of information from VMEC geometry module.
+     - **0**
+
+geo_option = "eik"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Read the geometry arrays from a text file in GS2's eik.out format.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``geo_file``
+     - (Path to) eik geometry file.
+     - "eik.out"
+
+
+geo_option = "nc"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Read the geometry arrays from a NetCDF file.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``geo_file``
+     - (Path to) NetCDF geometry file.
+     - 
+     
+
+geo_option = "s-alpha", geo_option = "const-curv"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``eps``
+     - Flux surface label given by the inverse aspect ratio of the surface in question, :math:`\epsilon = r/R`.
+     - **0.167**
+   * - ``[Geometry]``
+     - ``Rmaj``
+     - The ratio of the major radius at the center of the flux surface to the equilibrium-scale reference length, :math:`R/L_\mathrm{ref}`.  The choice of ``Rmaj`` can effectively choose the definition of :math:`L_\mathrm{ref}`. Setting ``Rmaj = 1.0`` effectively sets :math:`L_\mathrm{ref} = R`. Setting ``Rmaj`` to the aspect ratio :math:`R/a` (with :math:`a` the minor radius) effectively sets :math:`L_\mathrm{ref} = a`.
+     - **1.0**
+   * - ``[Geometry]``
+     - ``qinp``
+     - The magnetic safety factor, :math:`q = (r/R)(B_t/B_p)`.
+     - **1.4**
+   * - ``[Geometry]``
+     - ``shat``
+     - The global magnetic shear, :math:`\hat{s} = (r/q) dq/dr`. 
+     - **0.8**
+   * - ``[Geometry]``
+     - ``shift``
+     - This characterizes the Shafranov shift and is sometimes called alpha. It should normally be a non-negative number.
+     - **0.0**
+
+
+geo_option = "gs2_geo"
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This option calls GS2's eiktest executable to run GS2's geometry module directly. This is useful for generating geometry from a g-eqdsk equilibrium file, which is currently not natively supported in GX. This option requires separately building GS2's eiktest and setting ``GS2_PATH`` in the Makefile. For parameter definitions, see the GS2 documentation, or see the comments at the top of src/geo/geometry.f90 in the GS2 source code.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Geometry]``
+     - ``rhoc``
+     - Value of flux surface label :math:`\rho`, depending on choice of ``irho``
+     - **0.5**    
+   * - ``[Geometry]``
+     - ``irho``
+     - | Choose flux surface label:
+       | case (1) :: sqrt(toroidal flux)/sqrt(toroidal flux of LCFS)
+       | case (2) :: diameter/(diameter of LCFS).  recommended
+       | case (3) :: poloidal flux/(poloidal flux of LCFS)
+     - **2**    
+   * - ``[Geometry]``
+     - ``eqfile``
+     - (Path to) numerical equilibrium file to read
+     -     
+   * - ``[Geometry]``
+     - ``iflux``
+     - Use ``iflux=1`` to use a numerical equilibrium (EFIT, CHEASE, etc)
+     - **0**    
+   * - ``[Geometry]``
+     - ``geoType``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``delrho``
+     - 
+     - **0.01**    
+   * - ``[Geometry]``
+     - ``bishop``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``isym``
+     - 
+     - **0**    
+   * - ``[Geometry]``
+     - ``s_hat_input``
+     - 
+     - **1.0**    
+   * - ``[Geometry]``
+     - ``p_prime_input``
+     - 
+     - **-2.0**    
+   * - ``[Geometry]``
+     - ``invLp_input``
+     - 
+     - **5.0**    
+   * - ``[Geometry]``
+     - ``alpha_input``
+     - 
+     - **0.0**    
+   * - ``[Geometry]``
+     - ``efit_eq``
+     - Set true to use an EFIT (e.g. g-eqdsk) equilibrium.
+     - **false**    
+   * - ``[Geometry]``
+     - ``dfit_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``gen_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``ppl_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``local_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``idfit_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``chs_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``transp_eq``
+     - 
+     - **false**    
+   * - ``[Geometry]``
+     - ``gs2d_eq``
+     - 
+     - **false**    
 
 Species
 +++++++
@@ -760,6 +1020,86 @@ The ``[Pspectra]`` group controls writes of various slices of :math:`P_s(k_x,k_y
    * - ``[Pspectra]``
      - kxky
      - P as a function of the magnitude of kx and ky.
+     - **false**
+
+The ``[Qspectra]`` group controls writes of various slices of :math:`Q_s(k_x,k_y,z)`, the heat flux.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Qspectra]``
+     - species
+     - Q as a function of species
+     - **false**
+   * - ``[Qspectra]``
+     - kx
+     - Q as a function of kx
+     - **false**
+   * - ``[Qspectra]``
+     - ky
+     - Q as a function of ky
+     - **false**
+   * - ``[Qspectra]``
+     - kz
+     - Q as a function of kz
+     - **false**
+   * - ``[Qspectra]``
+     - z
+     - Q as a function of z
+     - **false**
+   * - ``[Qspectra]``
+     - kperp
+     - Q as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - ``[Qspectra]``
+     - kxky
+     - Q as a function of the magnitude of kx and ky.
+     - **false**
+
+The ``[Gamspectra]`` group controls writes of various slices of :math:`\Gamma_s(k_x,k_y,z)`, the particle flux.
+
+.. list-table::
+   :widths: 20 20 50 10
+   :width: 100
+   :header-rows: 1
+
+   * - Group
+     - Variable
+     - Description
+     - Default
+   * - ``[Gamspectra]``
+     - species
+     - :math:`\Gamma` as a function of species
+     - **false**
+   * - ``[Gamspectra]``
+     - kx
+     - :math:`\Gamma` as a function of kx
+     - **false**
+   * - ``[Gamspectra]``
+     - ky
+     - :math:`\Gamma` as a function of ky
+     - **false**
+   * - ``[Gamspectra]``
+     - kz
+     - :math:`\Gamma` as a function of kz
+     - **false**
+   * - ``[Gamspectra]``
+     - z
+     - :math:`\Gamma` as a function of z
+     - **false**
+   * - ``[Gamspectra]``
+     - kperp
+     - :math:`\Gamma` as a function of the magnitude of kperp. Not yet implemented.
+     - **false**
+   * - ``[Gamspectra]``
+     - kxky
+     - :math:`\Gamma` as a function of the magnitude of kx and ky.
      - **false**
 
 Expert

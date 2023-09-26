@@ -13,6 +13,7 @@ class Solver {
  public:
   virtual ~Solver() {};
   virtual void fieldSolve(MomentsG** G, Fields* fields) = 0;
+  virtual void set_equilibrium_current(MomentsG* G, Fields* fields) {};
 };
 
 class Solver_GK : public Solver {
@@ -57,14 +58,37 @@ class Solver_KREHM : public Solver {
   ~Solver_KREHM();
   
   void fieldSolve(MomentsG** G, Fields* fields);
+  void set_equilibrium_current(MomentsG* G, Fields* fields);
   
   cuComplex * nbar ;
 
 private:
 
   dim3 dG, dB, dg, db;
+  int count;
 
   cuComplex * tmp ;
+  cuComplex *moms, *density, *current;
+
+  // local private copies
+  Parameters * pars_  ;
+  Grids      * grids_ ;
+  Geometry   * geo_   ;
+};
+
+class Solver_cetg : public Solver {
+ public:
+  Solver_cetg(Parameters* pars, Grids* grids);
+  ~Solver_cetg();
+  
+  void fieldSolve(MomentsG** G, Fields* fields);
+  
+private:
+
+  dim3 dG, dB, dg, db;
+  int count;
+
+  cuComplex *moms, *density;
 
   // local private copies
   Parameters * pars_  ;

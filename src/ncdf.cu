@@ -8,18 +8,19 @@
 
 NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   grids_(grids), pars_(pars), geo_(geo),
-  red(nullptr), pot(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
+  red(nullptr), pot(nullptr), a2(nullptr), ph2(nullptr), all_red(nullptr), grad_phi(nullptr), grad_perp(nullptr)
 {
 
-  amom = nullptr;
-  df          = nullptr;  favg        = nullptr;
+  amom = nullptr;  df          = nullptr;  favg        = nullptr;
 
   if (pars_->diagnosing_spectra || pars_->diagnosing_kzspec) {
     float dum = 1.0;
     red = new          All_Reduce(grids_, pars_->wspectra); CUDA_DEBUG("Reductions: %s \n"); // G**2
     pot = new Grid_Species_Reduce(grids_, pars_->pspectra); CUDA_DEBUG("Reductions: %s \n"); // (1-G0) Phi**2 keeping track of species
     red_qflux = new Grid_Species_Reduce(grids_, pars_->qspectra); CUDA_DEBUG("Reductions: %s \n"); // heat flux Q for each species
-    ph2 = new         Grid_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
+    red_pflux = new Grid_Species_Reduce(grids_, pars_->gamspectra); CUDA_DEBUG("Reductions: %s \n"); // particle flux Gamma for each species
+    a2 = new         Grid_Reduce(grids_, pars_->aspectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2 (adiabatic)
+    ph2 = new         Grid_Reduce(grids_, pars_->phi2spectra); CUDA_DEBUG("Reductions: %s \n"); // Phi**2
   }
 
   int nS  = grids_->Nspecies;
@@ -145,6 +146,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   if (retval = nc_inq_dimid(file, "s",       &s_dim))    ERR(retval);
   if (retval = nc_inq_dimid(file, "time",    &time_dim)) ERR(retval);
 
+  //if (retval = nc_inq_dimid(file, "z",       &z_dim))    ERR(retval);
+
   if (retval = nc_def_var(file, "periodic",       NC_INT, 0, 0, &periodic))        ERR(retval);
   if (retval = nc_def_var(file, "local_limit",    NC_INT, 0, 0, &local_limit))     ERR(retval);
 
@@ -163,8 +166,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   v_kx[0] = x_dim;
   if (retval = nc_def_var(file, "x",        NC_FLOAT, 1, v_kx, &x))               ERR(retval);  
 
-  //  v_z[0] = nz;
-  //  if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
+  //v_z[0] = nz;
+  //if (retval = nc_def_var(file, "z",        NC_FLOAT, 1, v_z, &z_h))              ERR(retval);
   
   // z_h needs to be defined.
   // Z0 would typically be q R
@@ -220,7 +223,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     r_time -> file = r_file;
     r_time -> time_dims[0] = rtime_dim;
     if (retval = nc_def_var(r_file, "time", NC_DOUBLE, 1, r_time -> time_dims, &r_time -> time))   ERR(retval);
-  }
+  } else r_time = nullptr;
   
   if (pars_->write_xymom) {
     z_time = new nca(0); 
@@ -229,7 +232,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     z_time -> file = z_file;
     z_time -> time_dims[0] = ztime_dim;
     if (retval = nc_def_var(z_file, "time", NC_DOUBLE, 1, z_time -> time_dims, &z_time -> time))   ERR(retval);
-  }
+  } else z_time = nullptr;
   
   time = new nca(0); 
   time -> write_v_time = true;
@@ -487,7 +490,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   //                        //
   ////////////////////////////
 
-  if (pars_->write_fields && pars_->fapar > 0.) {
+  if (pars_->write_fields && (pars_->fapar > 0. || pars_->krehm)) {
     fields_apar = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
     fields_apar -> write = true;
   
@@ -514,7 +517,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   } else {
     fields_apar = new nca(0);
   }
+ 
+  // write real space 
+  if (pars_->write_fields && (pars_->fapar > 0. || pars_->krehm)) {
+    fields_apar_realspace = new nca(nX * grids_->Ny * nZ, nX * grids_->Ny * nZ);
+    fields_apar_realspace -> write = true;
   
+    fields_apar_realspace -> dims[0] = x_dim; 
+    fields_apar_realspace -> dims[1] = y_dim;
+    fields_apar_realspace -> dims[2] = nz;
+    
+    fields_apar_realspace -> file = nc_special;
+
+    if (retval = nc_def_var(nc_special, "Apar_z_rs", NC_FLOAT, 3, fields_apar_realspace -> dims, &fields_apar_realspace -> idx)) ERR(retval);
+
+    fields_apar_realspace -> start[0] = 0;
+    fields_apar_realspace -> start[1] = 0;
+    fields_apar_realspace -> start[2] = 0;
+    
+    fields_apar_realspace -> count[0] = grids_->Nx;
+    fields_apar_realspace -> count[1] = grids_->Ny;
+    fields_apar_realspace -> count[2] = grids_->Nz;
+
+    for (int i=0; i < nX * grids->Ny * nZ; i++) fields_apar_realspace->cpu[i] = 10.;
+  } else {
+    fields_apar_realspace = new nca(0);
+  }
   ////////////////////////////
   //                        //
   //   Fields -- Bpar       //
@@ -525,8 +553,8 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     fields_bpar = new nca(-nX * nY * nZ, nXk * nYk * nZ * 2);
     fields_bpar -> write = true;
   
-    fields_bpar -> dims[0] = ky_dim; 
-    fields_bpar -> dims[1] = kx_dim;
+    fields_bpar -> dims[0] = y_dim; 
+    fields_bpar -> dims[1] = x_dim;
     fields_bpar -> dims[2] = nz;
     fields_bpar -> dims[3] = ri; 
     
@@ -673,8 +701,22 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Pkx -> time_count[1] = grids_->Nspecies;
     Pkx -> time_start[1] = grids_->is_lo;
     Pkx -> time_count[2] = grids_->Nakx;      
+
+    Aparkx = new nca(nX*nS, nXk*nS); 
+    Aparkx -> write_v_time = true;
+
+    Aparkx -> time_dims[0] = time_dim;
+    Aparkx -> time_dims[1] = s_dim;
+    Aparkx -> time_dims[2] = kx_dim;
+    
+    Aparkx -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Aparkxst", NC_FLOAT, 3, Aparkx -> time_dims, &Aparkx -> time))  ERR(retval);
+
+    Aparkx -> time_count[1] = grids_->Nspecies;
+    Aparkx -> time_count[2] = grids_->Nakx;      
   } else {
     Pkx = new nca(0);
+    Aparkx = new nca(0);
   }
   
   ////////////////////////////
@@ -698,8 +740,21 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Pky -> time_start[1] = grids_->is_lo;
     Pky -> time_count[2] = grids_->Naky;
     
+    Aparky = new nca(nY*nS, nYk*nS);
+    Aparky -> write_v_time = true;
+
+    Aparky -> time_dims[0] = time_dim;
+    Aparky -> time_dims[1] = s_dim;
+    Aparky -> time_dims[2] = ky_dim;
+
+    Aparky -> file = nc_sp;     
+    if (retval = nc_def_var(nc_sp, "Aparkyst", NC_FLOAT, 3, Aparky->time_dims, &Aparky->time))  ERR(retval);
+
+    Aparky -> time_count[1] = grids_->Nspecies;
+    Aparky -> time_count[2] = grids_->Naky;
   } else {
     Pky = new nca(0);
+    Aparky = new nca(0);
   }
   
   ////////////////////////////
@@ -775,6 +830,32 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   } else {
     xyPhi = new nca(0);
   }    
+
+  ////////////////////////////
+  //                        //
+  //  Apar (x, y)            //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->write_xyApar) {
+    xyApar = new nca(grids_->NxNyNz, grids_->NxNy);
+    xyApar->write_v_time = true;
+  
+    xyApar -> time_dims[0] = ztime_dim;
+    xyApar -> time_dims[1] = zy_dim;  // Transpose to accommodate ncview
+    xyApar -> time_dims[2] = zx_dim;
+    
+    xyApar -> file = z_file;
+    if (retval = nc_def_var(z_file, "Apar_xyt", NC_FLOAT, 3, xyApar -> time_dims, &xyApar->time)) ERR(retval);
+    
+    xyApar -> time_count[1] = grids_->Ny;      
+    xyApar -> time_count[2] = grids_->Nx;
+
+    xyApar -> xydata = true;
+    xyApar -> all = true;
+  } else {
+    xyApar = new nca(0);
+  }    
    
   ////////////////////////////
   //                        //
@@ -799,8 +880,25 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     Pkxky -> time_start[1] = grids_->is_lo;
     Pkxky -> time_count[2] = grids_->Naky;
     Pkxky -> time_count[3] = grids_->Nakx;
+
+    Aparkxky = new nca(nX * nY * nS, nXk * nYk * nS); 
+    
+    Aparkxky -> write_v_time = true;
+
+    Aparkxky -> time_dims[0] = time_dim;
+    Aparkxky -> time_dims[1] = s_dim;
+    Aparkxky -> time_dims[2] = ky_dim;
+    Aparkxky -> time_dims[3] = kx_dim;
+    
+    Aparkxky -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Aparkxkyst", NC_FLOAT, 4, Aparkxky -> time_dims, &Aparkxky -> time))  ERR(retval);
+    
+    Aparkxky -> time_count[1] = grids_->Nspecies;
+    Aparkxky -> time_count[2] = grids_->Naky;
+    Aparkxky -> time_count[3] = grids_->Nakx;
   } else {
     Pkxky = new nca(0); 
+    Aparkxky = new nca(0);
   }
 
   ////////////////////////////
@@ -949,7 +1047,133 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   ////////////////////////////
   //                        //
-  // W (adiabatic species)  //
+  // Phi**2                 //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_t] > 0) {
+    Phi2t = new nca(1); 
+    Phi2t -> write_v_time;
+
+    Phi2t -> time_dims[0] = time_dim;
+    
+    Phi2t -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2t", NC_FLOAT, 1, Phi2t -> time_dims, &Phi2t -> time))  ERR(retval);
+
+  } else {
+    Phi2t = new nca(0); 
+  }
+
+  ////////////////////////////
+  //                        //
+  //   Phi**2 (kx)          //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_kx] > 0) {
+    Phi2kx = new nca(nX, nXk); 
+    Phi2kx -> write_v_time = true;
+
+    Phi2kx -> time_dims[0] = time_dim;
+    Phi2kx -> time_dims[1] = kx_dim;
+    
+    Phi2kx -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2kxt", NC_FLOAT, 2, Phi2kx -> time_dims, &Phi2kx -> time))  ERR(retval);
+    
+    Phi2kx -> time_count[1] = grids_->Nakx;      
+  } else {
+    Phi2kx = new nca(0); 
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Phi**2 (ky)          //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_ky] > 0) {
+    Phi2ky = new nca(nY, nYk); 
+    Phi2ky -> write_v_time = true;
+
+    Phi2ky -> time_dims[0] = time_dim;
+    Phi2ky -> time_dims[1] = ky_dim;
+    
+    Phi2ky -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2kyt", NC_FLOAT, 2, Phi2ky -> time_dims, &Phi2ky -> time))  ERR(retval);
+
+    Phi2ky -> time_count[1] = grids_->Naky;      
+  } else {
+    Phi2ky = new nca(0); 
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Phi**2 (kz)          //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_kz] > 0) {
+    Phi2kz = new nca(nZ, nZ); 
+    Phi2kz -> write_v_time = true;
+
+    Phi2kz -> time_dims[0] = time_dim;
+    Phi2kz -> time_dims[1] = nkz;
+    
+    Phi2kz -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2kzt", NC_FLOAT, 2, Phi2kz -> time_dims, &Phi2kz -> time))  ERR(retval);
+    
+    Phi2kz -> time_count[1] = grids_->Nz;      
+  } else {
+    Phi2kz = new nca(0); 
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Phi**2 (z)           //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_z] > 0) {
+    Phi2z = new nca(nZ); 
+    Phi2z -> write_v_time = true;
+
+    Phi2z -> time_dims[0] = time_dim;
+    Phi2z -> time_dims[1] = nz;
+    
+    Phi2z -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2zt", NC_FLOAT, 2, Phi2z -> time_dims, &Phi2z -> time))  ERR(retval);
+    
+    Phi2z -> time_count[1] = grids_->Nz;      
+  } else {
+    Phi2z = new nca(0); 
+  }
+  
+  ////////////////////////////
+  //                        //
+  //   Phi**2 (kx,ky)       //
+  //                        //
+  ////////////////////////////
+
+  if (pars_->phi2spectra[PHI2SPECTRA_kxky] > 0) {
+    Phi2kxky = new nca(nX * nY, nXk * nYk); 
+    Phi2kxky -> write_v_time = true;
+
+    Phi2kxky -> time_dims[0] = time_dim;
+    Phi2kxky -> time_dims[1] = ky_dim;
+    Phi2kxky -> time_dims[2] = kx_dim;
+    
+    Phi2kxky -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Phi2kxkyt", NC_FLOAT, 3, Phi2kxky -> time_dims, &Phi2kxky -> time))  ERR(retval);
+    
+    Phi2kxky -> time_count[1] = grids_->Naky;      
+    Phi2kxky -> time_count[2] = grids_->Nakx;
+  } else {
+    Phi2kxky = new nca(0); 
+  }
+
+  ////////////////////////////
+  //                        //
+  // A (adiabatic species)  //
   //                        //
   ////////////////////////////
 
@@ -968,7 +1192,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
   ////////////////////////////
   //                        //
-  //   W (kx) adiabatic     //
+  //   A (kx) adiabatic     //
   //                        //
   ////////////////////////////
 
@@ -989,7 +1213,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   ////////////////////////////
   //                        //
-  //   W (ky) adiabatic     //
+  //   A (ky) adiabatic     //
   //                        //
   ////////////////////////////
 
@@ -1052,7 +1276,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
   
   ////////////////////////////
   //                        //
-  //   W (kx,ky) adiabatic  //
+  //   A (kx,ky) adiabatic  //
   //                        //
   ////////////////////////////
 
@@ -1817,9 +2041,85 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
     ps -> time_count[1] = grids_->Nspecies;
     ps -> time_start[1] = grids_->is_lo;
 
-    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
+    //    all_red = new Species_Reduce(nR, nS);  cudaDeviceSynchronize();  CUDA_DEBUG("Reductions: %s \n");
   } else {
     ps = new nca(0); 
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_ky] > 0) {
+    Gamky = new nca(nY*nS, nYk*nS);
+    Gamky -> write_v_time = true;
+    
+    Gamky -> time_dims[0] = time_dim;
+    Gamky -> time_dims[1] = s_dim;
+    Gamky -> time_dims[2] = ky_dim;
+
+    Gamky -> file = nc_sp;     
+    if (retval = nc_def_var(nc_sp, "Gamkyst", NC_FLOAT, 3, Gamky->time_dims, &Gamky->time))  ERR(retval);
+
+    Gamky -> time_count[1] = grids_->Nspecies;
+    Gamky -> time_start[1] = grids_->is_lo;
+    Gamky -> time_count[2] = grids_->Naky;
+    
+  } else {
+    Gamky = new nca(0);
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_kx] > 0) {
+    Gamkx = new nca(nX*nS, nXk*nS); 
+    Gamkx -> write_v_time = true;
+
+    Gamkx -> time_dims[0] = time_dim;
+    Gamkx -> time_dims[1] = s_dim;
+    Gamkx -> time_dims[2] = kx_dim;
+    
+    Gamkx -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamkxst", NC_FLOAT, 3, Gamkx -> time_dims, &Gamkx -> time))  ERR(retval);
+
+    Gamkx -> time_count[1] = grids_->Nspecies;
+    Gamkx -> time_start[1] = grids_->is_lo;
+    Gamkx -> time_count[2] = grids_->Nakx;      
+  } else {
+    Gamkx = new nca(0);
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_z] > 0) {
+    Gamz = new nca(nZ*nS); 
+    Gamz -> write_v_time = true;
+
+    Gamz -> time_dims[0] = time_dim;
+    Gamz -> time_dims[1] = s_dim;
+    Gamz -> time_dims[2] = nz;
+    
+    Gamz -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamzst", NC_FLOAT, 3, Gamz -> time_dims, &Gamz -> time))  ERR(retval);
+    
+    Gamz -> time_count[1] = grids_->Nspecies;
+    Gamz -> time_start[1] = grids_->is_lo;
+    Gamz -> time_count[2] = grids_->Nz;
+  } else {
+    Gamz = new nca(0); 
+  }
+
+  if (pars_->gamspectra[GamSPECTRA_kxky] > 0) {
+    Gamkxky = new nca(nX * nY * nS, nXk * nYk * nS); 
+    
+    Gamkxky -> write_v_time = true;
+
+    Gamkxky -> time_dims[0] = time_dim;
+    Gamkxky -> time_dims[1] = s_dim;
+    Gamkxky -> time_dims[2] = ky_dim;
+    Gamkxky -> time_dims[3] = kx_dim;
+    
+    Gamkxky -> file = nc_sp; 
+    if (retval = nc_def_var(nc_sp, "Gamkxkyst", NC_FLOAT, 4, Gamkxky -> time_dims, &Gamkxky -> time))  ERR(retval);
+    
+    Gamkxky -> time_count[1] = grids_->Nspecies;
+    Gamkxky -> time_start[1] = grids_->is_lo;
+    Gamkxky -> time_count[2] = grids_->Naky;
+    Gamkxky -> time_count[3] = grids_->Nakx;
+  } else {
+    Gamkxky = new nca(0); 
   }
 
   DEBUGPRINT("ncdf:  ending definition mode for NetCDF \n");
@@ -1915,7 +2215,7 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
     if (retval = nc_put_vara(file, theta,    geo_start, geo_count, geo_->z_h))         ERR(retval);
 
-    if (linked && false) {
+    if (linked && pars->shat != 0.0 && false) {
       
       int Nx = grids_->Nx;
       int Ny = grids_->Ny;
@@ -1972,7 +2272,19 @@ NetCDF_ids::NetCDF_ids(Grids* grids, Parameters* pars, Geometry* geo) :
 
     if (retval = nc_put_var (nc_geo, ivar, &geo_->gradpar)) ERR(retval);
   }
-  
+
+  // I wish I could use Parameters.put_real() here
+  if (retval = nc_inq_varid(nc_geo, "shat", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->shat)) ERR(retval);
+
+  if (retval = nc_inq_varid(nc_geo, "Rmaj", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->rmaj)) ERR(retval);
+
+  if (retval = nc_inq_varid(nc_geo, "q", &idum))   ERR(retval);
+  if (retval = nc_put_var  (nc_geo, idum, &pars_->qsf)) ERR(retval);
+
+
+
   idum = pars_->boundary_option_periodic ? 1 : 0;
   if (retval = nc_put_var(file, periodic,      &idum))     ERR(retval);
 
@@ -1988,8 +2300,94 @@ NetCDF_ids::~NetCDF_ids() {
   
   if (red)          delete red;
   if (pot)          delete pot;
+  if (red_qflux)    delete red_qflux;
+  if (red_pflux)    delete red_pflux;
   if (ph2)          delete ph2;
+  if (a2)           delete a2;
   if (all_red)      delete all_red;
+  if (grad_phi) delete grad_phi;
+  
+  if(r_time) delete r_time;
+  if(z_time) delete z_time;
+  delete time;
+  delete den;
+  delete den0;
+  delete wphi;
+  delete wphi0;
+  delete denk;
+  delete wphik;
+  delete fields_phi;
+  delete fields_apar;
+  delete fields_bpar;
+  delete omg;
+  delete rh;
+  delete Pzt;
+  delete pZt;
+  delete pzT;
+  delete Ps;
+  delete Pkx;
+  delete Pky;
+  delete Pkz;
+  delete Pz;
+  delete xyPhi;
+  delete Pkxky;
+  delete Ws;
+  delete Wkx;
+  delete Wky;
+  delete Wkz;
+  delete Wz;
+  delete Wkxky;
+  delete Phi2t;
+  delete Phi2kx;
+  delete Phi2ky;
+  delete Phi2kxky;
+  delete Phi2z;
+  delete Phi2kz;
+  delete As;
+  delete Akx;
+  delete Aky;
+  delete Akz;
+  delete Az;
+  delete Akxky;
+  delete Wlm;
+  delete Wl;
+  delete Wm;
+  delete vEy;
+  delete avg_zvE;  
+  delete avg_zkxvEy;  
+  delete avg_zkden;
+  delete avg_zkUpar;
+  delete avg_zkTpar;
+  delete avg_zkqpar;
+  delete avg_zkTperp;
+  delete kxvEy;
+  delete kden;
+  delete kUpar;
+  delete kTpar;
+  delete kTperp;
+  delete kqpar;
+  delete xyvEy;
+  delete xyvEx;
+  delete xykxvEy;
+  delete xyden;
+  delete xyUpar;
+  delete xyTpar;
+  delete xyTperp;
+  delete xyqpar;
+  delete r_y;
+  delete g_y;
+  delete Wtot;
+  delete qs;
+  delete Qky;
+  delete Qkx;
+  delete Qkxky;
+  delete Qz;
+  delete ps;
+  delete Gamky;
+  delete Gamkx;
+  delete Gamkxky;
+  delete Gamz;
+  
 
   // close netcdf file
   close_nc_file();  fflush(NULL);
@@ -2059,14 +2457,29 @@ void NetCDF_ids::write_Pky(float* P2, bool endrun)
   if (Pky -> write_v_time || (Pky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nspecies;
 
-    pot->Sum(P2, Pky->data, PSPECTRA_ky);               CP_TO_CPU(Pky->tmp, Pky->data, sizeof(float)*i);
-    
+    pot->Sum(P2, Pky->data, PSPECTRA_ky);               CP_TO_CPU(Pky->tmp, Pky->data, sizeof(float)*i); 
     for (int is = 0; is < grids_->Nspecies; is++) {
       for (int ik = 0; ik < grids_->Naky; ik++) {
 	Pky->cpu[ik + is*grids_->Naky] = Pky->tmp[ik + is*grids_->Nyc];
       }
     }
     write_nc(Pky, endrun);      
+  }
+}
+
+void NetCDF_ids::write_Aparky(float* P2, bool endrun)
+{
+  if (Aparky -> write_v_time || (Aparky -> write && endrun)) {
+    int i = grids_->Nyc*grids_->Nspecies;
+
+    pot->Sum(P2, Aparky->data, PSPECTRA_ky);               CP_TO_CPU(Aparky->tmp, Aparky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      for (int ik = 0; ik < grids_->Naky; ik++) { 
+	Aparky->cpu[ik + is*grids_->Naky] = Aparky->tmp[ik + is*grids_->Nyc];
+      }
+    }
+    write_nc(Aparky, endrun);      
   }
 }
 
@@ -2093,6 +2506,32 @@ void NetCDF_ids::write_Pkx(float* P2, bool endrun)
       }
     }  
     write_nc(Pkx, endrun);     
+  }
+}
+
+void NetCDF_ids::write_Aparkx(float* P2, bool endrun)
+{
+  if (Aparkx -> write_v_time || (Aparkx -> write && endrun)) {
+    int i = grids_->Nx*grids_->Nspecies;
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx;
+    
+    pot->Sum(P2, Aparkx->data, PSPECTRA_kx);               CP_TO_CPU(Aparkx->tmp, Aparkx->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it  = 0;
+      int itp = it + NK;
+      Aparkx->cpu[itp + is*grids_->Nakx] = Aparkx->tmp[it  + is*grids_->Nx];
+      
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	Aparkx->cpu[itp + is*grids_->Nakx] = Aparkx->tmp[it  + is*grids_->Nx];
+	Aparkx->cpu[itn + is*grids_->Nakx] = Aparkx->tmp[itm + is*grids_->Nx];	
+      }
+    }  
+    write_nc(Aparkx, endrun);     
   }
 }
 
@@ -2164,6 +2603,48 @@ void NetCDF_ids::write_Pkxky(float* P2, bool endrun)
       }
     }
     write_nc(Pkxky, endrun);     
+  }
+}
+
+void NetCDF_ids::write_Aparkxky(float* P2, bool endrun)
+{
+  if (Aparkxky -> write_v_time || (Aparkxky -> write && endrun)) {
+
+    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;
+
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    
+    pot->Sum(P2, Aparkxky->data, PSPECTRA_kxky);
+    CP_TO_CPU(Aparkxky->tmp, Aparkxky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it = 0;
+      int itp = it + NK;
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+	int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	Aparkxky->cpu[Qp] = Aparkxky->tmp[Rp];
+      }	
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	
+	for (int ik = 0; ik < grids_->Naky; ik++) {
+
+	  int Qp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  int Qn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  Aparkxky->cpu[Qp] = Aparkxky->tmp[Rp];
+	  Aparkxky->cpu[Qn] = Aparkxky->tmp[Rm];
+	}
+      }
+    }
+    write_nc(Aparkxky, endrun);     
   }
 }
 
@@ -2336,12 +2817,116 @@ void NetCDF_ids::write_Ps(float* P2, bool endrun)
     
 }
 
+void NetCDF_ids::write_Phi2ky(float* P2, bool endrun)
+{
+  if (Phi2ky -> write_v_time || (Phi2ky -> write && endrun)) {
+    int i = grids_->Naky;
+    
+    ph2->Sum(P2, Phi2ky->data, PHI2SPECTRA_ky);       CP_TO_CPU(Phi2ky->cpu, Phi2ky->data, sizeof(float)*i);
+    write_nc(Phi2ky, endrun);     
+  }
+}
+
+void NetCDF_ids::write_Phi2z(float* P2, bool endrun)
+{
+  if (Phi2z -> write_v_time || (Phi2z -> write && endrun)) {
+    int i = grids_->Nz;
+    
+    ph2->Sum(P2, Phi2z->data, PHI2SPECTRA_z);         CP_TO_CPU(Phi2z->cpu, Phi2z->data, sizeof(float)*i);
+    write_nc(Phi2z, endrun);       
+  }
+}
+
+void NetCDF_ids::write_Phi2kz(float* P2, bool endrun)
+{
+  if (Phi2kz -> write_v_time || (Phi2kz -> write && endrun)) {
+    int Nz = grids_->Nz;
+    
+    ph2->Sum(P2, Phi2kz->data, PHI2SPECTRA_kz);       CP_TO_CPU(Phi2kz->tmp, Phi2kz->data, sizeof(float)*Nz);
+
+    if (Nz>1) {
+      for (int i = 0; i < Nz; i++) Phi2kz->cpu[i] = Phi2kz->tmp[ (i + Nz/2 + 1) % Nz ];
+    } else {
+      for (int i = 0; i < Nz; i++) Phi2kz->cpu[i] = Phi2kz->tmp[ i ];
+    }    
+    write_nc(Phi2kz, endrun);      
+  }
+}
+
+void NetCDF_ids::write_Phi2kx(float* P2, bool endrun)
+{
+  if (Phi2kx -> write_v_time || (Phi2kx -> write && endrun)) {
+    int NX = grids_->Nx;
+    int NK = grids_->Nakx/2;
+    
+    ph2->Sum(P2, Phi2kx->data, PHI2SPECTRA_kx);               CP_TO_CPU(Phi2kx->tmp, Phi2kx->data, sizeof(float)*NX);
+    
+    int it = 0;
+    int itp = it + NK;
+    Phi2kx->cpu[itp] = Phi2kx->tmp[it ];;
+    
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
+      
+      Phi2kx->cpu[itp] = Phi2kx->tmp[it ];;
+      Phi2kx->cpu[itn] = Phi2kx->tmp[itm];;
+    }
+    write_nc(Phi2kx, endrun);      
+  }
+}
+
+void NetCDF_ids::write_Phi2kxky(float* P2, bool endrun)
+{
+  if (Phi2kxky -> write_v_time || (Phi2kxky -> write && endrun)) {
+    int i = grids_->Nyc*grids_->Nx; int NK = grids_->Nakx/2;  int NX = grids_->Nx;
+    
+    ph2->Sum(P2, Phi2kxky->data, PHI2SPECTRA_kxky);    CP_TO_CPU(Phi2kxky->tmp, Phi2kxky->data, sizeof(float)*i);
+    
+    int it = 0;
+    int itp = it + NK;
+    for (int ik = 0; ik < grids_->Naky; ik++) {
+      int Qp = itp + ik*grids_->Nakx ;
+      int Rp = ik  + it*grids_->Nyc  ;
+      Phi2kxky->cpu[Qp] = Phi2kxky->tmp[Rp];
+    }
+    
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
+
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+
+	int Qp = itp + ik*grids_->Nakx ;
+	int Rp = ik  + it*grids_->Nyc  ;
+	
+	int Qn = itn + ik *grids_->Nakx ;
+	int Rm = ik  + itm*grids_->Nyc  ;
+
+	Phi2kxky->cpu[Qp] = Phi2kxky->tmp[Rp];
+	Phi2kxky->cpu[Qn] = Phi2kxky->tmp[Rm];
+      }
+    }
+    write_nc(Phi2kxky, endrun);  
+  }
+}
+
+void NetCDF_ids::write_Phi2t(float *P2, bool endrun)
+{
+  if (Phi2t -> write_v_time) {  
+    ph2->Sum(P2, Phi2t->data, PHI2SPECTRA_t);    CP_TO_CPU (Phi2t->cpu, Phi2t->data, sizeof(float));
+    write_nc(Phi2t, endrun);         
+  }
+}
+
 void NetCDF_ids::write_Aky(float* P2, bool endrun)
 {
   if (Aky -> write_v_time || (Aky -> write && endrun)) {
     int i = grids_->Naky;
     
-    ph2->Sum(P2, Aky->data, ASPECTRA_ky);       CP_TO_CPU(Aky->cpu, Aky->data, sizeof(float)*i);
+    a2->Sum(P2, Aky->data, ASPECTRA_ky);       CP_TO_CPU(Aky->cpu, Aky->data, sizeof(float)*i);
     write_nc(Aky, endrun);     
   }
 }
@@ -2351,7 +2936,7 @@ void NetCDF_ids::write_Az(float* P2, bool endrun)
   if (Az -> write_v_time || (Az -> write && endrun)) {
     int i = grids_->Nz;
     
-    ph2->Sum(P2, Az->data, ASPECTRA_z);         CP_TO_CPU(Az->cpu, Az->data, sizeof(float)*i);
+    a2->Sum(P2, Az->data, ASPECTRA_z);         CP_TO_CPU(Az->cpu, Az->data, sizeof(float)*i);
     write_nc(Az, endrun);       
   }
 }
@@ -2361,7 +2946,7 @@ void NetCDF_ids::write_Akz(float* P2, bool endrun)
   if (Akz -> write_v_time || (Akz -> write && endrun)) {
     int Nz = grids_->Nz;
     
-    ph2->Sum(P2, Akz->data, ASPECTRA_kz);       CP_TO_CPU(Akz->tmp, Akz->data, sizeof(float)*Nz);
+    a2->Sum(P2, Akz->data, ASPECTRA_kz);       CP_TO_CPU(Akz->tmp, Akz->data, sizeof(float)*Nz);
 
     if (Nz>1) {
       for (int i = 0; i < Nz; i++) Akz->cpu[i] = Akz->tmp[ (i + Nz/2 + 1) % Nz ];
@@ -2378,7 +2963,7 @@ void NetCDF_ids::write_Akx(float* P2, bool endrun)
     int NX = grids_->Nx;
     int NK = grids_->Nakx/2;
     
-    ph2->Sum(P2, Akx->data, ASPECTRA_kx);               CP_TO_CPU(Akx->tmp, Akx->data, sizeof(float)*NX);
+    a2->Sum(P2, Akx->data, ASPECTRA_kx);               CP_TO_CPU(Akx->tmp, Akx->data, sizeof(float)*NX);
     
     int it = 0;
     int itp = it + NK;
@@ -2401,7 +2986,7 @@ void NetCDF_ids::write_Akxky(float* P2, bool endrun)
   if (Akxky -> write_v_time || (Akxky -> write && endrun)) {
     int i = grids_->Nyc*grids_->Nx; int NK = grids_->Nakx/2;  int NX = grids_->Nx;
     
-    ph2->Sum(P2, Akxky->data, ASPECTRA_kxky);    CP_TO_CPU(Akxky->tmp, Akxky->data, sizeof(float)*i);
+    a2->Sum(P2, Akxky->data, ASPECTRA_kxky);    CP_TO_CPU(Akxky->tmp, Akxky->data, sizeof(float)*i);
     
     int it = 0;
     int itp = it + NK;
@@ -2435,7 +3020,7 @@ void NetCDF_ids::write_Akxky(float* P2, bool endrun)
 void NetCDF_ids::write_As(float *P2, bool endrun)
 {
   if (As -> write_v_time) {  
-    ph2->Sum(P2, As->data, ASPECTRA_species);    CP_TO_CPU (As->cpu, As->data, sizeof(float));
+    a2->Sum(P2, As->data, ASPECTRA_species);    CP_TO_CPU (As->cpu, As->data, sizeof(float));
     write_nc(As, endrun);         
 
     if (Wtot -> write_v_time) totW += *As->cpu;
@@ -2445,6 +3030,7 @@ void NetCDF_ids::write_As(float *P2, bool endrun)
 void NetCDF_ids::write_Q (float* Q, bool endrun)
 {
   if (qs -> write_v_time) {// && grids_->m_lo==0) {
+
     all_red->Sum(Q, qs->data);                   CP_TO_CPU (qs->cpu, qs->data, sizeof(float)*grids_->Nspecies);
 
     // this is sort of a hack to prevent procs with higher hermite modes
@@ -2584,17 +3170,17 @@ void NetCDF_ids::write_Qkxky(float* Q, bool endrun)
   }
 }
 
-void NetCDF_ids::write_P (float* P, bool endrun)
+void NetCDF_ids::write_Gam (float* Gam, bool endrun)
 {
-  if (ps -> write_v_time) { //&& grids_->m_lo==0) {
-    all_red->Sum(P, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
+  if (ps -> write_v_time) {// && grids_->m_lo==0) {
+    all_red->Sum(Gam, ps->data);                   CP_TO_CPU (ps->cpu, ps->data, sizeof(float)*grids_->Nspecies);
 
     // this is sort of a hack to prevent procs with higher hermite modes
     // from overwriting flux in netcdf file with nonsense.
     // the issue is that all procs need to participate in the collective write,
     // but these procs have 0 for the flux. so just let these procs (over)write 0 
     // to beginning of time domain.
-    if(grids_->m_lo > 0) ps->time_start[0] = 0; 
+    if(grids_->m_lo > 0) ps->time_start[0] = 0;
 
     write_nc(ps, endrun);       
 
@@ -2608,6 +3194,124 @@ void NetCDF_ids::write_P (float* P, bool endrun)
   }
 }
 
+void NetCDF_ids::write_Gamky(float* Gam, bool endrun)
+{
+  if (Gamky -> write_v_time || (Gamky -> write && endrun)) {
+    int i = grids_->Nyc*grids_->Nspecies;
+
+    red_pflux->Sum(Gam, Gamky->data, GamSPECTRA_ky);               CP_TO_CPU(Gamky->tmp, Gamky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+	Gamky->cpu[ik + is*grids_->Naky] = Gamky->tmp[ik + is*grids_->Nyc];
+      }
+    }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamky->time_start[0] = 0;
+    write_nc(Gamky, endrun);      
+  }
+}
+
+void NetCDF_ids::write_Gamkx(float* Gam, bool endrun)
+{
+  if (Gamkx -> write_v_time || (Gamkx -> write && endrun)) {
+    int i = grids_->Nx*grids_->Nspecies;
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx;
+    
+    red_pflux->Sum(Gam, Gamkx->data, GamSPECTRA_kx);               CP_TO_CPU(Gamkx->tmp, Gamkx->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it  = 0;
+      int itp = it + NK;
+      Gamkx->cpu[itp + is*grids_->Nakx] = Gamkx->tmp[it  + is*grids_->Nx];
+      
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	Gamkx->cpu[itp + is*grids_->Nakx] = Gamkx->tmp[it  + is*grids_->Nx];
+	Gamkx->cpu[itn + is*grids_->Nakx] = Gamkx->tmp[itm + is*grids_->Nx];	
+      }
+    }  
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamkx->time_start[0] = 0;
+    write_nc(Gamkx, endrun);     
+  }
+}
+
+void NetCDF_ids::write_Gamz(float* Gam, bool endrun)
+{
+  if (Gamz -> write_v_time || (Gamz -> write && endrun)) {
+    int i = grids_->Nz*grids_->Nspecies;
+    
+    red_pflux->Sum(Gam, Gamz->data, GamSPECTRA_z);         CP_TO_CPU(Gamz->cpu, Gamz->data, sizeof(float)*i);
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamz->time_start[0] = 0;
+    write_nc(Gamz, endrun);        
+  }
+}
+
+void NetCDF_ids::write_Gamkxky(float* Gam, bool endrun)
+{
+  if (Gamkxky -> write_v_time || (Gamkxky -> write && endrun)) {
+
+    int i = grids_->Nyc*grids_->Nx*grids_->Nspecies;
+
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    
+    red_pflux->Sum(Gam, Gamkxky->data, GamSPECTRA_kxky);
+    CP_TO_CPU(Gamkxky->tmp, Gamkxky->data, sizeof(float)*i);
+    
+    for (int is = 0; is < grids_->Nspecies; is++) {
+      int it = 0;
+      int itp = it + NK;
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+	int Gamp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc *grids_->Nx;
+	Gamkxky->cpu[Gamp] = Gamkxky->tmp[Rp];
+      }	
+      for (int it = 1; it < NK+1; it++) {
+	int itp = NK + it;
+	int itn = NK - it;
+	int itm = NX - it;
+	
+	for (int ik = 0; ik < grids_->Naky; ik++) {
+
+	  int Gamp = itp + ik*grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rp = ik  + it*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  int Gamn = itn + ik *grids_->Nakx + is*grids_->Naky*grids_->Nakx;
+	  int Rm = ik  + itm*grids_->Nyc  + is*grids_->Nyc * NX;
+
+	  Gamkxky->cpu[Gamp] = Gamkxky->tmp[Rp];
+	  Gamkxky->cpu[Gamn] = Gamkxky->tmp[Rm];
+	}
+      }
+    }
+    // this is sort of a hack to prevent procs with higher hermite modes
+    // from overwriting flux in netcdf file with nonsense.
+    // the issue is that all procs need to participate in the collective write,
+    // but these procs have 0 for the flux. so just let these procs (over)write 0 
+    // to beginning of time domain.
+    if(grids_->m_lo > 0) Gamkxky->time_start[0] = 0;
+    write_nc(Gamkxky, endrun);     
+  }
+}
+
 void NetCDF_ids::write_fields(nca *D, cuComplex *a, bool endrun)
 {
   if (D->write) {
@@ -2617,6 +3321,24 @@ void NetCDF_ids::write_fields(nca *D, cuComplex *a, bool endrun)
     write_nc (D, endrun);
   }
 }
+
+void NetCDF_ids::write_fields_realspace(nca *D, cuComplex *a, bool endrun)
+{
+  if (D->write) {
+     //transfrom a into real space
+    GradPerp * grad_apar = new GradPerp(grids_, grids_->Nz, grids_->NxNycNz);
+    grad_apar->C2R(a,D->data);
+    //grad_apar->qvar(D->data, grids_->NxNyNz);
+
+     //copy it to CPU write to output file
+    CP_TO_CPU(D->cpu, D->data, sizeof(float) * D->N_);
+    //grad_apar->qvar(D->cpu,grids_->NxNyNz);   
+
+    write_nc(D, endrun);
+    delete grad_apar;
+  } 
+}
+
 
 void NetCDF_ids::write_omg(cuComplex *W, bool endrun)
 {
@@ -2635,7 +3357,7 @@ void NetCDF_ids::close_nc_file() {
   int retval;
   if (retval = nc_close(  file)) ERR(retval);
   if (pars_->write_xymom) {
-    if (retval = nc_close(pars_->nczid)) ERR(retval);
+    if (retval = nc_close(z_file)) ERR(retval);
   }
 }
 

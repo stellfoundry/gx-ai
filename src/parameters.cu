@@ -1,5 +1,6 @@
 #include "parameters.h"
 #include <netcdf.h>
+#include <netcdf_par.h>
 #include "toml.hpp"
 #include <iostream>
 #include "version.h"
@@ -34,7 +35,7 @@ void Parameters::get_nml_vars(char* filename)
   strcpy(nml_file, run_name);
   strcat(nml_file, ".in");
 
-  printf(ANSI_COLOR_MAGENTA);
+  //printf(ANSI_COLOR_MAGENTA);
 
   const auto nml = toml::parse(nml_file);
 
@@ -46,7 +47,10 @@ void Parameters::get_nml_vars(char* filename)
   strcat(default_restart_filename, ".restart.nc");
 
   auto tnml = nml;
-   
+
+  //
+  // This next line seems to be completely superfluous!
+  //
   tnml = nml;
   if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
   
@@ -77,8 +81,14 @@ void Parameters::get_nml_vars(char* filename)
   y0       = toml::find_or <float>       (tnml, "y0",          10.0  );
   x0       = toml::find_or <float>       (tnml, "x0",          -1.0  );
   z0       = toml::find_or <float>       (tnml, "z0",           1.0  );
-  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1    );
+  jtwist   = toml::find_or <int>         (tnml, "jtwist",      -1000 );
   Zp       = toml::find_or <int>         (tnml, "zp",           2*nperiod-1    );
+  // possible values of boundary are:
+  // "linked": twist-and-shift BC, with generalization for non-axisymmetric geometry (Martin et al 2018)
+  // "forced periodic" (or simply "periodic"): use periodic BCs with no cutting of flux tube
+  // "exact periodic": cut flux tube at a location where gds21 = 0, and then use periodic BCs (currently for VMEC geometry only)
+  // "continuous drifts": cut flux tube at a location where gbdrift0 = 0, and then use (generalized) twist-and-shift BC (currently for VMEC geometry only)
+  // "fix aspect": cut flux tube at a location where y0/x0 takes the desired value, and then use (generalized) twist-and-shift BC (VMEC geometry only)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
@@ -87,8 +97,8 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
-  nstep   = toml::find_or <int>   (tnml, "nstep",   1e20 );
-  scheme = toml::find_or <string> (tnml, "scheme",    "sspx3"   );
+  nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
+  scheme = toml::find_or <string> (tnml, "scheme",    "rk3"   );
   cfl = toml::find_or <float> (tnml, "cfl", 0.9);
   stages = toml::find_or <int>    (tnml, "stages",  10   );
   t_max = toml::find_or <float> (tnml, "t_max", 1.e20);
@@ -122,7 +132,7 @@ void Parameters::get_nml_vars(char* filename)
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
   nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   );
   nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
@@ -133,6 +143,15 @@ void Parameters::get_nml_vars(char* filename)
   hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
 
   tnml = nml;
+  if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 
+
+  cetg              = toml::find_or <bool>  (tnml, "cetg",         false );
+
+  if (cetg) gx = false;
+  if (cetg) nm_in = 1;
+  if (cetg) nl_in = 2;
+  
+  tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
   
   vp                = toml::find_or <bool>  (tnml, "vp",         false );
@@ -141,6 +160,7 @@ void Parameters::get_nml_vars(char* filename)
   vp_nuh            = toml::find_or <float> (tnml, "vp_nuh",      -1.0 );
   vp_alpha          = toml::find_or <int>   (tnml, "vp_alpha",       1 );
   vp_alpha_h        = toml::find_or <int>   (tnml, "vp_alpha_h",     2 );
+  if (vp) gx = false;
   
   tnml = nml;
   if (nml.contains("KS")) tnml = toml::find (nml, "KS");
@@ -152,7 +172,8 @@ void Parameters::get_nml_vars(char* filename)
   ks_tf             = toml::find_or <float> (tnml, "ks_tf",       -1.0 );
   ks_eps0           = toml::find_or <float> (tnml, "ks_eps0",     -1.0 );
   ks_epsf           = toml::find_or <float> (tnml, "ks_epsf",     -1.0 );
-
+  if (ks) gx = false;
+  
   tnml = nml;
   if (nml.contains("KREHM")) tnml = toml::find (nml, "KREHM");
   
@@ -160,9 +181,12 @@ void Parameters::get_nml_vars(char* filename)
   if(krehm) gx = false;
   rho_i             = toml::find_or <float> (tnml, "rho_i",       1.0 );
   d_e               = toml::find_or <float> (tnml, "d_e",         1.0 );
-  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       1.0 );
+  nu_ei             = toml::find_or <float> (tnml, "nu_ei",       0.0 );
+  eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
+  harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   rho_s = rho_i*sqrtf(zt/2);
+  if(eta>0.0) nu_ei = eta/d_e/d_e;
 
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");
@@ -175,11 +199,11 @@ void Parameters::get_nml_vars(char* filename)
   size_t maxSharedSize = prop.sharedMemPerBlockOptin;
   int i_share_max = maxSharedSize/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
   if(i_share > i_share_max) {
-    printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
+    if(iproc==0) printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
     i_share = i_share_max;
   }
   
-  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
+  dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -262,9 +286,10 @@ void Parameters::get_nml_vars(char* filename)
 
   if (write_all_xymom) {
     write_xyvEx = write_xyvEy = write_xykxvEy = write_xyTperp = write_xyTpar = true;
-    write_xyPhi = write_xyden = write_xyUpar = write_xyqpar = true;
+    write_xyPhi = write_xyApar = write_xyden = write_xyUpar = write_xyqpar = true;
   } else {
     write_xyPhi    = toml::find_or <bool> (tnml, "xyPhi",    false );
+    write_xyApar   = toml::find_or <bool> (tnml, "xyApar",   false );
     write_xyvEx    = toml::find_or <bool> (tnml, "xyvEx",    false );
     write_xyvEy    = toml::find_or <bool> (tnml, "xyvEy",    false );
     write_xykxvEy  = toml::find_or <bool> (tnml, "xykxvEy",  false );
@@ -293,7 +318,7 @@ void Parameters::get_nml_vars(char* filename)
   write_kmom  = (write_kmom  || write_avg_zkqpar );
   
   write_xymom = (write_xyvEy || write_xykxvEy   || write_xyden      || write_xyUpar    ||  write_xyvEx);
-  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi);
+  write_xymom = (write_xymom || write_xyTpar    || write_xyTperp    || write_xyqpar    ||  write_xyPhi || write_xyApar);
   
   tnml = nml;
   if (nml.contains("Resize")) tnml = toml::find (nml, "Resize");
@@ -412,6 +437,10 @@ void Parameters::get_nml_vars(char* filename)
   Btype                 = toml::find_or <string> (tnml, "Boltzmann_type", "electrons" );
   iphi00                = toml::find_or <int>    (tnml, "iphi00",                  -2 );
 
+  // Get the value of Z when running the Adkins collisional ETG equations
+
+  ion_z                 = toml::find_or <float>   (tnml, "Z_ion",                   1. );
+  
   // For backward compatibility, check if iphi00 was specified and act accordingly
   if (iphi00 > 0) {
     if (iphi00 == 1) Btype = "Ions";
@@ -438,6 +467,8 @@ void Parameters::get_nml_vars(char* filename)
   
   if (tau_fac > 0.) ti_ov_te = tau_fac;                 // new definition has priority if it was provided
   tau_fac = ti_ov_te;                                   // In the body of the code, use tau_fac instead of ti_ov_te
+  
+  // For the Adkins collisional ETG model, tau_fac should be set to Ti/(Te Z) = tau_bar
   
   ///////////////////////////////////////////////////////////////////////
   //                                                                   //
@@ -549,11 +580,15 @@ void Parameters::get_nml_vars(char* filename)
   pspectra.resize(np_spectra);
   aspectra.resize(na_spectra);
   qspectra.resize(nq_spectra);
+  gamspectra.resize(ngam_spectra);
+  phi2spectra.resize(nphi2_spectra);
 
   wspectra.assign(nw_spectra, 0);
   pspectra.assign(np_spectra, 0);
   aspectra.assign(na_spectra, 0);
   qspectra.assign(nq_spectra, 0);
+  gamspectra.assign(ngam_spectra, 0);
+  phi2spectra.assign(nphi2_spectra, 0);
 
   tnml = nml;
   if (nml.contains("Wspectra")) tnml = toml::find (nml, "Wspectra");  
@@ -591,6 +626,28 @@ void Parameters::get_nml_vars(char* filename)
   qspectra [QSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
   qspectra [QSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
 
+  tnml = nml;
+  if (nml.contains("Gamspectra")) tnml = toml::find (nml, "Gamspectra");  
+
+  gamspectra [GamSPECTRA_species] = (toml::find_or <bool> (tnml, "species",          false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+  gamspectra [GamSPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             false)) == true ? 1 : 0;
+
+  tnml = nml;
+  if (nml.contains("Phi2spectra")) tnml = toml::find (nml, "Phi2spectra");  
+
+  phi2spectra [PHI2SPECTRA_t]       = (toml::find_or <bool> (tnml, "time",             true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kx]      = (toml::find_or <bool> (tnml, "kx",               true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_ky]      = (toml::find_or <bool> (tnml, "ky",               true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kz]      = (toml::find_or <bool> (tnml, "kz",               false)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_z]       = (toml::find_or <bool> (tnml, "z",                true)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kperp]   = (toml::find_or <bool> (tnml, "kperp",            false)) == true ? 1 : 0;
+  phi2spectra [PHI2SPECTRA_kxky]    = (toml::find_or <bool> (tnml, "kxky",             true)) == true ? 1 : 0;
+
   // if we have adiabatic ions, slave the aspectra to the wspectra as appropriate
   if (!all_kinetic) {
     aspectra [ ASPECTRA_species ] = wspectra [ WSPECTRA_species ];
@@ -611,6 +668,8 @@ void Parameters::get_nml_vars(char* filename)
   pspectra[ PSPECTRA_kperp] = 0;
   aspectra[ ASPECTRA_kperp] = 0;
   qspectra[ QSPECTRA_kperp] = 0;
+  gamspectra[ GamSPECTRA_kperp] = 0;
+  phi2spectra[ PHI2SPECTRA_kperp] = 0;
   
   // If Wtot is requested, turn Ws, Ps, Phi2 on:
   if (write_free_energy) {
@@ -619,15 +678,18 @@ void Parameters::get_nml_vars(char* filename)
     if ( add_Boltzmann_species ) aspectra[ASPECTRA_species] = 1;
   }
 
-  gx = (!ks && !vp && !krehm);
+  gx = (!ks && !vp && !krehm && !cetg);
   assert (!(ks && vp));
-  assert (ks || vp || gx || krehm);
+  assert (ks || vp || gx || krehm || cetg);
+
 
   int ksize = 0;
   for (int k=0; k<pspectra.size(); k++) ksize = max(ksize, pspectra[k]);
   for (int k=0; k<wspectra.size(); k++) ksize = max(ksize, wspectra[k]);
   for (int k=0; k<aspectra.size(); k++) ksize = max(ksize, aspectra[k]);
   for (int k=0; k<qspectra.size(); k++) ksize = max(ksize, qspectra[k]);
+  for (int k=0; k<gamspectra.size(); k++) ksize = max(ksize, gamspectra[k]);
+  for (int k=0; k<phi2spectra.size(); k++) ksize = max(ksize, phi2spectra[k]);
 
   tnml = nml;
   if (nml.contains("PZT")) tnml = toml::find (nml, "PZT");  
@@ -667,6 +729,12 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].temp = 1.0;
     species_h[0].mass = 1.0;
     species_h[0].type = 1;
+  } else if(cetg) {
+    species_h[0].mass = 1.0;
+    species_h[0].z    = 1.0;
+    species_h[0].dens = 1.0;
+    species_h[0].temp = 1.0;
+    species_h[0].type = 1; 
   }
   
   float numax = -1.;
@@ -716,7 +784,7 @@ void Parameters::get_nml_vars(char* filename)
   //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = Closure::none   ;
   if( closure_model == "beer4+2") {
-    printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
+    if(iproc==0) printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");
     nm_in = 4;
     nl_in = 2;
     closure_model_opt = Closure::beer42;
@@ -724,9 +792,9 @@ void Parameters::get_nml_vars(char* filename)
   } else if (closure_model == "smith_par")  { closure_model_opt = Closure::smithpar; 
   }
 
-  if( boundary == "periodic") { boundary_option_periodic = true;
+  if( boundary == "periodic" || boundary == "exact periodic" || boundary == "forced periodic") { boundary_option_periodic = true;
   } else { boundary_option_periodic = false; }
-  
+
   if     ( init_field == "density") { initf = inits::density; }
   else if( init_field == "upar"   ) { initf = inits::upar   ; }
   else if( init_field == "tpar"   ) { initf = inits::tpar   ; }
@@ -752,7 +820,7 @@ void Parameters::get_nml_vars(char* filename)
   if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
   if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
-  if (eqfix && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
+  if (eqfix && iproc==0 && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -771,18 +839,20 @@ void Parameters::get_nml_vars(char* filename)
     
   if( source == "phiext_full") {
     source_option = PHIEXT;
-    printf("Running Rosenbluth-Hinton zonal flow calculation\n");
+    if(iproc==0) printf("Running Rosenbluth-Hinton zonal flow calculation\n");
   }
 
-  if(hypercollisions) printf("Using hypercollisions.\n");
-  if(hyper) printf("Using hyperdiffusion.\n");
+  if(iproc==0) {
+    if(hypercollisions) printf("Using hypercollisions.\n");
+    if(hyper) printf("Using hyperdiffusion.\n");
 
-  if(debug) printf("nspec_in = %i \n",nspec_in);
+    if(debug) printf("nspec_in = %i \n",nspec_in);
 
-  if(all_kinetic && beta == 0.0) {
-    printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
-    printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
-    printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+    if(all_kinetic && beta == 0.0 && !krehm) {
+      printf("Warning: you are using kinetic electrons in a purely electrostatic calculation (beta==0.0).\n");
+      printf("This will require a very small dt to resolve the high-frequency electrostatic shear Alfven wave (omega_H mode).\n");
+      printf("It is recommended to instead use a small but finite value of beta to alleviate the timestep restriction.\n");
+    }
   }
 
   nspec = nspec_in;
@@ -794,13 +864,14 @@ void Parameters::get_nml_vars(char* filename)
 void Parameters::store_ncdf(int ncid) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-  int retval, idim, sdim, wdim, pdim, adim, qdim, nc_out, nc_inputs, nc_diss;
+  int retval, idim, sdim, wdim, pdim, adim, qdim, gamdim, phi2dim, nc_out, nc_inputs, nc_diss;
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "collisionalETG", &nc_cetg))   ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -844,7 +915,7 @@ void Parameters::store_ncdf(int ncid) {
     strcpy(strb, run_name); 
     strcat(strb, "_nonZonal_xy.nc");
     
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &nczid)) ERR(retval);
+    if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, mpcom, MPI_INFO_NULL, &nczid)) ERR(retval);
     if (retval = nc_def_dim (nczid, "x",       nx_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "y",       ny_in,        &idim)) ERR(retval);
     if (retval = nc_def_dim (nczid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
@@ -863,6 +934,8 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_dim (nc_sp, "np",     np_spectra,    &pdim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "na",     na_spectra,    &adim)) ERR(retval);
   if (retval = nc_def_dim (nc_sp, "nq",     nq_spectra,    &qdim)) ERR(retval);
+  //if (retval = nc_def_dim (nc_sp, "ng",     ngam_spectra,    &gamdim)) ERR(retval);
+  //if (retval = nc_def_dim (nc_sp, "nphi2",  nphi2_spectra, &phi2dim)) ERR(retval);
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -904,6 +977,8 @@ void Parameters::store_ncdf(int ncid) {
   if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_cetg, "cetg",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   specs[0] = wdim;
   if (retval = nc_def_var (nc_sp, "wspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -916,6 +991,12 @@ void Parameters::store_ncdf(int ncid) {
 
   specs[0] = qdim;
   if (retval = nc_def_var (nc_sp, "qspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  //specs[0] = gamdim;
+  //if (retval = nc_def_var (nc_sp, "gamspectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
+
+  //specs[0] = phi2dim;
+  //if (retval = nc_def_var (nc_sp, "phi2spectra",   NC_INT,   1, specs, &ivar)) ERR(retval);
 
   specs[0] = sdim;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -987,6 +1068,7 @@ void Parameters::store_ncdf(int ncid) {
 
   if (retval = nc_def_var (nc_diag, "all_non_zonal",   NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyPhi" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diag, "xyApar" ,          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEx",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xyvEy",           NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diag, "xykxvEy",         NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1072,6 +1154,7 @@ void Parameters::store_ncdf(int ncid) {
 
   // for boltzmann opts need attribute BD bug
 
+  if (retval = nc_def_var (nc_bz, "Z_ion",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1166,7 +1249,8 @@ void Parameters::store_ncdf(int ncid) {
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
   put_real (nc_bz, "tau_fac",               tau_fac               );
-  
+  put_real (nc_bz, "Z_ion",                 ion_z                 );
+
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
   if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );
@@ -1195,6 +1279,7 @@ void Parameters::store_ncdf(int ncid) {
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
 
+  putbool  (nc_cetg,  "cetg", cetg);
   putbool  (nc_krehm, "krehm", krehm);
   put_real (nc_krehm, "rho_i", rho_i);
   put_real (nc_krehm, "d_e", d_e);
@@ -1216,6 +1301,7 @@ void Parameters::store_ncdf(int ncid) {
 
   putbool  (nc_diag, "all_non_zonal", write_all_xymom  );
   putbool  (nc_diag, "xyPhi",        write_xyPhi       );
+  putbool  (nc_diag, "xyApar",       write_xyApar       );
   putbool  (nc_diag, "xyvEx",        write_xyvEx       );
   putbool  (nc_diag, "xyvEy",        write_xyvEy       );
   putbool  (nc_diag, "xykxvEy",      write_xykxvEy     );
@@ -1323,6 +1409,9 @@ void Parameters::store_ncdf(int ncid) {
   put_wspectra (nc_sp, wspectra); 
   put_pspectra (nc_sp, pspectra); 
   put_aspectra (nc_sp, aspectra); 
+  put_qspectra (nc_sp, qspectra); 
+  //put_phi2spectra (nc_sp, phi2spectra); 
+  //put_gamspectra (nc_sp, gamspectra); 
   putspec (nc_spec, nspec_in, species_h);
 }
 
@@ -1343,7 +1432,7 @@ void Parameters::init_species(specie* species)
     if (long_wavelength_GK) {
       species[s].rho2  = 0; // setting rho2 = 0.
       species[s].rho2_long_wavelength_GK  = species[s].temp * species[s].mass / (species[s].z * species[s].z); // note this does not have a factor of 1/B**2. This rho2 is used for quasineutrality 1-Gam0 --> b_s approximation, whereas rho2 = 0 elsewhere for long_wavelength_GK.
-      printf("You are running GX with the long wavelength approximation.");
+      if(iproc==0) printf("You are running GX with the long wavelength approximation.");
     }
     if (debug) {
       printf("species = %d \n",s);
@@ -1358,7 +1447,7 @@ void Parameters::init_species(specie* species)
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
-    tzmax = max(tzmax, species[s].tz);
+    tzmax = max(tzmax, abs(species[s].tz));
     etamax = max(etamax, species[s].tprim/species[s].fprim);
   }
 }
@@ -1452,6 +1541,26 @@ void Parameters::put_qspectra (int ncid, std::vector<int> s) {
   if (retval = nc_put_vara (ncid, idum, qspectra_start, qspectra_count, s.data())) ERR(retval);
 }
 
+void Parameters::put_gamspectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  gamspectra_start[0] = 0;
+  gamspectra_count[0] = ngam_spectra;
+
+  if (retval = nc_inq_varid(ncid, "gamspectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, gamspectra_start, gamspectra_count, s.data())) ERR(retval);
+}
+
+void Parameters::put_phi2spectra (int ncid, std::vector<int> s) {
+
+  int idum, retval;
+  phi2spectra_start[0] = 0;
+  phi2spectra_count[0] = nphi2_spectra;
+
+  if (retval = nc_inq_varid(ncid, "phi2spectra", &idum))     ERR(retval);
+  if (retval = nc_put_vara (ncid, idum, phi2spectra_start, phi2spectra_count, s.data())) ERR(retval);
+}
+
 void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   int idum, retval;
   
@@ -1513,82 +1622,126 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, st))  ERR(retval);
 }
 
-void Parameters::set_jtwist_x0(float *shat_in)
+void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 {
-  printf("set_jtwist_x0: shat_in = %f\n", *shat_in);
-  if (jtwist==0) {
-    // this is an error
-    printf("************************** \n");
-    printf("************************** \n");
-    printf("jtwist = 0 is not allowed! \n");
-    printf("************************** \n");
-    printf("************************** \n");
-  }
-  if (*shat_in == 0.0) {
-    printf("Setting shat = 0 will cause issues. Resetting to shat = 1.e-8\n");
-    *shat_in = 1.e-8;
-  }
-  if (abs(*shat_in) < 1e-5) {
-    zero_shat = true;
+  float shat = *shat_in;
+  // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
+  float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
+
+  if(iproc==0) {
+    if(debug) printf("set_jtwist_x0: shat = %f, twist_shift_geo_fac = %f\n", shat, twist_shift_geo_fac);
+
+    // check consistency of boundary and geo_option
+    printf(ANSI_COLOR_RED);
+    if(boundary == "continuous drifts" || boundary == "fix aspect") {
+      if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard twist-shift BCs (boundary = \"linked\")\n", boundary.c_str()); 
+    }
+    if(boundary == "exact periodic") {
+      if(geo_option != "vmec") printf("Warning: boundary option \"%s\" is only available with the VMEC geometry module. Using standard periodic BCs (boundary = \"periodic\")\n", boundary.c_str()); 
+    }
+    printf(ANSI_COLOR_RESET);
   }
 
-  if (zero_shat) {
-    // for zero magnetic shear, jtwist is not used.
+  if (jtwist==0) {
+    // this is an error
+    if(iproc==0) {
+      printf(ANSI_COLOR_RED);
+      printf("************************** \n");
+      printf("************************** \n");
+      printf("jtwist = 0 is not allowed! \n");
+      printf("************************** \n");
+      printf("************************** \n");
+      printf(ANSI_COLOR_RESET);
+    }
+  }
+  if (abs(shat) < 1e-5) {
+    zero_shat = true;
+    boundary_option_periodic = true;
+  }
+
+  if (boundary_option_periodic) {
+    // for periodic BCs, set jtwist=2*nx_in, which will give a separate periodic domain for each mode (no linking).
     // just need to make sure x0 is set
     // either take x0 from input file, or if it was not set
     // (indicated by x0 = -1) then set it to y0 by default
+    jtwist = 2*nx_in;
     if (x0 == -1) {
       x0 = y0;
-      if (geo_option=="slab") {
-	printf("Parallel box size is 2 * pi * z0 = %d \n",2*M_PI*z0);
-	printf("And regardless of other messages, the magnetic shear is zero");      
-      }
     }
-  } else {
+    if (geo_option=="slab" && iproc==0) {
+      printf("Parallel box size is 2 * pi * z0 = %f \n",2*M_PI*z0);
+      if(zero_shat) printf("And regardless of other messages, the magnetic shear is zero.\n");      
+    }
+    if(iproc==0) {
+      printf(ANSI_COLOR_MAGENTA);
+      printf("Using periodic BCs with x0 = %f, y0 = %f\n", x0, y0);
+      printf(ANSI_COLOR_RESET);
+    }
+  } else { // use twist-and-shift BCs
     // if both jtwist and x0 were not set in input file
-    if (jtwist == -1 && x0 < 0.0) {
-      // set jtwist to 2pi*shat_in so that x0~y0
-      jtwist = (int) fmax(1., round(2*M_PI*abs(*shat_in)*Zp));
+    if (jtwist == -1000 && x0 < 0.0) {
+      // set jtwist so that x0~y0
+      jtwist = (int) round(twist_shift_geo_fac);
       if(jtwist == 0) {
-        printf("Warning: shat was set so small that it was giving jtwist=0\n");
-	printf("Setting x0=y0 and zero_shat=true\n");
-        x0 = y0;
-	zero_shat = true;
-      } else {
-        x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
-      }
+	//
+	// Per the discussion in April, 2023, we want to change the logic in this section.
+	// Instead of setting zero_shat = true, we want to force jtwist = 1 and
+	// then take the x0 that that gives.
+	//
+	// We could calculate kx_max and advise the user to set nx such that
+	// kx_max ~ ky_max (for example). For small values of magnetic shear,
+	// this will produce recommendations for nx that can be quite large.
+	// But that is probably the best thing to do.
+	//      
+        if(iproc==0) {
+          printf(ANSI_COLOR_RED);
+          printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/abs(twist_shift_geo_fac), ((int)(nx_in-1)/3)/y0*abs(twist_shift_geo_fac), nx_in);
+          printf("Consider using an alternative boundary option.\n");
+          printf(ANSI_COLOR_RESET);
+        }
+
+        jtwist = 1;
+      } 
+
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     } 
     // if jtwist was set in input file but x0 was not
     else if (x0 < 0.0) {
-      x0 = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     } 
     // if x0 was set in input file 
     else {
       // compute jtwist that will give x0 ~ the input value
-      int jtwist_0 = (int) round(2*M_PI*abs(*shat_in)*Zp/y0*x0);
+      int jtwist_0 = (int) round(twist_shift_geo_fac/y0*x0);
       
       // if both jtwist and x0 were set in input file, make sure the input jtwist is consistent with the input x0,
       // and print warning if not.
-      if (jtwist > 0) {
+      if (jtwist != -1000) {
         if (jtwist_0 != jtwist) {
-          printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
+          if(iproc==0) printf("Warning: x0 and jtwist set inconsistently. Resetting jtwist = %d\n", jtwist_0);
         }
       }
+      if(jtwist_0 == 0) {
+        if(iproc==0) {
+          printf(ANSI_COLOR_RED);
+          printf("Warning: twist_shift_geo_fac is so small that it was giving jtwist=0, but the minimum possible value is jtwist = 1.\n");
+          printf("Setting jtwist = 1 results in x0 = %f, so that kx_max = %f for your grid with Nx = %d.\n", y0/(abs(twist_shift_geo_fac)), ((int)(nx_in-1)/3)/y0*(abs(twist_shift_geo_fac)), nx_in);
+          printf("Consider using an alternative boundary option.\n");
+          printf(ANSI_COLOR_RESET);
+        }
+
+        jtwist_0 = 1;
+      } 
       jtwist = jtwist_0;
-      // this is the exact x0 value that corresponds to the integer jtwist we just computed
-      float x0_j = y0 * jtwist/(2*M_PI*Zp*abs(*shat_in));
-
-      if(jtwist == 0) zero_shat = true;
-      else x0 = x0_j; // reset x0 to be consistent with jtwist
+      // reset x0 to be consistent with the integer jtwist we just computed
+      x0 = y0 * abs(jtwist)/abs(twist_shift_geo_fac);
     }
+    printf(ANSI_COLOR_MAGENTA);
+    if(iproc==0) printf("Using (generalized) twist-and-shift BCs. Final values are jtwist = %d, shat = %f, x0 = %f, y0 = %f\n", jtwist, shat, x0, y0);
+  
+    printf(ANSI_COLOR_RESET);
   }
 
-  if (zero_shat) {
-    jtwist = 2*nx_in;
-    *shat_in = 1.e-5;
-    boundary_option_periodic = true;
-    printf("Using no magnetic shear (setting shat = 1e-6) because zero_shat = true. Setting boundary_option='periodic' \n");
-  }
-  printf("jtwist = %d, x0 = %f\n", jtwist, x0);
 }
 

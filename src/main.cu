@@ -5,6 +5,7 @@
 #include <vector>
 #include <algorithm>
 #include <iostream>
+#include <ctime>
 #include "run_gx.h"
 #include "version.h"
 #include "helper_cuda.h"
@@ -14,7 +15,7 @@
 
 int main(int argc, char* argv[])
 {
-
+  // Uncomment the following line to catch NaN and overflow errors at runtime
   //  feenableexcept(FE_INVALID | FE_OVERFLOW);
 
   MPI_Init(&argc, &argv);
@@ -31,7 +32,7 @@ int main(int argc, char* argv[])
 
   char run_name[1000];
   if ( argc < 1) {
-    fprintf(stderr, "The correct usage is:\n gx <runname>.in\n");
+    if(iproc==0) fprintf(stderr, "The correct usage is:\n gx <runname>.in\n");
     exit(1);
   } else {    
     // if input filename ends in .in, remove .in
@@ -39,39 +40,63 @@ int main(int argc, char* argv[])
       strncpy(run_name, argv[1], strlen(argv[1])-3);
       run_name[strlen(argv[1])-3] = '\0';
     } else {
-      fprintf(stderr, "Argument for input filename must now include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
+      if(iproc==0) fprintf(stderr, "Argument for input filename must include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
       exit(1);
     }
 
-    printf("Running %s \n",run_name);
+    printf(ANSI_COLOR_GREEN);
+    if(iproc==0) printf("Running %s \n",run_name);
+    std::time_t time = std::time(0);
+    if(iproc==0) std::cout << "Start time: " << std::ctime(&time) << std::endl;
+    printf(ANSI_COLOR_RESET);
   }
    
-  printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
-
+  if(iproc==0) printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
+ 
+  // 
+  // Read the input file by instantiating and using a Parameters object
+  // 
   Parameters * pars = nullptr;
   pars = new Parameters(iproc, nprocs, mpcom);
   pars->get_nml_vars(run_name);
-  
+
+  //
+  // Initialize the computational grid by instantiating and using a Grids object
+  //
   Grids * grids = nullptr;
   
-  DEBUGPRINT("Initializing grids...\n");
+  if(iproc==0) DEBUGPRINT("Initializing grids...\n");
   grids = new Grids(pars);
-  CUDA_DEBUG("Initializing grids: %s \n");
+  if(iproc==0) CUDA_DEBUG("Initializing grids: %s \n");
 
-  DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
+  if(iproc==0) DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
 	     grids->iproc, grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
+  //
+  // Prepare to define the various coefficients that determine the geometry of the simulation
+  //
   Geometry    * geo         = nullptr;
+
+  //
+  // Prepare to define a diagnostics object
+  // 
   Diagnostics * diagnostics = nullptr;
 
+  // GX is set up to solve a handful of different equation sets.
+  // Some have a geometry associated with them, some do not.
+  // Presently the options are "gx", "krehm", "vp", "ks", and "cetg"
+  // Most equation sets are undocumented, as they are exploratory or pedagogical in nature
+  // 
   if (pars->gx) {
     geo = init_geo(pars, grids);
-
-
-    DEBUGPRINT("Initializing diagnostics...\n");
+    if(iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
     diagnostics = new Diagnostics_GK(pars, grids, geo);
-    CUDA_DEBUG("Initializing diagnostics: %s \n");    
+    if(iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
 
+    //
+    //    We do not need Hermite transforms for anything more than some specific diagnostics
+    //    and typically this functionality is not available because it is not sufficiently general.
+    //
     //    DEBUGPRINT("Initializing Hermite transforms...\n");
     //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
     //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
@@ -80,11 +105,36 @@ int main(int argc, char* argv[])
     geo = init_geo(pars, grids);
     diagnostics = new Diagnostics_KREHM(pars, grids);
   }
+  if (pars->cetg) {
+    geo = init_geo(pars, grids);    
+    if(iproc==0) DEBUGPRINT("Initializing cETG diagnostics...\n");
+    diagnostics = new Diagnostics_cetg(pars, grids, geo);
+    if(iproc==0) CUDA_DEBUG("Initializing cETG diagnostics...\n");
+  }
+  
 
+  //
+  // Hold here until all threads are ready to continue
+  // 
   cudaDeviceSynchronize();
+
+  //
+  // Check for a class of Cuda errors
+  // 
   checkCudaErrors(cudaGetLastError());
   
+  //
+  // Run the calculation
+  // 
   run_gx(pars, grids, geo, diagnostics); 
+
+  //
+  // This way of measuring runtime is only appropriate for large time intervals.
+  // There are more specific ways to get precise timings, especially when there 
+  // are kernel calls. 
+  // 
+  std::time_t time = std::time(0);
+  if(iproc==0) std::cout << "End time: " << std::ctime(&time) << std::endl;
 
   delete pars;
   delete grids;

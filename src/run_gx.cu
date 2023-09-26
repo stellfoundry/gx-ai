@@ -1,7 +1,5 @@
 #include "run_gx.h"
 
-void getDeviceMemoryUsage();
-
 void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
 {
   double time = 0;
@@ -22,6 +20,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[is] = new MomentsG (pars, grids, is_glob);
   }
   fields = new Fields(pars, grids);               
+  checkCudaErrors(cudaGetLastError());
   
   /////////////////////////////////
   //                             //
@@ -31,8 +30,10 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
+    checkCudaErrors(cudaGetLastError());
 
     solver = new Solver_GK(pars, grids, geo);    
+    checkCudaErrors(cudaGetLastError());
 
     if (pars->forcing_init) {
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
@@ -44,13 +45,19 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     for(int is=0; is<grids->Nspecies; is++) {
       int is_glob = is+grids->is_lo;
       G[is] -> set_zero();
-      if(pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
+      if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
       G[is] -> sync();
     }
-    solver -> fieldSolve(G, fields);                
+    solver -> fieldSolve(G, fields);
+    checkCudaErrors(cudaGetLastError());    
   }
 
+  //////////////////////////////
+  //                          //
+  //     KREHM eq             // 
+  //                          //
+  //////////////////////////////  
   if (pars->krehm) {
     linear = new Linear_KREHM(pars, grids);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
@@ -58,9 +65,56 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
+    G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
+    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync();
     solver -> fieldSolve(G, fields);                
   }
+  checkCudaErrors(cudaGetLastError());
+  
+  //////////////////////////////
+  //                          //
+  //     cETG eq              // 
+  //                          //
+  //////////////////////////////  
+  if (pars->cetg) {
+    linear = new Linear_cetg(pars, grids, geo);          
+    if (!pars->linear) nonlinear = new Nonlinear_cetg(pars, grids);    
+
+    solver = new Solver_cetg(pars, grids);
+
+    // set up initial conditions
+    G[0] -> set_zero();
+    G[0] -> initialConditions(&time);   
+    G[0] -> sync();
+    solver -> fieldSolve(G, fields);                
+
+    // 
+    // Adkins defines tau_bar = Ti/(Te Z). Set value for tau_bar with tau_fac in the Boltzmann section of the input file
+    // The default value of tau_bar = 1.0.
+    //
+    // Separately, one can set Z, which enters into the calculations of the c_(1,2,3) coefficients.
+    // Set Z by defining Z_ion in the Boltzmann section of the input file. The default value is 1.0. 
+    //
+    // Adkins defines a hyperdiffusion model with parameters N_nu and nu_perp.
+    // Set nu_perp by defining D_hyper in the Dissipation section of the input file. The default value in GX is 0.1, 
+    // which is quite large for the Adkins model. It is important, therefore, to set the value to what you want.
+    // With Tony's definitions, a typical value would be 0.0005 or smaller. 
+    //
+    // Set N_nu by defining nu_hyper in the Dissipation namelist. The default value is nu_hyper = 2
+    // Actually, the input variable nu_hyper is deprecated and one should set this using p_hyper = 2
+    //
+    // IMPORTANT: You must set hyper = true in the Dissipation namelist to turn this operator on.
+    //
+    // The only remaining parameters to be set are x0, y0, z0, nx, ny, and nz.
+    // Note that Adkins' Lz = 2 pi z0, Ly = 2 pi y0, Lx = 2 pi x0.
+    //
+    // Adkins has no magnetic shear, so set zero_shat = true in the Geometry section of the input file
+    // and choose slab = true to get his slab equations.
+    //
+  }
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -77,6 +131,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -93,6 +148,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initVP(&time);
     solver -> fieldSolve(G, fields);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   Timestepper * timestep;
   switch (pars->scheme_opt)
@@ -107,7 +163,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
     }
 
-  getDeviceMemoryUsage();
+  fflush(stdout);
+  MPI_Barrier(pars->mpcom);
+  printDeviceMemoryUsage(pars->iproc);
+  MPI_Barrier(pars->mpcom);
+  fflush(stdout);
   
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);
 	 
@@ -115,31 +175,27 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   bool bvar; 
-  bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
 
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
   
   while(counter<pars->nstep && time<pars->t_max) {
-    counter++;
 
-    timestep -> advance(&time, G, fields);
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    timestep -> advance(&time, G, fields);
     if (checkstop) break;
-    //if (counter % pars->nreal == 0)  { 
-    //  for(int is=0; is<grids->Nspecies; is++) {
-    //    G[is] -> reality(grids->Nl * grids->Nm); 
-    //  }
-    //  solver -> fieldSolve(G, fields);
-    //}
 
     if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCudaErrors(cudaGetLastError());
+    counter++;
+    if (counter==pars->nstep || time>=pars->t_max) {
+      bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+    }
   }
 
-  if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
+  if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
   if (pars->eqfix && (
 		      (pars->scheme_opt == Tmethod::k10) ||
@@ -179,17 +235,27 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
 }    
 
 void uuid_print(cudaUUID_t a){
-  std::cout << "GPU";
+  std::cout << "GPU ID: ";
   std::vector<std::tuple<int, int> > r = {{0,4}, {4,6}, {6,8}, {8,10}, {10,16}};
+  bool first = true;
   for (auto t : r){
-    std::cout << "-";
+    if(!first) std::cout << "-";
+    first = false;
     for (int i = std::get<0>(t); i < std::get<1>(t); i++)
       std::cout << std::hex << (unsigned)(unsigned char)a.bytes[i];
   }
-  std::cout << std::endl;
 }
 
-void getDeviceMemoryUsage()
+void printDeviceID()
+{
+  int dev;
+  cudaDeviceProp prop;
+  checkCuda( cudaGetDevice(&dev) );
+  checkCuda( cudaGetDeviceProperties(&prop, dev) );
+  uuid_print(prop.uuid);
+}
+
+void printDeviceMemoryUsage(int iproc)
 {
   cudaDeviceSynchronize();
   // show memory usage of GPU
@@ -208,9 +274,12 @@ void getDeviceMemoryUsage()
   double free_db = (double) free_byte;
   double total_db = (double) prop.totalGlobalMem;
   double used_db = total_db - free_db ;
-  printf("GPU type: %s\n", prop.name);
-  uuid_print(prop.uuid);
+  printf(ANSI_COLOR_GREEN);
+  printf("Device %d: ", iproc);
+  printDeviceID();
+  printf(", GPU type: %s, ", prop.name);
   printf("GPU memory usage: used = %f MB (%f %%), free = %f MB (%f %%)\n",
 	 used_db /1024.0/1024.0, used_db/total_db*100.,
 	 free_db /1024.0/1024.0, free_db/total_db*100.);
+  printf(ANSI_COLOR_RESET);
 }

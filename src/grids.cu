@@ -8,7 +8,7 @@ Grids::Grids(Parameters* pars) :
   Ny       ( pars->ny_in       ),
   Nz       ( pars->nz_in       ),
   Nl       ( pars->nl_in       ),
-  Nj       ( 3*pars->nl_in/2-1 ),
+  Nj       ( max(1, 3*pars->nl_in/2-1) ),
 
   Nyc      ( 1 + Ny/2          ),
   Naky     ( 1 + (Ny-1)/3      ),
@@ -73,17 +73,17 @@ Grids::Grids(Parameters* pars) :
       // this is now the local Nspecies on this proc
       Nspecies = 1;
       is_lo = iproc_s*Nspecies;
-      is_up = (iproc_s+1)*Nspecies;
+      is_up = (iproc_s+1)*Nspecies; // is_up is never used
 
       assert((Nm%nprocs_m == 0) && "Nm must be an integer multiple of nprocs_m=nprocs/nspecies\n");
       // this is now the local Nm on this proc
       Nm = Nm/nprocs_m;
 
-      m_lo = iproc_m*Nm;
-      m_up = (iproc_m+1)*Nm;
+      m_lo = (iproc_m    )*Nm;
+      m_up = (iproc_m + 1)*Nm;
 
       // add ghosts in m
-      if(pars->slab) {
+      if(pars->slab && Nm>1) {
         m_ghost = 1;
       } else {
         m_ghost = 2;
@@ -91,9 +91,16 @@ Grids::Grids(Parameters* pars) :
     }
   }
 
+  //
+  // When solving Toby's collisional slab ETG model, use nhermite = 1, nlaguerre = 2
+  // The zeroth moment will be (m=0, l=0) == Phi
+  // The first moment will be (m=0, l=1) == delta T
+  // These values are automatically set in parameters when this equation set is selected.
+
+  // Should add an assert statement here? Something like "if we are solving cetg, assert Nm == 1)" and so forth
+  
   Nmoms = Nm * Nl;
   size_G = sizeof(cuComplex) * NxNycNz * (Nm + 2*m_ghost) * Nl; // this includes ghosts on either end of m grid
-  
   // kz is defined without the factor of gradpar
   
   checkCuda(cudaGetLastError());
@@ -174,7 +181,9 @@ Grids::~Grids() {
   if (z_h)             free(z_h);
   if (theta0_h)        free(theta0_h); 
  
-  if(nprocs > 1) ncclCommDestroy(ncclComm);
+  ncclCommDestroy(ncclComm);
+  ncclCommDestroy(ncclComm_s);
+  if(nprocs_m > 1 && iproc_m == 0) ncclCommDestroy(ncclComm_m0);
 }
 
 void Grids::init_ks_and_coords()
