@@ -92,6 +92,18 @@ class WgDiagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+class WphiKrehmDiagnostic : public SpectraDiagnostic {
+ public:
+  WphiKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+class WaparKrehmDiagnostic : public SpectraDiagnostic {
+ public:
+  WaparKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // HeatFlux (Q)
 class HeatFluxDiagnostic : public SpectraDiagnostic {
  public:

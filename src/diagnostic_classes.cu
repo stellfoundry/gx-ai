@@ -194,6 +194,47 @@ void WgDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, flo
   write_spectra(tmpG);
 }
 
+// KREHM electrostatic energy
+WphiKrehmDiagnostic::WphiKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+ : SpectraDiagnostic(pars, grids, geo, ncdf)
+{
+  varname = "Wphi";
+  isMoments = false;
+  set_kernel_dims();
+
+  add_spectra(allSpectra->t_spectra);
+  add_spectra(allSpectra->kxt_spectra);
+  add_spectra(allSpectra->kyt_spectra);
+  add_spectra(allSpectra->kxkyt_spectra);
+  add_spectra(allSpectra->zt_spectra);
+}
+
+void WphiKrehmDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  Wphi_summand_krehm <<<dG, dB>>> (tmpf, f->phi, geo_->vol_fac, grids_->kx, grids_->ky, pars_->rho_i); 	
+  write_spectra(tmpf);
+}
+
+WaparKrehmDiagnostic::WaparKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
+ : SpectraDiagnostic(pars, grids, geo, ncdf)
+{
+  varname = "Wapar";
+  isMoments = false;
+  set_kernel_dims();
+
+  add_spectra(allSpectra->t_spectra);
+  add_spectra(allSpectra->kxt_spectra);
+  add_spectra(allSpectra->kyt_spectra);
+  add_spectra(allSpectra->kxkyt_spectra);
+  add_spectra(allSpectra->zt_spectra);
+}
+
+void WaparKrehmDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
+{
+  Wapar_summand_krehm <<<dG, dB>>> (tmpf, f->apar, f->apar_ext, geo_->vol_fac, grids_->kx, grids_->ky, pars_->rho_i); 	
+  write_spectra(tmpf);
+}
+
 HeatFluxDiagnostic::HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, AllSpectraCalcs* allSpectra)
  : SpectraDiagnostic(pars, grids, geo, ncdf)
 {
@@ -647,6 +688,7 @@ void FieldsDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
   } 
 }
 
+// similar structure to FieldsDiagnostic, but with a species index
 MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, string varname)
 {
   nc_type = NC_FLOAT;

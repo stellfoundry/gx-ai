@@ -382,18 +382,18 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
 
 void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time) 
 {
-  if (pars_->Reservoir && rc->predicting()) {
-    if (pars_->ResFakeData) {
-      rc->fake_data(gy_d);
-    } else {
-      for(int is=0; is<grids_->Nspecies; is++) {
-        grad_perp -> C2R (G[is]->G(), gy_d);
-      }
-    }
-    double *gy_double;
-    cudaMalloc(&gy_double, sizeof(double)*grids_->Ny);
-    promote loop_y (gy_double, gy_d, grids_->Ny);
-    
+//  if (pars_->Reservoir && rc->predicting()) {
+//    if (pars_->ResFakeData) {
+//      rc->fake_data(gy_d);
+//    } else {
+//      for(int is=0; is<grids_->Nspecies; is++) {
+//        grad_perp -> C2R (G[is]->G(), gy_d);
+//      }
+//    }
+//    double *gy_double;
+//    cudaMalloc(&gy_double, sizeof(double)*grids_->Ny);
+//    promote loop_y (gy_double, gy_d, grids_->Ny);
+//    
 //    for (int i=0; i<pars_->ResPredict_Steps; i++) {
 //      rc->predict(gy_double);
 //      time += pars_->dt * pars_->ResTrainingDelta;
@@ -401,7 +401,7 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
 //      id -> write_nc(id -> time, time);
 //      id -> write_ks_data (id -> g_y, gy_d);
 //    }
-  }
+//  }
 //  if (pars_->write_fields) {
 //    id -> write_fields(id -> fields_phi,  fields->phi );
 //    id -> write_fields(id -> fields_apar, fields->apar);
@@ -432,18 +432,145 @@ void Diagnostics_GK::finish(MomentsG** G, Fields* fields, double time)
   // whatever is leftover will give W.
   //
 
-void Diagnostics_GK::get_rh(Fields* f)
-{
-    ikx_local = 1; iky_local = 0; iz_local=grids_->Nz/2; // correct values for usual RH tests
+//void Diagnostics_GK::get_rh(Fields* f)
+//{
+//  int ikx_local, iky_local, iz_local;
+//  ikx_local = 1; iky_local = 0; iz_local=grids_->Nz/2; // correct values for usual RH tests
+//
+//  int idx = iky_local + grids_->Nyc*ikx_local + grids_->NxNyc*iz_local;
+//  
+//  CP_TO_CPU(&valphi, &f->phi[idx], sizeof(cuComplex));
+//  val[0] = valphi.x;
+//  val[1] = valphi.y;
+//}
 
-    int idx = iky_local + grids_->Nyc*ikx_local + grids_->NxNyc*iz_local;
-  
-    CP_TO_CPU(&valphi, &f->phi[idx], sizeof(cuComplex));
-    val[0] = valphi.x;
-    val[1] = valphi.y;
+Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, Nonlinear* nonlinear) :
+  geo_(geo), fields_old(nullptr), ncdf_(nullptr), ncdf_big_(nullptr), linear_(linear), nonlinear_(nonlinear)
+{
+  pars_ = pars;
+  grids_ = grids;
+
+  ncdf_ = new NetCDF(pars_, grids_, geo_, ".out.nc"); 
+  // write input parameters to netcdf
+  pars->store_ncdf(ncdf_->fileid, ncdf_->nc_dims);
+
+  if (pars_->write_fields || pars_->write_moms) {
+    ncdf_big_ = new NetCDF(pars_, grids_, geo_, ".big.nc"); 
+  }
+
+  // set up spectra calculators
+  if(pars_->write_free_energy) {
+    allSpectra_ = new AllSpectraCalcs(grids_, ncdf_->nc_dims);
+    cudaMalloc (&tmpG, sizeof(float) * grids_->NxNycNz * grids_->Nmoms * grids_->Nspecies); 
+    cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
+  }
+  if(pars_->write_moms) {
+    cudaMalloc (&tmpC, sizeof(cuComplex) * grids_->NxNycNz * grids_->Nspecies);
+  }
+  if(pars_->write_omega) {
+    fields_old = new Fields(pars_, grids_);       
+  }
+
+  // initialize energy spectra diagnostics
+  spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+  spectraDiagnosticList.push_back(std::make_unique<Apar2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+  spectraDiagnosticList.push_back(std::make_unique<Phi2ZonalDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+  if(pars_->write_free_energy) {
+    spectraDiagnosticList.push_back(std::make_unique<WgDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<WphiKrehmDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+    spectraDiagnosticList.push_back(std::make_unique<WaparKrehmDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+  }
+
+  // initialize growth rate diagnostic
+  if(pars_->write_omega) {
+    growthRateDiagnostic = new GrowthRateDiagnostic(pars_, grids_, ncdf_);
+  }
+
+  // initialize fields diagnostics
+  if(pars_->write_fields) {
+    fieldsDiagnostic = new FieldsDiagnostic(pars_, grids_, ncdf_big_);
+  }
+
+  // set up moments diagnostics
+  if(pars_->write_moms) {
+    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+  }
+
+  // set up stop file
+  sprintf(stopfilename_, "%s.stop", pars_->run_name);
 }
 
-bool Diagnostics_GK::checkstop() 
+Diagnostics_KREHM::~Diagnostics_KREHM()
+{
+  if(pars_->write_omega) {
+    delete growthRateDiagnostic;
+  }
+  if(pars_->write_free_energy || pars_->write_fluxes) {
+    spectraDiagnosticList.clear();
+    delete allSpectra_;
+  }
+  if(pars_->write_moms) {
+    momentsDiagnosticList.clear();
+  }
+
+  if(pars_->write_fields) delete fieldsDiagnostic;
+  if(fields_old) delete fields_old;
+  if(ncdf_) delete ncdf_;
+  if(ncdf_big_) delete ncdf_big_;
+}
+
+bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
+{
+  bool stop = false;
+  if(pars_->write_omega && (counter % pars_->nwrite == 0 || time + dt > pars_->t_max)) {
+    fields_old->copyPhiFrom(fields);
+  }
+
+  if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
+    if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
+    for(int i=0; i<spectraDiagnosticList.size(); i++) {
+      spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
+    }
+
+    if(pars_->write_omega) {
+      growthRateDiagnostic->calculate_and_write(fields, fields_old, dt);
+    }
+
+    ncdf_->nc_grids->write_time(time);
+    ncdf_->sync();
+
+    if(grids_->iproc_m == 0) {
+      printf("\n");
+    }
+    fflush(NULL);
+  }
+
+  // write out full grid (big) diagnostics less frequently
+  if((counter % pars_->nwrite_big == 1 || time > pars_->t_max) && ( pars_->write_moms || pars_->write_fields) ) {
+    if(pars_->write_fields) {
+      fieldsDiagnostic->calculate_and_write(fields);
+    }
+
+    for(int i=0; i<momentsDiagnosticList.size(); i++) {
+      momentsDiagnosticList[i]->calculate_and_write(G, fields, tmpC);
+    }
+
+    ncdf_big_->nc_grids->write_time(time);
+    ncdf_big_->sync();
+  }
+
+  // check to see if we should stop simulation
+  stop = checkstop();
+  return stop;
+}
+
+void Diagnostics_KREHM::finish(MomentsG** G, Fields* fields, double time) 
+{
+}
+
+bool Diagnostics::checkstop() 
 {
   struct stat buffer;   
   bool stop = (stat (stopfilename_, &buffer) == 0);
@@ -451,7 +578,7 @@ bool Diagnostics_GK::checkstop()
   return stop;
 }
 
-void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
+void Diagnostics::print_growth_rates_to_screen(cuComplex* w)
 {
   int Nx = grids_->Nx;
   int Naky = grids_->Naky;
@@ -476,67 +603,6 @@ void Diagnostics_GK::print_growth_rates_to_screen(cuComplex* w)
     }
     if (Nx>1) printf("\n");
   }
-}
-
-
-Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids) :
-  fields_old(nullptr), id(nullptr), grad_par(nullptr), amom_d(nullptr) 
-{
-  pars_ = pars;
-  grids_ = grids;
-}
-
-Diagnostics_KREHM::~Diagnostics_KREHM()
-{
-}
-
-bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counter, double time) 
-{
-}
-
-void Diagnostics_KREHM::finish(MomentsG** G, Fields* fields, double time) 
-{
-}
-
-void Diagnostics_KREHM::print_omg(cuComplex *W)
-{
-//  CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
-//  print_growth_rates_to_screen(tmp_omg_h);
-}
-
-bool Diagnostics_KREHM::checkstop() 
-{
-//  struct stat buffer;   
-//  bool stop = (stat (stopfilename_, &buffer) == 0);
-//  if (stop) remove(stopfilename_);
-//  return stop;
-}
-
-void Diagnostics_KREHM::print_growth_rates_to_screen(cuComplex* w)
-{
-//  int Nx = grids_->Nx;
-//  int Naky = grids_->Naky;
-//  int Nyc  = grids_->Nyc;
-//
-//  printf("ky\tkx\t\tomega\t\tgamma\n");
-//
-//  for(int j=0; j<Naky; j++) {
-//    for(int i= 1 + 2*Nx/3; i<Nx; i++) {
-//      int index = j + Nyc*i;
-//      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-//      printf("\n");
-//    }
-//    for(int i=0; i < 1 + (Nx-1)/3; i++) {
-//      int index = j + Nyc*i;
-//      if(index!=0) {
-//	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-//	printf("\n");
-//      } else {
-//	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
-//      }
-//    }
-//    if (Nx>1) printf("\n");
-//  }
 }
 
 void Diagnostics::restart_write(MomentsG** G, double *time)
@@ -790,40 +856,5 @@ void Diagnostics_cetg::print_omg(cuComplex *W)
 {
   CP_TO_CPU (tmp_omg_h, W, sizeof(cuComplex)*grids_->NxNyc);
   print_growth_rates_to_screen(tmp_omg_h);
-}
-
-bool Diagnostics_cetg::checkstop() 
-{
-  struct stat buffer;   
-  bool stop = (stat (stopfilename_, &buffer) == 0);
-  if (stop) remove(stopfilename_);
-  return stop;
-}
-
-void Diagnostics_cetg::print_growth_rates_to_screen(cuComplex* w)
-{
-  int Nx = grids_->Nx;
-  int Naky = grids_->Naky;
-  int Nyc  = grids_->Nyc;
-
-  printf("ky\tkx\t\tomega\t\tgamma\n");
-
-  for(int j=0; j<Naky; j++) {
-    for(int i= 1 + 2*Nx/3; i<Nx; i++) {
-      int index = j + Nyc*i;
-      printf("%.4f\t%.4f\t\t%.6f\t%.6f",  grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-      printf("\n");
-    }
-    for(int i=0; i < 1 + (Nx-1)/3; i++) {
-      int index = j + Nyc*i;
-      if(index!=0) {
-	printf("%.4f\t%.4f\t\t%.6f\t%.6f", grids_->ky_h[j], grids_->kx_h[i], w[index].x, w[index].y);
-	printf("\n");
-      } else {
-	printf("%.4f\t%.4f\n", grids_->ky_h[j], grids_->kx_h[i]);
-      }
-    }
-    if (Nx>1) printf("\n");
-  }
 }
 

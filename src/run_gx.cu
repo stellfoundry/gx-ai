@@ -28,6 +28,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   // Initialize eqs              // 
   //                             //
   /////////////////////////////////
+  // GX is set up to solve a handful of different equation sets.
+  // Some have a geometry associated with them, some do not.
+  // Presently the options are "gx", "krehm", "vp", "ks", and "cetg"
+  // Most equation sets are undocumented, as they are exploratory or pedagogical in nature
+  // 
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
@@ -78,7 +83,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     solver -> fieldSolve(G, fields);                
 
     // set up diagnostics
-    diagnostics = new Diagnostics_KREHM(pars, grids);
+    diagnostics = new Diagnostics_KREHM(pars, grids, geo, linear, nonlinear);
   }
   checkCudaErrors(cudaGetLastError());
   

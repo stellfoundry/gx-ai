@@ -82,31 +82,14 @@ int main(int argc, char* argv[])
   // 
   Diagnostics * diagnostics = nullptr;
 
-  // GX is set up to solve a handful of different equation sets.
-  // Some have a geometry associated with them, some do not.
-  // Presently the options are "gx", "krehm", "vp", "ks", and "cetg"
-  // Most equation sets are undocumented, as they are exploratory or pedagogical in nature
-  // 
-  if (pars->gx) {
-    geo = init_geo(pars, grids);
+  geo = init_geo(pars, grids);
 
-    //    We do not need Hermite transforms for anything more than some specific diagnostics
-    //    and typically this functionality is not available because it is not sufficiently general.
-    //
-    //    DEBUGPRINT("Initializing Hermite transforms...\n");
-    //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
-    //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
-  }
-  if (pars->krehm) {
-    geo = init_geo(pars, grids);
-  }
-  if (pars->cetg) {
-    geo = init_geo(pars, grids);    
-    if(iproc==0) DEBUGPRINT("Initializing cETG diagnostics...\n");
-    diagnostics = new Diagnostics_cetg(pars, grids, geo);
-    if(iproc==0) CUDA_DEBUG("Initializing cETG diagnostics...\n");
-  }
-  
+  //    We do not need Hermite transforms for anything more than some specific diagnostics
+  //    and typically this functionality is not available because it is not sufficiently general.
+  //
+  //    DEBUGPRINT("Initializing Hermite transforms...\n");
+  //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
+  //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
 
   //
   // Hold here until all threads are ready to continue
