@@ -181,6 +181,7 @@ __global__ void smith_perp_toroidal_closures(const cuComplex* g, cuComplex* gRhs
 					     const float* omegad, const cuComplex* Aclos, int q, const float tz);
 
 __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int forcing_index);
+__global__ void kz_stirring_kernel(const cuComplex force, cuComplex *moments, int kx, int ky, int kz);
 
 __global__ void xytranspose(float *in, float *out);
 __global__ void yzavg(float *vE, float *vEavg, float *vol_fac);

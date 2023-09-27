@@ -48,7 +48,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
       G[is] -> set_zero();
       if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
-      G[is] -> sync();
+      G[is] -> sync(true);
     }
     solver -> fieldSolve(G, fields);                
 
@@ -73,8 +73,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     // set up initial conditions
     G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
-    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
-    G[0] -> sync();
+    if(pars->harris_sheet or pars->periodic_equilibrium or pars->gaussian_tube) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync(true);
     solver -> fieldSolve(G, fields);                
 
     // set up diagnostics

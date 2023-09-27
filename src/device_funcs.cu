@@ -1312,6 +1312,15 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
   moments[forcing_index] = moments[forcing_index] + force;
 }
 
+__global__ void kz_stirring_kernel(const cuComplex force, cuComplex *moments, int kx, int ky, int kz)
+{
+  unsigned int idz = get_id1();
+  float z = idz/nz* 2*M_PI*zp;
+  int forcing_index = ky + nyc*kx + nx*nyc*idz; 
+  moments[forcing_index] = moments[forcing_index] + force*cosf(kz*z); 
+}
+
+
 __global__ void yzavg(float *vE, float *vEavg, float *vol_fac)
 {
   unsigned int idx = get_id1();
@@ -1566,7 +1575,7 @@ __global__ void Wphi_summand_krehm(float* p2,
       float gam0 = g0(kperp2*rho_i*rho_i/2.);
 
       cuComplex tmp = cuConjf( phi[idxyz] ) * ( 1.0 - gam0 ) * phi[idxyz] * fac * volJac[idz];
-      p2[idxyz] = 0.5 * tmp.x;
+      p2[idxyz] = 0.5 * tmp.x * 2. / (rho_i * rho_i);
 
     } else {
       p2[idxyz] = 0.;
@@ -1592,7 +1601,7 @@ __global__ void Wapar_summand_krehm(float* p2,
       if (idy==0) fac = 1.0;
 
       float kperp2 = kx[idx]*kx[idx] + ky[idy]*ky[idy];
-      cuComplex apar_perturb = apar[idxyz] - apar_ext[idxyz];
+      cuComplex apar_perturb = apar[idxyz]; // - apar_ext[idxyz];
       cuComplex tmp = kperp2 * cuConjf( apar_perturb ) * apar_perturb * fac;
       p2[idxyz] = 0.5 * tmp.x;
     } else {
@@ -2924,7 +2933,7 @@ __global__ void hyperdiff(const cuComplex* g,
       float kxmax = kx[(nx-1)/3];
       float kymax = ky[(ny-1)/3];
       float k2s = 1./powf((kxmax*kxmax + kymax*kymax), nu_hyper);      
-      float Dfac = D_hyper*k2s*powf((kx[idx]*kx[idx] + ky[idy]*ky[idy]), nu_hyper);
+      double Dfac = D_hyper*pow((double) (kx[idx]*kx[idx] + ky[idy]*ky[idy])/(kxmax*kxmax + kymax*kymax), nu_hyper);
       
       unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
       rhs[ig] = rhs[ig] - Dfac * g[ig];

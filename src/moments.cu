@@ -390,9 +390,9 @@ void MomentsG::reality(int ngz)
   reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
-void MomentsG::sync()
+void MomentsG::sync(bool blocking)
 {
-  if(pars_->use_NCCL) syncNCCL();
+  if(pars_->use_NCCL) syncNCCL(blocking);
   else syncMPI();
 }
 
@@ -423,7 +423,7 @@ void MomentsG::syncMPI()
   cudaDeviceSynchronize();
 }
 
-void MomentsG::syncNCCL()
+void MomentsG::syncNCCL(bool blocking)
 {
   if(grids_->nprocs_m==1) return;
 
@@ -450,6 +450,10 @@ void MomentsG::syncNCCL()
     ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   ncclGroupEnd();
+
+  if(blocking) {
+    cudaStreamSynchronize(syncStream);
+  }
 }
 
 void MomentsG::restart_write(int ncres, int id_G)

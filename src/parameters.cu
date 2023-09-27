@@ -199,6 +199,9 @@ void Parameters::get_nml_vars(char* filename)
   eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
+  periodic_equilibrium = toml::find_or <bool> (tnml, "periodic_equilibrium", false);
+  k0                = toml::find_or <float> (tnml, "k0", 10.0);
+  gaussian_tube     = toml::find_or <bool> (tnml, "gaussian_tube", false);
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
 
@@ -341,10 +344,14 @@ void Parameters::get_nml_vars(char* filename)
   forcing_type  = toml::find_or <string> (tnml, "forcing_type",    "Kz" );
   stir_field    = toml::find_or <string> (tnml, "stir_field", "density" );
   forcing_amp   = toml::find_or <float>  (tnml, "forcing_amp",      1.0 );
+  pos_forcing_amp = toml::find_or <float> (tnml, "pos_forcing_amp",  1.0); 
+  neg_forcing_amp = toml::find_or <float> (tnml, "neg_forcing_amp",  1.0); 
   forcing_index = toml::find_or <int>    (tnml, "forcing_index",    1   );
   forcing_init  = toml::find_or <bool>   (tnml, "forcing_init",   false );
   no_fields     = toml::find_or <bool>   (tnml, "no_fields",      false );
-  
+  forcing_kz    = toml::find_or <int>    (tnml, "forcing_kz",         0 );
+  forcing_k2min = toml::find_or <int>    (tnml, "forcing_k2min",      0 );
+  forcing_k2max = toml::find_or <int>    (tnml, "forcing_k2max",      0 );
 
   ///////////////////////////////////////////////////////////////////////
   //

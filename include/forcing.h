@@ -21,7 +21,28 @@ class KzForcing : public Forcing {
   Parameters * pars_ ;
 
 };
-
+class HeliInjForcing : public Forcing {
+ public:
+  HeliInjForcing(Parameters *pars, Grids *grids);
+  ~HeliInjForcing();
+  void stir(MomentsG *G);
+ protected:
+  float pos_forcing_amp_;
+  float neg_forcing_amp_;
+  int randomIndex;
+  int k2min;
+  int k2max;
+  int kx;
+  int ky;
+  int kz;
+  int Nz;
+  int numPairs;
+  int2 *indexs; // Declare indexs as an int2 pointer
+  int2 randomPair;
+  cuComplex rf;
+  Parameters * pars_ ;
+  Grids * grids_;
+};
 class KzForcingImpulse : public KzForcing {
  public:
   KzForcingImpulse(Parameters *pars);

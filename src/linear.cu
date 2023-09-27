@@ -347,7 +347,7 @@ void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 								   GRhs->G(), 1.);
   // hyper in k-space
   if(pars_->hyper) hyperdiff <<<dimGridh,dimBlockh>>>(G->G(), grids_->kx, grids_->ky,
-						      pars_->nu_hyper, pars_->D_hyper, GRhs->G());
+						      pars_->p_hyper, pars_->D_hyper/dt, GRhs->G());
 
 }
 

@@ -267,7 +267,6 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
 {
   float vpar_max = grids_->vpar_max*pars_->vtmax; // estimate of max vpar on grid
   float muB_max = grids_->muB_max*pars_->tzmax; 
-
   grad_perp_f -> dxC2R(f->phi, dphi); 
   abs <<<dGx.x,dBx.x>>> (dphi, grids_->NxNyNz);
 
@@ -281,6 +280,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
+  //printf("dphi, val1 = %lf %lf", dphi, val1);
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
@@ -296,9 +296,10 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
+  //printf("dphi, val1 = %lf %lf", dphi, val1);
   red->Max(dphi, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
-
+  //printf("vpar_max = %lf, muB_max = %lf \n", vpar_max, muB_max);
   double scale = 0.5;  // normalization scaling factor for C2R FFT
   omega_max[0] = max(omega_max[0], pars_->kxfac*(grids_->kx_max*vmax_x[0])*scale);
   omega_max[1] = max(omega_max[1], pars_->kxfac*(grids_->ky_max*vmax_y[0])*scale);
@@ -458,6 +459,7 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
   grad_perp_f -> dxC2R(f->apar, dchi_dx); 
   abs <<<dGx.x,dBx.x>>> (dchi_dx, grids_->NxNyNz);
   add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi_dx, 1., dphi_dx, vpar_max, dchi_dx);
+  //printf("val1 = %lf, dphi_dx = %lf\n", val1, dphi_dx);
   red->Max(dphi_dx, val1); 
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
@@ -466,12 +468,15 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
   grad_perp_f -> dyC2R(f->apar, dchi_dy); 
   abs <<<dGx.x,dBx.x>>> (dchi_dy, grids_->NxNyNz);
   add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi_dy, 1., dphi_dy, vpar_max, dchi_dy);
+  //printf("val1 = %lf, dphi_dy = %lf\n", val1, dphi_dy);
   red->Max(dphi_dy, val1); 
   CP_TO_CPU(vmax_x, val1, sizeof(float));
-
+  //printf("vpar_max = %lf\n\n", vpar_max);
   double scale = 1.0;  // normalization scaling factor for C2R FFT
   omega_max[0] = max(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
   omega_max[1] = max(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
+  //printf("omega_max[0]= %lf \n omega_max[1]= %lf\n", omega_max[0], omega_max[1]);
+  //printf("kx_max*vmax_x[0] = %lf \n  grids_->ky_max*vmax_x[0] = %lf \n\n", (grids_->kx_max*vmax_x[0])*scale, (grids_->ky_max*vmax_y[0])*scale);
 }
 
 //==============================================
