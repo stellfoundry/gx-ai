@@ -3,7 +3,7 @@
 #define GSINGLE <<< 1, 1 >>>
 
 void generate_random_numbers(float *random_real, float *random_imag, float forcing_amp_, float dt);
-
+void heli_generate_random_numbers(float *random_real, float *random_imag, float pos_forcing_amp_, float neg_forcing_amp_, float dt);
 /* The following knobs in forcing_knobs need to be set to turn on forcing:
 forcing_init = T
 forcing_amp = 1
@@ -48,7 +48,7 @@ void KzForcing::stir(MomentsG *G) {
                              
 }
 
-HeliInjForcing::HeliInjForcing(Parameters *pars) : pars_(pars)
+HeliInjForcing::HeliInjForcing(Parameters *pars, Grids *grids) : pars_(pars), grids_(grids)
 {
   pos_forcing_amp_ = pars_->pos_forcing_amp;
   neg_forcing_amp_ = pars_->neg_forcing_amp;
@@ -57,23 +57,24 @@ HeliInjForcing::HeliInjForcing(Parameters *pars) : pars_(pars)
   kz = pars_->forcing_kz;
   Nz = grids_->Nz;
   // Define the maximum size of the list (adjust as needed)
-  const int maxListSize = 4*((k2max+1)*(k2max+1) - k2min*k2min); // Basically the max number of points possible to be found 
+  const int maxListSize = 4 * ((k2max + 1) * (k2max + 1) - k2min * k2min); // Basically the max number of points possible to be found 
+
   // Create an array to store the (i, j) pairs
-  int2 indexs[maxListSize];
-  int numPairs = 0; 
-  
+  int2 *indexs = new int2[maxListSize];
+  int numPairs = 0; // Declare numPairs here and initialize it to 0
+
   for (int i = 0; i <= k2max; ++i) {
     for (int j = 0; j <= k2max; ++j) {
-        int k2 = i * i + j * j;
-        if (k2 >= k2min * k2min && k2 <= k2max * k2max) {
-                indexs[numPairs].x = i;
-                indexs[numPairs].y = j;
-                numPairs++; 
-        }
-     }
+      int k2 = i * i + j * j;
+      if (k2 >= k2min * k2min && k2 <= k2max * k2max) {
+        indexs[numPairs].x = i;
+        indexs[numPairs].y = j;
+        numPairs++; // Increment numPairs inside the loop
+      }
+    }
   }
-  
-  printf("pos_forcing_amp = %f \n neg_forcing_amp = %f", pos_forcing_amp_, neg_forcing_amp_);
+
+  // The rest of your constructor code
 }
 
 HeliInjForcing::~HeliInjForcing()
@@ -84,24 +85,26 @@ void HeliInjForcing::stir(MomentsG *G) {
   float random_real, random_imag;
   int randomIndex = rand() % numPairs;
   int2 randomPair = indexs[randomIndex];
-  heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_ pars_->dt);
+  kx = static_cast<int>(randomPair.x);
+  ky = static_cast<int>(randomPair.y);
+  heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_, pars_->dt);
   rf.x = random_real;
   rf.y = random_imag;
   switch (pars_->stirf)
-    {
-    case stirs::density : kz_stirring_kernell <<Nz,1>> (rf,           G->dens_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::upar    : kz_stirring_kernell <<Nz,1>> (rf,           G->upar_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::tpar    : kz_stirring_kernell <<Nz,1>> (rf*sqrt(2.0), G->tpar_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::tperp   : kz_stirring_kernell <<Nz,1>> (rf,           G->tprp_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::qpar    : kz_stirring_kernell <<Nz,1>> (rf*sqrt(6.0), G->qpar_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::qperp   : kz_stirring_kernell <<Nz,1>> (rf*sqrt(2.0), G->qprp_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::ppar    : kz_stirring_kernell <<Nz,1>> (rf,           G->dens_ptr, randomPair.x, randomPair.y, kz);
-                          kz_stirring_kernell <<Nz,1>> (rf*sqrt(2.0), G->tpar_ptr, randomPair.x, randomPair.y, kz); break;
-    case stirs::pperp   : kz_stirring_kernell <<Nz,1>> (rf,           G->dens_ptr, randomPair.x, randomPair.y, kz);
-                          kz_stirring_kernell <<Nz,1>> (rf,           G->tprp_ptr, randomPair.x, randomPair.y, kz); break;
-    }
-
+  {
+   case stirs::density : kz_stirring_kernel <<<Nz,1>>> (rf, G->dens_ptr, kx, ky, kz); break;
+   case stirs::upar    : kz_stirring_kernel <<<Nz,1>>> (rf, G->upar_ptr, kx, ky, kz); break;
+   case stirs::tpar    : kz_stirring_kernel <<<Nz,1>>> (rf * sqrt(2.0), G->tpar_ptr, kx, ky, kz); break;
+   case stirs::tperp   : kz_stirring_kernel <<<Nz,1>>> (rf, G->tprp_ptr, kx, ky, kz); break;
+   case stirs::qpar    : kz_stirring_kernel <<<Nz,1>>> (rf * sqrt(6.0), G->qpar_ptr, kx, ky, kz); break;
+   case stirs::qperp   : kz_stirring_kernel <<<Nz,1>>> (rf * sqrt(2.0), G->qprp_ptr, kx, ky, kz); break;
+   case stirs::ppar    : kz_stirring_kernel <<<Nz,1>>> (rf, G->dens_ptr, kx, ky, kz);
+                      kz_stirring_kernel <<<Nz,1>>> (rf * sqrt(2.0), G->tpar_ptr, kx, ky, kz); break;
+   case stirs::pperp   : kz_stirring_kernel <<<Nz,1>>> (rf, G->dens_ptr, kx, ky, kz);
+                      kz_stirring_kernel <<<Nz,1>>> (rf, G->tprp_ptr, kx, ky, kz); break;
+  }
 }
+
 
 
 
@@ -185,8 +188,8 @@ void generate_random_numbers(float *random_real, float *random_imag, float forci
   *random_imag = amp*sin(phase);
 }
 
-void heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_, pars_->dt);
- 
+void heli_generate_random_numbers(float *random_real, float *random_imag, float pos_forcing_amp_, float neg_forcing_amp_, float dt)
+{ 
   // dt term in timestepper scheme accounted for in amp
   float phase = M_PI * (2.0 * static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) + 1.0) - 1.0);
   

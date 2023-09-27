@@ -1235,9 +1235,10 @@ __global__ void stirring_kernel(const cuComplex force, cuComplex *moments, int f
 __global__ void kz_stirring_kernel(const cuComplex force, cuComplex *moments, int kx, int ky, int kz)
 {
   unsigned int idz = get_id1();
-  int z = idz/nz* 2*M_PI*zp;
+  float z = idz/nz* 2*M_PI*zp;
   int forcing_index = ky + nyc*kx + nx*nyc*idz; 
-  moments[forcing_index] = moments[forcing_index] + force*cosf(kz*z); }
+  moments[forcing_index] = moments[forcing_index] + force*cosf(kz*z); 
+}
 
 
 __global__ void yzavg(float *vE, float *vEavg, float *vol_fac)

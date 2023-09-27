@@ -30,7 +30,14 @@ class HeliInjForcing : public Forcing {
   float pos_forcing_amp_;
   float neg_forcing_amp_;
   int randomIndex;
-  int2 indexs;  
+  int k2min;
+  int k2max;
+  int kx;
+  int ky;
+  int kz;
+  int Nz;
+  int numPairs;
+  int2 *indexs; // Declare indexs as an int2 pointer
   int2 randomPair;
   cuComplex rf;
   Parameters * pars_ ;
