@@ -865,6 +865,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*grids->Nz);
 
   // compute max values of gbdrift, cvdrift, gbdrift0, cvdrift0
+  bmag_max = 0.;
   gbdrift_max = 0.;
   gbdrift0_max = 0.;
   cvdrift_max = 0.;
@@ -874,6 +875,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     gbdrift0_max = max(gbdrift0_max, abs(gbdrift0_h[i]));
     cvdrift_max = max(cvdrift_max, abs(cvdrift_h[i]));
     cvdrift0_max = max(cvdrift0_max, abs(cvdrift0_h[i]));
+    bmag_max = max(bmag_max, abs(bmag_h[i]));
   }
 
   /*

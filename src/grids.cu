@@ -276,6 +276,7 @@ void Grids::init_ks_and_coords()
   kx_max = kx_h[(Nx-1)/3];
   ky_max = ky_h[(Ny-1)/3];
   kz_max = kz_h[Nz/2];
+  kperp_min = min(kx_h[1], ky_h[1]);
   delete hermite;
   delete laguerre;
 }

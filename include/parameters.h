@@ -156,7 +156,7 @@ class Parameters {
   float eps_ks;
   float vp_nu, vp_nuh;
   int vp_alpha, vp_alpha_h;
-  float vtmax, tzmax, etamax;
+  float vtmax, tzmax, etamax, vtmin;
   float delrho, p_prime_input, invLp_input, alpha_input;
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
@@ -170,6 +170,7 @@ class Parameters {
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;
+  float ne, Te;
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;

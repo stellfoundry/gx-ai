@@ -1298,6 +1298,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
 void Parameters::init_species(specie* species)
 {
   vtmax = -1.;
+  vtmin = 1000000000;
   tzmax = -1.;
   etamax = -1.;
   for(int s=0; s<nspec_in; s++) {
@@ -1327,8 +1328,14 @@ void Parameters::init_species(specie* species)
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
+    vtmin = min(vtmin, species[s].vt);
     tzmax = max(tzmax, abs(species[s].tz));
     etamax = max(etamax, species[s].tprim/species[s].fprim);
+
+    if(species[s].type == 1) {
+      ne = species[s].dens;
+      Te = species[s].temp;
+    }
   }
 }
 

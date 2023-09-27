@@ -80,6 +80,7 @@ class Geometry {
   float * gb_d ; 
   float * kperp2_h ;
   float gbdrift_max, cvdrift_max, gbdrift0_max, cvdrift0_max;
+  float bmag_max;
   
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM
