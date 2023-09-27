@@ -489,6 +489,9 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids, Geometry* g
   // initialize fields diagnostics
   if(pars_->write_fields) {
     fieldsDiagnostic = new FieldsDiagnostic(pars_, grids_, ncdf_big_);
+    if(pars_->nonlinear_mode) {
+      fieldsXYDiagnostic = new FieldsXYDiagnostic(pars_, grids_, nonlinear_, ncdf_big_);
+    }
   }
 
   // set up moments diagnostics
@@ -551,6 +554,9 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
   if((counter % pars_->nwrite_big == 1 || time > pars_->t_max) && ( pars_->write_moms || pars_->write_fields) ) {
     if(pars_->write_fields) {
       fieldsDiagnostic->calculate_and_write(fields);
+      if(pars_->nonlinear_mode) {
+        fieldsXYDiagnostic->calculate_and_write(fields);
+      }
     }
 
     for(int i=0; i<momentsDiagnosticList.size(); i++) {

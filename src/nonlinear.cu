@@ -10,14 +10,18 @@
 //===========================================
 Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   pars_(pars), grids_(grids), geo_(geo),
-  red(nullptr), laguerre(nullptr), laguerre_single(nullptr), grad_perp_G(nullptr),
-  grad_perp_J0f(nullptr), grad_perp_f(nullptr), grad_perp_G_single(nullptr)
+  red(nullptr), laguerre(nullptr), laguerre_single(nullptr)
 {
 
   tmp_c      = nullptr;  G_tmp      = nullptr;  dG         = nullptr;  dg_dx       = nullptr;  dg_dy      = nullptr;  val1        = nullptr;
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
   dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
+
+  grad_perp_f = nullptr;
+  grad_perp_G = nullptr;
+  grad_perp_J0f = nullptr;
+  grad_perp_G_single = nullptr;
 
   if (grids_ -> Nl < 2) {
     printf("\n");
@@ -310,7 +314,7 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
 // object for handling non-linear terms in KREHM
 //==============================================
 Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), red(nullptr), grad_perp_f(nullptr), grad_perp_G(nullptr)
+  pars_(pars), grids_(grids), red(nullptr)
 {
   tmp_c = nullptr;
   dG = nullptr;
@@ -321,6 +325,8 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   dchi_dx = nullptr;
   dchi_dy = nullptr;
   G_tmp = nullptr;
+
+  grad_perp_f = grad_perp_G = nullptr;
   
   nBatch = grids_->Nz*grids_->Nm; 
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nm); 
@@ -343,6 +349,8 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc(&dphi_dy,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dchi_dx,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dchi_dy,  sizeof(float)*grids_->NxNyNz));
+
+  fXY = dphi_dx; // this is just a pointer for use in diagnostics
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
@@ -484,7 +492,7 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
 // object for handling non-linear terms in cetg
 //==============================================
 Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), red(nullptr), grad_perp_f(nullptr), grad_perp_G(nullptr)
+  pars_(pars), grids_(grids), red(nullptr)
 {
   dG = nullptr;
   dg_dx = nullptr;
@@ -669,7 +677,7 @@ double Nonlinear_KS::cfl(Fields *f, double dt_max)
 // object for handling non-linear terms in VP
 //===========================================
 Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), grad_perp_G(nullptr), grad_perp_f(nullptr)
+  pars_(pars), grids_(grids)
 {
 
   Gy          = nullptr;  dphi_dy     = nullptr;  g_res       = nullptr;  

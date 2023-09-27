@@ -3,6 +3,7 @@
 #include "grids.h"
 #include "geometry.h"
 #include "linear.h"
+#include "nonlinear.h"
 #include "moments.h"
 #include "fields.h"
 #include "ncdf.h"
@@ -200,6 +201,34 @@ class FieldsDiagnostic {
 
   cuComplex *f_h;
   float *cpu;
+};
+
+class FieldsXYDiagnostic {
+ public:
+  FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear* nonlinear, NetCDF* ncdf);
+  ~FieldsXYDiagnostic();
+  void calculate_and_write(Fields* f);
+ private:
+  void dealias_and_reorder(cuComplex* fold, float* fnew);
+
+  string tag;
+  int ndim, N, Nwrite;
+  int dims[6];
+  size_t count[6] = {0};
+  size_t start[6] = {0};
+  int varids[3];
+
+  string varnames[3];
+  int nc_group, nc_type;
+  dim3 dG, dB;
+  Parameters* pars_;
+  Grids* grids_;
+  NetCDF* ncdf_;
+  Nonlinear* nonlinear_;
+  GradPerp* grad_perp_;
+
+  float *fXY;
+  float *f_h;
 };
 
 class MomentsDiagnostic {

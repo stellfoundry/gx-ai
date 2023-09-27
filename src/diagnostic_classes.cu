@@ -688,6 +688,73 @@ void FieldsDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
   } 
 }
 
+// fields transformed to real (x,y,z) space
+FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear* nonlinear, NetCDF* ncdf)
+{
+  nc_type = NC_FLOAT;
+  pars_ = pars;
+  grids_ = grids;
+  nonlinear_ = nonlinear;
+  ncdf_ = ncdf;
+  varnames[0] = "PhiXY";
+  varnames[1] = "AparXY";
+  varnames[2] = "BparXY";
+  nc_group = ncdf_->nc_diagnostics->diagnostics_id;
+  ndim = 4;
+
+  dims[0] = ncdf_->nc_dims->time;
+  dims[1] = ncdf_->nc_dims->y;
+  dims[2] = ncdf_->nc_dims->x;
+  dims[3] = ncdf_->nc_dims->z;
+
+  count[0] = 1; // each write is a single time slice
+  count[1] = grids->Ny;
+  count[2] = grids->Nx;
+  count[3] = grids->Nz;
+
+  int retval;
+  for(int i=0; i<3; i++) {
+    if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+  }
+
+  N = grids->NxNyNz;
+  f_h = (float*) malloc  (sizeof(float) * N);
+
+  fXY = nonlinear_->get_fXY();
+  grad_perp_ = nonlinear_->get_grad_perp_f();
+}
+
+FieldsXYDiagnostic::~FieldsXYDiagnostic() 
+{
+  free(f_h);
+}
+
+void FieldsXYDiagnostic::calculate_and_write(Fields* f)
+{
+  int retval;
+  start[0] = ncdf_->nc_grids->time_index;
+
+  // write phi to ncdf
+  grad_perp_->C2R(f->phi, fXY);
+  CP_TO_CPU(f_h, fXY, sizeof(float)*N);
+  if (retval=nc_put_vara(nc_group, varids[0], start, count, f_h)) ERR(retval);
+
+  // write apar to ncdf
+  grad_perp_->C2R(f->apar, fXY);
+  CP_TO_CPU(f_h, fXY, sizeof(float)*N);
+  if (retval=nc_put_vara(nc_group, varids[1], start, count, f_h)) ERR(retval);
+  
+  // write bpar to ncdf
+  grad_perp_->C2R(f->bpar, fXY);
+  CP_TO_CPU(f_h, fXY, sizeof(float)*N);
+  if (retval=nc_put_vara(nc_group, varids[2], start, count, f_h)) ERR(retval);
+}
+
+void FieldsXYDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
+{
+}
+
 // similar structure to FieldsDiagnostic, but with a species index
 MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf, string varname)
 {
