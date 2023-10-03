@@ -146,7 +146,7 @@ void Parameters::get_nml_vars(char* filename)
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
   p_hyper_z  = toml::find_or <int>    (tnml, "p_hyper_z",       6   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       nm_in/2   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       min(20, nm_in/2) ); 
   p_hyper_lm = toml::find_or <int>    (tnml, "p_hyper_lm",      6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
