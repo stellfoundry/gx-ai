@@ -90,7 +90,6 @@ void RungeKutta3::advance(double *t, MomentsG** G, Fields* f)
   }
   
   // update flow shear terms if using ExB
-  // need to confirm with Noah if this copy and paste from above is valid here for ExB //JMH
   if (pars_->ExBshear) {
     exb_->flow_shear_shift(f, dt_);
     for(int is=0; is<grids_->Nspecies; is++) {
