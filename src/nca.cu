@@ -23,7 +23,7 @@ nca::nca(int N, int Nwrite) :
   time_start[5] = 0;
 
   time_count[0] = 1;
-  
+
   if (N == 0) return;
       
   if (N > 0) {
