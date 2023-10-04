@@ -25,38 +25,36 @@ if __name__ == "__main__":
         print("")
         print("Using LaTeX")
 
-    # Input prompts
-    spectra       = ["Exit", 'Wkxst', 'Pkxst', 'Qkxst', 'Gamkxst', 'Phi2kxt']
-    spectra_label = ["", r"$W_s(k_x)$", r"$[1-\Gamma_0(b_s)]|\phi(k_x)|^2$", r"$Q_s(k_x)$", r"$\Gamma_s(k_x)$", r"$|\phi(k_x)|^2$"]
-    choices       = ["Exit", "Plot Wspectra", "Plot Pspectra", "Plot Qspectra", "Plot Gamspectra", "Plot Phi2spectra"]
-    input_prompt  = "Please select an option:\n"
+    time_plots = False
 
-    print("")
+    if "time_plots" in filenames:
+        filenames.remove("time_plots")
+        time_plots = True
 
-    for i in range(len(choices)):
-        input_prompt += "   {:d}: {:s}\n".format(i, choices[i])
+    spectra       = ["Wkxst", "Pkxst", "Qkxst", "Gamkxst", "Phi2kxt"]
+    spectra_label = [r"$W_s(k_x)$", r"$[1-\Gamma_0(b_s)]|\phi(k_x)|^2$", r"$Q_s(k_x)$", r"$\Gamma_s(k_x)$", r"$|\phi(k_x)|^2$"]
 
-    while (True):
-        try:
-            choice = int(input(input_prompt))
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        try:
-            spectra[choice]
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        if (choice == 0):
-            print("")
-            break
-        try:
-            simulations = load_files(filenames, groups=['Inputs', 'Spectra'], spectra=[spectra[choice]])
-            plot_spectra_1D(simulations, spectrum=spectra[choice], spectrum_label=spectra_label[choice], \
-                            spectrum_range='kx', spectrum_range_label=r"$k_x$", spectrum_xscale="symlog", spectrum_yscale="log", average_fraction=0.5, absolute_value=False, time_plots=False)
-        except KeyboardInterrupt:
-            pass
+    spectra_plot       = []
+    spectra_label_plot = []
 
-    print("")
+    for spectrum_index, spectrum in enumerate(spectra):
+        if spectrum in filenames:
+            filenames.remove(spectrum)
+            spectra_plot.append(spectrum)
+            spectra_label_plot.append(spectra_label[spectrum_index])
+
+    if len(spectra_plot) == 0:
+        print("")
+        print("Please specify one (or more) of the following as a command-line input:")
+        print(spectra)
+        print("")
+
+        exit()
+
+    else:
+        simulations = load_files(filenames, groups=['Inputs', 'Spectra'], spectra=spectra_plot)
+
+        for spectrum_index, spectrum in enumerate(spectra_plot):
+            print("Plotting", spectrum, "...")
+            plot_spectra_1D(simulations, spectrum=spectra_plot[spectrum_index], spectrum_label=spectra_label_plot[spectrum_index], \
+                                spectrum_range='kx', spectrum_range_label=r"$k_x$", spectrum_xscale="symlog", spectrum_yscale="log", average_fraction=0.5, absolute_value=False, time_plots=time_plots)

@@ -8,7 +8,7 @@ def plot_spectra_1D(simulations, spectrum, spectrum_label, spectrum_range, spect
 
     plt.close("all")
 
-    print("")
+    # print("")
     print("Taking reference species from first simulation provided.")
     print('─' * 100)
 
@@ -19,6 +19,8 @@ def plot_spectra_1D(simulations, spectrum, spectrum_label, spectrum_range, spect
     fig, (ax1) = plt.subplots(1, 1)
     fig.canvas.manager.set_window_title("One-dimensional spectra (all simulations)")
     plot_color = plt.cm.rainbow(np.linspace(0, 1, len(simulations.keys())))
+
+    spectrum_count = 0
 
     # Iterating over similation files 
     for simulation_index, simulation_key in enumerate(simulations.keys()):
@@ -39,6 +41,7 @@ def plot_spectra_1D(simulations, spectrum, spectrum_label, spectrum_range, spect
             spectrum_plot = simulation['Spectra'][str(spectrum)]
             plot_range    = simulation['Dimensions'][str(spectrum_range)]
             t_range       = simulation['Dimensions']['time']
+            spectrum_count += 1
             
         except:
             print("%s -- WARNING: '%s' not found." %(simulation_key.name, spectrum))
@@ -108,7 +111,7 @@ def plot_spectra_1D(simulations, spectrum, spectrum_label, spectrum_range, spect
             ax2.set_ylabel(spectrum_label)
 
     # Checking if there are any spectra to plot
-    if not ref_species_list:
+    if spectrum_count == 0:
         print('─' * 100)
         print("Spectrum not found in all simulation files. Returning.")
         print("")
