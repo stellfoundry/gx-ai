@@ -43,7 +43,7 @@ def turbulent_heating(data, ispec=0, navgfac=0.5, label=None, plot=True, fig=Non
 
 if __name__ == "__main__":
     
-    print("Plotting turbulent heatinges.....")
+    print("Plotting turbulent heating.....")
     for fname in sys.argv[1:]:
         try:
             data = Dataset(fname, mode='r')

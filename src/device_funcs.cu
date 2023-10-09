@@ -1804,61 +1804,48 @@ __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, con
                                           const cuComplex* phi_old, const cuComplex* apar_old, const cuComplex* bpar_old, 
                                           const cuComplex* g, const cuComplex* g_old, const float* volJac, const float* kperp2, const specie sp, float dt)
 {
-  unsigned int idxy = get_id1(); 
-  if (idxy < nx*nyc) {
-    unsigned int idz = get_id2();
-    if (idz < nz) {
-      unsigned int idlm = get_id3();
-      if (idlm < nm*nl) {
-        unsigned int ig = idxy + nx*nyc*(idz + nz*idlm);
-        unsigned int idxyz = idxy + nx*nyc*idz;
-        unsigned int idy = idxy % nyc;
-        unsigned int idx = idxy / nyc;
-        unsigned int idl = idlm % nl;
-        unsigned int idm = idlm / nl;
+  idXYZ; 
+  
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0 && unmasked(idx, idy)) { 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
 
-        const float vt_ = sp.vt;
-        const float zt_ = sp.zt;
-        const float tz_ = sp.tz;
-        const float nz_ = sp.nz;
-        const float nt_ = sp.nt;
-        const float rho2_ = sp.rho2;
+    const cuComplex phi_ = phi[idxyz];
+    const cuComplex apar_ = apar[idxyz];
+    const cuComplex bpar_ = bpar[idxyz];
+    const cuComplex phi_old_ = phi_old[idxyz];
+    const cuComplex apar_old_ = apar_old[idxyz];
+    const cuComplex bpar_old_ = bpar_old[idxyz];
+    const cuComplex dPhidt = (phi_ - phi_old_)/dt;
+    const cuComplex dAdt = (apar_ - apar_old_)/dt;
+    const cuComplex dBdt = (bpar_ - bpar_old_)/dt;
 
-        const cuComplex phi_ = phi[idxyz];
-        const cuComplex apar_ = apar[idxyz];
-        const cuComplex bpar_ = bpar[idxyz];
-        const cuComplex phi_old_ = phi_old[idxyz];
-        const cuComplex apar_old_ = apar_old[idxyz];
-        const cuComplex bpar_old_ = bpar_old[idxyz];
+    const float rho2_ = sp.rho2;
+    const float vt_ = sp.vt;
+    const float zt_ = sp.zt;
+    const float tz_ = sp.tz;
+    const float nz_ = sp.nz;
+    const float b_s = kperp2[idxyz]*rho2_;
+    
+    // sum over l
+    cuComplex n_bar = make_cuComplex(0.,0.);
+    cuComplex u_bar = make_cuComplex(0.,0.);
+    cuComplex uB_bar = make_cuComplex(0.,0.);
 
-        if (unmasked(idx, idy)) {
-          float b_s = kperp2[idxyz]*rho2_;
-          int l = idl;
-          int m = idm + m_lo;
-          cuComplex H_ = g[ig];
-          cuComplex H_old_ = g_old[ig];
-          if(m==0) {
-            H_ = H_ + zt_*Jflr(l, b_s)*phi_ + JflrB(l, b_s)*bpar_;
-            H_old_ = H_old_ + zt_*Jflr(l, b_s)*phi_old_ + JflrB(l, b_s)*bpar_old_;
-          }
-          if(m==1) {
-            H_ = H_ - zt_*vt_*Jflr(l, b_s)*apar_; 
-            H_old_ = H_old_ - zt_*vt_*Jflr(l, b_s)*apar_old_; 
-          }
+    for (int il=0; il < nl; il++) {
+      unsigned int idxyz_l0 = idxyz + nx*nyc*nz*(il + nl*(0 - m_lo));
+      unsigned int idxyz_l1 = idxyz + nx*nyc*nz*(il + nl*(1 - m_lo));
+      cuComplex H_l0 = g_old[idxyz_l0] + zt_*Jflr(il, b_s)*phi_ + JflrB(il, b_s)*bpar_;
+      cuComplex H_l1 = g_old[idxyz_l1] - zt_*vt_*Jflr(il, b_s)*apar_;
 
-          cuComplex Havg = 0.5*(H_ + H_old_);
-          cuComplex dGdt = (g[ig] - g_old[ig])/dt;
-          cuComplex dWdt = cuConjf(Havg)*dGdt;
-
-          float fac = 2.0;
-          if (idy==0) fac = 1.0;
-        
-          heat[ig] = nt_ * (dWdt.x) * volJac[idz] * fac;
-        } else {
-          heat[ig] = 0.;
-        }
-      }
+      n_bar = n_bar + Jflr(il, b_s)*H_l0;
+      u_bar = u_bar + Jflr(il, b_s)*H_l1;
+      uB_bar = uB_bar + JflrB(il, b_s)*H_l0;
     }
+    
+    float fac = 2.0;
+    if (idy==0) fac = 1.0;
+    cuComplex fg = (cuConjf(dPhidt) * n_bar - vt_*cuConjf(dAdt)*u_bar + tz_*cuConjf(dBdt)*uB_bar) * fac * volJac[idz];
+    heat[idxyz] = fg.x * nz_;
   }
 }
 

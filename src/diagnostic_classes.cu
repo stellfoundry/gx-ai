@@ -409,14 +409,13 @@ TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* 
 {
   varname = "TurbulentHeating";
   description = "Turbulent heating from collisions in gyroBohm units"; 
-  isMoments = true;
+  isMoments = false;
   set_kernel_dims();
 
   add_spectra(allSpectra->st_spectra);
   add_spectra(allSpectra->kxst_spectra);
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
-  add_spectra(allSpectra->lmst_spectra);
   add_spectra(allSpectra->zst_spectra);
 
   linear_ = linear;
