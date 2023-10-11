@@ -471,6 +471,7 @@ void Parameters::get_nml_vars(char* filename)
   ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
   ExBshear_phase = toml::find_or <bool> (tnml, "ExBshear_phase",  true); // If false, neglect phase correction in FFT. Only relevant for nonlinear simulations.
   g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
+  if (!ExBshear) ExBshear_phase = false; 
   fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
   fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
   fbpar    = toml::find_or <float> (tnml, "fbpar",       beta > 0.0? 1.0 : 0.0);

@@ -9,7 +9,7 @@ class GradPerp {
   GradPerp(Grids* grids, int batch, int mem);
   ~GradPerp();
 
-  void phase_mult (float* G, bool positive_phase=true);
+  void phase_mult (float* G, bool nonTwist, bool ExBshear, bool positive_phase=true);
   void dxC2R (cuComplex* G, float* dxG);
   void dyC2R (cuComplex* G, float* g);
   void C2R   (cuComplex* G, float* Gy);

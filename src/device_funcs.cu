@@ -1005,45 +1005,69 @@ __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, cons
   }
 }
 
-__global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuComplex* iKx)
+__global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuComplex* iKx, bool exb_flag)
 {
   unsigned int idxyz = get_id1();
   unsigned int idj = get_id2();
   if (idxyz < nx*nyc*nz && idj < nj) {
+    unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idj;
-    iKxf[ig] = f[ig] * iKx[idxyz];
+    if (exb_flag) {
+      iKxf[ig] = f[ig] * iKx[idxy];
+    }
+    else {
+      iKxf[ig] = f[ig] * iKx[idxyz];
+    }
   }
 }
 
-__global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex* iKx)
+__global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex* iKx, bool exb_flag)
 {
   unsigned int idxyz = get_id1();
   unsigned int idl = get_id2();
   unsigned int idm = get_id3();
 
   if (idxyz < nx*nyc*nz && idl < nl && idm < nm) {
+    unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
-    iKxg[ig] = g[ig] * iKx[idxyz];
+    if (exb_flag) {
+      iKxg[ig] = g[ig] * iKx[idxy];
+    }
+    else {
+      iKxg[ig] = g[ig] * iKx[idxyz];
+    }
   }
 }
 
-__global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_single, const cuComplex* iKx)
+__global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_single, const cuComplex* iKx, bool exb_flag)
 {
   unsigned int idxyz = get_id1();
   unsigned int idl = get_id2();
 
   if (idxyz < nx*nyc*nz && idl < nl) {
+    unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idl;
-    iKxg_single[ig] = g_single[ig] * iKx[idxyz];
+    if (exb_flag) {
+      iKxg_single[ig] = g_single[ig] * iKx[idxy];
+    }
+    else {
+      iKxg_single[ig] = g_single[ig] * iKx[idxyz];
+    }
   }
 }
 
-__global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuComplex* iKx)
+__global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuComplex* iKx, bool exb_flag)
 {
   unsigned int idxyz = get_id1();
 
   if (idxyz < nx*nyc*nz) {
-    iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+    unsigned int idxy = idxyz % (nx * nyc);
+    if (exb_flag) {
+      iKxphi[idxyz] = phi[idxyz] * iKx[idxy];
+    }
+    else {
+     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+    }
   }
 }
 
@@ -1153,10 +1177,13 @@ __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *share
 __device__ cuComplex phase_fac_exb(void *dataIn, size_t offset, void *phaseData, void *sharedPtr)
 {
   float *phase = (float*) phaseData;
+  //unsigned int idx = offset / nyc % nx;
+  //unsigned int idy = offset / nx  % nyc;
   unsigned int idx = offset / nyc % nx;
-  unsigned int idy = offset / nx  % nyc;
+  unsigned int idy = offset % nyc; 
   // Complex exponetial calculation.
   // exp(phase) = exp(phase.x)*(cos(phase.y) + 1i*sin(phase.y))) = cos(phase.y) + 1i*sin(phase.y), since phase.x = 0.
+  printf("in callback: phasefac[idy = %d, idx = %d, idxy = %d] = %f\n", idy, idx, idy+nyc*idx, phase[idy+nyc*idx]);
   cuComplex compexp;
   sincosf(phase[idy+nyc*idx], &compexp.y, &compexp.x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
   return compexp*((cuComplex*)dataIn)[offset];
@@ -1165,8 +1192,10 @@ __device__ cuComplex phase_fac_exb(void *dataIn, size_t offset, void *phaseData,
 __device__ cuComplex phase_fac_minus_exb(void *dataIn, size_t offset, void *phaseData, void *sharedPtr)
 {
   float *phase = (float*) phaseData;
+  //unsigned int idx = offset / nyc % nx;
+  //unsigned int idy = offset / nx  % nyc;
   unsigned int idx = offset / nyc % nx;
-  unsigned int idy = offset / nx  % nyc;
+  unsigned int idy = offset % nyc; 
   // Complex exponential calculation.
   // exp(-phase) = exp(-phase.x)*(cos(-phase.y) + 1i*sin(-phase.y))) = cos(-phase.y) + 1i*sin(-phase.y), since phase.x = 0.
   cuComplex compexp;
@@ -3091,7 +3120,7 @@ __global__ void conservation_terms(cuComplex* upar_bar, cuComplex* uperp_bar, cu
 // When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
 // We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
 // This is kx at t = 0. Throughout simulation, this will update for g_exb != 0.
-__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, float* phasefac, const float* kx)
+__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -3101,7 +3130,8 @@ __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, in
     kxstar[idxy] = kx[idx]; // should read this from a file if this is a restarted case
     kxbar_ikx_new[idxy] = get_ikx(idx); // should read this from a file if this is a restarted case
     kxbar_ikx_old[idxy] = get_ikx(idx); // should read this from a file if this is a restarted case
-    phasefac[idxy] = 1.0; // should read this from a file if this is a restarted case
+    phasefac[idxy] = make_cuComplex(1.0, 0.); // should read this from a file if this is a restarted case
+    phasefac_minus[idxy] = make_cuComplex(1.0, 0.); // should read this from a file if this is a restarted case
   }
   // JFP: note: to normalize kxstar, theta0, and ky*g_exb*dt correctly for stellarators with different connection lengths.
   // JFP: note: add read-in kxstar option.
@@ -3168,14 +3198,11 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
   }
 }
 
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
+__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   float dkx = (float) 1./x0;
-  int nakx = 1 + 2*((nx-1)/3);
-  //float kxalias_max = (float) dkx*((nakx-1)/2);
-  float kxalias_max = (float) dkx*nakx;
   if(idx < nx && idy < nyc) {
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
@@ -3185,31 +3212,15 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) kxstar[idxy] = kxstar[idxy] + g_exb / abs(g_exb) * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
     
-    if (ExBshear_phase) {
-      phasefac[idxy] = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
-    } else {
-      phasefac[idxy] = 1.0; // JMH // this should be 1.0 not zero right? So we are multiplying by 1 not zeroing everything?
-    }
 
-    //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
-    
-    /*
-    //if field is sheared beyond unmasked region, subtract/add (depending on sign of g_exb) the maximum wavenumber. // JFP: should work with up-down asymmetry?
-    if (abs(get_ikx(idx)) <= nakx/2) {
-      if (abs(kxbar_ikx_new[idxy]) > nakx/2) {
-        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*kxalias_max; // shifting kxs to opposite side of dealiased kx grid.
-        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
-      }
-    } else { //for masked modes, if you fall into unmasked region, jump over unmasked region kxalias_max. if you fall out of entire region, jump to opposite side
-      if (kxbar_ikx_new[idxy] > nx/2 || kxbar_ikx_new[idxy] < (-nx/2 + 1)) {
-        kxstar[idxy] = kxstar[idxy] + g_exb/abs(g_exb)*nx*dkx;
-        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
-      } else if (abs(kxbar_ikx_new[idxy]) <= nakx/2) {
-        kxstar[idxy] = kxstar[idxy] - g_exb/abs(g_exb)*kxalias_max;
-        //printf("kxstar[idy = %d,idx = %d, idxy = %d] = %f, kxbar_ikx_new = %d, nakx = %d, nx = %d\n", idy, idx, idxy, kxstar[idxy], kxbar_ikx_new[idxy], nakx, nx);
-      }
+    //phasefac = exp(i*phase) = cos(phase) + i * sin(phase)
+    //phasefacminus = exp(-i*phase)) = cos(-phase) + i * sin(-phase) = cos(phase) - i * sin(phase)
+ 
+    if (ExBshear_phase) { // only update if includnig factor
+      float phase = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
+      sincosf(phase, &phasefac[idxy].y, &phasefac[idxy].x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
+      sincosf(-phase, &phasefac_minus[idxy].y, &phasefac_minus[idxy].x);
     }
-    */
   }
 }
 

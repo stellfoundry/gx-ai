@@ -33,7 +33,7 @@ Grids::Grids(Parameters* pars) :
   m0_h            = nullptr;  phasefac_ntft   = nullptr;  phasefacminus_ntft = nullptr;
   iKx             = nullptr;  x               = nullptr;
   kxstar          = nullptr;  kxbar_ikx_new   = nullptr;  kxbar_ikx_old   = nullptr;
-  phasefac_exb    = nullptr;
+  phasefac_exb    = nullptr;  phasefacminus_exb = nullptr; 
 
 
   Nspecies = pars->nspec_in;
@@ -130,8 +130,8 @@ Grids::Grids(Parameters* pars) :
     }
   }
   if (pars_->ExBshear) {
-    printf("initializing ExB parameters\n");
-    cudaMalloc     ( (void**) &phasefac_exb,   sizeof(float) * Nx * Nyc);
+    cudaMalloc     ( (void**) &phasefac_exb,   sizeof(cuComplex) * Nx * Nyc);
+    cudaMalloc     ( (void**) &phasefacminus_exb,   sizeof(cuComplex) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxstar,         sizeof(float) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxbar_ikx_new,  sizeof(int) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxbar_ikx_old,  sizeof(int) * Nx * Nyc);
@@ -185,6 +185,7 @@ Grids::~Grids() {
   if (phasefac_ntft)        cudaFree(phasefac_ntft);
   if (phasefacminus_ntft)   cudaFree(phasefacminus_ntft);
   if (phasefac_exb)         cudaFree(phasefac_exb);
+  if (phasefacminus_exb)         cudaFree(phasefacminus_exb);
   if (iKx)	       cudaFree(iKx);
   if (x)               cudaFree(x);
   if (kxstar)          cudaFree(kxstar);
@@ -230,7 +231,7 @@ void Grids::init_ks_and_coords()
     nn3 = 1;         nt3 = 1;                nb3 = 1;
     dB = dim3(nt1, nt2, nt3);
     dG = dim3(nb1, nb2, nb3);
-    init_kxstar_kxbar_phasefac <<< dG, dB >>> (kxstar, kxbar_ikx_new, kxbar_ikx_old, phasefac_exb, kx); // Do we really need th0 here? // JFP
+    init_kxstar_kxbar_phasefac <<< dG, dB >>> (kxstar, kxbar_ikx_new, kxbar_ikx_old, phasefac_exb, phasefacminus_exb, kx); // Do we really need th0 here? // JFP
     //CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);  
   }
   

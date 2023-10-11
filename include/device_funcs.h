@@ -155,10 +155,10 @@ __global__ void J0fToGrid(cuComplex* J0f, const cuComplex* f, const float* kperp
 __global__ void J0phiAndBparToGrid(cuComplex* J0phiB, const cuComplex* phi, const cuComplex* bpar, const float* kperp2,
 			    const float* muB, const float rho2_s, const float tz, const float fphi, const float fbpar);
 
-__global__ void iKxJ0ftoGrid(cuComplex* iKxf, const cuComplex* f, const cuComplex* iKx);
-__global__ void iKxgtoGrid(cuComplex* iKxg, const cuComplex* g, const cuComplex* iKx);
-__global__ void iKxgsingletoGrid(cuComplex* iKxg_single, const cuComplex* g_single, const cuComplex* iKx);
-__global__ void iKxphitoGrid(cuComplex* iKxphi, const cuComplex* phi, const cuComplex* iKx);
+__global__ void iKxJ0ftoGrid(cuComplex* iKxf, const cuComplex* f, const cuComplex* iKx, bool exb_flag = false);
+__global__ void iKxgtoGrid(cuComplex* iKxg, const cuComplex* g, const cuComplex* iKx, bool exb_flag = false);
+__global__ void iKxgsingletoGrid(cuComplex* iKxg_single, const cuComplex* g_single, const cuComplex* iKx, bool exb_flag = false);
+__global__ void iKxphitoGrid(cuComplex* iKxphi, const cuComplex* phi, const cuComplex* iKx, bool exb_flag = false);
 __global__ void acc(float *a, const float *b);
 
 __global__ void bracket(float* __restrict__ g_res,
@@ -372,7 +372,7 @@ __global__ void hyperdiff(const cuComplex* g, const float* kx, const float* ky,
 __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, const float nu_hyper_m,
 				const int p_hyper_l, const int p_hyper_m, cuComplex* rhs, const float vt);
 
-__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, float* phasefac, const float* kx);
+__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx);
 __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat);
@@ -381,6 +381,6 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
                                const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
 			       const float* ftwist, float* deltaKx, const int* m0, const float x0, cuComplex* iKx,
 			       const float g_exb, const double dt, const float* kx);
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, float* phasefac, const float g_exb, const double dt, const float x0, const bool ExBshear_phase);
+__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase);
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);
 __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);
