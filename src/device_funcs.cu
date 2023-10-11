@@ -3171,26 +3171,23 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
 __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
-			   const float * ftwist, float* deltaKx, const int* m0, const float x0, cuComplex* iKx, 
-			   const float g_exb, const double dt, const float * kx)
+			   const float * ftwist, float* deltaKx, const int* m0, const float x0)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   unsigned int idz = get_id3();
   float shatInv = 1./shat; // note: no point in putting shat = 0 condition for NTFT so we don't check for it
   // for NTFT: Kxstar = scriptKxstar (existing kx grid) + deltaKx = scriptKx - ky*g_exb*t + deltaKx
+  // do same NTFT equations but replace kx with kxstar (this is scriptKx -> scriptKxstar)
   if (unmasked(idx, idy) && idz < nz) { 
   //if (idx < nx && idy < nyc && idz < nz) {
     unsigned int idyz  = idy + nyc * idz;
     unsigned int idxy  = idy + nyc * idx;
     unsigned int idxyz = idy + nyc * (idx + nx * idz);
 
-    deltaKx[idxy] = deltaKx[idxy] - ky[idy]*g_exb*dt; // this becomes deltaKxstar for NTFT + ExB
-    iKx[idxyz] = make_cuComplex(0., kx[idx] + deltaKx[idyz]); // this is iKxstar
-    
     if (idy > 0 && unmasked(idx, idy)) {
       kperp2[idxyz] = ( pow(ky[idy] , 2) * (gds2[idz] - 2 * ftwist[idz] * gds21[idz] * shatInv + pow(ftwist[idz], 2) * gds22[idz] * pow(shatInv, 2)) 
-		      + pow(kx[idx] + deltaKx[idyz], 2) * gds22[idz] * pow(shatInv, 2) ) * pow(bmagInv[idz], 2);
+		      + pow(kxstar[idxy] + deltaKx[idyz], 2) * gds22[idz] * pow(shatInv, 2) ) * pow(bmagInv[idz], 2);
       cv_d[idxyz] = ky[idy] * cv[idz] + (kxstar[idxy] + m0[idyz] / x0) * shatInv * cv0[idz]; // m0 not time dependent
       gb_d[idxyz] = ky[idy] * gb[idz] + (kxstar[idxy] + m0[idyz] / x0) * shatInv * gb0[idz];
       omegad[idxyz] = cv_d[idxyz] + gb_d[idxyz];

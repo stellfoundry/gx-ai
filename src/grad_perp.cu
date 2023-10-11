@@ -26,6 +26,9 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
     checkCuda(cudaMalloc (&iKxtmp, sizeof(cuComplex)*mem_size_));
   }
 
+  if (grids_->phasefac_exb && grids_->phasefac_ntft) { //I don't want to add pars to the class declaration // JMH
+    checkCuda(cudaMalloc (&iKxtmp2, sizeof(cuComplex)*mem_size_));
+  }
 
   int maxthreads = 1024; 
   int nthreads = min(maxthreads, mem_size_);
@@ -190,20 +193,20 @@ void GradPerp::phase_mult(float* G, bool nonTwist, bool ExBshear, bool positive_
     if (ExBshear) {
       if (positive_phase) {
         if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) {
-          iKxgtoGrid GBX_ntft (tmp, iKxtmp, grids_->phasefac_exb, true);
+          iKxgtoGrid GBX_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz*grids_->Nj) {
-          iKxJ0ftoGrid GBK (tmp, iKxtmp, grids_->phasefac_exb), true;
+          iKxJ0ftoGrid GBK (iKxtmp2, iKxtmp, grids_->phasefac_exb), true;
         } else if (batch_size_ == grids_->Nz*grids_->Nl) {
-          iKxgsingletoGrid GBX_single_ntft (tmp, iKxtmp, grids_->phasefac_exb, true);
+          iKxgsingletoGrid GBX_single_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz) {
-          iKxphitoGrid GBPhi_ntft (tmp, iKxtmp, grids_->phasefac_exb, true);
+          iKxphitoGrid GBPhi_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         }
       } else {
-        iKxgtoGrid GBX_ntft (tmp, iKxtmp, grids_->phasefacminus_exb, true);
+        iKxgtoGrid GBX_ntft (iKxtmp2, iKxtmp, grids_->phasefacminus_exb, true);
       }
 
     // if ntft + exb, do FFT on tmp, if only ntft do FFT on iKxtmp
-      cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
+      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp2, G);
     } else {
       cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
     }
