@@ -203,9 +203,11 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   } else {
     J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
   }
+
+  // JMH d/dx->ikx operator in iKxtoGrid functions for NTFT (iKx) or NTFT + ExB (iKxstar = iKx - ky*g_exb*dt), within dxC2R callback if ExB only (ikxstar)  // JMH phasefactor in 1D fft within phase_mult, called once per d/dx or d/dy parameter if NTFT, NTFT+ExB, or ExB
   
   if (pars_->nonTwist) { // d/dx and positive exponential phase factor calulation
-    iKxJ0ftoGrid GBK (iKxJ0phi, J0phi, grids_->iKx);
+    iKxJ0ftoGrid GBK (iKxJ0phi, J0phi, grids_->iKx, false);
     grad_perp_J0f -> C2R(iKxJ0phi, dJ0phi_dx);
   } else { //perform d/dx as normal for conventional flux tube
     grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
@@ -220,7 +222,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
    
     if (pars_->nonTwist) {
-      iKxJ0ftoGrid GBK (iKxJ0apar, J0apar, grids_->iKx);
+      iKxJ0ftoGrid GBK (iKxJ0apar, J0apar, grids_->iKx, false);
       grad_perp_J0f -> C2R(iKxJ0apar, dJ0apar_dx);
     } else {
       grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
@@ -236,7 +238,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
   
   if (pars_->nonTwist) {
-    iKxgtoGrid GBX_ntft (iKxG, G->G(), grids_->iKx);
+    iKxgtoGrid GBX_ntft (iKxG, G->G(), grids_->iKx, false);
     grad_perp_G -> C2R(iKxG, dG);
   } else {
     grad_perp_G -> dxC2R(G->G(), dG);
@@ -281,7 +283,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     int m_local = m - grids_->m_lo;
     if(m>0) {
       if (pars_->nonTwist) {
-        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local-1), grids_->iKx);
+        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local-1), grids_->iKx, false);
 	grad_perp_G_single -> C2R(iKxG_single, dG);
       } else {
         grad_perp_G_single -> dxC2R(G->Gm(m_local-1), dG);
@@ -305,7 +307,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     m_local = m - grids_->m_lo;
     if(m<pars_->nm_in-1) {
       if (pars_->nonTwist) {
-        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local+1), grids_->iKx);
+        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local+1), grids_->iKx, false);
 	grad_perp_G_single -> C2R(iKxG_single, dG);
       } else {
         grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);

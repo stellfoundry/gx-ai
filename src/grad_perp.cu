@@ -177,16 +177,16 @@ void GradPerp::phase_mult(float* G, bool nonTwist, bool ExBshear, bool positive_
     
     if (positive_phase) {
       if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-        iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+        iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-        iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft);
+        iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
-        iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+        iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz) { // if multiplying phi (can delete this if I don't need timestep correction)
-        iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
+        iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
       }
     } else { // if reverse, will be size of G grid only
-      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
+      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft, false);
     }
     
     // this is kinda weird but might save memory - FFT1D sends G -> tmp, ntft phasefac sends tmp->iKxtmp, exb phasefac sends iKxtmp -> tmp? reusing tmps
@@ -195,7 +195,7 @@ void GradPerp::phase_mult(float* G, bool nonTwist, bool ExBshear, bool positive_
         if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) {
           iKxgtoGrid GBX_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz*grids_->Nj) {
-          iKxJ0ftoGrid GBK (iKxtmp2, iKxtmp, grids_->phasefac_exb), true;
+          iKxJ0ftoGrid GBK (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz*grids_->Nl) {
           iKxgsingletoGrid GBX_single_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz) {

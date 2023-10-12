@@ -1183,7 +1183,6 @@ __device__ cuComplex phase_fac_exb(void *dataIn, size_t offset, void *phaseData,
   unsigned int idy = offset % nyc; 
   // Complex exponetial calculation.
   // exp(phase) = exp(phase.x)*(cos(phase.y) + 1i*sin(phase.y))) = cos(phase.y) + 1i*sin(phase.y), since phase.x = 0.
-  printf("in callback: phasefac[idy = %d, idx = %d, idxy = %d] = %f\n", idy, idx, idy+nyc*idx, phase[idy+nyc*idx]);
   cuComplex compexp;
   sincosf(phase[idy+nyc*idx], &compexp.y, &compexp.x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
   return compexp*((cuComplex*)dataIn)[offset];
@@ -3195,6 +3194,19 @@ __global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d
   }
 }
 
+__global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double dt, const float* ky)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+// this is needed for d/dx in nonlinear term - if NTFT and flow shear, this becomes d/dx -> iKxstar = iKx - ky*g_exb*dt 
+  if (idx < nx && idy < nyc && idz < nz) {
+    unsigned int idxyz = idy + nyc * (idx + nx * idz);
+    iKx[idxyz] = iKx[idxyz] - make_cuComplex(0.,ky[idy]*g_exb*dt);
+  }
+}
+
 __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
@@ -3217,6 +3229,8 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar
       float phase = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
       sincosf(phase, &phasefac[idxy].y, &phasefac[idxy].x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
       sincosf(-phase, &phasefac_minus[idxy].y, &phasefac_minus[idxy].x);
+      //printf("phasefac[%d].x  = %f, .y = %f \n", idxy, phasefac[idxy].x, phasefac[idxy].y);
+      //printf("phasefac_minus[%d].x  = %f, .y = %f \n", idxy, phasefac_minus[idxy].x, phasefac_minus[idxy].y);
     }
   }
 }
