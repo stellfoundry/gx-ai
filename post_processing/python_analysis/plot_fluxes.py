@@ -103,39 +103,34 @@ if __name__ == "__main__":
         print("")
         print("Using LaTeX")
 
-    simulations = load_files(filenames, groups = ['Inputs', 'Fluxes'])
+    fluxes       = ["qflux", "pflux"]
+    fluxes_label = ["Q", "\Gamma"]
 
-    # Input prompts
-    fluxes       = ["Exit", "qflux", "pflux"]
-    fluxes_label = ["", "Q", "\Gamma"]
-    choices      = ["Exit", "Plot heatflux", "Plot particle flux"]
-    input_prompt = "Please select an option:\n"
+    fluxes_plot       = []
+    fluxes_label_plot = []
 
-    for i in range(len(choices)):
-        input_prompt += "   {:d}: {:s}\n".format(i, choices[i])
+    for flux_index, flux in enumerate(fluxes):
+        if flux in filenames:
+            filenames.remove(flux)
+            fluxes_plot.append(flux)
+            fluxes_label_plot.append(fluxes_label[flux_index])
 
-    while (True):
-        try:
-            choice = int(input(input_prompt))
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        try:
-            fluxes[choice]
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        if (choice == 0):
-            print("")
-            break
-        try:
-            plot_fluxes(simulations, flux = fluxes[choice], flux_label = fluxes_label[choice], average_fraction = 0.5)
-        except KeyboardInterrupt:
-            pass
+    if len(fluxes_plot) == 0:
+        print("")
+        print("Please specify one (or more) of the following as a command-line input:")
+        print(fluxes)
+        print("")
 
-    print("")
+        exit()
+
+    else:
+        simulations = load_files(filenames, groups=['Inputs', 'Fluxes'])
+
+        for flux_index, flux in enumerate(fluxes_plot):
+
+            plot_fluxes(simulations, flux=fluxes_plot[flux_index], flux_label=fluxes_label_plot[flux_index], average_fraction=0.5, norm_vth=np.sqrt(2))
+
+        print("")
 
 
 
