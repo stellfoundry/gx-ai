@@ -76,6 +76,26 @@ private:
   Geometry   * geo_   ;
 };
 
+class Solver_cetg : public Solver {
+ public:
+  Solver_cetg(Parameters* pars, Grids* grids);
+  ~Solver_cetg();
+  
+  void fieldSolve(MomentsG** G, Fields* fields);
+  
+private:
+
+  dim3 dG, dB, dg, db;
+  int count;
+
+  cuComplex *moms, *density;
+
+  // local private copies
+  Parameters * pars_  ;
+  Grids      * grids_ ;
+  Geometry   * geo_   ;
+};
+
 class Solver_VP : public Solver {
  public:
   Solver_VP(Parameters* pars, Grids* grids);
