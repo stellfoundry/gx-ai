@@ -40,7 +40,6 @@ eikfile = sys.argv[3]
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
-
 ################################################################################################
 ##############-----------------------HELPER FUNCTIONS---------------------------################
 ################################################################################################
@@ -278,7 +277,6 @@ def vmec_splines(nc_obj, booz_obj):
         results.__setattr__(v, eval("booz_obj." + variables2[k]))
         # print(v, k)
 
-    # pdb.set_trace()
     variables = [
         "rmnc_b",
         "zmns_b",
@@ -301,7 +299,7 @@ def vmec_splines(nc_obj, booz_obj):
 #########################################################################################################
 
 
-def vmec_fieldlines_axisym(
+def vmec_fieldlines(
     vmec_fname,
     s,
     alpha,
@@ -477,7 +475,6 @@ def vmec_fieldlines_axisym(
     # the inboard side, otherwise we need to flip the theta coordinate
     if R_b[0][0][0] > R_b[0][0][1] or Z_b[0][0][1] > Z_b[0][0][0]:
         flipit = 1
-
     # if an equilibrium is 3D, we disable flipit
     if isaxisym == 0:
         flipit == 0
@@ -867,38 +864,8 @@ def vmec_fieldlines_axisym(
     toroidal_flux_sign = np.sign(edge_toroidal_flux_over_2pi)
     sqrt_s = np.sqrt(s)
 
-    gbdrift0 = (
-        -1.0
-        * B_cross_kappa_dot_grad_psi_b
-        * 2
-        * shat[:, None, None]
-        / (modB_b * modB_b * modB_b * sqrt_s[:, None, None])
-        * toroidal_flux_sign
-    )
-    cvdrift0 = gbdrift0
-
-    # Rprime_b = (
-    #    np.interp(theta_b, d_R_b_d_s)
-    #    * 1
-    #    / edge_toroidal_flux_over_2pi
-    #    * 1
-    #    / iota
-    #    * R_1
-    #    * B_p_1
-    # )
-    # Zprime_1 = (
-    #    np.interp(theta1d, theta_pest[0][0], d_Z_d_s[0][0])
-    #    * 1
-    #    / edge_toroidal_flux_over_2pi
-    #    * 1
-    #    / iota
-    #    * R_1
-    #    * B_p_1
-    # )
-
     ## Now we calculate the same set of quantities in boozer coordinates after varying the
     ## local gradients.
-
     bmag = modB_b / B_reference
     # Is should be possible to avoid B_sup quantities altogether.
     gradpar_theta = (
@@ -907,22 +874,21 @@ def vmec_fieldlines_axisym(
     gradpar_phi = 1 / (B_reference * L_reference) * 1 / sqrt_g_booz
 
     gds2 = grad_alpha_dot_grad_alpha_b * L_reference * L_reference * s[:, None, None]
-    gds21 = grad_alpha_dot_grad_psi_b * shat[:, None, None] / B_reference
+    gds21 = grad_alpha_dot_grad_psi_b * sfac * shat[:, None, None] / B_reference
     gds22 = (
-        g_sup_psi_psi
-        * shat[:, None, None]
-        * shat[:, None, None]
-        / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
+            g_sup_psi_psi * (sfac * shat[:, None, None])**2 / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
     )
+    grho = np.sqrt(g_sup_psi_psi / (L_reference * L_reference * B_reference * B_reference * s[:, None, None]))
 
     gbdrift0 = (
         -1.0
         * B_cross_kappa_dot_grad_psi_b
         * 2
-        * shat[:, None, None]
-        / (modB_b * modB_b * modB_b * sqrt_s[:, None, None])
+        * sfac * shat[:, None, None]
+        / (modB_b * modB_b * sqrt_s[:, None, None])
         * toroidal_flux_sign
     )
+    cvdrift0 = gbdrift0
 
     cvdrift = (
         -1.0
@@ -943,7 +909,6 @@ def vmec_fieldlines_axisym(
     )
 
     cvdrift0 = gbdrift0
-
     # PEST theta; useful for comparison
     theta_PEST = theta_b - iota * nu_b
 
@@ -969,20 +934,19 @@ def vmec_fieldlines_axisym(
         "theta_geo",
         "edge_toroidal_flux_over_2pi",
         "R_b",
-        "Rprime_b",
         "Z_b",
-        "Zprime_b",
         "beta_N",
         "bmag",
-        "gradpar_phi_b",
-        "gds2_b",
-        "gds21_b",
-        "gds22_b",
-        "gbdrift_b",
-        "gbdrift0_b",
-        "cvdrift_b",
-        "cvdrift0_b",
-        "grho_b",
+        "gradpar_phi",
+        "gradpar_theta",
+        "gds2",
+        "gds21",
+        "gds22",
+        "gbdrift",
+        "gbdrift0",
+        "cvdrift",
+        "cvdrift0",
+        "grho",
     ]
 
     for v in variables:
@@ -1013,7 +977,7 @@ geo_coeffs = vmec_fieldlines(
 )
 
 shat = geo_coeffs.shat
-qfac = 1 / geo_coeffs.iota
+qfac = abs(1 / geo_coeffs.iota)
 bmag = geo_coeffs.bmag[0][0]
 gradpar = abs(geo_coeffs.gradpar_theta[0][0])
 cvdrift = geo_coeffs.cvdrift[0][0]
@@ -1025,11 +989,9 @@ gds21 = geo_coeffs.gds21[0][0]
 gds22 = geo_coeffs.gds22[0][0]
 R = geo_coeffs.R_b[0][0]
 Z = geo_coeffs.Z_b[0][0]
+grho = geo_coeffs.grho[0][0]
 
-# Must change this!
-grho = gds22
-
-dpsidrho = geo_coeffs.d_psi_d_s  # only true when rho = sqrt(psi)
+dpsidrho = 2 * np.sqrt(rhoc)  # only true when rho = sqrt(psi)
 drhodpsi = 1 / dpsidrho
 Rmaj = (np.max(R) + np.min(R)) / 2
 
@@ -1044,103 +1006,22 @@ gradpar_trun = nperiod_set(gradpar, 1, extend=False, brr=theta)
 gradpar_eqarc = 2 * np.pi / (ctrap(1 / gradpar_trun, theta_trun, initial=0)[-1])
 theta_eqarc = ctrap(gradpar_eqarc / gradpar_trun, theta_trun, initial=0) - np.pi
 theta_eqarc_extend = nperiod_set(theta_eqarc, nperiod, extend=True)
-# theta_eqarc = np.linspace(-(2 * nperiod - 1) * np.pi, (2 * nperiod - 1) * np.pi, ntheta)
 theta_eqarc = theta_eqarc_extend
 theta_PEST = theta
-## Check that the bounday conditions are always satisfied (theta = theta_eqarc at theta = +-pi)
+
 bmag_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, bmag)
+gds2_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds2)
 gds21_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds21)
+grho_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, grho)
+gds22_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds22)
+cvdrift_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, cvdrift)
 cvdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, cvdrift0)
+gbdrift_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift)
 gbdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift0)
 R_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, R)
 Z_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, Z)
 gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
 
-
-################################################################################################
-###################--------------------GX SAVE FORMAT1-------------------#######################
-################################################################################################
-
-
-A1 = []
-A2 = []
-A3 = []
-A4 = []
-A5 = []
-A6 = []
-A7 = []
-A8 = []
-
-for i in range(ntheta):
-    # calculate grho
-    A2.append(
-        "    {0:.9e}    {1:.9e}    {2:.9e}     {3:.9e}\n".format(
-            gbdrift_eqarc[i], gradpar_eqarc[i], gds22_eqarc[i], theta_eqarc[i]
-        )
-    )
-    A3.append(
-        "    {0:.9e}    {1:.9e}    {2:.12e}     {3:.9e}\n".format(
-            cvdrift_eqarc[i], gds2_eqarc[i], bmag_eqarc[i], theta_eqarc[i]
-        )
-    )
-    A4.append(
-        "    {0:.9e}    {1:.9e}    {2:.9e}\n".format(
-            gds21_eqarc[i], gds22_eqarc[i], theta_eqarc[i]
-        )
-    )
-    A5.append(
-        "    {0:.9e}    {1:.9e}    {2:.9e}\n".format(
-            gbdrift0_eqarc[i], gbdrift0_eqarc[i], theta_eqarc[i]
-        )
-    )
-    # MUST CHECK THESE FOR NONLINEAR RUNS!
-    A6.append(
-        "{0:.9e}    {1:.9e}    {2:.9e}\n".format(R_eqarc[i], R_eqarc[i], theta_eqarc[i])
-    )
-    A7.append(
-        "{0:.9e}    {1:.9e}    {2:.9e}\n".format(Z_eqarc[i], Z_eqarc[i], theta_eqarc[i])
-    )
-    A8.append(
-        "{0:.9e}    {1:.9e}    {2:.9e}\n".format(R_eqarc[i], R_eqarc[i], theta_eqarc[i])
-    )
-
-
-A1.append([A2, A3, A4, A5, A6, A7, A8])
-A1 = A1[0]
-
-
-print("Writing eikfile", eikfile)
-g = open(eikfile, "w")
-
-headings = [
-    "ntgrid nperiod ntheta drhodpsi rmaj shat kxfac q\n",
-    "gbdrift gradpar grho tgrid\n",
-    "cvdrift gds2 bmag tgrid\n",
-    "gds21 gds22 tgrid\n",
-    "cvdrift0 gbdrift0 tgrid\n",
-]
-
-g.writelines(headings[0])
-
-
-g.writelines(
-    "  {0:d}    {1:d}    {2:d}   {3:.3f}   {4:.1f}    {5:.7f}   {6:.1f}   {7:.4f}\n".format(
-        int((ntheta - 1) / 2),
-        int(1),
-        int(ntheta - 1),
-        float(abs(1 / dpsidrho)),
-        (np.max(R) + np.min(R)) / 2.0,
-        shat.item(),
-        (abs(qfac / rhoc * dpsidrho)).item(),
-        qfac.item(),
-    )
-)
-
-for i in np.arange(1, len(headings)):
-    g.writelines(headings[i])
-    for j in range(ntheta):
-        g.write(A1[i - 1][j])
-g.close()
 
 
 ################################################################################################
@@ -1173,13 +1054,8 @@ try:
     cvdrift_nc = ds0.createVariable("cvdrift", "f8", ("z",))
     cvdrift0_nc = ds0.createVariable("cvdrift0", "f8", ("z",))
     jacob_nc = ds0.createVariable("jacob", "f8", ("z",))
-
     Rplot_nc = ds0.createVariable("Rplot", "f8", ("z",))
     Zplot_nc = ds0.createVariable("Zplot", "f8", ("z",))
-    aplot_nc = ds0.createVariable("aplot", "f8", ("z",))
-    Rprime_nc = ds0.createVariable("Rprime", "f8", ("z",))
-    Zprime_nc = ds0.createVariable("Zprime", "f8", ("z",))
-    aprime_nc = ds0.createVariable("aprime", "f8", ("z",))
 
     drhodpsi_nc = ds0.createVariable(
         "drhodpsi",
@@ -1206,8 +1082,7 @@ try:
     theta_PEST_nc[:] = theta_PEST[:-1]
     bmag_nc[:] = bmag_eqarc[:-1]
     gradpar_nc[:] = gradpar_eqarc[:-1]
-    # add grho
-    # grho_nc[:] = gds2_eqarc[:-1]
+    grho_nc[:] = grho_eqarc[:-1]
     gds2_nc[:] = gds2_eqarc[:-1]
     gds21_nc[:] = gds21_eqarc[:-1]
     gds22_nc[:] = gds22_eqarc[:-1]
@@ -1215,7 +1090,6 @@ try:
     gbdrift0_nc[:] = gbdrift0_eqarc[:-1]
     cvdrift_nc[:] = cvdrift_eqarc[:-1]
     cvdrift0_nc[:] = gbdrift0_eqarc[:-1]
-    # jacob_nc[:]    = jacob_ball[:-1]
 
     Rplot_nc[:] = R_eqarc[:-1]
     Zplot_nc[:] = Z_eqarc[:-1]
@@ -1236,4 +1110,3 @@ except ModuleNotFoundError:
     print(
         "No netCDF4 package in your Python environment...Not saving a netCDf input file"
     )
-    pass
