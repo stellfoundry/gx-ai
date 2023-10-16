@@ -8,14 +8,19 @@ from load_files import load_files
 from extract_species import extract_species
 
 
-def compare_average_fluxes(simuilations, flux, flux_label, average_fraction=0.5, norm_vth=np.sqrt(2), xscale="linear", yscale="log"):
+def compare_average_fluxes(simuilations, flux, flux_label, defaults = True, average_fraction=0.5, norm_vth=np.sqrt(2), xscale="linear", yscale="log"):
 
-    print("")
+    # print("")
 
-    # Allowing user to specify variables and grouping for the data 
-    variable_str = str(input("Please specify variable to plot against: "))
+    # Allowing user to specify variables and grouping for the data
+    if not defaults:
+        variable_str = str(input("Please specify variable to plot against: "))
+        grouping_str = str(input("Please specify variable to group the data: "))
+    else:
+        variable_str = 'q'
+        grouping_str = 'T0_prime'
+
     variable     = None
-    grouping_str = str(input("Please specify variable to group the data: "))
     grouping     = None
 
     # The variable names for the 'Species' group are currently different between the input and output file.
@@ -233,38 +238,34 @@ if __name__ == "__main__":
         print("")
         print("Using LaTeX")
 
-    simulations = load_files(filenames)
+    defaults = True
 
-    # Input prompts
-    fluxes       = ["Exit", "qflux", "pflux"]
-    fluxes_label = ["", "Q", "\Gamma"]
-    choices      = ["Exit", "Plot average heatfluxes", "Plot average particle fluxes"]
-    input_prompt = "Please select an option:\n"
+    if "user_input" in filenames:
+        filenames.remove("user_input")
+        defaults = False
 
-    for i in range(len(choices)):
-        input_prompt += "   {:d}: {:s}\n".format(i, choices[i])
+    fluxes       = ["qflux", "pflux"]
+    fluxes_label = ["Q", "\Gamma"]
 
-    while (True):
-        try:
-            choice = int(input(input_prompt))
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        try:
-            fluxes[choice]
-        except:
-            print("Invalid choice. Returning to options.")
-            print("")
-            continue
-        if (choice == 0):
-            print("")
-            break
-        try:
-            compare_average_fluxes(simulations, flux=fluxes[choice], flux_label=fluxes_label[choice], yscale="linear", average_fraction=0.6)
-        except KeyboardInterrupt:
-            pass
+    fluxes_plot       = []
+    fluxes_label_plot = []
 
-    print("")
+    for flux_index, flux in enumerate(fluxes):
+        if flux in filenames:
+            filenames.remove(flux)
+            fluxes_plot.append(flux)
+            fluxes_label_plot.append(fluxes_label[flux_index])
 
-    
+    if len(fluxes_plot) == 0:
+        print("")
+        print("Please specify one (or more) of the following as a command-line input:")
+        print(fluxes)
+        print("")
+
+        exit()
+
+    else:
+        simulations = load_files(filenames)
+
+        for flux_index, flux in enumerate(fluxes_plot):
+            compare_average_fluxes(simulations, flux=fluxes_plot[flux_index], flux_label=fluxes_label_plot[flux_index], defaults=defaults, yscale="linear", average_fraction=0.6)

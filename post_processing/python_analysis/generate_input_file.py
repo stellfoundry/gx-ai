@@ -807,14 +807,11 @@ def generate_input_file(simulations):
 
 if __name__ == "__main__":
 
+    # Interpreting command line input
     filenames = sys.argv[1:]
 
     if "latex" in filenames:
         filenames.remove("latex")
-        matplotlib.rc('text', usetex=True)
-        print("")
-
-        print("Using LaTeX")
 
     simulations = load_files(filenames, groups = ['Inputs', 'Geometry', 'Special', 'Non_zonal', 'Zonal_x', 'Fluxes', 'Spectra'])
 
