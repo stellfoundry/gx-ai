@@ -17,21 +17,14 @@ For axisymmetric equilibria, make sure that ntor > 1 in the VMEC wout file.
 """
 
 import numpy as np
-
-from scipy.optimize import newton
 from scipy.interpolate import (
     interp1d,
     InterpolatedUnivariateSpline,
 )
 from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
-
 from netCDF4 import Dataset as ds
 import booz_xform as bxform
-
-from matplotlib import pyplot as plt
-
-import pdb
 import sys
 
 vmec_fname = sys.argv[1]
@@ -275,7 +268,6 @@ def vmec_splines(nc_obj, booz_obj):
     variables2 = ["xm_b", "xn_b", "xm_b", "xn_b", "mnboz", "mboz", "nboz"]
     for k, v in enumerate(variables1):
         results.__setattr__(v, eval("booz_obj." + variables2[k]))
-        # print(v, k)
 
     variables = [
         "rmnc_b",
@@ -399,6 +391,7 @@ def vmec_fieldlines(
     iota = vs.iota(s)
     d_iota_d_s = vs.d_iota_d_s(s)
     shat = (-2 * s / iota) * d_iota_d_s  # depends on the definitn of rho
+    sqrt_s = np.sqrt(s)
 
     L_reference = vs.Aminor_p
 
@@ -471,13 +464,13 @@ def vmec_fieldlines(
 
     flipit = 0.0
 
-    # if R is increasing AND Z is decreasing, we must be moving counter clockwise from
-    # the inboard side, otherwise we need to flip the theta coordinate
-    if R_b[0][0][0] > R_b[0][0][1] or Z_b[0][0][1] > Z_b[0][0][0]:
-        flipit = 1
-    # if an equilibrium is 3D, we disable flipit
-    if isaxisym == 0:
-        flipit == 0
+    if isaxisym == 1:
+        # if R is increasing AND Z is decreasing, we must be moving counter clockwise from
+        # the inboard side, otherwise we need to flip the theta coordinate
+        if R_b[0][0][0] > R_b[0][0][1] or Z_b[0][0][1] > Z_b[0][0][0]:
+            flipit = 1
+    else:  # we disable flipit
+        flipit = 0
 
     R_mag_ax = vs.raxis_cc[0]
 
@@ -637,9 +630,9 @@ def vmec_fieldlines(
         - iota[:, None, None] * grad_phi_b_Z
     )
 
-    #######################################################################################
-    ##############------------LOCAL VARIATION OF A 3D EQUILIBRIUM------------##############
-    #######################################################################################
+    #####################################################################################
+    ##############------------LOCAL VARIATION OF A 3D EQUILIBRIUM------------############
+    #####################################################################################
     # Calculating the coefficients D1 and D2 needed for Hegna-Nakajima calculation
     # NOTE: 2D functions do not require the alpha dimension. Remove it later.
     # NOTE: This calculation needs to be wrapped in a loop over ns (flux surfaces)
@@ -691,11 +684,11 @@ def vmec_fieldlines(
     d_sqrt_g_booz_d_phi_b_2D = np.einsum("ij,jiklm->iklm", gmnc_b, nsinangle_b_2D)
     modB_b_2D = np.einsum("ij,jiklm->iklm", bmnc_b, cosangle_b_2D)
 
-    # *********************************************************************
-    # Using R(theta,phi) and Z(theta,phi), compute the Cartesian
-    # components of the gradient basis vectors using the dual relations:
-    # This calculation is done in Boozer coordinates
-    # *********************************************************************
+    #########################################################################
+    # We repeat the above exercise to calculate R and Z but use a 2D 
+    # (theta, phi) grid. This is used to calculate the deformation
+    # coefficients that give us the local equilibrium variation
+    #########################################################################
     ph_nat_2D = ph_b_2D - nu_b_2D
     sinphi_2D = np.sin(ph_nat_2D)
     cosphi_2D = np.cos(ph_nat_2D)
@@ -714,7 +707,6 @@ def vmec_fieldlines(
         1 - d_nu_b_d_phi_b_2D
     )
 
-    # Now use the dual relations to get the Cartesian components of grad s, grad theta_vmec, and grad phi:
     grad_psi_X_2D = (
         d_Y_d_th_b_2D * d_Z_b_d_phi_b_2D - d_Z_b_d_theta_b_2D * d_Y_d_phi_2D
     ) / sqrt_g_booz_2D
@@ -772,10 +764,8 @@ def vmec_fieldlines(
     intinv_g_sup_psi_psi = ctrap(1 / g_sup_psi_psi, phi_b, initial=0)
     int_lambda_div_g_sup_psi_psi = ctrap(lambda_b / g_sup_psi_psi, phi_b, initial=0)
 
-    print("theta_0 needed here!")
+    # This theta_0 should always be 0
     theta_0 = 0
-    phi_0 = theta_0 / abs(iota)
-    print("Make a function of ns and nalpha")
     spl0 = InterpolatedUnivariateSpline(theta_b[0][0], intinv_g_sup_psi_psi[0][0])
     intinv_g_sup_psi_psi = intinv_g_sup_psi_psi - spl0(theta_0)
 
@@ -858,33 +848,30 @@ def vmec_fieldlines(
     grad_alpha_dot_grad_psi_b = g_sup_psi_psi * L1
     grad_psi_dot_grad_psi_b = g_sup_psi_psi * L2
 
-    sqrt_s = np.sqrt(s)
-
-    L_reference = vs.Aminor_p
-    toroidal_flux_sign = np.sign(edge_toroidal_flux_over_2pi)
-    sqrt_s = np.sqrt(s)
-
     ## Now we calculate the same set of quantities in boozer coordinates after varying the
     ## local gradients.
     bmag = modB_b / B_reference
-    # Is should be possible to avoid B_sup quantities altogether.
-    gradpar_theta = (
-        -1 / (B_reference * L_reference) * 1 / sqrt_g_booz * 1 / iota[:, None, None]
-    )
-    gradpar_phi = 1 / (B_reference * L_reference) * 1 / sqrt_g_booz
+    gradpar_theta = -L_reference / modB_b * 1 / sqrt_g_booz * 1 / iota[:, None, None]
+    gradpar_phi = L_reference / modB_b * 1 / sqrt_g_booz
 
     gds2 = grad_alpha_dot_grad_alpha_b * L_reference * L_reference * s[:, None, None]
     gds21 = grad_alpha_dot_grad_psi_b * sfac * shat[:, None, None] / B_reference
     gds22 = (
-            g_sup_psi_psi * (sfac * shat[:, None, None])**2 / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
+        g_sup_psi_psi
+        * (sfac * shat[:, None, None]) ** 2
+        / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
     )
-    grho = np.sqrt(g_sup_psi_psi / (L_reference * L_reference * B_reference * B_reference * s[:, None, None]))
+    grho = np.sqrt(
+        g_sup_psi_psi
+        / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
+    )
 
     gbdrift0 = (
         -1.0
         * B_cross_kappa_dot_grad_psi_b
         * 2
-        * sfac * shat[:, None, None]
+        * sfac
+        * shat[:, None, None]
         / (modB_b * modB_b * sqrt_s[:, None, None])
         * toroidal_flux_sign
     )
@@ -955,8 +942,6 @@ def vmec_fieldlines(
     return results
 
 
-
-
 ############################################################################################
 ###############--------------------CALCULATING GEOMETRY-------------------##################
 ############################################################################################
@@ -1021,7 +1006,6 @@ gbdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift0)
 R_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, R)
 Z_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, Z)
 gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
-
 
 
 ################################################################################################
