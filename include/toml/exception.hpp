@@ -4,11 +4,25 @@
 #define TOML11_EXCEPTION_HPP
 #include <stdexcept>
 #include <string>
+#include <cstring>
 
 #include "source_location.hpp"
 
 namespace toml
 {
+
+struct file_io_error : public std::runtime_error
+{
+  public:
+    file_io_error(int errnum, const std::string& msg, const std::string& fname)
+        : std::runtime_error(msg + " \"" + fname + "\": " + std::strerror(errnum)),
+          errno_(errnum)
+    {}
+    int get_errno() const noexcept {return errno_;}
+
+  private:
+    int errno_;
+};
 
 struct exception : public std::exception
 {
