@@ -2699,6 +2699,34 @@ __global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuCom
   }
 }
 
+__global__ void linkedAccumulateBackNTFT(const cuComplex* __restrict__ G_linked,
+                                     cuComplex* __restrict__ G,
+                                     int nLinks,
+                                     int nChains,
+                                     const int* __restrict__ ikx,
+                                     const int* __restrict__ iky,
+                                     int nMoms,
+                                     float scale)
+{
+  unsigned int idp  = get_id1(); // NTFT grid point number in chain
+  unsigned int idn  = get_id2(); // NTFT chain number in class
+  unsigned int idlm = get_id3();
+  
+  if (idp < nLinks && idn < nChains && idlm < nMoms) {
+      
+      int idpn = idp + nLinks * idn;
+      
+      // pull out ikx and idz indices
+      int ikx_ntft = ikx[idpn] % nx;
+      int idz = ikx[idpn] / nx;
+      
+      unsigned int idlink = idp + nLinks * (idn + nChains * idlm);
+      unsigned int globalIdx = iky[idpn] + nyc*(ikx_ntft + nx * (idz + nz * idlm));
+      
+      G[globalIdx] = G[globalIdx] + scale*G_linked[idlink];
+  }
+}
+
 __global__ void dampEnds_linked(cuComplex* G,
                                 cuComplex* phi,
                                 cuComplex* apar,

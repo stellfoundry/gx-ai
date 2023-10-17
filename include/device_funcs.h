@@ -348,12 +348,16 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restric
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
 			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
+__global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
+			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
+
 __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked, int nLinks, int nChains,
 			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
 __global__ void linkedCopyBackNTFT(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
 			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
-__global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
+
+__global__ void linkedAccumulateBackNTFT(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
 			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
 
 __device__ void   zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr);

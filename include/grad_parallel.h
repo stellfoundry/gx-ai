@@ -14,9 +14,9 @@ class GradParallel {
 
   virtual void dz(MomentsG* G, MomentsG* res, bool accumulate=false)=0;
   virtual void dz(cuComplex* m, cuComplex* res, bool accumulate=false)=0;
-  virtual void hyperz(MomentsG* G, MomentsG* res, float nu, bool accumulate=false) {printf("hyperz not yet implemented\n"); exit(1);};
-  virtual void dz2(MomentsG* G)=0;
-  virtual void dz2(cuComplex* m, cuComplex* res)=0;
+  virtual void hyperz(MomentsG* G, MomentsG* res, float nu, bool accumulate=false) {printf("hyperz not yet implemented for this class\n"); exit(1);};
+  virtual void dz2(MomentsG* G) {printf("dz2 not yet implemented for this class\n"); exit(1);};
+  virtual void dz2(cuComplex* m, cuComplex* res) {printf("dz2 not yet implemented for this class\n"); exit(1);};
   virtual void zft(MomentsG* G)=0;
   virtual void zft(cuComplex* m, cuComplex* res)=0;
   virtual void dealias(MomentsG* G) {};
@@ -115,23 +115,25 @@ class GradParallelLinked : public GradParallel {
 
 class GradParallelNTFT : public GradParallel {
  public:
-  GradParallelNTFT(Grids* grids, int jtwist);
+  GradParallelNTFT(Parameters* pars, Grids* grids);
   ~GradParallelNTFT();
 
   void dealias(MomentsG* G);
   void dealias(cuComplex* f);
-  void dz(MomentsG* G);     void dz(cuComplex* m, cuComplex* res);
+  void dz(MomentsG* G, MomentsG* res, bool accumulate=false);     void dz(cuComplex* m, cuComplex* res, bool accumulate=false);
   void zft(MomentsG* G);   void zft(cuComplex* m, cuComplex* res);
   void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2);
 
   void zft_inverse(MomentsG* G);
   //  void zft_inverse(cuComplex* m, cuComplex* res);
   
-  void abs_dz(cuComplex* m, cuComplex* res);
+  void abs_dz(MomentsG* G, MomentsG* res, bool accumulate=false);
+  void abs_dz(cuComplex* m, cuComplex* res, bool accumulate=false);
   void linkPrint();
   void identity(MomentsG* G); // for testing
 
  private:
+  Parameters * pars_;
   Grids * grids_ ;
   
   int get_mode_nums_ntft(int *mode_nums, int nz, int naky, int nakx, int jtwist, int *m0, int nyc, float *ky);
@@ -163,6 +165,7 @@ class GradParallelNTFT : public GradParallel {
 
   cufftHandle * dz_plan_forward_singlemom;
   cufftHandle * dz_plan_inverse_singlemom;
+  cufftHandle * abs_dz_plan_forward;
   cufftHandle * abs_dz_plan_forward_singlemom;
   dim3 * dG;
   dim3 * dB;

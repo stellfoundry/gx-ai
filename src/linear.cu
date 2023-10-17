@@ -32,7 +32,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   //  grad_par = new GradParallelPeriodic(grids_);
   //}
   else if(pars_->nonTwist) {
-    grad_par = new GradParallelNTFT(grids_, pars_->jtwist);
+    grad_par = new GradParallelNTFT(pars_, grids_);
   }
   else {
     grad_par = new GradParallelLinked(pars_, grids_);
@@ -286,10 +286,6 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids) :
   if(pars_->local_limit) {
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
-  }
-  else if(pars_->nonTwist) {
-    DEBUGPRINT("Using NTFT twist-and-shift for grad parallel.\n");
-    grad_par = new GradParallelNTFT(grids_, pars_->jtwist);
   }
   //else if(pars_->boundary_option_periodic) {
   //  DEBUGPRINT("Using periodic for grad parallel.\n");

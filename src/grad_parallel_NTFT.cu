@@ -3,9 +3,10 @@
 #include "get_error.h"
 #define GCHAINS <<< dG[c], dB[c] >>>
 
-GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
- : grids_(grids)
+GradParallelNTFT::GradParallelNTFT(Parameters* pars, Grids* grids)
+ : pars_(pars), grids_(grids)
 {
+  int jtwist = pars_->jtwist;
   nLinks       = nullptr;  nChains      = nullptr;
   ikxLinked_h  = nullptr;  ikyLinked_h  = nullptr;
   ikxLinked    = nullptr;  ikyLinked    = nullptr;
@@ -25,6 +26,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
   dz_plan_forward_singlemom  = nullptr;
   dz_plan_inverse_singlemom  = nullptr;       
 
+  abs_dz_plan_forward = nullptr;
   abs_dz_plan_forward_singlemom = nullptr;
 
   int naky = grids_->Naky;
@@ -71,6 +73,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
   dz_plan_forward_singlemom = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
   dz_plan_inverse_singlemom = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
 
+  abs_dz_plan_forward = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
   abs_dz_plan_forward_singlemom = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
 
   // these are arrays of pointers to device memory
@@ -115,6 +118,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
     cufftCreate(    &dz_plan_forward_singlemom[c]);
     cufftCreate(    &dz_plan_inverse_singlemom[c]);
 
+    cufftCreate(&abs_dz_plan_forward[c]);
     cufftCreate(&abs_dz_plan_forward_singlemom[c]);
 
     int size = nLinks[c];
@@ -132,6 +136,7 @@ GradParallelNTFT::GradParallelNTFT(Grids* grids, int jtwist)
     checkCuda(cufftMakePlanMany(dz_plan_forward_singlemom[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, nChains[c], &workSize));
     checkCuda(cufftMakePlanMany(dz_plan_inverse_singlemom[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, nChains[c], &workSize));
 
+    checkCuda(cufftMakePlanMany(abs_dz_plan_forward[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, nClm, &workSize));
     checkCuda(cufftMakePlanMany(abs_dz_plan_forward_singlemom[c], 1, &size, NULL, 1, 0, NULL, 1, 0, CUFFT_C2C, 
                       nChains[c], &workSize));
 
@@ -177,6 +182,7 @@ GradParallelNTFT::~GradParallelNTFT()
     cufftDestroy(    dz_plan_forward_singlemom[c] );
     cufftDestroy(    dz_plan_inverse_singlemom[c] );
 
+    cufftDestroy(abs_dz_plan_forward[c]);
     cufftDestroy(abs_dz_plan_forward_singlemom[c]);
 
     if (ikxLinked_h[c])       free(ikxLinked_h[c]);
@@ -284,7 +290,7 @@ void GradParallelNTFT::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* k
   }
 }
 
-void GradParallelNTFT::dz(MomentsG* G) 
+void GradParallelNTFT::dz(MomentsG* G, MomentsG* res, bool accumulate) 
 {
   for(int c=0; c<nClasses; c++) {
     // each "class" has a different number of links in the chains, and a different number of chains.
@@ -293,12 +299,16 @@ void GradParallelNTFT::dz(MomentsG* G)
     cufftExecC2C (dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBackNTFT GCHAINS (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    if(accumulate) {
+      linkedAccumulateBackNTFT GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
+    } else {
+      linkedCopyBackNTFT GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    }
   }
 }
 
 // for a single moment m 
-void GradParallelNTFT::dz(cuComplex* m, cuComplex* res)
+void GradParallelNTFT::dz(cuComplex* m, cuComplex* res, bool accumulate)
 {
   int nMoms=1;
 
@@ -309,12 +319,33 @@ void GradParallelNTFT::dz(cuComplex* m, cuComplex* res)
     cufftExecC2C(dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBackNTFT GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    if(accumulate) {
+      linkedAccumulateBackNTFT GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms, 1.0);
+    } else {
+      linkedCopyBackNTFT GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    }
+  }
+}
+
+void GradParallelNTFT::abs_dz(MomentsG* G, MomentsG* res, bool accumulate) 
+{
+  for(int c=0; c<nClasses; c++) {
+    // each "class" has a different number of links in the chains, and a different number of chains.
+    linkedCopyNTFT GCHAINS (G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+
+    cufftExecC2C (abs_dz_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
+    cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
+
+    if(accumulate) {
+      linkedAccumulateBackNTFT GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
+    } else {
+      linkedCopyBackNTFT GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    }
   }
 }
 
 // for a single moment m
-void GradParallelNTFT::abs_dz(cuComplex* m, cuComplex* res)
+void GradParallelNTFT::abs_dz(cuComplex* m, cuComplex* res, bool accumulate)
 {
   int nMoms=1;
 

@@ -39,7 +39,7 @@ SSPx3::SSPx3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
     grad_par = new GradParallelPeriodic(grids_);
   }
   else if (pars_->nonTwist) {
-    grad_par = new GradParallelNTFT(grids_, pars_->jtwist);
+    grad_par = new GradParallelNTFT(pars_, grids_);
   }
   else {
     grad_par = new GradParallelLinked(pars_, grids_);
