@@ -53,10 +53,11 @@ class Grids {
   float Zp;
   float kx_max, ky_max, kz_max, vpar_max, muB_max;
   int m0_max;
+  float kperp_min;
 
-  ncclComm_t ncclComm, ncclComm_s, ncclComm_m0;
-  ncclUniqueId ncclId, ncclId_m;
-  std::vector<ncclUniqueId> ncclId_s;
+  ncclComm_t ncclComm, ncclComm_s, ncclComm_m, ncclComm_m0;
+  ncclUniqueId ncclId, ncclId_m0;
+  std::vector<ncclUniqueId> ncclId_s, ncclId_m;
   cudaStream_t ncclStream;
 
   int iproc, nprocs;

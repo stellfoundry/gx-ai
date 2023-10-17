@@ -43,9 +43,11 @@ class NetCDF_ids {
   void write_Pkx   (float * P2, bool endrun = false);  
   void write_Pkxky (float * P2, bool endrun = false);
  
-  void write_Aparky (float * P2, bool endrun = false);
-  void write_Aparkx (float * P2, bool endrun = false);
-  void write_Aparkxky (float * P2, bool endrun = false);
+  void write_Ms (float * P2, bool endrun = false);
+  void write_Mky (float * P2, bool endrun = false);
+  void write_Mkx (float * P2, bool endrun = false);
+  void write_Mkxky (float * P2, bool endrun = false);
+  void write_Mkperp (float * P2, bool endrun = false);
 
   void write_As    (float * P2, bool endrun = false);
   void write_Az    (float * P2, bool endrun = false);
@@ -89,7 +91,7 @@ class NetCDF_ids {
   nca *rh, *omg, *den, *wphi, *denk, *wphik, *den0, *wphi0, *qs, *ps; 
   nca *Wm, *Wl, *Wlm, *Pzt, *pZt, *pzT, *Wtot;
   nca *Ps, *Pky, *Pkx, *Pkxky, *Pz, *Pkz;
-  nca *Aparky, *Aparkx, *Aparkxky;
+  nca *Ms, *Mky, *Mkx, *Mkxky, *Mkperp;
   nca *Ws, *Wky, *Wkx, *Wkxky, *Wz, *Wkz;
   nca *As, *Aky, *Akx, *Akxky, *Az, *Akz;
   nca *Qs, *Qky, *Qkx, *Qkxky, *Qz, *Qkz;
@@ -114,6 +116,7 @@ class NetCDF_ids {
   nca *r_time; 
 
   int nx, ny, nz, nkz, kx_dim, ky_dim, kx, ky, kz;
+  int kperp_dim;
   int m_dim, l_dim, s_dim, y, y_dim, x, x_dim;
   int zy, zx, nzy, nzx;
   int state; 
@@ -161,13 +164,6 @@ class NetCDF_ids {
   Geometry   * geo_    ;
   GradPerp   * grad_phi;
   GradPerp   * grad_perp; 
-  Red        * red     ;
-  Red        * pot     ;
-  Red        * ph2     ;
-  Red        * a2     ;
-  Red        * all_red ;
-  Red        * red_qflux ;
-  Red        * red_pflux ;
   
   float primary[1], secondary[1], tertiary[1];
   cuComplex * t_bar     ;
@@ -281,7 +277,16 @@ class NcGeo {
     if (retval = nc_def_var (geo_id, "gds22",    NC_FLOAT, 1, &nc_dims->z, &gds22))    ERR(retval);
     if (retval = nc_def_var (geo_id, "grho",     NC_FLOAT, 1, &nc_dims->z, &grho))     ERR(retval);
     if (retval = nc_def_var (geo_id, "jacobian", NC_FLOAT, 1, &nc_dims->z, &jacobian)) ERR(retval);
-    if (retval = nc_def_var (geo_id, "gradpar",  NC_FLOAT, 0, NULL,        &gradpar))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "gradpar",  NC_FLOAT, 0, NULL, &gradpar))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "nperiod",  NC_INT, 0, NULL, &nperiod))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "q",  NC_FLOAT, 0, NULL, &q))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "shat",  NC_FLOAT, 0, NULL, &shat))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "shift",  NC_FLOAT, 0, NULL, &shift))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "rmaj",  NC_FLOAT, 0, NULL, &rmaj))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "aminor",  NC_FLOAT, 0, NULL, &aminor))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "kxfac",  NC_FLOAT, 0, NULL, &kxfac))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "drhodpsi",  NC_FLOAT, 0, NULL, &drhodpsi))     ERR(retval);
+    if (retval = nc_def_var (geo_id, "theta_scale",  NC_FLOAT, 0, NULL, &theta_scale))     ERR(retval);
 
     // write variables
     if (retval = nc_put_var(geo_id, bmag,     geo->bmag_h))     ERR(retval);
@@ -295,13 +300,23 @@ class NcGeo {
     if (retval = nc_put_var(geo_id, gds22,    geo->gds22_h))    ERR(retval);
     if (retval = nc_put_var(geo_id, grho,     geo->grho_h))     ERR(retval);
     if (retval = nc_put_var(geo_id, jacobian, geo->jacobian_h)) ERR(retval);
+    if (retval = nc_put_var(geo_id, nperiod, &geo->nperiod))   ERR(retval);
     if (retval = nc_put_var(geo_id, gradpar, &geo->gradpar))   ERR(retval);
+    if (retval = nc_put_var(geo_id, q, &geo->qsf))   ERR(retval);
+    if (retval = nc_put_var(geo_id, shat, &geo->shat))   ERR(retval);
+    if (retval = nc_put_var(geo_id, shift, &geo->shift))   ERR(retval);
+    if (retval = nc_put_var(geo_id, rmaj, &geo->rmaj))   ERR(retval);
+    if (retval = nc_put_var(geo_id, aminor, &geo->aminor))   ERR(retval);
+    if (retval = nc_put_var(geo_id, kxfac, &geo->kxfac))   ERR(retval);
+    if (retval = nc_put_var(geo_id, drhodpsi, &geo->drhodpsi))   ERR(retval);
+    if (retval = nc_put_var(geo_id, theta_scale, &geo->theta_scale))   ERR(retval);
   }
   ~NcGeo() {};
   int geo_id; // ncdf id for geo group
   // ncdf ids for geo variables
   int bmag, bgrad, gbdrift, gbdrift0, cvdrift, cvdrift0;
   int gds2, gds21, gds22, grho, jacobian, gradpar;
+  int q, shat, shift, kxfac, rmaj, aminor, drhodpsi, theta_scale, nperiod;
 };
 
 class NcDiagnostics {

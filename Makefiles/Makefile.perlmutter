@@ -10,12 +10,15 @@
 # module load cray-hdf5-parallel
 # module load cray-netcdf-hdf5parallel
 # module load e4s
-# module load gsl
 # module load python
 # module load craype-x86-milan
 # module load craype-accel-nvidia80
 # module load cray-fftw
 # module load nccl
+# spack env activate -V gcc
+# spack load gsl
+# export GSL_ROOT=$(spack location -i gsl)
+# export LD_LIBRARY_PATH=$GSL_ROOT/lib:$LD_LIBRARY_PATH
 #
 
 # paths to netcdf
@@ -38,7 +41,7 @@ NVHPC_ROOT = ${NVIDIA_PATH}
 # NCCL_HOME is defined by nccl module
 NCCL_ROOT = ${NCCL_HOME}
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NCCL_ROOT}/include
-CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_HOME}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
 
 # paths to gsl 
 # GSL_ROOT is defined by gsl module

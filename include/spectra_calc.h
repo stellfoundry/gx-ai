@@ -40,7 +40,7 @@ class SpectraCalc {
   std::vector<int32_t> reduced_modes;
 
   Grids *grids_;
-  Reduction *field_reduce, *moments_reduce;
+  Reduction<float> *field_reduce, *moments_reduce;
  
   float *data, *tmp, *cpu;
 };

@@ -15,7 +15,7 @@
 
 int main(int argc, char* argv[])
 {
-
+  // Uncomment the following line to catch NaN and overflow errors at runtime
   //  feenableexcept(FE_INVALID | FE_OVERFLOW);
 
   MPI_Init(&argc, &argv);
@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
       strncpy(run_name, argv[1], strlen(argv[1])-3);
       run_name[strlen(argv[1])-3] = '\0';
     } else {
-      if(iproc==0) fprintf(stderr, "Argument for input filename must now include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
+      if(iproc==0) fprintf(stderr, "Argument for input filename must include \".in\". Try:\n %s %s.in\n", argv[0], argv[1]);
       exit(1);
     }
 
@@ -52,11 +52,17 @@ int main(int argc, char* argv[])
   }
    
   if(iproc==0) printf("Version: %s \t Compiled: %s \n", build_git_sha, build_git_time);
-
+ 
+  // 
+  // Read the input file by instantiating and using a Parameters object
+  // 
   Parameters * pars = nullptr;
   pars = new Parameters(iproc, nprocs, mpcom);
   pars->get_nml_vars(run_name);
-  
+
+  //
+  // Initialize the computational grid by instantiating and using a Grids object
+  //
   Grids * grids = nullptr;
   
   if(iproc==0) DEBUGPRINT("Initializing grids...\n");
@@ -66,38 +72,51 @@ int main(int argc, char* argv[])
   if(iproc==0) DEBUGPRINT("Local grid dimensions on GPU %d: Nx=%d, Ny=%d, Nz=%d, Nl=%d, Nm=%d, Nspecies=%d\n",
 	     grids->iproc, grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
+  //
+  // Prepare to define the various coefficients that determine the geometry of the simulation
+  //
   Geometry    * geo         = nullptr;
+
+  //
+  // Prepare to define a diagnostics object
+  // 
   Diagnostics * diagnostics = nullptr;
 
-  if (pars->gx) {
-    geo = init_geo(pars, grids);
+  geo = init_geo(pars, grids);
 
+  //    We do not need Hermite transforms for anything more than some specific diagnostics
+  //    and typically this functionality is not available because it is not sufficiently general.
+  //
+  //    DEBUGPRINT("Initializing Hermite transforms...\n");
+  //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
+  //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
 
-    if(iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
-    diagnostics = new Diagnostics_GK(pars, grids, geo);
-    if(iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
-
-    //    DEBUGPRINT("Initializing Hermite transforms...\n");
-    //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
-    //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
-  }
-  if (pars->krehm) {
-    geo = init_geo(pars, grids);
-    diagnostics = new Diagnostics_KREHM(pars, grids);
-  }
-
+  //
+  // Hold here until all threads are ready to continue
+  // 
   cudaDeviceSynchronize();
-  checkCudaErrors(cudaGetLastError());
-  
-  run_gx(pars, grids, geo, diagnostics); 
 
+  //
+  // Check for a class of Cuda errors
+  // 
+  checkCudaErrors(cudaGetLastError());
+
+  //
+  // Run the calculation
+  // 
+  run_gx(pars, grids, geo); 
+
+  //
+  // This way of measuring runtime is only appropriate for large time intervals.
+  // There are more specific ways to get precise timings, especially when there 
+  // are kernel calls. 
+  // 
   std::time_t time = std::time(0);
   if(iproc==0) std::cout << "End time: " << std::ctime(&time) << std::endl;
 
   delete pars;
   delete grids;
   delete geo;
-  delete diagnostics;
 
   MPI_Finalize();
   cudaDeviceReset();

@@ -23,7 +23,7 @@ nca::nca(int N, int Nwrite) :
   time_start[5] = 0;
 
   time_count[0] = 1;
-  
+
   if (N == 0) return;
       
   if (N > 0) {
@@ -43,8 +43,9 @@ nca::nca(int N, int Nwrite) :
     }
   }  
 }
-nca::~nca() {
-  if (data  ) cudaFree     ( data   );
+nca::~nca() { 
+  cudaFree (data);
+  //if (data  ) cudaFree     ( data   );
   if (tmp_d ) cudaFree     ( tmp_d  );
   if (tmp   ) free ( tmp    );
   if (cpu   ) free ( cpu    );

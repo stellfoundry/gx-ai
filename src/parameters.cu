@@ -48,7 +48,10 @@ void Parameters::get_nml_vars(char* filename)
   strcat(default_restart_filename, ".restart.nc");
 
   auto tnml = nml;
-   
+
+  //
+  // This next line seems to be completely superfluous!
+  //
   tnml = nml;
   if (nml.contains("Dimensions")) tnml = toml::find(nml, "Dimensions");
   
@@ -90,6 +93,7 @@ void Parameters::get_nml_vars(char* filename)
   boundary = toml::find_or <std::string> (tnml, "boundary", "linked" );
   nonTwist = toml::find_or <bool>        (tnml, "nonTwist", false);
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
+  zero_shat_threshold = toml::find_or <float>   (tnml, "zero_shat_threshold", 1e-5);
   bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
   float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
   
@@ -112,6 +116,12 @@ void Parameters::get_nml_vars(char* filename)
   ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
+  densfac = toml::find_or <float> (tnml, "densfac", 1.0);
+  uparfac = toml::find_or <float> (tnml, "uparfac", 1.0);
+  tparfac = toml::find_or <float> (tnml, "tparfac", 1.0);
+  tprpfac = toml::find_or <float> (tnml, "tprpfac", 1.0);
+  qparfac = toml::find_or <float> (tnml, "qparfac", 1.0);
+  qprpfac = toml::find_or <float> (tnml, "qprpfac", 1.0);
   if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
@@ -130,17 +140,32 @@ void Parameters::get_nml_vars(char* filename)
   D_HB       = toml::find_or <float>  (tnml, "D_HB",          1.0   ); 
   w_osc      = toml::find_or <float>  (tnml, "w_osc",         0.0   ); 
   D_hyper    = toml::find_or <float>  (tnml, "D_hyper",       0.1   ); 
-  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.5   ); 
-  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    0.5   ); 
-  nu_hyper   = toml::find_or <int>    (tnml, "nu_hyper",        2   );  // this parameter should be deprecated in favor of p_hyper
-  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         nu_hyper   ); 
+  nu_hyper_z = toml::find_or <float>  (tnml, "nu_hyper_z",    0.0   ); 
+  nu_hyper_l = toml::find_or <float>  (tnml, "nu_hyper_l",    0.0   ); 
+  nu_hyper_m = toml::find_or <float>  (tnml, "nu_hyper_m",    1.0   ); 
+  nu_hyper_lm = toml::find_or <float> (tnml, "nu_hyper_lm",   0.0   ); 
+  p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
+  p_hyper_z  = toml::find_or <int>    (tnml, "p_hyper_z",       6   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       6   ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       min(20, nm_in/2) ); 
+  p_hyper_lm = toml::find_or <int>    (tnml, "p_hyper_lm",      6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      false ); 
-  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", false);
+  hypercollisions_const = toml::find_or <bool> (tnml, "hypercollisions_const", false);
+  hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions_kz", false);
+  hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions_kz); // "hypercollisions" now gives hypercollisions_kz
+  hyperz = toml::find_or <bool> (tnml, "hyperz", false);
 
+  tnml = nml;
+  if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 
+
+  cetg              = toml::find_or <bool>  (tnml, "cetg",         false );
+
+  if (cetg) gx = false;
+  if (cetg) nm_in = 1;
+  if (cetg) nl_in = 2;
+  
   tnml = nml;
   if (nml.contains("Vlasov_Poisson")) tnml = toml::find (nml, "Vlasov_Poisson");
   
@@ -150,6 +175,7 @@ void Parameters::get_nml_vars(char* filename)
   vp_nuh            = toml::find_or <float> (tnml, "vp_nuh",      -1.0 );
   vp_alpha          = toml::find_or <int>   (tnml, "vp_alpha",       1 );
   vp_alpha_h        = toml::find_or <int>   (tnml, "vp_alpha_h",     2 );
+  if (vp) gx = false;
   
   tnml = nml;
   if (nml.contains("KS")) tnml = toml::find (nml, "KS");
@@ -161,7 +187,8 @@ void Parameters::get_nml_vars(char* filename)
   ks_tf             = toml::find_or <float> (tnml, "ks_tf",       -1.0 );
   ks_eps0           = toml::find_or <float> (tnml, "ks_eps0",     -1.0 );
   ks_epsf           = toml::find_or <float> (tnml, "ks_epsf",     -1.0 );
-
+  if (ks) gx = false;
+  
   tnml = nml;
   if (nml.contains("KREHM")) tnml = toml::find (nml, "KREHM");
   
@@ -173,6 +200,9 @@ void Parameters::get_nml_vars(char* filename)
   eta               = toml::find_or <float> (tnml, "eta",         0.0 );
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
+  periodic_equilibrium = toml::find_or <bool> (tnml, "periodic_equilibrium", false);
+  k0                = toml::find_or <float> (tnml, "k0", 10.0);
+  gaussian_tube     = toml::find_or <bool> (tnml, "gaussian_tube", false);
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
 
@@ -191,7 +221,7 @@ void Parameters::get_nml_vars(char* filename)
     i_share = i_share_max;
   }
   
-  dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  false   );
+  dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );
   init_single = toml::find_or <bool>   (tnml, "init_single", false );
@@ -209,6 +239,8 @@ void Parameters::get_nml_vars(char* filename)
   tprimf      = toml::find_or <float>  (tnml, "tprimf",       -1.0 );
   hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
   use_NCCL    = toml::find_or <bool>   (tnml, "use_NCCL",    true );
+  damp_ends_widthfrac = toml::find_or <float> (tnml, "damp_ends_widthfrac", 1./8.);
+  damp_ends_amp = toml::find_or <float> (tnml, "damp_ends_amp", 0.1);
 
   if( hegna ){
     printf("\nIn order to recover the Hegna model, setting nm=4, nl=2.\n");
@@ -299,7 +331,6 @@ void Parameters::get_nml_vars(char* filename)
   p_HB       = toml::find_or <int>    (tnml, "p_HB",          (long)  p_HB   ); // included for backwards-compat. now specified in Dissipation
   hyper      = toml::find_or <bool>   (tnml, "hyper",         hyper ); // included for backwards-compat. now specified in Dissipation
   HB_hyper   = toml::find_or <bool>   (tnml, "HB_hyper",      HB_hyper ); // included for backwards-compat. now specified in Dissipation
-  hypercollisions = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions); // included for backwards-compat. now specified in Dissipation
   random_init     = toml::find_or <bool> (tnml, "random_init",     random_init); // include for backwards-compat. now specified in Initialization
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     init_electrons_only); // include for backwards-compat. now specified in Initialization
   if (random_init) ikpar_init = 0; 
@@ -314,10 +345,14 @@ void Parameters::get_nml_vars(char* filename)
   forcing_type  = toml::find_or <string> (tnml, "forcing_type",    "Kz" );
   stir_field    = toml::find_or <string> (tnml, "stir_field", "density" );
   forcing_amp   = toml::find_or <float>  (tnml, "forcing_amp",      1.0 );
+  pos_forcing_amp = toml::find_or <float> (tnml, "pos_forcing_amp",  1.0); 
+  neg_forcing_amp = toml::find_or <float> (tnml, "neg_forcing_amp",  1.0); 
   forcing_index = toml::find_or <int>    (tnml, "forcing_index",    1   );
   forcing_init  = toml::find_or <bool>   (tnml, "forcing_init",   false );
   no_fields     = toml::find_or <bool>   (tnml, "no_fields",      false );
-  
+  forcing_kz    = toml::find_or <int>    (tnml, "forcing_kz",         0 );
+  forcing_k2min = toml::find_or <int>    (tnml, "forcing_k2min",      0 );
+  forcing_k2max = toml::find_or <int>    (tnml, "forcing_k2max",      0 );
 
   ///////////////////////////////////////////////////////////////////////
   //
@@ -347,6 +382,10 @@ void Parameters::get_nml_vars(char* filename)
   Btype                 = toml::find_or <string> (tnml, "Boltzmann_type", "electrons" );
   iphi00                = toml::find_or <int>    (tnml, "iphi00",                  -2 );
 
+  // Get the value of Z when running the Adkins collisional ETG equations
+
+  ion_z                 = toml::find_or <float>   (tnml, "Z_ion",                   1. );
+  
   // For backward compatibility, check if iphi00 was specified and act accordingly
   if (iphi00 > 0) {
     if (iphi00 == 1) Btype = "Ions";
@@ -373,6 +412,8 @@ void Parameters::get_nml_vars(char* filename)
   
   if (tau_fac > 0.) ti_ov_te = tau_fac;                 // new definition has priority if it was provided
   tau_fac = ti_ov_te;                                   // In the body of the code, use tau_fac instead of ti_ov_te
+  
+  // For the Adkins collisional ETG model, tau_fac should be set to Ti/(Te Z) = tau_bar
   
   ///////////////////////////////////////////////////////////////////////
   //                                                                   //
@@ -449,6 +490,9 @@ void Parameters::get_nml_vars(char* filename)
   isym = toml::find_or <int> (tnml, "isym", 0); 
   eqfile = toml::find_or <string> (tnml, "eqfile", "none" );  
   s_hat_input = toml::find_or <float> (tnml, "s_hat_input", 1.0 );
+  if(abs(s_hat_input) < zero_shat_threshold) {
+    s_hat_input = 1e-8;
+  }
   p_prime_input = toml::find_or <float> (tnml, "p_prime_input", -2.0 );
   invLp_input = toml::find_or <float> (tnml, "invLp_input", 5.0 );
   alpha_input = toml::find_or <float> (tnml, "alpha_input", 0.0 );
@@ -484,9 +528,9 @@ void Parameters::get_nml_vars(char* filename)
   ei_colls = toml::find_or <bool> (tnml, "ei_colls", true);
   coll_conservation = toml::find_or <bool> (tnml, "coll_conservation", true);
 
-  gx = (!ks && !vp && !krehm);
+  gx = (!ks && !vp && !krehm && !cetg);
   assert (!(ks && vp));
-  assert (ks || vp || gx || krehm);
+  assert (ks || vp || gx || krehm || cetg);
   
 //  wspectra.resize(nw_spectra);
 //  pspectra.resize(np_spectra);
@@ -607,6 +651,12 @@ void Parameters::get_nml_vars(char* filename)
     species_h[0].temp = 1.0;
     species_h[0].mass = 1.0;
     species_h[0].type = 1;
+  } else if(cetg) {
+    species_h[0].mass = 1.0;
+    species_h[0].z    = 1.0;
+    species_h[0].dens = 1.0;
+    species_h[0].temp = 1.0;
+    species_h[0].type = 1; 
   }
   
   float numax = -1.;
@@ -716,7 +766,8 @@ void Parameters::get_nml_vars(char* filename)
   }
 
   if(iproc==0) {
-    if(hypercollisions) printf("Using hypercollisions.\n");
+    if(hypercollisions_kz) printf("Using hypercollisions with coefficient proportional to kz (default).\n");
+    if(hypercollisions_const) printf("Using hypercollisions with const coefficient.\n");
     if(hyper) printf("Using hyperdiffusion.\n");
 
     if(debug) printf("nspec_in = %i \n",nspec_in);
@@ -744,6 +795,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_grp(nc_inputs, "KS",             &nc_ks))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Vlasov_Poisson", &nc_vp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "KREHM",          &nc_krehm))  ERR(retval);  
+  if (retval = nc_def_grp(nc_inputs, "collisionalETG", &nc_cetg))   ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Restart",        &nc_rst))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Controls",       &nc_con))    ERR(retval);
   if (retval = nc_def_grp(nc_con,    "Numerical_Diss", &nc_diss))   ERR(retval);
@@ -833,6 +885,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (nc_krehm, "d_e",     NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "nu_ei",   NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_krehm, "zt",      NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+
+  if (retval = nc_def_var (nc_cetg, "cetg",     NC_INT,   0, NULL, &ivar)) ERR(retval);
   
   specs[0] = nc_dims->species;
   if (retval = nc_def_var (nc_spec, "species_type", NC_INT,   1, specs, &ivar)) ERR(retval);
@@ -950,7 +1004,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (nc_diss, "hyper",                 NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "D_hyper",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_diss, "hypercollisions",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "hypercollisions_const",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "hypercollisions_kz",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper_l",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "nu_hyper_m",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "p_hyper",               NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -992,6 +1047,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
 
   // for boltzmann opts need attribute BD bug
 
+  if (retval = nc_def_var (nc_bz, "Z_ion",                 NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "tau_fac",               NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "add_Boltzmann_species", NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_bz, "all_kinetic",           NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1086,7 +1142,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putbool  (nc_bz, "all_kinetic",           all_kinetic           );
   putbool  (nc_bz, "add_Boltzmann_species", add_Boltzmann_species );
   put_real (nc_bz, "tau_fac",               tau_fac               );
-  
+  put_real (nc_bz, "Z_ion",                 ion_z                 );
+
   put_real (nc_dom, "y0",      y0      );
   put_real (nc_dom, "x0",      x0      );
   if (geo_option=="slab") put_real (nc_dom, "z0",      z0      );
@@ -1117,6 +1174,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   put_real (nc_vp, "vp_nu",      vp_nu       );
   put_real (nc_vp, "vp_nuh",     vp_nuh      );
 
+  putbool  (nc_cetg,  "cetg", cetg);
   putbool  (nc_krehm, "krehm", krehm);
   put_real (nc_krehm, "rho_i", rho_i);
   put_real (nc_krehm, "d_e", d_e);
@@ -1201,7 +1259,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   
   putbool  (nc_diss, "hyper",           hyper           );
   put_real (nc_diss, "D_hyper",         D_hyper         );
-  putbool  (nc_diss, "hypercollisions", hypercollisions );
+  putbool  (nc_diss, "hypercollisions_const", hypercollisions_const );
+  putbool  (nc_diss, "hypercollisions_kz", hypercollisions_kz );
   put_real (nc_diss, "nu_hyper_l",      nu_hyper_l      );
   put_real (nc_diss, "nu_hyper_m",      nu_hyper_m      );
   putint   (nc_diss, "nu_hyper",        nu_hyper        );
@@ -1254,6 +1313,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
 void Parameters::init_species(specie* species)
 {
   vtmax = -1.;
+  vtmin = 1000000000;
   tzmax = -1.;
   etamax = -1.;
   for(int s=0; s<nspec_in; s++) {
@@ -1283,8 +1343,14 @@ void Parameters::init_species(specie* species)
       printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
     }      
     vtmax = max(vtmax, species[s].vt);
+    vtmin = min(vtmin, species[s].vt);
     tzmax = max(tzmax, abs(species[s].tz));
     etamax = max(etamax, species[s].tprim/species[s].fprim);
+
+    if(species[s].type == 1) {
+      ne = species[s].dens;
+      Te = species[s].temp;
+    }
   }
 }
 
@@ -1490,7 +1556,11 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
       printf(ANSI_COLOR_RESET);
     }
   }
-  if (abs(shat) < 1e-5) {
+  if (abs(shat) < zero_shat_threshold) {
+    if(iproc==0) {
+      printf("Magnetic shear shat is smaller than threshold value. Setting shat = 1e-8.\n");
+    }
+    shat = 1e-8;
     zero_shat = true;
     boundary_option_periodic = true;
   }

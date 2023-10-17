@@ -212,12 +212,18 @@ void MomentsG::initialConditions(double* time) {
       srand(22);
       float samp;
       int idx;
+      //
       //      printf("Hacking the initial condition! \n");
+      //
+      // Loop over the kx>=0 modes. Below, the kx<=0 modes are handled explicitly, to help with
+      // specific phase relationships
       for(int i=0; i < 1 + (grids_->Nx - 1)/3; i++) {
+	// No perturbation inserted for ky=0 mode because loop starts with j=1
 	for(int j=1; j < 1 + (grids_->Ny - 1)/3; j++) {
 	  samp = pars_->init_amp;
 	  float ra = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
 	  float rb = (float) (samp * (rand()-RAND_MAX/2) / RAND_MAX);
+	  // js used to find positive and negative kx indices, primarily
 	  for (int js=0; js < 2; js++) {
 	    if (i==0) {
 	      idx = i;
@@ -231,12 +237,17 @@ void MomentsG::initialConditions(double* time) {
 	      } else {
 		init_h[index].x = rb;		init_h[index].y = ra;
 	      }
+	      // Choosing ikpar_init < 0 triggers a superposition of two kz modes
+	      // which is useful for some particular tests
 	      if (pars_->ikpar_init < 0) {		
 		init_h[index].x *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
 				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
 		init_h[index].y *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
 				  + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
-	      } else {
+	      }
+	      // This is a common option for debugging. We choose perturbations which are
+	      // monochromatic in z. 
+	      else {
 		init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 		init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
 	      }
@@ -248,6 +259,7 @@ void MomentsG::initialConditions(double* time) {
 		init_h[index].x = 0.;
 		init_h[index].y = 0.;
 	      }
+	      // Starting with jj=1 avoids choosing an initial perturbation with kz=0
 	      for (int jj=1; jj<1+(grids_->Nz-1)/3; jj++) {
 		float ka = (float) (samp * (float) rand() / RAND_MAX);
 		float pa = (float) (M_PI * ((float) rand()-RAND_MAX/2) / RAND_MAX);
@@ -277,12 +289,30 @@ void MomentsG::initialConditions(double* time) {
     case inits::qpar    : if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize); break;
     case inits::qperp   : if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize); break;
     case inits::all     :
-      if(dens_ptr) CP_TO_GPU(dens_ptr, init_h, momsize);
-      if(upar_ptr) CP_TO_GPU(upar_ptr, init_h, momsize);
-      if(tpar_ptr) CP_TO_GPU(tpar_ptr, init_h, momsize);
-      if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize);
-      if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize);
-      if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize);
+      if(dens_ptr) {
+        CP_TO_GPU(dens_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (dens_ptr, dens_ptr, pars_->densfac);
+      }
+      if(upar_ptr) {
+        CP_TO_GPU(upar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (upar_ptr, upar_ptr, pars_->uparfac);
+      }
+      if(tpar_ptr) {
+        CP_TO_GPU(tpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tpar_ptr, tpar_ptr, 1/sqrtf(2.)*pars_->tparfac);
+      }
+      if(tprp_ptr) {
+        CP_TO_GPU(tprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tprp_ptr, tprp_ptr, pars_->tprpfac);
+      }
+      if(qpar_ptr) {
+        CP_TO_GPU(qpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qpar_ptr, qpar_ptr, 1/sqrtf(6.)*pars_->qparfac);
+      }
+      if(qprp_ptr) {
+        CP_TO_GPU(qprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qprp_ptr, qprp_ptr, pars_->qprpfac);
+      }
       break;
     }
   checkCuda(cudaGetLastError());    
@@ -291,7 +321,7 @@ void MomentsG::initialConditions(double* time) {
   // as in gs2, if restart_read is true, we want to *add* the restart values to anything
   // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
-    set_zero();
+    //    set_zero(); // As noted in the comment above, setting G = 0 here is not correct. Doing so breaks the kh01a regression test
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
@@ -303,9 +333,6 @@ void MomentsG::initialConditions(double* time) {
 void MomentsG::scale(double    scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::scale(cuComplex scalar) {scale_kernel GALL (G(), scalar);}
 void MomentsG::mask(void) {maskG GALL (G());}
-
-void MomentsG::getH(cuComplex* J0phi) {Hkernel GALL (G(), J0phi);}
-void MomentsG::getG(cuComplex* J0phi) {Gkernel GALL (G(), J0phi);}
 
 void MomentsG::rescale(float * phi_max) {
   rescale_kernel GALL (G(), phi_max, grids_->Nm*grids_->Nl);
@@ -363,9 +390,9 @@ void MomentsG::reality(int ngz)
   reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
-void MomentsG::sync()
+void MomentsG::sync(bool blocking)
 {
-  if(pars_->use_NCCL) syncNCCL();
+  if(pars_->use_NCCL) syncNCCL(blocking);
   else syncMPI();
 }
 
@@ -396,7 +423,7 @@ void MomentsG::syncMPI()
   cudaDeviceSynchronize();
 }
 
-void MomentsG::syncNCCL()
+void MomentsG::syncNCCL(bool blocking)
 {
   if(grids_->nprocs_m==1) return;
 
@@ -423,6 +450,10 @@ void MomentsG::syncNCCL()
     ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
   }
   ncclGroupEnd();
+
+  if(blocking) {
+    cudaStreamSynchronize(syncStream);
+  }
 }
 
 void MomentsG::restart_write(int ncres, int id_G)
@@ -624,20 +655,20 @@ void MomentsG::restart_read(double* time)
         for (int k=0; k < Nz; k++) {
           for (int i=0; i < 1 + (Nx-1)/3; i++) {
             for (int j=0; j < Naky; j++) {
-      	unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*m)));
-      	unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*m)));
-      	G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-      	G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      unsigned int index    = j + Nyc *(i + Nx  *(k + Nz*(l + Nl*m)));
+	      unsigned int index_in = j + Naky*(i + Nakx*(k + Nz*(l + Nl*m)));
+	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
             }
           }
           
           for (int i=2*Nx/3+1; i < Nx; i++) {
             for (int j=0; j < Naky; j++) {
-      	int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
-      	unsigned int index    = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*m)));
-      	unsigned int index_in = j + Naky*(it + Nakx*(k + Nz*(l + Nl*m)));
-      	G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
-      	G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
+	      int it = i-2*Nx/3+(Nx-1)/3; // not very clear, depends on arcane integer math rules
+	      unsigned int index    = j + Nyc *(i  + Nx  *(k + Nz*(l + Nl*m)));
+	      unsigned int index_in = j + Naky*(it + Nakx*(k + Nz*(l + Nl*m)));
+	      G_h[index].x = scale * G_in[2*index_in]   + G_hold[index].x;
+	      G_h[index].y = scale * G_in[2*index_in+1] + G_hold[index].y;
             }
           }
         }

@@ -2,6 +2,8 @@
 #include "parameters.h"
 #include "grids.h"
 #include "geometry.h"
+#include "linear.h"
+#include "nonlinear.h"
 #include "moments.h"
 #include "fields.h"
 #include "ncdf.h"
@@ -27,6 +29,7 @@ class SpectraDiagnostic {
   SpectraDiagnostic::SpectraDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* ncdf);
   ~SpectraDiagnostic() {};
   virtual void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf) = 0;
+  virtual void set_dt_data(MomentsG** G_old, Fields* f_old, float dt) {};
  protected:
   void add_spectra(SpectraCalc *spectra);
   void write_spectra(float* data);
@@ -52,6 +55,13 @@ class SpectraDiagnostic {
 class Phi2Diagnostic : public SpectraDiagnostic {
  public:
   Phi2Diagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+// |Phi(ky=0)|**2
+class Phi2ZonalDiagnostic : public SpectraDiagnostic {
+ public:
+  Phi2ZonalDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
@@ -83,6 +93,18 @@ class WgDiagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+class WphiKrehmDiagnostic : public SpectraDiagnostic {
+ public:
+  WphiKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+class WaparKrehmDiagnostic : public SpectraDiagnostic {
+ public:
+  WaparKrehmDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // HeatFlux (Q)
 class HeatFluxDiagnostic : public SpectraDiagnostic {
  public:
@@ -96,11 +118,37 @@ class HeatFluxESDiagnostic : public SpectraDiagnostic {
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
 };
 
+class HeatFluxAparDiagnostic : public SpectraDiagnostic {
+ public:
+  HeatFluxAparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+class HeatFluxBparDiagnostic : public SpectraDiagnostic {
+ public:
+  HeatFluxBparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
 // ParticleFlux (Gamma)
 class ParticleFluxDiagnostic : public SpectraDiagnostic {
  public:
   ParticleFluxDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, NetCDF* nc, AllSpectraCalcs* allSpectra);
   void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+};
+
+// TurbulentHeating (H)
+class TurbulentHeatingDiagnostic : public SpectraDiagnostic {
+ public:
+  TurbulentHeatingDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, Linear* linear, NetCDF* nc, AllSpectraCalcs* allSpectra);
+  void calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf);
+  void set_dt_data(MomentsG** G_old, Fields* f_old, float dt);
+
+ private:
+  Linear *linear_;
+  MomentsG** G_old_;
+  Fields* f_old_;
+  float dt_;
 };
 
 class GrowthRateDiagnostic {
@@ -153,6 +201,34 @@ class FieldsDiagnostic {
 
   cuComplex *f_h;
   float *cpu;
+};
+
+class FieldsXYDiagnostic {
+ public:
+  FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear* nonlinear, NetCDF* ncdf);
+  ~FieldsXYDiagnostic();
+  void calculate_and_write(Fields* f);
+ private:
+  void dealias_and_reorder(cuComplex* fold, float* fnew);
+
+  string tag;
+  int ndim, N, Nwrite;
+  int dims[6];
+  size_t count[6] = {0};
+  size_t start[6] = {0};
+  int varids[3];
+
+  string varnames[3];
+  int nc_group, nc_type;
+  dim3 dG, dB;
+  Parameters* pars_;
+  Grids* grids_;
+  NetCDF* ncdf_;
+  Nonlinear* nonlinear_;
+  GradPerp* grad_perp_;
+
+  float *fXY;
+  float *f_h;
 };
 
 class MomentsDiagnostic {

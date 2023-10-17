@@ -58,8 +58,8 @@ SpectraCalc_st::SpectraCalc_st(Grids* grids, NcDims *nc_dims)
 
   start[1] = grids->is_lo;
 
-  field_reduce = new Reduction(grids, field_species_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nspecies;
   Nwrite = grids->Nspecies; 
@@ -84,8 +84,8 @@ SpectraCalc_kxst::SpectraCalc_kxst(Grids* grids, NcDims *nc_dims)
 
   start[1] = grids->is_lo;
 
-  field_reduce = new Reduction(grids, field_species_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nx*grids->Nspecies;
   Nwrite = grids->Nakx*grids->Nspecies; // only write de-aliased modes
@@ -96,8 +96,18 @@ SpectraCalc_kxst::SpectraCalc_kxst(Grids* grids, NcDims *nc_dims)
 void SpectraCalc_kxst::dealias_and_reorder(float *fold, float *fnew)
 {
   for (int is = 0; is < grids_->Nspecies; is++) {
-    for (int ik = 0; ik < grids_->Nakx; ik++) {
-      fnew[ik + is*grids_->Nakx] = fold[ik + is*grids_->Nx];
+    int NK = grids_->Nakx/2;
+    int NX = grids_->Nx; 
+    int it = 0;
+    int itp = it + NK;
+    fnew[itp + is*grids_->Nakx] = fold[it + is*grids_->Nx];
+    for (int it = 1; it < NK+1; it++) {
+      int itp = NK + it;
+      int itn = NK - it;
+      int itm = NX - it;
+
+      fnew[itp + is*grids_->Nakx] = fold[it + is*grids_->Nx];
+      fnew[itn + is*grids_->Nakx] = fold[itm + is*grids_->Nx];
     }
   }
 }
@@ -119,8 +129,8 @@ SpectraCalc_kyst::SpectraCalc_kyst(Grids* grids, NcDims *nc_dims)
 
   start[1] = grids->is_lo;
 
-  field_reduce = new Reduction(grids, field_species_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nyc*grids->Nspecies;
   Nwrite = grids->Naky*grids->Nspecies; // only write de-aliased modes
@@ -156,8 +166,8 @@ SpectraCalc_kxkyst::SpectraCalc_kxkyst(Grids* grids, NcDims *nc_dims)
 
   start[1] = grids->is_lo;
 
-  field_reduce = new Reduction(grids, field_species_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nx*grids->Nyc*grids->Nspecies;
   Nwrite = grids->Nakx*grids->Naky*grids->Nspecies; // only write de-aliased modes
@@ -214,8 +224,8 @@ SpectraCalc_zst::SpectraCalc_zst(Grids* grids, NcDims *nc_dims)
 
   start[1] = grids->is_lo;
 
-  field_reduce = new Reduction(grids, field_species_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nz*grids->Nspecies;
   Nwrite = grids->Nz*grids->Nspecies; 
@@ -241,7 +251,7 @@ SpectraCalc_lst::SpectraCalc_lst(Grids* grids, NcDims *nc_dims)
   start[1] = grids->is_lo;
 
   field_reduce = nullptr;
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nl*grids->Nspecies;
   Nwrite = grids->Nl*grids->Nspecies; 
@@ -268,7 +278,7 @@ SpectraCalc_mst::SpectraCalc_mst(Grids* grids, NcDims *nc_dims)
   start[2] = grids->m_lo;
 
   field_reduce = nullptr;
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nm*grids->Nspecies;
   Nwrite = grids->Nm*grids->Nspecies; 
@@ -297,7 +307,7 @@ SpectraCalc_lmst::SpectraCalc_lmst(Grids* grids, NcDims *nc_dims)
   start[2] = grids->m_lo;
 
   field_reduce = nullptr;
-  moments_reduce = new Reduction(grids, moment_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
 
   N = grids->Nl*grids->Nm*grids->Nspecies;
   Nwrite = grids->Nl*grids->Nm*grids->Nspecies; 
@@ -316,8 +326,8 @@ SpectraCalc_t::SpectraCalc_t(Grids* grids, NcDims *nc_dims)
 
   count[0] = 1; // each write is a single time slice
 
-  field_reduce = new Reduction(grids, field_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
   N = 1;
   Nwrite = 1;
@@ -338,8 +348,8 @@ SpectraCalc_kxt::SpectraCalc_kxt(Grids* grids, NcDims *nc_dims)
   count[0] = 1; // each write is a single time slice
   count[1] = grids->Nakx;
 
-  field_reduce = new Reduction(grids, field_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
   N = grids->Nx;
   Nwrite = grids->Nakx; // only write de-aliased modes
@@ -349,8 +359,18 @@ SpectraCalc_kxt::SpectraCalc_kxt(Grids* grids, NcDims *nc_dims)
 
 void SpectraCalc_kxt::dealias_and_reorder(float *fold, float *fnew)
 {
-  for (int ik = 0; ik < grids_->Nakx; ik++) {
-    fnew[ik] = fold[ik];
+  int NK = grids_->Nakx/2;
+  int NX = grids_->Nx; 
+  int it = 0;
+  int itp = it + NK;
+  fnew[itp] = fold[it];
+  for (int it = 1; it < NK+1; it++) {
+    int itp = NK + it;
+    int itn = NK - it;
+    int itm = NX - it;
+
+    fnew[itp] = fold[it];
+    fnew[itn] = fold[itm];
   }
 }
 
@@ -367,8 +387,8 @@ SpectraCalc_kyt::SpectraCalc_kyt(Grids* grids, NcDims *nc_dims)
   count[0] = 1; // each write is a single time slice
   count[1] = grids->Naky;
 
-  field_reduce = new Reduction(grids, field_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
   N = grids->Nyc;
   Nwrite = grids->Naky; // only write de-aliased modes
@@ -398,8 +418,8 @@ SpectraCalc_kxkyt::SpectraCalc_kxkyt(Grids* grids, NcDims *nc_dims)
   count[1] = grids->Naky;
   count[2] = grids->Nakx;
 
-  field_reduce = new Reduction(grids, field_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
   N = grids->Nx*grids->Nyc;
   Nwrite = grids->Nakx*grids->Naky; // only write de-aliased modes
@@ -450,8 +470,8 @@ SpectraCalc_zt::SpectraCalc_zt(Grids* grids, NcDims *nc_dims)
   count[0] = 1; // each write is a single time slice
   count[1] = grids->Nz;
 
-  field_reduce = new Reduction(grids, field_modes, reduced_modes);
-  moments_reduce = new Reduction(grids, moment_modes, reduced_modes);
+  field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
   N = grids->Nz;
   Nwrite = grids->Nz;

@@ -1,6 +1,6 @@
 #include "run_gx.h"
 
-void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
+void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 {
   double time = 0;
 
@@ -9,6 +9,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   Linear    * linear    = nullptr;
   Nonlinear * nonlinear = nullptr;
   ExB       * exb       = nullptr;
+  Diagnostics * diagnostics = nullptr;
   MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
   for(int is=0; is<grids->Nspecies; is++) {
     G[is] = nullptr;
@@ -21,18 +22,26 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[is] = new MomentsG (pars, grids, is_glob);
   }
   fields = new Fields(pars, grids);               
+  checkCudaErrors(cudaGetLastError());
   
   /////////////////////////////////
   //                             //
   // Initialize eqs              // 
   //                             //
   /////////////////////////////////
+  // GX is set up to solve a handful of different equation sets.
+  // Some have a geometry associated with them, some do not.
+  // Presently the options are "gx", "krehm", "vp", "ks", and "cetg"
+  // Most equation sets are undocumented, as they are exploratory or pedagogical in nature
+  // 
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
     if (pars->ExBshear)   exb       = new ExB_GK(pars, grids, geo);
+    checkCudaErrors(cudaGetLastError());
 
     solver = new Solver_GK(pars, grids, geo);    
+    checkCudaErrors(cudaGetLastError());
 
     if (pars->forcing_init) {
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
@@ -46,11 +55,22 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> set_zero();
       if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
-      G[is] -> sync();
+      G[is] -> sync(true);
     }
     solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    if(grids->iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics_GK(pars, grids, geo, linear, nonlinear);
+    if(grids->iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
+    checkCudaErrors(cudaGetLastError());    
   }
 
+  //////////////////////////////
+  //                          //
+  //     KREHM eq             // 
+  //                          //
+  //////////////////////////////  
   if (pars->krehm) {
     linear = new Linear_KREHM(pars, grids);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
@@ -60,10 +80,57 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     // set up initial conditions
     G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
-    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
+    if(pars->harris_sheet or pars->periodic_equilibrium or pars->gaussian_tube) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync(true);
+    solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    diagnostics = new Diagnostics_KREHM(pars, grids, geo, linear, nonlinear);
+  }
+  checkCudaErrors(cudaGetLastError());
+  
+  //////////////////////////////
+  //                          //
+  //     cETG eq              // 
+  //                          //
+  //////////////////////////////  
+  if (pars->cetg) {
+    linear = new Linear_cetg(pars, grids, geo);          
+    if (!pars->linear) nonlinear = new Nonlinear_cetg(pars, grids);    
+
+    solver = new Solver_cetg(pars, grids);
+
+    // set up initial conditions
+    G[0] -> set_zero();
+    G[0] -> initialConditions(&time);   
     G[0] -> sync();
     solver -> fieldSolve(G, fields);                
+
+    // 
+    // Adkins defines tau_bar = Ti/(Te Z). Set value for tau_bar with tau_fac in the Boltzmann section of the input file
+    // The default value of tau_bar = 1.0.
+    //
+    // Separately, one can set Z, which enters into the calculations of the c_(1,2,3) coefficients.
+    // Set Z by defining Z_ion in the Boltzmann section of the input file. The default value is 1.0. 
+    //
+    // Adkins defines a hyperdiffusion model with parameters N_nu and nu_perp.
+    // Set nu_perp by defining D_hyper in the Dissipation section of the input file. The default value in GX is 0.1, 
+    // which is quite large for the Adkins model. It is important, therefore, to set the value to what you want.
+    // With Tony's definitions, a typical value would be 0.0005 or smaller. 
+    //
+    // Set N_nu by defining nu_hyper in the Dissipation namelist. The default value is nu_hyper = 2
+    // Actually, the input variable nu_hyper is deprecated and one should set this using p_hyper = 2
+    //
+    // IMPORTANT: You must set hyper = true in the Dissipation namelist to turn this operator on.
+    //
+    // The only remaining parameters to be set are x0, y0, z0, nx, ny, and nz.
+    // Note that Adkins' Lz = 2 pi z0, Ly = 2 pi y0, Lx = 2 pi x0.
+    //
+    // Adkins has no magnetic shear, so set zero_shat = true in the Geometry section of the input file
+    // and choose slab = true to get his slab equations.
+    //
   }
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -80,6 +147,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initialConditions(&time);
     //    G -> qvar(grids->Naky);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   //////////////////////////////
   //                          //
@@ -96,6 +164,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[0] -> initVP(&time);
     solver -> fieldSolve(G, fields);
   }    
+  checkCudaErrors(cudaGetLastError());
 
   Timestepper * timestep;
   switch (pars->scheme_opt)
@@ -164,7 +233,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   }  
   
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
-  printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
+  printf("Total runtime = %f min (%f s / timestep)\n", timer/1000./60., timer/1000./counter);
 
   diagnostics->finish(G, fields, time);
 
@@ -172,6 +241,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     if (G[is])         delete G[is];
   }
   free(G);
+  if (diagnostics) delete diagnostics;
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;

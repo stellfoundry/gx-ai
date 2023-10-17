@@ -15,13 +15,13 @@ class MomentsG {
   cuComplex* G(int l=0, int m=0) {
     assert(l<grids_->Nl && "Invalid moment requested: l out of bounds");
     assert(m<grids_->Nm+grids_->m_ghost && m>=-grids_->m_ghost && "Invalid moment requested: m out of bounds");
-    return &G_lm[grids_->NxNycNz*(l + grids_->Nl*(m+grids_->m_ghost))];
+    return &G_lm[grids_->NxNycNz*(l + grids_->Nl*(m+grids_->m_ghost))]; // note shift by m_ghost! 
     // glm[ky, kx, z]
   }
   
   cuComplex * Gm(int m_loc) {   return G(0,m_loc);   }
 
-  // accessor to G array including ghosts
+  // accessor to G array including ghosts (never used) 
   cuComplex * Gghost(int l=0, int m=0) {
     return &G_lm[grids_->NxNycNz*(l + grids_->Nl*m)];
   }
@@ -34,9 +34,6 @@ class MomentsG {
   void restart_write(int nc, int id);
   void restart_read(double* time);
   
-  void getH(cuComplex* J0phi);
-  void getG(cuComplex* J0phi);
-
   void rescale(float * phi_max);  
   
   void add_scaled(double c1, MomentsG* G1, double c2, MomentsG* G2);
@@ -51,11 +48,10 @@ class MomentsG {
   void mask(void);
   void set_zero(void);
 
- //  void dz(MomentsG* G);
   void reality(int ngz);
 
-  void sync();
-  void syncNCCL();
+  void sync(bool sync = false);
+  void syncNCCL(bool sync);
   void syncMPI();
   
   inline void copyFrom(MomentsG* source) {
