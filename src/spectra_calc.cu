@@ -207,6 +207,70 @@ void SpectraCalc_kxkyst::dealias_and_reorder(float *fold, float *fnew)
   }
 }
 
+SpectraCalc_kxkyzst::SpectraCalc_kxkyzst(Grids* grids, NcDims *nc_dims)
+{
+  grids_ = grids;
+  tag = "_kxkyzst";
+  reduced_modes = {'y', 'x', 'z', 's'};
+  ndim = 5;
+
+  dims[0] = nc_dims->time;
+  dims[1] = nc_dims->species;
+  dims[2] = nc_dims->z;
+  dims[3] = nc_dims->ky;
+  dims[4] = nc_dims->kx;
+
+  count[0] = 1; // each write is a single time slice
+  count[1] = grids->Nspecies;
+  count[2] = grids->Nz;
+  count[3] = grids->Naky;
+  count[4] = grids->Nakx;
+
+  start[1] = grids->is_lo;
+
+  field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
+  moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
+
+  N = grids->Nx*grids->Nyc*grids->Nz*grids->Nspecies;
+  Nwrite = grids->Nakx*grids->Naky*grids->Nz*grids->Nspecies; // only write de-aliased modes
+
+  allocate();
+}
+
+void SpectraCalc_kxkyzst::dealias_and_reorder(float *fold, float *fnew)
+{
+  int NK = grids_->Nakx/2;
+  int NX = grids_->Nx; 
+  for (int is = 0; is < grids_->Nspecies; is++) {
+    for (int iz = 0; iz < grids_->Nz; iz++) {
+      int it = 0;
+      int itp = it + NK;
+      for (int ik = 0; ik < grids_->Naky; ik++) {
+        int Qp = itp + grids_->Nakx*(ik + grids_->Naky*(iz + is*grids_->Nz));
+        int Rp = ik  + grids_->Nyc*(it + grids_->Nx*(iz + is*grids_->Nz));
+        fnew[Qp] = fold[Rp];
+      }	
+      for (int it = 1; it < NK+1; it++) {
+        int itp = NK + it;
+        int itn = NK - it;
+        int itm = NX - it;
+        
+        for (int ik = 0; ik < grids_->Naky; ik++) {
+
+          int Qp = itp + grids_->Nakx*(ik + grids_->Naky*(iz + is*grids_->Nz));
+          int Rp = ik  + grids_->Nyc*(it + grids_->Nx*(iz + is*grids_->Nz));
+
+          int Qn = itn + grids_->Nakx*(ik + grids_->Naky*(iz + is*grids_->Nz));
+          int Rm = ik  + grids_->Nyc*(itm + grids_->Nx*(iz + is*grids_->Nz));
+
+          fnew[Qp] = fold[Rp];
+          fnew[Qn] = fold[Rm];
+        }
+      }
+    }
+  }
+}
+
 SpectraCalc_zst::SpectraCalc_zst(Grids* grids, NcDims *nc_dims)
 {
   grids_ = grids;
