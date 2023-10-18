@@ -342,17 +342,17 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;
   if (nml.contains("Forcing")) tnml = toml::find (nml, "Forcing");  
 
-  forcing_type  = toml::find_or <string> (tnml, "forcing_type",    "Kz" );
-  stir_field    = toml::find_or <string> (tnml, "stir_field", "density" );
+  forcing_type  = toml::find_or <string> (tnml, "forcing_type",    "Kz" ); //Needed for Helicity Injection; forcing_type=HeliInj
+  stir_field    = toml::find_or <string> (tnml, "stir_field", "density" ); //Needed for Helicity Injection - Field to be perturbed
   forcing_amp   = toml::find_or <float>  (tnml, "forcing_amp",      1.0 );
-  pos_forcing_amp = toml::find_or <float> (tnml, "pos_forcing_amp",  1.0); 
-  neg_forcing_amp = toml::find_or <float> (tnml, "neg_forcing_amp",  1.0); 
+  pos_forcing_amp = toml::find_or <float> (tnml, "pos_forcing_amp",  1.0); //Needed for Helicity Injection - Positive Amplitude
+  neg_forcing_amp = toml::find_or <float> (tnml, "neg_forcing_amp",  1.0); //Needed for Helicity Injection - Negative Amplitude
   forcing_index = toml::find_or <int>    (tnml, "forcing_index",    1   );
-  forcing_init  = toml::find_or <bool>   (tnml, "forcing_init",   false );
+  forcing_init  = toml::find_or <bool>   (tnml, "forcing_init",   false ); 
   no_fields     = toml::find_or <bool>   (tnml, "no_fields",      false );
-  forcing_kz    = toml::find_or <int>    (tnml, "forcing_kz",         0 );
-  forcing_k2min = toml::find_or <int>    (tnml, "forcing_k2min",      0 );
-  forcing_k2max = toml::find_or <int>    (tnml, "forcing_k2max",      0 );
+  forcing_kz    = toml::find_or <int>    (tnml, "forcing_kz",         0 ); //Needed for Helicity Injection - Mode of kz perturbed
+  forcing_k2min = toml::find_or <int>    (tnml, "forcing_k2min",      0 ); //Needed for Helicity Injection - Minimum kperp that can be perturbed
+  forcing_k2max = toml::find_or <int>    (tnml, "forcing_k2max",      0 ); //Needed for Helicity Injection - Maximum mode of kperp that can be perturbed
 
   ///////////////////////////////////////////////////////////////////////
   //

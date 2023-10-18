@@ -47,7 +47,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
       if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars); 
       if (pars->forcing_type == "general")   forcing = new genForcing(pars);       
-    }
+      if (pars->forcing_type == "HeliInj")   forcing = new HeliInjForcing(pars, grids); 
+   }
 
     // set up initial conditions
     for(int is=0; is<grids->Nspecies; is++) {
