@@ -250,6 +250,7 @@ HeatFluxDiagnostic::HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry*
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
   add_spectra(allSpectra->zst_spectra);
+  add_spectra(allSpectra->kxkyzst_spectra);
 }
 
 void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
