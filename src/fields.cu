@@ -67,7 +67,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   //  }
   //}
 
-  if (pars_->harris_sheet) {
+  if (pars_->harris_sheet && !pars_->restart) {
 
     assert((pars_->fapar > 0.) && "Harris sheet equilibrium requires setting fapar = 1.0");
     
@@ -115,7 +115,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   //  }
     //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
   }
-  if (pars_->periodic_equilibrium) {
+  if (pars_->periodic_equilibrium && !pars_->restart) {
     int nBatch = grids_->Nz;
     GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
 
@@ -153,7 +153,7 @@ Fields::Fields(Parameters* pars, Grids* grids) :
   //  }
     //grad_perp->qvar(apar_ext, grids_->NxNycNz); 
   }
-  if (pars_->gaussian_tube) {
+  if (pars_->gaussian_tube && !pars_->restart) {
     int nBatch = grids_->Nz;
     GradPerp * grad_perp = new GradPerp(grids_, nBatch, grids_->NxNycNz);
     
