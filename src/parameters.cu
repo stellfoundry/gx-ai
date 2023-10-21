@@ -798,48 +798,10 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_grp(nc_con,    "Forcing",        &nc_frc))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Expert",         &nc_expert)) ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Diagnostics",    &nc_diag))   ERR(retval);  
-  if (retval = nc_def_grp(nc_diag,   "SetSpectra",     &nc_sp))     ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Resize",         &nc_resize)) ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Reservoir",      &nc_ml))     ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Species",        &nc_spec))   ERR(retval);
   if (retval = nc_def_grp(nc_spec,   "Boltzmann",      &nc_bz))     ERR(retval);  
-  //if (retval = nc_def_grp(ncid,      "Special",        &nc_out))    ERR(retval);  
-  //if (retval = nc_def_grp(ncid,      "Spectra",        &nc_out))    ERR(retval);
-  //if (retval = nc_def_grp(ncid,      "Non_zonal",      &nc_out))    ERR(retval);
-  //if (retval = nc_def_grp(ncid,      "Zonal_x",        &nc_out))    ERR(retval);
-  //if (retval = nc_def_grp(ncid,      "Fluxes",         &nc_out))    ERR(retval);
-
-  char strb[263];
-  if (ResWrite) {
-    strcpy(strb, run_name);
-    strcat(strb, "_ml.nc");
-
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &ncresid)) ERR(retval);
-    if (retval = nc_def_dim (ncresid, "r",     ResQ*nx_in*ny_in*nz_in*nm_in*nl_in, &idim)) ERR(retval);
-    if (retval = nc_def_dim (ncresid, "time",  NC_UNLIMITED, &idim)) ERR(retval);
-    if (retval = nc_enddef (ncresid)) ERR(retval);
-  }
-
-  if (ResBatch) {
-    strcpy(strb, run_name);
-    strcat(strb, "_batch.nc");
-
-    if (retval = nc_create(strb, NC_CLOBBER | NC_NETCDF4, &ncbid)) ERR(retval);
-    if (retval = nc_def_dim (ncbid, "g", nx_in*ny_in*nz_in*nm_in*nl_in, &idim)) ERR(retval);
-    if (retval = nc_def_dim (ncbid, "time", NC_UNLIMITED, &idim)) ERR(retval);
-    if (retval = nc_enddef (ncbid)) ERR(retval);
-  }
-  
-  if (write_xymom) {
-    strcpy(strb, run_name); 
-    strcat(strb, "_nonZonal_xy.nc");
-    
-    if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, mpcom, MPI_INFO_NULL, &nczid)) ERR(retval);
-    if (retval = nc_def_dim (nczid, "x",       nx_in,        &idim)) ERR(retval);
-    if (retval = nc_def_dim (nczid, "y",       ny_in,        &idim)) ERR(retval);
-    if (retval = nc_def_dim (nczid, "time",    NC_UNLIMITED, &idim)) ERR(retval);
-    if (retval = nc_enddef (nczid)) ERR(retval);
-  }
 
   static char file_header[] = "GX simulation data";
   if (retval = nc_put_att_text (ncid, NC_GLOBAL, "Title", strlen(file_header), file_header)) ERR(retval);
@@ -1096,8 +1058,6 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   std::string build_host(build_hostname);                
   if (retval = nc_put_att_text (ncid, ivar, "BuildHost", build_host.size(), build_host.c_str() ) ) ERR(retval);
 
-  if (retval = nc_enddef (ncid)) ERR(retval);
-
   putbool  (ncid, "debug",     debug);
   putint   (ncid, "ntheta",    nz_in);
   putint   (ncid, "nx",        nx_in);
@@ -1106,7 +1066,6 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint   (ncid, "nlaguerre", nl_in);
   putint   (ncid, "nspecies",  nspec_in);
   putint   (ncid, "nperiod",   nperiod);
-  //putbool  (ncid, "repeat",    repeat);
   
   putbool (nc_resize, "domain_change", domain_change );
   putint  (nc_resize, "x0_mult"      , x0_mult       );
@@ -1294,11 +1253,6 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint (nc_dom, "jtwist", jtwist);
   put_real (nc_dom, "x0", x0);
 
-  //put_wspectra (nc_sp, wspectra); 
-  //put_pspectra (nc_sp, pspectra); 
-  //put_aspectra (nc_sp, aspectra); 
-  //put_phi2spectra (nc_sp, phi2spectra); 
-  //put_gamspectra (nc_sp, gamspectra); 
   putspec (nc_spec, nspec_in, species_h);
 }
 
