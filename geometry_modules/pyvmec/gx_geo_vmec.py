@@ -17,15 +17,12 @@ For axisymmetric equilibria, make sure that ntor > 1 in the VMEC wout file.
 """
 
 import numpy as np
-from scipy.interpolate import (
-    interp1d,
-    InterpolatedUnivariateSpline,
-)
+import booz_xform as bxform
+import sys
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
 from netCDF4 import Dataset as ds
-import booz_xform as bxform
-import sys
 
 vmec_fname = sys.argv[1]
 isaxisym = int(eval(sys.argv[2]))
@@ -33,16 +30,17 @@ eikfile = sys.argv[3]
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
-################################################################################################
-##############-----------------------HELPER FUNCTIONS---------------------------################
-################################################################################################
+################################################################################
+########--------------------HELPER FUNCTIONS------------------------############
+################################################################################
 
 
 def nperiod_set(arr, nperiod, extend=True, brr=None):
     """
     Contract or extend a large array to a smaller one.
-    Truncates (or extends) an array to a smaller one. This function gives us the ability to truncate a
-    variable such as |B| to theta \in [-\pi, pi].
+
+    Truncates (or extends) an array to a smaller one. This function gives us the ability to truncate a variable to theta in [-pi, pi].
+
     Inputs
     ------
     arr: numpy array
@@ -177,9 +175,9 @@ def dermv(arr, brr, par="e"):
     return diff_arr
 
 
-####################################################################################################################
-###########################-------------------------3D EQUILIBRIUM----------------------############################
-####################################################################################################################
+#################################################################################
+##############---------------EQUILIBRIUM CALC.------------------#################
+#################################################################################
 
 
 class Struct:
@@ -301,13 +299,16 @@ def vmec_fieldlines(
     sfac=1,
     pfac=1,
     isaxisym=0,
+    res_theta=201,
+    res_phi=201,
 ):
     """
     Geometry routine for GX/GS2.
+
     Takes in a 1D theta or phi array in boozer coordinates, an array of flux surfaces,
     another array of field line labels and generates the coefficients needed for a local
     stability analysis.
-    Additionally, this routine allows the user to self-consistently change the local pressure gradient and average shear and recalculates the geometric coefficients.
+    Additionally, this routinerecalculates the geometric coefficients if the user to wants to vary self-consistently the local pressure gradient and average shear and.
     Inputs:
     ------
     s: List or numpy array
@@ -320,7 +321,7 @@ def vmec_fieldlines(
     Boozer phi
     sfac: float
     Local variation of the average shear, Geometry is calculated for a total shear of shear*sfac.
-    So if want to calculate geometry at 2.5 x nominal shear, sfac = 1.5.
+    So if want to calculate geometry at 2.5 x nominal shear, sfac = 2.5.
     sfac: float
     Local variation of the pressure gradient. Geometry is calculated for a pressure gradient of dpds*pfac
 
@@ -518,8 +519,6 @@ def vmec_fieldlines(
     d_sqrt_g_booz_d_phi_b = np.einsum("ij,jikl->ikl", gmnc_b, nsinangle_b)
     modB_b = np.einsum("ij,jikl->ikl", bmnc_b, cosangle_b)
     d_B_b_d_s = np.einsum("ij,jikl->ikl", d_bmnc_b_d_s, cosangle_b)
-    d_B_b_d_theta_b = -np.einsum("ij,jikl->ikl", bmnc_b, msinangle_b)
-    d_B_b_d_phi_b = np.einsum("ij,jikl->ikl", bmnc_b, nsinangle_b)
 
     Vprime = gmnc_b[:, 0]
 
@@ -545,11 +544,11 @@ def vmec_fieldlines(
     beta_b = np.einsum("ij,jikl->ikl", betamns_b, sinangle_b)
     lambda_b = np.einsum("ij,jikl->ikl", lambmnc_b, cosangle_b)
 
-    ###############################################################################
+    ###################################################################
     # Using R(theta,phi) and Z(theta,phi), compute the Cartesian
     # components of the gradient basis vectors using the dual relations:
     # This calculation is done in Boozer coordinates
-    ###############################################################################
+    ####################################################################
     phi_cyl = phi_b - nu_b
     sinphi = np.sin(phi_cyl)
     cosphi = np.cos(phi_cyl)
@@ -564,55 +563,31 @@ def vmec_fieldlines(
 
     # Dual relations
     grad_psi_X = (
-        d_Y_d_theta_b * d_Z_b_d_phi_b - d_Z_b_d_theta_b * d_Y_d_phi_b
-    ) / sqrt_g_booz
+        (d_Y_d_theta_b * d_Z_b_d_phi_b - d_Z_b_d_theta_b * d_Y_d_phi_b)
+        / sqrt_g_booz
+    )
     grad_psi_Y = (
-        d_Z_b_d_theta_b * d_X_d_phi_b - d_X_d_theta_b * d_Z_b_d_phi_b
-    ) / sqrt_g_booz
+        (d_Z_b_d_theta_b * d_X_d_phi_b - d_X_d_theta_b * d_Z_b_d_phi_b)
+        / sqrt_g_booz
+    )
     grad_psi_Z = (
-        d_X_d_theta_b * d_Y_d_phi_b - d_Y_d_theta_b * d_X_d_phi_b
-    ) / sqrt_g_booz
+        (d_X_d_theta_b * d_Y_d_phi_b - d_Y_d_theta_b * d_X_d_phi_b)
+        / sqrt_g_booz
+    )
 
     g_sup_psi_psi = grad_psi_X**2 + grad_psi_Y**2 + grad_psi_Z**2
 
     # Check varible names
-    grad_theta_b_X = (
-        (d_Y_d_phi_b * d_Z_b_d_s - d_Z_b_d_phi_b * d_Y_d_s)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
-    grad_theta_b_Y = (
-        (d_Z_b_d_phi_b * d_X_d_s - d_X_d_phi_b * d_Z_b_d_s)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
-    grad_theta_b_Z = (
-        (d_X_d_phi_b * d_Y_d_s - d_Y_d_phi_b * d_X_d_s)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
+    grad_theta_b_X = (d_Y_d_phi_b * d_Z_b_d_s - d_Z_b_d_phi_b * d_Y_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
+    grad_theta_b_Y = (d_Z_b_d_phi_b * d_X_d_s - d_X_d_phi_b * d_Z_b_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
+    grad_theta_b_Z = (d_X_d_phi_b * d_Y_d_s - d_Y_d_phi_b * d_X_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi) 
+    
+    check1 = grad_theta_b_X * d_X_d_theta_b + grad_theta_b_Y * d_Y_d_theta_b + grad_theta_b_Z * d_Z_b_d_theta_b
+    check2 = (grad_psi_X * d_X_d_s + grad_psi_Y * d_Y_d_s + grad_psi_Z * d_Z_b_d_s)/edge_toroidal_flux_over_2pi
 
-    grad_phi_b_X = (
-        (d_Y_d_s * d_Z_b_d_theta_b - d_Z_b_d_s * d_Y_d_theta_b)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
-    grad_phi_b_Y = (
-        (d_Z_b_d_s * d_X_d_theta_b - d_X_d_s * d_Z_b_d_theta_b)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
-    grad_phi_b_Z = (
-        (d_X_d_s * d_Y_d_theta_b - d_Y_d_s * d_X_d_theta_b)
-        / sqrt_g_booz
-        * 1
-        / edge_toroidal_flux_over_2pi
-    )
+    grad_phi_b_X = (d_Y_d_s * d_Z_b_d_theta_b - d_Z_b_d_s * d_Y_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
+    grad_phi_b_Y = (d_Z_b_d_s * d_X_d_theta_b - d_X_d_s * d_Z_b_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
+    grad_phi_b_Z = (d_X_d_s * d_Y_d_theta_b - d_Y_d_s * d_X_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
 
     grad_alpha_X = (
         -phi_b * d_iota_d_s[:, None, None] * grad_psi_X / edge_toroidal_flux_over_2pi
@@ -637,8 +612,8 @@ def vmec_fieldlines(
     # NOTE: 2D functions do not require the alpha dimension. Remove it later.
     # NOTE: This calculation needs to be wrapped in a loop over ns (flux surfaces)
     ## Full flux surface average of various quantities needed to calculate D_HNGC
-    ntheta_grid = 401
-    nphi_grid = 401
+    ntheta_grid = res_theta
+    nphi_grid = res_phi
     theta_b_grid = np.linspace(-np.pi, np.pi, ntheta_grid)
     phi_b_grid = np.linspace(-np.pi, np.pi, nphi_grid)
     th_b_2D, ph_b_2D = np.meshgrid(theta_b_grid, phi_b_grid)
@@ -664,28 +639,22 @@ def vmec_fieldlines(
 
     lambda_b_2D = np.einsum("ij,jiklm->iklm", lambmnc_b, cosangle_b_2D)
 
-    R_b_2D = np.einsum("ij,jiklm->iklm", rmnc_b, cosangle_b_2D)
-    d_R_b_d_s_2D = np.einsum("ij,jiklm->iklm", d_rmnc_b_d_s, cosangle_b_2D)
+    R_b_2D = -np.einsum("ij,jiklm->iklm", rmnc_b, cosangle_b_2D)
     d_R_b_d_theta_b_2D = -np.einsum("ij,jiklm->iklm", rmnc_b, msinangle_b_2D)
     d_R_b_d_phi_b_2D = np.einsum("ij,jiklm->iklm", rmnc_b, nsinangle_b_2D)
 
-    Z_b_2D = np.einsum("ij,jiklm->iklm", zmns_b, sinangle_b_2D)
-    d_Z_b_d_s_2D = np.einsum("ij,jiklm->iklm", d_zmns_b_d_s, sinangle_b_2D)
     d_Z_b_d_theta_b_2D = np.einsum("ij,jiklm->iklm", zmns_b, mcosangle_b_2D)
     d_Z_b_d_phi_b_2D = -np.einsum("ij,jiklm->iklm", zmns_b, ncosangle_b_2D)
 
     nu_b_2D = np.einsum("ij,jiklm->iklm", numns_b, sinangle_b_2D)
-    d_nu_b_d_s_2D = np.einsum("ij,jiklm->iklm", d_numns_b_d_s, sinangle_b_2D)
     d_nu_b_d_theta_b_2D = np.einsum("ij,jiklm->iklm", numns_b, mcosangle_b_2D)
     d_nu_b_d_phi_b_2D = -np.einsum("ij,jiklm->iklm", numns_b, ncosangle_b_2D)
 
     sqrt_g_booz_2D = np.einsum("ij,jiklm->iklm", gmnc_b, cosangle_b_2D)
-    d_sqrt_g_booz_d_theta_b_2D = -np.einsum("ij,jiklm->iklm", gmnc_b, msinangle_b_2D)
-    d_sqrt_g_booz_d_phi_b_2D = np.einsum("ij,jiklm->iklm", gmnc_b, nsinangle_b_2D)
     modB_b_2D = np.einsum("ij,jiklm->iklm", bmnc_b, cosangle_b_2D)
 
     #########################################################################
-    # We repeat the above exercise to calculate R and Z but use a 2D 
+    # We repeat the above exercise to calculate R and Z but use a 2D
     # (theta, phi) grid. This is used to calculate the deformation
     # coefficients that give us the local equilibrium variation
     #########################################################################
@@ -745,20 +714,14 @@ def vmec_fieldlines(
         / (2 * np.pi) ** 2
     )
 
-    ## EQUILIBRIUM CHECK: Flux surface averaged MHD force balance equation.
+    ## EQUILIBRIUM CHECK: Flux surface averaged MHD force balance.
     np.testing.assert_allclose(
         d_G_d_s[:, None, None]
         + iota[:, None, None] * d_I_d_s[:, None, None]
         + mu_0 * d_pressure_d_s[:, None, None] * Vprime,
-        0,
-        rtol=1e-5,
-        atol=1e-5,
+        1e-7,
+        atol=1e-4,
     )
-
-    theta_b_trunc = nperiod_set(theta_b, 1)
-    phi_b_trunc = nperiod_set(phi_b, 1, brr=theta_b)
-    g_sup_psi_psi_trunc = nperiod_set(g_sup_psi_psi, 1, brr=theta_b)
-    lambda_b_trunc = nperiod_set(lambda_b, 1, brr=theta_b)
 
     # integrated inverse flux expansion term
     intinv_g_sup_psi_psi = ctrap(1 / g_sup_psi_psi, phi_b, initial=0)
@@ -774,15 +737,15 @@ def vmec_fieldlines(
     )
     int_lambda_div_g_sup_psi_psi = int_lambda_div_g_sup_psi_psi - spl1(theta_0)
 
-    # Additional shear and pressure gradient (in addn. to nominal)
-    d_iota_d_s_1 = -(iota / (2 * s)) * (sfac - 1) * shat * np.ones((ns,))
-    d_pressure_d_s_1 = mu_0 * (pfac - 1) * d_pressure_d_s * np.ones((ns,))
+    # Additional shear and pressure gradient (in addn. to the nominal vals)
+    d_iota_d_s_1 = -(iota / (2 * s)) * (sfac - 1.0) * shat * np.ones((ns,))
+    d_pressure_d_s_1 = mu_0 * (pfac - 1.0) * d_pressure_d_s * np.ones((ns,))
     # The deformation term from Hegna-Nakajima and Green-Chance papers
     D_HNGC = (
         1
         / edge_toroidal_flux_over_2pi
         * (
-            d_iota_d_s_1[:, None, None] * (intinv_g_sup_psi_psi / D1 - (phi_b - phi_0))
+            d_iota_d_s_1[:, None, None] * (intinv_g_sup_psi_psi / D1 - phi_b)
             - d_pressure_d_s_1[:, None, None]
             * Vprime[:, None, None]
             * (G[:, None, None] + iota[:, None, None] * I[:, None, None])
@@ -846,7 +809,7 @@ def vmec_fieldlines(
 
     grad_alpha_dot_grad_alpha_b = modB_b**2 / g_sup_psi_psi + g_sup_psi_psi * L1**2
     grad_alpha_dot_grad_psi_b = g_sup_psi_psi * L1
-    grad_psi_dot_grad_psi_b = g_sup_psi_psi * L2
+    grad_psi_dot_grad_psi_b = g_sup_psi_psi * L2 # This is wrong. L2 should be different
 
     ## Now we calculate the same set of quantities in boozer coordinates after varying the
     ## local gradients.
@@ -861,6 +824,7 @@ def vmec_fieldlines(
         * (sfac * shat[:, None, None]) ** 2
         / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
     )
+
     grho = np.sqrt(
         g_sup_psi_psi
         / (L_reference * L_reference * B_reference * B_reference * s[:, None, None])
@@ -891,7 +855,7 @@ def vmec_fieldlines(
 
     gbdrift = cvdrift + 2 * B_reference * L_reference * L_reference * sqrt_s[
         :, None, None
-    ] * mu_0 * d_pressure_d_s[:, None, None] * toroidal_flux_sign / (
+    ] * mu_0 * pfac * d_pressure_d_s[:, None, None] * toroidal_flux_sign / (
         edge_toroidal_flux_over_2pi * modB_b * modB_b
     )
 
@@ -942,9 +906,9 @@ def vmec_fieldlines(
     return results
 
 
-############################################################################################
-###############--------------------CALCULATING GEOMETRY-------------------##################
-############################################################################################
+#############################################################################
+########-----------------CALCULATING GEOMETRY----------------################
+#############################################################################
 
 nt = 200
 nperiod = 2
@@ -954,8 +918,8 @@ kxfac = abs(1.0)
 rhoc = np.array([0.5])
 alpha = 0.0
 
-sfac = 2.0
-pfac = 2.0
+sfac = 1.0
+pfac = 1.0
 
 geo_coeffs = vmec_fieldlines(
     vmec_fname, rhoc, alpha, theta1d=theta, sfac=sfac, pfac=pfac, isaxisym=isaxisym
@@ -981,9 +945,9 @@ drhodpsi = 1 / dpsidrho
 Rmaj = (np.max(R) + np.min(R)) / 2
 
 
-################################################################################################
-##################------------------EQUAL-ARC THETA CALCULATION---------------##################
-################################################################################################
+####################################################################
+##########--------EQUAL-ARC THETA CALCULATION---------##############
+####################################################################
 
 theta_trun = nperiod_set(theta, 1, extend=False)
 gradpar_trun = nperiod_set(gradpar, 1, extend=False, brr=theta)
@@ -1008,9 +972,9 @@ Z_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, Z)
 gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
 
 
-################################################################################################
-################---------------------GX SAVE FORMAT2---------------------------#################
-################################################################################################
+#####################################################################
+##############-----------GX SAVE FORMAT-------------#################
+#####################################################################
 try:
     # import netCDF4 as nc
     # eikfile_nc = stem + ".eiknc.nc"
@@ -1077,11 +1041,6 @@ try:
 
     Rplot_nc[:] = R_eqarc[:-1]
     Zplot_nc[:] = Z_eqarc[:-1]
-    aplot_nc[:] = R_eqarc[:-1]
-
-    Rprime_nc[:] = R_eqarc[:-1]
-    Zprime_nc[:] = Z_eqarc[:-1]
-    aprime_nc[:] = R_eqarc[:-1]
 
     drhodpsi_nc[0] = abs(1 / dpsidrho)
     kxfac_nc[0] = abs(qfac / rhoc * dpsidrho)

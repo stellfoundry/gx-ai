@@ -5,9 +5,9 @@ from matplotlib import pyplot as plt
 
 import pdb
 
-char0 = "shat_1x_dPdpsi_4x"
+char0 = "shat_1x_dPdpsi_1x"
 
-rtg1 = ds("VMEC2GK_D3D_rhop5_nperiod_2_" + char0 + ".nc", "r")
+rtg1 = ds("SIMSOPT_corrected_W7X_rhop5_" + char0 + ".nc", "r")
 tgrid_1 = rtg1.variables["theta"][:].data
 bmag_1 = rtg1.variables["bmag"][:].data
 gds2_1 = rtg1.variables["gds2"][:].data
@@ -18,7 +18,7 @@ gbdrift_1 = rtg1.variables["gbdrift"][:].data
 cvdrift0_1 = rtg1.variables["cvdrift0"][:].data
 grho_1 = rtg1.variables["grho"][:].data
 
-rtg2 = ds("gx_geo_vmec_D3D_"+char0+".nc", "r")
+rtg2 = ds("gx_geo_vmec_W7X_rhop5_"+char0+".nc", "r")
 tgrid_2 = rtg2.variables["theta_PEST"][:].data
 gds2_2 = rtg2.variables["gds2"][:].data
 bmag_2 = rtg2.variables["bmag"][:].data
@@ -115,7 +115,7 @@ plt.yticks(fontsize=14)
 plt8.legend(['GS2', 'gx_geo'], fontsize=14)
 
 plt.tight_layout()
-plt.savefig("comparison_"+char0+".png", dpi=300)
+plt.savefig("comparison_W7X_"+char0+".png", dpi=300)
 
 
 
