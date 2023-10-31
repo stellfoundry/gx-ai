@@ -209,7 +209,7 @@ class FieldsXYDiagnostic {
   ~FieldsXYDiagnostic();
   void calculate_and_write(Fields* f);
  private:
-  void dealias_and_reorder(cuComplex* fold, float* fnew);
+  void dealias_and_reorder(float* fold, float* fnew);
 
   string tag;
   int ndim, N, Nwrite;

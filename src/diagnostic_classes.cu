@@ -751,8 +751,22 @@ void FieldsXYDiagnostic::calculate_and_write(Fields* f)
   if (retval=nc_put_vara(nc_group, varids[2], start, count, f_h)) ERR(retval);
 }
 
-void FieldsXYDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
+// transpose so that z is fastest index
+void FieldsXYDiagnostic::dealias_and_reorder(float *f, float *fr)
 {
+  int Nx   = grids_->Nx;
+  int Ny   = grids_->Ny;
+  int Nz   = grids_->Nz;
+
+  for (int iy=0; iy<Ny; iy++) {
+    for (int ix=0; ix<Nx; ix++) {
+      for (int iz=0; iz<Nz; iz++) {
+        int ig = iy + Ny*ix + Nx*Ny*iz;
+        int iwrite = iz + ix*Nz + iy*Nx*Nz;
+        fr[iwrite] = f[ig];
+      }
+    }
+  }
 }
 
 // similar structure to FieldsDiagnostic, but with a species index
