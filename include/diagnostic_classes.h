@@ -229,6 +229,7 @@ class FieldsXYDiagnostic {
 
   float *fXY;
   float *f_h;
+  float *cpu;
 };
 
 class MomentsDiagnostic {
