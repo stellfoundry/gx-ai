@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 import pdb
 
-char0 = "shat_1x_dPdpsi_4x"
+char0 = "shat_2x_dPdpsi_2x"
 
 rtg1 = ds("VMEC2GK_D3D_rhop5_nperiod_2_" + char0 + ".nc", "r")
 tgrid_1 = rtg1.variables["theta"][:].data
@@ -95,7 +95,7 @@ plt.yticks(fontsize=14)
 plt4.legend(['GS2', 'gx_geo'], fontsize=14)
 
 
-plt6.plot(tgrid_1, grho_1, '-r', tgrid_2, grho_2*5, '-g')
+plt6.plot(tgrid_1, grho_1, '-r', tgrid_2, grho_2, '-g')
 plt6.set_xlabel(r'$\theta_{\mathrm{PEST}}$', fontsize=16)
 plt6.set_ylabel('grho', fontsize=16)
 #plt2.text(0.9, 0.2, 'scale=%.3f'%(np.max(bmag)/np.max(bmag2)))

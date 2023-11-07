@@ -24,6 +24,7 @@ from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
 from netCDF4 import Dataset as ds
 
+
 vmec_fname = sys.argv[1]
 isaxisym = int(eval(sys.argv[2]))
 eikfile = sys.argv[3]
@@ -35,7 +36,7 @@ mu_0 = 4 * np.pi * (1.0e-7)
 ################################################################################
 
 
-def nperiod_set(arr, nperiod, extend=True, brr=None):
+def nperiod_set(arr, npol, extend=True, brr=None):
     """
     Contract or extend a large array to a smaller one.
 
@@ -54,24 +55,24 @@ def nperiod_set(arr, nperiod, extend=True, brr=None):
     -------
     A truncated or extended array arr
     """
-    if extend is True and nperiod > 1:
-        arr_temp0 = arr - (arr[0] + (2 * nperiod - 1) * np.pi)
+    if extend is True and npol > 1:
+        arr_temp0 = arr - (arr[0] + npol * np.pi)
         arr_temp1 = arr_temp0
-        for i in range(nperiod):
-            arr_temp1 = np.concatenate((arr_temp1, arr_temp0[1:] + 2 * np.pi * (i + 1)))
+        for i in np.arange(1, npol):
+            arr_temp1 = np.concatenate((arr_temp1, arr_temp0[1:] + 2 * np.pi * i))
 
         arr = arr_temp1
     elif brr is None:  # contract the theta array
         eps = 1e-11
-        arr_temp0 = arr[arr <= (2 * nperiod - 1) * np.pi + eps]
-        arr_temp0 = arr_temp0[arr_temp0 >= -(2 * nperiod - 1) * np.pi - eps]
+        arr_temp0 = arr[arr <= npol * np.pi + eps]
+        arr_temp0 = arr_temp0[arr_temp0 >= -npol * np.pi - eps]
         arr = arr_temp0
     else:  # contract the non-theta array using the theta array brr
         eps = 1e-11
-        arr_temp0 = arr[brr <= (2 * nperiod - 1) * np.pi + eps]
-        brr_temp0 = brr[brr <= (2 * nperiod - 1) * np.pi + eps]
-        arr_temp0 = arr_temp0[brr_temp0 >= -(2 * nperiod - 1) * np.pi - eps]
-        brr_temp0 = brr_temp0[brr_temp0 >= -(2 * nperiod - 1) * np.pi - eps]
+        arr_temp0 = arr[brr <= npol * np.pi + eps]
+        brr_temp0 = brr[brr <= npol * np.pi + eps]
+        arr_temp0 = arr_temp0[brr_temp0 >= -npol * np.pi - eps]
+        brr_temp0 = brr_temp0[brr_temp0 >= -npol * np.pi - eps]
         arr = arr_temp0
 
     return arr
@@ -563,31 +564,46 @@ def vmec_fieldlines(
 
     # Dual relations
     grad_psi_X = (
-        (d_Y_d_theta_b * d_Z_b_d_phi_b - d_Z_b_d_theta_b * d_Y_d_phi_b)
-        / sqrt_g_booz
-    )
+        d_Y_d_theta_b * d_Z_b_d_phi_b - d_Z_b_d_theta_b * d_Y_d_phi_b
+    ) / sqrt_g_booz
     grad_psi_Y = (
-        (d_Z_b_d_theta_b * d_X_d_phi_b - d_X_d_theta_b * d_Z_b_d_phi_b)
-        / sqrt_g_booz
-    )
+        d_Z_b_d_theta_b * d_X_d_phi_b - d_X_d_theta_b * d_Z_b_d_phi_b
+    ) / sqrt_g_booz
     grad_psi_Z = (
-        (d_X_d_theta_b * d_Y_d_phi_b - d_Y_d_theta_b * d_X_d_phi_b)
-        / sqrt_g_booz
-    )
+        d_X_d_theta_b * d_Y_d_phi_b - d_Y_d_theta_b * d_X_d_phi_b
+    ) / sqrt_g_booz
 
     g_sup_psi_psi = grad_psi_X**2 + grad_psi_Y**2 + grad_psi_Z**2
 
     # Check varible names
-    grad_theta_b_X = (d_Y_d_phi_b * d_Z_b_d_s - d_Z_b_d_phi_b * d_Y_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
-    grad_theta_b_Y = (d_Z_b_d_phi_b * d_X_d_s - d_X_d_phi_b * d_Z_b_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
-    grad_theta_b_Z = (d_X_d_phi_b * d_Y_d_s - d_Y_d_phi_b * d_X_d_s) / (sqrt_g_booz * edge_toroidal_flux_over_2pi) 
-    
-    check1 = grad_theta_b_X * d_X_d_theta_b + grad_theta_b_Y * d_Y_d_theta_b + grad_theta_b_Z * d_Z_b_d_theta_b
-    check2 = (grad_psi_X * d_X_d_s + grad_psi_Y * d_Y_d_s + grad_psi_Z * d_Z_b_d_s)/edge_toroidal_flux_over_2pi
+    grad_theta_b_X = (d_Y_d_phi_b * d_Z_b_d_s - d_Z_b_d_phi_b * d_Y_d_s) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
+    grad_theta_b_Y = (d_Z_b_d_phi_b * d_X_d_s - d_X_d_phi_b * d_Z_b_d_s) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
+    grad_theta_b_Z = (d_X_d_phi_b * d_Y_d_s - d_Y_d_phi_b * d_X_d_s) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
 
-    grad_phi_b_X = (d_Y_d_s * d_Z_b_d_theta_b - d_Z_b_d_s * d_Y_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
-    grad_phi_b_Y = (d_Z_b_d_s * d_X_d_theta_b - d_X_d_s * d_Z_b_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
-    grad_phi_b_Z = (d_X_d_s * d_Y_d_theta_b - d_Y_d_s * d_X_d_theta_b) / (sqrt_g_booz * edge_toroidal_flux_over_2pi)
+    check1 = (
+        grad_theta_b_X * d_X_d_theta_b
+        + grad_theta_b_Y * d_Y_d_theta_b
+        + grad_theta_b_Z * d_Z_b_d_theta_b
+    )
+    check2 = (
+        grad_psi_X * d_X_d_s + grad_psi_Y * d_Y_d_s + grad_psi_Z * d_Z_b_d_s
+    ) / edge_toroidal_flux_over_2pi
+
+    grad_phi_b_X = (d_Y_d_s * d_Z_b_d_theta_b - d_Z_b_d_s * d_Y_d_theta_b) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
+    grad_phi_b_Y = (d_Z_b_d_s * d_X_d_theta_b - d_X_d_s * d_Z_b_d_theta_b) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
+    grad_phi_b_Z = (d_X_d_s * d_Y_d_theta_b - d_Y_d_s * d_X_d_theta_b) / (
+        sqrt_g_booz * edge_toroidal_flux_over_2pi
+    )
 
     grad_alpha_X = (
         -phi_b * d_iota_d_s[:, None, None] * grad_psi_X / edge_toroidal_flux_over_2pi
@@ -809,12 +825,23 @@ def vmec_fieldlines(
 
     grad_alpha_dot_grad_alpha_b = modB_b**2 / g_sup_psi_psi + g_sup_psi_psi * L1**2
     grad_alpha_dot_grad_psi_b = g_sup_psi_psi * L1
-    grad_psi_dot_grad_psi_b = g_sup_psi_psi * L2 # This is wrong. L2 should be different
+    grad_psi_dot_grad_psi_b = (
+        g_sup_psi_psi * L2
+    )  # This is wrong. L2 should be different
 
     ## Now we calculate the same set of quantities in boozer coordinates after varying the
     ## local gradients.
     bmag = modB_b / B_reference
-    gradpar_theta = -L_reference / modB_b * 1 / sqrt_g_booz * 1 / iota[:, None, None]
+    gradpar_theta_b = -L_reference / modB_b * 1 / sqrt_g_booz * iota[:, None, None]
+    gradpar_theta_PEST = (
+        -L_reference
+        * iota[:, None, None]
+        * 1
+        / modB_b
+        * 1
+        / sqrt_g_booz
+        * (1 - d_nu_b_d_theta_b)
+    )
     gradpar_phi = L_reference / modB_b * 1 / sqrt_g_booz
 
     gds2 = grad_alpha_dot_grad_alpha_b * L_reference * L_reference * s[:, None, None]
@@ -888,8 +915,8 @@ def vmec_fieldlines(
         "Z_b",
         "beta_N",
         "bmag",
-        "gradpar_phi",
-        "gradpar_theta",
+        "gradpar_theta_b",
+        "gradpar_theta_PEST",
         "gds2",
         "gds21",
         "gds22",
@@ -910,12 +937,13 @@ def vmec_fieldlines(
 ########-----------------CALCULATING GEOMETRY----------------################
 #############################################################################
 
-nt = 200
-nperiod = 2
-ntheta = 2 * nt * (2 * nperiod - 1) + 1
-theta = np.linspace(-(2 * nperiod - 1) * np.pi, (2 * nperiod - 1) * np.pi, ntheta)
+nt = 96
+npol = 6
+ntheta = 2 * nt * npol + 1
+# This is Boozer theta
+theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
 kxfac = abs(1.0)
-rhoc = np.array([0.5])
+rhoc = np.array([0.64])
 alpha = 0.0
 
 sfac = 1.0
@@ -928,7 +956,7 @@ geo_coeffs = vmec_fieldlines(
 shat = geo_coeffs.shat
 qfac = abs(1 / geo_coeffs.iota)
 bmag = geo_coeffs.bmag[0][0]
-gradpar = abs(geo_coeffs.gradpar_theta[0][0])
+gradpar = abs(geo_coeffs.gradpar_theta_b[0][0])
 cvdrift = geo_coeffs.cvdrift[0][0]
 gbdrift = geo_coeffs.gbdrift[0][0]
 gbdrift0 = geo_coeffs.gbdrift0[0][0]
@@ -954,7 +982,7 @@ gradpar_trun = nperiod_set(gradpar, 1, extend=False, brr=theta)
 
 gradpar_eqarc = 2 * np.pi / (ctrap(1 / gradpar_trun, theta_trun, initial=0)[-1])
 theta_eqarc = ctrap(gradpar_eqarc / gradpar_trun, theta_trun, initial=0) - np.pi
-theta_eqarc_extend = nperiod_set(theta_eqarc, nperiod, extend=True)
+theta_eqarc_extend = nperiod_set(theta_eqarc, npol, extend=True)
 theta_eqarc = theta_eqarc_extend
 theta_PEST = theta
 
