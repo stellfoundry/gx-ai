@@ -141,6 +141,12 @@ if __name__ == "__main__":
         print("")
         print("Using LaTeX")
 
-    simulations = load_files(filenames, groups = ['Inputs', 'Spectra'], spectra = ['Wmst', 'Wlst', 'Wlmst'])
+    time_plots = False
 
-    plot_hermite_laguerre_spectra(simulations, time_plots=False)
+    if "time_plots" in filenames:
+        filenames.remove("time_plots")
+        time_plots = True
+
+    simulations = load_files(filenames, groups = ['Inputs', 'Spectra'], spectra = ['Wmst', 'Wlst', 'Wlmst'])
+    
+    plot_hermite_laguerre_spectra(simulations, time_plots=time_plots)

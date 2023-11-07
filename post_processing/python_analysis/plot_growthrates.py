@@ -153,6 +153,13 @@ if __name__ == "__main__":
         print("")
         print("Using LaTeX")
 
-    simulations = load_files(filenames, groups = ['Inputs', 'Special', 'Spectra'], spectra = ['Phi2kxkyt'])
+    kx_plots = False
 
-    plot_growthrates(simulations, kx_plots=False)
+    if "kx_plots" in filenames:
+        filenames.remove("kx_plots")
+        kx_plots = True
+
+    simulations = load_files(filenames, groups = ['Inputs', 'Special', 'Spectra'], spectra = ['Phi2kxkyt'])
+    
+    plot_growthrates(simulations, kx_plots=kx_plots)
+
