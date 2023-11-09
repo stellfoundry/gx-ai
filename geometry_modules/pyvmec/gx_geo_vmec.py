@@ -37,13 +37,11 @@ sys.path.append(toml_dir)
 import toml
 
 if len(sys.argv) > 2:
-    stem = input_file.split("/")[-1].split(".")[0]
-    eikfile = sys.argv[2]
-    eiknc = eikfile[-8:] + ".eiknc.nc"
+    stem = input_file[:-3]
+    eiknc = sys.argv[2]
 else:
-    stem = input_file.split("/")[-1].split(".")[0]
-    eikfile = stem + ".eik.out"
-    eiknc = stem + ".eiknc.nc"
+    stem = input_file[:-3]
+    eiknc = stem + ".eik.nc"
 
 f = toml.load(input_file)
 
@@ -57,13 +55,24 @@ except KeyError:
 
 vmec_fname = f["Geometry"]["vmec_file"]
 
-rhoc = f["Geometry"]["torflux"]
+# rhoc == s = sqrt(rho_tor)
+try:
+    rhoc = f["Geometry"]["torflux"]
+except KeyError:
+    rhoc = f["Geometry"]["desired_normalized_toroidal_flux"]
 alpha = f["Geometry"]["alpha"]
 
-# NOTE: Caution! This will fail for T_i/T_e and/or n_i/ne not equal to 1
-tprim = np.sum(np.array(f["species"]["tprim"]))
-fprim = np.sum(np.array(f["species"]["fprim"]))
-beta_gx = f["Physics"]["beta"]
+try:
+    betaprim = f["Geometry"]["betaprim"]
+except KeyError:
+    # compute betaprim from tprim, fprim, and beta
+    tprims = np.array(f["species"]["tprim"])
+    fprims = np.array(f["species"]["fprim"])
+    ns = np.array(f["species"]["dens"])
+    Ts = np.array(f["species"]["temp"])
+    beta_gx = f["Physics"]["beta"]
+
+    betaprim = -beta_gx * np.sum(ns * Ts * (tprims + fprims))
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
@@ -330,9 +339,7 @@ def vmec_fieldlines(
     vmec_fname,
     s,
     alpha,
-    beta_gx,
-    tprim,
-    fprim,
+    betaprim,
     toml_dict,
     theta1d=None,
     phi1d=None,
@@ -808,19 +815,15 @@ def vmec_fieldlines(
     beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
 
     # Additional pressure (in addn. to the nominal vals)
-    d_pressure_d_s_1 = beta_gx * (tprim + fprim) * B_reference**2 * 1 / (
-        2 * np.sqrt(s)
-    ) * np.ones((ns,)) - mu_0 * d_pressure_d_s * np.ones((ns,))
+    d_pressure_d_s_1 = ( (betaprim / (2 * np.sqrt(s)) * B_reference**2 * np.ones((ns,)))
+        - mu_0 * d_pressure_d_s * np.ones((ns,))
+    )
 
     if d_pressure_d_s == 0:
         d_pressure_d_s = 1e-8 * np.ones((ns,))[:, None, None]
 
     pfac = (
-        beta_gx
-        * (tprim + fprim)
-        * B_reference**2
-        * 1
-        / (2 * np.sqrt(s))
+        betaprim * B_reference**2 / (2 * np.sqrt(s))
         / (mu_0 * d_pressure_d_s)
     )
     # The deformation term from Hegna-Nakajima and Green-Chance papers
@@ -977,7 +980,7 @@ def vmec_fieldlines(
         "edge_toroidal_flux_over_2pi",
         "R_b",
         "Z_b",
-        "beta_gx",
+        "betaprim",
         "bmag",
         "gradpar_theta_b",
         "gradpar_theta_PEST",
@@ -1001,14 +1004,14 @@ def vmec_fieldlines(
 ########-----------------CALCULATING GEOMETRY----------------################
 #############################################################################
 
-nt = 96
-ntheta = 2 * nt * npol + 1
+nt = ntgrid
+ntheta = 2 * (nt-1) * npol + 1
 # This is Boozer theta
 theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
 kxfac = abs(1.0)
 
 geo_coeffs = vmec_fieldlines(
-    vmec_fname, rhoc, alpha, beta_gx, tprim, fprim, f, theta1d=theta, isaxisym=isaxisym
+    vmec_fname, rhoc, alpha, betaprim, f, theta1d=theta, isaxisym=isaxisym
 )
 
 
@@ -1064,16 +1067,13 @@ gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
 try:
     # import netCDF4 as nc
     # eikfile_nc = stem + ".eiknc.nc"
-    eikfile_nc = eikfile + ".nc"
+    eikfile_nc = eiknc
 
     print("Writing eikfile in netCDF format\n")
 
     ds0 = ds(eikfile_nc, "w")
 
-    # The netCDF input file to GX doesn't take the last(repeated) element
-    ntheta2 = ntheta - 1
-
-    z_nc = ds0.createDimension("z", ntheta2)
+    z_nc = ds0.createDimension("z", ntheta)
 
     theta_nc = ds0.createVariable("theta", "f8", ("z",))
     theta_PEST_nc = ds0.createVariable("theta_PEST", "f8", ("z",))
@@ -1107,32 +1107,37 @@ try:
         "q",
         "f8",
     )
-    shat = ds0.createVariable(
+    shat_nc = ds0.createVariable(
         "shat",
         "f8",
     )
+    scale = ds0.createVariable(
+        "scale",
+        "f8",
+    )
 
-    theta_nc[:] = theta_eqarc[:-1]
-    theta_PEST_nc[:] = theta_PEST[:-1]
-    bmag_nc[:] = bmag_eqarc[:-1]
-    gradpar_nc[:] = gradpar_eqarc[:-1]
-    grho_nc[:] = grho_eqarc[:-1]
-    gds2_nc[:] = gds2_eqarc[:-1]
-    gds21_nc[:] = gds21_eqarc[:-1]
-    gds22_nc[:] = gds22_eqarc[:-1]
-    gbdrift_nc[:] = gbdrift_eqarc[:-1]
-    gbdrift0_nc[:] = gbdrift0_eqarc[:-1]
-    cvdrift_nc[:] = cvdrift_eqarc[:-1]
-    cvdrift0_nc[:] = gbdrift0_eqarc[:-1]
+    theta_nc[:] = theta_eqarc[:]
+    theta_PEST_nc[:] = theta_PEST[:]
+    bmag_nc[:] = bmag_eqarc[:]
+    gradpar_nc[:] = gradpar_eqarc[:]
+    grho_nc[:] = grho_eqarc[:]
+    gds2_nc[:] = gds2_eqarc[:]
+    gds21_nc[:] = gds21_eqarc[:]
+    gds22_nc[:] = gds22_eqarc[:]
+    gbdrift_nc[:] = gbdrift_eqarc[:]
+    gbdrift0_nc[:] = gbdrift0_eqarc[:]
+    cvdrift_nc[:] = cvdrift_eqarc[:]
+    cvdrift0_nc[:] = gbdrift0_eqarc[:]
 
-    Rplot_nc[:] = R_eqarc[:-1]
-    Zplot_nc[:] = Z_eqarc[:-1]
+    Rplot_nc[:] = R_eqarc[:]
+    Zplot_nc[:] = Z_eqarc[:]
 
     drhodpsi_nc[0] = abs(1 / dpsidrho)
     kxfac_nc[0] = abs(qfac / rhoc * dpsidrho)
     Rmaj_nc[0] = (np.max(Rplot_nc) + np.min(Rplot_nc)) / 2
     q[0] = qfac
-    # shat[0]        = shat
+    shat_nc[0] = shat
+    scale[0] = 1.0
 
     ds0.close()
 except ModuleNotFoundError:
