@@ -37,11 +37,11 @@ sys.path.append(toml_dir)
 import toml
 
 if len(sys.argv) > 2:
-    stem = input_file.split(".")[0]
+    stem = input_file.split("/")[-1].split(".")[0]
     eikfile = sys.argv[2]
     eiknc = eikfile[-8:] + ".eiknc.nc"
 else:
-    stem = input_file.split(".")[0]
+    stem = input_file.split("/")[-1].split(".")[0]
     eikfile = stem + ".eik.out"
     eiknc = stem + ".eiknc.nc"
 
@@ -808,14 +808,21 @@ def vmec_fieldlines(
     beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
 
     # Additional pressure (in addn. to the nominal vals)
-    d_pressure_d_s_1 = beta_gx * (tprim + fprim) * B_reference**2 * np.ones(
-        (ns,)
-    ) - mu_0 * d_pressure_d_s * np.ones((ns,))
+    d_pressure_d_s_1 = beta_gx * (tprim + fprim) * B_reference**2 * 1 / (
+        2 * np.sqrt(s)
+    ) * np.ones((ns,)) - mu_0 * d_pressure_d_s * np.ones((ns,))
 
     if d_pressure_d_s == 0:
         d_pressure_d_s = 1e-8 * np.ones((ns,))[:, None, None]
 
-    pfac = beta_gx * (tprim + fprim) * B_reference**2 / (mu_0 * d_pressure_d_s)
+    pfac = (
+        beta_gx
+        * (tprim + fprim)
+        * B_reference**2
+        * 1
+        / (2 * np.sqrt(s))
+        / (mu_0 * d_pressure_d_s)
+    )
     # The deformation term from Hegna-Nakajima and Green-Chance papers
     D_HNGC = (
         1
