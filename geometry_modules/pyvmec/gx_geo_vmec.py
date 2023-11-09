@@ -16,18 +16,54 @@ A portion of this script is based on Matt Landreman's vmec_geometry module for t
 For axisymmetric equilibria, make sure that ntor > 1 in the VMEC wout file.
 """
 
+import sys
+import os
+
 import numpy as np
 import booz_xform as bxform
-import sys
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
 from netCDF4 import Dataset as ds
 
+# read parameters from input file
+input_file = sys.argv[1]
 
-vmec_fname = sys.argv[1]
-isaxisym = int(eval(sys.argv[2]))
-eikfile = sys.argv[3]
+# Add toml directory to module search path
+parent_dir = os.path.abspath(os.path.dirname(__file__))
+toml_dir = os.path.join(parent_dir, "toml")
+
+sys.path.append(toml_dir)
+import toml
+
+if len(sys.argv) > 2:
+    stem = input_file.split(".")[0]
+    eikfile = sys.argv[2]
+    eiknc = eikfile[-8:] + ".eiknc.nc"
+else:
+    stem = input_file.split(".")[0]
+    eikfile = stem + ".eik.out"
+    eiknc = stem + ".eiknc.nc"
+
+f = toml.load(input_file)
+
+ntgrid = int(f["Dimensions"]["ntheta"] / 2 + 1)
+npol = f["Geometry"]["npol"]
+
+try:
+    isaxisym = f["Geometry"]["isaxisym"]
+except KeyError:
+    isaxisym = False
+
+vmec_fname = f["Geometry"]["vmec_file"]
+
+rhoc = f["Geometry"]["torflux"]
+alpha = f["Geometry"]["alpha"]
+
+# NOTE: Caution! This will fail for T_i/T_e and/or n_i/ne not equal to 1
+tprim = np.sum(np.array(f["species"]["tprim"]))
+fprim = np.sum(np.array(f["species"]["fprim"]))
+beta_gx = f["Physics"]["beta"]
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
@@ -294,12 +330,13 @@ def vmec_fieldlines(
     vmec_fname,
     s,
     alpha,
+    beta_gx,
+    tprim,
+    fprim,
+    toml_dict,
     theta1d=None,
     phi1d=None,
-    phi_center=0,
-    sfac=1,
-    pfac=1,
-    isaxisym=0,
+    isaxisym=False,
     res_theta=201,
     res_phi=201,
 ):
@@ -320,11 +357,6 @@ def vmec_fieldlines(
     Boozer theta
     phi1d: numpy array
     Boozer phi
-    sfac: float
-    Local variation of the average shear, Geometry is calculated for a total shear of shear*sfac.
-    So if want to calculate geometry at 2.5 x nominal shear, sfac = 2.5.
-    sfac: float
-    Local variation of the pressure gradient. Geometry is calculated for a pressure gradient of dpds*pfac
 
     Outputs
     -------
@@ -394,6 +426,18 @@ def vmec_fieldlines(
     d_iota_d_s = vs.d_iota_d_s(s)
     shat = (-2 * s / iota) * d_iota_d_s  # depends on the definitn of rho
     sqrt_s = np.sqrt(s)
+
+    try:
+        iota_input = toml_dict["Geometry"]["iota_input"]
+    except KeyError:
+        iota_input = iota
+
+    try:
+        s_hat_input = toml_dict["Geometry"]["s_hat_input"]
+        if s_hat_input == 0.0:
+            s_hat_input = 1.0e-8
+    except KeyError:
+        s_hat_input = shat
 
     L_reference = vs.Aminor_p
 
@@ -753,9 +797,25 @@ def vmec_fieldlines(
     )
     int_lambda_div_g_sup_psi_psi = int_lambda_div_g_sup_psi_psi - spl1(theta_0)
 
-    # Additional shear and pressure gradient (in addn. to the nominal vals)
-    d_iota_d_s_1 = -(iota / (2 * s)) * (sfac - 1.0) * shat * np.ones((ns,))
-    d_pressure_d_s_1 = mu_0 * (pfac - 1.0) * d_pressure_d_s * np.ones((ns,))
+    # Additional shear (in addn. to the nominal vals)
+    d_iota_d_s_1 = (
+        -(iota_input / (2 * s)) * s_hat_input + (iota / (2 * s)) * shat
+    ) * np.ones((ns,))
+    sfac = shat / s_hat_input
+
+    # NOTE: Compare beta definitions
+    # This is half of the total beta_N. Used in GS2 as beta_ref
+    beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
+
+    # Additional pressure (in addn. to the nominal vals)
+    d_pressure_d_s_1 = beta_gx * (tprim + fprim) * B_reference**2 * np.ones(
+        (ns,)
+    ) - mu_0 * d_pressure_d_s * np.ones((ns,))
+
+    if d_pressure_d_s == 0:
+        d_pressure_d_s = 1e-8 * np.ones((ns,))[:, None, None]
+
+    pfac = beta_gx * (tprim + fprim) * B_reference**2 / (mu_0 * d_pressure_d_s)
     # The deformation term from Hegna-Nakajima and Green-Chance papers
     D_HNGC = (
         1
@@ -893,18 +953,15 @@ def vmec_fieldlines(
     # geometric theta; denotes the actual poloidal angle
     theta_geo = np.arctan2(Z_b, R_b - R_mag_ax)
 
-    # This is half of the total beta_N. Used in GS2 as beta_ref
-    beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
-
     int_loc_shr = L0 + L1 + L2
     # Package results into a structure to return:
     results = Struct()
     variables = [
-        "iota",
+        "iota_input",
         "d_iota_d_s",
         "d_pressure_d_s",
         "d_psi_d_s",
-        "shat",
+        "s_hat_input",
         "alpha",
         "theta_b",
         "phi_b",
@@ -913,7 +970,7 @@ def vmec_fieldlines(
         "edge_toroidal_flux_over_2pi",
         "R_b",
         "Z_b",
-        "beta_N",
+        "beta_gx",
         "bmag",
         "gradpar_theta_b",
         "gradpar_theta_PEST",
@@ -938,23 +995,18 @@ def vmec_fieldlines(
 #############################################################################
 
 nt = 96
-npol = 6
 ntheta = 2 * nt * npol + 1
 # This is Boozer theta
 theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
 kxfac = abs(1.0)
-rhoc = np.array([0.64])
-alpha = 0.0
-
-sfac = 1.0
-pfac = 1.0
 
 geo_coeffs = vmec_fieldlines(
-    vmec_fname, rhoc, alpha, theta1d=theta, sfac=sfac, pfac=pfac, isaxisym=isaxisym
+    vmec_fname, rhoc, alpha, beta_gx, tprim, fprim, f, theta1d=theta, isaxisym=isaxisym
 )
 
-shat = geo_coeffs.shat
-qfac = abs(1 / geo_coeffs.iota)
+
+shat = geo_coeffs.s_hat_input
+qfac = abs(1 / geo_coeffs.iota_input)
 bmag = geo_coeffs.bmag[0][0]
 gradpar = abs(geo_coeffs.gradpar_theta_b[0][0])
 cvdrift = geo_coeffs.cvdrift[0][0]
@@ -998,7 +1050,6 @@ gbdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift0)
 R_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, R)
 Z_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, Z)
 gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
-
 
 #####################################################################
 ##############-----------GX SAVE FORMAT-------------#################
