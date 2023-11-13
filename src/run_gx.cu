@@ -42,6 +42,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     checkCudaErrors(cudaGetLastError());
 
     if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
       if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars); 
       if (pars->forcing_type == "general")   forcing = new genForcing(pars);       
@@ -73,7 +74,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   if (pars->krehm) {
     linear = new Linear_KREHM(pars, grids);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
-
+    if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
+      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
+      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
+      if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+      if (pars->forcing_type == "HeliInj")   forcing = new HeliInjForcing(pars, grids);
+   }
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions

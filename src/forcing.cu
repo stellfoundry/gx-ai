@@ -56,25 +56,6 @@ HeliInjForcing::HeliInjForcing(Parameters *pars, Grids *grids) : pars_(pars), gr
   k2max = pars_->forcing_k2max;
   kz = pars_->forcing_kz;
   Nz = grids_->Nz;
-  // Define the maximum size of the list (adjust as needed)
-  const int maxListSize = 4 * ((k2max + 1) * (k2max + 1) - k2min * k2min); // Basically the max number of points possible to be found 
-
-  // Create an array to store the (i, j) pairs
-  int2 *indexs = new int2[maxListSize];
-  int numPairs = 0; // Declare numPairs here and initialize it to 0
-
-  for (int i = 0; i <= k2max; ++i) {
-    for (int j = 0; j <= k2max; ++j) {
-      int k2 = i * i + j * j;
-      if (k2 >= k2min * k2min && k2 <= k2max * k2max) {
-        indexs[numPairs].x = i;
-        indexs[numPairs].y = j;
-        numPairs++; // Increment numPairs inside the loop
-      }
-    }
-  }
-
-  // The rest of your constructor code
 }
 
 HeliInjForcing::~HeliInjForcing()
@@ -83,10 +64,10 @@ HeliInjForcing::~HeliInjForcing()
 
 void HeliInjForcing::stir(MomentsG *G) {
   float random_real, random_imag;
-  int randomIndex = rand() % numPairs;
-  int2 randomPair = indexs[randomIndex];
-  kx = static_cast<int>(randomPair.x);
-  ky = static_cast<int>(randomPair.y);
+  int kx, ky;
+  kx = rand() % (k2max + 1);
+  ky = rand() % (k2max + 1);
+  std::cout << "Perturbed mode: (" << kx << ", " << ky << ")" << std::endl;
   heli_generate_random_numbers (&random_real, &random_imag, pos_forcing_amp_, neg_forcing_amp_, pars_->dt);
   rf.x = random_real;
   rf.y = random_imag;
