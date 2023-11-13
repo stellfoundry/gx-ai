@@ -21,10 +21,12 @@ import os
 
 import numpy as np
 import booz_xform as bxform
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import InterpolatedUnivariateSpline, PPoly, CubicSpline
 from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
 from netCDF4 import Dataset as ds
+
+print("Running pyvmec geometry module...")
 
 # read parameters from input file
 input_file = sys.argv[1]
@@ -73,6 +75,32 @@ except KeyError:
     beta_gx = f["Physics"]["beta"]
 
     betaprim = -beta_gx * np.sum(ns * Ts * (tprims + fprims))
+
+try:
+    boundary = f["Domain"]["boundary"]
+except KeyError:
+    boundary = "linked"
+
+if boundary == "exact periodic":
+    flux_tube_cut = "gds21"
+elif boundary == "continuous drifts":
+    flux_tube_cut = "gbdrift0"
+elif boundary == "fix aspect":
+    flux_tube_cut = "aspect"
+else:
+    flux_tube_cut = "none"
+
+y0 = f.get("Domain").get("y0", 10.0)
+x0 = f.get("Domain").get("x0", y0)
+
+try:
+    which_crossing = f["Geometry"]["which_crossing"]
+except KeyError:
+    which_crossing = -1
+
+# include self-consistent equilibrium variation due to shear and pressure gradient 
+include_shear_variation = f.get("Geometry").get("include_shear_variation", True)
+include_pressure_variation = f.get("Geometry").get("include_pressure_variation", True)
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
@@ -393,6 +421,7 @@ def vmec_fieldlines(
     ntor = nc_obj.variables["ntor"][:].data
 
     booz_obj = bxform.Booz_xform()
+    booz_obj.verbose = 0
     booz_obj.read_wout(vmec_fname)
     booz_obj.mboz = int(2 * mpol)
     booz_obj.nboz = int(2 * ntor)
@@ -810,6 +839,10 @@ def vmec_fieldlines(
     ) * np.ones((ns,))
     sfac = shat / s_hat_input
 
+    if include_shear_variation == False:
+        d_iota_d_s_1 = 0*d_iota_d_s_1
+        sfac = 1
+
     # NOTE: Compare beta definitions
     # This is half of the total beta_N. Used in GS2 as beta_ref
     beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
@@ -826,6 +859,11 @@ def vmec_fieldlines(
         betaprim * B_reference**2 / (2 * np.sqrt(s))
         / (mu_0 * d_pressure_d_s)
     )
+
+    if include_pressure_variation == False:
+        pfac = 1
+        d_pressure_d_s_1 = 0*d_pressure_d_s_1
+
     # The deformation term from Hegna-Nakajima and Green-Chance papers
     D_HNGC = (
         1
@@ -1035,31 +1073,129 @@ drhodpsi = 1 / dpsidrho
 Rmaj = (np.max(R) + np.min(R)) / 2
 
 
+twist_shift_geo_fac = 2.*shat*gds21/gds22
+jtwist = (twist_shift_geo_fac)/y0*x0
+
 ####################################################################
-##########--------EQUAL-ARC THETA CALCULATION---------##############
+##########--------FIELD-LINE CUT CALCULATION----------##############
 ####################################################################
 
-theta_trun = nperiod_set(theta, 1, extend=False)
-gradpar_trun = nperiod_set(gradpar, 1, extend=False, brr=theta)
+if flux_tube_cut == "gds21":
+    print("***************************************************************************")
+    print("You have chosen to cut the flux tube to enforce exact periodicity (gds21=0)")
+    print("***************************************************************************")
 
-gradpar_eqarc = 2 * np.pi / (ctrap(1 / gradpar_trun, theta_trun, initial=0)[-1])
-theta_eqarc = ctrap(gradpar_eqarc / gradpar_trun, theta_trun, initial=0) - np.pi
-theta_eqarc_extend = nperiod_set(theta_eqarc, npol, extend=True)
-theta_eqarc = theta_eqarc_extend
+    gds21_spl = InterpolatedUnivariateSpline(theta, gds21)
+
+    # find roots
+    gds21_roots = gds21_spl.roots(extrapolate=False)
+
+    # determine theta cut
+    cut = gds21_roots[which_crossing]
+elif flux_tube_cut == "gbdrift0":
+    print("***************************************************************************************")
+    print("You have chosen to cut the flux tube to enforce continuous magnetic drifts (gbdrift0=0)")
+    print("***************************************************************************************")
+
+    gbdrift0_spl = InterpolatedUnivariateSpline(theta, gbdrift0)
+
+    # find roots
+    gbdrift0_roots = gbdrift0_spl.roots(extrapolate=False)
+
+    # determine theta cut
+    cut = gbdrift0_roots[which_crossing]
+elif flux_tube_cut == "aspect":
+    print("*************************************************************************")
+    print("You have chosen to cut the flux tube to enforce y0/x0 = ", y0/x0)
+    print("*************************************************************************")
+
+    jtwist_spl = CubicSpline(theta, jtwist)
+
+    # find locations where jtwist_spl is integer valued
+    crossings = [jtwist_spl.solve(i, extrapolate=False) for i in np.arange(-30, 30)]
+    crossings = np.concatenate(crossings)
+    crossings.sort()
+
+    # determine theta cut
+    cut = crossings[which_crossing]
+elif flux_tube_cut == "none":
+    print("***************************************************")
+    print("You have chosen not to take a cut of the flux tube.")
+    print("***************************************************")
+
+if flux_tube_cut != "none":
+    # new truncated theta array
+    theta_cut = np.linspace(-cut, cut, ntheta)
+
+    # interpolate geometry arrays onto new truncated theta array
+    bmag_spl = InterpolatedUnivariateSpline(theta, bmag)
+    bmag = bmag_spl(theta_cut)
+
+    gradpar_spl = InterpolatedUnivariateSpline(theta, gradpar)
+    gradpar = gradpar_spl(theta_cut)
+
+    cvdrift_spl = InterpolatedUnivariateSpline(theta, cvdrift)
+    cvdrift = cvdrift_spl(theta_cut)
+
+    cvdrift0_spl = InterpolatedUnivariateSpline(theta, cvdrift0)
+    cvdrift0 = cvdrift0_spl(theta_cut)
+    
+    gbdrift_spl = InterpolatedUnivariateSpline(theta, gbdrift)
+    gbdrift = gbdrift_spl(theta_cut)
+
+    gbdrift0_spl = InterpolatedUnivariateSpline(theta, gbdrift0)
+    gbdrift0 = gbdrift0_spl(theta_cut)
+
+    gds2_spl = InterpolatedUnivariateSpline(theta, gds2)
+    gds2 = gds2_spl(theta_cut)
+
+    gds21_spl = InterpolatedUnivariateSpline(theta, gds21)
+    gds21 = gds21_spl(theta_cut)
+
+    gds22_spl = InterpolatedUnivariateSpline(theta, gds22)
+    gds22 = gds22_spl(theta_cut)
+
+    grho_spl = InterpolatedUnivariateSpline(theta, grho)
+    grho = grho_spl(theta_cut)
+
+    R_spl = InterpolatedUnivariateSpline(theta, R)
+    R = R_spl(theta_cut)
+
+    Z_spl = InterpolatedUnivariateSpline(theta, Z)
+    Z = Z_spl(theta_cut)
+
+    theta = theta_cut
+
+print(f"Final (unscaled) theta grid goes from [{theta[0]}, {theta[-1]}]")
+
+####################################################################
+##########--------EQUAL-ARC THETA [-PI,PI] CALCULATION---------#####
+####################################################################
+
 theta_PEST = theta
 
-bmag_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, bmag)
-gds2_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds2)
-gds21_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds21)
-grho_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, grho)
-gds22_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gds22)
-cvdrift_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, cvdrift)
-cvdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, cvdrift0)
-gbdrift_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift)
-gbdrift0_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, gbdrift0)
-R_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, R)
-Z_eqarc = np.interp(theta_eqarc, theta_eqarc_extend, Z)
-gradpar_eqarc = gradpar_eqarc * np.ones((len(bmag_eqarc),))
+# using 2*pi in the numerator in gradpar_eqarc scales the eq-arc theta angle to [-pi,pi]
+gradpar_eqarc = 2*np.pi / (ctrap(1 / gradpar, theta, initial=0)[-1])
+theta_eqarc = gradpar_eqarc * ctrap(1 / gradpar, theta, initial=0) - np.pi
+
+domain_scaling_factor = theta[-1]/theta_eqarc[-1]
+
+# uniformly spaced equal-arc theta grid
+theta_GX = np.linspace(-np.pi, np.pi, ntheta)
+
+# interpolate arrays onto GX theta grid
+bmag_GX = np.interp(theta_GX, theta_eqarc, bmag)
+gds2_GX = np.interp(theta_GX, theta_eqarc, gds2)
+gds21_GX = np.interp(theta_GX, theta_eqarc, gds21)
+grho_GX = np.interp(theta_GX, theta_eqarc, grho)
+gds22_GX = np.interp(theta_GX, theta_eqarc, gds22)
+cvdrift_GX = np.interp(theta_GX, theta_eqarc, cvdrift)
+cvdrift0_GX = np.interp(theta_GX, theta_eqarc, cvdrift0)
+gbdrift_GX = np.interp(theta_GX, theta_eqarc, gbdrift)
+gbdrift0_GX = np.interp(theta_GX, theta_eqarc, gbdrift0)
+R_GX = np.interp(theta_GX, theta_eqarc, R)
+Z_GX = np.interp(theta_GX, theta_eqarc, Z)
+gradpar_GX = gradpar_eqarc * np.ones((len(bmag_GX),))
 
 #####################################################################
 ##############-----------GX SAVE FORMAT-------------#################
@@ -1116,28 +1252,28 @@ try:
         "f8",
     )
 
-    theta_nc[:] = theta_eqarc[:]
+    theta_nc[:] = theta_GX[:]
     theta_PEST_nc[:] = theta_PEST[:]
-    bmag_nc[:] = bmag_eqarc[:]
-    gradpar_nc[:] = gradpar_eqarc[:]
-    grho_nc[:] = grho_eqarc[:]
-    gds2_nc[:] = gds2_eqarc[:]
-    gds21_nc[:] = gds21_eqarc[:]
-    gds22_nc[:] = gds22_eqarc[:]
-    gbdrift_nc[:] = gbdrift_eqarc[:]
-    gbdrift0_nc[:] = gbdrift0_eqarc[:]
-    cvdrift_nc[:] = cvdrift_eqarc[:]
-    cvdrift0_nc[:] = gbdrift0_eqarc[:]
+    bmag_nc[:] = bmag_GX[:]
+    gradpar_nc[:] = gradpar_GX[:]
+    grho_nc[:] = grho_GX[:]
+    gds2_nc[:] = gds2_GX[:]
+    gds21_nc[:] = gds21_GX[:]
+    gds22_nc[:] = gds22_GX[:]
+    gbdrift_nc[:] = gbdrift_GX[:]
+    gbdrift0_nc[:] = gbdrift0_GX[:]
+    cvdrift_nc[:] = cvdrift_GX[:]
+    cvdrift0_nc[:] = gbdrift0_GX[:]
 
-    Rplot_nc[:] = R_eqarc[:]
-    Zplot_nc[:] = Z_eqarc[:]
+    Rplot_nc[:] = R_GX[:]
+    Zplot_nc[:] = Z_GX[:]
 
     drhodpsi_nc[0] = abs(1 / dpsidrho)
     kxfac_nc[0] = abs(qfac / rhoc * dpsidrho)
     Rmaj_nc[0] = (np.max(Rplot_nc) + np.min(Rplot_nc)) / 2
     q[0] = qfac
     shat_nc[0] = shat
-    scale[0] = 1.0
+    scale[0] = domain_scaling_factor
 
     ds0.close()
 except ModuleNotFoundError:

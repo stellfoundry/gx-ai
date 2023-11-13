@@ -84,7 +84,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     pars->geofilename = std::string(pars->run_name) + ".eik.nc";
     if(grids->iproc == 0) {
       char command[300];
-      sprintf(command, "python %s/geometry_modules/pyvmec/gx_geo_vmec.py %s.in %s > %s.gx_geo_vmec.log", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
+      sprintf(command, "python %s/geometry_modules/pyvmec/gx_geo_vmec.py %s.in %s", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
       printf("Using pyvmec geometry. Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
     }
