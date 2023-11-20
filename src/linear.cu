@@ -239,7 +239,7 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 						      pars_->p_hyper, pars_->D_hyper, GRhs->G());
 
   if(pars_->hyperz) grad_par->hyperz(G, GRhs, pars_->nu_hyper_z/dt, true);
-  
+ 
   // apply parallel boundary conditions. for linked BCs, this involves applying 
   // a damping operator to the RHS near the boundaries of extended domain.
   if(!pars_->boundary_option_periodic && !pars_->local_limit) grad_par->applyBCs(G, GRhs, f, geo_->kperp2, dt);

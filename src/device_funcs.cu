@@ -2458,6 +2458,9 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
   ((cuComplex*)dataOut)[offset] = Ikz*element*normalization;
 }
 
+// JMH // note: to make NTFT version of functions related to grad_parallel, almost always just need to replace nLinks w nLinks/nz
+// since NTFT treats nLinks as number of grid points in a chain, not number of nz segments in a chain
+
 __device__ void i_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr) // JMH
 {
   // kz[1] = nz/(zp * nLinks)
@@ -2497,6 +2500,16 @@ __device__ void mkz2_Linked(void *dataOut, size_t offset, cufftComplex element, 
   ((cuComplex*)dataOut)[offset] = Ikz*Ikz*element*normalization;
 }
 
+__device__ void mkz2_LinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz = (float*) kzData;
+  int nLinks = (int) lrintf(nz/(zp*kz[1]));
+  unsigned int idz = offset % (nLinks);
+  cuComplex Ikz = make_cuComplex(0., kz[idz]);
+  float normalization = (float) 1./(nLinks);
+  ((cuComplex*)dataOut)[offset] = Ikz*Ikz*element*normalization;
+}
+
 __device__ void zfts_Linked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz  = (float*) kzData;
@@ -2532,12 +2545,41 @@ __device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element
   ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
 }
 
+__device__ void hyperkzLinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *hyperData, void *sharedPtr)
+{
+  int *data = (int*) hyperData;
+  int nLinks = data[0];
+  int p_hyper_z = data[1];
+  unsigned int nzL = nLinks;
+  unsigned int idz = offset % (nzL);
+  float zpnLinv = (float) nz/zp*nLinks;
+  float hypkz;
+  if (idz < nzL/2+1) {
+    hypkz = powf((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  } else {
+    int idzs = idz-nzL;
+    hypkz = powf((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+  }
+  float normalization = (float) 1./nzL;
+  ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
+}
+
+
 __device__ void abs_kzLinked(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
 {
   float *kz = (float*) kzData;
   int nLinks = (int) lrintf(1./(zp*kz[1]));
   unsigned int idz = offset % (nz*nLinks);
   float normalization = (float) 1./(nz*nLinks);
+  ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element*normalization;
+}
+
+__device__ void abs_kzLinkedNTFT(void *dataOut, size_t offset, cufftComplex element, void *kzData, void *sharedPtr)
+{
+  float *kz = (float*) kzData;
+  int nLinks = (int) lrintf(nz/(zp*kz[1]));
+  unsigned int idz = offset % (nLinks);
+  float normalization = (float) 1./(nLinks);
   ((cuComplex*)dataOut)[offset] = abs(kz[idz])*element*normalization;
 }
 
@@ -2586,13 +2628,32 @@ __global__ void init_hyperkzLinked(float* hyperkz, int nLinks, bool dealias_kz, 
   }
 }
 
+// JMH // is this used? doesn't look like it
+__global__ void init_hyperkzLinkedNTFT(float* hyperkz, int nLinks, bool dealias_kz, int p_hyper_z)
+{
+  int nzL = nLinks;
+  for (int i=0; i < nzL; i++) {
+    if (i < nzL/2+1) {
+      hyperkz[i] = pow((float) i*nz/(zp*nLinks), p_hyper_z);
+    } else {
+      hyperkz[i] = pow((float) nz*(i-nzL)/(zp*nLinks), p_hyper_z);
+    }
+    if (dealias_kz) {
+      if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {hyperkz[i] = 0.0;}
+    }
+  }
+}
+
 __device__ cufftCallbackStoreC  zfts_Linked_callbackPtr = zfts_Linked;
 __device__ cufftCallbackStoreC  zfts_LinkedNTFT_callbackPtr = zfts_LinkedNTFT;
 __device__ cufftCallbackStoreC   i_kzLinked_callbackPtr = i_kzLinked;
 __device__ cufftCallbackStoreC   i_kzLinkedNTFT_callbackPtr = i_kzLinkedNTFT;
 __device__ cufftCallbackStoreC   hyperkzLinked_callbackPtr = hyperkzLinked;
+__device__ cufftCallbackStoreC   hyperkzLinkedNTFT_callbackPtr = hyperkzLinkedNTFT;
 __device__ cufftCallbackStoreC  mkz2_Linked_callbackPtr = mkz2_Linked;
+__device__ cufftCallbackStoreC  mkz2_LinkedNTFT_callbackPtr = mkz2_LinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
+__device__ cufftCallbackStoreC abs_kzLinkedNTFT_callbackPtr = abs_kzLinkedNTFT;
 
 __global__ void linkedCopy(const cuComplex* __restrict__ G,
 			   cuComplex* __restrict__ G_linked,
@@ -2787,9 +2848,20 @@ __global__ void dampEnds_linked(cuComplex* G,
   }
 }
 
-__global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
-			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
-			       cuComplex* GRhs)
+__global__ void dampEnds_linkedNTFT(cuComplex* G, 
+				    cuComplex* phi, 
+				    cuComplex* apar, 
+				    cuComplex* bpar, 
+				    float* kperp2, 
+				    specie sp,
+				    int nLinks, 
+				    int nChains, 
+				    const int* ikx, 
+				    const int* iky, 
+				    int nMoms,
+			            cuComplex* GRhs, 
+				    float widthfrac, 
+				    float amp)
 {
 
   unsigned int idp = get_id1();
@@ -2811,10 +2883,11 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
-    int width = nLinks/8;  
-
-    if (width == 0) width = 1; //sometimes links are less than 8 long in NTFT, we damp one grid point on each side (or the entire mode for nLinks = 1 or 2)
-    float L = 2*M_PI*zp*(int(nLinks/nz)+1)/8; //calculate L by rounding up nLinks to a multiple of Nz (like the conventional), or else the damping term becomes too large and Phi2 blows up somewhat
+    
+    int width = (int) nLinks * widthfrac;  
+    if (width == 0) width = 1; //sometimes links are less than 1/widthfrac long in NTFT, this makes sure we don't get divide by zero errors
+    
+    float L = (float) 2*M_PI*zp*(int(nLinks/nz)+1)*widthfrac; //calculate L by rounding up nLinks to a multiple of Nz (like the conventional), or else the damping term becomes too large and Phi2 blows up
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
     if (idzl < width ) {
       float x = ((float) idzl)/width;
@@ -2836,7 +2909,8 @@ __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apa
       cuComplex H_ = G[globalIdx];
       if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
       if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
+      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
     }
   }
 }

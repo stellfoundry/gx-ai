@@ -156,6 +156,7 @@ void Parameters::get_nml_vars(char* filename)
   hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions_kz", false);
   hypercollisions_kz = toml::find_or <bool> (tnml, "hypercollisions", hypercollisions_kz); // "hypercollisions" now gives hypercollisions_kz
   hyperz = toml::find_or <bool> (tnml, "hyperz", false);
+  
 
   tnml = nml;
   if (nml.contains("Collisional_slab_ETG")) tnml = toml::find (nml, "Collisional_slab_ETG"); 

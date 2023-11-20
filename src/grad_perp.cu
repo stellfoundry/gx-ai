@@ -26,7 +26,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
     checkCuda(cudaMalloc (&iKxtmp, sizeof(cuComplex)*mem_size_));
   }
 
-  if (grids_->phasefac_exb && grids_->phasefac_ntft) { //I don't want to add pars to the class declaration // JMH
+  if (grids_->phasefac_exb && grids_->phasefac_ntft) { 
     checkCuda(cudaMalloc (&iKxtmp2, sizeof(cuComplex)*mem_size_));
   }
 
@@ -122,7 +122,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   int nxkyz = grids_->NxNycNz;
 
   // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
-  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft; // note changed division by nbx and nby to nbx_ntft and nby_ntft because I think it was a mistake... check this
+  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;
   int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
   int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
   
@@ -147,6 +147,7 @@ GradPerp::~GradPerp()
 {
   if (tmp)      cudaFree (tmp);
   if (iKxtmp)   cudaFree (iKxtmp);
+  if (iKxtmp2)  cudaFree (iKxtmp2);
   cufftDestroy ( gradperp_plan_R2C    );
   cufftDestroy ( gradperp_plan_C2R    );
   cufftDestroy ( gradperp_plan_dxC2R  );

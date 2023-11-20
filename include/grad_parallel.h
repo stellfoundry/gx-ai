@@ -121,8 +121,10 @@ class GradParallelNTFT : public GradParallel {
   void dealias(MomentsG* G);
   void dealias(cuComplex* f);
   void dz(MomentsG* G, MomentsG* res, bool accumulate=false);     void dz(cuComplex* m, cuComplex* res, bool accumulate=false);
+  void hyperz(MomentsG* G, MomentsG* res, float nu, bool accumulate=false);
+  void dz2(MomentsG* G);    void dz2(cuComplex* m, cuComplex* res);
   void zft(MomentsG* G);   void zft(cuComplex* m, cuComplex* res);
-  void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2);
+  void applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2, double dt);
 
   void zft_inverse(MomentsG* G);
   //  void zft_inverse(cuComplex* m, cuComplex* res);
@@ -157,8 +159,9 @@ class GradParallelNTFT : public GradParallel {
   int * mode_size;
   int * mode_size_ref;
 
-  cufftHandle * zft_plan_forward;  cufftHandle * dz_plan_forward;
+  cufftHandle * zft_plan_forward;  cufftHandle * dz_plan_forward;  cufftHandle * dz2_plan_forward;
   cufftHandle * zft_plan_inverse;  cufftHandle * dz_plan_inverse;
+  cufftHandle * hyperz_plan_forward; cufftHandle * hyperz_plan_inverse;
 
   cufftHandle * zft_plan_forward_singlemom;
   cufftHandle * zft_plan_inverse_singlemom;
@@ -166,7 +169,9 @@ class GradParallelNTFT : public GradParallel {
   cufftHandle * dz_plan_forward_singlemom;
   cufftHandle * dz_plan_inverse_singlemom;
   cufftHandle * abs_dz_plan_forward;
+  cufftHandle * dz2_plan_forward_singlemom;
   cufftHandle * abs_dz_plan_forward_singlemom;
+
   dim3 * dG;
   dim3 * dB;
 };
