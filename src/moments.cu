@@ -400,25 +400,67 @@ void MomentsG::syncMPI()
 {
   if(grids_->nprocs_m==1) return;
 
-  size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
-  MPI_Status stat;
+  // handle special case of nprocs_m == Nm_glob && m_ghost == 2
+  if(grids_->Nm_glob == grids_->nprocs_m && grids_->m_ghost == 2) {
+    size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl;
+    MPI_Status stat;
 
-  // send to right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
-  }
-  // receive from left
-  if(grids_->iproc_m-1 >= 0) {
-    MPI_Recv(Gm(-grids_->m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
-  }
+    // send one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    }
+    // receive from one to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Recv(Gm(-1),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+    }
 
-  // send to left
-  if(grids_->iproc_m-1 >= 0) {
-    MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
-  }
-  // receive from right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    // send one to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+    }
+    // receive from one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Recv(Gm(1), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    }
+
+    // send two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      MPI_Send(Gm(0), size, MPI_BYTE, grids_->procRight2(), 1, MPI_COMM_WORLD);
+    }
+    // receive from two to left
+    if(grids_->iproc_m-2 >= 0) {
+      MPI_Recv(Gm(-2),           size, MPI_BYTE, grids_->procLeft2(), 1, MPI_COMM_WORLD, &stat);
+    }
+
+    // send two to left
+    if(grids_->iproc_m-2 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft2(), 2, MPI_COMM_WORLD);
+    }
+    // receive from two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      MPI_Recv(Gm(2), size, MPI_BYTE, grids_->procRight2(), 2, MPI_COMM_WORLD, &stat);
+    }
+  } else {
+    size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+    MPI_Status stat;
+
+    // send to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    }
+    // receive from left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Recv(Gm(-grids_->m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+    }
+
+    // send to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+    }
+    // receive from right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    }
   }
   cudaDeviceSynchronize();
 }
@@ -427,29 +469,77 @@ void MomentsG::syncNCCL(bool blocking)
 {
   if(grids_->nprocs_m==1) return;
 
-  // since nccl does not support cuComplex directly, we will use float type
-  // factor of 2 here is for real and imag part of cuComplex
-  size_t count = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+  // handle special case of nprocs_m == Nm_glob && m_ghost == 2
+  if(grids_->Nm_glob == grids_->nprocs_m && grids_->m_ghost == 2) {
+    // since nccl does not support cuComplex directly, we will use float type
+    // factor of 2 here is for real and imag part of cuComplex
+    size_t count = 2*grids_->NxNycNz*grids_->Nl;
 
-  ncclGroupStart();
-  // send to right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    ncclSend(Gm(grids_->Nm-grids_->m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
-  }
-  // receive from left
-  if(grids_->iproc_m-1 >= 0) {
-    ncclRecv(Gm(-grids_->m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
-  }
+    ncclGroupStart();
+    // send one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclSend(Gm(0), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    // receive from one to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclRecv(Gm(-1),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
 
-  // send to left
-  if(grids_->iproc_m-1 >= 0) {
-    ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    // send one to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+    // receive from one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclRecv(Gm(1), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
+
+    ncclGroupStart();
+    // send two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      ncclSend(Gm(0), count, ncclFloat, grids_->procRight2(), grids_->ncclComm, syncStream);
+    }
+    // receive from two to left
+    if(grids_->iproc_m-2 >= 0) {
+      ncclRecv(Gm(-2),           count, ncclFloat, grids_->procLeft2(), grids_->ncclComm, syncStream);
+    }
+
+    // send two to left
+    if(grids_->iproc_m-2 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft2(), grids_->ncclComm, syncStream);
+    }
+    // receive from two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      ncclRecv(Gm(2), count, ncclFloat, grids_->procRight2(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
+    
+  } else {
+    // since nccl does not support cuComplex directly, we will use float type
+    // factor of 2 here is for real and imag part of cuComplex
+    size_t count = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+
+    ncclGroupStart();
+    // send to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclSend(Gm(grids_->Nm-grids_->m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    // receive from left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclRecv(Gm(-grids_->m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+
+    // send to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+    // receive from right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
   }
-  // receive from right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
-  }
-  ncclGroupEnd();
 
   if(blocking) {
     cudaStreamSynchronize(syncStream);
