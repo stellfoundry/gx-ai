@@ -48,6 +48,7 @@ else:
 f = toml.load(input_file)
 
 ntgrid = int(f["Dimensions"]["ntheta"] / 2 + 1)
+ntheta_in = int(f["Dimensions"]["ntheta"])
 npol = f["Geometry"]["npol"]
 
 try:
@@ -57,7 +58,7 @@ except KeyError:
 
 vmec_fname = f["Geometry"]["vmec_file"]
 
-# rhoc == s = sqrt(rho_tor)
+# rhoc == s = psi/psi_LCFS
 try:
     rhoc = f["Geometry"]["torflux"]
 except KeyError:
@@ -93,10 +94,10 @@ else:
 y0 = f.get("Domain").get("y0", 10.0)
 x0 = f.get("Domain").get("x0", y0)
 
-try:
-    which_crossing = f["Geometry"]["which_crossing"]
-except KeyError:
-    which_crossing = -1
+jtwist_in = f.get("Domain").get("jtwist", None)
+jtwist_max = f.get("Domain").get("jtwist_max", None)
+
+which_crossing = f.get("Geometry").get("which_crossing", -1)
 
 # include self-consistent equilibrium variation due to shear and pressure gradient 
 include_shear_variation = f.get("Geometry").get("include_shear_variation", True)
@@ -282,7 +283,8 @@ def vmec_splines(nc_obj, booz_obj):
 
     ns = nc_obj.variables["ns"][:].data
     s_full_grid = np.linspace(0, 1, ns)
-    s_half_grid = s_full_grid[1:] - 0.5 * np.diff(s_full_grid)[0]
+    #s_half_grid = s_full_grid[1:] - 0.5 * np.diff(s_full_grid)[0]
+    s_half_grid = 0.5*(s_full_grid[0:-1] + s_full_grid[1:])
 
     # Boozer quantities are calculated on the half grid by booz_xform
     for jmn in range(int(booz_obj.mnboz)):
@@ -462,6 +464,11 @@ def vmec_fieldlines(
     d_iota_d_s = vs.d_iota_d_s(s)
     shat = (-2 * s / iota) * d_iota_d_s  # depends on the definitn of rho
     sqrt_s = np.sqrt(s)
+
+    print("iota = ", iota)
+    print("shat = ", shat)
+    print("d iota / ds", d_iota_d_s)
+    print("d pressure / ds", d_pressure_d_s)
 
     try:
         iota_input = toml_dict["Geometry"]["iota_input"]
@@ -816,7 +823,7 @@ def vmec_fieldlines(
         + iota[:, None, None] * d_I_d_s[:, None, None]
         + mu_0 * d_pressure_d_s[:, None, None] * Vprime,
         1e-7,
-        atol=1e-4,
+        atol=1e-3,
     )
 
     # integrated inverse flux expansion term
@@ -848,7 +855,7 @@ def vmec_fieldlines(
     beta_N = 4 * np.pi * 1e-7 * vs.pressure(s) / B_reference**2
 
     # Additional pressure (in addn. to the nominal vals)
-    d_pressure_d_s_1 = ( (betaprim / (2 * np.sqrt(s)) * B_reference**2 * np.ones((ns,)))
+    d_pressure_d_s_1 = ( (betaprim / (4 * np.sqrt(s)) * B_reference**2 * np.ones((ns,)))
         - mu_0 * d_pressure_d_s * np.ones((ns,))
     )
 
@@ -856,13 +863,16 @@ def vmec_fieldlines(
         d_pressure_d_s = 1e-8 * np.ones((ns,))[:, None, None]
 
     pfac = (
-        betaprim * B_reference**2 / (2 * np.sqrt(s))
+        betaprim * B_reference**2 / (4 * np.sqrt(s))
         / (mu_0 * d_pressure_d_s)
     )
 
     if include_pressure_variation == False:
         pfac = 1
         d_pressure_d_s_1 = 0*d_pressure_d_s_1
+
+    print(f"pfac = {pfac}")
+    print(f"sfac = {sfac}")
 
     # The deformation term from Hegna-Nakajima and Green-Chance papers
     D_HNGC = (
@@ -1043,7 +1053,7 @@ def vmec_fieldlines(
 #############################################################################
 
 nt = ntgrid
-ntheta = 2 * (nt-1) * npol + 1
+ntheta = ntheta_in + 1
 # This is Boozer theta
 theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
 kxfac = abs(1.0)
@@ -1068,7 +1078,8 @@ R = geo_coeffs.R_b[0][0]
 Z = geo_coeffs.Z_b[0][0]
 grho = geo_coeffs.grho[0][0]
 
-dpsidrho = 2 * np.sqrt(rhoc)  # only true when rho = sqrt(psi)
+# rho = sqrt(psi/psi_LCFS) = sqrt(rhoc)
+dpsidrho = 2 * np.sqrt(rhoc) * edge_toroidal_flux_over_2pi
 drhodpsi = 1 / dpsidrho
 Rmaj = (np.max(R) + np.min(R)) / 2
 
@@ -1111,8 +1122,15 @@ elif flux_tube_cut == "aspect":
 
     jtwist_spl = CubicSpline(theta, jtwist)
 
-    # find locations where jtwist_spl is integer valued
-    crossings = [jtwist_spl.solve(i, extrapolate=False) for i in np.arange(-30, 30)]
+    # find locations where jtwist_spl is integer valued. we'll check jtwist = [-30, 30]
+    if jtwist_in is not None:
+        vals = np.array([jtwist_in])
+    elif jtwist_max is not None:
+        vals =  np.arange(-jtwist_max,jtwist_max)
+    else:
+        vals =  np.arange(-30,30)
+    vals = vals[(vals < -0.1) | (vals > 0.1)] # omit jtwist = 0
+    crossings = [jtwist_spl.solve(i, extrapolate=False) for i in vals]
     crossings = np.concatenate(crossings)
     crossings.sort()
 
@@ -1166,8 +1184,6 @@ if flux_tube_cut != "none":
 
     theta = theta_cut
 
-print(f"Final (unscaled) theta grid goes from [{theta[0]}, {theta[-1]}]")
-
 ####################################################################
 ##########--------EQUAL-ARC THETA [-PI,PI] CALCULATION---------#####
 ####################################################################
@@ -1179,6 +1195,9 @@ gradpar_eqarc = 2*np.pi / (ctrap(1 / gradpar, theta, initial=0)[-1])
 theta_eqarc = gradpar_eqarc * ctrap(1 / gradpar, theta, initial=0) - np.pi
 
 domain_scaling_factor = theta[-1]/theta_eqarc[-1]
+
+print(f"Final (unscaled) theta grid goes from [{theta[0]}, {theta[-1]}]")
+print(f"domain_scaling_factor = {domain_scaling_factor} so that scaled theta grid is [-pi, pi]")
 
 # uniformly spaced equal-arc theta grid
 theta_GX = np.linspace(-np.pi, np.pi, ntheta)
@@ -1269,7 +1288,7 @@ try:
     Zplot_nc[:] = Z_GX[:]
 
     drhodpsi_nc[0] = abs(1 / dpsidrho)
-    kxfac_nc[0] = abs(qfac / rhoc * dpsidrho)
+    kxfac_nc[0] = kxfac 
     Rmaj_nc[0] = (np.max(Rplot_nc) + np.min(Rplot_nc)) / 2
     q[0] = qfac
     shat_nc[0] = shat
