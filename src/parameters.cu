@@ -112,7 +112,15 @@ void Parameters::get_nml_vars(char* filename)
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
   ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
+  gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
+  gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     1.0   );
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
+  densfac = toml::find_or <float> (tnml, "densfac", 1.0);
+  uparfac = toml::find_or <float> (tnml, "uparfac", 1.0);
+  tparfac = toml::find_or <float> (tnml, "tparfac", 1.0);
+  tprpfac = toml::find_or <float> (tnml, "tprpfac", 1.0);
+  qparfac = toml::find_or <float> (tnml, "qparfac", 1.0);
+  qprpfac = toml::find_or <float> (tnml, "qprpfac", 1.0);
   if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
@@ -801,6 +809,7 @@ void Parameters::get_nml_vars(char* filename)
   else if( init_field == "tperp"  ) { initf = inits::tperp  ; }
   else if( init_field == "qpar"   ) { initf = inits::qpar   ; }
   else if( init_field == "qperp"  ) { initf = inits::qperp  ; }
+  else if( init_field == "all"  ) { initf = inits::all  ; }
   
   if     ( stir_field == "density") { stirf = stirs::density; }
   else if( stir_field == "upar"   ) { stirf = stirs::upar   ; }

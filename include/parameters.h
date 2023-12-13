@@ -26,7 +26,7 @@
 #define ANSI_COLOR_CYAN    "\x1b[36m"
 #define ANSI_COLOR_RESET   "\x1b[0m"
 
-enum class inits {density, upar, tpar, tperp, qpar, qperp};
+enum class inits {density, upar, tpar, tperp, qpar, qperp, all};
 enum class stirs {density, upar, tpar, tperp, qpar, qperp, ppar, pperp};
 enum class Tmethod {sspx2, sspx3, rk2, rk3, rk4, k10, g3, k2}; 
 enum class Closure {none, beer42, smithperp, smithpar};
@@ -138,6 +138,7 @@ class Parameters {
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
+  float densfac, uparfac, tparfac, tprpfac, qparfac, qprpfac;
   float forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
   float dnlpm, dnlpm_dens, dnlpm_tprp, nu_hyper_l, nu_hyper_m;
   float D_HB, w_osc;
@@ -167,6 +168,8 @@ class Parameters {
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;
+  bool gaussian_init;
+  float gaussian_width;
   bool vp, vp_closure;
   bool cetg;  
   bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;

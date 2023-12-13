@@ -208,6 +208,26 @@ void MomentsG::initialConditions(double* time) {
 	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
 	}
       }
+    } else if(pars_->gaussian_init) {
+      for(int ikx=0; ikx < 1 + (grids_->Nx - 1)/3; ikx++) {
+	// No perturbation inserted for ky=0 mode because loop starts with j=1
+	for(int jky=1; jky < 1 + (grids_->Ny - 1)/3; jky++) {
+	  for (int js=0; js < 2; js++) {
+            int idx;
+	    if (ikx==0) {
+	      idx = ikx;
+	    } else {
+	      idx = (js==0) ? ikx : grids_->Nx-ikx;
+	    }
+            float theta0 = grids_->kx_h[ikx]/(pars_->shat*grids_->ky_h[jky]);
+            for (int k=0; k<grids_->Nz; k++) {
+              int index = jky + grids_->Nyc*(idx + grids_->Nx*k);
+              init_h[index].x = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+              init_h[index].y = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+            }
+          }
+        }
+      }
     } else {
       srand(22);
       float samp;
@@ -288,6 +308,32 @@ void MomentsG::initialConditions(double* time) {
     case inits::tperp   : if(tprp_ptr) CP_TO_GPU(tprp_ptr, init_h, momsize); break; 
     case inits::qpar    : if(qpar_ptr) CP_TO_GPU(qpar_ptr, init_h, momsize); break;
     case inits::qperp   : if(qprp_ptr) CP_TO_GPU(qprp_ptr, init_h, momsize); break;
+    case inits::all     :
+      if(dens_ptr) {
+        CP_TO_GPU(dens_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (dens_ptr, dens_ptr, pars_->densfac);
+      }
+      if(upar_ptr) {
+        CP_TO_GPU(upar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (upar_ptr, upar_ptr, pars_->uparfac);
+      }
+      if(tpar_ptr) {
+        CP_TO_GPU(tpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tpar_ptr, tpar_ptr, 1/sqrtf(2.)*pars_->tparfac);
+      }
+      if(tprp_ptr) {
+        CP_TO_GPU(tprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (tprp_ptr, tprp_ptr, pars_->tprpfac);
+      }
+      if(qpar_ptr) {
+        CP_TO_GPU(qpar_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qpar_ptr, qpar_ptr, 1/sqrtf(6.)*pars_->qparfac);
+      }
+      if(qprp_ptr) {
+        CP_TO_GPU(qprp_ptr, init_h, momsize);
+        scale_singlemom_kernel <<< grids_->NxNycNz/256 + 1, 256 >>> (qprp_ptr, qprp_ptr, pars_->qprpfac);
+      }
+      break;
     }
   checkCuda(cudaGetLastError());    
   free(init_h);     
