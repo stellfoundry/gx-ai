@@ -818,6 +818,9 @@ def vmec_fieldlines(
     )
 
     ## EQUILIBRIUM CHECK: Flux surface averaged MHD force balance.
+    print(d_G_d_s[:, None, None]
+        + iota[:, None, None] * d_I_d_s[:, None, None]
+        + mu_0 * d_pressure_d_s[:, None, None] * Vprime)
     np.testing.assert_allclose(
         d_G_d_s[:, None, None]
         + iota[:, None, None] * d_I_d_s[:, None, None]
@@ -1079,7 +1082,7 @@ Z = geo_coeffs.Z_b[0][0]
 grho = geo_coeffs.grho[0][0]
 
 # rho = sqrt(psi/psi_LCFS) = sqrt(rhoc)
-dpsidrho = 2 * np.sqrt(rhoc) * edge_toroidal_flux_over_2pi
+dpsidrho = 2 * np.sqrt(rhoc) * geo_coeffs.edge_toroidal_flux_over_2pi
 drhodpsi = 1 / dpsidrho
 Rmaj = (np.max(R) + np.min(R)) / 2
 
