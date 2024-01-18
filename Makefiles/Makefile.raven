@@ -33,7 +33,7 @@ MPI_LIB = -L ${MPI_ROOT}/lib -lmpi
 NCCL_ROOT = ${NVHPC_ROOT}/comm_libs/nccl/
 
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NCCL_ROOT}/include
-CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt -lnvJitLink
 
 # paths to gsl 
 # GSL_HOME is defined by gsl module
@@ -55,6 +55,9 @@ CXX = icpc
 NVCC   = nvcc
 CFLAGS = -fPIC
 NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
+
+
+
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
