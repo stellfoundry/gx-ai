@@ -8,7 +8,7 @@
 
 
 GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
-  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr), iKxtmp(nullptr)
+  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr)
 {
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_C2R);
@@ -22,13 +22,6 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   // Order of Nx, Ny is correct here
 
   cudaMalloc (&tmp, sizeof(cuComplex)*mem_size_);
-  if (grids_->phasefac_exb || grids_->phasefac_ntft) { //I don't want to add pars to the class declaration // JMH
-    checkCuda(cudaMalloc (&iKxtmp, sizeof(cuComplex)*mem_size_));
-  }
-
-  if (grids_->phasefac_exb && grids_->phasefac_ntft) { 
-    checkCuda(cudaMalloc (&iKxtmp2, sizeof(cuComplex)*mem_size_));
-  }
 
   int maxthreads = 1024; 
   int nthreads = min(maxthreads, mem_size_);
@@ -54,8 +47,6 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftCallbackLoadC i_ky_callbackPtr_h; 
   cufftCallbackStoreC mask_and_scale_callbackPtr_h;
   cufftCallbackStoreC scale_ky_callbackPtr_h;
-  //cufftCallbackLoadC phasefac_exb_callbackPtr_h; 
-  //cufftCallbackLoadC phasefacminus_exb_callbackPtr_h; 
 
 
   checkCuda(cudaMemcpyFromSymbol(&i_kxstar_callbackPtr_h, 
@@ -73,14 +64,6 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   checkCuda(cudaMemcpyFromSymbol(&scale_ky_callbackPtr_h, 
                      scale_ky_callbackPtr, 
                      sizeof(scale_ky_callbackPtr_h)));
-  /*
-  checkCuda(cudaMemcpyFromSymbol(&phasefac_exb_callbackPtr_h, 
-                     phasefac_exb_callbackPtr, 
-                     sizeof(phasefac_exb_callbackPtr_h)));
-  checkCuda(cudaMemcpyFromSymbol(&phasefacminus_exb_callbackPtr_h, 
-                     phasefac_exb_callbackPtr, 
-                     sizeof(phasefac_exb_callbackPtr_h)));
-  */
 
   if (grids_->phasefac_exb) { 
 	  checkCuda(cufftXtSetCallback(gradperp_plan_dxC2R, (void**) &i_kxstar_callbackPtr_h, 
@@ -104,27 +87,16 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
                      CUFFT_CB_ST_COMPLEX, 
                      NULL));
  
-  /*
-  if (grids_->phasefac_exb) { // add phasefac_exb callbacks to 1D R2C transforms in y if using ExBshear
-	  checkCuda(cufftXtSetCallback(gradperp_plan_C2Ry,   (void**) &phasefac_exb_callbackPtr_h, 
-                     CUFFT_CB_LD_COMPLEX, 
-                     (void**)&grids_->phasefac_exb));
-	  checkCuda(cufftXtSetCallback(gradperp_plan_C2Ryminus, (void**) &phasefacminus_exb_callbackPtr_h,
-                     CUFFT_CB_LD_COMPLEX,
-                     (void**)&grids_->phasefac_exb));
-  }
-  */
-  
   cudaDeviceSynchronize();
-  
+ 
+  // these are needed for NTFT/flow shear phase factor multiplication 
   int nlag = grids_->Nj;
   int nher = grids_->Nm;
   int nxkyz = grids_->NxNycNz;
 
-  // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
   int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;
   int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
-  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
+  int nbz =      min(4, nher);              int ngz      = 1 + (nher-1)/nbz;
   
   dBx_ntft = dim3(nbx_ntft, nby_ntft, nbz);
   dGx_ntft = dim3(ngx_ntft, ngy_ntft, ngz);
@@ -146,8 +118,8 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 GradPerp::~GradPerp()
 {
   if (tmp)      cudaFree (tmp);
-  if (iKxtmp)   cudaFree (iKxtmp);
-  if (iKxtmp2)  cudaFree (iKxtmp2);
+ // if (iKxtmp)   cudaFree (iKxtmp);
+ // if (iKxtmp2)  cudaFree (iKxtmp2);
   cufftDestroy ( gradperp_plan_R2C    );
   cufftDestroy ( gradperp_plan_C2R    );
   cufftDestroy ( gradperp_plan_dxC2R  );
@@ -178,102 +150,58 @@ void GradPerp::phase_mult(float* G, bool nonTwist, bool ExBshear, bool positive_
     
     if (positive_phase) {
       if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-        iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
+        iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-        iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft, false);
+        iKxJ0ftoGrid GBK (tmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
-        iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
+        iKxgsingletoGrid GBX_single_ntft (tmp, tmp, grids_->phasefac_ntft, false);
       } else if (batch_size_ == grids_->Nz) { // if multiplying phi (can delete this if I don't need timestep correction)
-        iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft, false);
+        iKxphitoGrid GBPhi_ntft (tmp, tmp, grids_->phasefac_ntft, false);
       }
     } else { // if reverse, will be size of G grid only
-      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft, false);
+      iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefacminus_ntft, false);
     }
     
     // this is kinda weird but might save memory - FFT1D sends G -> tmp, ntft phasefac sends tmp->iKxtmp, exb phasefac sends iKxtmp -> tmp? reusing tmps
     if (ExBshear) {
       if (positive_phase) {
         if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) {
-          iKxgtoGrid GBX_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
+          iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz*grids_->Nj) {
-          iKxJ0ftoGrid GBK (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
+          iKxJ0ftoGrid GBK (tmp, tmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz*grids_->Nl) {
-          iKxgsingletoGrid GBX_single_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
+          iKxgsingletoGrid GBX_single_ntft (tmp, tmp, grids_->phasefac_exb, true);
         } else if (batch_size_ == grids_->Nz) {
-          iKxphitoGrid GBPhi_ntft (iKxtmp2, iKxtmp, grids_->phasefac_exb, true);
+          iKxphitoGrid GBPhi_ntft (tmp, tmp, grids_->phasefac_exb, true);
         }
       } else {
-        iKxgtoGrid GBX_ntft (iKxtmp2, iKxtmp, grids_->phasefacminus_exb, true);
+        iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefacminus_exb, true);
       }
 
     // if ntft + exb, do FFT on tmp, if only ntft do FFT on iKxtmp
-      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp2, G);
+      cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
     } else {
-      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
+      cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
     }
 
   } else { // if ExBshear only
     if (positive_phase) {
       if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) {
-        iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_exb, true);
+        iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefac_exb, true);
       } else if (batch_size_ == grids_->Nz*grids_->Nj) {
-        iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_exb, true);
+        iKxJ0ftoGrid GBK (tmp, tmp, grids_->phasefac_exb, true);
       } else if (batch_size_ == grids_->Nz*grids_->Nl) {
-        iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_exb, true);
+        iKxgsingletoGrid GBX_single_ntft (tmp, tmp, grids_->phasefac_exb, true);
       } else if (batch_size_ == grids_->Nz) {
-        iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_exb, true);
+        iKxphitoGrid GBPhi_ntft (tmp, tmp, grids_->phasefac_exb, true);
       }
     } else {
-      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_exb, true);
+      iKxgtoGrid GBX_ntft (tmp, tmp, grids_->phasefacminus_exb, true);
     }
     
-    cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
+    cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
   }
 }
-
-/*
-void GradPerp::phase_mult(float* G, bool positive_phase)
-{
-// this function is called if you are using the NTFT and/or ExB shear, there are different cases for each
-
-  cufftExecR2C(gradperp_plan_R2Cy, G, tmp); //1D FFT in y
-
-  // multiplying by phasefac or -phasefac for NTFT/ExB - NTFT done via exp(i*deltaKx*x) multiplication between ffts (since it's 3D and callbacks would be tough), ExB performed in C2R callback
-  if (grids_->phasefac_ntft) { //if nonTwist
-
-    if (positive_phase) {
-      if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-        iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
-      } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-        iKxJ0ftoGrid GBK (iKxtmp, tmp, grids_->phasefac_ntft);
-      } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
-        iKxgsingletoGrid GBX_single_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
-      } else if (batch_size_ == grids_->Nz) { // if multiplying phi (can delete this if I don't need timestep correction)
-        iKxphitoGrid GBPhi_ntft (iKxtmp, tmp, grids_->phasefac_ntft);
-      }
-    } else { // if reverse, will be size of G grid only
-      iKxgtoGrid GBX_ntft (iKxtmp, tmp, grids_->phasefacminus_ntft);
-    }
-
-    if (grids_->phasefac_exb) { // if ExBShear
-      if (positive_phase) {
-        cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
-      } else {
-        cufftExecC2R(gradperp_plan_C2Ryminus, iKxtmp, G);
-      }
-    } else {
-      cufftExecC2R(gradperp_plan_C2Ry, iKxtmp, G);
-    }
-
-  } else { // if ExBshear only, use ExB phase factor exp(i(kxstar-kxbar)*x) within callback
-    if (positive_phase) {
-      cufftExecC2R(gradperp_plan_C2Ry, tmp, G);
-    } else {
-      cufftExecC2R(gradperp_plan_C2Ryminus, tmp, G);
-    }
-  }
-}
-*/
 
 void GradPerp::qvar (cuComplex* G, int N)
 {

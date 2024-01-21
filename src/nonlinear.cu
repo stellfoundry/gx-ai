@@ -5,7 +5,6 @@
 #define GBX_single <<< dGx_single, dBx_single >>>
 #define GBX_ntft <<<dGx_ntft, dBx_ntft >>>
 #define GBX_single_ntft <<<dGx_single_ntft, dBx_single_ntft>>>
-#define GBPhi_ntft <<<dGphi_ntft, dBphi_ntft>>>
 
 //===========================================
 // Nonlinear_GK
@@ -20,7 +19,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   Gy         = nullptr;  dJ0phi_dx  = nullptr;  dJ0phi_dy   = nullptr;  dJ0apar_dx = nullptr;
   dJ0apar_dy = nullptr;  dphi       = nullptr;  dchi = nullptr;  g_res       = nullptr;  
   J0phi      = nullptr;  J0apar     = nullptr;  dphi_dy     = nullptr;
-  iKxJ0phi   = nullptr;  iKxG       = nullptr;  iKxJ0apar   = nullptr;  iKxG_single = nullptr; iKxphi = nullptr;
+  iKxG       = nullptr;  iKxG_single = nullptr;
 
   grad_perp_f = nullptr;
   grad_perp_G = nullptr;
@@ -63,11 +62,8 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
   if (pars_->nonTwist) {
-    checkCuda(cudaMalloc(&iKxJ0phi, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&iKxG,     sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
-    checkCuda(cudaMalloc(&iKxphi,      sizeof(cuComplex)*grids_->NxNycNz));
     if (pars_->fapar > 0.) {
-      checkCuda(cudaMalloc(&iKxJ0apar,   sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
       checkCuda(cudaMalloc(&iKxG_single, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
     }
   }
@@ -100,7 +96,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
   
   // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
-  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft; // note changed division by nbx and nby to nbx_ntft and nby_ntft because I think it was a mistake... check this
+  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;
   int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
 
   dBx = dim3(nbx, nby, nbz);
@@ -122,9 +118,6 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   dBk = dim3(nbx, nby, 1);
   dGk = dim3(ngx, ngy, 1);
-
-  dBphi_ntft = dim3(nbx, 1, 1);
-  dGphi_ntft = dim3(ngx, 1, 1);
 
   cfl_x_inv = (float) grids_->Nx/2 / (pars_->cfl * pars_->x0);
   cfl_y_inv = (float) grids_->Ny/2 / (pars_->cfl * pars_->y0); 
@@ -158,11 +151,8 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( g_res       ) cudaFree ( g_res       );
   if ( J0phi       ) cudaFree ( J0phi       );
   if ( J0apar      ) cudaFree ( J0apar      );
-  if ( iKxJ0phi    ) cudaFree ( iKxJ0phi    );
   if ( iKxG        ) cudaFree ( iKxG        );
-  if ( iKxJ0apar   ) cudaFree ( iKxJ0apar   );
   if ( iKxG_single ) cudaFree ( iKxG_single );
-  if ( iKxphi      ) cudaFree ( iKxphi      );
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)
@@ -213,12 +203,13 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
   }
 
-  // JMH d/dx->ikx operator in iKxtoGrid functions for NTFT (iKx) or NTFT + ExB (iKxstar = iKx - ky*g_exb*dt), within dxC2R callback if ExB only (ikxstar)  // JMH phasefactor in 1D fft within phase_mult, called once per d/dx or d/dy parameter if NTFT, NTFT+ExB, or ExB
-  
+  // JMH d/dx->ikx operator in iKxtoGrid functions for NTFT (iKx) or NTFT + ExB (iKxstar = iKx - ky*g_exb*dt), within dxC2R callback if ExB only (ikxstar)  
+  // phasefactor in 1D fft within phase_mult, called once per d/dx or d/dy parameter if NTFT, NTFT+ExB, or ExB
+  // iKx multiplication is in place except for G/Gsingle so we don't overwrite things used elsewhere, J0phi/apar are used in this function only
   if (pars_->nonTwist) { // d/dx and positive exponential phase factor calulation
-    iKxJ0ftoGrid GBK (iKxJ0phi, J0phi, grids_->iKx, false);
-    grad_perp_J0f -> C2R(iKxJ0phi, dJ0phi_dx);
-  } else { //perform d/dx as normal for conventional flux tube
+    iKxJ0ftoGrid GBK (J0phi, J0phi, grids_->iKx, false);
+    grad_perp_J0f -> C2R(J0phi, dJ0phi_dx);
+  } else { //perform d/dx as normal for conventional flux tube 
     grad_perp_J0f -> dxC2R(J0phi, dJ0phi_dx);
   }
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_J0f -> phase_mult(dJ0phi_dx, pars_->nonTwist, pars_->ExBshear_phase);
@@ -231,8 +222,8 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
    
     if (pars_->nonTwist) {
-      iKxJ0ftoGrid GBK (iKxJ0apar, J0apar, grids_->iKx, false);
-      grad_perp_J0f -> C2R(iKxJ0apar, dJ0apar_dx);
+      iKxJ0ftoGrid GBK (J0apar, J0apar, grids_->iKx, false);
+      grad_perp_J0f -> C2R(J0apar, dJ0apar_dx);
     } else {
       grad_perp_J0f -> dxC2R(J0apar, dJ0apar_dx);
     }

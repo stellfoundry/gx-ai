@@ -3705,30 +3705,19 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) kxstar[idxy] = kxstar[idxy] + g_exb / abs(g_exb) * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
-    
-
-    //phasefac = exp(i*phase) = cos(phase) + i * sin(phase)
-    //phasefacminus = exp(-i*phase)) = cos(-phase) + i * sin(-phase) = cos(phase) - i * sin(phase)
  
-    if (ExBshear_phase) { // only update if includnig factor
+    if (ExBshear_phase) { // only update if including factor
       float phase = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
       sincosf(phase, &phasefac[idxy].y, &phasefac[idxy].x); // Read sin(phase) and cos(phase) into real and imaginary parts of complex exponential.
       sincosf(-phase, &phasefac_minus[idxy].y, &phasefac_minus[idxy].x);
-      //printf("phasefac[%d].x  = %f, .y = %f \n", idxy, phasefac[idxy].x, phasefac[idxy].y);
-      //printf("phasefac_minus[%d].x  = %f, .y = %f \n", idxy, phasefac_minus[idxy].x, phasefac_minus[idxy].y);
     }
   }
 }
 
 
-// Subtleties: 1 extra padding in ky, normalization for theta0 and gexb, not letting kx go to ±inf, restarting kperp, updating kperp, kperp and kx at different Runge-Kutta timesteps
-// JFP: This function shifts the fields at each timestep due to ExB shear.
-// index is at the previous timestep.
-// index_shifted is at the new timestep, due to ExB shear changing kxstar, and therefore potentially kxbar.
-// ikx_shifted is the index of kxbar at the new timestep.
-// if ikx_shifted is outside of the dealiased grid, we set fields to zero.
-// otherwise, we shift fields to the appropriate new kx index.
-// this should work for multistep schemes.
+// JMH // the shift functions are only called if kx* rounds to a new kxbar value and we need to shift phi and g with it
+// there might be a better way of doing this if we let a mode trek across the entire kx grid before we remap (if it is > nakx/2) instead of across a single mode
+// would need to change how we track kxstar above, could be good future project to improve efficiency
 
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb)
 {
@@ -3747,7 +3736,6 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
-      //if (idz == 0) printf("off the grid field shift! idy = %d, idx = %d, kxbar_ikx_old = %d -> kxbar_ikx_new = %d \n", idy, idx, kxbar_ikx_old[idxy], kxbar_ikx_new[idxy] + nakx);
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
       int idx_old = kxbar_ikx_old[idxy];
       int idx_new = kxbar_ikx_new[idxy];
@@ -3756,7 +3744,6 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int idxyz_old = idy + nyc * (idx_old + nx * idz);
       int idxyz_new = idy + nyc * (idx_new + nx * idz);
       field_new[idxyz_new] = field_old[idxyz_old];
-      //if (idz == 0) printf("field shift! idy = %d, idx = %d, kxbar_ikx_old = %d -> kxbar_ikx_new = %d \n", idy, idx, kxbar_ikx_old[idxy], kxbar_ikx_new[idxy]);
     }
   }
 }

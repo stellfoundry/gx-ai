@@ -24,6 +24,7 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   
   dimBlock_xyzlm = dim3(nt1, nt2, nt3);
   dimGrid_xyzlm  = dim3(nb1, nb2, nb3);
+  checkCuda(cudaGetLastError());
 
   CP_TO_GPU (grids_->x, grids_->x_h, sizeof(float)*grids_->Nx); //find a better place for this? only need to do it once for exb/ntft // JMH
 
@@ -36,17 +37,17 @@ ExB_GK::~ExB_GK()
 void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per timestep
 {
   // update kxstar terms and phasefactor
-  kxstar_phase_shift<<<dimBlock_xy, dimGrid_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, grids_->phasefacminus_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
+  kxstar_phase_shift<<<dimGrid_xy, dimBlock_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, grids_->phasefacminus_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
 
   // update geometry
   if (pars_->nonTwist) {
-    geo_shift_ntft<<<dimBlock_xyz, dimGrid_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
+    geo_shift_ntft<<<dimGrid_xyz, dimBlock_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat,
 			     geo_->ftwist, geo_->deltaKx, geo_->m0, pars_->x0);
-    if (!pars_->linear) iKx_shift_ntft <<<dimBlock_xyz, dimGrid_xyz>>>(grids_->iKx, pars_->g_exb, dt, grids_->ky);
+    if (!pars_->linear) iKx_shift_ntft <<<dimGrid_xyz, dimBlock_xyz>>>(grids_->iKx, pars_->g_exb, dt, grids_->ky);
   } else { 
-    geo_shift<<<dimBlock_xyz, dimGrid_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
+    geo_shift<<<dimGrid_xyz, dimBlock_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat);
   }

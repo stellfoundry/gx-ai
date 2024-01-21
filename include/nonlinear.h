@@ -74,11 +74,8 @@ class Nonlinear_GK : public Nonlinear {
   float vmax_y[1]     ;
   cuComplex * J0phi   ;
   cuComplex * J0apar ;
-  cuComplex * iKxJ0phi;
   cuComplex * iKxG    ;
-  cuComplex * iKxJ0apar;
   cuComplex * iKxG_single;
-  cuComplex * iKxphi; 
 };
 
 class Nonlinear_KREHM : public Nonlinear {
