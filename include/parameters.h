@@ -167,6 +167,7 @@ class Parameters {
   float rho_s, rho_i, d_e, zt;
   bool harris_sheet;
   bool periodic_equilibrium;
+  bool island_coalesce;
   float k0; 
   bool gaussian_tube;
   cuComplex phi_test, smith_perp_w0;
@@ -176,6 +177,8 @@ class Parameters {
 
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;
+  bool gaussian_init;
+  float gaussian_width;
   bool vp, vp_closure;
   bool cetg;  
   bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;

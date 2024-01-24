@@ -115,6 +115,8 @@ void Parameters::get_nml_vars(char* filename)
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
   ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
+  gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
+  gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     1.0   );
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
   densfac = toml::find_or <float> (tnml, "densfac", 1.0);
   uparfac = toml::find_or <float> (tnml, "uparfac", 1.0);
@@ -202,10 +204,13 @@ void Parameters::get_nml_vars(char* filename)
   zt                = toml::find_or <float> (tnml, "zt",          1.0 );
   harris_sheet      = toml::find_or <bool>  (tnml, "harris_sheet", false);
   periodic_equilibrium = toml::find_or <bool> (tnml, "periodic_equilibrium", false);
+  island_coalesce = toml::find_or <bool> (tnml, "island_coalesce", false);
   k0                = toml::find_or <float> (tnml, "k0", 10.0);
   gaussian_tube     = toml::find_or <bool> (tnml, "gaussian_tube", false);
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
+  // allow hypercollisions = true to give correct behavior for KREHM (which always uses const option)
+  if(krehm && hypercollisions_kz) {hypercollisions_const = true; hypercollisions_kz = false;}
 
   tnml = nml;
   if (nml.contains("Expert")) tnml = toml::find (nml, "Expert");

@@ -70,6 +70,8 @@ class Grids {
   int proc(int iproc_m_in, int iproc_s_in) { return iproc_m_in + nprocs_m*iproc_s_in; };
   int procLeft() {return proc(iproc_m-1, iproc_s);}
   int procRight() {return proc(iproc_m+1, iproc_s);}
+  int procLeft2() {return proc(iproc_m-2, iproc_s);}
+  int procRight2() {return proc(iproc_m+2, iproc_s);}
 
   dim3 dB, dG;
 

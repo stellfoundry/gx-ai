@@ -261,6 +261,9 @@ void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmp
     float p_s = pars_->species_h[is_glob].nt;
     float vts = pars_->species_h[is_glob].vt;
     float tzs = pars_->species_h[is_glob].tz;
+    if(grids_->Nm <= 2) {
+      G[is]->sync(true);
+    }
     heat_flux_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, f->bpar, G[is]->G(), grids_->ky,  geo_->flux_fac, geo_->kperp2, rho2s, p_s, vts, tzs); 	
   }
   write_spectra(tmpf);
@@ -711,7 +714,7 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
   count[1] = grids->Ny;
   count[2] = grids->Nx;
   count[3] = grids->Nz;
-
+   
   int retval;
   for(int i=0; i<3; i++) {
     if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
@@ -720,6 +723,7 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
 
   N = grids->NxNyNz;
   f_h = (float*) malloc  (sizeof(float) * N);
+  cpu = (float*) malloc  (sizeof(float) * N);
 
   fXY = nonlinear_->get_fXY();
   grad_perp_ = nonlinear_->get_grad_perp_f();
@@ -728,6 +732,7 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
 FieldsXYDiagnostic::~FieldsXYDiagnostic() 
 {
   free(f_h);
+  free(cpu);
 }
 
 void FieldsXYDiagnostic::calculate_and_write(Fields* f)
@@ -738,21 +743,38 @@ void FieldsXYDiagnostic::calculate_and_write(Fields* f)
   // write phi to ncdf
   grad_perp_->C2R(f->phi, fXY);
   CP_TO_CPU(f_h, fXY, sizeof(float)*N);
-  if (retval=nc_put_vara(nc_group, varids[0], start, count, f_h)) ERR(retval);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[0], start, count, cpu)) ERR(retval);
 
   // write apar to ncdf
   grad_perp_->C2R(f->apar, fXY);
   CP_TO_CPU(f_h, fXY, sizeof(float)*N);
-  if (retval=nc_put_vara(nc_group, varids[1], start, count, f_h)) ERR(retval);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[1], start, count, cpu)) ERR(retval);
   
   // write bpar to ncdf
   grad_perp_->C2R(f->bpar, fXY);
   CP_TO_CPU(f_h, fXY, sizeof(float)*N);
-  if (retval=nc_put_vara(nc_group, varids[2], start, count, f_h)) ERR(retval);
+  dealias_and_reorder(f_h, cpu);
+  if (retval=nc_put_vara(nc_group, varids[2], start, count, cpu)) ERR(retval);
 }
 
-void FieldsXYDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
+// transpose so that z is fastest index
+void FieldsXYDiagnostic::dealias_and_reorder(float *f, float *fr)
 {
+  int Nx   = grids_->Nx;
+  int Ny   = grids_->Ny;
+  int Nz   = grids_->Nz;
+
+  for (int iy=0; iy<Ny; iy++) {
+    for (int ix=0; ix<Nx; ix++) {
+      for (int iz=0; iz<Nz; iz++) {
+        int ig = iy + Ny*ix + Nx*Ny*iz;
+        int iwrite = iz + ix*Nz + iy*Nx*Nz;
+        fr[iwrite] = f[ig];
+      }
+    }
+  }
 }
 
 // similar structure to FieldsDiagnostic, but with a species index

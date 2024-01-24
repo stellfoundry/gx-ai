@@ -44,6 +44,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     checkCudaErrors(cudaGetLastError());
 
     if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
       if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars); 
       if (pars->forcing_type == "general")   forcing = new genForcing(pars);       
@@ -75,13 +76,19 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   if (pars->krehm) {
     linear = new Linear_KREHM(pars, grids);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
-
+    if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
+      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
+      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
+      if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+      if (pars->forcing_type == "HeliInj")   forcing = new HeliInjForcing(pars, grids);
+   }
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
     G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
-    if(pars->harris_sheet or pars->periodic_equilibrium or pars->gaussian_tube) solver -> set_equilibrium_current(G[0], fields);
+    if(pars->harris_sheet or pars->periodic_equilibrium or pars->island_coalesce or pars->gaussian_tube) solver -> set_equilibrium_current(G[0], fields);
     G[0] -> sync(true);
     solver -> fieldSolve(G, fields);                
 
