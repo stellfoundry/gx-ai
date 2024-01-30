@@ -428,11 +428,11 @@ TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* 
 void TurbulentHeatingDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    turbulent_heating_summand <<<dG, dB>>> (&tmpG[grids_->NxNycNz*grids_->Nmoms*is], f->phi, f->apar, f->bpar, 
+    turbulent_heating_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->phi, f->apar, f->bpar, 
                                             f_old_->phi, f_old_->apar, f_old_->bpar, 
                                             G[is]->G(), G_old_[is]->G(), geo_->vol_fac, geo_->kperp2, *(G[is]->species), dt_);
   }
-  write_spectra(tmpG);
+  write_spectra(tmpf);
 
   // get Heat(t) data to write to screen
   float *heat = spectraList[0]->get_data();
