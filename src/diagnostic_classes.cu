@@ -250,7 +250,7 @@ HeatFluxDiagnostic::HeatFluxDiagnostic(Parameters* pars, Grids* grids, Geometry*
   add_spectra(allSpectra->kyst_spectra);
   add_spectra(allSpectra->kxkyst_spectra);
   add_spectra(allSpectra->zst_spectra);
-  add_spectra(allSpectra->kxkyzst_spectra);
+  //add_spectra(allSpectra->kxkyzst_spectra);
 }
 
 void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
@@ -414,6 +414,8 @@ TurbulentHeatingDiagnostic::TurbulentHeatingDiagnostic(Parameters* pars, Grids* 
   varname = "TurbulentHeating";
   description = "Turbulent heating from collisions in gyroBohm units"; 
   isMoments = false;
+  if(grids_->m_lo>0) skipWrite = true; // procs with higher hermites will have nonsense 
+                                       // heating data, so skip the write from these procs
   set_kernel_dims();
 
   add_spectra(allSpectra->st_spectra);
