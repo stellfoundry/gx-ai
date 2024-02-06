@@ -49,7 +49,8 @@ f = toml.load(input_file)
 
 ntgrid = int(f["Dimensions"]["ntheta"] / 2 + 1)
 ntheta_in = int(f["Dimensions"]["ntheta"])
-npol = f["Geometry"]["npol"]
+npol = f.get("Geometry").get("npol", 1.0)
+npol_min = f.get("Geometry").get("npol_min", None)
 
 try:
     isaxisym = f["Geometry"]["isaxisym"]
@@ -63,7 +64,6 @@ try:
     rhoc = f["Geometry"]["torflux"]
 except KeyError:
     rhoc = f["Geometry"]["desired_normalized_toroidal_flux"]
-alpha = f["Geometry"]["alpha"]
 
 try:
     betaprim = f["Geometry"]["betaprim"]
@@ -97,11 +97,14 @@ x0 = f.get("Domain").get("x0", y0)
 jtwist_in = f.get("Domain").get("jtwist", None)
 jtwist_max = f.get("Domain").get("jtwist_max", None)
 
-which_crossing = f.get("Geometry").get("which_crossing", -1)
+default = -1
+if npol_min is not None:
+    default = 0
+which_crossing = f.get("Geometry").get("which_crossing", default)
 
 # include self-consistent equilibrium variation due to shear and pressure gradient 
-include_shear_variation = f.get("Geometry").get("include_shear_variation", True)
-include_pressure_variation = f.get("Geometry").get("include_pressure_variation", True)
+include_shear_variation = f.get("Geometry").get("include_shear_variation", False)
+include_pressure_variation = f.get("Geometry").get("include_pressure_variation", False)
 
 mu_0 = 4 * np.pi * (1.0e-7)
 
@@ -368,7 +371,6 @@ def vmec_splines(nc_obj, booz_obj):
 def vmec_fieldlines(
     vmec_fname,
     s,
-    alpha,
     betaprim,
     toml_dict,
     theta1d=None,
@@ -439,14 +441,6 @@ def vmec_fieldlines(
     s = np.array(s)
     ns = len(s)
 
-    # Make sure alpha is an array
-    # For axisymmetric equilibria, all field lines are identical, i.e., your choice of alpha doesn't matter
-    try:
-        nalpha = len(alpha)
-    except:
-        alpha = [alpha]
-    alpha = np.array(alpha)
-    nalpha = len(alpha)
 
     if (theta1d is not None) and (phi1d is not None):
         raise ValueError("You cannot specify both theta and phi")
@@ -469,6 +463,22 @@ def vmec_fieldlines(
     print("shat = ", shat)
     print("d iota / ds", d_iota_d_s)
     print("d pressure / ds", d_pressure_d_s)
+
+    zeta_center = toml_dict.get("Geometry").get("zeta_center", 0.0)
+    alpha = toml_dict.get("Geometry").get("alpha", -iota*zeta_center)
+    shift_grad_alpha = toml_dict.get("Geometry").get("shift_grad_alpha", True)
+
+    if not shift_grad_alpha:
+        zeta_center = 0.0
+
+    # Make sure alpha is an array
+    # For axisymmetric equilibria, all field lines are identical, i.e., your choice of alpha doesn't matter
+    try:
+        nalpha = len(alpha)
+    except:
+        alpha = [alpha]
+    alpha = np.array(alpha)
+    nalpha = len(alpha)
 
     try:
         iota_input = toml_dict["Geometry"]["iota_input"]
@@ -693,17 +703,17 @@ def vmec_fieldlines(
     )
 
     grad_alpha_X = (
-        -phi_b * d_iota_d_s[:, None, None] * grad_psi_X / edge_toroidal_flux_over_2pi
+        -(phi_b-zeta_center) * d_iota_d_s[:, None, None] * grad_psi_X / edge_toroidal_flux_over_2pi
         + grad_theta_b_X
         - iota[:, None, None] * grad_phi_b_X
     )
     grad_alpha_Y = (
-        -phi_b * d_iota_d_s[:, None, None] * grad_psi_Y / edge_toroidal_flux_over_2pi
+        -(phi_b-zeta_center) * d_iota_d_s[:, None, None] * grad_psi_Y / edge_toroidal_flux_over_2pi
         + grad_theta_b_Y
         - iota[:, None, None] * grad_phi_b_Y
     )
     grad_alpha_Z = (
-        -phi_b * d_iota_d_s[:, None, None] * grad_psi_Z / edge_toroidal_flux_over_2pi
+        -(phi_b-zeta_center) * d_iota_d_s[:, None, None] * grad_psi_Z / edge_toroidal_flux_over_2pi
         + grad_theta_b_Z
         - iota[:, None, None] * grad_phi_b_Z
     )
@@ -818,9 +828,6 @@ def vmec_fieldlines(
     )
 
     ## EQUILIBRIUM CHECK: Flux surface averaged MHD force balance.
-    print(d_G_d_s[:, None, None]
-        + iota[:, None, None] * d_I_d_s[:, None, None]
-        + mu_0 * d_pressure_d_s[:, None, None] * Vprime)
     np.testing.assert_allclose(
         d_G_d_s[:, None, None]
         + iota[:, None, None] * d_I_d_s[:, None, None]
@@ -882,7 +889,7 @@ def vmec_fieldlines(
         1
         / edge_toroidal_flux_over_2pi
         * (
-            d_iota_d_s_1[:, None, None] * (intinv_g_sup_psi_psi / D1 - phi_b)
+            d_iota_d_s_1[:, None, None] * (intinv_g_sup_psi_psi / D1 - phi_b + zeta_center)
             - d_pressure_d_s_1[:, None, None]
             * Vprime[:, None, None]
             * (G[:, None, None] + iota[:, None, None] * I[:, None, None])
@@ -904,11 +911,11 @@ def vmec_fieldlines(
     # NOTE: Potential sign issue here
     L0 = -1 * (
         grad_alpha_dot_grad_psi / g_sup_psi_psi
-        + 1 / edge_toroidal_flux_over_2pi * d_iota_d_s[:, None, None] * phi_b
+        + 1 / edge_toroidal_flux_over_2pi * d_iota_d_s[:, None, None] * (phi_b-zeta_center)
     )
     # L1 is the integrated local shear
     L1 = (
-        -1 / edge_toroidal_flux_over_2pi * d_iota_d_s_1[:, None, None] * phi_b
+        -1 / edge_toroidal_flux_over_2pi * d_iota_d_s_1[:, None, None] * (phi_b-zeta_center)
         + grad_alpha_dot_grad_psi / g_sup_psi_psi
         - D_HNGC
     )
@@ -1055,14 +1062,24 @@ def vmec_fieldlines(
 ########-----------------CALCULATING GEOMETRY----------------################
 #############################################################################
 
-nt = ntgrid
-ntheta = ntheta_in + 1
-# This is Boozer theta
-theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
+if npol_min is not None:
+    nt = ntgrid
+    ntheta = ntheta_in + 1
+    # double grid to allow cut after npol_min
+    nt_ext = ntgrid*2
+    ntheta_ext = ntheta_in*2 + 1
+    # This is Boozer theta
+    theta = np.linspace(-2*npol_min * np.pi, 2*npol_min * np.pi, ntheta_ext)
+else:
+    nt = ntgrid
+    ntheta = ntheta_in + 1
+    # This is Boozer theta
+    theta = np.linspace(-npol * np.pi, npol * np.pi, ntheta)
+
 kxfac = abs(1.0)
 
 geo_coeffs = vmec_fieldlines(
-    vmec_fname, rhoc, alpha, betaprim, f, theta1d=theta, isaxisym=isaxisym
+    vmec_fname, rhoc, betaprim, f, theta1d=theta, isaxisym=isaxisym
 )
 
 
@@ -1104,6 +1121,9 @@ if flux_tube_cut == "gds21":
     # find roots
     gds21_roots = gds21_spl.roots(extrapolate=False)
 
+    if npol_min is not None:
+        gds21_roots = gds21_roots[gds21_roots > npol_min*np.pi]
+
     # determine theta cut
     cut = gds21_roots[which_crossing]
 elif flux_tube_cut == "gbdrift0":
@@ -1116,6 +1136,9 @@ elif flux_tube_cut == "gbdrift0":
     # find roots
     gbdrift0_roots = gbdrift0_spl.roots(extrapolate=False)
 
+    if npol_min is not None:
+        gbdrift0_roots = gbdrift0_roots[gbdrift0_roots > npol_min*np.pi]
+
     # determine theta cut
     cut = gbdrift0_roots[which_crossing]
 elif flux_tube_cut == "aspect":
@@ -1125,7 +1148,7 @@ elif flux_tube_cut == "aspect":
 
     jtwist_spl = CubicSpline(theta, jtwist)
 
-    # find locations where jtwist_spl is integer valued. we'll check jtwist = [-30, 30]
+    # find locations where jtwist_spl is integer valued. we'll check jtwist = [-30, 30] unless jtwist_max is set
     if jtwist_in is not None:
         vals = np.array([jtwist_in])
     elif jtwist_max is not None:
@@ -1136,6 +1159,9 @@ elif flux_tube_cut == "aspect":
     crossings = [jtwist_spl.solve(i, extrapolate=False) for i in vals]
     crossings = np.concatenate(crossings)
     crossings.sort()
+
+    if npol_min is not None:
+        crossings = crossings[crossings > npol_min*np.pi]
 
     # determine theta cut
     cut = crossings[which_crossing]
