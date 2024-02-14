@@ -206,6 +206,8 @@ void Parameters::get_nml_vars(char* filename)
   island_coalesce = toml::find_or <bool> (tnml, "island_coalesce", false);
   k0                = toml::find_or <float> (tnml, "k0", 10.0);
   gaussian_tube     = toml::find_or <bool> (tnml, "gaussian_tube", false);
+  random_gaussian   = toml::find_or <bool> (tnml, "random_gaussian", false);
+  kc                = toml::find_or <float> (tnml, "kc", 25.0);
   rho_s = rho_i*sqrtf(zt/2);
   if(eta>0.0) nu_ei = eta/d_e/d_e;
   // allow hypercollisions = true to give correct behavior for KREHM (which always uses const option)
