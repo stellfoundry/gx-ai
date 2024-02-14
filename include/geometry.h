@@ -69,6 +69,7 @@ class Geometry {
   float theta_scale = 1.0;
   int nperiod;
   bool zero_shat_; 
+  int nfp = 1;
   
   cuComplex * bmag_complex ;
   float * bgrad_temp ;
