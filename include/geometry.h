@@ -67,6 +67,8 @@ class Geometry {
   float shift;
   float rmaj;
   float theta_scale = 1.0;
+  float alpha;
+  float zeta_center;
   int nperiod;
   bool zero_shat_; 
   int nfp = 1;
