@@ -586,6 +586,18 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   theta_scale = (float) stmp;
 
+  if (retval = nc_inq_varid(ncgeo, "nfp", &id))            ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  nfp = (int) stmp;
+
+  if (retval = nc_inq_varid(ncgeo, "alpha", &id))            ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  alpha = (float) stmp;
+
+  if (retval = nc_inq_varid(ncgeo, "zeta_center", &id))            ERR(retval);
+  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
+  zeta_center = (float) stmp;
+
   // close the netcdf file with nc_close
   if (retval = nc_close(ncgeo)) ERR(retval);
 

@@ -1671,7 +1671,8 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   if (retval = nc_def_var(ncgeo, "q", NC_DOUBLE, 0, NULL, &id_q))                       ERR(retval);
   int id_scale;
   if (retval = nc_def_var(ncgeo, "scale", NC_DOUBLE, 0, NULL, &id_scale))               ERR(retval);
-
+  int id_nfp;
+  if (retval = nc_def_var(ncgeo, "nfp", NC_INT, 0, NULL, &id_nfp))               ERR(retval);
 
   // write vmec file name as an attribute
   int id_vmec;
@@ -1730,7 +1731,7 @@ void Geometric_coefficients::write_geo_arrays_to_nc(double* theta_grid, double* 
   double q = safety_factor_q;
   if (retval = nc_put_var(ncgeo, id_q, &q))                             ERR(retval);
   if (retval = nc_put_var(ncgeo, id_scale, &domain_scaling_factor))     ERR(retval);
-
+  if (retval = nc_put_var(ncgeo, id_nfp, &vmec->nfp))     ERR(retval);
   
   if (retval = nc_put_vara(ncgeo, id_theta,    start, count, theta_grid))  ERR(retval);
   if (retval = nc_put_vara(ncgeo, id_gradpar,  start, count, gradpar))     ERR(retval);
