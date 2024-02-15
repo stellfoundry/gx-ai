@@ -587,8 +587,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   theta_scale = (float) stmp;
 
   if (retval = nc_inq_varid(ncgeo, "nfp", &id))            ERR(retval);
-  if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
-  nfp = (int) stmp;
+  if (retval = nc_get_var  (ncgeo, id, &nfp))           ERR(retval);
 
   if (retval = nc_inq_varid(ncgeo, "alpha", &id))            ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);

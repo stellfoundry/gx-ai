@@ -492,6 +492,8 @@ def vmec_fieldlines(
     except KeyError:
         s_hat_input = shat
 
+    nfp = vs.nfp
+
     L_reference = vs.Aminor_p
 
     edge_toroidal_flux_over_2pi = -vs.phiedge / (2 * np.pi)
@@ -1051,7 +1053,8 @@ def vmec_fieldlines(
         "cvdrift0",
         "grho",
         "alpha",
-        "zeta_center"
+        "zeta_center",
+        "nfp"
     ]
 
     for v in variables:
@@ -1101,6 +1104,7 @@ Z = geo_coeffs.Z_b[0][0]
 grho = geo_coeffs.grho[0][0]
 alpha = geo_coeffs.alpha
 zeta_center = geo_coeffs.zeta_center
+nfp = geo_coeffs.nfp
 
 # rho = sqrt(psi/psi_LCFS) = sqrt(rhoc)
 dpsidrho = 2 * np.sqrt(rhoc) * geo_coeffs.edge_toroidal_flux_over_2pi
@@ -1311,6 +1315,10 @@ try:
         "zeta_center",
         "f8",
     )
+    nfp_nc = ds0.createVariable(
+        "nfp",
+        "i4",
+    )
 
     theta_nc[:] = theta_GX[:]
     theta_PEST_nc[:] = theta_PEST[:]
@@ -1336,6 +1344,7 @@ try:
     scale[0] = domain_scaling_factor
     alpha_nc[0] = alpha
     zeta_center_nc[0] = zeta_center
+    nfp_nc[0] = nfp
 
     ds0.close()
 except ModuleNotFoundError:
