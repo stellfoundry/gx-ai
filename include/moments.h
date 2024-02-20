@@ -20,8 +20,10 @@ class MomentsG {
   }
   
   // calling with one argument checks bounds in 1D i.e. (0,Nmoms)
+  // really the no-argument version is a specialisation of the 1-argument one, not the 2-argument one hence the default
+  // value is here and not on the 2-argument declaration
   cuComplex* G(int moment_idx = 0) {
-    assert( m >= 0 && m < grids_->Nmoms && "Invalid moment requested: moment index out of bounds" );
+    assert( moment_idx >= 0 && moment_idx < grids_->Nmoms && "Invalid moment requested: moment index out of bounds" );
     return &G_lm[grids_->NxNycNz*(moment_idx + grids_->Nl * grids_->m_ghost)]; // note shift by m_ghost! 
     // glm[ky, kx, z]
   }
