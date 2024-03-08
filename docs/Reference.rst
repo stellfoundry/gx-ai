@@ -9,3 +9,4 @@ Reference pages
    Geometry
    Outputs
    Numerics
+   gcp_vm_prep
