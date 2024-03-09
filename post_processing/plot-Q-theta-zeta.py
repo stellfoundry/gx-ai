@@ -25,7 +25,6 @@ Q_all = np.array([])
 grho_all = np.array([])
 for fname in files:
     data = Dataset(fname, mode='r')
-    data_geo = Dataset(fname[:-6] + "eik.nc", mode='r')
     
     t = data.groups['Grids'].variables['time'][:]
     scale = data.groups['Geometry'].variables['theta_scale'][:]
@@ -33,7 +32,11 @@ for fname in files:
     dz = (theta[1]-theta[0])/scale
     
     iota = 1/data.groups['Geometry'].variables['q'][:]
-    zeta_center = data_geo.variables['zeta_center'][:]
+    try:
+        zeta_center = data.groups['Geometry'].variables['zeta_center'][:]
+    except:  # older output files don't have zeta_center, read from eik file instead
+        data_geo = Dataset(fname[:-6] + "eik.nc", mode='r')
+        zeta_center = data_geo.variables['zeta_center'][:]
     alpha = -iota*zeta_center
     zeta = (theta - alpha)/iota
     
