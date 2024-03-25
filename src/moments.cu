@@ -191,31 +191,29 @@ void MomentsG::initialConditions(double* time) {
       //initialize single mode
       int iky = pars_->iky_single;
       int ikx = pars_->ikx_single;
+		int ikz = pars_->ikpar_init;
       int NKX = 1;
       if (iky == 0 && ikx<1+(grids_->Nx-1)/3) NKX = 2; // reality condition for tertiary tests
-      for (int j = 0; j<NKX; j++) {
-	 if (j==1) ikx = grids_->Nx-ikx;
-	 DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
-	 for(int iz=0; iz<grids_->Nz; iz++) {
-	    int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
+		for (int j = 0; j<NKX; j++) {
+			if (j==1) ikx = grids_->Nx-ikx;
+			DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
+			for(int k=0; k<grids_->Nz; k++) {
+				int index = iky + grids_->Nyc*ikx + grids_->NxNyc*ikz;
 
-	    init_h[index].x = pars->init_amp;
-	    init_h[index].y = 0.0;
+				init_h[index].x = pars->init_amp;
+				init_h[index].y = 0.0;
 
-	    if (pars_->ikpar_init < 0) {		
-	       init_h[index].x *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
-		     + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
-	       init_h[index].y *= (cos( -pars_->ikpar_init    *z_h[k]/pars_->Zp)
-		     + cos((-pars_->ikpar_init+1.)*z_h[k]/pars_->Zp));
-	    }
-	    // This is a common option for debugging. We choose perturbations which are
-	    // monochromatic in z. 
-	    else {
-	       init_h[index].x *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
-	       init_h[index].y *= cos(pars_->ikpar_init*z_h[k]/pars_->Zp);
-	    }	
-	 }
-      }
+				// Negative ikpar init means k_|| & k_|| + 1, where k_|| = |kpar_init|
+				if (ikz < 0) {		
+					int ikpar = -ikz;
+					init_h[index].x *= ( cos(ikpar*z_h[k]/pars_->Zp) + cos((ikpar + 1)*z_h[k]/pars_->Zp) );
+					init_h[index].y *= ( cos(ikpar*z_h[k]/pars_->Zp) + cos((ikpar + 1)*z_h[k]/pars_->Zp) );
+				} else {
+					init_h[index].x *= cos(ikz*z_h[k]/pars_->Zp);
+					init_h[index].y *= cos(ikz*z_h[k]/pars_->Zp);
+				}	
+			}
+		}
     } else if(pars_->gaussian_init) {
       for(int ikx=0; ikx < 1 + (grids_->Nx - 1)/3; ikx++) {
 	// No perturbation inserted for ky=0 mode because loop starts with j=1
