@@ -200,7 +200,7 @@ void MomentsG::initialConditions(double* time) {
 			for(int k=0; k<grids_->Nz; k++) {
 				int index = iky + grids_->Nyc*ikx + grids_->NxNyc*ikz;
 
-				init_h[index].x = pars->init_amp;
+				init_h[index].x = pars_->init_amp;
 				init_h[index].y = 0.0;
 
 				// Negative ikpar init means k_|| & k_|| + 1, where k_|| = |kpar_init|
