@@ -2,6 +2,7 @@
 #include "get_error.h"
 #include "grad_perp.h"
 #include <cmath> // Include cmath for mathematical functions
+#include <iostream>
 
 Fields::Fields(Parameters* pars, Grids* grids) :
   size_(sizeof(cuComplex)*grids->NxNycNz), sizeReal_(sizeof(float)*grids->NxNyNz), N(grids->NxNycNz), pars_(pars), grids_(grids),
