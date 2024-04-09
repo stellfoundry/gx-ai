@@ -4,7 +4,7 @@
 // object for handling flow shear terms.
 //=======================================
 ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
-  pars_(pars_), grids_(grids), geo_(geo), phi_tmp(nullptr), g_tmp(nullptr)
+  pars_(pars_), grids_(grids), geo_(geo), phi_tmp(nullptr)
 { 
   // Allocate temporary space for phi (on GPU)
   checkCuda(cudaMalloc(&phi_tmp, sizeof(cuComplex)*grids_->NxNycNz));
@@ -66,5 +66,5 @@ void ExB_GK::flow_shear_g_shift(MomentsG* G) // this is called for each G used i
 {
   // gTmp = G ; G = g_shift(gTmp)
   gTmp->copyFrom( G );
-  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), gTmp->G(), grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
 }

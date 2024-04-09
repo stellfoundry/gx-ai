@@ -80,8 +80,10 @@ class RungeKutta4 : public Timestepper {
   ~RungeKutta4();
   void advance(double* t, MomentsG** G, Fields* fields);
   void partial(MomentsG** G, MomentsG** Gt, Fields *f,
-	       MomentsG** Rhs, MomentsG **Gnew, double adt, bool setdt);
+	       MomentsG** Rhs, MomentsG **Gnew, double adt );
   double get_dt() {return dt_;};
+
+  void set_timestep( Fields * );
 
  private:
   const double dt_max;
