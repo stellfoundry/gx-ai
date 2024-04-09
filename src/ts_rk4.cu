@@ -122,7 +122,7 @@ void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
       exb_->flow_shear_g_shift(G_q2[is]);
     }
   }
-  partial(G, G_q2, f, GStar, G_q1, 1., false);
+  partial(G, G_q2, f, GStar, G_q1, 1.);
 
   // This update is just to improve readability
   for(int is=0; is<grids_->Nspecies; is++) {
