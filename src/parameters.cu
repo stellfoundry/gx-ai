@@ -230,6 +230,8 @@ void Parameters::get_nml_vars(char* filename)
     i_share = i_share_max;
   }
   
+  fixed_dt    = toml::find_or <bool>   (tnml, "fixed_timestep",  false );
+
   dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );

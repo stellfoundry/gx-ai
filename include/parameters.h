@@ -229,6 +229,8 @@ class Parameters {
   bool long_wavelength_GK;
   bool ExBshear_phase;
   float damp_ends_widthfrac, damp_ends_amp;
+
+  bool fixed_dt;
     
   char *scan_type;
   char *equilibrium_option, *nlpm_option;

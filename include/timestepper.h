@@ -88,6 +88,7 @@ class RungeKutta4 : public Timestepper {
   double dt_;
   const double cfl_fac = 2.82;
   double omega_max[3];
+  bool set_dt = true;
 
   Linear     * linear_    ;
   Nonlinear  * nonlinear_ ;

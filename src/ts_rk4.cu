@@ -19,6 +19,8 @@ RungeKutta4::RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
     G_q1[is] = new MomentsG (pars_, grids_, is_glob);
     G_q2[is] = new MomentsG (pars_, grids_, is_glob);
   }
+  if( pars->fixed_dt )
+	set_dt = false;
 }
 
 RungeKutta4::~RungeKutta4()
@@ -87,7 +89,8 @@ void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
   }
   
   // if we're changing the timestep, set it now
-  set_timestep( f );
+  if( set_dt )
+	  set_timestep( f );
 
   // dt_ now contains the new timestep
   
