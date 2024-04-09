@@ -16,7 +16,6 @@ class ExB_GK : public ExB {
     void flow_shear_shift(Fields* f, double dt);
     void flow_shear_g_shift(MomentsG* G);
 
-    cuComplex * phi_tmp, * g_tmp;
   private:
     Geometry       * geo_     ;
     Parameters     * pars_    ;
@@ -25,4 +24,6 @@ class ExB_GK : public ExB {
     dim3 dGk, dBk;
     dim3 dimGrid_xy, dimBlock_xy, dimGrid_xyz, dimBlock_xyz, dimGrid_xyzlm, dimBlock_xyzlm;
     int nt1, dimBlockfield, dimGridfield;
+    cuComplex * phi_tmp;
+	 MomentsG  * gTmp;
 };

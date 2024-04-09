@@ -6,8 +6,11 @@
 ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   pars_(pars_), grids_(grids), geo_(geo), phi_tmp(nullptr), g_tmp(nullptr)
 { 
+  // Allocate temporary space for phi (on GPU)
   checkCuda(cudaMalloc(&phi_tmp, sizeof(cuComplex)*grids_->NxNycNz));
-  checkCuda(cudaMalloc(&g_tmp  , sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
+
+  // Allocate temporary space for g
+  gTmp = new MomentsG( pars_, grids_ );
 
   // Nx*Nyc kernels
   dimBlock_xy = dim3(32,16);
@@ -31,8 +34,10 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
 }
 ExB_GK::~ExB_GK()
 {
-  if (phi_tmp)  cudaFree(phi_tmp);
-  if (g_tmp)    cudaFree(g_tmp);
+  if (phi_tmp)
+	  cudaFree(phi_tmp);
+  if (gTmp)
+	  delete gTmp;
 }
 void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per timestep
 {
@@ -51,14 +56,15 @@ void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per t
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat);
   }
-  // update fields
-  CP_TO_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
+  // update fields via temporary 
+  // phi_tmp = f->phi ; f->phi = field_shift( phi_tmp ) 
+  CP_ON_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
   field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
 }
 
 void ExB_GK::flow_shear_g_shift(MomentsG* G) // this is called for each G used in the timestepping scheme per timestep
 {
-  // update G
-  CP_TO_GPU (g_tmp,   G->G(),  sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm);
+  // gTmp = G ; G = g_shift(gTmp)
+  gTmp->copyFrom( G );
   g_shift <<< dimGrid_xyzlm, dimBlock_xyzlm>>> (G->G(), g_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
 }
