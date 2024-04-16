@@ -94,18 +94,21 @@ void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
 
   // dt_ now contains the new timestep
   
+  // This constitutes evaluating the RHS at t & g=G, storing into GRhs, and putting G + GRhs in G_q1
+  partial(G, G,    f, GRhs,  G_q1, 0.5);
+  
   // update flow shear terms to t = t + dt_/2 if using ExB
   if (pars_->ExBshear) {
     exb_->flow_shear_shift(f, dt_ * 0.5);
     for(int is=0; is<grids_->Nspecies; is++) {
       exb_->flow_shear_g_shift(G[is]);
+      exb_->flow_shear_g_shift(GRhs[is]);
       exb_->flow_shear_g_shift(G_q1[is]);
-      exb_->flow_shear_g_shift(G_q2[is]);
     }
   }
   // end updates
 
-  partial(G, G,    f, GRhs,  G_q1, 0.5);
+  // This evaluates RHS at t + dt/2 & g=G_q1, into GStar and putting G+GStar in G_q2
   partial(G, G_q1, f, GStar, G_q2, 0.5);
 
   // Do a partial accumulation of final update to save memory
@@ -113,16 +116,19 @@ void RungeKutta4::advance(double *t, MomentsG** G, Fields* f)
     GRhs[is]->add_scaled(dt_/6., GRhs[is], dt_/3., GStar[is]);
   }
 
+  // Second evaluation at t + dt/2, now at g = G_q2, storing RHS in GStar, and G + GStar back in G_q1
+  partial(G, G_q2, f, GStar, G_q1, 1.);
+
   // Shift forwards to t = t + dt_
   if (pars_->ExBshear) {
     exb_->flow_shear_shift(f, dt_ * 0.5);
     for(int is=0; is<grids_->Nspecies; is++) {
       exb_->flow_shear_g_shift(G[is]);
+      exb_->flow_shear_g_shift(GRhs[is]);
+      exb_->flow_shear_g_shift(GStar[is]);
       exb_->flow_shear_g_shift(G_q1[is]);
-      exb_->flow_shear_g_shift(G_q2[is]);
     }
   }
-  partial(G, G_q2, f, GStar, G_q1, 1.);
 
   // This update is just to improve readability
   for(int is=0; is<grids_->Nspecies; is++) {
