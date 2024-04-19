@@ -20,11 +20,11 @@ import sys
 import os
 
 import numpy as np
+from netCDF4 import Dataset as ds
 import booz_xform as bxform
 from scipy.interpolate import InterpolatedUnivariateSpline, PPoly, CubicSpline
 from scipy.integrate import cumulative_trapezoid as ctrap
 from scipy.integrate import simpson as simps
-from netCDF4 import Dataset as ds
 
 print("Running pyvmec geometry module...")
 
