@@ -45,7 +45,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     geo = new Eik_geo(pars, grids);
     if(grids->iproc==0) CUDA_DEBUG("Initializing miller geometry: %s \n");
   } 
-  else if(geo_option=="vmec") {
+  else if(geo_option=="vmec_c") {
     bool usenc;
     if(grids->iproc == 0) {
       char nml_file[512];
@@ -78,14 +78,14 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       geo = new Eik_geo(pars, grids);
     }
   }
-  else if(geo_option=="pyvmec") {
+  else if(geo_option=="vmec" || geo_option == "pyvmec") {
     // call python geometry module to write an eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
     pars->geofilename = std::string(pars->run_name) + ".eik.nc";
     if(grids->iproc == 0) {
       char command[300];
       sprintf(command, "python %s/geometry_modules/pyvmec/gx_geo_vmec.py %s.in %s", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
-      printf("Using pyvmec geometry. Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
+      printf("Using vmec geometry. Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
     }
     MPI_Barrier(MPI_COMM_WORLD);
