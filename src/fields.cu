@@ -192,38 +192,56 @@ Fields::Fields(Parameters* pars, Grids* grids) :
      int Nx = grids_->Nx;
      int Nyc = grids_->Nyc;
      int Nz = grids_->Nz;
-     for (int idz = 0; idz < Nz; idz++) {
-       for (int ikx = 0; ikx <= Nx; ikx++){
+     //for (int idz = 0; idz < Nz; idz++) {
+     for (int ikx = 0; ikx <= Nx; ikx++) {
          int kx = (ikx > NKX ? ikx-Nx : ikx);
-         for (int iky = 0; iky < Nyc; iky++){
-              int ky = iky;
+       for (int iky = 0; iky < Nyc; iky++){
+         //int kx = (ikx > NKX ? ikx-Nx : ikx);
+         int ky = iky;
+         float phase = M_PI * (2.0 * static_cast<float>(rand()) / (static_cast<float>(RAND_MAX)) - 1.0);
+	 
+	 int kmax2 = 225;
+	 int kmin2 = 169;
+	 float kmax4 = static_cast<float>(kmax2*kmax2);
+	 float kmin4 = static_cast<float>(kmin2*kmin2);
+	 //float A0 = 0.01*static_cast<float>(rand())/static_cast<float>(RAND_MAX);
+	 float A0 = 0.025;
+	 //float A0 = 0.05;
+
+         for (int idz = 0; idz < Nz; idz++){
+              //int ky = iky;
               unsigned int idxyz = iky + ikx * Nyc + Nx * Nyc * idz;
 
               //int kc = pars_->kc;
               //float kc2 = static_cast<float>(kc*kc);
 
-              float k2 = static_cast<float>(kx*kx+ky*ky);
+              //float k2 = static_cast<float>(kx*kx+ky*ky);
 	      int k2_int = kx*kx + ky*ky;
-	      
-	      int kmax2 = 225;
-	      int kmin2 = 169;
-	      float kmax4 = static_cast<float>(kmax2*kmax2);
-	      float kmin4 = static_cast<float>(kmin2*kmin2);
+	      float z_coord = static_cast<float>(idz) / static_cast<float>(Nz);
+	      //float z_mode = (cos(2.0 * M_PI * z_coord) + cos(2.0 * M_PI * 2.0 * z_coord) + cos(2.0 * M_PI * 3.0 * z_coord) + cos(2.0 * M_PI * 4.0 * z_coord) + cos(2.0 * M_PI * 5.0 * z_coord) + cos(2.0 * M_PI * 6.0 * z_coord) )/6.0;
+	      //float z_mode = cos(2.0 * M_PI * z_coord);
+	      float z_mode = 1.0;
 
-	      float A0 = 0.7772;
-	      //float A0 = 5/(kmax4-kmin4);
+	      //int kmax2 = 256;
+	      //int kmin2 = 169;
+	      //float kmax4 = static_cast<float>(kmax2*kmax2);
+	      //float kmin4 = static_cast<float>(kmin2*kmin2);
+
+	      //float A0 = 0.7772;
+	      //float A0 = 50.0/(kmax4-kmin4);
 	      //float A0 = static_cast<float>(rand())*50.0/(kmax4-kmin4)/static_cast<float>(RAND_MAX);
               //float phase = M_PI * (2.0 * static_cast<float>(rand()) / (static_cast<float>(RAND_MAX)) - 1.0);
-	      float phase = 0.0;
+	      //float phase = 0.0;
 
-              if ( abs(kx) == 14 && abs(ky) == 14) {
-                printf("kx:%d  ",kx);
-                printf("ky:%d  ",ky);
+              if ( abs(kx) == 10 && abs(ky) == 10) {
+              //if ( k2_int <= kmax2 && k2_int >= kmin2) {
+                //printf("kx:%d  ",kx);
+                //printf("ky:%d  ",ky);
 		//printf("k2:%d  ",k2_int);
-		printf("A0:%f  ",A0);
-		printf("\n");
-                apar_ext_h[idxyz].x = A0*cos(phase);
-                apar_ext_h[idxyz].y = A0*sin(phase);
+		//printf("A0:%f  ",A0);
+		//printf("\n");
+                apar_ext_h[idxyz].x = A0*cos(phase)*z_mode;
+                apar_ext_h[idxyz].y = A0*sin(phase)*z_mode;
               }
 	    }
           }
