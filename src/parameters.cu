@@ -100,6 +100,10 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
+  dt_max  = toml::find_or <float> (tnml, "dt_max",   dt );
+  dt_min  = toml::find_or <float> (tnml, "dt_min",   1e-7 );
+  fixed_dt = toml::find_or <bool> (tnml, "fixed_dt", false );
+
   nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
   nstep_restart   = toml::find_or <int>   (tnml, "nstep_restart",   -1 );
   scheme = toml::find_or <string> (tnml, "scheme",    "rk3"   );

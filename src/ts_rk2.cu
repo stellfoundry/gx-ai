@@ -36,12 +36,13 @@ void RungeKutta2::EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** G, MomentsG
     if (pars_->eqfix) G1[is]->copyFrom(G[is]);   
 
     // compute timestep (if necessary)
-    if (setdt && is==0) { // dt will be computed same for all species, so just do first time through species loop
+    if (setdt && is==0 && !pars->fixed_dt ) { // dt will be computed same for all species, so just do first time through species loop
       linear_->get_max_frequency(omega_max);
       if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
       double wmax = 0.;
       for(int i=0; i<3; i++) wmax += omega_max[i];
-      dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
+	  double dt_guess = cfl_fac*pars_->cfl/wmax;
+      dt_ = min( max(dt_guess,pars_->dt_min), dt_max);
     }
 
     GRhs->set_zero();
