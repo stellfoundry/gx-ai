@@ -115,9 +115,13 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       // write an eik.in file
       write_eiktest_in(pars, grids);
       char command[300];
-      sprintf(command, "%s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
+      sprintf(command, "unset SLURM_NODELIST; %s/bin/eiktest %s.eik.in > eiktest.log", GS2_PATH, pars->run_name);
       printf("Generating geometry file %s.eik.out.nc with\n> %s\n", pars->run_name, command);
-      system(command);
+      int err = system(command);
+      if (err) {
+        printf("ERROR in system command\n", err);
+      }
+      
     }
     MPI_Barrier(MPI_COMM_WORLD);
     pars->geofilename = std::string(pars->run_name) + ".eik.out.nc"; // need this on all procs
