@@ -5,7 +5,7 @@
 RungeKutta4::RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), exb_(exb), dt_max(pars->fixed_dt), dt_(dt_in),
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in),
   GStar(nullptr), GRhs(nullptr), G_q1(nullptr), G_q2(nullptr)
 {
   GStar = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
