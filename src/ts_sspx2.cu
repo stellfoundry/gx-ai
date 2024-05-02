@@ -4,7 +4,7 @@
 SSPx2::SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	     Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), exb_(exb), dt_max(pars_->fixed_dt), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr)
+  forcing_(forcing), exb_(exb), dt_max(pars_->dt_max), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr)
 {
   // new objects for temporaries
   GRhs  = new MomentsG (pars, grids);
@@ -44,7 +44,7 @@ void SSPx2::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bo
       double wmax = 0.;
       for(int i=0; i<3; i++) wmax += omega_max[i];
 	  double dt_guess = cfl_fac*pars_->cfl/wmax;
-      dt_ = min( max(dt_guess,dt_min), dt_max);
+      dt_ = min( max(dt_guess,pars_->dt_min), dt_max);
     }
 
     // compute and increment nonlinear term

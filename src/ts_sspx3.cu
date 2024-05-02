@@ -77,7 +77,7 @@ void SSPx3::EulerStep(MomentsG** G1, MomentsG** G, MomentsG* GRhs, Fields* f, bo
       double wmax = 0.;
       for(int i=0; i<3; i++) wmax += omega_max[i];
 	  double dt_guess = cfl_fac*pars_->cfl/wmax;
-      dt_ = min( max(dt_guess,dt_min), dt_max);
+      dt_ = min( max(dt_guess,pars_->dt_min), dt_max);
     }
 
     // compute and increment nonlinear term

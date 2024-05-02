@@ -46,7 +46,7 @@ void RungeKutta4::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
     if (pars_->eqfix) Gnew[is]->copyFrom(G[is]);
 
     // compute timestep (if necessary)
-    if (setdt && is==0 && !pars->fixed_dt ) { // dt will be computed same for all species, so just do first time through species loop
+    if (setdt && is==0 && !pars_->fixed_dt ) { // dt will be computed same for all species, so just do first time through species loop
       linear_->get_max_frequency(omega_max);
       if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
       double wmax = 0.;

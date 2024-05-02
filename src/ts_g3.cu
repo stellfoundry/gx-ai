@@ -34,7 +34,7 @@ void G3::EulerStep(MomentsG** G_u, MomentsG** GRhs, Fields* f, bool setdt)
 
     if(nonlinear_ != nullptr) {
       nonlinear_->nlps(G_u[is], f, GRhs[is]);
-      if (setdt && !pars->fixed_dt) dt_ = nonlinear_->cfl(f, dt_max);
+      if (setdt && !pars_->fixed_dt) dt_ = nonlinear_->cfl(f, dt_max);
     }
 
     G_u[is]->add_scaled(1., G_u[is], dt_, GRhs[is]);
