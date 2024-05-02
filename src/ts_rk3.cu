@@ -6,7 +6,7 @@
 RungeKutta3::RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), exb_(exb), dt_max(pars_->dt_max), dt_(dt_in),
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in),
   GRhs1(nullptr), GRhs2(nullptr), G_q1(nullptr), G_q2(nullptr)
 {
   GRhs1 = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);

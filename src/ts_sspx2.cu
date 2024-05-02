@@ -4,7 +4,7 @@
 SSPx2::SSPx2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 	     Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), exb_(exb), dt_max(pars_->dt_max), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr)
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in), GRhs(nullptr), G1(nullptr), G2(nullptr)
 {
   // new objects for temporaries
   GRhs  = new MomentsG (pars, grids);
