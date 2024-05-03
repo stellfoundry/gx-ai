@@ -118,7 +118,7 @@ void Parameters::get_nml_vars(char* filename)
   init_field = toml::find_or <string> (tnml, "init_field", "density");
   init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
-  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
+  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     static_cast<int>(kpar_init)  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
   gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     1.0   );
@@ -318,6 +318,7 @@ void Parameters::get_nml_vars(char* filename)
   }    
   
   tnml = nml;
+  /*
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
   dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  dealias_kz   ); // included for backwards-compat. now specified in expert
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
@@ -347,6 +348,7 @@ void Parameters::get_nml_vars(char* filename)
   random_init     = toml::find_or <bool> (tnml, "random_init",     random_init); // include for backwards-compat. now specified in Initialization
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     init_electrons_only); // include for backwards-compat. now specified in Initialization
   if (random_init) ikpar_init = 0; 
+  */
   
   if (write_omega && fixed_amplitude) {
     if (nonlinear_mode || nwrite < 3) fixed_amplitude = false;
@@ -1218,7 +1220,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint   (nc_con,  "stages",          stages          );
   put_real (nc_con,  "cfl",             cfl             );
   put_real (nc_con,  "init_amp",        init_amp        );
-  put_real (nc_con,  "ikpar_init",      ikpar_init       );
+  putint (nc_con,  "ikpar_init",      ikpar_init       );
   putbool  (nc_con,  "random_init",     random_init     );
   putbool  (nc_con,  "dealias_kz",      dealias_kz      );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
