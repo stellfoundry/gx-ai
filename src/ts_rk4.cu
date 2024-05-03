@@ -5,7 +5,7 @@
 RungeKutta4::RungeKutta4(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), grids_(grids), pars_(pars),
-  forcing_(forcing), exb_(exb), dt_max(dt_in), dt_(dt_in),
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in),
   GStar(nullptr), GRhs(nullptr), G_q1(nullptr), G_q2(nullptr)
 {
   GStar = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
@@ -45,7 +45,8 @@ void RungeKutta4::set_timestep( Fields * f )
 	if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
 	double wmax = 0.;
 	for(int i=0; i<3; i++) wmax += omega_max[i];
-	dt_ = min(cfl_fac*pars_->cfl/wmax, dt_max);
+	double dt_guess = cfl_fac*pars_->cfl/wmax;
+    dt_ = min( max(dt_guess,pars_->dt_min), dt_max);
 }
 
 void RungeKutta4::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs, MomentsG **Gnew, double adt)
