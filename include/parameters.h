@@ -115,7 +115,7 @@ class Parameters {
   int p_HB, p_hyper_l, p_hyper_m, p_hyper_lm, irho, nwrite, nwrite_big, navg, nsave, igeo, nreal;
   int p_hyper_z;
   int nz_in, nperiod, Zp, bishop, scan_number, icovering;
-  int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nspec_in, nspec;
+  int nx_in, ny_in, jtwist, nm_in, nl_in, nstep, nstep_restart, nspec_in, nspec;
   int x0_mult, y0_mult, z0_mult, nx_mult, ny_mult, ntheta_mult;
   int nm_add, nl_add, ns_add;
   int forcing_index, smith_par_q, smith_perp_q, forcing_kz, forcing_k2min, forcing_k2max;
@@ -136,7 +136,7 @@ class Parameters {
   Tmethod scheme_opt;
   Closure closure_model_opt;
   
-  float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
+  float RBzeta, rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
@@ -167,8 +167,11 @@ class Parameters {
   float rho_s, rho_i, d_e, zt;
   bool harris_sheet;
   bool periodic_equilibrium;
+  bool island_coalesce;
   float k0; 
   bool gaussian_tube;
+  float kc; 
+  bool random_gaussian;
   cuComplex phi_test, smith_perp_w0;
 
   specie *species_h;
@@ -182,6 +185,7 @@ class Parameters {
   bool cetg;  
   bool write_all_kmom, write_kmom, write_xymom, write_all_xymom, write_avgz, write_all_avgz;
   bool zero_shat;
+  bool nonTwist;
   
   bool write_avg_zvE, write_avg_zkxvEy, write_avg_zkden, write_avg_zkUpar;
   bool write_avg_zkTpar, write_avg_zkTperp, write_avg_zkqpar;
@@ -223,6 +227,7 @@ class Parameters {
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
   bool use_NCCL;
   bool long_wavelength_GK;
+  bool ExBshear_phase;
   float damp_ends_widthfrac, damp_ends_amp;
     
   char *scan_type;
