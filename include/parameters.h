@@ -163,6 +163,8 @@ class Parameters {
   float t_max, t_add;
   float zero_shat_threshold;
 
+  unsigned int random_seed;
+
   // parameters for KREHM system
   bool krehm;
   float rho_s, rho_i, d_e, zt;

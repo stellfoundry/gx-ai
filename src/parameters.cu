@@ -129,6 +129,9 @@ void Parameters::get_nml_vars(char* filename)
   tprpfac = toml::find_or <float> (tnml, "tprpfac", 1.0);
   qparfac = toml::find_or <float> (tnml, "qparfac", 1.0);
   qprpfac = toml::find_or <float> (tnml, "qprpfac", 1.0);
+
+  random_seed = toml::find_or <unsigned int> (tnml, "random_seed", 22);
+
   if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
@@ -1220,7 +1223,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint   (nc_con,  "stages",          stages          );
   put_real (nc_con,  "cfl",             cfl             );
   put_real (nc_con,  "init_amp",        init_amp        );
-  putint (nc_con,  "ikpar_init",      ikpar_init       );
+  putint   (nc_con,  "ikpar_init",      ikpar_init      );
   putbool  (nc_con,  "random_init",     random_init     );
   putbool  (nc_con,  "dealias_kz",      dealias_kz      );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
