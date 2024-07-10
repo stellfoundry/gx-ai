@@ -3780,7 +3780,8 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
       //if g is sheared beyond resolution or mask, set incoming field to 0
       //if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-        int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
+		  int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+        int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
         if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
         int ig_remap = idy + nyc * (kxbar_ikx_remap + nx * (idz + nz * idlm));
         g_new[ig_remap].x = 0.;
