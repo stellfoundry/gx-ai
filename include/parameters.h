@@ -163,6 +163,8 @@ class Parameters {
   float t_max, t_add;
   float zero_shat_threshold;
 
+  unsigned int random_seed;
+
   // parameters for KREHM system
   bool krehm;
   float rho_s, rho_i, d_e, zt;
@@ -233,7 +235,7 @@ class Parameters {
 
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
-  char run_name[255];
+  char run_name[1255];
 
   int specs[1]; // dims for netcdf species variable arrays
   size_t is_start[1], is_count[1]; 
