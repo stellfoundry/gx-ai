@@ -3746,7 +3746,8 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
     if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-      int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
+		int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+      int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
       if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
       int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);
       field_new[idxyz_remap].x = 0.;
