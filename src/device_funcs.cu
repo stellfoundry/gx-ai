@@ -1216,7 +1216,7 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
 
 __device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, void *sharedPtr)
 {
-  float *kxstar = (float*) kxstarData;
+  double *kxstar = (double*) kxstarData;
   unsigned int idx = offset / nyc % nx;
   unsigned int idy = offset % nyc;
   unsigned int idxy = idy+nyc*idx;
@@ -3636,7 +3636,7 @@ __global__ void heat_flux_summand_cetg(float* qflux,
 
 // kxbar_ikx_new and kxbar_ikx_old are arrays of ikx in idx ordering.
 
-__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
+__global__ void init_kxstar_kxbar_phasefac(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -3652,7 +3652,7 @@ __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, in
   // JFP: note: to normalize kxstar, theta0, and ky*g_exb*dt correctly for stellarators with different connection lengths.
   // JFP: note: add read-in kxstar option.
 }
-__global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void geo_shift(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat)
 {
@@ -3684,7 +3684,7 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
   }
 }
 
-__global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void geo_shift_ntft(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
 			   const float * ftwist, float* deltaKx, const int* m0, const float x0)
@@ -3733,20 +3733,22 @@ __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double d
 // Field and distribution function shift: when kx_star rounds to a new kx gridpoint, we shift the fields and g. 
 // This is done in field_shift and g_shift.
 // init_kxstar_kxbar_phasefac
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
+__global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
-  float dkx = (float) 1./x0;
+  double dkx = 1./static_cast<double>(x0);
+  // In the following 'round', as specified by C99 (and subsequent standards), rounds to the nearest integer, rounding halfway cases away from zero always.
   if(idx < nx && idy < nyc && idy > 0) {
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
-    kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx); // JFP: !! is the roundf function correct?
-    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
+    kxbar_ikx_old[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); // IGA: To keep precision, we do the division as a double, then round, then cast back to float
+    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f round(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
 
-    kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt; // JFP: !! is the dt here correct?
-    kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
-    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
+    // IGA Added explicit casts in case ( ky * g_exb ) is done in single precision before type promotion ( a_float * b_double or a_double * b_float will promote both to double, a * b * c will parse as ( a * b ) * c (I think...)
+    kxstar[idxy]        = kxstar[idxy] - static_cast<double>( ky[idy] ) * static_cast<double>( g_exb ) * dt;
+    kxbar_ikx_new[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); 
+    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
       printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy]);

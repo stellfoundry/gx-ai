@@ -139,7 +139,7 @@ Grids::Grids(Parameters* pars) :
   if (pars_->ExBshear) {
     cudaMalloc     ( (void**) &phasefac_exb,   sizeof(cuComplex) * Nx * Nyc);
     cudaMalloc     ( (void**) &phasefacminus_exb,   sizeof(cuComplex) * Nx * Nyc);
-    cudaMalloc     ( (void**) &kxstar,         sizeof(float) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxstar,         sizeof(double) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxbar_ikx_new,  sizeof(int) * Nx * Nyc);
     cudaMalloc     ( (void**) &kxbar_ikx_old,  sizeof(int) * Nx * Nyc);
   }
