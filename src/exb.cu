@@ -44,6 +44,7 @@ void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per t
   // update kxstar terms and phasefactor
   kxstar_phase_shift<<<dimGrid_xy, dimBlock_xy>>>(grids_->kxstar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, grids_->ky, grids_->x, grids_->phasefac_exb, grids_->phasefacminus_exb, pars_->g_exb, dt, pars_->x0, pars_->ExBshear_phase);
 
+  //printf("dt is %f \n", dt)
   // update geometry
   if (pars_->nonTwist) {
     geo_shift_ntft<<<dimGrid_xyz, dimBlock_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
