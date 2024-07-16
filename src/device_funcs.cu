@@ -3871,7 +3871,7 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
         g_new[ig_new] = g_old[ig_old];
 	// We seem to have an issue with the kx = 0 mode shifting one timestep too late?
 	if (idx == 0) {
-	  printf("g shifting for the kx = 0 mode \n");
+	  // printf("g shifting for the kx = 0 mode \n");
 	}
       }
     }
