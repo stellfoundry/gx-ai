@@ -248,6 +248,20 @@ __device__ int get_ikx(int idx) {
     return idx-nx;
 }
 
+// JFP Jul 14 2024 Assumes that nx is always even and maximum absolute wavenumber is nx/2, not -nx/2, which doesn't exist
+// printing out kx, seems like we actually keep nx/2 but throw away -nx/2. So this is the correct function.
+__device__ int get_idx(int ikx) {
+  if (ikx < 0)
+    return ikx + nx;
+  else
+    return ikx;
+}
+// notes about idx and ikx
+// both idx and ikx arrays have length nx, which if even, satisfies,
+// ikx is the grid ordered as [-nx/2 +1, ..., -1, 0, 1, ..., nx/2]
+// idx is the grid ordered as [0,1,.. nx/2, -nx/2 +1, ..., -1], FFT order
+
+
 __device__ bool not_fixed_eq(int idxyz) {
   int idxy_fixed = iky_fixed + ikx_fixed*nyc;
   if ( idxyz%(nx*nyc) == idxy_fixed )
@@ -3619,6 +3633,9 @@ __global__ void heat_flux_summand_cetg(float* qflux,
 // When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
 // We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
 // This is kx at t = 0. Throughout simulation, this will update for g_exb != 0.
+
+// kxbar_ikx_new and kxbar_ikx_old are arrays of ikx in idx ordering.
+
 __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
 {
   unsigned int idy = get_id1();
@@ -3707,19 +3724,38 @@ __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double d
   }
 }
 
+
+// JFP: flow shear algorithm description.
+//
+// Nonlinear phase shift: we track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT.
+// This is done in kxstar_phase_shift.
+//
+// Field and distribution function shift: when kx_star rounds to a new kx gridpoint, we shift the fields and g. 
+// This is done in field_shift and g_shift.
+// init_kxstar_kxbar_phasefac
 __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   float dkx = (float) 1./x0;
-  if(idx < nx && idy < nyc) {
+  if(idx < nx && idy < nyc && idy > 0) {
     unsigned int idxy = idy + nyc * idx;
-    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
-    kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx);
-    kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
-    kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
+    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
+    kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx); // JFP: !! is the roundf function correct?
+    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
 
-    if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) kxstar[idxy] = kxstar[idxy] + g_exb / abs(g_exb) * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
+    kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt; // JFP: !! is the dt here correct?
+    kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
+    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
+
+    if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
+      printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy]);
+    }
+
+    if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
+      int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+      kxstar[idxy] = kxstar[idxy] + sign_of_exb * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
+    }
  
     if (ExBshear_phase) { // only update if including factor
       float phase = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
@@ -3734,6 +3770,7 @@ __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar
 // there might be a better way of doing this if we let a mode trek across the entire kx grid before we remap (if it is > nakx/2) instead of across a single mode
 // would need to change how we track kxstar above, could be good future project to improve efficiency
 
+
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb)
 {
   unsigned int idy = get_id1();
@@ -3742,23 +3779,21 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
 
   int nakx = 1 + 2*((nx-1)/3);
 
-  if(unmasked(idx, idy) && idz < nz) {
+  if(unmasked(idx, idy) && idz < nz && idy > 0) {
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
     if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-		int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+      int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
-      if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
-      int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);
+      int idx_remap = get_idx(kxbar_ikx_remap); // this shifts from ikx to idx
+      int idxyz_remap = get_idxyz(idy, idx_remap, idz);
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
-      int idx_old = kxbar_ikx_old[idxy];
-      int idx_new = kxbar_ikx_new[idxy];
-      if(idx_old < 0) idx_old = kxbar_ikx_old[idxy] + nx;
-      if(idx_new < 0) idx_new = kxbar_ikx_new[idxy] + nx;
-      int idxyz_old = idy + nyc * (idx_old + nx * idz);
-      int idxyz_new = idy + nyc * (idx_new + nx * idz);
+      int idx_old = kxbar_ikx_old[idxy]; // this shifts from ikx to idx
+      int idx_new = kxbar_ikx_new[idxy]; // this shifts from ikx to idx
+      int idxyz_old = get_idxyz(idy, idx_old, idz);
+      int idxyz_new = get_idxyz(idy, idx_new, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
     }
   }
@@ -3772,26 +3807,22 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
 
   int nakx = 1 + 2*((nx-1)/3);
 
-  if(idy < nyc && idxz < nx*nz && idlm < nl*nm) {
+  if(idy < nyc && idxz < nx*nz && idlm < nl*nm && idy > 0) {
     unsigned int idx = idxz % nx;
     if (unmasked(idx, idy)) {
       unsigned int idz = idxz / nx;
       unsigned int idxy = idy + nyc*idx;
-
       //if g is sheared beyond resolution or mask, set incoming field to 0
-      //if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-		  int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+        int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
         int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
-        if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
-        int ig_remap = idy + nyc * (kxbar_ikx_remap + nx * (idz + nz * idlm));
+        int idx_remap = get_idx(kxbar_ikx_remap);
+        int ig_remap = idy + nyc * (idx_remap + nx * (idz + nz * idlm));
         g_new[ig_remap].x = 0.;
         g_new[ig_remap].y = 0.;
-      } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
-        int idx_old = kxbar_ikx_old[idxy];
-        int idx_new = kxbar_ikx_new[idxy];
-        if(idx_old < 0) idx_old = kxbar_ikx_old[idxy] + nx;
-        if(idx_new < 0) idx_new = kxbar_ikx_new[idxy] + nx;
+      } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift g to the new value
+        int idx_old = get_idx(kxbar_ikx_old[idxy]);
+        int idx_new = get_idx(kxbar_ikx_new[idxy]);
         int ig_old = idy + nyc * (idx_old + nx * (idz + nz * idlm));
         int ig_new = idy + nyc * (idx_new + nx * (idz + nz * idlm));
         g_new[ig_new] = g_old[ig_old];

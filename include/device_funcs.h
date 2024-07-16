@@ -144,6 +144,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 __global__ void reality_kernel(cuComplex* g, int N);
 
 __device__ int get_ikx(int idx);
+__device__ int get_idx(int ikx);
 __device__ bool unmasked(int idx, int idy);
 __device__ bool   masked(int idx, int idy);
 
