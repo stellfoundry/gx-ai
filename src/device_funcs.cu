@@ -3752,14 +3752,6 @@ Order of operations in a GX timestep:
 
 Example for rk4 timestepper ts_rk4.cu, 
 
-Jul 16 2024:
-!! Is this definitely the evaluation order we want? We update the flow shear terms after partial, which means the flow shear is the final part we update. At the end of a single GX timestep, the geometric coefficients will be up to date, but the GK will not have been evalauted with the updated geometry coefficients / fields due to flow shear.
-
-1) partial, evaluate RHS
-2) update flow shear to next numerical scheme internal timestep with dt/2 step.
-3) partial, evaluate RHS
-4) update flow shear to next numerical scheme internal timestep with dt/2 step.
-
 --------------------
 
 
