@@ -3625,14 +3625,6 @@ __global__ void heat_flux_summand_cetg(float* qflux,
   }
 }
 
-// JFP flow shear addition.
-// Updates kx star and phasefac for flow shear.
-// kx star = kx - ky shat gammaE time
-// kx bar = roundf(kx star / Delta kx), nearest neighbour.
-// dealiased kx grid \in [-Kx, Kx]
-// When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
-// We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
-// This is kx at t = 0. Throughout simulation, this will update for g_exb != 0.
 
 // kxbar_ikx_new and kxbar_ikx_old are arrays of ikx in idx ordering.
 
@@ -3725,31 +3717,72 @@ __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double d
 }
 
 
-// JFP: flow shear algorithm description.
-//
-// Nonlinear phase shift: we track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT.
-// This is done in kxstar_phase_shift.
-//
-// Field and distribution function shift: when kx_star rounds to a new kx gridpoint, we shift the fields and g. 
-// This is done in field_shift and g_shift.
-// init_kxstar_kxbar_phasefac
+/*
+
+JFP: flow shear algorithm description.
+
+Continuous in time flow shear algorithm with continuoue exact geometric coefficients and nonlinear phase factor in the FFT.
+
+Implementation is described in Halpern et al, 2024, in prep. Code implementation philosophy is to mirror the symmetry between flow shear and non twisting flux tube (NTFT), making both implementations similar.
+
+At each code timestep, the geometric coefficents are exact. Shifting in kx occurs when 1) the nearest neighbour kx moves to a different grid point and 2) the kx is beyond the unmasked grid.
+
+The three most important quantities are kxstar, kxbar_ikx_new, and kxbar_ikx_old.
+
+a) kx_star = kx(t=0) - ky gamma_E time
+b) kxbar_ikx_new is the nearest kx on grid at the new timestep
+c) kxbar_ikx_old is the nearest kx on grid at the previous timestep
+
+All of these arrays have idx ordering (FFT ordering).
+
+kxbar = roundf(kx star / Delta kx), nearest neighbour.
+dealiased kx grid \in [-Kx, Kx] BUT with idx ordering (FFT ordering).
+When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
+We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
+
+Geometric coefficients update: in geo_shift, kxstar is used to calculate the geometric coefficients at each timestep. They are updated in init_kxstar_kxbar_phasefac.
+
+Nonlinear phase shift: we track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. This is done in kxstar_phase_shift.
+
+Field and distribution function shift: when kx_star rounds to a new kx gridpoint, we shift the fields and g. This is done in field_shift and g_shift.
+
+---------------------
+
+Order of operations in a GX timestep:
+
+Example for rk4 timestepper ts_rk4.cu, 
+
+Jul 16 2024:
+!! Is this definitely the evaluation order we want? We update the flow shear terms after partial, which means the flow shear is the final part we update. At the end of a single GX timestep, the geometric coefficients will be up to date, but the GK will not have been evalauted with the updated geometry coefficients / fields due to flow shear.
+
+1) partial, evaluate RHS
+2) update flow shear to next numerical scheme internal timestep with dt/2 step.
+3) partial, evaluate RHS
+4) update flow shear to next numerical scheme internal timestep with dt/2 step.
+
+--------------------
+
+
+*/
+
 __global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
   float dkx = (float) 1./x0;
-  if(idx < nx && idy < nyc && idy > 0) {
+  //printf("dt is %f \n", dt);
+  if(idx < nx && idy < nyc && idy > 0 && unmasked(idx, idy)) { // JFP Jul 16 2024: adding unmasked(idx, idy)
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
     kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx); // JFP: !! is the roundf function correct?
-    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
+    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f idy is %d idx is %d ky[idy] is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx), idy, idx, ky[idy]);
 
     kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt; // JFP: !! is the dt here correct?
     kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
-    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx));
+    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f idy is %d idx is %d ky[idy] is %f \n", kxstar[idxy]/dkx, roundf(kxstar[idxy]/dkx), idy, idx, ky[idy]);
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
-      printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy]);
+      printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
     }
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
@@ -3782,6 +3815,9 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
   if(unmasked(idx, idy) && idz < nz && idy > 0) {
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
+    if (idx == 0) {
+      printf("field_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+      }
     if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
       int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
@@ -3795,6 +3831,9 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int idxyz_old = get_idxyz(idy, idx_old, idz);
       int idxyz_new = get_idxyz(idy, idx_new, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
+      if (idx == 0) {
+        printf("field shifting for the kx = 0 mode \n");
+      }
     }
   }
 }
@@ -3812,6 +3851,9 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
     if (unmasked(idx, idy)) {
       unsigned int idz = idxz / nx;
       unsigned int idxy = idy + nyc*idx;
+      //if (idx == 0) {
+      //  printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+      //}
       //if g is sheared beyond resolution or mask, set incoming field to 0
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
         int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
@@ -3826,6 +3868,10 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
         int ig_old = idy + nyc * (idx_old + nx * (idz + nz * idlm));
         int ig_new = idy + nyc * (idx_new + nx * (idz + nz * idlm));
         g_new[ig_new] = g_old[ig_old];
+	// We seem to have an issue with the kx = 0 mode shifting one timestep too late?
+	if (idx == 0) {
+	  printf("g shifting for the kx = 0 mode \n");
+	}
       }
     }
   }
