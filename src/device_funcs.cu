@@ -3717,8 +3717,6 @@ __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double d
 }
 
 
-<<<<<<< HEAD
-
 /*
 
 JFP: flow shear algorithm description.
