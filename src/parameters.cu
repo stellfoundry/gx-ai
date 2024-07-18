@@ -129,12 +129,17 @@ void Parameters::get_nml_vars(char* filename)
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
   restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
+  restart_if_exists = toml::find_or <bool>   (tnml, "restart_if_exists",       false  );
   save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
   restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
   restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
+  restart_with_perturb = toml::find_or <bool> (tnml, "restart_with_perturb", false  );
+  append_on_restart = toml::find_or <bool> (tnml, "append_on_restart", true);
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
   nsave   = toml::find_or <int>   (tnml, "nsave", 10000 );
   nsave = max(1, nsave);
+  if (restart_if_exists && access(restart_from_file.c_str(), F_OK) == 0) restart = true;
+  else restart = false;
 
   if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
   closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
