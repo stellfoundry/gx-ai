@@ -481,6 +481,7 @@ GrowthRateDiagnostic::GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCD
   int retval;
   if (pars_->restart && pars_->append_on_restart) {
     if (retval = nc_inq_varid(nc_group, varname.c_str(), &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
   } else {
     if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
     if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
@@ -608,6 +609,7 @@ FieldsDiagnostic::FieldsDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
   for(int i=0; i<3; i++) {
     if (pars_->restart && pars_->append_on_restart) {
       if (retval = nc_inq_varid(nc_group, varnames[i].c_str(), &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
     } else {
       if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
       if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
@@ -730,6 +732,7 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
   for(int i=0; i<3; i++) {
     if (pars_->restart && pars_->append_on_restart) {
       if (retval = nc_inq_varid(nc_group, varnames[i].c_str(), &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
     } else {
       if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
       if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
@@ -826,6 +829,7 @@ MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* g
   int retval;
   if (pars_->restart && pars_->append_on_restart) {
     if (retval = nc_inq_varid(nc_group, varname.c_str(), &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
   } else {
     if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
     if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);

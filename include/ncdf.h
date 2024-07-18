@@ -249,6 +249,8 @@ class NcGrids {
       if (retval = nc_inq_varid(grid_id, "y", &y))  ERR(retval);  
       if (retval = nc_inq_varid(grid_id, "theta", &z))  ERR(retval);  
 
+      if (retval = nc_var_par_access(grid_id, time, NC_COLLECTIVE)) ERR(retval);
+
       // read time_index
       if (retval = nc_inq_dimlen(fileid, nc_dims->time, &time_index)) ERR(retval);
     } else { 
