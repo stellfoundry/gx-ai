@@ -138,8 +138,10 @@ void Parameters::get_nml_vars(char* filename)
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
   nsave   = toml::find_or <int>   (tnml, "nsave", 10000 );
   nsave = max(1, nsave);
-  if (restart_if_exists && access(restart_from_file.c_str(), F_OK) == 0) restart = true;
-  else restart = false;
+  if (restart_if_exists) {
+    if (access(restart_from_file.c_str(), F_OK) == 0) restart = true;
+    else restart = false;
+  }
 
   if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
   closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
