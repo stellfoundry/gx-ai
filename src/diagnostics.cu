@@ -114,9 +114,9 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
   bool stop = false;
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
     if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
-    for(int i=0; i<spectraDiagnosticList.size(); i++) {
-      spectraDiagnosticList[i]->set_dt_data(G_old, fields_old, dt);
-      spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
+    for( auto diagnostic : spectraDiagnosticList ) {
+      diagnostic->set_dt_data(G_old, fields_old, dt);
+      diagnostic->calculate_and_write(G, fields, tmpG, tmpf);
     }
 
     if(pars_->write_omega) {
@@ -138,8 +138,8 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       fieldsDiagnostic->calculate_and_write(fields);
     }
 
-    for(int i=0; i<momentsDiagnosticList.size(); i++) {
-      momentsDiagnosticList[i]->calculate_and_write(G, fields, tmpC);
+    for( auto diagnostic : momentsDiagnosticList ) {
+      diagnostic->calculate_and_write(G, fields, tmpC);
     }
 
     ncdf_big_->nc_grids->write_time(time);
@@ -536,8 +536,8 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
     if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
-    for(int i=0; i<spectraDiagnosticList.size(); i++) {
-      spectraDiagnosticList[i]->calculate_and_write(G, fields, tmpG, tmpf);
+    for( auto diagnostic : spectraDiagnosticList )
+      diagnostic->calculate_and_write(G, fields, tmpG, tmpf);
     }
 
     if(pars_->write_omega) {
@@ -562,8 +562,8 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
       }
     }
 
-    for(int i=0; i<momentsDiagnosticList.size(); i++) {
-      momentsDiagnosticList[i]->calculate_and_write(G, fields, tmpC);
+    for( auto diagnostic : momentsDiagnosticList ) {
+      diagnostic->calculate_and_write(G, fields, tmpC);
     }
 
     ncdf_big_->nc_grids->write_time(time);
