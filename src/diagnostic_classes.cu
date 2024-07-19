@@ -163,7 +163,6 @@ WaparDiagnostic::WaparDiagnostic(Parameters* pars, Grids* grids, Geometry* geo, 
 void WaparDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmpG, float* tmpf)
 {
   for(int is=0; is<grids_->Nspecies; is++) {
-    int is_glob = is + grids_->is_lo;
     Wapar_summand <<<dG, dB>>> (&tmpf[grids_->NxNycNz*is], f->apar, geo_->vol_fac, geo_->kperp2, geo_->bmag);
   }
   write_spectra(tmpf);
