@@ -60,7 +60,7 @@ obj/%.o: %.cu $(HEADERS)
 	$(NVCC) -Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
 else                                        
 obj/%.o: %.cu $(HEADERS)                    
-	$(NVCC) --Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
+	$(NVCC) -Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
