@@ -57,19 +57,19 @@ VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
 ifdef GS2_PATH
 obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+	$(NVCC) -Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
 else                                        
 obj/%.o: %.cu $(HEADERS)                    
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
+	$(NVCC) --Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
+	$(CXX) -Wall -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
 
 .SILENT: src/version.c obj/version.o
 
 obj/version.o: src/version.c
-	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
+	$(CXX) -Wall -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
 
 src/version.c: 
 	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
