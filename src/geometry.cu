@@ -740,7 +740,6 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   int oldNz, oldnperiod;
   
   //  rewind(geoFile);
-  nlines=0;
   using namespace std;
   string datline;
   ifstream myfile (pars->geofilename.c_str());
