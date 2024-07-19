@@ -22,7 +22,7 @@ void SpectraDiagnostic::add_spectra(SpectraCalc *spectra)
 // write all spectra
 void SpectraDiagnostic::write_spectra(float* data)
 {
-  for(int i=0; i<spectraList.size(); i++) {
+  for(size_t i = 0; i < spectraList.size(); i++) {
     spectraList[i]->write(data, spectraIds[i], ncdf_->nc_grids->time_index, nc_group, isMoments, skipWrite);
   }
 }
