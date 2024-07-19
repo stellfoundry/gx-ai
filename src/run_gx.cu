@@ -214,16 +214,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     checkCudaErrors(cudaGetLastError());
     counter++;
     if (counter==pars->nstep || time>=pars->t_max) {
-      bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+      [[maybe_unused]] auto unused = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     }
   }
 
   if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
-  if (pars->eqfix && (
-		      (pars->scheme_opt == Tmethod::k10) ||
-		      (pars->scheme_opt == Tmethod::g3) ||
-		      (pars->scheme_opt == Tmethod::k2))) {
+  if (pars->eqfix && (pars->scheme_opt == Tmethod::k10) )
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -234,10 +231,10 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_BLUE);
     printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_RESET);    
+    printf(ANSI_COLOR_RESET);
     printf("\n");
     printf("\n");
-  }  
+  }
   
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
   printf("Total runtime = %f min (%f s / timestep)\n", timer/1000./60., timer/1000./counter);
