@@ -733,10 +733,6 @@ void Nonlinear_KS::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   grad_perp_G -> R2C(g_res, G_res->G(), true);
   
 }
-double Nonlinear_KS::cfl(Fields *f, double dt_max)
-{
-  return dt_max;
-}
 
 //===========================================
 // Nonlinear_VP
@@ -815,7 +811,3 @@ void Nonlinear_VP::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   grad_perp_G -> R2C(g_res, G_res->G(), true);
 }
 
-double Nonlinear_VP::cfl(Fields *f, double dt_max)
-{
-  return dt_max;
-}
