@@ -460,7 +460,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // do basic sanity check
   if (grids->Nz != (int) N-1) {
-    if(grids->iproc==0) printf("Number of points along the field line in geometry file %u does not match input %d \n", N-1, grids->Nz);
+    if(grids->iproc==0) printf("Number of points along the field line in geometry file %lu does not match input %d \n", N-1, grids->Nz);
     exit (1);
   }
 
@@ -497,16 +497,16 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   int id;
   if (retval = nc_inq_varid(ncgeo, "theta", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_z_h[n] = dtmp[n];
+  for (size_t n = 0; n < N; n++) nc_z_h[n] = dtmp[n];
   
   if (retval = nc_inq_varid(ncgeo, "bmag", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_bmag_h[n] = dtmp[n];
-  for (int n=0; n<N; n++) nc_bmagInv_h[n] = 1./nc_bmag_h[n];
+  for (size_t n = 0; n < N; n++) nc_bmag_h[n] = dtmp[n];
+  for (size_t n = 0; n < N; n++) nc_bmagInv_h[n] = 1./nc_bmag_h[n];
 
   if (retval = nc_inq_varid(ncgeo, "gradpar", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gradpar_h[n] = dtmp[n];
+  for (size_t n = 0; n < N; n++) nc_gradpar_h[n] = dtmp[n];
   if(nc_gradpar_h[0] != nc_gradpar_h[N/2]) {
     if(grids->iproc==0) printf("Error: GX requires an equal-arc theta coordinate, so that gradpar = const.\nFor gs2 geometry module, use equal_arc = true. Exiting...\n");
     fflush(stdout);
@@ -517,36 +517,36 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   if (retval = nc_inq_varid(ncgeo, "grho", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_grho_h[n] = dtmp[n];
-  
+  for (size_t n = 0; n < N; n++) nc_grho_h[n] = dtmp[n];
+
   if (retval = nc_inq_varid(ncgeo, "gds2", &id))         ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gds2_h[n] = dtmp[n];
-  
+  for (size_t n = 0; n < N; n++) nc_gds2_h[n] = dtmp[n];
+
   if (retval = nc_inq_varid(ncgeo, "gds21", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gds21_h[n] = dtmp[n];
-  
+  for (size_t n = 0; n < N; n++) nc_gds21_h[n] = dtmp[n];
+
   if (retval = nc_inq_varid(ncgeo, "gds22", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gds22_h[n] = dtmp[n];
-  
+  for (size_t n = 0; n < N; n++) nc_gds22_h[n] = dtmp[n];
+
   if (retval = nc_inq_varid(ncgeo, "gbdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gbdrift_h[n] = dtmp[n] / 2.0;
-  
+  for (size_t n = 0; n < N; n++) nc_gbdrift_h[n] = dtmp[n] / 2.0;
+
   if (retval = nc_inq_varid(ncgeo, "gbdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_gbdrift0_h[n] = dtmp[n] / 2.0;
-  
+  for (size_t n = 0; n < N; n++) nc_gbdrift0_h[n] = dtmp[n] / 2.0;
+
   if (retval = nc_inq_varid(ncgeo, "cvdrift", &id))      ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_cvdrift_h[n] = dtmp[n] / 2.0;
-  
+  for (size_t n = 0; n < N; n++) nc_cvdrift_h[n] = dtmp[n] / 2.0;
+
   if (retval = nc_inq_varid(ncgeo, "cvdrift0", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, dtmp))            ERR(retval);
-  for (int n=0; n<N; n++) nc_cvdrift0_h[n] = dtmp[n] / 2.0;
-  
+  for (size_t n = 0; n < N; n++) nc_cvdrift0_h[n] = dtmp[n] / 2.0;
+
   free(dtmp);
 
   // interpolate to equally-spaced theta grid
@@ -566,14 +566,14 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
   interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
 
-  double stmp; 
-  
+  double stmp;
+
   if (retval = nc_inq_varid(ncgeo, "drhodpsi", &id))     ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   drhodpsi = pars->drhodpsi = (float) stmp;
-  
-  for (int n=0; n<N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
-      
+
+  for (size_t n = 0; n < N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
+
   if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   kxfac = pars->kxfac = (float) stmp;
