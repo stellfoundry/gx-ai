@@ -174,7 +174,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   }    
   checkCudaErrors(cudaGetLastError());
 
-  Timestepper * timestep;
+  Timestepper * timestep = nullptr;
   switch (pars->scheme_opt)
     {
     case Tmethod::k10   : timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
