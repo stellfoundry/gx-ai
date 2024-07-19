@@ -114,7 +114,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
   bool stop = false;
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
     if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
-    for( auto diagnostic : spectraDiagnosticList ) {
+    for( auto & diagnostic : spectraDiagnosticList ) {
       diagnostic->set_dt_data(G_old, fields_old, dt);
       diagnostic->calculate_and_write(G, fields, tmpG, tmpf);
     }
@@ -138,7 +138,7 @@ bool Diagnostics_GK::loop(MomentsG** G, Fields* fields, double dt, int counter, 
       fieldsDiagnostic->calculate_and_write(fields);
     }
 
-    for( auto diagnostic : momentsDiagnosticList ) {
+    for( auto & diagnostic : momentsDiagnosticList ) {
       diagnostic->calculate_and_write(G, fields, tmpC);
     }
 
@@ -536,7 +536,7 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
 
   if(counter % pars_->nwrite == 1 || time > pars_->t_max) {
     if(grids_->iproc == 0) printf("%s: Step %7d: Time = %10.5f  dt = %.3e   ", pars_->run_name, counter, time, dt);          // To screen
-    for( auto diagnostic : spectraDiagnosticList )
+    for( auto & diagnostic : spectraDiagnosticList ) {
       diagnostic->calculate_and_write(G, fields, tmpG, tmpf);
     }
 
@@ -562,7 +562,7 @@ bool Diagnostics_KREHM::loop(MomentsG** G, Fields* fields, double dt, int counte
       }
     }
 
-    for( auto diagnostic : momentsDiagnosticList ) {
+    for( auto & diagnostic : momentsDiagnosticList ) {
       diagnostic->calculate_and_write(G, fields, tmpC);
     }
 
