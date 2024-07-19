@@ -84,7 +84,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     pars->geofilename = std::string(pars->run_name) + ".eik.nc";
     if(grids->iproc == 0) {
       char command[3000];
-      sprintf(command, "python %s/geometry_modules/pyvmec/gx_geo_vmec.py %s.in %s", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
+      sprintf(command, "python %s/geometry_modules/pyvmec/gx_geo_vmec.py %s.in %s > %s.gx_geo.log", GX_PATH, pars->run_name, pars->geofilename.c_str(), pars->run_name);
       printf("Using vmec geometry. Generating geometry file %s with\n> %s\n", pars->geofilename.c_str(), command);
       system(command);
     }
@@ -553,7 +553,6 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   for(int k=0; k<grids->Nz; k++) {
     z_h[k] = 2.*M_PI *pars->Zp *(k-grids->Nz/2)/grids->Nz;
   }
-  int ntgrid = N/2;
 
   interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
   interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
@@ -736,10 +735,6 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
     if(grids->iproc==0) printf("Cannot open file %s \n", pars->geofilename.c_str());
     exit(0);
   } else if(grids->iproc==0) DEBUGPRINT("Using igeo = 1. Opened geo file %s \n", pars->geofilename.c_str());
-
-  int nlines=0;
-  fpos_t lineStartPos;
-  int ch;
 
   int ntgrid;
   int oldNz, oldnperiod;
@@ -987,7 +982,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
     float m0_omega0 = 0; // need to maximize this quantity to find max frequency for the NTFT
     for (int idz = 0; idz < grids->Nz; idz++) { //only need to loop through Nz since m0 scales with ky, max ky will have max m0
       if (grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]))) {
-        m0_omega0 = grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));
+        // m0_omega0 = grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));
 	grids->m0_max = abs(grids->m0_h[grids->Nyc-1 + grids->Nyc*idz]);
 	gbdrift0_max = abs(gbdrift0_h[idz]);
 	cvdrift0_max = abs(cvdrift0_h[idz]);
