@@ -1350,9 +1350,9 @@ void Parameters::putbool (int ncid, const char varname[], bool val) {
 bool Parameters::getbool (int ncid, const char varname[]) {
   int idum, ires, retval;
   bool res;
-  if (debug) printf("%s = %i \n", varname, ires);
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &ires)) ERR(retval);
+  if (debug) printf("%s = %i \n", varname, ires);
   res = (ires!=0) ? true : false ;
   return res;
 }
@@ -1360,9 +1360,9 @@ bool Parameters::getbool (int ncid, const char varname[]) {
 float Parameters::get_real (int ncid, const char varname[]) {
   int idum, retval;
   float res;
-  if (debug) printf("%s = %f \n",varname, res);
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &res)) ERR(retval);
+  if (debug) printf("%s = %f \n",varname, res);
   return res;
 }
 
