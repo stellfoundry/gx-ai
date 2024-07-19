@@ -15,7 +15,7 @@ SpectraDiagnostic::SpectraDiagnostic(Parameters* pars, Grids* grids, Geometry* g
 void SpectraDiagnostic::add_spectra(SpectraCalc *spectra)
 {
   spectraList.push_back(spectra);
-  int varid = spectra->define_nc_variable(varname, nc_group, description);
+  int varid = spectra->define_nc_variable(varname, nc_group, description, pars_->restart && pars_->append_on_restart);
   spectraIds.push_back(varid);
 }
 
@@ -479,8 +479,13 @@ GrowthRateDiagnostic::GrowthRateDiagnostic(Parameters* pars, Grids* grids, NetCD
   Nwrite = grids->Nakx*grids->Naky*2;
 
   int retval;
-  if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
-  if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  if (pars_->restart && pars_->append_on_restart) {
+    if (retval = nc_inq_varid(nc_group, varname.c_str(), &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  } else {
+    if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  }
 
   cudaMalloc (&omg_d, sizeof(cuComplex) * N);
   omg_h = (cuComplex*) malloc  (sizeof(cuComplex) * N);
@@ -602,8 +607,13 @@ FieldsDiagnostic::FieldsDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
 
   int retval;
   for(int i=0; i<3; i++) {
-    if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
-    if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    if (pars_->restart && pars_->append_on_restart) {
+      if (retval = nc_inq_varid(nc_group, varnames[i].c_str(), &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    } else {
+      if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    }
   }
 
   f_h = (cuComplex*) malloc  (sizeof(cuComplex) * N);
@@ -720,8 +730,13 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
    
   int retval;
   for(int i=0; i<3; i++) {
-    if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
-    if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    if (pars_->restart && pars_->append_on_restart) {
+      if (retval = nc_inq_varid(nc_group, varnames[i].c_str(), &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    } else {
+      if (retval = nc_def_var(nc_group, varnames[i].c_str(), nc_type, ndim, dims, &varids[i])) ERR(retval);
+      if (retval = nc_var_par_access(nc_group, varids[i], NC_COLLECTIVE)) ERR(retval);
+    }
   }
 
   N = grids->NxNyNz;
@@ -812,8 +827,13 @@ MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* g
   Nwrite = grids->Nakx*grids->Naky*grids->Nz*grids->Nspecies*2;
 
   int retval;
-  if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
-  if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  if (pars_->restart && pars_->append_on_restart) {
+    if (retval = nc_inq_varid(nc_group, varname.c_str(), &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  } else {
+    if (retval = nc_def_var(nc_group, varname.c_str(), nc_type, ndim, dims, &varid)) ERR(retval);
+    if (retval = nc_var_par_access(nc_group, varid, NC_COLLECTIVE)) ERR(retval);
+  }
 
   f_h = (cuComplex*) malloc  (sizeof(cuComplex) * N);
   cpu = (float*) malloc  (sizeof(float) * Nwrite);
