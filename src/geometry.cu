@@ -22,7 +22,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
     if(geo_option=="const-curv") pars->const_curv = true;
 
     geo = new S_alpha_geo(pars, grids);
-    if(grids->iproc==0) CUDA_DEBUG("Initializing geometry s_alpha: %s \n");
+    if(grids->iproc==0) DEBUGPRINT("Initializing geometry s_alpha.\n");
     if(igeo==0) {
       if(grids->iproc==0) printf(ANSI_COLOR_RED);
       if(grids->iproc==0) printf("Warning: igeo is being deprecated. Use geo_option=\"s-alpha\" instead of igeo=0.\n"); 
@@ -43,7 +43,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
-    if(grids->iproc==0) CUDA_DEBUG("Initializing miller geometry: %s \n");
+    if(grids->iproc==0) DEBUGPRINT("Initializing miller geometry.\n");
   } 
   else if(geo_option=="vmec_c") {
     bool usenc;
@@ -107,7 +107,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
 
     // now read the eik file that was generated
     geo = new Eik_geo(pars, grids);
-    if(grids->iproc==0) CUDA_DEBUG("Initializing miller geometry: %s \n");
+    if(grids->iproc==0) DEBUGPRINT("Initializing geometry from generated eik.out file.\n");
   } 
 #ifdef GS2_PATH
   else if(geo_option=="gs2_geo") {
@@ -139,7 +139,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   else if(geo_option=="eik" || igeo==1) {
     // read already existing eik.out geo file (don't run any geometry module) 
     geo = new Eik_geo(pars, grids);
-    if(grids->iproc==0) CUDA_DEBUG("Initializing geometry from eik.out file: %s \n", pars->geofilename.c_str());
+    if(grids->iproc==0) DEBUGPRINT("Initializing geometry from eik.out file: %s \n", pars->geofilename.c_str());
     if(igeo==1) {
       if(grids->iproc==0) printf(ANSI_COLOR_RED);
       if(grids->iproc==0) printf("Warning: igeo is being deprecated. Use geo_option=\"eik\" instead of igeo=1.\n"); 
@@ -148,7 +148,7 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
   }
   else if(geo_option=="nc" || igeo==2) {
     geo = new geo_nc(pars, grids);
-    if(grids->iproc==0) CUDA_DEBUG("Initializing geometry from NetCDF file: %s \n");
+    if(grids->iproc==0) DEBUGPRINT("Initializing geometry from NetCDF file: %s \n", pars->geofilename.c_str());
     if(igeo==2) {
       if(grids->iproc==0) printf(ANSI_COLOR_RED);
       if(grids->iproc==0) printf("Warning: igeo is being deprecated. Use geo_option=\"nc\" instead of igeo=2.\n"); 
@@ -460,7 +460,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // do basic sanity check
   if (grids->Nz != (int) N-1) {
-    if(grids->iproc==0) printf("Number of points along the field line in geometry file %d does not match input %d \n", N-1, grids->Nz);
+    if(grids->iproc==0) printf("Number of points along the field line in geometry file %u does not match input %d \n", N-1, grids->Nz);
     exit (1);
   }
 
@@ -677,7 +677,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   
   // calculate bgrad
   calculate_bgrad(grids);
-  if(grids->iproc==0) CUDA_DEBUG("calc bgrad: %s \n");
+  if(grids->iproc==0) DEBUGPRINT("bgrad calculated\n");
 }
 
 // MFM - 07/09/17
@@ -978,7 +978,7 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
 
   if (pars->nonTwist) {
     grids->m0_max = 0;
-    float m0_omega0 = 0; // need to maximize this quantity to find max frequency for the NTFT
+    // float m0_omega0 = 0; // need to maximize this quantity to find max frequency for the NTFT
     for (int idz = 0; idz < grids->Nz; idz++) { //only need to loop through Nz since m0 scales with ky, max ky will have max m0
       if (grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]))) {
         // m0_omega0 = grids->m0_h[grids->Nyc-1 + grids->Nyc*idz] * (grids->vpar_max * grids->vpar_max*abs(cvdrift0_h[idz]) + grids->muB_max * abs(gbdrift0_h[idz]));

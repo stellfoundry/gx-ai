@@ -182,6 +182,9 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
     case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
     case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    default:
+      printf("Unknown timestepper id (%u). Aborting.",static_cast<unsigned int>(pars->scheme_opt) );
+      exit(1);
     }
 
   fflush(stdout);
@@ -189,17 +192,16 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   printDeviceMemoryUsage(pars->iproc);
   MPI_Barrier(pars->mpcom);
   fflush(stdout);
-  
+
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);
-	 
+
   // TIMESTEP LOOP
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
-  bool bvar; 
 
   cudaDeviceSynchronize();
   checkCudaErrors(cudaGetLastError());
-  
+
   while(counter<pars->nstep && time<pars->t_max) {
 
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
