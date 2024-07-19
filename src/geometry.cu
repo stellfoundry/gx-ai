@@ -119,7 +119,8 @@ Geometry* init_geo(Parameters* pars, Grids* grids)
       printf("Generating geometry file %s.eik.out.nc with\n> %s\n", pars->run_name, command);
       int err = system(command);
       if (err) {
-        printf("ERROR in system command\n", err);
+        printf("ERROR: eiktest returned %d\n", err);
+        exit(1);
       }
       
     }
