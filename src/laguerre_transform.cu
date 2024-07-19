@@ -117,7 +117,9 @@ void LaguerreTransform::transformToGrid(float* G_in, float* g_res)
      G_in, lda, strideA,
      toGrid, ldb, strideB,
      &beta, g_res, ldc, strideC,
-     batch_size_); 
+     batch_size_);
+  if( status != CUBLAS_STATUS_SUCCESS )
+    fprintf( stderr, "ERROR in cublasSgemmStridedBatched (%d: %e)", status, cublasGetStatusName() );
 }
 
 void LaguerreTransform::transformToSpectral(float* g_in, float* G_res)
