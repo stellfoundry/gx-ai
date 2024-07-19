@@ -654,9 +654,6 @@ __global__ void eig_residual(double* y, double* A, double* x, double* R,
   }
 }
 
-__global__ void est_eval(double eval, double *fLf, double* f2) {eval = fLf[0]/f2[0];}
-
-
 __global__ void inv_scale_kernel(double* res, const double* f, const double* scalar, int N)
 {
   unsigned int n = get_id1();
