@@ -849,6 +849,7 @@ bool Diagnostics_cetg::loop(MomentsG** G, Fields* fields, double dt, int counter
 //  // check to see if we should stop simulation
 //  stop = checkstop();
 //  return stop;
+	return false;
 }
 //
 void Diagnostics_cetg::finish(MomentsG** G, Fields* fields, double time) 

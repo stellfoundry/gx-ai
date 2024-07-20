@@ -55,16 +55,18 @@ VPATH=.:src:geometry_modules/vmec/src
 HEADERS=$(wildcard include/*.h) 
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
+WARNING_FLAGS = -Wall -Wno-unused-local-typedefs
+
 ifdef GS2_PATH
 obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+	$(NVCC) $(WARNING_FLAGS) -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
 else                                        
 obj/%.o: %.cu $(HEADERS)                    
-	$(NVCC) -Wall -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
+	$(NVCC) $(WARNING_FLAGS) -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CXX) -Wall -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
+	$(CXX) $(WARNING_FLAGS) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
 
 .SILENT: src/version.c obj/version.o
 
