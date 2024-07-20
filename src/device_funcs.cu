@@ -3852,9 +3852,9 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
     if (unmasked(idx, idy)) {
       unsigned int idz = idxz / nx;
       unsigned int idxy = idy + nyc*idx;
-      if (idx == 0) {
-        printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
-      }
+      //if (idx == 0) {
+      //  printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+      //}
       //if g is sheared beyond resolution or mask, set incoming field to 0
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
         int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
@@ -3870,9 +3870,9 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
         int ig_new = idy + nyc * (idx_new + nx * (idz + nz * idlm));
         g_new[ig_new] = g_old[ig_old];
 	// We seem to have an issue with the kx = 0 mode shifting one timestep too late?
-	if (idx == 0) {
-	  printf("g shifting for the kx = 0 mode \n");
-	}
+	//if (idx == 0) {
+	//  printf("g shifting for the kx = 0 mode \n");
+	//}
       }
     }
   }
