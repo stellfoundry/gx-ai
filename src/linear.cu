@@ -296,14 +296,19 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids, Geometry* geo) :
   }
  
   switch (pars_->closure_model_opt)
-    {
+  {
     case Closure::none      :
+      // OK, no closure specified, no need to print anything
+      break;
+    default:
+      // A closure was specified, but we aren't using it, best to inform the user.
+      fprintf(stderr, "Ignoring closure option. Closures not supported for KREHM");
       break;
     case Closure::smithpar  :
       DEBUGPRINT("Initializing Smith parallel closures\n");
       //closures = new SmithPar(pars_, grids_, geo_, grad_par);
       break;
-    }
+  }
   
   int nn1 = grids_->Nyc;   int nt1 = min(nn1, 16);   int nb1 = 1 + (nn1-1)/nt1;
   int nn2 = grids_->Nx;    int nt2 = min(nn2,  4);   int nb2 = 1 + (nn2-1)/nt2;
