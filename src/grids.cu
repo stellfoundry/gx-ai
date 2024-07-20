@@ -246,7 +246,7 @@ void Grids::init_ks_and_coords()
   // If this is a restarted run, should get kxstar from the restart file
   // otherwise:
   if (pars_->ExBshear) {
-    int nn1, nt1, nb1, nn2, nt2, nb2, [[maybe_unused]] nn3, nt3, nb3;
+    int nn1, nt1, nb1, nn2, nt2, nb2, nn3, nt3, nb3;
     nn1 = Nyc;       nt1 = min(32, nn1);     nb1 = 1 + (nn1-1)/nt1;
     nn2 = Nx;        nt2 = min(16, nn2);     nb2 = 1 + (nn2-1)/nt2;
     nn3 = 1;         nt3 = 1;                nb3 = 1;
