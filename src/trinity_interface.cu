@@ -189,7 +189,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   fclose(fptr);
 
   if(pars->igeo==1) {
-    char command[750]; // Again, need a long buffer so we never overflow
+    char command[3750]; // Again, need a long buffer so we never overflow (but this is getting silly, we should restrict run_name to a smaller value)
     // call python geometry module using toml we just created to write the eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
     sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s %s.eik.out", GX_PATH, fname, fname);
