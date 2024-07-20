@@ -625,12 +625,9 @@ void Diagnostics::restart_write(MomentsG** G, double *time)
   int moments_out[7];
   
   int Nspecies_glob = grids_->Nspecies_glob;
-  int Nx   = grids_->Nx;
   int Nakx = grids_->Nakx;
   int Naky = grids_->Naky;
-  int Nyc  = grids_->Nyc;
   int Nz   = grids_->Nz;
-  int Nm   = grids_->Nm;
   int Nm_glob = grids_->Nm_glob;
   int Nl   = grids_->Nl;
 
