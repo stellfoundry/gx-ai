@@ -3046,22 +3046,22 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g,
 // main kernel function for calculating RHS
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
 __global__ void rhs_linear(const cuComplex* __restrict__ g,
-			   const cuComplex* __restrict__ phi,
-			   const cuComplex* __restrict__ apar,
-			   const cuComplex* __restrict__ bpar,
-			   const cuComplex* __restrict__ upar_bar,
-			   const cuComplex* __restrict__ uperp_bar,
-			   const cuComplex* __restrict__ t_bar,
-			   const float* __restrict__ kperp2,
-			   const float* __restrict__ cv_d,
-			   const float* __restrict__ gb_d,
-			   const float* __restrict__ bmag,
-			   const float* __restrict__ bgrad,
-			   const float* __restrict__ ky,
-			   const specie sp,
-			   const specie sp_i,
-			   cuComplex* __restrict__ rhs,
-			   bool ei_colls,
+                           const cuComplex* __restrict__ phi,
+                           const cuComplex* __restrict__ apar,
+                           const cuComplex* __restrict__ bpar,
+                           const cuComplex* __restrict__ upar_bar,
+                           const cuComplex* __restrict__ uperp_bar,
+                           const cuComplex* __restrict__ t_bar,
+                           const float* __restrict__ kperp2,
+                           const float* __restrict__ cv_d,
+                           const float* __restrict__ gb_d,
+                           const float* __restrict__ bmag,
+                           const float* __restrict__ bgrad,
+                           const float* __restrict__ ky,
+                           const specie sp,
+                           const specie sp_i,
+                           cuComplex* __restrict__ rhs,
+                           bool ei_colls,
                            float rhoc,
                            float g_exb,
                            float RBzeta,
@@ -3203,7 +3203,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g,
 	    + Jflr(l+1,b_s)*(l+1)*tprim_ 
 	   )
       	   + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*vt_i/vt_*upar_bar_i);
-	   //- 2 * iky_ * phi_ * Jflr(l, b_s)*( RBzeta*qsf*g_exb/(vt_*rhoc*bmag_)  ); // JFP: m=1 electrostatic flow shear term.
+	   - 2.0 * iky_ * phi_ * Jflr(l, b_s)*( RBzeta*qsf*g_exb/(vt_*rhoc*bmag_)  ); // JFP: m=1 electrostatic flow shear term.
 
 	}
 	if (m==2) {
