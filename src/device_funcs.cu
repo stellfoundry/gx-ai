@@ -3767,16 +3767,16 @@ __global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxba
     unsigned int idxy = idy + nyc * idx;
     // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
     kxbar_ikx_old[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); // IGA: To keep precision, we do the division as a double, then round, then cast back to float
-    printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f round(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
+    //printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f round(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
 
     // IGA Added explicit casts in case ( ky * g_exb ) is done in single precision before type promotion ( a_float * b_double or a_double * b_float will promote both to double, a * b * c will parse as ( a * b ) * c (I think...)
     kxstar[idxy]        = kxstar[idxy] - static_cast<double>( ky[idy] ) * static_cast<double>( g_exb ) * dt;
     kxbar_ikx_new[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); 
-    printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
+    //printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
 
-	 if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
-      printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
-    }
+    // if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
+      //printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+    //}
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
       int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
@@ -3808,9 +3808,9 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
   if(unmasked(idx, idy) && idz < nz && idy > 0) {
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
-    if (idx == 0) {
-      printf("field_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
-      }
+    //if (idx == 0) {
+    //  printf("field_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+    //  }
     if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
       int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
@@ -3824,9 +3824,9 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int idxyz_old = get_idxyz(idy, idx_old, idz);
       int idxyz_new = get_idxyz(idy, idx_new, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
-      if (idx == 0) {
-        printf("field shifting for the kx = 0 mode \n");
-      }
+      //if (idx == 0) {
+      //  printf("field shifting for the kx = 0 mode \n");
+      //}
     }
   }
 }
@@ -3844,9 +3844,9 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
     if (unmasked(idx, idy)) {
       unsigned int idz = idxz / nx;
       unsigned int idxy = idy + nyc*idx;
-      if (idx == 0) {
-        printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
-      }
+      //if (idx == 0) {
+      //  printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+      //}
       //if g is sheared beyond resolution or mask, set incoming field to 0
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
         int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
@@ -3862,9 +3862,9 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
         int ig_new = idy + nyc * (idx_new + nx * (idz + nz * idlm));
         g_new[ig_new] = g_old[ig_old];
 	// We seem to have an issue with the kx = 0 mode shifting one timestep too late?
-	if (idx == 0) {
-	  printf("g shifting for the kx = 0 mode \n");
-	}
+	//if (idx == 0) {
+	//  printf("g shifting for the kx = 0 mode \n");
+	//}
       }
     }
   }
