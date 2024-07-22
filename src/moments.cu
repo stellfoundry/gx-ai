@@ -338,10 +338,11 @@ void MomentsG::initialConditions(double* time) {
   checkCuda(cudaGetLastError());    
   free(init_h);     
   // restart_read goes here, if restart == T
-  // as in gs2, if restart_read is true, we want to *add* the restart values to anything
-  // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
-    //    set_zero(); // As noted in the comment above, setting G = 0 here is not correct. Doing so breaks the kh01a regression test
+    // if restart_with_perturb == T then the restart values will be *added* to the initial conditions above. 
+    // this is required for kh01a test, and also mimicks what gs2 does, but it is not the default behavior in GX.
+    // otherwise (default), only use restart data, regardless of init conditions specified in input file.
+    if(!pars_->restart_with_perturb) set_zero();
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
@@ -673,7 +674,7 @@ void MomentsG::restart_read(double* time)
   int id_G, id_time;
 
   char stra[NC_MAX_NAME+1];
-  char strb[512];
+  char strb[1512];
   strcpy(strb, pars_->restart_from_file.c_str());
 
   if (retval = nc_open(strb, NC_NOWRITE, &ncres)) { printf("file: %s \n",strb); ERR(retval);}

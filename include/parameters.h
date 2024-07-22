@@ -200,7 +200,7 @@ class Parameters {
   bool nonlinear_mode, linear, iso_shear, secondary, local_limit, hyper, HB_hyper;
   bool hyperz;
   bool no_landau_damping, turn_off_gradients_test, slab, hypercollisions_const, hypercollisions_kz;
-  bool write_netcdf, write_omega, write_rh, write_phi, restart, save_for_restart;
+  bool write_netcdf, write_omega, write_rh, write_phi, restart, restart_if_exists, save_for_restart, restart_with_perturb, append_on_restart;
   bool fixed_amplitude, write_fields, write_eigenfuncs; 
   bool append_old, no_omegad, eqfix, write_pzt, collisions, domain_change;
   bool const_curv, varenna, varenna_fsa, dorland_phase_complex, add_noise;
@@ -232,7 +232,7 @@ class Parameters {
     
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
-  char run_name[255];
+  char run_name[1255];
 
   int specs[1]; // dims for netcdf species variable arrays
   size_t is_start[1], is_count[1]; 
