@@ -525,7 +525,6 @@ void Parameters::get_nml_vars(char* filename)
   chs_eq = toml::find_or <bool> (tnml, "chs_eq", false);
   transp_eq = toml::find_or <bool> (tnml, "transp_eq", false);
   gs2d_eq = toml::find_or <bool> (tnml, "gs2d_eq", false);
-  RBzeta = toml::find_or <float> (tnml, "RBzeta", (double) rmaj); // JFP: RBzeta = I_N(psi) R Bzeta / a Bref ?= (rmaj / a) by default until we have GX capability to calculate R(theta). But for now, assume  R Bzeta / a = Bref.
 
   tnml = nml;
   if (nml.contains("Physics")) tnml = toml::find(nml, "Physics");
