@@ -679,6 +679,8 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   // calculate bgrad
   calculate_bgrad(grids);
   if(grids->iproc==0) CUDA_DEBUG("calc bgrad: %s \n");
+
+  RBzeta = 0.0; // TODO: FIX
 }
 
 // MFM - 07/09/17
@@ -888,6 +890,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   // calculate bgrad
   calculate_bgrad(grids);
   if(grids->iproc==0) CUDA_DEBUG("calc bgrad: %s \n");
+
+  RBzeta = 0.0; // TODO: FIX
 }
 
 void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
