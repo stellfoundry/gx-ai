@@ -496,6 +496,13 @@ void Parameters::get_nml_vars(char* filename)
     //printf("Be sure it is consistent with the value in the geometry file. \n");
     //printf("Using shat = %f \n",shat);
   }
+
+  RBzeta_override = toml::find_or<float>( tnml, "RBzeta", 0.0 ); // For explicitly setting I(psi) for flying-slab simulations
+  if( geo_option != "slab" && RBzeta_override != 0.0 )
+  {
+	  printf("ERROR: R B_zeta has been set explicitly, but this is only legal in a slab! Detected geo_option is %s (not 'slab')", geo_option );
+  }
+
   
   // the following parameters are exclusively for interfacing 
   // with the GS2 geometry module via eiktest
