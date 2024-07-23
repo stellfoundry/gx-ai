@@ -3748,13 +3748,6 @@ Field and distribution function shift: when kx_star rounds to a new kx gridpoint
 
 ---------------------
 
-Order of operations in a GX timestep:
-
-Example for rk4 timestepper ts_rk4.cu, 
-
---------------------
-
-
 */
 
 __global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
@@ -3765,18 +3758,15 @@ __global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxba
   // In the following 'round', as specified by C99 (and subsequent standards), rounds to the nearest integer, rounding halfway cases away from zero always.
   if(idx < nx && idy < nyc && idy > 0) {
     unsigned int idxy = idy + nyc * idx;
-    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
-    kxbar_ikx_old[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); // IGA: To keep precision, we do the division as a double, then round, then cast back to float
-    //printf("kxstar_phase_shift before shift kxstar[idxy]/dkx is %f round(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
 
-    // IGA Added explicit casts in case ( ky * g_exb ) is done in single precision before type promotion ( a_float * b_double or a_double * b_float will promote both to double, a * b * c will parse as ( a * b ) * c (I think...)
+    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
+
+    // IGA: To keep precision, we do the division as a double, then round, then cast back to float
+    kxbar_ikx_old[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) );
+
+    // IGA Added explicit casts in case ( ky * g_exb ) is done in single precision before type promotion ( a_float * b_double or a_double * b_float will promote both to double, a * b * c will parse as ( a * b ) * c
     kxstar[idxy]        = kxstar[idxy] - static_cast<double>( ky[idy] ) * static_cast<double>( g_exb ) * dt;
     kxbar_ikx_new[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); 
-    //printf("kxstar_phase_shift after shift kxstar[idxy]/dkx is %f roundf(kxstar[idxy]/dkx) is %f \n", kxstar[idxy]/dkx, round(kxstar[idxy]/dkx));
-
-    // if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
-      //printf("kxstar_phase_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
-    //}
 
     if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
       int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
@@ -3796,7 +3786,6 @@ __global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxba
 // there might be a better way of doing this if we let a mode trek across the entire kx grid before we remap (if it is > nakx/2) instead of across a single mode
 // would need to change how we track kxstar above, could be good future project to improve efficiency
 
-
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb)
 {
   unsigned int idy = get_id1();
@@ -3815,14 +3804,14 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
       int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
       int idx_remap = get_idx(kxbar_ikx_remap); // this shifts from ikx to idx
-      int idxyz_remap = get_idxyz(idy, idx_remap, idz);
+      int idxyz_remap = get_idxyz(idx_remap, idy, idz);
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
       int idx_old = kxbar_ikx_old[idxy]; // this shifts from ikx to idx
       int idx_new = kxbar_ikx_new[idxy]; // this shifts from ikx to idx
-      int idxyz_old = get_idxyz(idy, idx_old, idz);
-      int idxyz_new = get_idxyz(idy, idx_new, idz);
+      int idxyz_old = get_idxyz(idx_old, idy, idz);
+      int idxyz_new = get_idxyz(idx_new, idy, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
       //if (idx == 0) {
       //  printf("field shifting for the kx = 0 mode \n");
