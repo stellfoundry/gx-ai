@@ -50,7 +50,7 @@ template <class T> class Reduction {
   cutensorComputeType_t typeCompute = computeType<T>();
   cutensorOperator_t opAdd = CUTENSOR_OP_ADD;
   cutensorOperator_t opMax = CUTENSOR_OP_MAX;
-  cutensorHandle_t *handle = nullptr; 
+  cutensorHandle_t handle; 
   cutensorContractionFind_t find;
     
   T alpha = 1.0;
@@ -91,7 +91,7 @@ class DenseM {
   cutensorTensorDescriptor_t dM, dV, dW, dX, dY, dZ;
   cutensorContractionDescriptor_t dMV, dMM;
   cutensorContractionPlan_t MVplan, MMplan;
-  cutensorHandle_t *handle = nullptr;
+  cutensorHandle_t handle; 
   cutensorContractionFind_t find;
   cudaDataType_t dfloat = CUDA_R_64F;
   cutensorComputeType_t typeCompute64 = CUTENSOR_COMPUTE_64F;
