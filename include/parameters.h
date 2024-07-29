@@ -13,16 +13,13 @@
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
 #define NC_SUCCESS 0
-#define NC_ERR( expr ) __handleNetCDFError__( (expr), #expr, __FILE__, __LINE__ );
-
-inline int __handleNetCDFError__( int retval, const char* func, const char *file, int line )
-{
-  // The netcdf API doesn't define a token for NC_SUCCESS, insists this is 0 
-  if ( retval != NC_SUCCESS ) {
-    fprintf(stderr, "NetCDF Error: %s (retval = %d) in \"%s\" at %s:%d \n", nc_strerror(e), static_cast<unsigned int>(retval), func, file, line);
-    exit(2); 
-  }
-  return retval;
+#define NC_ERR( expr ) {\
+  int retval = (expr);\
+  if ( retval != NC_SUCCESS ) {\
+    fprintf(stderr, "NetCDF Error: %s (retval = %d) in \"%s\" at %s:%d \n", nc_strerror(e), static_cast<unsigned int>(retval), #expr, __FILE__, __LINE__);\
+    exit(2);\
+  }\
+  return retval;\
 }
 
 #include "species.h"
