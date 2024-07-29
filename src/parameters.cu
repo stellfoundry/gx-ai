@@ -1465,7 +1465,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   float *T0 = &Ts[0];
   float *Tp = &Tps[0];
   float *np = &nps[0];
-  float *up = &ups[0];
   float *nu = &nus[0];
   int *st = &types[0];
   
