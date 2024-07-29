@@ -657,7 +657,6 @@ void Parameters::get_nml_vars(char* filename)
   species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
     for (int is=0; is < nspec_in; is++) {
-      species_h[is].uprim = 0.;
       species_h[is].nu_ss = 0.;
       species_h[is].temp = 1.;
       
@@ -667,7 +666,6 @@ void Parameters::get_nml_vars(char* filename)
       if(nml.at("species").count("temp")>0) species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
       species_h[is].tprim = toml::find <float>  (nml, "species", "tprim", is);
       species_h[is].fprim = toml::find <float>  (nml, "species", "fprim", is);
-      if(nml.at("species").count("uprim")>0) species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
       if(nml.at("species").count("vnewk")>0) species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
       string stype        = toml::find <string> (nml, "species", "type",  is);
       species_h[is].type = stype == "ion" ? 0 : 1;
@@ -1316,7 +1314,7 @@ void Parameters::init_species(specie* species)
 	     species[s].rho2, species[s].nt, species[s].nz);
       printf("jparfac, jperpfac = %f, %f \n", 
              species[s].jparfac, species[s].jperpfac);
-      printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
+      printf("nu_ss = %f, tprim = %f, fprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim);
     }      
     vtmax = max(vtmax, species[s].vt);
     vtmin = min(vtmin, species[s].vt);
@@ -1448,7 +1446,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   // this stuff should all be in species itself!
   // reason for all this is basically legacy + cuda does not support <vector>
   
-  std::vector <float> zs, ms, ns, Ts, Tps, nps, ups, nus;
+  std::vector <float> zs, ms, ns, Ts, Tps, nps, nus;
   std::vector <int> types;
   
   for (int is=0; is<nspec; is++) {
@@ -1458,7 +1456,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
     Ts.push_back(spec[is].temp);
     Tps.push_back(spec[is].tprim);
     nps.push_back(spec[is].fprim);
-    ups.push_back(spec[is].uprim);
     nus.push_back(spec[is].nu_ss);
     types.push_back(spec[is].type);
   }
@@ -1483,9 +1480,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
 
   if (retval = nc_inq_varid(ncid, "n0_prime", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, np))  ERR(retval);
-
-  if (retval = nc_inq_varid(ncid, "u0_prime", &idum))   ERR(retval);
-  if (retval = nc_put_vara (ncid, idum, is_start, is_count, up))  ERR(retval);
 
   if (retval = nc_inq_varid(ncid, "T0", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, T0))  ERR(retval);

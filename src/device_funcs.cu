@@ -3087,7 +3087,6 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g,
     const float nz_ = sp.nz;
     const float nu_ = sp.nu_ss; 
     const float tprim_ = sp.tprim;
-    const float uprim_ = sp.uprim;
     const float fprim_ = sp.fprim;
     const float kperp2_ = kperp2[idxyz];
     const float b_s = kperp2_ * sp.rho2;

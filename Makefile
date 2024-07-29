@@ -55,7 +55,7 @@ VPATH=.:src:geometry_modules/vmec/src
 HEADERS=$(wildcard include/*.h) 
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
-WARNING_FLAGS = -Wall -Wno-unused-local-typedefs
+WARNING_FLAGS = -Wall -Wno-unused-local-typedefs -Wno-deprecated-declarations
 
 ifdef GS2_PATH
 obj/%.o: %.cu $(HEADERS) 
