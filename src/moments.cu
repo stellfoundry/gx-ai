@@ -229,7 +229,7 @@ void MomentsG::initialConditions(double* time) {
         }
       }
     } else {
-      srand(22);
+      srand( pars_->random_seed );
       float samp;
       int idx;
       //
