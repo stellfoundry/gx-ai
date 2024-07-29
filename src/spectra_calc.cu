@@ -18,7 +18,7 @@ void SpectraCalc::allocate()
 
 int SpectraCalc::define_nc_variable(string varstem, int nc_group, string description, bool append)
 {
-  int varid, retval;
+  int varid;
   if(append) {
     NC_ERR( nc_inq_varid(nc_group, (varstem + tag).c_str(), &varid) );
     NC_ERR( nc_var_par_access(nc_group, varid, NC_COLLECTIVE) );
@@ -38,7 +38,6 @@ void SpectraCalc::write(float *fullData, int varid, size_t time_index, int nc_gr
   CP_TO_CPU(tmp, data, sizeof(float)*N);
   dealias_and_reorder(tmp, cpu);
   
-  int retval;
   start[0] = time_index;
   if(skip) { 
     // sometimes we need to skip the write on a particular (set of) proc(s), 

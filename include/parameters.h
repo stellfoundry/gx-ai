@@ -19,7 +19,6 @@
     fprintf(stderr, "NetCDF Error: %s (retval = %d) in \"%s\" at %s:%d \n", nc_strerror(e), static_cast<unsigned int>(retval), #expr, __FILE__, __LINE__);\
     exit(2);\
   }\
-  return retval;\
 }
 
 #include "species.h"
