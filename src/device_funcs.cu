@@ -3808,8 +3808,8 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
-      int idx_old = kxbar_ikx_old[idxy]; // this shifts from ikx to idx
-      int idx_new = kxbar_ikx_new[idxy]; // this shifts from ikx to idx
+      int idx_old = get_idx(kxbar_ikx_old[idxy]); // this shifts from ikx to idx
+      int idx_new = get_idx(kxbar_ikx_new[idxy]); // this shifts from ikx to idx
       int idxyz_old = get_idxyz(idx_old, idy, idz);
       int idxyz_new = get_idxyz(idx_new, idy, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
