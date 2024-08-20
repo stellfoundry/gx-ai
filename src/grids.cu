@@ -299,14 +299,13 @@ void Grids::init_ks_and_coords()
     z_h[k] = 2.*M_PI *pars_->Zp *(k-Nz/2)/Nz;
   }
 
-  HermiteTransform * hermite = new HermiteTransform(this);
   LaguerreTransform * laguerre = new LaguerreTransform(this, 1);
-  vpar_max = hermite->get_vmax();
+  // Estimate v_parallel_max conservatively
+  vpar_max = 2.0 * sqrtf( Nm );
   muB_max = laguerre->get_vmax();
   kx_max = kx_h[(Nx-1)/3];
   ky_max = ky_h[(Ny-1)/3];
   kz_max = kz_h[Nz/2];
   kperp_min = min(kx_h[1], ky_h[1]);
-  delete hermite;
   delete laguerre;
 }
