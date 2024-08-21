@@ -78,14 +78,14 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Li
 
   // set up moments diagnostics
   if(pars_->write_moms) {
-    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    if(grids_->Nl>1) momentsDiagnosticList.push_back(std::make_unique<TperpDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<ParticleDensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<ParticleUparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<ParticleUperpDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<ParticleTempDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    if(grids_->Nl>1) momentsDiagnosticList.push_back(std::make_unique<TperpDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleDensityDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleUparDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleUperpDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<ParticleTempDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
   }
 
   // set up stop file
@@ -506,9 +506,9 @@ Diagnostics_KREHM::Diagnostics_KREHM(Parameters* pars, Grids* grids, Geometry* g
 
   // set up moments diagnostics
   if(pars_->write_moms) {
-    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
-    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<DensityDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<UparDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
+    momentsDiagnosticList.push_back(std::make_unique<TparDiagnostic>(pars_, grids_, geo_, nonlinear_, ncdf_big_));
   }
 
   // set up stop file
