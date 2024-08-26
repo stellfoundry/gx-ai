@@ -14,35 +14,44 @@ Diagnostics_GK::Diagnostics_GK(Parameters* pars, Grids* grids, Geometry* geo, Li
   pars_ = pars;
   grids_ = grids;
   
-  ncdf_ = new NetCDF(pars_, grids_, geo_, ".out.nc"); 
+  ncdf_ = new NetCDF(pars_, grids_, geo_, ".out.nc");
   // write input parameters to netcdf
   if(! (pars_->restart && pars_->append_on_restart)) pars->store_ncdf(ncdf_->fileid, ncdf_->nc_dims);
 
   if (pars_->write_fields || pars_->write_moms) {
-    ncdf_big_ = new NetCDF(pars_, grids_, geo_, ".big.nc"); 
+    ncdf_big_ = new NetCDF(pars_, grids_, geo_, ".big.nc");
   }
 
   // set up spectra calculators
   // Always need allSpectra for Phi2 / A_||^2 below
+  // Always need tmpG / tmpf for Phi2
   allSpectra_ = new AllSpectraCalcs(grids_, ncdf_->nc_dims);
-  if(pars_->write_free_energy || pars_->write_fluxes) {
-    cudaMalloc (&tmpG, sizeof(float) * grids_->NxNycNz * grids_->Nmoms * grids_->Nspecies); 
-    cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
-  }
+  cudaMalloc (&tmpG, sizeof(float) * grids_->NxNycNz * grids_->Nmoms * grids_->Nspecies);
+  cudaMalloc (&tmpf, sizeof(float) * grids_->NxNycNz * grids_->Nspecies);
+
   if(pars_->write_moms) {
     cudaMalloc (&tmpC, sizeof(cuComplex) * grids_->NxNycNz * grids_->Nspecies);
   }
+
   G_old = (MomentsG**) malloc(sizeof(void*)*grids_->Nspecies);
+
   for(int is=0; is<grids_->Nspecies; is++) {
     int is_glob = is+grids->is_lo;
     G_old[is] = new MomentsG (pars_, grids_, is_glob);
   }
-  fields_old = new Fields(pars_, grids_);       
+
+  fields_old = new Fields(pars_, grids_);
 
   // initialize energy spectra diagnostics
+  // Always turn on Phi2
   spectraDiagnosticList.push_back(std::make_unique<Phi2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
-  spectraDiagnosticList.push_back(std::make_unique<Apar2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
   spectraDiagnosticList.push_back(std::make_unique<Phi2ZonalDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+
+  // If fapar > 0.0, log A_||^2
+  if( pars_->fapar > 0.0 ) {
+    spectraDiagnosticList.push_back(std::make_unique<Apar2Diagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
+  }
+
   if(pars_->write_free_energy) {
     spectraDiagnosticList.push_back(std::make_unique<WgDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
     spectraDiagnosticList.push_back(std::make_unique<WphiDiagnostic>(pars_, grids_, geo_, ncdf_, allSpectra_));
