@@ -4,11 +4,10 @@
 // object for handling flow shear terms.
 //=======================================
 ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
-  pars_(pars_), grids_(grids), geo_(geo), phi_tmp(nullptr)
+  pars_(pars_), grids_(grids), geo_(geo)
 { 
-  // Allocate temporary space for phi (on GPU)
-  checkCuda(cudaMalloc(&phi_tmp, sizeof(cuComplex)*grids_->NxNycNz));
-
+  // Allocate field temporary
+  fieldsTmp = new Fields( pars_, grids_ );
   // Allocate temporary space for g
   gTmp = new MomentsG( pars_, grids_ );
 
@@ -32,13 +31,15 @@ ExB_GK::ExB_GK(Parameters* pars_, Grids* grids, Geometry* geo) :
   CP_TO_GPU (grids_->x, grids_->x_h, sizeof(float)*grids_->Nx); //find a better place for this? only need to do it once for exb/ntft // JMH
 
 }
+
 ExB_GK::~ExB_GK()
 {
-  if (phi_tmp)
-	  cudaFree(phi_tmp);
+  if (fieldsTmp)
+    delete fieldsTmp;
   if (gTmp)
-	  delete gTmp;
+    delete gTmp;
 }
+
 void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per timestep
 {
   // update kxstar terms and phasefactor
@@ -50,17 +51,25 @@ void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per t
     geo_shift_ntft<<<dimGrid_xyz, dimBlock_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat,
-			     geo_->ftwist, geo_->deltaKx, geo_->m0, pars_->x0);
+                             geo_->ftwist, geo_->deltaKx, geo_->m0, pars_->x0);
     if (!pars_->linear) iKx_shift_ntft <<<dimGrid_xyz, dimBlock_xyz>>>(grids_->iKx, pars_->g_exb, dt, grids_->ky);
-  } else { 
+  } else {
     geo_shift<<<dimGrid_xyz, dimBlock_xyz>>>(grids_->kxstar, grids_->ky, geo_->cv_d, geo_->gb_d, geo_->kperp2,
                              geo_->cvdrift, geo_->cvdrift0, geo_->gbdrift, geo_->gbdrift0, geo_->omegad,
                              geo_->gds2, geo_->gds21, geo_->gds22, geo_->bmagInv, pars_->shat);
   }
+
   // update fields via temporary 
-  // phi_tmp = f->phi ; f->phi = field_shift( phi_tmp ) 
-  CP_ON_GPU (phi_tmp, f->phi,  sizeof(cuComplex)*grids_->NxNycNz);
-  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (f->phi, phi_tmp, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  // f_tmp = f ; f = field_shift( f_tmp )
+
+  fieldsTmp.copyFrom( f );
+
+  field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (fieldsTmp->phi, f->phi, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  if( pars_->fapar > 0.0 )
+    field_shift<<<dimGrid_xyz,dimBlock_xyz>>>  (fieldsTmp->apar, f->apar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+  if( pars_->fbpar > 0.0 )
+    field_shift<<<dimGrid_xyz,dimBlock_xyz>>>  (fieldsTmp->bpar, f->bpar, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
+
 }
 
 void ExB_GK::flow_shear_g_shift(MomentsG* G) // this is called for each G used in the timestepping scheme per timestep
