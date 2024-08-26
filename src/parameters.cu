@@ -94,8 +94,6 @@ void Parameters::get_nml_vars(char* filename)
   nonTwist = toml::find_or <bool>        (tnml, "nonTwist", false);
   long_wavelength_GK = toml::find_or <bool>   (tnml, "long_wavelength_GK",   false ); // JFP, long wavelength GK limit where bs = 0, except in quasineutrality where 1 - Gamma0(b) --> b.
   zero_shat_threshold = toml::find_or <float>   (tnml, "zero_shat_threshold", 1e-5);
-  bool ExBshear_domain = toml::find_or <bool>        (tnml, "ExBshear",    false ); // included for backwards-compat. ExBshear now specified in Physics
-  float g_exb_domain    = toml::find_or <float>       (tnml, "g_exb",        0.0  ); // included for backwards-compat. g_exb now specified in Physics
   
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
@@ -545,9 +543,13 @@ void Parameters::get_nml_vars(char* filename)
   beta = toml::find_or <float> (tnml, "beta",    0.0 );
   if (beta == 0.0 && beta_geo > 0.0) beta = beta_geo; 
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    nonlinear_mode );  linear = !nonlinear_mode;
-  ExBshear = toml::find_or <bool> (tnml, "ExBshear",    ExBshear_domain );
+
+  g_exb    = toml::find_or <float> (tnml, "g_exb",       0.0 );
+  // Default to ExB shear on if g_exb is nonzero
+  ExBshear = toml::find_or <bool> (tnml, "ExBshear", ( g_exb != 0.0 )  );
+  // Default to including the phase factor
   ExBshear_phase = toml::find_or <bool> (tnml, "ExBshear_phase",  true); // If false, neglect phase correction in FFT. Only relevant for nonlinear simulations.
-  g_exb    = toml::find_or <float> (tnml, "g_exb",       (double) g_exb_domain  );
+
   if (!ExBshear) ExBshear_phase = false; 
   fphi     = toml::find_or <float> (tnml, "fphi",        1.0);
   fapar    = toml::find_or <float> (tnml, "fapar",       beta > 0.0? 1.0 : 0.0);
