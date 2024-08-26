@@ -62,7 +62,7 @@ void ExB_GK::flow_shear_shift(Fields* f, double dt) // this is called once per t
   // update fields via temporary 
   // f_tmp = f ; f = field_shift( f_tmp )
 
-  fieldsTmp.copyFrom( f );
+  fieldsTmp->copyFrom( f );
 
   field_shift<<<dimGrid_xyz,dimBlock_xyz>>>    (fieldsTmp->phi, f->phi, grids_->kxbar_ikx_new, grids_->kxbar_ikx_old, pars_->g_exb);
   if( pars_->fapar > 0.0 )
