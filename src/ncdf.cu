@@ -6,9 +6,15 @@ NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo, string suffix) :
   // create netcdf file
   int retval;
   char strb[1263];
+  bool appending = false;
   strcpy(strb, pars_->run_name); 
   strcat(strb, suffix.c_str()); // suffix = ".out.nc" by default
-  if (pars_->restart && access(strb, F_OK) == 0 && pars_->append_on_restart) {
+
+  // Append if this is a restart, we are appending on restart, and the file exists and we have access
+  appending  = pars_->restart && pars_->append_on_restart
+                 && ( access(strb, F_OK) == 0 ) && ( access(strb, R_OK | W_OK ) == 0 );
+
+  if (appending) {
     // if restarting and output file already exists, open it so that we can append
     if (retval = nc_open_par(strb, NC_WRITE, pars_->mpcom, MPI_INFO_NULL, &fileid)) ERR(retval);
   } else { // no restart or restarting but no existing output file
@@ -16,19 +22,19 @@ NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo, string suffix) :
   }
 
   // get netcdf handles for the dimensions
-  nc_dims = new NcDims(pars_, grids_, fileid, pars_->restart && pars_->append_on_restart);
+  nc_dims = new NcDims(pars_, grids_, fileid, appending );
 
   // set-up and write grid variables (e.g. ky, kx, etc) to netcdf
-  nc_grids = new NcGrids(grids_, nc_dims, fileid, pars_->restart && pars_->append_on_restart);
+  nc_grids = new NcGrids(grids_, nc_dims, fileid, appending );
 
   // set-up and write geometry variables to netcdf
-  if (pars_->restart && pars_->append_on_restart) {
+  if ( appending ) {
     nc_geo = nullptr;
   } else {
     nc_geo = new NcGeo(grids_, geo_, nc_dims, fileid);
   }
 
-  nc_diagnostics = new NcDiagnostics(fileid, pars_->restart && pars_->append_on_restart);
+  nc_diagnostics = new NcDiagnostics( fileid, appending );
 }
 
 NetCDF::~NetCDF()
