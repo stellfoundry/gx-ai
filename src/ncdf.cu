@@ -14,11 +14,15 @@ NetCDF::NetCDF(Parameters* pars, Grids* grids, Geometry* geo, string suffix) :
   appending  = pars_->restart && pars_->append_on_restart
                  && ( access(strb, F_OK) == 0 ) && ( access(strb, R_OK | W_OK ) == 0 );
 
+  // So every process determines we're appending/not-appending before creating the file
+  MPI_Barrier( pars_->mpcom );
+
   if (appending) {
     // if restarting and output file already exists, open it so that we can append
     if (retval = nc_open_par(strb, NC_WRITE, pars_->mpcom, MPI_INFO_NULL, &fileid)) ERR(retval);
-  } else { // no restart or restarting but no existing output file
+  } else { // no restart or not appending or restarting but no existing output file
     if (retval = nc_create_par(strb, NC_CLOBBER | NC_NETCDF4, pars_->mpcom, MPI_INFO_NULL, &fileid)) ERR(retval);
+    pars_->append_on_restart = false; // Clobber any other logic that thinks we're still appending to this file
   }
 
   // get netcdf handles for the dimensions
