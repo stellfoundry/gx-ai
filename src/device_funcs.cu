@@ -1102,7 +1102,7 @@ __global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex
 
   if (idxyz < nx*nyc*nz && idl < nl && idm < nm) {
     unsigned int idxy = idxyz % (nx * nyc);
-    unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*(idm-m_lo));
+    unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
     if (exb_flag) {
       iKxg[ig] = g[ig] * iKx[idxy];
     }
