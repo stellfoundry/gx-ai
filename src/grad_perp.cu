@@ -165,13 +165,13 @@ void GradPerp::phase_mult(float* G, bool nonTwist, bool ExBshear, bool positive_
     const cuComplex* phasefac = positive_phase ? grids_->phasefac_exb : grids_->phasefacminus_exb;
 
     if (batch_size_ == grids_->Nz*grids_->Nl*grids_->Nm) { // if multiplying G
-      iKxgtoGrid GBX_ntft (tmp, tmp, phasefac, false);
+      iKxgtoGrid GBX_ntft (tmp, tmp, phasefac, true);
     } else if (batch_size_ == grids_->Nz*grids_->Nj) { // if multiplying J0phi or J0apar
-      iKxJ0ftoGrid GBK (tmp, tmp, phasefac, false);
+      iKxJ0ftoGrid GBK (tmp, tmp, phasefac, true);
     } else if (batch_size_ == grids_->Nz*grids_->Nl) { // if multiplying G_single
-      iKxgsingletoGrid GBX_single_ntft (tmp, tmp, phasefac, false);
+      iKxgsingletoGrid GBX_single_ntft (tmp, tmp, phasefac, true);
     } else if (batch_size_ == grids_->Nz) { // if multiplying phi (can delete this if I don't need timestep correction)
-      iKxphitoGrid GBPhi_ntft (tmp, tmp, phasefac, false);
+      iKxphitoGrid GBPhi_ntft (tmp, tmp, phasefac, true);
     }
   }
 
