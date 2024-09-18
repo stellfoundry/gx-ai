@@ -1,5 +1,5 @@
 # Makefile for raven (MPCDF)
-# Maintainer: Stefan Buller (sb0095@princeton.edu)
+65;6800;1c# Maintainer: Stefan Buller (sb0095@princeton.edu)
 #
 # add and uncomment the following in your .bashrc (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
