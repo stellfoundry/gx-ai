@@ -100,6 +100,10 @@ void Parameters::get_nml_vars(char* filename)
   tnml = nml;  
   if (nml.contains("Time")) tnml = toml::find (nml, "Time");
   dt      = toml::find_or <float> (tnml, "dt",       0.05 );
+  dt_max  = toml::find_or <float> (tnml, "dt_max",   static_cast<float>(dt) );
+  dt_min  = toml::find_or <float> (tnml, "dt_min",   1e-7 );
+  fixed_dt = toml::find_or <bool> (tnml, "fixed_dt", false );
+
   nstep   = toml::find_or <int>   (tnml, "nstep",   2e9 );
   nstep_restart   = toml::find_or <int>   (tnml, "nstep_restart",   -1 );
   scheme = toml::find_or <string> (tnml, "scheme",    "rk3"   );
@@ -114,7 +118,7 @@ void Parameters::get_nml_vars(char* filename)
   init_field = toml::find_or <string> (tnml, "init_field", "density");
   init_amp   = toml::find_or <float>  (tnml, "init_amp",   1.0e-5   );
   kpar_init  = toml::find_or <float>  (tnml, "kpar_init",     0.0   );
-  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     (long) kpar_init  );
+  ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     static_cast<int>(kpar_init)  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
   gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     1.0   );
@@ -125,16 +129,26 @@ void Parameters::get_nml_vars(char* filename)
   tprpfac = toml::find_or <float> (tnml, "tprpfac", 1.0);
   qparfac = toml::find_or <float> (tnml, "qparfac", 1.0);
   qprpfac = toml::find_or <float> (tnml, "qprpfac", 1.0);
+
+  random_seed = toml::find_or <unsigned int> (tnml, "random_seed", 22);
+
   if (random_init) ikpar_init = 0; 
 
   if (nml.contains("Restart")) tnml = toml::find(nml, "Restart");
   restart           = toml::find_or <bool>   (tnml, "restart",                 false  );
+  restart_if_exists = toml::find_or <bool>   (tnml, "restart_if_exists",       false  );
   save_for_restart  = toml::find_or <bool>   (tnml, "save_for_restart",         true  );
   restart_to_file   = toml::find_or <string> (tnml, "restart_to_file", default_restart_filename);
   restart_from_file = toml::find_or <string> (tnml, "restart_from_file", default_restart_filename);  
+  restart_with_perturb = toml::find_or <bool> (tnml, "restart_with_perturb", false  );
+  append_on_restart = toml::find_or <bool> (tnml, "append_on_restart", true);
   scale             = toml::find_or <float>  (tnml, "scale",                      1.0 );
   nsave   = toml::find_or <int>   (tnml, "nsave", 10000 );
   nsave = max(1, nsave);
+  if (restart_if_exists) {
+    if (access(restart_from_file.c_str(), F_OK) == 0) restart = true;
+    else restart = false;
+  }
 
   if (nml.contains("Dissipation")) tnml = toml::find(nml, "Dissipation");
   closure_model  = toml::find_or <string> (tnml, "closure_model", "none" );
@@ -314,6 +328,7 @@ void Parameters::get_nml_vars(char* filename)
   }    
   
   tnml = nml;
+  /*
   if (nml.contains("Controls")) tnml = toml::find (nml, "Controls");
   dealias_kz = toml::find_or <bool>   (tnml, "dealias_kz",  dealias_kz   ); // included for backwards-compat. now specified in expert
   nonlinear_mode = toml::find_or <bool>   (tnml, "nonlinear_mode",    false );  linear = !nonlinear_mode; // included for backwards-compat. nonlinear_mode now specified in Physics
@@ -343,6 +358,7 @@ void Parameters::get_nml_vars(char* filename)
   random_init     = toml::find_or <bool> (tnml, "random_init",     random_init); // include for backwards-compat. now specified in Initialization
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     init_electrons_only); // include for backwards-compat. now specified in Initialization
   if (random_init) ikpar_init = 0; 
+  */
   
   if (write_omega && fixed_amplitude) {
     if (nonlinear_mode || nwrite < 3) fixed_amplitude = false;
@@ -641,7 +657,6 @@ void Parameters::get_nml_vars(char* filename)
   species_h = (specie *) malloc(nspec_in*sizeof(specie));
   if (nml.contains("species")) {
     for (int is=0; is < nspec_in; is++) {
-      species_h[is].uprim = 0.;
       species_h[is].nu_ss = 0.;
       species_h[is].temp = 1.;
       
@@ -651,7 +666,6 @@ void Parameters::get_nml_vars(char* filename)
       if(nml.at("species").count("temp")>0) species_h[is].temp  = toml::find <float>  (nml, "species", "temp",  is);
       species_h[is].tprim = toml::find <float>  (nml, "species", "tprim", is);
       species_h[is].fprim = toml::find <float>  (nml, "species", "fprim", is);
-      if(nml.at("species").count("uprim")>0) species_h[is].uprim = toml::find <float>  (nml, "species", "uprim", is);
       if(nml.at("species").count("vnewk")>0) species_h[is].nu_ss = toml::find <float>  (nml, "species", "vnewk", is);
       string stype        = toml::find <string> (nml, "species", "type",  is);
       species_h[is].type = stype == "ion" ? 0 : 1;
@@ -744,15 +758,12 @@ void Parameters::get_nml_vars(char* filename)
   else if( stir_field == "pperp"  ) { stirf = stirs::pperp  ; }
   
   if (scheme == "sspx3") scheme_opt = Tmethod::sspx3;
-  if (scheme == "g3")    scheme_opt = Tmethod::g3;
   if (scheme == "k10")   scheme_opt = Tmethod::k10;
-  if (scheme == "k2")    scheme_opt = Tmethod::k2;
   if (scheme == "rk4")   scheme_opt = Tmethod::rk4;
   if (scheme == "rk3")   scheme_opt = Tmethod::rk3;
   if (scheme == "sspx2") scheme_opt = Tmethod::sspx2;
-  if (scheme == "rk2")   scheme_opt = Tmethod::rk2;
 
-  if (eqfix && iproc==0 && ((scheme_opt == Tmethod::k10) || (scheme_opt == Tmethod::g3)  || (scheme_opt == Tmethod::k2))) {
+  if (eqfix && iproc==0 && scheme_opt == Tmethod::k10) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -797,7 +808,7 @@ void Parameters::get_nml_vars(char* filename)
 void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   // open the netcdf4 file for this run
   // store all inputs for future reference
-  int retval, idim, sdim, wdim, pdim, adim, qdim, gamdim, phi2dim, nc_out, nc_inputs, nc_diss;
+  int retval, nc_inputs, nc_diss;
   if (retval = nc_def_grp(ncid,      "Inputs",         &nc_inputs)) ERR(retval);
   if (retval = nc_def_grp(nc_inputs, "Domain",         &nc_dom))    ERR(retval);  
   if (retval = nc_def_grp(nc_inputs, "Time",           &nc_time))   ERR(retval);  
@@ -1214,7 +1225,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint   (nc_con,  "stages",          stages          );
   put_real (nc_con,  "cfl",             cfl             );
   put_real (nc_con,  "init_amp",        init_amp        );
-  put_real (nc_con,  "ikpar_init",      ikpar_init       );
+  putint   (nc_con,  "ikpar_init",      ikpar_init      );
   putbool  (nc_con,  "random_init",     random_init     );
   putbool  (nc_con,  "dealias_kz",      dealias_kz      );
   putbool  (nc_con,  "nonlinear_mode",  nonlinear_mode  );   
@@ -1303,7 +1314,7 @@ void Parameters::init_species(specie* species)
 	     species[s].rho2, species[s].nt, species[s].nz);
       printf("jparfac, jperpfac = %f, %f \n", 
              species[s].jparfac, species[s].jperpfac);
-      printf("nu_ss = %f, tprim = %f, fprim = %f, uprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim, species[s].uprim);
+      printf("nu_ss = %f, tprim = %f, fprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim);
     }      
     vtmax = max(vtmax, species[s].vt);
     vtmin = min(vtmin, species[s].vt);
@@ -1343,9 +1354,9 @@ void Parameters::putbool (int ncid, const char varname[], bool val) {
 bool Parameters::getbool (int ncid, const char varname[]) {
   int idum, ires, retval;
   bool res;
-  if (debug) printf("%s = %i \n", varname, ires);
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &ires)) ERR(retval);
+  if (debug) printf("%s = %i \n", varname, ires);
   res = (ires!=0) ? true : false ;
   return res;
 }
@@ -1353,9 +1364,9 @@ bool Parameters::getbool (int ncid, const char varname[]) {
 float Parameters::get_real (int ncid, const char varname[]) {
   int idum, retval;
   float res;
-  if (debug) printf("%s = %f \n",varname, res);
   if (retval = nc_inq_varid(ncid, varname, &idum))   ERR(retval);
   if (retval = nc_get_var  (ncid, idum, &res)) ERR(retval);
+  if (debug) printf("%s = %f \n",varname, res);
   return res;
 }
 
@@ -1435,7 +1446,7 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   // this stuff should all be in species itself!
   // reason for all this is basically legacy + cuda does not support <vector>
   
-  std::vector <float> zs, ms, ns, Ts, Tps, nps, ups, nus;
+  std::vector <float> zs, ms, ns, Ts, Tps, nps, nus;
   std::vector <int> types;
   
   for (int is=0; is<nspec; is++) {
@@ -1445,7 +1456,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
     Ts.push_back(spec[is].temp);
     Tps.push_back(spec[is].tprim);
     nps.push_back(spec[is].fprim);
-    ups.push_back(spec[is].uprim);
     nus.push_back(spec[is].nu_ss);
     types.push_back(spec[is].type);
   }
@@ -1455,7 +1465,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
   float *T0 = &Ts[0];
   float *Tp = &Tps[0];
   float *np = &nps[0];
-  float *up = &ups[0];
   float *nu = &nus[0];
   int *st = &types[0];
   
@@ -1470,9 +1479,6 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
 
   if (retval = nc_inq_varid(ncid, "n0_prime", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, np))  ERR(retval);
-
-  if (retval = nc_inq_varid(ncid, "u0_prime", &idum))   ERR(retval);
-  if (retval = nc_put_vara (ncid, idum, is_start, is_count, up))  ERR(retval);
 
   if (retval = nc_inq_varid(ncid, "T0", &idum))   ERR(retval);
   if (retval = nc_put_vara (ncid, idum, is_start, is_count, T0))  ERR(retval);
