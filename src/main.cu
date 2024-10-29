@@ -78,13 +78,6 @@ int main(int argc, char* argv[])
 
   geo = init_geo(pars, grids);
 
-  //    We do not need Hermite transforms for anything more than some specific diagnostics
-  //    and typically this functionality is not available because it is not sufficiently general.
-  //
-  //    DEBUGPRINT("Initializing Hermite transforms...\n");
-  //    herm = new HermiteTransform(grids, 1); // batch size could ultimately be nspec
-  //    CUDA_DEBUG("Initializing Hermite transforms: %s \n");    
-
   //
   // Hold here until all threads are ready to continue
   // 
