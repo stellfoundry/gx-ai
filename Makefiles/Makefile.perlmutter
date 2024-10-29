@@ -1,9 +1,10 @@
 # Makefile for perlmutter (NERSC)
-# Maintainer: Noah Mandell (nmandell@pppl.gov)
+# Maintainers: Noah Mandell (nrmandell@gmail.com) & Ian Abel (iabel@umd.edu)
 #
 # add and uncomment the following in your .bashrc (or equivalent, depending on preferred shell; for csh, need to use setenv instead of export, etc):
 #
 # export GK_SYSTEM=perlmutter
+# module unload darshan
 # module load PrgEnv-gnu/8.3.3
 # module load gcc/11.2.0
 # module load nvhpc-mixed/22.7
