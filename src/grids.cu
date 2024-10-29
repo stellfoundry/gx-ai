@@ -1,5 +1,4 @@
 #include "grids.h"
-#include "hermite_transform.h"
 #include "laguerre_transform.h"
 
 Grids::Grids(Parameters* pars) :
