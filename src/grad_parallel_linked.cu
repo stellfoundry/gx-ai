@@ -65,9 +65,11 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     std::vector<int> factors = factorize<int>( nLinks[ c ] );
     int max_prime_factor = *( std::max_element( factors.begin(), factors.end() ) );
     if( max_prime_factor >= 127 ) {
-      std::cerr << "ERROR: In constructing the extended flux tubes, nLinks[" << c << "] = " << nLinks[c] << " which has prime factors larger than 127." << std::endl;
-      std::cerr << "ERROR: cuFFT callbacks do not support fourier transforms with large prime factors. Aborting." << std::endl << std::endl;
-      std::cerr << "We suggest adjusting nx to a nearby value." << std::endl << std::endl;
+      if( proc0 ) {
+        std::cerr << "ERROR: In constructing the extended flux tubes, nLinks[" << c << "] = " << nLinks[c] << " which has prime factors larger than 127." << std::endl;
+        std::cerr << "ERROR: cuFFT callbacks do not support fourier transforms with large prime factors. Aborting." << std::endl << std::endl;
+        std::cerr << "We suggest adjusting nx to a nearby value." << std::endl << std::endl;
+      }
       MPI_Abort( MPI_COMM_WORLD, -2 );
     }
   }
