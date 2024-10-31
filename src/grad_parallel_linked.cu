@@ -9,6 +9,9 @@
 // For std::max_element
 #include <algorithm>
 
+// For std::cerr
+#include <iostream>
+
 GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
  : pars_(pars), grids_(grids)
 {
