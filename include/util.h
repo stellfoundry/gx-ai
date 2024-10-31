@@ -3,7 +3,7 @@
 #include <vector>
 
 // Template classes for implement Pollard's Rho algorithm
-// for prime factorization. 
+// for prime factorization. Required to check if FFTs will fail / be very slow
 
 // This function finds a factor of n, or fails (one then has to retry with a new 'start' value)
 // Starting with 2 is often sufficient
@@ -56,7 +56,7 @@ template<typename I> std::vector<I> factorize( I target )
             return factors;
         }
         if( d == 1 )
-            throw std::logic_error("KABOOM");
+            throw std::logic_error("Impossible return from pollard_retry inside factorize");
         factors.emplace_back( d );
         n /= d;
     } while( true );

@@ -58,6 +58,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
   get_nLinks_nChains(nLinks, nChains, n_k, nClasses, naky, nakx);
 
+  std::cerr << "Factorizing link lengths" << std::endl;
   for( int c=0; c < nClasses; c++ ) {
     std::vector<int> factors = factorize<int>( nLinks[ c ] );
     int max_prime_factor = *( std::max_element( factors.begin(), factors.end() ) );
@@ -68,6 +69,8 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
       MPI_Abort( MPI_COMM_WORLD, -2 );
     }
   }
+  std::cerr << "Done factorizing" << std::endl;
+
 
   ikxLinked_h = (int**) malloc(sizeof(int*)*nClasses);
   ikyLinked_h = (int**) malloc(sizeof(int*)*nClasses);
