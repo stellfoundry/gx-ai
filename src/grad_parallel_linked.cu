@@ -71,7 +71,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
         std::cerr << "ERROR: cuFFT callbacks do not support fourier transforms with large prime factors. Aborting." << std::endl << std::endl;
         std::cerr << "We suggest adjusting nx to a nearby value." << std::endl << std::endl;
       }
-      MPI_Abort( MPI_COMM_WORLD, -2 );
+      exit(-2);
     }
   }
 
