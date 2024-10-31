@@ -47,6 +47,8 @@ template<typename I> I pollard_retry( I n )
 template<typename I> std::vector<I> factorize( I target )
 {
     std::vector<I> factors{};
+    if( target == 1 )
+        return {1};
     I n = target;
     do {
         I d = pollard_retry( n );
