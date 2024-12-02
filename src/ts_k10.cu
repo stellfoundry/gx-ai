@@ -13,7 +13,7 @@
 Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
 			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
-  forcing_(forcing), exb_(exb), dt_max(dt_in), dt_(dt_in), G_q1(nullptr), G_q2(nullptr), Gtmp(nullptr)
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in), G_q1(nullptr), G_q2(nullptr), Gtmp(nullptr)
 {
   // new objects for temporaries
   Gtmp = new MomentsG (pars_, grids_);
@@ -54,8 +54,12 @@ void Ketcheson10::EulerStep(MomentsG** G_q1, MomentsG** GRhs, MomentsG* Gtmp, Fi
     G_q1[is]->sync();
 
     // compute timestep (if necessary)
-    if (setdt && is==0 && nonlinear_ != nullptr) { // dt will be computed same for all species, so just do first time through species loop
-      dt_ = nonlinear_->cfl(f, dt_);
+    if (setdt && is==0) { // dt will be computed same for all species, so just do first time through species loop
+      linear_->get_max_frequency(omega_max);
+      if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
+      double wmax = 0.;
+      for(int i=0; i<3; i++) wmax += omega_max[i];
+      dt_ = min(pars_->cfl/wmax, dt_max);
     }
 
     // compute and increment nonlinear term

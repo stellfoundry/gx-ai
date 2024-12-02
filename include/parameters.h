@@ -12,6 +12,15 @@
 
 #define ERR(e) {printf("Error: %s. See file: %s, line %d\n", nc_strerror(e),__FILE__,__LINE__); exit(2);}
 
+#define NC_SUCCESS 0
+#define NC_ERR( expr ) {\
+  int retval = (expr);\
+  if ( retval != NC_SUCCESS ) {\
+    fprintf(stderr, "NetCDF Error: %s (retval = %d) in \"%s\" at %s:%d \n", nc_strerror(retval), static_cast<unsigned int>(retval), #expr, __FILE__, __LINE__);\
+    exit(2);\
+  }\
+}
+
 #include "species.h"
 // #include <cufft.h>
 #include <string>
@@ -28,7 +37,7 @@
 
 enum class inits {density, upar, tpar, tperp, qpar, qperp, all};
 enum class stirs {density, upar, tpar, tperp, qpar, qperp, ppar, pperp};
-enum class Tmethod {sspx2, sspx3, rk2, rk3, rk4, k10, g3, k2}; 
+enum class Tmethod {sspx2, sspx3, rk3, rk4, k10};
 enum class Closure {none, beer42, smithperp, smithpar};
 enum WSpectra {WSPECTRA_species,
 	       WSPECTRA_kx,
@@ -136,10 +145,11 @@ class Parameters {
   Tmethod scheme_opt;
   Closure closure_model_opt;
   
-  float RBzeta, rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
+  float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri, RBzeta_override;
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
-  float x0, y0, z0, dt, fphi, fapar, fbpar, kpar_init, shaping_ps;
+  float x0, y0, z0, dt, dt_max, dt_min, fixed_dt;
+  float fphi, fapar, fbpar, kpar_init, shaping_ps;
   int ikpar_init;
   float densfac, uparfac, tparfac, tprpfac, qparfac, qprpfac;
   float forcing_amp, pos_forcing_amp, neg_forcing_amp, me_ov_mi, nu_ei, eta, nu_hyper, D_hyper;
@@ -147,7 +157,7 @@ class Parameters {
   float nu_hyper_z;
   float D_HB, w_osc;
   float low_cutoff, high_cutoff, nlpm_max, tau_nlpm;
-  float ion_z, ion_mass, ion_dens, ion_fprim, ion_uprim, ion_temp, ion_tprim, ion_vnewk;
+  float ion_z, ion_mass, ion_dens, ion_fprim, ion_temp, ion_tprim, ion_vnewk;
   float avail_cpu_time, margin_cpu_time;
   //  float NLdensfac, NLuparfac, NLtparfac, NLtprpfac, NLqparfac, NLqprpfac;
   float tp_t0, tp_tf, tprim0, tprimf;
@@ -161,6 +171,8 @@ class Parameters {
   float B_ref, a_ref, grhoavg, surfarea;
   float t_max, t_add;
   float zero_shat_threshold;
+
+  unsigned int random_seed;
 
   // parameters for KREHM system
   bool krehm;
@@ -229,7 +241,7 @@ class Parameters {
   bool long_wavelength_GK;
   bool ExBshear_phase;
   float damp_ends_widthfrac, damp_ends_amp;
-    
+
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
   char run_name[1255];

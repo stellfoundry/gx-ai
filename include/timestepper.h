@@ -17,33 +17,6 @@ class Timestepper {
   virtual double get_dt() = 0;
 };
 
-class RungeKutta2 : public Timestepper {
- public:
-  RungeKutta2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-	      Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in);
-  ~RungeKutta2();
-  void advance(double* t, MomentsG** G, Fields* fields);
-  double get_dt() {return dt_;};
-  
- private:
-  void EulerStep(MomentsG** G1, MomentsG** G0, MomentsG** G, MomentsG* GRhs,
-		 Fields* f, double adt, bool setdt);
-
-  double dt_;
-  const double dt_max;
-  const double cfl_fac = 1.0;
-  double omega_max[3];
-  Linear     * linear_    ;
-  Nonlinear  * nonlinear_ ;
-  Solver     * solver_    ;
-  Parameters * pars_      ;
-  Grids      * grids_     ;
-  Forcing    * forcing_   ;
-  ExB        * exb_       ;
-  MomentsG   * GRhs       ;
-  MomentsG  ** G1         ;
-};
-
 class RungeKutta3 : public Timestepper {
  public:
   RungeKutta3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
@@ -80,14 +53,17 @@ class RungeKutta4 : public Timestepper {
   ~RungeKutta4();
   void advance(double* t, MomentsG** G, Fields* fields);
   void partial(MomentsG** G, MomentsG** Gt, Fields *f,
-	       MomentsG** Rhs, MomentsG **Gnew, double adt, bool setdt);
+	       MomentsG** Rhs, MomentsG **Gnew, double adt );
   double get_dt() {return dt_;};
+
+  void set_timestep( Fields * );
 
  private:
   const double dt_max;
   double dt_;
   const double cfl_fac = 2.82;
   double omega_max[3];
+  bool set_dt = true;
 
   Linear     * linear_    ;
   Nonlinear  * nonlinear_ ;
@@ -114,6 +90,7 @@ class Ketcheson10 : public Timestepper {
   void EulerStep(MomentsG** G_q1, MomentsG** GRhs, MomentsG* Gtmp, Fields* f,  bool setdt);
   const double dt_max;
   double dt_;
+  double omega_max[3];
 
   Linear       * linear_    ;
   Nonlinear    * nonlinear_ ;
@@ -126,34 +103,6 @@ class Ketcheson10 : public Timestepper {
   MomentsG    ** G_q1       ;
   MomentsG    ** G_q2       ;
   MomentsG     * Gtmp       ;
-};
-
-class K2 : public Timestepper {
- public:
-  K2(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-     Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in);
-  ~K2();
-  void advance(double* t, MomentsG** G, Fields* fields);
-  double get_dt() {return dt_;};
-
- private:
-  void EulerStep(MomentsG** G_q1, MomentsG** GRhs, Fields* f, bool setdt);
-  void FinalStep(MomentsG** G_q1, MomentsG** G_q2, MomentsG** GRhs, Fields* f);
-  const double dt_max;
-  double dt_;
-  int stages_;
-  double sm1inv;
-  double sinv;
-  
-  Linear     * linear_    ;
-  Nonlinear  * nonlinear_ ;
-  Solver     * solver_    ;
-  Parameters * pars_      ;
-  Grids      * grids_     ;
-  Forcing    * forcing_   ;
-  ExB        * exb_       ;
-  MomentsG  ** G_q1       ;
-  MomentsG  ** G_q2       ;
 };
 
 class SSPx2 : public Timestepper {
@@ -219,49 +168,3 @@ class SSPx3 : public Timestepper {
   double dt_;
 };
 
-class G3 : public Timestepper {
- public:
-  G3(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-     Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in);
-  ~G3();
-  void advance(double* t, MomentsG** G, Fields* fields);
-  double get_dt() {return dt_;};
-
- private:
-  void EulerStep(MomentsG** G_q1, MomentsG** GRhs, Fields* f,  bool setdt);
-  const double dt_max;
-  double dt_;
-
-  Linear     * linear_    ;
-  Nonlinear  * nonlinear_ ;
-  Solver     * solver_    ;
-  Parameters * pars_      ;
-  Grids      * grids_     ;
-  Forcing    * forcing_   ;
-  ExB        * exb_       ;
-  MomentsG  ** G_u1       ;
-  MomentsG  ** G_u2       ;
-};
-
-/*
-class SDCe : public Timestepper {
- public:
-  SDCe(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-       Parameters *pars, Grids *grids, Forcing *forcing, double dt_in);
-  ~SDCe();
-  void advance(double* t, MomentsG* G, Fields* fields);
-  double get_dt() {return dt_;};
-  
- private:
-  void full_rhs(MomentsG* G_q1, MomentsG* GRhs, Fields* f, MomentsG* GStar);
-  Linear *linear_;
-  Nonlinear *nonlinear_;
-  Solver *solver_;
-  Parameters *pars_;
-  Grids *grids_;
-  Forcing *forcing_;
-  const double dt_max;
-  
-  double dt_;
-}
-*/
