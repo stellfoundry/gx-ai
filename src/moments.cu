@@ -225,11 +225,16 @@ void MomentsG::initialConditions(double* time) {
 	    } else {
 	      idx = (js==0) ? ikx : grids_->Nx-ikx;
 	    }
+
             float theta0 = grids_->kx_h[ikx]/(pars_->shat*grids_->ky_h[jky]);
+            float envelope = 1.0;
+
+            if( pars_->odd_parity )
+                envelope *= sin( z_h[k] - theta0 );
             for (int k=0; k<grids_->Nz; k++) {
               int index = jky + grids_->Nyc*(idx + grids_->Nx*k);
-              init_h[index].x = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
-              init_h[index].y = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+              init_h[index].x = envelope * pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+              init_h[index].y = envelope * pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
             }
           }
         }

@@ -192,6 +192,7 @@ class Parameters {
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;
   bool gaussian_init;
+  bool odd_parity;
   float gaussian_width;
   bool vp, vp_closure;
   bool cetg;  
