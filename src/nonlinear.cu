@@ -82,7 +82,6 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     checkCuda(cudaMalloc(&dchi,  sizeof(float)*grids_->NxNyNz));
   }
   checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
-  checkCudaErrors(cudaGetLastError());
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
@@ -373,8 +372,8 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
   //printf("vpar_max = %lf, muB_max = %lf \n", vpar_max, muB_max);
   double scale = 0.5;  // normalization scaling factor for C2R FFT
-  omega_max[0] = max(omega_max[0], abs(pars_->kxfac)*(grids_->kx_max*vmax_x[0])*scale);
-  omega_max[1] = max(omega_max[1], abs(pars_->kxfac)*(grids_->ky_max*vmax_y[0])*scale);
+  omega_max[0] = fmax(omega_max[0], abs(pars_->kxfac)*(grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = fmax(omega_max[1], abs(pars_->kxfac)*(grids_->ky_max*vmax_y[0])*scale);
 }
 
 //==============================================
@@ -548,8 +547,8 @@ void Nonlinear_KREHM::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
   //printf("vpar_max = %lf\n\n", vpar_max);
   double scale = 1.0;  // normalization scaling factor for C2R FFT
-  omega_max[0] = max(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
-  omega_max[1] = max(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
+  omega_max[0] = fmax(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = fmax(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
   //printf("omega_max[0]= %lf \n omega_max[1]= %lf\n", omega_max[0], omega_max[1]);
   //printf("kx_max*vmax_x[0] = %lf \n  grids_->ky_max*vmax_x[0] = %lf \n\n", (grids_->kx_max*vmax_x[0])*scale, (grids_->ky_max*vmax_y[0])*scale);
 }
@@ -655,8 +654,8 @@ void Nonlinear_cetg::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
 
   double scale = 1.0;  // normalization scaling factor for C2R FFT
-  omega_max[0] = max(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
-  omega_max[1] = max(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
+  omega_max[0] = fmax(omega_max[0], (grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = fmax(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
 }
 
 //===========================================

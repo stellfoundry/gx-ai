@@ -397,7 +397,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
   add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), c3, G3->G(), c4, G4->G(), c5, G5->G(), neqfix);
 }
 
-void MomentsG::reality(int ngz) 
+void MomentsG::reality()
 {
   dim3 dB;
   dim3 dG;
@@ -412,6 +412,8 @@ void MomentsG::reality(int ngz)
   dB.y = 8;
   dG.y = (ngy-1)/dB.y + 1;
   
+  int ngz = grids_->Nmoms;
+
   dB.z = 4;
   dG.z = (ngz-1)/dB.z + 1;
 

@@ -1,10 +1,9 @@
 #pragma once
+#include "gpu_defs.h"
 #include "grids.h"
 #include "moments.h"
 #include "parameters.h"
 #include "fields.h"
-#include "cufftXt.h"
-#include "cufft.h"
 #include "device_funcs.h"
 
 class GradParallel {

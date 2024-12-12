@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
   //
   // Check for a class of Cuda errors
   // 
-  checkCudaErrors(cudaGetLastError());
+  checkCuda(cudaGetLastError());
 
   //
   // Run the calculation

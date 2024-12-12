@@ -105,14 +105,13 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // NOTE: nt1 = sharedSize = 32 gives best performance, but using 8 is only 5% worse.
   // this allows use of 4x more LH resolution without changing shared memory layouts
   // so i_share = 8 is used by default.
-
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
   nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);
   dimGrid  = dim3(nb1, nb2, nb3);
-  
+
   if(grids_->m_ghost == 0)
     sharedSize = nt1 * (grids_->Nl+2) * (grids_->Nm+4) * sizeof(cuComplex);
   else 
@@ -122,9 +121,10 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   cudaDeviceProp prop;
   checkCuda( cudaGetDevice(&dev) );
   checkCuda( cudaGetDeviceProperties(&prop, dev) );
-  maxSharedSize = prop.sharedMemPerBlockOptin;
+  maxSharedSize = prop.sharedMemPerBlockOptin > 0 ? prop.sharedMemPerBlockOptin : prop.sharedMemPerBlock ;
 
   DEBUGPRINT("For linear RHS: size of shared memory block = %f KB\n", sharedSize/1024.);
+  DEBUGPRINT("Max size of shared memory block = %f KB\n", maxSharedSize/1024.);
 
   if( sharedSize > maxSharedSize && grids_->m_ghost == 0) {
     printf("Error: currently cannot support this velocity resolution due to shared memory constraints.\n");
@@ -144,7 +144,9 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   dimBlockh = dim3(nt1, nt2, nt3);
   dimGridh  = dim3(nb1, nb2, nb3);
   
+#ifdef __CUDACC__
   cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, 12*1024*sizeof(cuComplex));    
+#endif
 }
 
 Linear_GK::~Linear_GK()
@@ -179,7 +181,6 @@ void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
   }
   
   // calculate most of the RHS
-  cudaFuncSetAttribute(rhs_linear, cudaFuncAttributeMaxDynamicSharedMemorySize, maxSharedSize);
   rhs_linear<<<dimGrid, dimBlock, sharedSize>>>
       	(G->G(), f->phi, f->apar, f-> bpar, upar_bar, uperp_bar, t_bar,
         geo_->kperp2, geo_->cv_d, geo_->gb_d, geo_->bmag, geo_->bgrad, 
@@ -270,7 +271,7 @@ void Linear_GK::get_max_frequency(double *omega_max)
   float mime = pars_->vtmax*pars_->vtmax/pars_->vtmin/pars_->vtmin;
   float kperprho2 = grids_->kperp_min*grids_->kperp_min/geo_->bmag_max/geo_->bmag_max;
   omega_max[2] = pars_->vtmax*grids_->kz_max*abs(geo_->gradpar) * 
-                 max(grids_->vpar_max, pars_->nspec_in > 1 ? 1/sqrt(beta*nte/2*mime + kperprho2): 0.);
+                 fmax(grids_->vpar_max, pars_->nspec_in > 1 ? 1/sqrt(beta*nte/2*mime + kperprho2): 0.);
 }
 
 //==========================================
@@ -369,7 +370,7 @@ void Linear_KREHM::get_max_frequency(double *omega_max)
   // estimate max linear frequency from kz_max*vpar_max
   omega_max[0] = 0.0;
   omega_max[1] = 0.0;
-  omega_max[2] = max(rho_s/d_e*grids_->vpar_max*grids_->kz_max, pars_->nm_in*nu_ei);
+  omega_max[2] = fmax(rho_s/d_e*grids_->vpar_max*grids_->kz_max, pars_->nm_in*nu_ei);
 }
 
 //===============================================================

@@ -1,8 +1,6 @@
 #pragma once
 #include <stdio.h>
 #include <stdlib.h>
-#include <cuda_runtime.h>
-#include <cutensor.h>
 #include <unordered_map>
 #include <vector>
 #include <iterator>
@@ -50,7 +48,7 @@ template <class T> class Reduction {
   cutensorComputeType_t typeCompute = computeType<T>();
   cutensorOperator_t opAdd = CUTENSOR_OP_ADD;
   cutensorOperator_t opMax = CUTENSOR_OP_MAX;
-  cutensorHandle_t handle; 
+  cutensorHandle_t *handle; 
   cutensorContractionFind_t find;
     
   T alpha = 1.0;
@@ -73,48 +71,3 @@ template <class T> class Reduction {
   int N_;
 };
 
-class DenseM {
- public:
-  DenseM(int N, int M);
-  ~DenseM();
-  void MatVec(double* res, double* Mat, double* vec);
-  void MatMat(double* res, double* M1, double* M2);
-
- private:
-  int M_;  int N_;
-  void * Multwork;    uint64_t sizeWork; 
-  void * MMwork;      uint64_t sizeMM;
-
-  bool first_MV = true;
-  bool first_MM = true;
-  
-  cutensorTensorDescriptor_t dM, dV, dW, dX, dY, dZ;
-  cutensorContractionDescriptor_t dMV, dMM;
-  cutensorContractionPlan_t MVplan, MMplan;
-  cutensorHandle_t handle; 
-  cutensorContractionFind_t find;
-  cudaDataType_t dfloat = CUDA_R_64F;
-  cutensorComputeType_t typeCompute64 = CUTENSOR_COMPUTE_64F;
-  double alpha = 1.0;
-  double beta  = 0.0;
-
-  std::unordered_map<int32_t, int64_t> extent;
-  std::vector<int64_t> extent_Y, extent_M, extent_V, extent_W, extent_X, extent_Z;
-
-  // G = P R2 or Y[M] = M[M x N] * V[N]
-  std::vector<int32_t> Ymode{'g'};
-  std::vector<int32_t> Mmode{'g', 'r'};
-  std::vector<int32_t> Vmode{'r'};
-
-  // X[M x N] = W [M x N] Z [ N x N ]  
-  std::vector<int32_t> Xmode{'g', 's'};
-  std::vector<int32_t> Wmode{'g', 'r'};
-  std::vector<int32_t> Zmode{'r', 's'};
-  
-  int32_t nYmode = Ymode.size(); 
-  int32_t nMmode = Mmode.size(); 
-  int32_t nVmode = Vmode.size(); 
-  int32_t nWmode = Wmode.size(); 
-  int32_t nXmode = Xmode.size(); 
-  int32_t nZmode = Zmode.size(); 
-};

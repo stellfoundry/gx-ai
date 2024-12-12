@@ -43,11 +43,11 @@ GradParallelNTFT::GradParallelNTFT(Parameters* pars, Grids* grids)
   int nLinks_max = 3000; // above this value, we cut off nLinks to be multiple of nz or else we are fft-ing chains with large prime factors
   int nLinks_min = 0;   // not used anymore // JMH
   
-  int mode_nums[naky*nakx*nz] = {0}; //array that lists what mode a point is part of
+  int mode_nums[naky*nakx*nz]; // = {0}; //array that lists what mode a point is part of
     
   mode = get_mode_nums_ntft(mode_nums, nz, naky, nakx, jtwist, grids_->m0_h, grids_->Nyc, grids_->ky_h);
-  int mode_size[mode] = {0}; // this will be sorted, used for nLinks/nChains
-  int mode_size_ref[mode] = {0}; //this won't be sorted, used for filling kx/ky grids
+  int mode_size[mode]; // = {0}; // this will be sorted, used for nLinks/nChains
+  int mode_size_ref[mode]; // = {0}; //this won't be sorted, used for filling kx/ky grids
   nExtra = (int*) malloc(sizeof(int)*mode); // this is used when chains are extremely long (>3000 grid points), cut off nExtra grid points to make nLinks integer multiple of nz for fft efficiency
   nClasses = get_nClasses_ntft(mode_size, mode_size_ref, mode_nums, nExtra, naky, nakx, nz, mode, nLinks_max, nLinks_min);
     

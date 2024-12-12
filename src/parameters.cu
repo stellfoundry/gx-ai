@@ -5,6 +5,7 @@
 #include "toml.hpp"
 #include <iostream>
 #include "version.h"
+#include <unistd.h>
 using namespace std;
 
 Parameters::Parameters(int iproc_in, int nprocs_in, MPI_Comm mpcom_in) {
@@ -235,15 +236,14 @@ void Parameters::get_nml_vars(char* filename)
   cudaDeviceProp prop;
   cudaGetDevice(&dev);
   cudaGetDeviceProperties(&prop, dev);
-  size_t maxSharedSize = prop.sharedMemPerBlockOptin;
+  size_t maxSharedSize;
+  maxSharedSize = prop.sharedMemPerBlockOptin > 0 ? prop.sharedMemPerBlockOptin : prop.sharedMemPerBlock ;
   int i_share_max = maxSharedSize/((nl_in+2)*(nm_in+4)*sizeof(cuComplex));
   if(i_share > i_share_max) {
     if(iproc==0) printf("Using i_share = %d would exceed shared memory limits. Setting i_share = %d instead.\n", i_share, i_share_max);
     i_share = i_share_max;
   }
   
-  fixed_dt    = toml::find_or <bool>   (tnml, "fixed_timestep",  false );
-
   dealias_kz  = toml::find_or <bool>   (tnml, "dealias_kz",  false );
   nreal       = toml::find_or <int>    (tnml, "nreal",           1 );  
   local_limit = toml::find_or <bool>   (tnml, "local_limit", false );

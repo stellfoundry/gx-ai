@@ -6,9 +6,9 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_linalg.h>
 
+#include "gpu_defs.h"
 #include "moments.h"
 #include "grids.h"
-#include <cublas_v2.h>
 
 class LaguerreTransform {
  public:

@@ -61,7 +61,7 @@ void RungeKutta3::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
       double wmax = 0.;
       for(int i=0; i<3; i++) wmax += omega_max[i];
 	  double dt_guess = cfl_fac*pars_->cfl/wmax;
-      dt_ = min( max(dt_guess,pars_->dt_min), dt_max);
+      dt_ = fmin( fmax(dt_guess,pars_->dt_min), dt_max);
     }
 
     Rhs[is]->set_zero();

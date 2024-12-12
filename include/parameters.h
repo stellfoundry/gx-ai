@@ -1,4 +1,5 @@
 #pragma once
+#include "gpu_defs.h"
 #include "get_error.h"
 
 #define DEBUGPRINT(_fmt, ...)  if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
@@ -113,7 +114,7 @@ class Parameters {
   const int ngam_spectra = 7;  // should match # of elements in PSpectra
   const int nphi2_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
-  void store_ncdf(int ncid, NcDims* nc_dims);
+  void store_ncdf(int ncid, NcDims *nc_dims);
 
   void init_species(specie* species);
   void set_jtwist_x0(float* shat, float *gds21, float *gds22);

@@ -1,7 +1,7 @@
 #pragma once
-#include "cufft.h"
-#include "cufftXt.h"
-#include "precision_types.h"
+#include <stdio.h>
+#include <cmath>
+#include "gpu_defs.h"
 #include "species.h"
 
 #define idXYZ unsigned int idy = get_id1(); unsigned int idx = get_id2(); unsigned int idz = get_id3();

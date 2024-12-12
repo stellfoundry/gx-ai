@@ -57,7 +57,7 @@ class MomentsG {
   void mask(void);
   void set_zero(void);
 
-  void reality(int ngz);
+  void reality();
 
   void sync(bool sync = false);
   void syncNCCL(bool sync);

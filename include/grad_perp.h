@@ -1,7 +1,6 @@
 #pragma once
+#include "gpu_defs.h"
 #include "grids.h"
-#include "cufftXt.h"
-#include "cufft.h"
 #include "device_funcs.h"
 
 class GradPerp {

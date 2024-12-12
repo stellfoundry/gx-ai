@@ -22,23 +22,23 @@ void setdev_constants(int Nx,
 		      int m_ghost_in,
 		      int Nm_glob)
 {
-  cudaMemcpyToSymbol ( nx,        &Nx,         sizeof(int));
-  cudaMemcpyToSymbol ( ny,        &Ny,         sizeof(int));
-  cudaMemcpyToSymbol ( nyc,       &Nyc,        sizeof(int));
-  cudaMemcpyToSymbol ( nz,        &Nz,         sizeof(int));
-  cudaMemcpyToSymbol ( nspecies,  &Nspecies,   sizeof(int));
-  cudaMemcpyToSymbol ( nm,        &Nm,         sizeof(int));
-  cudaMemcpyToSymbol ( nm_glob,   &Nm_glob,    sizeof(int));
-  cudaMemcpyToSymbol ( nl,        &Nl,         sizeof(int));
-  cudaMemcpyToSymbol ( nj,        &Nj,         sizeof(int));
-  cudaMemcpyToSymbol ( zp,        &Zp,         sizeof(int));
-  cudaMemcpyToSymbol ( ikx_fixed, &ikxf,       sizeof(int));
-  cudaMemcpyToSymbol ( iky_fixed, &ikyf,       sizeof(int));
-  cudaMemcpyToSymbol ( is_lo,     &is_lo_in,   sizeof(int));
-  cudaMemcpyToSymbol ( is_up,     &is_up_in,   sizeof(int));
-  cudaMemcpyToSymbol ( m_lo,      &m_lo_in,    sizeof(int));
-  cudaMemcpyToSymbol ( m_up,      &m_up_in,    sizeof(int));
-  cudaMemcpyToSymbol ( m_ghost,   &m_ghost_in, sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nx),        &Nx,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( ny),        &Ny,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nyc),       &Nyc,        sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nz),        &Nz,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nspecies),  &Nspecies,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nm),        &Nm,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nm_glob),   &Nm_glob,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nl),        &Nl,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nj),        &Nj,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( zp),        &Zp,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( ikx_fixed), &ikxf,       sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( iky_fixed), &ikyf,       sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( is_lo),     &is_lo_in,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( is_up),     &is_up_in,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_lo),      &m_lo_in,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_up),      &m_up_in,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_ghost),   &m_ghost_in, sizeof(int));
   
 }
 
@@ -2189,9 +2189,9 @@ __global__ void kInit(float* kx,
   }
   
   if (false) {
-    printf("ky[%d] = %f \t ",id, ky[id]);
-    printf("kx[%d] = %f \t ",id, kx[id]);
-    printf("kz[%d] = %f \n ",id, kz[id]);
+    if (id < nyc) printf("ky[%d] = %f \n ",id, ky[id]);
+    if (id < nx) printf("kx[%d] = %f \n ",id, kx[id]);
+    if (id < nz) printf("kz[%d] = %f \n ",id, kz[id]);
     printf("\n");
   }
 }
