@@ -1299,18 +1299,10 @@ R_GX = np.interp(theta_GX, theta_eqarc, R)
 Z_GX = np.interp(theta_GX, theta_eqarc, Z)
 gradpar_GX = gradpar_eqarc * np.ones((len(bmag_GX),))
 
-
-if 'grad_x0_spl' in locals() and 'grad_y0_spl' in locals():
-    # Use interpolated values when splines are available
-    grad_x_GX = np.array([grad_x0_spl(theta_cut), grad_x1_spl(theta_cut), grad_x2_spl(theta_cut)])
-    grad_y_GX = np.array([grad_y0_spl(theta_cut), grad_y1_spl(theta_cut), grad_y2_spl(theta_cut)])
-    b_vec = np.cross(grad_x_GX, grad_y_GX, axis=0)
-    b_vec_GX = b_vec / np.linalg.norm(b_vec, axis=0)
-else:
-    # Create dummy arrays of zeros with appropriate shape
-    grad_x_GX = np.zeros((3, len(theta_GX)))
-    grad_y_GX = np.zeros((3, len(theta_GX)))
-    b_vec_GX = np.zeros((3, len(theta_GX)))
+grad_x_GX = np.array([np.interp(theta_GX, theta_eqarc, grad_x[0]), np.interp(theta_GX, theta_eqarc, grad_x[1]), np.interp(theta_GX, theta_eqarc, grad_x[2])])
+grad_y_GX = np.array([np.interp(theta_GX, theta_eqarc, grad_y[0]), np.interp(theta_GX, theta_eqarc, grad_y[1]), np.interp(theta_GX, theta_eqarc, grad_y[2])])
+b_vec = np.cross(grad_x_GX, grad_y_GX, axis=0)
+b_vec_GX = b_vec/np.linalg.norm(b_vec, axis=0)
 
 
 #####################################################################
