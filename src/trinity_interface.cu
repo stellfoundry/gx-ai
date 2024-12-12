@@ -1,4 +1,3 @@
-#include "helper_cuda.h"
 #include "trinity_interface.h"
 #include "run_gx.h"
 

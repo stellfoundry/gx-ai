@@ -8,7 +8,6 @@
 #include <ctime>
 #include "run_gx.h"
 #include "version.h"
-#include "helper_cuda.h"
 // #include "reservoir.h"
 #include "reductions.h"
 #include <fenv.h>

@@ -10,7 +10,6 @@
 #include <cufftXt.h>
 #include <nccl.h>
 #include <cutensor.h>
-#include "helper_cuda.h"
 #define  GPU_SYMBOL(X) X
 #pragma message("COMPILING USING CUDA DEFS")
 #else
