@@ -48,7 +48,7 @@ template <class T> class Reduction {
   cutensorComputeType_t typeCompute = computeType<T>();
   cutensorOperator_t opAdd = CUTENSOR_OP_ADD;
   cutensorOperator_t opMax = CUTENSOR_OP_MAX;
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   cutensorHandle_t *handle; 
 #else
   cutensorHandle_t handle; 

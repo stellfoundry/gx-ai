@@ -46,7 +46,7 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
     }
   }
 
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorCreate(&handle));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
@@ -67,7 +67,7 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
 {
   if (!initialized_Sum) {
   
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
@@ -88,7 +88,7 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
     initialized_Sum = true;
   }
   
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
@@ -122,7 +122,7 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
 {
   if (!initialized_Max) {
   
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
@@ -143,7 +143,7 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
     initialized_Max = true;
   }
   
-#if (CUTENSOR_VERSION >= 10700)
+#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
