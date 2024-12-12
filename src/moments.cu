@@ -198,7 +198,7 @@ void MomentsG::initialConditions(double* time) {
 			if (j==1) ikx = grids_->Nx-ikx;
 			DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
 			for(int k=0; k<grids_->Nz; k++) {
-				int index = iky + grids_->Nyc*ikx + grids_->NxNyc*ikz;
+				int index = iky + grids_->Nyc*ikx + grids_->NxNyc*k;
 
 				init_h[index].x = pars_->init_amp;
 				init_h[index].y = 0.0;
