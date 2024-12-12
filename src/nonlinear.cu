@@ -61,10 +61,20 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   checkCuda(cudaMalloc(&dJ0phi_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
   checkCuda(cudaMalloc(&dJ0phi_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
 
+  checkCuda(cudaMemset(dG,    0., sizeof(float)*grids_->NxNyNz*grids_->Nl*grids_->Nm));
+  checkCuda(cudaMemset(dg_dx, 0., sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
+  checkCuda(cudaMemset(dg_dy, 0., sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
+
+  checkCuda(cudaMemset(J0phi,      0., sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+  checkCuda(cudaMemset(dJ0phi_dx,  0., sizeof(float)*grids_->NxNyNz*grids_->Nj));
+  checkCuda(cudaMemset(dJ0phi_dy,  0., sizeof(float)*grids_->NxNyNz*grids_->Nj));
+
   if (pars_->nonTwist) {
     checkCuda(cudaMalloc(&iKxG,     sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
+    checkCuda(cudaMemset(iKxG,   0., sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->Nm));
     if (pars_->fapar > 0.) {
       checkCuda(cudaMalloc(&iKxG_single, sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
+      checkCuda(cudaMemset(iKxG_single, 0., sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
     }
   }
 
@@ -72,16 +82,23 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     checkCuda(cudaMalloc(&J0apar,      sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dx,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
     checkCuda(cudaMalloc(&dJ0apar_dy,  sizeof(float)*grids_->NxNyNz*grids_->Nj));
-
     checkCuda(cudaMalloc(&tmp_c,    sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
+
+    checkCuda(cudaMemset(J0apar,      0., sizeof(cuComplex)*grids_->NxNycNz*grids_->Nj));
+    checkCuda(cudaMemset(dJ0apar_dx,  0., sizeof(float)*grids_->NxNyNz*grids_->Nj));
+    checkCuda(cudaMemset(dJ0apar_dy,  0., sizeof(float)*grids_->NxNyNz*grids_->Nj));
+    checkCuda(cudaMemset(tmp_c,    0., sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl));
     G_tmp = new MomentsG(pars_, grids_);
   }
 
   checkCuda(cudaMalloc(&dphi,  sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMemset(dphi,  0., sizeof(float)*grids_->NxNyNz));
   if (pars_->fapar > 0. || pars_->fbpar > 0.) {
     checkCuda(cudaMalloc(&dchi,  sizeof(float)*grids_->NxNyNz));
+    checkCuda(cudaMemset(dchi,  0., sizeof(float)*grids_->NxNyNz));
   }
   checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
+  checkCuda(cudaMemset(g_res, 0., sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
@@ -261,6 +278,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
   // NL_m += {G_m, phi}
   grad_perp_G->R2C(dG, G_res->G(), true); // this R2C has accumulate=true
+  //grad_perp_G->qvar(G_res->dens_ptr, grids_->NxNycNz);
 
   if (pars_->fapar > 0.) {
     // compute {G_m, Apar}
@@ -372,8 +390,8 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
   CP_TO_CPU(vmax_x, val1, sizeof(float));
   //printf("vpar_max = %lf, muB_max = %lf \n", vpar_max, muB_max);
   double scale = 0.5;  // normalization scaling factor for C2R FFT
-  omega_max[0] = fmax(omega_max[0], abs(pars_->kxfac)*(grids_->kx_max*vmax_x[0])*scale);
-  omega_max[1] = fmax(omega_max[1], abs(pars_->kxfac)*(grids_->ky_max*vmax_y[0])*scale);
+  omega_max[0] = fmax(omega_max[0], fabs(pars_->kxfac)*(grids_->kx_max*vmax_x[0])*scale);
+  omega_max[1] = fmax(omega_max[1], fabs(pars_->kxfac)*(grids_->ky_max*vmax_y[0])*scale);
 }
 
 //==============================================
@@ -404,9 +422,9 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   red = new Reduction<float>(grids_, {'r', 'x', 'z'}, {}); 
   cudaDeviceSynchronize();
 
-  checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
   G_tmp = new MomentsG(pars_, grids_);
 
+  checkCuda(cudaMalloc(&tmp_c, sizeof(cuComplex)*grids_->NxNycNz));
   checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nm));
   checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nm));
   checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->NxNyNz*grids_->Nm));
@@ -415,6 +433,16 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   checkCuda(cudaMalloc(&dphi_dy,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dchi_dx,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dchi_dy,  sizeof(float)*grids_->NxNyNz));
+
+  checkCuda(cudaMemset(tmp_c, 0., sizeof(cuComplex)*grids_->NxNycNz));
+  checkCuda(cudaMemset(dG,    0., sizeof(float)*grids_->NxNyNz*grids_->Nm));
+  checkCuda(cudaMemset(dg_dx, 0., sizeof(float)*grids_->NxNyNz*grids_->Nm));
+  checkCuda(cudaMemset(dg_dy, 0., sizeof(float)*grids_->NxNyNz*grids_->Nm));
+
+  checkCuda(cudaMemset(dphi_dx,  0., sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMemset(dphi_dy,  0., sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMemset(dchi_dx,  0., sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMemset(dchi_dy,  0., sizeof(float)*grids_->NxNyNz));
 
   fXY = dphi_dx; // this is just a pointer for use in diagnostics
 
@@ -576,12 +604,19 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   std::vector<int32_t> modesRed{};
   red = new Reduction<float>(grids_, modes, modesRed); 
 
-  checkCuda(cudaMalloc(&dG,    sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dG,    0., 2*grids_->NxNyNz);
-  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dx, 0., 2*grids_->NxNyNz);
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*2*grids_->NxNyNz));  cudaMemset(dg_dy, 0., 2*grids_->NxNyNz);
+  checkCuda(cudaMalloc(&dG,    sizeof(float)*2*grids_->NxNyNz));
+  checkCuda(cudaMalloc(&dg_dx, sizeof(float)*2*grids_->NxNyNz));
+  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*2*grids_->NxNyNz));
 
   checkCuda(cudaMalloc(&dphi_dx,  sizeof(float)*grids_->NxNyNz));
   checkCuda(cudaMalloc(&dphi_dy,  sizeof(float)*grids_->NxNyNz));
+
+  checkCuda(cudaMemset(dG,    0., sizeof(float)*2*grids_->NxNyNz));
+  checkCuda(cudaMemset(dg_dx, 0., sizeof(float)*2*grids_->NxNyNz));
+  checkCuda(cudaMemset(dg_dy, 0., sizeof(float)*2*grids_->NxNyNz));
+
+  checkCuda(cudaMemset(dphi_dx,  0., sizeof(float)*grids_->NxNyNz));
+  checkCuda(cudaMemset(dphi_dy,  0., sizeof(float)*grids_->NxNyNz));
 
   checkCuda(cudaMalloc(&val1,  sizeof(float)));
   cudaMemset(val1, 0., sizeof(float));
@@ -658,155 +693,4 @@ void Nonlinear_cetg::get_max_frequency(Fields *f, double *omega_max)
   omega_max[1] = fmax(omega_max[1], (grids_->ky_max*vmax_y[0])*scale);
 }
 
-//===========================================
-// Nonlinear_KS
-// object for handling non-linear terms in KS
-//===========================================
-Nonlinear_KS::Nonlinear_KS(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids), grad_perp_G(nullptr)
-{
-
-  Gy          = nullptr;
-  dg_dy       = nullptr;
-  g_res       = nullptr;  
-  
-  nBatch = 1;
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->Nyc);
-  
-  checkCuda(cudaMalloc(&Gy,    sizeof(float)*grids_->Ny));
-  checkCuda(cudaMalloc(&dg_dy, sizeof(float)*grids_->Ny));  
-  checkCuda(cudaMalloc(&g_res, sizeof(float)*grids_->Ny));
-  
-  int nbx = min(128, grids_->Ny);
-  int ngx = 1 + (grids_->Ny-1)/nbx;
-  dBx = dim3(nbx, 1, 1);
-  dGx = dim3(ngx, 1, 1);
-  
-}
-
-Nonlinear_KS::~Nonlinear_KS() 
-{
-  if ( grad_perp_G     ) delete grad_perp_G;
-
-  if ( Gy          ) cudaFree ( Gy          );  
-  if ( dg_dy       ) cudaFree ( dg_dy       );
-  if ( g_res       ) cudaFree ( g_res       );
-}
-
-void Nonlinear_KS::qvar (cuComplex* G, int N)
-{
-  cuComplex* G_h;
-  int Nk = grids_->Nyc;
-  G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
-  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
-  CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
-
-  printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
-  printf("\n");
-
-  free (G_h);
-}
-
-void Nonlinear_KS::qvar (float* G, int N)
-{
-  float* G_h;
-  int N_ = grids_->Ny;  G_h = (float*) malloc (sizeof(float)*N);
-
-  for (int i=0; i<N; i++) {G_h[i] = 0.;}
-  CP_TO_CPU (G_h, G, N*sizeof(float));
-
-  printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = %e \n", i%N_, i/N_, G_h[i]);
-  printf("\n");
-
-  free (G_h);
-}
-
-void Nonlinear_KS::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
-{
-
-  grad_perp_G -> dyC2R(G->G(), dg_dy);
-  grad_perp_G -> C2R(G->G(), Gy);
-  nlks GBX (g_res, Gy, dg_dy);
-  grad_perp_G -> R2C(g_res, G_res->G(), true);
-  
-}
-
-//===========================================
-// Nonlinear_VP
-// object for handling non-linear terms in VP
-//===========================================
-Nonlinear_VP::Nonlinear_VP(Parameters* pars, Grids* grids) :
-  pars_(pars), grids_(grids)
-{
-
-  Gy          = nullptr;  dphi_dy     = nullptr;  g_res       = nullptr;  
-  
-  nBatch = grids_->Nm;
-  grad_perp_G =    new GradPerp(grids_, nBatch, grids_->Nyc*grids_->Nm);
-  
-  nBatch = 1;
-  grad_perp_f =  new GradPerp(grids_, nBatch, grids_->Nyc);
-  
-  checkCuda(cudaMalloc(&Gy,      sizeof(float)*grids_->Ny*grids_->Nm)); 
-  checkCuda(cudaMalloc(&dphi_dy, sizeof(float)*grids_->Ny));              
-  checkCuda(cudaMalloc(&g_res,   sizeof(float)*grids_->Ny*grids_->Nm));
-  
-  int nnx = grids_->Ny;    int nbx = min(32, nnx);    int ngx = 1 + (nnx-1)/nbx;
-  int nny = grids_->Nm;    int nby = min(32, nny);    int ngy = 1 + (nny-1)/nby;
-  
-  dBx = dim3(nbx, nby, 1);
-  dGx = dim3(ngx, ngy, 1);
-  
-}
-
-Nonlinear_VP::~Nonlinear_VP() 
-{
-  if ( grad_perp_G     ) delete grad_perp_G;
-  if ( grad_perp_f   ) delete grad_perp_f;
-
-  if ( Gy          ) cudaFree ( Gy          );
-  if ( dphi_dy     ) cudaFree ( dphi_dy     );
-  if ( g_res       ) cudaFree ( g_res       );
-}
-
-void Nonlinear_VP::qvar (cuComplex* G, int N)
-{
-  cuComplex* G_h;
-  int Nk = grids_->Nyc;
-  G_h = (cuComplex*) malloc (sizeof(cuComplex)*N);
-  for (int i=0; i<N; i++) {G_h[i].x = 0.; G_h[i].y = 0.;}
-  CP_TO_CPU (G_h, G, N*sizeof(cuComplex));
-
-  printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = (%e, %e) \n", i%Nk, i/Nk, G_h[i].x, G_h[i].y);
-  printf("\n");
-
-  free (G_h);
-}
-
-void Nonlinear_VP::qvar (float* G, int N)
-{
-  float* G_h;
-  int N_ = grids_->Ny;  G_h = (float*) malloc (sizeof(float)*N);
-
-  for (int i=0; i<N; i++) {G_h[i] = 0.;}
-  CP_TO_CPU (G_h, G, N*sizeof(float));
-
-  printf("\n");
-  for (int i=0; i<N; i++) printf("var(%d,%d) = %e \n", i%N_, i/N_, G_h[i]);
-  printf("\n");
-
-  free (G_h);
-}
-
-void Nonlinear_VP::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
-{
-
-  grad_perp_G -> C2R(G->G(), Gy);
-  grad_perp_f -> dyC2R(f->phi, dphi_dy);
-  nlvp GBX (g_res, Gy, dphi_dy);
-  grad_perp_G -> R2C(g_res, G_res->G(), true);
-}
 

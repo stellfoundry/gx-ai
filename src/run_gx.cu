@@ -139,40 +139,6 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   }
   checkCuda(cudaGetLastError());
 
-  //////////////////////////////
-  //                          //
-  // Kuramoto-Sivashinsky eq  // 
-  //                          //
-  //////////////////////////////  
-  if (pars->ks) {
-    linear    = new Linear_KS(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_KS(pars, grids);
-
-    // no field solve for K-S
-
-    // set up initial conditions
-    G[0] -> initialConditions(&time);
-    //    G -> qvar(grids->Naky);
-  }    
-  checkCuda(cudaGetLastError());
-
-  //////////////////////////////
-  //                          //
-  // Vlasov-Poisson           // 
-  //                          //
-  //////////////////////////////  
-  if (pars->vp) {
-    linear    = new Linear_VP(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_VP(pars, grids);
-
-    solver = new Solver_VP(pars, grids);    
-
-    // set up initial conditions
-    G[0] -> initVP(&time);
-    solver -> fieldSolve(G, fields);
-  }    
-  checkCuda(cudaGetLastError());
-
   Timestepper * timestep = nullptr;
   switch (pars->scheme_opt)
     {

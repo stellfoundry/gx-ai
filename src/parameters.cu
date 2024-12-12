@@ -163,7 +163,7 @@ void Parameters::get_nml_vars(char* filename)
   p_hyper    = toml::find_or <int>    (tnml, "p_hyper",         2   ); 
   p_hyper_z  = toml::find_or <int>    (tnml, "p_hyper_z",       6   ); 
   p_hyper_l  = toml::find_or <int>    (tnml, "p_hyper_l",       6   ); 
-  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       min(20, nm_in/2) ); 
+  p_hyper_m  = toml::find_or <int>    (tnml, "p_hyper_m",       fmin(20, nm_in/2) ); 
   p_hyper_lm = toml::find_or <int>    (tnml, "p_hyper_lm",      6   ); 
   p_HB       = toml::find_or <int>    (tnml, "p_HB",            2   ); 
   hyper      = toml::find_or <bool>   (tnml, "hyper",         false ); 
@@ -701,7 +701,7 @@ void Parameters::get_nml_vars(char* filename)
   
   float numax = -1.;
   collisions = false;
-  for (int i=0; i<nspec_in; i++) {numax = max(numax, species_h[i].nu_ss);}
+  for (int i=0; i<nspec_in; i++) {numax = fmax(numax, species_h[i].nu_ss);}
   if (numax > 0.) collisions = true;
   
   Reservoir = false;
@@ -1333,10 +1333,10 @@ void Parameters::init_species(specie* species)
              species[s].jparfac, species[s].jperpfac);
       printf("nu_ss = %f, tprim = %f, fprim = %f\n\n", species[s].nu_ss, species[s].tprim, species[s].fprim);
     }      
-    vtmax = max(vtmax, species[s].vt);
-    vtmin = min(vtmin, species[s].vt);
-    tzmax = max(tzmax, abs(species[s].tz));
-    etamax = max(etamax, species[s].tprim/species[s].fprim);
+    vtmax = fmax(vtmax, species[s].vt);
+    vtmin = fmin(vtmin, species[s].vt);
+    tzmax = fmax(tzmax, abs(species[s].tz));
+    etamax = fmax(etamax, species[s].tprim/species[s].fprim);
 
     if(species[s].type == 1) {
       ne = species[s].dens;
