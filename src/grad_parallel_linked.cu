@@ -3,14 +3,14 @@
 #include "get_error.h"
 #define GCHAINS <<< dG[c], dB[c] >>>
 
-// Included for prime factorization, needed for checking if primes > 127 are present
-#include "util.h"
-
 // For std::max_element
 #include <algorithm>
 
 // For std::cerr
 #include <iostream>
+
+// Included for prime factorization, needed for checking if primes > 127 are present
+#include "util.h"
 
 GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
  : pars_(pars), grids_(grids)

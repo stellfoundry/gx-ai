@@ -96,7 +96,7 @@ gx: libgx.a obj/main.o
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
 	@rm src/version.c
 else
-gx: libgx.a obj/main.o 
+gx: obj/main.o libgx.a 
 	$(NVCC) -dlink $(NVCCFLAGS) -o obj/gx.o $< -L. -lgx $(LIBS) 
 	$(CXX) -o $@ obj/gx.o obj/main.o -L. -lgx $(LIBS) 
 	@rm src/version.c

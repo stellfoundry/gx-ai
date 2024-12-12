@@ -46,9 +46,15 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
     }
   }
 
+#if (CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorCreate(&handle));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
+#else
+  HANDLE_ERROR(cutensorInit(&handle));
+  HANDLE_ERROR(cutensorInitTensorDescriptor(&handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
+  HANDLE_ERROR(cutensorInitTensorDescriptor(&handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
+#endif
 }
 
 template<class T> Reduction<T>::~Reduction()
@@ -61,10 +67,17 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
 {
   if (!initialized_Sum) {
   
+#if (CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  opAdd, typeCompute, &sizeAdd));
+#else
+    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, dataFull, &descFull, modeFull_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  opAdd, typeCompute, &sizeAdd));
+#endif
     if (sizeAdd > sizeWork) {
       sizeWork = sizeAdd;
       if (Addwork) cudaFree (Addwork);
@@ -75,11 +88,19 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
     initialized_Sum = true;
   }
   
+#if (CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
 		    dataReduced,  &descReduced, modeReduced_.data(),
 		    opAdd, typeCompute, Addwork, sizeWork, 0));
+#else
+  HANDLE_ERROR(cutensorReduction(&handle,
+		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
+		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
+		    dataReduced,  &descReduced, modeReduced_.data(),
+		    opAdd, typeCompute, Addwork, sizeWork, 0));
+#endif
 
   if(reduce_m && reduce_s && grids_->nprocs > 1) {
     ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm, 0);
@@ -101,10 +122,17 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
 {
   if (!initialized_Max) {
   
+#if (CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  opMax, typeCompute, &sizeMax));
+#else
+    HANDLE_ERROR(cutensorReductionGetWorkspace(&handle, dataFull, &descFull, modeFull_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  dataReduced, &descReduced, modeReduced_.data(),
+				  opMax, typeCompute, &sizeMax));
+#endif
     if (sizeMax > sizeMaxWork) {
       sizeMaxWork = sizeMax;
       if (Maxwork) cudaFree (Maxwork);
@@ -115,11 +143,19 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
     initialized_Max = true;
   }
   
+#if (CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
 		    dataReduced,  &descReduced, modeReduced_.data(),
 		    opMax, typeCompute, Maxwork, sizeMax, 0));
+#else
+  HANDLE_ERROR(cutensorReduction(&handle,
+		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
+		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
+		    dataReduced,  &descReduced, modeReduced_.data(),
+		    opMax, typeCompute, Maxwork, sizeMax, 0));
+#endif
 
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
