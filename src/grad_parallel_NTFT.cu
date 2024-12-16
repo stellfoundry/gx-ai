@@ -701,19 +701,19 @@ void GradParallelNTFT::set_callbacks()
 
 
   checkCuda(cudaMemcpyFromSymbol(&zfts_LinkedNTFT_callbackPtr_h, 
-                     zfts_LinkedNTFT_callbackPtr, 
+                     GPU_SYMBOL(zfts_LinkedNTFT_callbackPtr), 
                      sizeof(zfts_LinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinkedNTFT_callbackPtr_h, 
-                     i_kzLinkedNTFT_callbackPtr, 
+                     GPU_SYMBOL(i_kzLinkedNTFT_callbackPtr), 
                      sizeof(i_kzLinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&hyperkzLinkedNTFT_callbackPtr_h, 
-                     hyperkzLinkedNTFT_callbackPtr, 
+                     GPU_SYMBOL(hyperkzLinkedNTFT_callbackPtr), 
                      sizeof(hyperkzLinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&mkz2_LinkedNTFT_callbackPtr_h, 
-                     mkz2_LinkedNTFT_callbackPtr, 
+                     GPU_SYMBOL(mkz2_LinkedNTFT_callbackPtr), 
                      sizeof(i_kzLinkedNTFT_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&abs_kzLinkedNTFT_callbackPtr_h, 
-                     abs_kzLinkedNTFT_callbackPtr, 
+                     GPU_SYMBOL(abs_kzLinkedNTFT_callbackPtr), 
                      sizeof(abs_kzLinkedNTFT_callbackPtr_h)));
 
   int *hyperdata_h, *hyperdata_d;

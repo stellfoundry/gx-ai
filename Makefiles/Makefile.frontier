@@ -40,8 +40,8 @@ CXX = /opt/rocm-6.2.4/lib/llvm/bin/clang++
 
 NVCC   = hipcc
 CFLAGS = -fPIC
-NVCCFLAGS = -fgpu-rdc
-LDFLAGS = --driver-mode=g++ --hip-link --offload-arch=gfx90a -fgpu-rdc
+NVCCFLAGS = -fgpu-rdc --offload-arch=gfx90a:xnack- -ffast-math -fPIC
+LDFLAGS = --driver-mode=g++ --hip-link --offload-arch=gfx90a:xnack- -fgpu-rdc -O3 -ffast-math
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

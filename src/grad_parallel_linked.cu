@@ -719,19 +719,19 @@ void GradParallelLinked::set_callbacks()
   cufftCallbackStoreC abs_kzLinked_callbackPtr_h;
   cufftCallbackStoreC   hyperkzLinked_callbackPtr_h;
   checkCuda(cudaMemcpyFromSymbol(&zfts_Linked_callbackPtr_h, 
-                     zfts_Linked_callbackPtr, 
+                     GPU_SYMBOL(zfts_Linked_callbackPtr), 
                      sizeof(zfts_Linked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kzLinked_callbackPtr_h, 
-                     i_kzLinked_callbackPtr, 
+                     GPU_SYMBOL(i_kzLinked_callbackPtr), 
                      sizeof(i_kzLinked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&hyperkzLinked_callbackPtr_h, 
-                     hyperkzLinked_callbackPtr, 
+                     GPU_SYMBOL(hyperkzLinked_callbackPtr), 
                      sizeof(hyperkzLinked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&mkz2_Linked_callbackPtr_h, 
-                     mkz2_Linked_callbackPtr, 
+                     GPU_SYMBOL(mkz2_Linked_callbackPtr), 
                      sizeof(i_kzLinked_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&abs_kzLinked_callbackPtr_h, 
-                     abs_kzLinked_callbackPtr, 
+                     GPU_SYMBOL(abs_kzLinked_callbackPtr), 
                      sizeof(abs_kzLinked_callbackPtr_h)));
 
   int *hyperdata_h, *hyperdata_d;

@@ -50,19 +50,19 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
 
 
   checkCuda(cudaMemcpyFromSymbol(&i_kxstar_callbackPtr_h, 
-                     i_kxstar_callbackPtr, 
+                     GPU_SYMBOL(i_kxstar_callbackPtr), 
                      sizeof(i_kxstar_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_kx_callbackPtr_h, 
-                     i_kx_callbackPtr, 
+                     GPU_SYMBOL(i_kx_callbackPtr), 
                      sizeof(i_kx_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&i_ky_callbackPtr_h, 
-                     i_ky_callbackPtr, 
+                     GPU_SYMBOL(i_ky_callbackPtr), 
                      sizeof(i_ky_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&mask_and_scale_callbackPtr_h, 
-                     mask_and_scale_callbackPtr, 
+                     GPU_SYMBOL(mask_and_scale_callbackPtr), 
                      sizeof(mask_and_scale_callbackPtr_h)));
   checkCuda(cudaMemcpyFromSymbol(&scale_ky_callbackPtr_h, 
-                     scale_ky_callbackPtr, 
+                     GPU_SYMBOL(scale_ky_callbackPtr), 
                      sizeof(scale_ky_callbackPtr_h)));
 
   if (grids_->phasefac_exb) { 
