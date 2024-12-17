@@ -36,10 +36,10 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   laguerre = new LaguerreTransform(grids_, grids_->Nm);
   laguerre_single = new LaguerreTransform(grids_, 1);
 
-  std::vector<int32_t> modes{'r', 'x', 'z'};
-  std::vector<int32_t> modesRed{};
-  red = new Reduction<float>(grids_, modes, modesRed); 
-  cudaDeviceSynchronize();
+  //std::vector<int32_t> modes{'r', 'x', 'z'};
+  //std::vector<int32_t> modesRed{};
+  //red = new Reduction<float>(grids_, modes, modesRed); 
+  //cudaDeviceSynchronize();
 
   nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm); 
@@ -143,6 +143,12 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 //  cfl_y_inv = (float) grids_->Ny / (pars_->cfl * 2 * M_PI * pars_->y0);
   
   dt_cfl = 0.;
+
+  red_d_temp_storage = nullptr;
+  red_temp_storage_bytes = 0;
+  cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
+                            dphi, val1, grids_->NxNyNz);
+  checkCuda(cudaMalloc(&red_d_temp_storage, red_temp_storage_bytes));
 }
 
 Nonlinear_GK::~Nonlinear_GK() 
@@ -370,7 +376,9 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   //printf("dphi, val1 = %lf %lf", dphi, val1);
-  red->Max(dphi, val1); 
+  //red->Max(dphi, val1); 
+  cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
+                            dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_y, val1, sizeof(float));
 
   grad_perp_f -> dyC2R(f->phi, dphi);  
@@ -386,7 +394,9 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   //printf("dphi, val1 = %lf %lf", dphi, val1);
-  red->Max(dphi, val1); 
+  //red->Max(dphi, val1); 
+  cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
+                            dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_x, val1, sizeof(float));
   //printf("vpar_max = %lf, muB_max = %lf \n", vpar_max, muB_max);
   double scale = 0.5;  // normalization scaling factor for C2R FFT

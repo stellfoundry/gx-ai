@@ -74,6 +74,9 @@ class Nonlinear_GK : public Nonlinear {
   cuComplex * J0apar ;
   cuComplex * iKxG    ;
   cuComplex * iKxG_single;
+
+  void     *red_d_temp_storage;
+  size_t   red_temp_storage_bytes;
 };
 
 class Nonlinear_KREHM : public Nonlinear {
