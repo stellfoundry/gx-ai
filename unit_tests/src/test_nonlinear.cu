@@ -80,3 +80,19 @@ TEST_F(TestNonlinear, nlps) {
   delete GRes;
   delete fields;
 }
+
+TEST_F(TestNonlinear, get_max_frequency) {
+  Fields* fields;
+  fields = new Fields(pars, grids);
+
+  double omega_max[3];
+  int NLOOP = 100;
+  int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
+  for(int i=0; i<NLOOP; i++) {
+    nonlinear->get_max_frequency(fields, omega_max);
+  }
+  cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
+  printf("Avg time for get_max_frequency = %e s\n", timer/1000./NLOOP);
+  delete fields;
+}
