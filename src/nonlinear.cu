@@ -177,6 +177,7 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( J0apar      ) cudaFree ( J0apar      );
   if ( iKxG        ) cudaFree ( iKxG        );
   if ( iKxG_single ) cudaFree ( iKxG_single );
+  if ( red_d_temp_storage ) cudaFree (red_d_temp_storage);
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)
