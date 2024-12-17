@@ -51,6 +51,8 @@ protected:
 TEST_F(TestNonlinear, nlps_ES) {
   Nonlinear *nonlinear;
   pars->beta = 0.0; // electrostatic limit
+  pars->fapar = 0.0;
+  pars->fbpar = 0.0;
   nonlinear = new Nonlinear_GK(pars, grids, geo);
 
   MomentsG *G, *GRes;
@@ -140,6 +142,8 @@ TEST_F(TestNonlinear, get_max_frequency) {
 TEST_F(TestNonlinear, sync_nl_overlap_ES) {
   Nonlinear *nonlinear;
   pars->beta = 0.0; // electrostatic limit
+  pars->fapar = 0.0;
+  pars->fbpar = 0.0;
   nonlinear = new Nonlinear_GK(pars, grids, geo);
 
   MomentsG *G, *GRes;
