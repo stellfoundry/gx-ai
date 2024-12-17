@@ -29,29 +29,30 @@ protected:
     checkCuda(cudaSetDevice(iproc%nGPUs));
     cudaDeviceSynchronize();
     pars = new Parameters(iproc, nprocs, mpcom);
-    pars->get_nml_vars("inputs/cyc_nl_ke");
+    pars->get_nml_vars("inputs/cyc_nl");
 
     grids = new Grids(pars);
     geo = new S_alpha_geo(pars, grids);
-    nonlinear = new Nonlinear_GK(pars, grids, geo);
   }
 
   virtual void TearDown() {
     delete pars;
     delete grids;
     delete geo;
-    delete nonlinear;
   }
 
   Parameters* pars;
   Grids *grids;
   Geometry* geo;
-  Nonlinear* nonlinear;
   int iproc, nprocs;
 };
 
 
-TEST_F(TestNonlinear, nlps) {
+TEST_F(TestNonlinear, nlps_ES) {
+  Nonlinear *nonlinear;
+  pars->beta = 0.0; // electrostatic limit
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
   MomentsG *G, *GRes;
   Fields* fields;
   G = new MomentsG(pars, grids, 0);
@@ -74,14 +75,52 @@ TEST_F(TestNonlinear, nlps) {
     nonlinear->nlps(G, fields, GRes);
   }
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
-  printf("Avg time for nlps = %e s\n", timer/1000./NLOOP);
+  printf("Avg time for nlps (ES) = %e s\n", timer/1000./NLOOP);
 
   delete G;
   delete GRes;
   delete fields;
+  delete nonlinear;
+}
+
+TEST_F(TestNonlinear, nlps_EM) {
+  Nonlinear *nonlinear;
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
+  MomentsG *G, *GRes;
+  Fields* fields;
+  G = new MomentsG(pars, grids, 0);
+  GRes = new MomentsG(pars, grids, 0);
+  fields = new Fields(pars, grids);
+
+  // set initial conditions
+  G->initialConditions();
+
+  // set phi = n
+  CP_ON_GPU(fields->phi, G->Gm(0), sizeof(cuComplex)*grids->NxNycNz);
+
+  // evaluate nonlinear term
+  GRes->set_zero();
+
+  int NLOOP = 100;
+  int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
+  for(int i=0; i<NLOOP; i++) {
+    nonlinear->nlps(G, fields, GRes);
+  }
+  cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
+  printf("Avg time for nlps (EM) = %e s\n", timer/1000./NLOOP);
+
+  delete G;
+  delete GRes;
+  delete fields;
+  delete nonlinear;
 }
 
 TEST_F(TestNonlinear, get_max_frequency) {
+  Nonlinear *nonlinear;
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
   Fields* fields;
   fields = new Fields(pars, grids);
 
@@ -95,4 +134,90 @@ TEST_F(TestNonlinear, get_max_frequency) {
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
   printf("Avg time for get_max_frequency = %e s\n", timer/1000./NLOOP);
   delete fields;
+  delete nonlinear;
+}
+
+TEST_F(TestNonlinear, sync_nl_overlap_ES) {
+  Nonlinear *nonlinear;
+  pars->beta = 0.0; // electrostatic limit
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
+  MomentsG *G, *GRes;
+  Fields* fields;
+  G = new MomentsG(pars, grids, 0);
+  GRes = new MomentsG(pars, grids, 0);
+  fields = new Fields(pars, grids);
+
+  // set initial conditions
+  G->initialConditions();
+
+  // set phi = n
+  CP_ON_GPU(fields->phi, G->Gm(0), sizeof(cuComplex)*grids->NxNycNz);
+  
+  GRes->set_zero();
+  double omega_max[3];
+
+  int NLOOP = 100;
+  int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
+  for(int i=0; i<NLOOP; i++) {
+    G->sync();
+
+    // compute timestep
+    nonlinear->get_max_frequency(fields, omega_max);
+
+    GRes->set_zero();
+    nonlinear->nlps (G, fields, GRes);
+
+    cudaStreamSynchronize(G->syncStream);
+  }
+  cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
+  printf("Avg time for sync+NL (ES) = %e s\n", timer/1000./NLOOP);
+
+  delete G;
+  delete GRes;
+  delete fields;
+  delete nonlinear;
+}
+
+TEST_F(TestNonlinear, sync_nl_overlap_EM) {
+  Nonlinear *nonlinear;
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
+  MomentsG *G, *GRes;
+  Fields* fields;
+  G = new MomentsG(pars, grids, 0);
+  GRes = new MomentsG(pars, grids, 0);
+  fields = new Fields(pars, grids);
+
+  // set initial conditions
+  G->initialConditions();
+
+  // set phi = n
+  CP_ON_GPU(fields->phi, G->Gm(0), sizeof(cuComplex)*grids->NxNycNz);
+  
+  GRes->set_zero();
+  double omega_max[3];
+
+  int NLOOP = 100;
+  int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
+  for(int i=0; i<NLOOP; i++) {
+    G->sync();
+
+    // compute timestep
+    nonlinear->get_max_frequency(fields, omega_max);
+
+    GRes->set_zero();
+    nonlinear->nlps (G, fields, GRes);
+
+    cudaStreamSynchronize(G->syncStream);
+  }
+  cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
+  printf("Avg time for sync+NL (EM) = %e s\n", timer/1000./NLOOP);
+
+  delete G;
+  delete GRes;
+  delete fields;
+  delete nonlinear;
 }
