@@ -36,11 +36,6 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   laguerre = new LaguerreTransform(grids_, grids_->Nm);
   laguerre_single = new LaguerreTransform(grids_, 1);
 
-  //std::vector<int32_t> modes{'r', 'x', 'z'};
-  //std::vector<int32_t> modesRed{};
-  //red = new Reduction<float>(grids_, modes, modesRed); 
-  //cudaDeviceSynchronize();
-
   nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
   grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm); 
 
@@ -109,12 +104,12 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nlag = grids_->Nj;
   int nher = grids_->Nm;
 
-  int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
+  int nbx = min(WARPSIZE, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
   int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
   int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
   
   // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
-  int nbx_ntft = min(32, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;
+  int nbx_ntft = min(WARPSIZE, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;
   int nby_ntft = min(4, grids_->Nl);        int ngy_ntft = 1 + (grids_->Nl-1)/nby_ntft;
 
   dBx = dim3(nbx, nby, nbz);
@@ -131,7 +126,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   int nxkyz = grids_->NxNycNz;
   
-  nbx = min(32, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
+  nbx = min(WARPSIZE, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
   nby = min(16, nlag);       ngy = 1 + (nlag-1)/nby;
 
   dBk = dim3(nbx, nby, 1);
@@ -377,7 +372,6 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   //printf("dphi, val1 = %lf %lf", dphi, val1);
-  //red->Max(dphi, val1); 
   cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
                             dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_y, val1, sizeof(float));
@@ -395,7 +389,6 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
   //printf("dphi, val1 = %lf %lf", dphi, val1);
-  //red->Max(dphi, val1); 
   cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
                             dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_x, val1, sizeof(float));
@@ -463,7 +456,7 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   int nxyz = grids_->NxNyNz;
   int nher = grids_->Nm;
 
-  int nbx = min(32, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
+  int nbx = min(WARPSIZE, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
   int nby = 1;  int ngy = 1;  // no laguerre in KREHM
   int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
 
@@ -475,7 +468,7 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
 
   int nxkyz = grids_->NxNycNz;
   
-  nbx = min(32, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
+  nbx = min(WARPSIZE, nxkyz);      ngx = 1 + (nxkyz-1)/nbx;
 
   dBk = dim3(nbx, 1, 1);
   dGk = dim3(ngx, 1, 1);

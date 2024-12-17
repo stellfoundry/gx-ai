@@ -7,6 +7,7 @@
 #include <rccl/rccl.h>
 #include <hiptensor/hiptensor.hpp>
 #include <hiptensor/hiptensor_types.hpp>
+#include <hipcub/hipcub.hpp>
 #define  CUBLAS_OP_N  HIPBLAS_OP_N
 #define  CUBLAS_STATUS_ALLOC_FAILED  HIPBLAS_STATUS_ALLOC_FAILED
 #define  CUBLAS_STATUS_ARCH_MISMATCH  HIPBLAS_STATUS_ARCH_MISMATCH
@@ -209,5 +210,4 @@
 #define  cutensorContractionDescriptor_t hiptensorContractionDescriptor_t
 #define  cutensorContractionPlan_t hiptensorContractionPlan_t
 #define  cutensorReductionGetWorkspaceSize hiptensorReductionGetWorkspaceSize 
-
-
+#define  cub hipcub
