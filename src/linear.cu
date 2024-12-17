@@ -137,7 +137,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     exit(1);
   }
 
-  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, 32) ;   nb1 = 1 + (nn1-1)/nt1;
+  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, WARPSIZE) ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = grids_->Nl;              nt2 = min(grids_->Nl, 4 )      ;   nb2 = 1 + (nn2-1)/nt2;
   nn3 = grids_->Nm;              nt3 = min(grids_->Nm, 4 )      ;   nb3 = 1 + (nn3-1)/nt3;
 
@@ -166,8 +166,6 @@ Linear_GK::~Linear_GK()
 }
 
 void Linear_GK::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
-  // finish Hermite ghost exchange
-  cudaStreamSynchronize(G->syncStream);
 
   // calculate conservation terms for collision operator
   int nn1 = grids_->NxNycNz;  int nt1 = min(nn1, 256);  int nb1 = 1 + (nn1-1)/nt1;
@@ -318,7 +316,7 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids, Geometry* geo) :
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
   
-  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, 32) ;   nb1 = 1 + (nn1-1)/nt1;
+  nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, WARPSIZE) ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = 1;   nb2 = 1;
   nn3 = grids_->Nm;              nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
@@ -339,7 +337,6 @@ Linear_KREHM::~Linear_KREHM()
 void Linear_KREHM::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
 
   if(grids_->Nz>1) {
-    cudaStreamSynchronize(G->syncStream);
     rhs_linear_krehm <<< dGs, dBs >>> (G->G(), f->phi, f->apar, f->apar_ext, nu_ei, rho_s, d_e, geo_->gradpar, GRhs->G());
     grad_par->dz(GRhs, GRhs, false);
   }
@@ -422,8 +419,6 @@ Linear_cetg::~Linear_cetg()
 }
 
 void Linear_cetg::rhs(MomentsG* G, Fields* f, MomentsG* GRhs, double dt) {
-
-  cudaStreamSynchronize(G->syncStream);
 
   GRhs->set_zero();
 

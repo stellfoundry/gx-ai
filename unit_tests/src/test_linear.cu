@@ -64,7 +64,7 @@ TEST_F(TestLinear, rhs) {
   // set phi = n
   CP_ON_GPU(fields->phi, G->Gm(0), sizeof(cuComplex)*grids->NxNycNz);
 
-  // evaluate nonlinear term
+  // evaluate linear term
   GRes->set_zero();
 
   int NLOOP = 100;

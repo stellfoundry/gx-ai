@@ -72,6 +72,8 @@ void RungeKutta3::partial(MomentsG** G, MomentsG** Gt, Fields *f, MomentsG** Rhs
 
     // compute and increment linear term
     Rhs[is]->set_zero();
+    // finish Hermite ghost exchange before starting linear rhs
+    cudaStreamSynchronize(Gt[is]->syncStream);
     linear_->rhs(Gt[is], f, Rhs[is], dt_);
     Gnew[is]->add_scaled(1., Gnew[is], adt*dt_, Rhs[is]);
   
