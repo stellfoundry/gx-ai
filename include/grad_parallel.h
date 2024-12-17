@@ -110,6 +110,8 @@ class GradParallelLinked : public GradParallel {
   cufftHandle * abs_dz_plan_forward_singlemom;
   dim3 * dG;
   dim3 * dB;
+  dim3 * dG_back;
+  dim3 * dB_back;
 };
 
 class GradParallelNTFT : public GradParallel {

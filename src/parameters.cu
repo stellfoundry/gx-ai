@@ -743,7 +743,6 @@ void Parameters::get_nml_vars(char* filename)
   // before, jtwist_old assumed Zp=1
   // now, redefining jtwist = jtwist_old*Zp
 
-  //  if(strcmp(closure_model, "beer4+2")==0) {
   closure_model_opt = Closure::none   ;
   if( closure_model == "beer4+2") {
     if(iproc==0) printf("\nUsing Beer 4+2 closure model. Overriding nm=4, nl=2\n\n");

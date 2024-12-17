@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include "get_error.h"
 #define GCHAINS <<< dG[c], dB[c] >>>
+#define GCHAINS_back <<< dG_back[c], dB_back[c] >>>
 
 // For std::max_element
 #include <algorithm>
@@ -21,6 +22,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
   ikxLinked    = nullptr;  ikyLinked    = nullptr;
   kzLinked     = nullptr;  G_linked     = nullptr;
   dG           = nullptr;  dB           = nullptr;
+  dG_back      = nullptr;  dB_back      = nullptr;
  
   zft_plan_forward           = nullptr;
   zft_plan_inverse           = nullptr;
@@ -87,6 +89,8 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
+  dG_back = (dim3*) malloc(sizeof(dim3)*nClasses);
+  dB_back = (dim3*) malloc(sizeof(dim3)*nClasses);
 
   zft_plan_forward = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
   zft_plan_inverse = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
@@ -183,12 +187,19 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
     int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
 
-    nn1 = grids_->Nz;                   nt1 = min( nn1, 32 );    nb1 = 1 + (nn1-1)/nt1;
-    nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  4 );    nb2 = 1 + (nn2-1)/nt2; 
-    nn3 = grids_->Nmoms;                nt3 = min( nn3,  4 );    nb3 = 1 + (nn3-1)/nt3;
+    nn1 = grids_->Nz;                   nt1 = min( nn1, WARPSIZE );    nb1 = 1 + (nn1-1)/nt1;
+    nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  512/WARPSIZE );    nb2 = 1 + (nn2-1)/nt2; 
+    nn3 = grids_->Nmoms;                nt3 = min( nn3,  1 );    nb3 = 1 + (nn3-1)/nt3;
     
     dB[c] = dim3(nt1, nt2, nt3);
     dG[c] = dim3(nb1, nb2, nb3);
+
+    nn1 = grids_->Nz;                   nt1 = min( nn1, WARPSIZE );    nb1 = 1 + (nn1-1)/nt1;
+    nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  512/WARPSIZE );    nb2 = 1 + (nn2-1)/nt2; 
+    nn3 = grids_->Nmoms;                nt3 = min( nn3,  1 );    nb3 = 1 + (nn3-1)/nt3;
+
+    dB_back[c] = dim3(nt1, nt2, nt3);
+    dG_back[c] = dim3(nb1, nb2, nb3);
     
     //    dB[c] = dim3(32,4,4);
     //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
@@ -207,6 +218,8 @@ GradParallelLinked::~GradParallelLinked()
   if (nChains) free(nChains);
   if (dB)      free(dB);
   if (dG)      free(dG);
+  if (dB_back)      free(dB_back);
+  if (dG_back)      free(dG_back);
 
   for(int c=0; c<nClasses; c++) {
 
@@ -286,7 +299,7 @@ void GradParallelLinked::zft(MomentsG* G)
 
     checkCuda(cufftExecC2C (zft_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD));
 
-    linkedCopyBack GCHAINS (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
   }
 }
 
@@ -297,7 +310,7 @@ void GradParallelLinked::zft_inverse(MomentsG* G)
 
     cufftExecC2C (zft_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack GCHAINS (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
   }
 }
 
@@ -311,7 +324,7 @@ void GradParallelLinked::zft(cuComplex* m, cuComplex* res)
 
     cufftExecC2C(zft_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
 
-    linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
 /*
@@ -348,9 +361,9 @@ void GradParallelLinked::dz(MomentsG* G, MomentsG* res, bool accumulate)
     cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
     if(accumulate) {
-      linkedAccumulateBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
+      linkedAccumulateBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
     } else {
-      linkedCopyBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      linkedCopyBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
   }
 }
@@ -364,7 +377,7 @@ void GradParallelLinked::dz2(MomentsG* G)
     cufftExecC2C (dz2_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack GCHAINS (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
   }
 }
 
@@ -381,9 +394,9 @@ void GradParallelLinked::dz(cuComplex* m, cuComplex* res, bool accumulate)
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
     if(accumulate) {
-      linkedAccumulateBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms, 1.0);
+      linkedAccumulateBack GCHAINS_back (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms, 1.0);
     } else {
-      linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+      linkedCopyBack GCHAINS_back (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
     }
   }
 }
@@ -398,9 +411,9 @@ void GradParallelLinked::hyperz(MomentsG* G, MomentsG* res, float nu, bool accum
     cufftExecC2C (hyperz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
     if(accumulate) {
-      linkedAccumulateBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, nu);
+      linkedAccumulateBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, nu);
     } else {
-      linkedCopyBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      linkedCopyBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
   }
 }
@@ -415,9 +428,9 @@ void GradParallelLinked::abs_dz(MomentsG* G, MomentsG* res, bool accumulate)
     cufftExecC2C (dz_plan_inverse[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
     if(accumulate) {
-      linkedAccumulateBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
+      linkedAccumulateBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, 1.0);
     } else {
-      linkedCopyBack GCHAINS (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+      linkedCopyBack GCHAINS_back (G_linked[c], res->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
     }
   }
 }
@@ -434,7 +447,7 @@ void GradParallelLinked::dz2(cuComplex* m, cuComplex* res)
     cufftExecC2C(dz2_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
 
@@ -450,7 +463,7 @@ void GradParallelLinked::abs_dz(cuComplex* m, cuComplex* res, bool accumulate)
     cufftExecC2C(abs_dz_plan_forward_singlemom[c], G_linked[c], G_linked[c], CUFFT_FORWARD);
     cufftExecC2C(    dz_plan_inverse_singlemom[c], G_linked[c], G_linked[c], CUFFT_INVERSE);
 
-    linkedCopyBack GCHAINS (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], res, nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], nMoms);
   }
 }
 

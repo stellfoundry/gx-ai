@@ -81,8 +81,8 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
   
-  nn1 = grids_->Nyc*grids_->Nx;    nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
-  nn2 = grids_->Nz;                nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
+  nn1 = grids_->Nyc*grids_->Nx;    nt1 = min(nn1, WARPSIZE);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nz;                nt2 = min(nn2, (int) 512/WARPSIZE);    nb2 = (nn2-1)/nt2 + 1;
   nn3 = grids_->Nm*grids_->Nl;     nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
   
   dB_all = dim3(nt1, nt2, nt3);
