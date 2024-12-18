@@ -104,9 +104,9 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   int nlag = grids_->Nj;
   int nher = grids_->Nm;
 
-  int nbx = min(WARPSIZE, nxyz);  int ngx = 1 + (nxyz-1)/nbx; 
-  int nby = min(4, nlag);  int ngy = 1 + (nlag-1)/nby;
-  int nbz = min(4, nher);  int ngz = 1 + (nher-1)/nbz;
+  int nbx = 256;  int ngx = 1 + (grids_->NxNyNz*grids_->Nj - 1)/nbx;
+  int nby = 1;  int ngy = 1;
+  int nbz = 1;  int ngz = 1;
   
   // need this one to do iKx(NxNycNz) * G(NxNycNzNlNm) multiplication for NTFT
   int nbx_ntft = min(WARPSIZE, grids_->NxNycNz);  int ngx_ntft = 1 + (grids_->NxNycNz-1)/nbx_ntft;

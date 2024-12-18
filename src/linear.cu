@@ -89,7 +89,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
 
   int nn1 = grids_->Nyc;             int nt1 = min(nn1, WARPSIZE);   int nb1 = 1 + (nn1-1)/nt1;
   int nn2 = grids_->Nx;              int nt2 = min(nn2,  512/WARPSIZE);   int nb2 = 1 + (nn2-1)/nt2;
-  int nn3 = grids_->Nz*grids_->Nl;   int nt3 = min(nn3,  2);   int nb3 = 1 + (nn3-1)/nt3;
+  int nn3 = grids_->Nz*grids_->Nl;   int nt3 = min(nn3,  1);   int nb3 = 1 + (nn3-1)/nt3;
   
   dBs = dim3(nt1, nt2, nt3);
   dGs = dim3(nb1, nb2, nb3);
@@ -106,7 +106,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // this allows use of 4x more LH resolution without changing shared memory layouts
   // so i_share = 8 is used by default.
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
-  nn2 = 1;                       nt2 = min(grids_->Nl, 4 );   nb2 = 1 + (nn2-1)/nt2;
+  nn2 = 1;                       nt2 = min(grids_->Nl, 8 );   nb2 = 1 + (nn2-1)/nt2;
   nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);

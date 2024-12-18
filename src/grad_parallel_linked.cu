@@ -23,6 +23,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
   kzLinked     = nullptr;  G_linked     = nullptr;
   dG           = nullptr;  dB           = nullptr;
   dG_back      = nullptr;  dB_back      = nullptr;
+  p_map = nullptr; nLinks_map = nullptr;
  
   zft_plan_forward           = nullptr;
   zft_plan_inverse           = nullptr;
@@ -48,13 +49,18 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
   int naky = grids_->Naky;
   int nakx = grids_->Nakx;
 
-  int idxRight[naky*nakx];
-  int idxLeft[naky*nakx];
+  int *idxRight = (int*) malloc(sizeof(int)*naky*nakx);
+  int *idxLeft = (int*) malloc(sizeof(int)*naky*nakx);
+  //int idxRight[naky*nakx];
+  //int idxLeft[naky*nakx];
 
-  int linksR[naky*nakx];
-  int linksL[naky*nakx];
+  int *linksR = (int*) malloc(sizeof(int)*naky*nakx);
+  int *linksL = (int*) malloc(sizeof(int)*naky*nakx);
+  //int linksR[naky*nakx];
+  //int linksL[naky*nakx];
 
-  int n_k[naky*nakx];
+  //int n_k[naky*nakx];
+  int *n_k = (int*) malloc(sizeof(int)*naky*nakx);
 
   nClasses = get_nClasses(idxRight, idxLeft, linksR, linksL, n_k, naky, nakx, jtwist);
 
@@ -85,7 +91,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     ikyLinked_h[c] = (int*) malloc(sizeof(int)*nLinks[c]*nChains[c]);
   }
 
-  kFill(nClasses, nChains, nLinks, ikyLinked_h, ikxLinked_h, linksL, linksR, idxRight, naky, nakx);
+  kFill(nClasses, nChains, nLinks, ikyLinked_h, ikxLinked_h, linksL, linksR, idxRight, n_k, naky, nakx);
 
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
@@ -200,6 +206,13 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
     dB_back[c] = dim3(nt1, nt2, nt3);
     dG_back[c] = dim3(nb1, nb2, nb3);
+
+    nn1 = grids_->Nyc;             nt1 = min(nn1, WARPSIZE);    nb1 = (nn1-1)/nt1 + 1;
+    nn2 = grids_->Nx;              nt2 = min(nn2, 512/WARPSIZE);    nb2 = (nn2-1)/nt2 + 1;
+    nn3 = grids_->Nz*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
+
+    dB_all = dim3(nt1, nt2, nt3);
+    dG_all = dim3(nb1, nb2, nb3);	 
     
     //    dB[c] = dim3(32,4,4);
     //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
@@ -207,9 +220,22 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     //		 1 + (grids_->Nmoms-1)/dB[c].z);
   }
 
+  // linksL gives p(iaky, iakx), the link index
+  // n_k gives nLinks(iaky, iakx)
+  // create device copies
+  cudaMalloc ((void**) &p_map, sizeof(int)*naky*nakx);
+  cudaMalloc ((void**) &nLinks_map, sizeof(int)*naky*nakx);
+  CP_TO_GPU(p_map, linksL, sizeof(int)*naky*nakx);
+  CP_TO_GPU(nLinks_map, n_k, sizeof(int)*naky*nakx);
+
   set_callbacks();
   
   if(pars_->debug && pars_->iproc == 0)  this->linkPrint();
+  free(n_k);
+  free(idxLeft);
+  free(idxRight);
+  free(linksR);
+  free(linksL);
 }
 
 GradParallelLinked::~GradParallelLinked()
@@ -271,6 +297,8 @@ GradParallelLinked::~GradParallelLinked()
   if (ikyLinked)           free(ikyLinked);
   if (G_linked)            free(G_linked);
   if (kzLinked)            free(kzLinked);
+  if (p_map)  cudaFree(p_map);
+  if (nLinks_map)  cudaFree(nLinks_map);
 }
 
 void GradParallelLinked::dealias(MomentsG* G)
@@ -345,10 +373,12 @@ void GradParallelLinked::zft_inverse(cuComplex* m, cuComplex* res)
 
 void GradParallelLinked::applyBCs(MomentsG* G, MomentsG* GRhs, Fields* f, float* kperp2, double dt)
 {
-  for(int c=0; c<nClasses; c++) {
-    // each "class" has a different number of links in the chains, and a different number of chains.
-    dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G(), pars_->damp_ends_widthfrac, (float) pars_->damp_ends_amp/dt);
-  }
+  //for(int c=0; c<nClasses; c++) {
+  //  // each "class" has a different number of links in the chains, and a different number of chains.
+  //  dampEnds_linked GCHAINS (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms, GRhs->G(), pars_->damp_ends_widthfrac, (float) pars_->damp_ends_amp/dt);
+  //}
+
+  dampEnds_linked <<<dG_all, dB_all>>> (G->G(), f->phi, f->apar, f->bpar, kperp2, *(G->species), p_map, nLinks_map, grids_->Nmoms, GRhs->G(), pars_->damp_ends_widthfrac, (float) pars_->damp_ends_amp/dt);
 }
 
 void GradParallelLinked::dz(MomentsG* G, MomentsG* res, bool accumulate) 
@@ -653,6 +683,8 @@ void kt2ki(int idy, int idx, int *c, int *p, int* linksL, int* linksR, int nClas
 } 
 
 
+// map (p, n) -> (iky, ikx) for class c
+// where p is the link index, and n is the chain index
 void fill(int *ky, int *kx, int idy, int idx, int *idxRight,
 	  int c, int p, int n, int naky, int nakx, int nshift, int nLinks) {
   int idx0;
@@ -678,7 +710,7 @@ void fill(int *ky, int *kx, int idy, int idx, int *idxRight,
 }   
   
 void GradParallelLinked::kFill(int nClasses, int *nChains, int *nLinks,
-			       int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int naky, int nakx) 
+			       int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int *n_k, int naky, int nakx) 
 {
   int nshift = grids_->Nx-nakx;
   //fill the kx and ky arrays
@@ -687,10 +719,12 @@ void GradParallelLinked::kFill(int nClasses, int *nChains, int *nLinks,
     int  p, c;
     for(int idy=0; idy<naky; idy++) {
       for(int idx=0; idx<nakx; idx++) {
+	n_k[idy+naky*idx] = 1 + linksL[idy + naky*idx] + linksR[idy + naky*idx]; // == nLinks
         kt2ki(idy, idx, &c, &p, linksL, linksR, nClasses, nLinks, naky);
      	if(c==ic) {	  
 	  if(p==0) {	 
 	    fill(ky[c], kx[c], idy, idx, idxRight, c, p, n, naky, nakx, nshift, nLinks[c]);
+	    //n_map[c][idy + idx*naky] = n;
 	    
 	    n++;
 	  }

@@ -1412,14 +1412,13 @@ __global__ void bracket(      float* __restrict__ g_res,
 			const float* __restrict__ dJ0phi_dx,
 			float kxfac)
 {
-  unsigned int idxyz = get_id1();
-  unsigned int idj   = get_id2();
-  unsigned int idm   = get_id3();
-
-  if (idxyz < nx*ny*nz && idj < nj && idm < nm) {
-    unsigned int iphi = idxyz + nx*ny*nz*idj;
-    unsigned int ig   = idxyz + nx*ny*nz*(idj + nj*idm);
-    g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[iphi] - dg_dy[ig] * dJ0phi_dx[iphi] ) * kxfac;
+  for (int idxyzj = __umul24(blockIdx.x, blockDim.x) + threadIdx.x; idxyzj < nx*ny*nz*nj; idxyzj += __umul24(blockDim.x, gridDim.x)) {
+    float dJ0phi_dx_ = dJ0phi_dx[idxyzj];
+    float dJ0phi_dy_ = dJ0phi_dy[idxyzj];
+    for (int idm = 0; idm < nm; idm ++) {
+      unsigned int ig = idxyzj + nx*ny*nz*nj*idm;
+      g_res[ig] = ( dg_dx[ig] * dJ0phi_dy_ - dg_dy[ig] * dJ0phi_dx_ ) * kxfac;
+    }
   }
 }
 
@@ -2696,6 +2695,7 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G,
   unsigned int idk  = get_id2();
   unsigned int idlm = get_id3();
 
+  // idk = p + nLinks*n
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
@@ -2713,14 +2713,20 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
 			       int nMoms)
 {
   unsigned int idz  = get_id1();
-  unsigned int idk  = get_id2();
+  unsigned int idpn  = get_id2();
   unsigned int idlm = get_id3();
 
-  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
-    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+  if (idz < nz && idpn < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idpn + nLinks*nChains*idlm);
+    unsigned int globalIdx = iky[idpn] + nyc*(ikx[idpn] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
   }
+
+  //if (unmasked(idx, idy) && idz < nz && idlm < nMoms) {
+  //  unsigned int globalIdx = idy + nyc*(idx + nx*(idz + nz*idlm));
+  //  unsigned int idlink = idz + nz*(idpn[idy+naky*idx] + nLinks[idy+naky*idx]*nChains[idy+naky*idx]*idlm);
+  //  G[globalIdx] = G_linked[idlink];
+  //}
 }
 
 __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
@@ -2823,58 +2829,108 @@ __global__ void dampEnds_linked(cuComplex* G,
                                 cuComplex* bpar,
                                 float* kperp2,
                                 specie sp,
-                                int nLinks,
-                                int nChains,
-                                const int* ikx,
-                                const int* iky,
+				int* p_,
+                                int* nLinks_,
                                 int nMoms,
                                 cuComplex* GRhs,
                                 float widthfrac,
                                 float amp)
 {
-  unsigned int idz = get_id1();
-  unsigned int idk = get_id2();
-  unsigned int idlm = get_id3();
+  int idy = get_id1(); 
+  int idx = get_id2();
+  int idzlm = get_id3();
+  int idz = idzlm % nz;
+  int naky = (1 + ((ny-1)/3));
+  int nakx = (1 + 2*((nx-1)/3));
+  int nshift = nx - nakx;
 
-  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idzl = idz + nz*(idk % nLinks);
-    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
-    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
-    // unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
-    // Question: why are we using ikx and iky in the definition of idxyz? Surely this should be idx and idy?
-    // Answer: in grad_parallel_linked, we use ky and kx to hold index values rather than k values. Confusing.
-    
+  // note: only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+  if (unmasked(idx,idy) && idy > 0 && idzlm < nz*nMoms) {
+    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+    int idakx = idx;
+    if (idx >= (nakx+1)/2) {
+      idakx = idx - nshift;
+    }
+
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
     // widthfac = 1./8.;
+    int idzp = idz + nz*p_[idy + naky*idakx];
+    int nLinks = nLinks_[idy + naky*idakx];
+
     int width = (int) nz*nLinks*widthfrac;  
     // float L = (float) 2*M_PI*zp*nLinks*widthfrac;
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
-    if (idzl <= width ) {
-      float x = ((float) idzl)/width;
+    if (idzp <= width ) {
+      float x = ((float) idzp)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
-    } else if (idzl >= nz*nLinks-width) {
-      float x = ((float) nz*nLinks-idzl)/width;
+    } else if (idzp >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzp)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
     }
-    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
-    if(iky[idk]>0) {
-      unsigned int idl = idlm % nl;
-      unsigned int idm = idlm / nl;
-      const float kperp2_ = kperp2[idxyz];
-      const float zt_ = sp.zt;
-      const float vt_ = sp.vt;
-      const float rho2_ = sp.rho2;
-      const float b_ = kperp2_ * rho2_;
-      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
-      cuComplex H_ = G[globalIdx];
-      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
-      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
-      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
-    }
+
+    unsigned int idl = (idzlm / nz) % nl;
+    unsigned int idm = (idzlm / nz) / nl;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    const float kperp2_ = kperp2[idxyz];
+    const float zt_ = sp.zt;
+    const float vt_ = sp.vt;
+    const float rho2_ = sp.rho2;
+    const float b_ = kperp2_ * rho2_;
+    // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+    cuComplex H_ = G[globalIdx];
+    if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
+    if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+    GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
   }
+
+////////////////
+
+//  unsigned int idz = get_id1();
+//  unsigned int idk = get_id2();
+//  unsigned int idlm = get_id3();
+//
+//  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+//    unsigned int idzp = idz + nz*(idk % nLinks);
+//    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+//    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+//    // unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
+//    // Question: why are we using ikx and iky in the definition of idxyz? Surely this should be idx and idy?
+//    // Answer: in grad_parallel_linked, we use ky and kx to hold index values rather than k values. Confusing.
+//    
+//    float nu = 0.;
+//    // width = width of damping region in number of grid points 
+//    // set damping region width to 1/8 of extended domain (on either side)
+//    // widthfac = 1./8.;
+//    int width = (int) nz*nLinks*widthfrac;  
+//    // float L = (float) 2*M_PI*zp*nLinks*widthfrac;
+//    float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
+//    if (idzp <= width ) {
+//      float x = ((float) idzp)/width;
+//      nu = 1 - 2*x*x/(1+x*x*x*x);
+//    } else if (idzp >= nz*nLinks-width) {
+//      float x = ((float) nz*nLinks-idzp)/width;
+//      nu = 1 - 2*x*x/(1+x*x*x*x);
+//    }
+//    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+//    if(iky[idk]>0) {
+//      unsigned int idl = idlm % nl;
+//      unsigned int idm = idlm / nl;
+//      const float kperp2_ = kperp2[idxyz];
+//      const float zt_ = sp.zt;
+//      const float vt_ = sp.vt;
+//      const float rho2_ = sp.rho2;
+//      const float b_ = kperp2_ * rho2_;
+//      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+//      cuComplex H_ = G[globalIdx];
+//      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
+//      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+//      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
+//      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+//    }
+//  }
 }
 
 __global__ void dampEnds_linkedNTFT(cuComplex* G, 
@@ -2996,7 +3052,7 @@ __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* __restrict__ g,
+__global__ void __launch_bounds__(512) streaming_rhs(const cuComplex* __restrict__ g,
 			      const cuComplex* __restrict__ phi,
 			      const cuComplex* __restrict__ apar,
 			      const cuComplex* __restrict bpar,
@@ -3046,7 +3102,7 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g,
 
 // main kernel function for calculating RHS
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(const cuComplex* __restrict__ g,
+__global__ void __launch_bounds__(256) rhs_linear(const cuComplex* __restrict__ g,
                            const cuComplex* __restrict__ phi,
                            const cuComplex* __restrict__ apar,
                            const cuComplex* __restrict__ bpar,

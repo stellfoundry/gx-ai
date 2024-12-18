@@ -84,7 +84,7 @@ class GradParallelLinked : public GradParallel {
   
   int get_nClasses(int *idxRight, int *idxLeft, int *linksR, int *linksL, int *n_k, int naky, int ntheta0, int jshift0);
   void get_nLinks_nChains(int *nLinks, int *nChains, int *n_k, int nClasses, int naky, int ntheta0);
-  void kFill(int nClasses, int *nChains, int *nLinks, int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int naky, int ntheta0);
+  void kFill(int nClasses, int *nChains, int *nLinks, int **ky, int **kx, int *linksL, int *linksR, int *idxRight, int *n_k, int naky, int ntheta0);
   void set_callbacks();
   void clear_callbacks();
   
@@ -94,6 +94,7 @@ class GradParallelLinked : public GradParallel {
   int **ikxLinked_h, **ikyLinked_h;
   int **ikxLinked, **ikyLinked;
   float **kzLinked;
+  int *p_map, *nLinks_map;
   cuComplex **G_linked;
 
   cufftHandle * zft_plan_forward;  cufftHandle * dz_plan_forward;  cufftHandle * dz2_plan_forward; 
@@ -112,6 +113,8 @@ class GradParallelLinked : public GradParallel {
   dim3 * dB;
   dim3 * dG_back;
   dim3 * dB_back;
+  dim3 dG_all;
+  dim3 dB_all;
 };
 
 class GradParallelNTFT : public GradParallel {
