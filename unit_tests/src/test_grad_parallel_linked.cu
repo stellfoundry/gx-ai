@@ -53,8 +53,6 @@ protected:
     pars->nm_in = 4;
     pars->nl_in = 2;
     pars->Zp = 1.;
-    pars->x0 = 10.;
-    pars->y0 = 10.;
     int jtwist = 5;
     pars->initf = inits::density;
     pars->init_amp = .01;
@@ -86,14 +84,12 @@ protected:
     // overwrite some parameters
     pars->nx_in = 16;
     pars->ny_in = 16;
-    pars->nz_in = 16;
+    pars->nz_in = 8;
     pars->nperiod = 1;
     pars->nspec_in = 1;
     pars->nm_in = 4;
     pars->nl_in = 2;
     pars->Zp = 1.;
-    pars->x0 = 10.;
-    pars->y0 = 10.;
     int jtwist = 5;
     pars->initf = inits::density;
     pars->init_amp = .01;
@@ -117,12 +113,12 @@ protected:
   GradParallelLinked *grad_par;
 };
 
-TEST_F(TestGradParallelLinked3D_nLink1, linkPrint) {
-  grad_par->linkPrint();
-}
-TEST_F(TestGradParallelLinked3D, linkPrint) {
-  grad_par->linkPrint();
-}
+//TEST_F(TestGradParallelLinked3D_nLink1, linkPrint) {
+//  grad_par->linkPrint();
+//}
+//TEST_F(TestGradParallelLinked3D, linkPrint) {
+//  grad_par->linkPrint();
+//}
 
 TEST_F(TestGradParallelLinked3D_nLink1, identity) {
   Geometry* geo;
@@ -137,6 +133,7 @@ TEST_F(TestGradParallelLinked3D_nLink1, identity) {
   G2->copyFrom(G);
 
   grad_par->identity(G);
+  printf("Checking...\n");
   for(int index=0; index<grids->Nx*grids->Nyc*grids->Nz*grids->Nmoms; index++) {
     EXPECT_FLOAT_EQ_D(&G->G()[index].x, &G2->G()[index].x, 1.e-7);
     EXPECT_FLOAT_EQ_D(&G->G()[index].y, &G2->G()[index].y, 1.e-7);
@@ -156,6 +153,7 @@ TEST_F(TestGradParallelLinked3D, identity) {
   G2->copyFrom(G);
 
   grad_par->identity(G);
+  printf("Checking...\n");
   for(int index=0; index<grids->Nx*grids->Nyc*grids->Nz*grids->Nmoms; index++) {
     EXPECT_FLOAT_EQ_D(&G->G()[index].x, &G2->G()[index].x, 1.e-7);
     EXPECT_FLOAT_EQ_D(&G->G()[index].y, &G2->G()[index].y, 1.e-7);
@@ -172,14 +170,7 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
   GInit = new MomentsG(pars, grids);
   GRes = new MomentsG(pars, grids);
   GInit->initialConditions();
-  qvar(GInit->dens_ptr, grids->NxNycNz, grids);
-//  GInit->reality();
-//  qvar(GInit->dens_ptr, grids->NxNycNz, grids);
-
-  //Diagnostics* diagnostics;
-  //diagnostics = new Diagnostics(pars, grids, geo);
-
-  //diagnostics->writeMomOrField(GInit->dens_ptr[0],"upar0_nlink1");
+  //qvar(GInit->dens_ptr, grids->NxNycNz, grids);
 
   float* init_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
   float* deriv_check = (float*) malloc(sizeof(float)*grids->NxNycNz);
@@ -209,15 +200,6 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
       }
     }
   }
-  // reality condition
-//  for(int j=0; j<grids->Nx/2; j++) {
-//    for(int k=0; k<grids->Nz; k++) {
-//      int index = 0 + (grids->Ny/2+1)*j + grids->Nx*(grids->Ny/2+1)*k;
-//      int index2 = 0 + (grids->Ny/2+1)*(grids->Nx-j) + grids->Nx*(grids->Ny/2+1)*k;
-//      if(j!=0) init_check[index2] = init_check[index];
-//      if(j!=0) deriv_check[index2] = deriv_check[index];
-//    }
-//  }
 
   printf("Checking initial condition...\n");
   // check initial condition
@@ -246,14 +228,6 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
   // in place, with entire LH G array
   printf("Checking in-place with entire G array...\n");
   grad_par->dz(GInit, GInit);
-  //for(int i=0; i<((Nx-1)/3+1); i++) {
-  //  for(int j=0; j<grids->Naky; j++) {
-  //    for(int k=0; k<grids->Nz; k++) {
-  //      int index = j + grids->Nyc*i + grids->NxNyc*k;
-  //      EXPECT_FLOAT_EQ_D(&GInit->dens_ptr[0][index].x, deriv_check[index], 1.e-7);
-  //    }
-  //  }
-  //}
   for(int i=0; i<grids->Nx; i++) {
     for(int j=0; j<grids->Nyc; j++) {
       for(int k=0; k<grids->Nz; k++) {
@@ -262,8 +236,6 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
       }
     }
   }
-
-  //diagnostics->writeMomOrField(GInit->upar_ptr, "upar_nlink1");
 
   free(init_check);
   free(deriv_check);
@@ -335,13 +307,24 @@ TEST_F(TestGradParallelLinked3D, EvaluateDerivative) {
     }
   }
 
+  // out-of-place, with entire LH G array, with accumulate
+  grad_par->dz(GInit, GRes, true);
+  for(int i=0; i<grids->Nyc; i++) {
+    for(int j=0; j<grids->Nx; j++) {
+      for(int k=0; k<grids->Nz; k++) {
+        int index = i + grids->Nyc*j + grids->NxNyc*k;
+        EXPECT_FLOAT_EQ_D(&GRes->upar_ptr[index].x, 2*deriv_check[index], 1.e-7);
+      }
+    }
+  }
+
   // in place, with entire LH G array
   grad_par->dz(GInit, GInit);
   for(int i=0; i<grids->Nyc; i++) {
     for(int j=0; j<grids->Nx; j++) {
       for(int k=0; k<grids->Nz; k++) {
         int index = i + grids->Nyc*j + grids->NxNyc*k;
-        EXPECT_FLOAT_EQ_D(&GRes->upar_ptr[index].x, deriv_check[index], 1.e-7);
+        EXPECT_FLOAT_EQ_D(&GInit->upar_ptr[index].x, deriv_check[index], 1.e-7);
       }
     }
   }

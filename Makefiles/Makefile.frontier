@@ -36,15 +36,15 @@ GSL_LIB = -L ${GSL_ROOT}/lib -lgsl -lgslcblas
 # additional c libraries required for linking. these are already in LD_LIBRARY_PATH
 C_LIB = -lpthread -ldl
 
-CXX = /opt/rocm-6.2.4/lib/llvm/bin/clang++
+CXX = ${ROCM_PATH}/lib/llvm/bin/clang++
 
 NVCC   = hipcc
 CFLAGS = -fPIC
 NVCCFLAGS = -fgpu-rdc --offload-arch=gfx90a:xnack- -ffast-math -fPIC
-LDFLAGS = --driver-mode=g++ --hip-link --offload-arch=gfx90a:xnack- -fgpu-rdc -O3 -ffast-math
+LDFLAGS = --driver-mode=g++ --hip-link --offload-arch=gfx90a:xnack- -fgpu-rdc -ffast-math
 
 ifeq ($(debug),on)
-  NVCCFLAGS += -g -G 
+  NVCCFLAGS += -ggdb -O0 
 else
   NVCCFLAGS += -O3
 endif

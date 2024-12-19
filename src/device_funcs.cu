@@ -241,7 +241,7 @@ __host__ __device__ cuComplex operator/(cuComplex f, float scale)
 __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) { return cuCdivf(f,g); }
 __host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) { return cuCdiv(f,g); }
 
-__device__ int get_ikx(int idx) {
+__host__ __device__ int get_ikx(int idx) {
   if (idx < nx/2+1)
     return idx;
   else
@@ -250,7 +250,7 @@ __device__ int get_ikx(int idx) {
 
 // JFP Jul 14 2024 Assumes that nx is always even and maximum absolute wavenumber is nx/2, not -nx/2, which doesn't exist
 // printing out kx, seems like we actually keep nx/2 but throw away -nx/2. So this is the correct function.
-__device__ int get_idx(int ikx) {
+__host__ __device__ int get_idx(int ikx) {
   if (ikx < 0)
     return ikx + nx;
   else
@@ -731,7 +731,7 @@ __global__ void reality_kernel(cuComplex* g, int N)
   }
 }
 
-__device__ bool unmasked(int idx, int idy) {
+__host__ __device__ bool unmasked(int idx, int idy) {
   int ikx = get_ikx(idx);
   if ( !(idx==0 && idy==0)
        && idy <  (ny-1)/3 + 1
@@ -743,7 +743,7 @@ __device__ bool unmasked(int idx, int idy) {
     return false;
 }
 
-__device__ bool masked(int idx, int idy) {
+__host__ __device__ bool masked(int idx, int idy) {
   int ikx = get_ikx(idx);
   if ( (idx < nx)
        && (idy < ny)
@@ -2705,15 +2705,15 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G,
 }
 
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
-			       cuComplex* __restrict__ G,
-			       int nLinks,
-			       int nChains,
-			       const int* __restrict__ ikx,
-			       const int* __restrict__ iky,
-			       int nMoms)
+                               cuComplex* __restrict__ G,
+                               int nLinks,
+                               int nChains,
+                               const int* __restrict__ ikx,
+                               const int* __restrict__ iky,
+                               int nMoms)
 {
   unsigned int idz  = get_id1();
-  unsigned int idpn  = get_id2();
+  unsigned int idpn = get_id2();
   unsigned int idlm = get_id3();
 
   if (idz < nz && idpn < nLinks*nChains && idlm < nMoms) {
@@ -2721,12 +2721,71 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
     unsigned int globalIdx = iky[idpn] + nyc*(ikx[idpn] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
   }
+}
 
-  //if (unmasked(idx, idy) && idz < nz && idlm < nMoms) {
-  //  unsigned int globalIdx = idy + nyc*(idx + nx*(idz + nz*idlm));
-  //  unsigned int idlink = idz + nz*(idpn[idy+naky*idx] + nLinks[idy+naky*idx]*nChains[idy+naky*idx]*idlm);
-  //  G[globalIdx] = G_linked[idlink];
-  //}
+__global__ void linkedCopyBackAll(cuComplex** __restrict__ G_linked,
+			       cuComplex* __restrict__ G,
+			       const int* __restrict__ p_map,
+			       const int* __restrict__ n_map,
+			       const int* __restrict__ c_map,
+			       const int* __restrict__ nLinks_map,
+			       const int* __restrict__ nChains_map,
+			       int nMoms)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idzlm = get_id3();
+  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
+    unsigned int idz = idzlm % nz;
+    unsigned int idlm = idzlm / nz;
+    unsigned int naky = (1 + ((ny-1)/3));
+    unsigned int nakx = (1 + 2*((nx-1)/3));
+    unsigned int nshift = nx - nakx;
+    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+    unsigned int idakx = idx;
+    if (idx >= (nakx+1)/2) {
+      idakx = idx - nshift;
+    }
+    unsigned int idxy = idy + naky*idakx;
+
+    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+    G[globalIdx] = G_linked[c_map[idxy]][idlink];
+  }
+}
+
+__global__ void linkedCopyBackAll1(cuComplex** __restrict__ G_linked,
+			       cuComplex* __restrict__ G,
+			       const int* __restrict__ p_map,
+			       const int* __restrict__ n_map,
+			       const int* __restrict__ c_map,
+			       const int* __restrict__ nLinks,
+			       const int* __restrict__ nChains,
+			       int nMoms)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idzlm = get_id3();
+  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
+    unsigned int idz = idzlm % nz;
+    unsigned int idlm = idzlm / nz;
+    unsigned int naky = (1 + ((ny-1)/3));
+    unsigned int nakx = (1 + 2*((nx-1)/3));
+    unsigned int nshift = nx - nakx;
+    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+    unsigned int idakx = idx;
+    if (idx >= (nakx+1)/2) {
+      idakx = idx - nshift;
+    }
+    unsigned int idxy = idy + naky*idakx;
+
+    unsigned int c = c_map[idxy];
+    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks[c]*(n_map[idxy] + nChains[c]*idlm));
+    G[globalIdx] = G_linked[c][idlink];
+  }
 }
 
 __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
@@ -2746,6 +2805,39 @@ __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     G[globalIdx] = G[globalIdx] + scale*G_linked[idlink];
+  }
+}
+
+__global__ void linkedAccumulateBackAll(cuComplex** __restrict__ G_linked,
+                                     cuComplex* __restrict__ G,
+                                     const int* __restrict__ p_map,
+                                     const int* __restrict__ n_map,
+                                     const int* __restrict__ c_map,
+                                     const int* __restrict__ nLinks_map,
+                                     const int* __restrict__ nChains_map,
+                                     int nMoms,
+                                     float scale)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idzlm = get_id3();
+  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
+    unsigned int idz = idzlm % nz;
+    unsigned int idlm = idzlm / nz;
+    unsigned int naky = (1 + ((ny-1)/3));
+    unsigned int nakx = (1 + 2*((nx-1)/3));
+    unsigned int nshift = nx - nakx;
+    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+    unsigned int idakx = idx;
+    if (idx >= (nakx+1)/2) {
+      idakx = idx - nshift;
+    }
+    unsigned int idxy = idy + naky*idakx;
+
+    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+    G[globalIdx] = G[globalIdx] + scale*G_linked[c_map[idxy]][idlink];
   }
 }
 
@@ -2829,26 +2921,26 @@ __global__ void dampEnds_linked(cuComplex* G,
                                 cuComplex* bpar,
                                 float* kperp2,
                                 specie sp,
-				int* p_,
-                                int* nLinks_,
+				int* p_map,
+                                int* nLinks_map,
                                 int nMoms,
                                 cuComplex* GRhs,
                                 float widthfrac,
                                 float amp)
 {
-  int idy = get_id1(); 
-  int idx = get_id2();
-  int idzlm = get_id3();
-  int idz = idzlm % nz;
-  int naky = (1 + ((ny-1)/3));
-  int nakx = (1 + 2*((nx-1)/3));
-  int nshift = nx - nakx;
+  unsigned int idy = get_id1(); 
+  unsigned int idx = get_id2();
+  unsigned int idzlm = get_id3();
 
   // note: only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
   if (unmasked(idx,idy) && idy > 0 && idzlm < nz*nMoms) {
+    unsigned int idz = idzlm % nz;
+    unsigned int naky = (1 + ((ny-1)/3));
+    unsigned int nakx = (1 + 2*((nx-1)/3));
+    unsigned int nshift = nx - nakx;
     unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
 
-    int idakx = idx;
+    unsigned int idakx = idx;
     if (idx >= (nakx+1)/2) {
       idakx = idx - nshift;
     }
@@ -2857,8 +2949,8 @@ __global__ void dampEnds_linked(cuComplex* G,
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
     // widthfac = 1./8.;
-    int idzp = idz + nz*p_[idy + naky*idakx];
-    int nLinks = nLinks_[idy + naky*idakx];
+    unsigned int idzp = idz + nz*p_map[idy + naky*idakx];
+    unsigned int nLinks = nLinks_map[idy + naky*idakx];
 
     int width = (int) nz*nLinks*widthfrac;  
     // float L = (float) 2*M_PI*zp*nLinks*widthfrac;

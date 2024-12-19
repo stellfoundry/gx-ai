@@ -161,6 +161,7 @@
 #define  cufftPlan1d  hipfftPlan1d
 #define  cufftXtClearCallback  hipfftXtClearCallback
 #define  cufftXtSetCallback  hipfftXtSetCallback
+#define  cufftSetStream hipfftSetStream
 #define  cusolverDnCreate  hipsolverDnCreate
 #define  cusolverDnDgetrf  hipsolverDnDgetrf
 #define  cusolverDnDgetrf_bufferSize  hipsolverDnDgetrf_bufferSize
