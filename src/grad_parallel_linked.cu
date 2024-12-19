@@ -311,18 +311,18 @@ void GradParallelLinked::dealias(cuComplex* f)
   // not yet implemented
 }
 
+// simple copy / copy back for testing
+void GradParallelLinked::identity(MomentsG* G) 
+{
+  for(int c=0; c<nClasses; c++) {
+    linkedCopy GCHAINS (G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+    linkedCopyBack GCHAINS_back (G_linked[c], G->G(), nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
+  }
+}
+
 void GradParallelLinked::zft(MomentsG* G) 
 {
   for(int c=0; c<nClasses; c++) {
-    /*
-    int nlin, nch;
-
-    int *ifac;
-    cudaMalloc((void**) &ifac, sizeof(int)*nlin*nch);
-    CP_TO_CPU(&ifac, ikxLinked[c], sizeof(int)*nlin*nch);
-    for (int j=0; j<nlin*nch; j++) printf("ikxLinked[%d] = %d \n", j, ifac[j]);
-    cudaFree(ifac);
-    */				       
     linkedCopy GCHAINS (G->G(), G_linked[c], nLinks[c], nChains[c], ikxLinked[c], ikyLinked[c], grids_->Nmoms);
 
     checkCuda(cufftExecC2C (zft_plan_forward[c], G_linked[c], G_linked[c], CUFFT_FORWARD));
