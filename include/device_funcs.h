@@ -142,10 +142,10 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 
 __global__ void reality_kernel(cuComplex* g, int N);
 
-__host__ __device__ int get_ikx(int idx);
-__host__ __device__ int get_idx(int ikx);
-__host__ __device__ bool unmasked(int idx, int idy);
-__host__ __device__ bool   masked(int idx, int idy);
+__device__ int get_ikx(int idx);
+__device__ int get_idx(int ikx);
+__device__ bool unmasked(int idx, int idy);
+__device__ bool   masked(int idx, int idy);
 
 __global__ void Tbar(cuComplex* t_bar, const cuComplex* g, const cuComplex* phi, const float *kperp2);
 		     
@@ -351,7 +351,7 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex
 __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
                                const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
 
-__global__ void linkedCopyBackAll(cuComplex** __restrict__ G_linked,
+__global__ void linkedCopyBackAll(cuComplex* G_linked[],
 			       cuComplex* __restrict__ G,
 			       const int* __restrict__ p_map,
 			       const int* __restrict__ n_map,
@@ -369,7 +369,7 @@ __global__ void linkedCopyBackAll1(cuComplex** __restrict__ G_linked,
 			       const int* __restrict__ nChains,
 			       int nMoms);
 
-__global__ void linkedAccumulateBackAll(cuComplex** __restrict__ G_linked,
+__global__ void linkedAccumulateBackAll(cuComplex* G_linked[],
 			       cuComplex* __restrict__ G,
 			       const int* __restrict__ p_map,
 			       const int* __restrict__ n_map,

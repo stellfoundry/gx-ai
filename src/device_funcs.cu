@@ -241,7 +241,7 @@ __host__ __device__ cuComplex operator/(cuComplex f, float scale)
 __host__ __device__ cuComplex operator/(cuComplex f, cuComplex g) { return cuCdivf(f,g); }
 __host__ __device__ cuDoubleComplex operator/(cuDoubleComplex f, cuDoubleComplex g) { return cuCdiv(f,g); }
 
-__host__ __device__ int get_ikx(int idx) {
+__device__ int get_ikx(int idx) {
   if (idx < nx/2+1)
     return idx;
   else
@@ -250,7 +250,7 @@ __host__ __device__ int get_ikx(int idx) {
 
 // JFP Jul 14 2024 Assumes that nx is always even and maximum absolute wavenumber is nx/2, not -nx/2, which doesn't exist
 // printing out kx, seems like we actually keep nx/2 but throw away -nx/2. So this is the correct function.
-__host__ __device__ int get_idx(int ikx) {
+__device__ int get_idx(int ikx) {
   if (ikx < 0)
     return ikx + nx;
   else
@@ -731,7 +731,7 @@ __global__ void reality_kernel(cuComplex* g, int N)
   }
 }
 
-__host__ __device__ bool unmasked(int idx, int idy) {
+__device__ bool unmasked(int idx, int idy) {
   int ikx = get_ikx(idx);
   if ( !(idx==0 && idy==0)
        && idy <  (ny-1)/3 + 1
@@ -743,7 +743,7 @@ __host__ __device__ bool unmasked(int idx, int idy) {
     return false;
 }
 
-__host__ __device__ bool masked(int idx, int idy) {
+__device__ bool masked(int idx, int idy) {
   int ikx = get_ikx(idx);
   if ( (idx < nx)
        && (idy < ny)
@@ -2723,7 +2723,7 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedCopyBackAll(cuComplex** __restrict__ G_linked,
+__global__ void linkedCopyBackAll(cuComplex* G_linked[],
 			       cuComplex* __restrict__ G,
 			       const int* __restrict__ p_map,
 			       const int* __restrict__ n_map,
@@ -2750,8 +2750,9 @@ __global__ void linkedCopyBackAll(cuComplex** __restrict__ G_linked,
     }
     unsigned int idxy = idy + naky*idakx;
 
-    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
-    G[globalIdx] = G_linked[c_map[idxy]][idlink];
+    int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+    unsigned int c = c_map[idxy];
+    G[globalIdx] = G_linked[c][idlink];
   }
 }
 
@@ -2808,7 +2809,7 @@ __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedAccumulateBackAll(cuComplex** __restrict__ G_linked,
+__global__ void linkedAccumulateBackAll(cuComplex* G_linked[],
                                      cuComplex* __restrict__ G,
                                      const int* __restrict__ p_map,
                                      const int* __restrict__ n_map,
@@ -2837,7 +2838,8 @@ __global__ void linkedAccumulateBackAll(cuComplex** __restrict__ G_linked,
     unsigned int idxy = idy + naky*idakx;
 
     unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
-    G[globalIdx] = G[globalIdx] + scale*G_linked[c_map[idxy]][idlink];
+    unsigned int c = c_map[idxy];
+    G[globalIdx] = G[globalIdx] + scale*G_linked[c][idlink];
   }
 }
 
