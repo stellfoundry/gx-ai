@@ -107,7 +107,7 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   // so i_share = 8 is used by default.
   nn1 = grids_->NxNycNz;         nt1 = pars_->i_share     ;   nb1 = 1 + (nn1-1)/nt1;
   nn2 = 1;                       nt2 = min(grids_->Nl, 8 );   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = 1;                       nt3 = min(grids_->Nm, 4 );   nb3 = 1 + (nn3-1)/nt3;
+  nn3 = 1;                       nt3 = 1;   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlock = dim3(nt1, nt2, nt3);
   dimGrid  = dim3(nb1, nb2, nb3);
@@ -138,8 +138,8 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   }
 
   nn1 = grids_->NxNycNz;         nt1 = min(grids_->NxNycNz, WARPSIZE) ;   nb1 = 1 + (nn1-1)/nt1;
-  nn2 = grids_->Nl;              nt2 = min(grids_->Nl, 4 )      ;   nb2 = 1 + (nn2-1)/nt2;
-  nn3 = grids_->Nm;              nt3 = min(grids_->Nm, 4 )      ;   nb3 = 1 + (nn3-1)/nt3;
+  nn2 = grids_->Nl;              nt2 = min(grids_->Nl, 8 )      ;   nb2 = 1 + (nn2-1)/nt2;
+  nn3 = grids_->Nm;              nt3 = 1      ;   nb3 = 1 + (nn3-1)/nt3;
 
   dimBlockh = dim3(nt1, nt2, nt3);
   dimGridh  = dim3(nb1, nb2, nb3);

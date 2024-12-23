@@ -59,9 +59,9 @@ class MomentsG {
 
   void reality();
 
-  void sync(bool sync = false);
-  void syncNCCL(bool sync);
-  void syncMPI();
+  void sync(bool sync = false, int m_ghost = -1);
+  void syncNCCL(bool sync, int m_ghost);
+  void syncMPI(int m_ghost);
   
   inline void copyFrom(MomentsG* source) {
     cudaMemcpy(this->Gghost(), source->Gghost(), grids_->size_G, cudaMemcpyDeviceToDevice);

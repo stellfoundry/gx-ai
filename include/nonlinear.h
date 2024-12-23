@@ -53,7 +53,7 @@ class Nonlinear_GK : public Nonlinear {
   GradPerp          * grad_perp_G_single ;
   GradPerp          * grad_perp_J0f ;
 
-  MomentsG * G_tmp;
+  MomentsG * NL_apar;
   cuComplex * tmp_c   ;
   float * dG          ;
   float * dg_dx       ;

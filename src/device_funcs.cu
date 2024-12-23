@@ -1039,7 +1039,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   }
 }
 
-__global__ void J0fToGrid(cuComplex* J0f,
+__global__ void __launch_bounds__(256) J0fToGrid(cuComplex* J0f,
 			  const cuComplex* f,
 			  const float* kperp2,
 			  const float* muB,
@@ -1056,7 +1056,7 @@ __global__ void J0fToGrid(cuComplex* J0f,
   }
 }
 
-__global__ void J0phiAndBparToGrid(cuComplex* J0phiB,
+__global__ void __launch_bounds__(256) J0phiAndBparToGrid(cuComplex* J0phiB,
 				   const cuComplex* phi,
 				   const cuComplex* bpar,
 				   const float* kperp2,
@@ -1436,6 +1436,28 @@ __global__ void bracket_cetg(      float* __restrict__ g_res,
     unsigned int ig = idxyz + nx*ny*nz;
     g_res[ig] = ( dg_dx[ig] * dphi_dy[iphi] - dg_dy[ig] * dphi_dx[iphi] ) * kxfac;
     
+  }
+}
+
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
+  unsigned int idl = get_id2();
+  if (unmasked(idx, idy) && (idxyz < nx*nyc*nz) && idl<nl) {
+    for (int m = m_lo; m < m_up; m++) {
+      int m_local = m - m_lo;
+      int globalIdx = idxyz + nx*nyc*nz*(idl + nl*(m_local));
+      int mp1 = idxyz + nx*nyc*nz*(idl + nl*(m_local+1));
+      int mm1 = idxyz + nx*nyc*nz*(idl + nl*(m_local-1));
+      cuComplex NLmp1 = make_cuComplex(0.,0.);
+      cuComplex NLmm1 = make_cuComplex(0.,0.);
+      if(m>0) NLmm1 = NL[mm1];
+      if(m<nm_glob-1) NLmp1 = NL[mp1];
+      
+      rhs[globalIdx] = rhs[globalIdx] -vt_ * (sqrtf(m+1)*NLmp1 + sqrtf(m)*NLmm1);
+    }
   }
 }
 
@@ -2723,7 +2745,7 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedCopyBackAll(cuComplex* G_linked[],
+__global__ void __launch_bounds__(512) linkedCopyBackAll(cuComplex* G_linked[],
 			       cuComplex* __restrict__ G,
 			       const int* __restrict__ p_map,
 			       const int* __restrict__ n_map,
@@ -2809,7 +2831,7 @@ __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedAccumulateBackAll(cuComplex* G_linked[],
+__global__ void __launch_bounds__(512) linkedAccumulateBackAll(cuComplex* G_linked[],
                                      cuComplex* __restrict__ G,
                                      const int* __restrict__ p_map,
                                      const int* __restrict__ n_map,
@@ -2917,7 +2939,7 @@ __global__ void linkedAccumulateBackNTFT(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G,
+__global__ void __launch_bounds__(512) dampEnds_linked(cuComplex* G,
                                 cuComplex* phi,
                                 cuComplex* apar,
                                 cuComplex* bpar,

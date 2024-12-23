@@ -6,6 +6,8 @@
 #include "geometry.h"
 #include "nonlinear.h"
 
+#define NLOOP 1000
+
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   MPI_Init(&argc, &argv);
@@ -47,6 +49,42 @@ protected:
   int iproc, nprocs;
 };
 
+TEST_F(TestNonlinear, warmup_nlps_ES) {
+  Nonlinear *nonlinear;
+  pars->beta = 0.0; // electrostatic limit
+  pars->fapar = 0.0;
+  pars->fbpar = 0.0;
+  nonlinear = new Nonlinear_GK(pars, grids, geo);
+
+  MomentsG *G, *GRes;
+  Fields* fields;
+  G = new MomentsG(pars, grids, 0);
+  GRes = new MomentsG(pars, grids, 0);
+  fields = new Fields(pars, grids);
+
+  // set initial conditions
+  G->initialConditions();
+
+  // set phi = n
+  CP_ON_GPU(fields->phi, G->Gm(0), sizeof(cuComplex)*grids->NxNycNz);
+
+  // evaluate nonlinear term
+  GRes->set_zero();
+
+  int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaDeviceSynchronize();
+  cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
+  for(int i=0; i<NLOOP; i++) {
+    nonlinear->nlps(G, fields, GRes);
+  }
+  cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
+  printf("Avg time for warmup (nlps ES) = %e s\n", timer/1000./NLOOP);
+
+  delete G;
+  delete GRes;
+  delete fields;
+  delete nonlinear;
+}
 
 TEST_F(TestNonlinear, nlps_ES) {
   Nonlinear *nonlinear;
@@ -70,8 +108,8 @@ TEST_F(TestNonlinear, nlps_ES) {
   // evaluate nonlinear term
   GRes->set_zero();
 
-  int NLOOP = 100;
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaDeviceSynchronize();
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   for(int i=0; i<NLOOP; i++) {
     nonlinear->nlps(G, fields, GRes);
@@ -104,7 +142,6 @@ TEST_F(TestNonlinear, nlps_EM) {
   // evaluate nonlinear term
   GRes->set_zero();
 
-  int NLOOP = 100;
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   for(int i=0; i<NLOOP; i++) {
@@ -127,7 +164,6 @@ TEST_F(TestNonlinear, get_max_frequency) {
   fields = new Fields(pars, grids);
 
   double omega_max[3];
-  int NLOOP = 100;
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   for(int i=0; i<NLOOP; i++) {
@@ -161,8 +197,8 @@ TEST_F(TestNonlinear, sync_nl_overlap_ES) {
   GRes->set_zero();
   double omega_max[3];
 
-  int NLOOP = 100;
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
+  cudaDeviceSynchronize();
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   for(int i=0; i<NLOOP; i++) {
     G->sync();
@@ -203,7 +239,6 @@ TEST_F(TestNonlinear, sync_nl_overlap_EM) {
   GRes->set_zero();
   double omega_max[3];
 
-  int NLOOP = 100;
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
   for(int i=0; i<NLOOP; i++) {

@@ -171,6 +171,8 @@ __global__ void bracket_cetg(float* __restrict__ g_res,
 			const float* __restrict__ dg_dx, const float* __restrict__ dphi_dy,
 			const float* __restrict__ dg_dy, const float* __restrict__ dPhi_dx, float kxfac);
 
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_);
+
 __global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddy (cuComplex *res, cuComplex *f, float *ky);
