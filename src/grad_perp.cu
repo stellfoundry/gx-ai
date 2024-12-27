@@ -46,6 +46,7 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size, cudaStream_t stre
   cufftSetStream(gradperp_plan_dyC2R, stream_);
   cufftSetStream(gradperp_plan_R2C, stream_);
 
+  cudaStreamSynchronize(stream_);
   cudaDeviceSynchronize();
   cufftCallbackLoadC i_kxstar_callbackPtr_h;
   cufftCallbackLoadC i_kx_callbackPtr_h; 

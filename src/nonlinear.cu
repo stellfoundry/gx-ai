@@ -32,8 +32,9 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     printf("\n");
     exit(1);
   }
-  cudaStreamCreateWithFlags(&G_stream, cudaStreamNonBlocking);
-  cudaStreamCreateWithFlags(&f_stream, cudaStreamNonBlocking);
+  cudaStreamCreateWithFlags(&G_stream, cudaStreamDefault);
+  cudaStreamCreateWithFlags(&f_stream, cudaStreamDefault);
+  cudaEventCreate(&grad_perp_f_finished);
 
   laguerre = new LaguerreTransform(grids_, grids_->Nm, G_stream);
   laguerre_single = new LaguerreTransform(grids_, 1);
@@ -257,7 +258,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_J0f -> phase_mult(dJ0apar_dy, pars_->nonTwist, pars_->ExBshear_phase);
 
     // compute {G_m, J0 Apar}
-    cudaEventRecord(grad_perp_f_finished, f_stream);
+    checkCuda(cudaEventRecord(grad_perp_f_finished, f_stream));
     cudaStreamWaitEvent(G_stream, grad_perp_f_finished);
     bracket <<< dGx, dBx, 0, G_stream >>> (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
 
@@ -296,7 +297,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_J0f -> phase_mult(dJ0phi_dy, pars_->nonTwist, pars_->ExBshear_phase);
   
   // compute {G_m, J0 chi}
-  cudaEventRecord(grad_perp_f_finished, f_stream);
+  checkCuda(cudaEventRecord(grad_perp_f_finished, f_stream));
   cudaStreamWaitEvent(G_stream, grad_perp_f_finished);
   bracket <<< dGx, dBx, 0, G_stream >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);

@@ -21,6 +21,7 @@ LaguerreTransform::LaguerreTransform(Grids* grids, int batch_size, cudaStream_t 
 
   cublasCreate (&handle);
   cublasSetStream(handle, stream);
+  cudaStreamSynchronize(stream);
   cudaDeviceSynchronize();
   if (toGrid_h)     free (toGrid_h);
   if (toSpectral_h) free (toSpectral_h);

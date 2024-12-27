@@ -78,8 +78,8 @@ class Nonlinear_GK : public Nonlinear {
   void     *red_d_temp_storage;
   size_t   red_temp_storage_bytes;
 
-  cudaStream_t G_stream;
-  cudaStream_t f_stream;
+  cudaStream_t G_stream = 0;
+  cudaStream_t f_stream = 0;
   cudaEvent_t grad_perp_f_finished;
 };
 
