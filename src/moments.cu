@@ -571,6 +571,7 @@ void MomentsG::syncNCCL(bool blocking, int m_ghost)
     }
     ncclGroupEnd();
   }
+  cudaEventRecord(finished_sync, syncStream);
 
   if(blocking) {
     cudaStreamSynchronize(syncStream);

@@ -7,8 +7,8 @@
 #define GBPhi_ntft <<<dGphi_ntft, dBphi_ntft>>>
 
 
-GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
-  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr)
+GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size, cudaStream_t stream)
+  : grids_(grids), batch_size_(batch_size), mem_size_(mem_size), tmp(nullptr), stream_(stream)
 {
   cufftCreate(&gradperp_plan_R2C);
   cufftCreate(&gradperp_plan_C2R);
@@ -40,6 +40,11 @@ GradPerp::GradPerp(Grids* grids, int batch_size, int mem_size)
   cufftMakePlanMany(gradperp_plan_R2Cy,   1, &NLPSfftdimy, NULL, 1, 0, NULL, 1, 0, CUFFT_R2C, batch_size_*grids_->Nx, &workSize);
   cufftMakePlanMany(gradperp_plan_C2Ry,   1, &NLPSfftdimy, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_*grids_->Nx, &workSize);
   cufftMakePlanMany(gradperp_plan_C2Ryminus,   1, &NLPSfftdimy, NULL, 1, 0, NULL, 1, 0, CUFFT_C2R, batch_size_*grids_->Nx, &workSize);
+
+  cufftSetStream(gradperp_plan_C2R, stream_);
+  cufftSetStream(gradperp_plan_dxC2R, stream_);
+  cufftSetStream(gradperp_plan_dyC2R, stream_);
+  cufftSetStream(gradperp_plan_R2C, stream_);
 
   cudaDeviceSynchronize();
   cufftCallbackLoadC i_kxstar_callbackPtr_h;
@@ -133,7 +138,7 @@ GradPerp::~GradPerp()
 
 void GradPerp::dxC2R(cuComplex* G, float* dxG)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);;
+  CP_ON_GPU_ASYNC (tmp, G, sizeof(cuComplex)*mem_size_, stream_);
   checkCuda(cufftExecC2R(gradperp_plan_dxC2R, tmp, dxG));
 }
 
@@ -210,13 +215,13 @@ void GradPerp::qvar (float* G, int N)
 
 void GradPerp::dyC2R(cuComplex* G, float* dyG)
 {
-  CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
+  CP_ON_GPU_ASYNC (tmp, G, sizeof(cuComplex)*mem_size_, stream_);
   checkCuda(cufftExecC2R(gradperp_plan_dyC2R, tmp, dyG));
 }
 
 void GradPerp::C2R(cuComplex* G, float* Gy)
 {
-  cudaDeviceSynchronize();
+  //cudaDeviceSynchronize();
   CP_ON_GPU (tmp, G, sizeof(cuComplex)*mem_size_);
   checkCuda(cufftExecC2R(gradperp_plan_C2R, tmp, Gy));
 }

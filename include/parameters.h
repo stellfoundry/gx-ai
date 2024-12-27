@@ -6,6 +6,7 @@
 #define DEBUG_PRINT(_fmt, ...)  if (pars_->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define CP_ON_GPU(to, from, isize) checkCuda(cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice))
+#define CP_ON_GPU_ASYNC(to, from, isize, stream) checkCuda(cudaMemcpyAsync(to, from, isize, cudaMemcpyDeviceToDevice, stream))
 #define CP_TO_GPU(gpu, cpu, isize) checkCuda(cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice))
 #define CP_TO_CPU(cpu, gpu, isize) checkCuda(cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost))
 

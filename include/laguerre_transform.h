@@ -13,7 +13,7 @@
 class LaguerreTransform {
  public:
 
-  LaguerreTransform(Grids* grids, int batch_size);
+  LaguerreTransform(Grids* grids, int batch_size, cudaStream_t stream=0);
   ~LaguerreTransform();
   
   void transformToGrid(float* G_in, float* g_res);

@@ -80,6 +80,7 @@ class MomentsG {
   cuComplex * qprp_ptr;
 
   cudaStream_t syncStream;
+  cudaEvent_t finished_sync;
  
  private:
   cuComplex  * G_lm   ;

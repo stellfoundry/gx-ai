@@ -5,7 +5,7 @@
 
 class GradPerp {
  public:
-  GradPerp(Grids* grids, int batch, int mem);
+  GradPerp(Grids* grids, int batch, int mem, cudaStream_t stream=0);
   ~GradPerp();
 
   void phase_mult (float* G, bool nonTwist, bool ExBshear, bool positive_phase=true);
@@ -23,6 +23,7 @@ class GradPerp {
   dim3 dG, dB;
   Grids     * grids_ ;
   cuComplex * tmp    ;
+  cudaStream_t stream_;
   cufftHandle gradperp_plan_R2C;
   cufftHandle gradperp_plan_C2R;
   cufftHandle gradperp_plan_dxC2R;

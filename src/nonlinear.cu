@@ -32,21 +32,24 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
     printf("\n");
     exit(1);
   }
+  cudaStreamCreateWithFlags(&G_stream, cudaStreamNonBlocking);
+  cudaStreamCreateWithFlags(&f_stream, cudaStreamNonBlocking);
 
-  laguerre = new LaguerreTransform(grids_, grids_->Nm);
+  laguerre = new LaguerreTransform(grids_, grids_->Nm, G_stream);
   laguerre_single = new LaguerreTransform(grids_, 1);
 
   nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm); 
+  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm, G_stream); 
 
   nBatch = grids_->Nz*grids_->Nl; 
   grad_perp_G_single = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
 
   nBatch = grids_->Nz*grids_->Nj; 
-  grad_perp_J0f = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj); 
+  grad_perp_J0f = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj, f_stream); 
 
   nBatch = grids_->Nz;
   grad_perp_f =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  cudaDeviceSynchronize();
 
   checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl*grids_->Nm));
   checkCuda(cudaMalloc(&dg_dx, sizeof(float)*grids_->NxNyNz*grids_->Nj*grids_->Nm));
@@ -144,6 +147,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
                             dphi, val1, grids_->NxNyNz);
   checkCuda(cudaMalloc(&red_d_temp_storage, red_temp_storage_bytes));
+  cudaDeviceSynchronize();
 }
 
 Nonlinear_GK::~Nonlinear_GK() 
@@ -173,6 +177,8 @@ Nonlinear_GK::~Nonlinear_GK()
   if ( iKxG        ) cudaFree ( iKxG        );
   if ( iKxG_single ) cudaFree ( iKxG_single );
   if ( red_d_temp_storage ) cudaFree (red_d_temp_storage);
+  cudaStreamDestroy(f_stream);
+  cudaStreamDestroy(G_stream);
 }
 
 void Nonlinear_GK::qvar (cuComplex* G, int N)
@@ -235,7 +241,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 
   if (pars_->fapar > 0.) {
     // compute J0 Apar on mu grid
-    J0fToGrid GBK (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
+    J0fToGrid <<< dGk, dBk, 0, f_stream >>>  (J0apar, f->apar, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fapar);
    
     // compute d(J0 Apar)/dx
     if (pars_->nonTwist) {
@@ -251,7 +257,10 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_J0f -> phase_mult(dJ0apar_dy, pars_->nonTwist, pars_->ExBshear_phase);
 
     // compute {G_m, J0 Apar}
-    bracket GBX (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+    cudaEventRecord(grad_perp_f_finished, f_stream);
+    cudaStreamWaitEvent(G_stream, grad_perp_f_finished);
+    bracket <<< dGx, dBx, 0, G_stream >>> (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
+
     laguerre->transformToSpectral(g_res, dG);
     if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
     grad_perp_G->R2C(dG, NL_apar->G(), false); // this R2C has accumulate=false
@@ -267,9 +276,9 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // no extra computation: just no batching in m in FFTs and in the matrix multiplies
   
   if(pars_->fbpar > 0.0) {
-    J0phiAndBparToGrid GBK (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
+    J0phiAndBparToGrid <<< dGk, dBk, 0, f_stream >>> (J0phi, f->phi, f->bpar, geo_->kperp2, laguerre->get_roots(), rho2s, tz, pars_->fphi, pars_->fbpar);
   } else {
-    J0fToGrid GBK (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
+    J0fToGrid <<< dGk, dBk, 0, f_stream >>> (J0phi, f->phi, geo_->kperp2, laguerre->get_roots(), rho2s, pars_->fphi);
   }
 
   // JMH d/dx->ikx operator in iKxtoGrid functions for NTFT (iKx) or NTFT + ExB (iKxstar = iKx - ky*g_exb*dt), within dxC2R callback if ExB only (ikxstar)  
@@ -287,7 +296,9 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_J0f -> phase_mult(dJ0phi_dy, pars_->nonTwist, pars_->ExBshear_phase);
   
   // compute {G_m, J0 chi}
-  bracket GBX (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
+  cudaEventRecord(grad_perp_f_finished, f_stream);
+  cudaStreamWaitEvent(G_stream, grad_perp_f_finished);
+  bracket <<< dGx, dBx, 0, G_stream >>> (g_res, dg_dx, dJ0phi_dy, dg_dy, dJ0phi_dx, pars_->kxfac);
   laguerre->transformToSpectral(g_res, dG);
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
   // NL_m += {G_m, J0 chi}
@@ -296,12 +307,12 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 
   // finish Apar NL term after ghost sync completes
   if (pars_->fapar > 0.) {
-    cudaStreamSynchronize(NL_apar->syncStream);
+    cudaStreamWaitEvent(G_stream, NL_apar->finished_sync);
 
     // NL_m += -vt*sqrt(m)*{G_{m-1}, J0 Apar} - vt*sqrt(m+1)*{G_{m+1}, J0 Apar} 
     // NL_apar(m) == {G_m, J0 Apar}, so
     // NL_m += -vt*sqrt(m)*NL_apar(m-1) - vt*sqrt(m+1)*NL_apar(m+1)
-    nl_flutter GBK (G_res->G(), NL_apar->G(), vts);
+    nl_flutter <<< dGk, dBk, 0, G_stream >>> (G_res->G(), NL_apar->G(), vts);
 
     //// m_lo:m_up ranges over the non-ghost Hermites on this GPU. m_up is correctly excluded
     //for(int m=grids_->m_lo; m<grids_->m_up; m++) {

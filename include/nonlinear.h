@@ -77,6 +77,10 @@ class Nonlinear_GK : public Nonlinear {
 
   void     *red_d_temp_storage;
   size_t   red_temp_storage_bytes;
+
+  cudaStream_t G_stream;
+  cudaStream_t f_stream;
+  cudaEvent_t grad_perp_f_finished;
 };
 
 class Nonlinear_KREHM : public Nonlinear {

@@ -133,6 +133,7 @@
 #define  cudaMallocHost  hipHostMalloc
 #define  cudaMemGetInfo  hipMemGetInfo
 #define  cudaMemcpy  hipMemcpy
+#define  cudaMemcpyAsync  hipMemcpyAsync
 #define  cudaMemcpyFromSymbol  hipMemcpyFromSymbol
 #define  cudaMemcpyDeviceToDevice  hipMemcpyDeviceToDevice
 #define  cudaMemcpyDeviceToHost  hipMemcpyDeviceToHost
@@ -145,6 +146,7 @@
 #define  cudaStreamDestroy  hipStreamDestroy
 #define  cudaStreamNonBlocking  hipStreamNonBlocking
 #define  cudaStreamSynchronize  hipStreamSynchronize
+#define  cudaStreamWaitEvent  hipStreamWaitEvent
 #define  cudaStream_t  hipStream_t
 #define  cudaSuccess  hipSuccess
 #define  cudaUUID_t  hipUUID
