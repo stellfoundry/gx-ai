@@ -89,6 +89,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   dG_all = dim3(nb1, nb2, nb3);	 
 
   cudaStreamCreateWithFlags(&syncStream, cudaStreamNonBlocking);
+  cudaEventCreate(&finished_sync);
   checkCuda(cudaGetLastError());
 }
 
