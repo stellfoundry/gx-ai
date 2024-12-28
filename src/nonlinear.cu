@@ -34,7 +34,7 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   }
   cudaStreamCreateWithFlags(&G_stream, cudaStreamDefault);
   cudaStreamCreateWithFlags(&f_stream, cudaStreamDefault);
-  cudaEventCreate(&grad_perp_f_finished);
+  cudaEventCreateWithFlags(&grad_perp_f_finished, cudaEventDisableTiming);
 
   laguerre = new LaguerreTransform(grids_, grids_->Nm, G_stream);
   laguerre_single = new LaguerreTransform(grids_, 1);
@@ -308,7 +308,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
 
   // finish Apar NL term after ghost sync completes
   if (pars_->fapar > 0.) {
-    cudaStreamWaitEvent(G_stream, NL_apar->finished_sync);
+    if(grids_->nprocs_m > 1) cudaStreamWaitEvent(G_stream, NL_apar->finished_sync);
 
     // NL_m += -vt*sqrt(m)*{G_{m-1}, J0 Apar} - vt*sqrt(m+1)*{G_{m+1}, J0 Apar} 
     // NL_apar(m) == {G_m, J0 Apar}, so

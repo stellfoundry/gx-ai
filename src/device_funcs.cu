@@ -2705,6 +2705,37 @@ __device__ cufftCallbackStoreC  mkz2_LinkedNTFT_callbackPtr = mkz2_LinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 __device__ cufftCallbackStoreC abs_kzLinkedNTFT_callbackPtr = abs_kzLinkedNTFT;
 
+__global__ void ikzLinked(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    cuComplex ikz = make_cuComplex(0, kz);
+    G_linked[idlink] = G_linked[idlink]*ikz*norm;
+  }
+}
+
+__global__ void abskzLinked(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = abs(kzLinked[idz + nz*idp]);
+    G_linked[idlink] = G_linked[idlink]*kz*norm;
+  }
+}
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G,
 			   cuComplex* __restrict__ G_linked,
 			   int nLinks,

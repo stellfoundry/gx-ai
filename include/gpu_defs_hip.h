@@ -116,6 +116,8 @@
 #define  cudaErrorInvalidValue  hipErrorInvalidValue
 #define  cudaError_t  hipError_t
 #define  cudaEventCreate  hipEventCreate
+#define  cudaEventCreateWithFlags  hipEventCreateWithFlags
+#define  cudaEventDisableTiming  hipEventDisableTiming
 #define  cudaEventElapsedTime  hipEventElapsedTime
 #define  cudaEventRecord  hipEventRecord
 #define  cudaEventSynchronize  hipEventSynchronize
