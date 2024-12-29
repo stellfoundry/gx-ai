@@ -40,16 +40,16 @@ Nonlinear_GK::Nonlinear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   laguerre_single = new LaguerreTransform(grids_, 1);
 
   nBatch = grids_->Nz*grids_->Nl*grids_->Nm; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm, G_stream); 
+  grad_perp_G =     new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz*grids_->Nl*grids_->Nm, G_stream); 
 
   nBatch = grids_->Nz*grids_->Nl; 
-  grad_perp_G_single = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
+  grad_perp_G_single = new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz*grids_->Nl); 
 
   nBatch = grids_->Nz*grids_->Nj; 
-  grad_perp_J0f = new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nj, f_stream); 
+  grad_perp_J0f = new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz*grids_->Nj, f_stream); 
 
   nBatch = grids_->Nz;
-  grad_perp_f =   new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  grad_perp_f =   new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz);
   cudaDeviceSynchronize();
 
   checkCuda(cudaMalloc(&dG,    sizeof(float)*grids_->NxNyNz*grids_->Nl*grids_->Nm));
@@ -443,10 +443,10 @@ Nonlinear_KREHM::Nonlinear_KREHM(Parameters* pars, Grids* grids) :
   grad_perp_f = grad_perp_G = nullptr;
 
   nBatch = grids_->Nz*grids_->Nm; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, grids_->NxNycNz*grids_->Nm); 
+  grad_perp_G =     new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz*grids_->Nm); 
 
   nBatch = grids_->Nz; 
-  grad_perp_f = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  grad_perp_f = new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz);
 
   red = new Reduction<float>(grids_, {'r', 'x', 'z'}, {}); 
   cudaDeviceSynchronize();
@@ -624,10 +624,10 @@ Nonlinear_cetg::Nonlinear_cetg(Parameters* pars, Grids* grids) :
   dphi_dy = nullptr;
 
   nBatch = 2*grids_->Nz; 
-  grad_perp_G =     new GradPerp(grids_, nBatch, 2 * grids_->NxNycNz); 
+  grad_perp_G =     new GradPerp(pars_, grids_, nBatch, 2 * grids_->NxNycNz); 
 
   nBatch = grids_->Nz; 
-  grad_perp_f = new GradPerp(grids_, nBatch, grids_->NxNycNz);
+  grad_perp_f = new GradPerp(pars_, grids_, nBatch, grids_->NxNycNz);
 
   std::vector<int32_t> modes{'r', 'x', 'z'};
   std::vector<int32_t> modesRed{};

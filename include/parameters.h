@@ -240,6 +240,7 @@ class Parameters {
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
   bool use_NCCL;
+  bool use_fft_callbacks;
   bool long_wavelength_GK;
   bool ExBshear_phase;
   float damp_ends_widthfrac, damp_ends_amp;

@@ -261,6 +261,10 @@ __device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, voi
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr);
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize);
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize);
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize);
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate);
 
 extern __device__ cufftCallbackLoadC i_kxstar_callbackPtr;
 extern __device__ cufftCallbackLoadC i_kx_callbackPtr;

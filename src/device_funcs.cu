@@ -1086,10 +1086,10 @@ __global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuCompl
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     if (exb_flag) {
-      iKxf[ig] = f[ig] * iKx[idxy];
+      iKxf[ig] = f[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxf[ig] = f[ig] * iKx[idxyz];
+      iKxf[ig] = f[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1104,10 +1104,10 @@ __global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
     if (exb_flag) {
-      iKxg[ig] = g[ig] * iKx[idxy];
+      iKxg[ig] = g[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg[ig] = g[ig] * iKx[idxyz];
+      iKxg[ig] = g[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1121,10 +1121,10 @@ __global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_sin
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idl;
     if (exb_flag) {
-      iKxg_single[ig] = g_single[ig] * iKx[idxy];
+      iKxg_single[ig] = g_single[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg_single[ig] = g_single[ig] * iKx[idxyz];
+      iKxg_single[ig] = g_single[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1136,10 +1136,10 @@ __global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuC
   if (idxyz < nx*nyc*nz) {
     unsigned int idxy = idxyz % (nx * nyc);
     if (exb_flag) {
-      iKxphi[idxyz] = phi[idxyz] * iKx[idxy];
+      iKxphi[idxyz] = phi[idxyz] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1197,6 +1197,68 @@ __global__ void d2x (cuComplex *res, cuComplex *f, float *kx)
     cuComplex Ikx = make_cuComplex(0., kx[idx]);
 
     res[idxyz] = Ikx * Ikx * f[idxyz];
+  }
+}
+
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Iky = make_cuComplex(0., ky[idy]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Iky * f[idxyz];
+  }
+}
+
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikx = make_cuComplex(0., kx[idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikx * f[idxyz];
+  }
+}
+
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikxstar = make_cuComplex(0., kxstar[idy+nyc*idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikxstar * f[idxyz];
+  }
+}
+
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+    float scale = 0.;
+    if (unmasked(idx, idy)) {
+      scale = 1./(nx*ny);
+    }
+    if (accumulate) {
+      res[idxyz] = res[idxyz] + scale*f[idxyz];
+    } else {
+      res[idxyz] = scale*f[idxyz];
+    }
   }
 }
 
