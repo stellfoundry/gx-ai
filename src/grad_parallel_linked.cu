@@ -206,10 +206,6 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     cufftCreate(    &dz2_plan_forward_singlemom[c]);
 
     cufftCreate(&abs_dz_plan_forward_singlemom[c]);
-  }
-  set_callbacks();
-  for(int c=0; c<nClasses; c++) {
-    // set up transforms
 
     int size = nLinks[c]*grids_->Nz;
     size_t workSize;
@@ -240,6 +236,7 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     cufftSetStream(dz_plan_inverse[c], stream[c]);
     cufftSetStream(abs_dz_plan_forward[c], stream[c]);
   }
+  set_callbacks();
 
   // linksL gives p(iaky, iakx), the link index
   // nLinks_map gives nLinks(iaky, iakx)
@@ -254,7 +251,6 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
   CP_TO_GPU(c_map, c_map_h, sizeof(int)*naky*nakx);
   CP_TO_GPU(nLinks_map, nLinks_map_h, sizeof(int)*naky*nakx);
   CP_TO_GPU(nChains_map, nChains_map_h, sizeof(int)*naky*nakx);
-
   
   if(pars_->debug && pars_->iproc == 0)  this->linkPrint();
   free(n_k);
