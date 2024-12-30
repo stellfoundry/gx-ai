@@ -120,7 +120,7 @@ void Parameters::get_nml_vars(char* filename)
   ikpar_init  = toml::find_or <int>  (tnml, "ikpar_init",     static_cast<int>(kpar_init)  );
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
-  gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     1.0   );
+  gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     0.5   );
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);
   densfac = toml::find_or <float> (tnml, "densfac", 1.0);
   uparfac = toml::find_or <float> (tnml, "uparfac", 1.0);
