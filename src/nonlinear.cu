@@ -217,10 +217,6 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   // BD  J0fToGrid does not use a Laguerre transform. Implications?
   // BD  If we use alternate forms for <J0> then that would need to be reflected here
 
-  //  printf("\n");
-  //  printf("Phi:\n");
-  //  qvar(f->phi, grids_->NxNycNz);
-
   float rho2s = G->species->rho2;
   float vts   = G->species->vt;
   float tz    = G->species->tz;
@@ -304,7 +300,6 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
   if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
   // NL_m += {G_m, J0 chi}
   grad_perp_G->R2C(dG, G_res->G(), true); // this R2C has accumulate=true
-  //grad_perp_G->qvar(G_res->dens_ptr, grids_->NxNycNz);
 
   // finish Apar NL term after ghost sync completes
   if (pars_->fapar > 0.) {
@@ -314,69 +309,7 @@ void Nonlinear_GK::nlps(MomentsG* G, Fields* f, MomentsG* G_res)
     // NL_apar(m) == {G_m, J0 Apar}, so
     // NL_m += -vt*sqrt(m)*NL_apar(m-1) - vt*sqrt(m+1)*NL_apar(m+1)
     nl_flutter <<< dGk, dBk, 0, G_stream >>> (G_res->G(), NL_apar->G(), vts);
-
-    //// m_lo:m_up ranges over the non-ghost Hermites on this GPU. m_up is correctly excluded
-    //for(int m=grids_->m_lo; m<grids_->m_up; m++) {
-    //  int m_local = m - grids_->m_lo;
-    //  // NL_{m+1} += -vt*sqrt(m+1)*{G_m, Apar}
-    //  if(m+1 < pars_->nm_in) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local+1), 1., G_res->Gm(m_local+1), -vts*sqrtf(m+1), G_tmp->Gm(m_local));
-    //  // NL_{m-1} += -vt*sqrt(m)*{G_m, Apar}
-    //  if(m>0) add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local-1), 1., G_res->Gm(m_local-1), -vts*sqrtf(m), G_tmp->Gm(m_local));
-    //}
   }
-
-//  // contributions from ghost cells (EM only)
-//  if(pars_->fapar > 0. && grids_->nprocs_m>1) {
-//    cudaStreamSynchronize(G->syncStream);
-//
-//    // lower ghost
-//    int m = grids_->m_lo;
-//    int m_local = m - grids_->m_lo;
-//    if(m>0) {
-//      if (pars_->nonTwist) {
-//        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local-1), grids_->iKx, false);
-//	grad_perp_G_single -> C2R(iKxG_single, dG);
-//      } else {
-//        grad_perp_G_single -> dxC2R(G->Gm(m_local-1), dG);
-//      }
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase);
-//      laguerre_single    -> transformToGrid(dG, dg_dx);
-//  
-//      grad_perp_G_single -> dyC2R(G->Gm(m_local-1), dG);      
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase);
-//      laguerre_single    -> transformToGrid(dG, dg_dy);
-//      bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
-//      laguerre_single->transformToSpectral(g_res, dG);
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
-//      grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
-//      // NL_{m} += -vt*sqrt(m)*{G_{m-1}, Apar}
-//      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m), tmp_c);
-//    }
-//
-//    // upper ghost
-//    m = grids_->m_up-1;
-//    m_local = m - grids_->m_lo;
-//    if(m<pars_->nm_in-1) {
-//      if (pars_->nonTwist) {
-//        iKxgsingletoGrid GBX_single_ntft (iKxG_single, G->Gm(m_local+1), grids_->iKx, false);
-//	grad_perp_G_single -> C2R(iKxG_single, dG);
-//      } else {
-//        grad_perp_G_single -> dxC2R(G->Gm(m_local+1), dG);
-//      }
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase);
-//      laguerre_single    -> transformToGrid(dG, dg_dx);
-//  
-//      grad_perp_G_single -> dyC2R(G->Gm(m_local+1), dG);      
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase);
-//      laguerre_single    -> transformToGrid(dG, dg_dy);
-//      bracket GBX_single (g_res, dg_dx, dJ0apar_dy, dg_dy, dJ0apar_dx, pars_->kxfac);
-//      laguerre_single->transformToSpectral(g_res, dG);
-//      if (pars_->nonTwist || pars_->ExBshear_phase) grad_perp_G_single -> phase_mult(dG, pars_->nonTwist, pars_->ExBshear_phase, false);
-//      grad_perp_G_single->R2C(dG, tmp_c, false); // this R2C has accumulate=false
-//      // NL_{m} += -vt*sqrt(m+1)*{G_{m+1}, Apar}
-//      add_scaled_singlemom_kernel <<<dGk.x,dBk.x>>> (G_res->Gm(m_local), 1., G_res->Gm(m_local), -vts*sqrtf(m+1), tmp_c);
-//    }
-//  }
 }
 
 void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
@@ -396,7 +329,6 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
-  //printf("dphi, val1 = %lf %lf", dphi, val1);
   cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
                             dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_y, val1, sizeof(float));
@@ -413,11 +345,9 @@ void Nonlinear_GK::get_max_frequency(Fields *f, double *omega_max)
     abs <<<dGx.x,dBx.x>>> (dchi, grids_->NxNyNz);
     add_scaled_singlemom_kernel <<<dGx.x,dBx.x>>> (dphi, 1., dphi, muB_max, dchi);
   }
-  //printf("dphi, val1 = %lf %lf", dphi, val1);
   cub::DeviceReduce::Max(red_d_temp_storage, red_temp_storage_bytes,
                             dphi, val1, grids_->NxNyNz);
   CP_TO_CPU(vmax_x, val1, sizeof(float));
-  //printf("vpar_max = %lf, muB_max = %lf \n", vpar_max, muB_max);
   double scale = 0.5;  // normalization scaling factor for C2R FFT
   omega_max[0] = fmax(omega_max[0], fabs(pars_->kxfac)*(grids_->kx_max*vmax_x[0])*scale);
   omega_max[1] = fmax(omega_max[1], fabs(pars_->kxfac)*(grids_->ky_max*vmax_y[0])*scale);
