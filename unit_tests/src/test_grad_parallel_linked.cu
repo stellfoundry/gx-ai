@@ -53,7 +53,6 @@ protected:
     pars->nm_in = 4;
     pars->nl_in = 2;
     pars->Zp = 1.;
-    int jtwist = 5;
     pars->initf = inits::density;
     pars->init_amp = .01;
     pars->ikpar_init = 2;
@@ -62,6 +61,7 @@ protected:
     pars->random_init = false;
 
     grids = new Grids(pars);
+    geo = new S_alpha_geo(pars, grids);
     grad_par = new GradParallelLinked(pars, grids);
   }
 
@@ -69,9 +69,11 @@ protected:
     delete grids;
     delete grad_par;
     delete pars;
+    delete geo;
   }
 
   Parameters* pars;
+  Geometry* geo;
   Grids *grids;
   GradParallelLinked *grad_par;
 };
@@ -90,7 +92,6 @@ protected:
     pars->nm_in = 4;
     pars->nl_in = 2;
     pars->Zp = 1.;
-    int jtwist = 5;
     pars->initf = inits::density;
     pars->init_amp = .01;
     pars->ikpar_init = 2;
@@ -99,6 +100,7 @@ protected:
     pars->random_init = false;
 
     grids = new Grids(pars);
+    geo = new S_alpha_geo(pars, grids);
     grad_par = new GradParallelLinked(pars, grids);
   }
 
@@ -106,9 +108,11 @@ protected:
     delete grids;
     delete grad_par;
     delete pars;
+    delete geo;
   }
 
   Parameters* pars;
+  Geometry* geo;
   Grids *grids;
   GradParallelLinked *grad_par;
 };
@@ -121,12 +125,10 @@ protected:
 //}
 
 TEST_F(TestGradParallelLinked3D_nLink1, identity) {
-  Geometry* geo;
-  geo = new S_alpha_geo(pars, grids);
 
   MomentsG *G, *G2;
-  G = new MomentsG(pars, grids);
-  G2 = new MomentsG(pars, grids);
+  G = new MomentsG(pars, grids, 0);
+  G2 = new MomentsG(pars, grids, 0);
   pars->initf = inits::all;
   G->initialConditions();
   G->reality();
@@ -141,9 +143,6 @@ TEST_F(TestGradParallelLinked3D_nLink1, identity) {
   
 }
 TEST_F(TestGradParallelLinked3D, identity) {
-  Geometry* geo;
-  geo = new S_alpha_geo(pars, grids);
-
   MomentsG *G, *G2;
   G = new MomentsG(pars, grids);
   G2 = new MomentsG(pars, grids);
@@ -162,10 +161,6 @@ TEST_F(TestGradParallelLinked3D, identity) {
 }
 
 TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
-  Geometry* geo;
-  geo = new S_alpha_geo(pars, grids);
-  strncpy(pars->run_name, "gpar_test", strlen("gpar_test"));
-
   MomentsG *GInit, *GRes;
   GInit = new MomentsG(pars, grids);
   GRes = new MomentsG(pars, grids);
@@ -241,14 +236,9 @@ TEST_F(TestGradParallelLinked3D_nLink1, EvaluateDerivative) {
   free(deriv_check);
   delete GInit;
   delete GRes;
-  delete geo;
 }
 
 TEST_F(TestGradParallelLinked3D, EvaluateDerivative) {
-  Geometry* geo;
-  geo = new S_alpha_geo(pars, grids);
-  strncpy(pars->run_name, "gpar_test", strlen("gpar_test"));
-
   MomentsG *GInit, *GRes;
   GInit = new MomentsG(pars, grids);
   GRes = new MomentsG(pars, grids);
@@ -333,5 +323,4 @@ TEST_F(TestGradParallelLinked3D, EvaluateDerivative) {
   free(deriv_check);
   delete GInit;
   delete GRes;
-  delete geo;
 }
