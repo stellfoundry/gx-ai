@@ -2767,7 +2767,7 @@ __device__ cufftCallbackStoreC  mkz2_LinkedNTFT_callbackPtr = mkz2_LinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 __device__ cufftCallbackStoreC abs_kzLinkedNTFT_callbackPtr = abs_kzLinkedNTFT;
 
-__global__ void ikzLinked(cuComplex* __restrict__ G_linked, 
+__global__ void ikzLinked_kernel(cuComplex* __restrict__ G_linked, 
 		          const float* __restrict__ kzLinked,
 			  const int nLinks, const int nChains, const int nMoms, const float norm)
 {
@@ -2783,7 +2783,7 @@ __global__ void ikzLinked(cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void abskzLinked(cuComplex* __restrict__ G_linked, 
+__global__ void abskzLinked_kernel(cuComplex* __restrict__ G_linked, 
 		          const float* __restrict__ kzLinked,
 			  const int nLinks, const int nChains, const int nMoms, const float norm)
 {
@@ -2798,13 +2798,45 @@ __global__ void abskzLinked(cuComplex* __restrict__ G_linked,
   }
 }
 
+__global__ void mkz2Linked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    G_linked[idlink] = -G_linked[idlink]*kz*kz*norm;
+  }
+}
+
+__global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm, const int p_hyper_z)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    float kzmax = nz/zp/2.;
+    float hypkz = powf( kz/kzmax, p_hyper_z);
+    G_linked[idlink] = -G_linked[idlink]*hypkz*norm;
+  }
+}
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G,
 			   cuComplex* __restrict__ G_linked,
 			   int nLinks,
 			   int nChains,
 			   const int* __restrict__ ikx,
 			   const int* __restrict__ iky,
-			   int nMoms)
+			   int nMoms, float scalar)
 {
   unsigned int idz  = get_id1();
   unsigned int idk  = get_id2();
@@ -2815,7 +2847,7 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G,
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
-    G_linked[idlink] = G[globalIdx];
+    G_linked[idlink] = G[globalIdx]*scalar;
   }
 }
 
@@ -2867,39 +2899,6 @@ __global__ void __launch_bounds__(512) linkedCopyBackAll(cuComplex* G_linked[],
 
     int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
     unsigned int c = c_map[idxy];
-    G[globalIdx] = G_linked[c][idlink];
-  }
-}
-
-__global__ void linkedCopyBackAll1(cuComplex** __restrict__ G_linked,
-			       cuComplex* __restrict__ G,
-			       const int* __restrict__ p_map,
-			       const int* __restrict__ n_map,
-			       const int* __restrict__ c_map,
-			       const int* __restrict__ nLinks,
-			       const int* __restrict__ nChains,
-			       int nMoms)
-{
-
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idzlm = get_id3();
-  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
-    unsigned int idz = idzlm % nz;
-    unsigned int idlm = idzlm / nz;
-    unsigned int naky = (1 + ((ny-1)/3));
-    unsigned int nakx = (1 + 2*((nx-1)/3));
-    unsigned int nshift = nx - nakx;
-    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
-
-    unsigned int idakx = idx;
-    if (idx >= (nakx+1)/2) {
-      idakx = idx - nshift;
-    }
-    unsigned int idxy = idy + naky*idakx;
-
-    unsigned int c = c_map[idxy];
-    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks[c]*(n_map[idxy] + nChains[c]*idlm));
     G[globalIdx] = G_linked[c][idlink];
   }
 }
