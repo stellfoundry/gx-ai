@@ -171,6 +171,8 @@ __global__ void bracket_cetg(float* __restrict__ g_res,
 			const float* __restrict__ dg_dx, const float* __restrict__ dphi_dy,
 			const float* __restrict__ dg_dy, const float* __restrict__ dPhi_dx, float kxfac);
 
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_);
+
 __global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddy (cuComplex *res, cuComplex *f, float *ky);
@@ -259,6 +261,10 @@ __device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, voi
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr);
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize);
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize);
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize);
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate);
 
 extern __device__ cufftCallbackLoadC i_kxstar_callbackPtr;
 extern __device__ cufftCallbackLoadC i_kx_callbackPtr;
@@ -342,8 +348,24 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
 
+__global__ void ikzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void abskzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void mkz2Linked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm, const int p_hyper_z);
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked, int nLinks, int nChains,
-			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
+			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scalar=1.0);
 
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
                                const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
@@ -358,15 +380,6 @@ __global__ void linkedCopyBackAll(cuComplex* G_linked[],
 			       const int* __restrict__ c_map,
 			       const int* __restrict__ nLinks_map,
 			       const int* __restrict__ nChains_map,
-			       int nMoms);
-
-__global__ void linkedCopyBackAll1(cuComplex** __restrict__ G_linked,
-			       cuComplex* __restrict__ G,
-			       const int* __restrict__ p_map,
-			       const int* __restrict__ n_map,
-			       const int* __restrict__ c_map,
-			       const int* __restrict__ nLinks,
-			       const int* __restrict__ nChains,
 			       int nMoms);
 
 __global__ void linkedAccumulateBackAll(cuComplex* G_linked[],

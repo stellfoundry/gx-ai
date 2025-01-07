@@ -111,6 +111,8 @@ class GradParallelLinked : public GradParallel {
   cufftHandle * dz2_plan_forward_singlemom;
   cufftHandle * abs_dz_plan_forward_singlemom;
 
+  cudaStream_t* stream;
+
   dim3 * dG;
   dim3 * dB;
   dim3 * dG_back;

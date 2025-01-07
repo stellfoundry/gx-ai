@@ -1039,7 +1039,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   }
 }
 
-__global__ void J0fToGrid(cuComplex* J0f,
+__global__ void __launch_bounds__(256) J0fToGrid(cuComplex* J0f,
 			  const cuComplex* f,
 			  const float* kperp2,
 			  const float* muB,
@@ -1056,7 +1056,7 @@ __global__ void J0fToGrid(cuComplex* J0f,
   }
 }
 
-__global__ void J0phiAndBparToGrid(cuComplex* J0phiB,
+__global__ void __launch_bounds__(256) J0phiAndBparToGrid(cuComplex* J0phiB,
 				   const cuComplex* phi,
 				   const cuComplex* bpar,
 				   const float* kperp2,
@@ -1086,10 +1086,10 @@ __global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuCompl
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     if (exb_flag) {
-      iKxf[ig] = f[ig] * iKx[idxy];
+      iKxf[ig] = f[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxf[ig] = f[ig] * iKx[idxyz];
+      iKxf[ig] = f[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1104,10 +1104,10 @@ __global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
     if (exb_flag) {
-      iKxg[ig] = g[ig] * iKx[idxy];
+      iKxg[ig] = g[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg[ig] = g[ig] * iKx[idxyz];
+      iKxg[ig] = g[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1121,10 +1121,10 @@ __global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_sin
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idl;
     if (exb_flag) {
-      iKxg_single[ig] = g_single[ig] * iKx[idxy];
+      iKxg_single[ig] = g_single[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg_single[ig] = g_single[ig] * iKx[idxyz];
+      iKxg_single[ig] = g_single[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1136,10 +1136,10 @@ __global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuC
   if (idxyz < nx*nyc*nz) {
     unsigned int idxy = idxyz % (nx * nyc);
     if (exb_flag) {
-      iKxphi[idxyz] = phi[idxyz] * iKx[idxy];
+      iKxphi[idxyz] = phi[idxyz] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1197,6 +1197,68 @@ __global__ void d2x (cuComplex *res, cuComplex *f, float *kx)
     cuComplex Ikx = make_cuComplex(0., kx[idx]);
 
     res[idxyz] = Ikx * Ikx * f[idxyz];
+  }
+}
+
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Iky = make_cuComplex(0., ky[idy]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Iky * f[idxyz];
+  }
+}
+
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikx = make_cuComplex(0., kx[idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikx * f[idxyz];
+  }
+}
+
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikxstar = make_cuComplex(0., kxstar[idy+nyc*idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikxstar * f[idxyz];
+  }
+}
+
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+    float scale = 0.;
+    if (unmasked(idx, idy)) {
+      scale = 1./(nx*ny);
+    }
+    if (accumulate) {
+      res[idxyz] = res[idxyz] + scale*f[idxyz];
+    } else {
+      res[idxyz] = scale*f[idxyz];
+    }
   }
 }
 
@@ -1436,6 +1498,28 @@ __global__ void bracket_cetg(      float* __restrict__ g_res,
     unsigned int ig = idxyz + nx*ny*nz;
     g_res[ig] = ( dg_dx[ig] * dphi_dy[iphi] - dg_dy[ig] * dphi_dx[iphi] ) * kxfac;
     
+  }
+}
+
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
+  unsigned int idl = get_id2();
+  if (unmasked(idx, idy) && (idxyz < nx*nyc*nz) && idl<nl) {
+    for (int m = m_lo; m < m_up; m++) {
+      int m_local = m - m_lo;
+      int globalIdx = idxyz + nx*nyc*nz*(idl + nl*(m_local));
+      int mp1 = idxyz + nx*nyc*nz*(idl + nl*(m_local+1));
+      int mm1 = idxyz + nx*nyc*nz*(idl + nl*(m_local-1));
+      cuComplex NLmp1 = make_cuComplex(0.,0.);
+      cuComplex NLmm1 = make_cuComplex(0.,0.);
+      if(m>0) NLmm1 = NL[mm1];
+      if(m<nm_glob-1) NLmp1 = NL[mp1];
+      
+      rhs[globalIdx] = rhs[globalIdx] -vt_ * (sqrtf(m+1)*NLmp1 + sqrtf(m)*NLmm1);
+    }
   }
 }
 
@@ -2683,13 +2767,76 @@ __device__ cufftCallbackStoreC  mkz2_LinkedNTFT_callbackPtr = mkz2_LinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 __device__ cufftCallbackStoreC abs_kzLinkedNTFT_callbackPtr = abs_kzLinkedNTFT;
 
+__global__ void ikzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    cuComplex ikz = make_cuComplex(0, kz);
+    G_linked[idlink] = G_linked[idlink]*ikz*norm;
+  }
+}
+
+__global__ void abskzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = abs(kzLinked[idz + nz*idp]);
+    G_linked[idlink] = G_linked[idlink]*kz*norm;
+  }
+}
+
+__global__ void mkz2Linked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    G_linked[idlink] = -G_linked[idlink]*kz*kz*norm;
+  }
+}
+
+__global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm, const int p_hyper_z)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    float kzmax = nz/zp/2.;
+    float hypkz = powf( kz/kzmax, p_hyper_z);
+    G_linked[idlink] = -G_linked[idlink]*hypkz*norm;
+  }
+}
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G,
 			   cuComplex* __restrict__ G_linked,
 			   int nLinks,
 			   int nChains,
 			   const int* __restrict__ ikx,
 			   const int* __restrict__ iky,
-			   int nMoms)
+			   int nMoms, float scalar)
 {
   unsigned int idz  = get_id1();
   unsigned int idk  = get_id2();
@@ -2700,7 +2847,7 @@ __global__ void linkedCopy(const cuComplex* __restrict__ G,
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
-    G_linked[idlink] = G[globalIdx];
+    G_linked[idlink] = G[globalIdx]*scalar;
   }
 }
 
@@ -2723,7 +2870,7 @@ __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedCopyBackAll(cuComplex* G_linked[],
+__global__ void __launch_bounds__(512) linkedCopyBackAll(cuComplex* G_linked[],
 			       cuComplex* __restrict__ G,
 			       const int* __restrict__ p_map,
 			       const int* __restrict__ n_map,
@@ -2756,39 +2903,6 @@ __global__ void linkedCopyBackAll(cuComplex* G_linked[],
   }
 }
 
-__global__ void linkedCopyBackAll1(cuComplex** __restrict__ G_linked,
-			       cuComplex* __restrict__ G,
-			       const int* __restrict__ p_map,
-			       const int* __restrict__ n_map,
-			       const int* __restrict__ c_map,
-			       const int* __restrict__ nLinks,
-			       const int* __restrict__ nChains,
-			       int nMoms)
-{
-
-  unsigned int idy = get_id1();
-  unsigned int idx = get_id2();
-  unsigned int idzlm = get_id3();
-  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
-    unsigned int idz = idzlm % nz;
-    unsigned int idlm = idzlm / nz;
-    unsigned int naky = (1 + ((ny-1)/3));
-    unsigned int nakx = (1 + 2*((nx-1)/3));
-    unsigned int nshift = nx - nakx;
-    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
-
-    unsigned int idakx = idx;
-    if (idx >= (nakx+1)/2) {
-      idakx = idx - nshift;
-    }
-    unsigned int idxy = idy + naky*idakx;
-
-    unsigned int c = c_map[idxy];
-    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks[c]*(n_map[idxy] + nChains[c]*idlm));
-    G[globalIdx] = G_linked[c][idlink];
-  }
-}
-
 __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
                                      cuComplex* __restrict__ G,
                                      int nLinks,
@@ -2809,7 +2923,7 @@ __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void linkedAccumulateBackAll(cuComplex* G_linked[],
+__global__ void __launch_bounds__(512) linkedAccumulateBackAll(cuComplex* G_linked[],
                                      cuComplex* __restrict__ G,
                                      const int* __restrict__ p_map,
                                      const int* __restrict__ n_map,
@@ -2917,7 +3031,7 @@ __global__ void linkedAccumulateBackNTFT(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G,
+__global__ void __launch_bounds__(512) dampEnds_linked(cuComplex* G,
                                 cuComplex* phi,
                                 cuComplex* apar,
                                 cuComplex* bpar,
