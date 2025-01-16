@@ -5,13 +5,17 @@
 #
 # export GK_SYSTEM=perlmutter
 # module load PrgEnv-gnu/8.5.0
-# module load nvhpc-mixed/23.9
+# module load nvhpc-mixed/24.5
+# module load cudatoolkit/12.4
 # module load cray-mpich/8.1.28
 # module load nccl
 # module load cray-hdf5-parallel
 # module load cray-netcdf-hdf5parallel
 # module load python
 #
+
+version_tuple := $(subst _, ,$(CRAY_CUDATOOLKIT_VERSION:v%=%))
+CUDA_VERSION := $(word 2,$(version_tuple))
 
 # paths to netcdf
 # NETCDF_DIR is defined by cray-netcdf-hdf5parallel module
@@ -32,8 +36,8 @@ MPI_LIB = -L ${MPI_ROOT}/lib -lmpi
 NVHPC_ROOT = ${NVIDIA_PATH}
 # NCCL_HOME is defined by nccl module
 NCCL_ROOT = ${NCCL_HOME}
-CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NCCL_ROOT}/include
-CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
+CUDA_INC = -I ${NVHPC_ROOT}/math_libs/${CUDA_VERSION}/include -I ${NCCL_ROOT}/include
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/${CUDA_VERSION}/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
 
 # paths to gsl 
 # GSL_ROOT is defined by gsl module

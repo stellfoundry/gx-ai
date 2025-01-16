@@ -5,7 +5,7 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
  : grids_(grids), modeFull_(modeFull), modeReduced_(modeReduced), N_(N)
 {
   Addwork = nullptr;     sizeWork = 0;         sizeAdd = 0;
-  Maxwork = nullptr;     sizeMaxWork = 0;      sizeMax = 0;
+  Maxwork = nullptr;     sizeMax = 0;
 
   // initialize all possible extents
   extent['y'] = grids_->Nyc;
@@ -46,7 +46,12 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
     }
   }
 
-#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+#if (CUTENSOR_VERSION >= 20000)
+  HANDLE_ERROR(cutensorCreate(&handle));
+  HANDLE_ERROR(cutensorCreateTensorDescriptor(handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, 256 ));
+  HANDLE_ERROR(cutensorCreateTensorDescriptor(handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, 256 ));
+  HANDLE_ERROR(cutensorCreatePlanPreference( handle, &options, CUTENSOR_ALGO_DEFAULT, CUTENSOR_JIT_MODE_DEFAULT ) );
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorCreate(&handle));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descFull, modeFull_.size(), extentFull.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
   HANDLE_ERROR(cutensorInitTensorDescriptor(handle, &descReduced, modeReduced_.size(), extentReduced.data(), NULL, cfloat, CUTENSOR_OP_IDENTITY));
@@ -59,6 +64,15 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
 
 template<class T> Reduction<T>::~Reduction()
 {
+#if (CUTENSOR_VERSION >= 20000)
+  HANDLE_ERROR(cutensorDestroyTensorDescriptor( descFull ));
+  HANDLE_ERROR(cutensorDestroyTensorDescriptor( descReduced ));
+  HANDLE_ERROR(cutensorDestroyPlanPreference( options ));
+  HANDLE_ERROR(cutensorDestroy( handle ));
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+  HANDLE_ERROR(cutensorDestroy( handle ));
+#endif
+
   if (Addwork) cudaFree(Addwork);
   if (Maxwork) cudaFree(Maxwork);
 }
@@ -67,7 +81,14 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
 {
   if (!initialized_Sum) {
   
-#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+#if (CUTENSOR_VERSION >= 20000)
+    HANDLE_ERROR(cutensorCreateReduction( handle, &sumDesc,
+                                    descFull, modeFull_.data(), CUTENSOR_OP_IDENTITY,
+                                    descReduced, modeReduced_.data(), CUTENSOR_OP_IDENTITY,
+                                    descReduced, modeReduced_.data(),
+                                    opAdd, typeCompute ));
+    HANDLE_ERROR(cutensorEstimateWorkspaceSize( handle, sumDesc, options, CUTENSOR_WORKSPACE_DEFAULT, &sizeAdd));
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
@@ -85,10 +106,15 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
 	Addwork = nullptr;	sizeWork = 0;
       }
     }
+#if (CUTENSOR_VERSION >= 20000)
+    HANDLE_ERROR( cutensorCreatePlan( handle, &sumPlan, sumDesc, options, sizeWork ) );
+#endif
     initialized_Sum = true;
   }
   
-#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+#if (CUTENSOR_VERSION >= 20000)
+  HANDLE_ERROR( cutensorReduce( handle, sumPlan, &alpha, dataFull, &beta, dataReduced, dataReduced, Addwork, sizeWork, 0 ) );
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
@@ -122,7 +148,14 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
 {
   if (!initialized_Max) {
   
-#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+#if (CUTENSOR_VERSION >= 20000)
+    HANDLE_ERROR(cutensorCreateReduction( handle, &maxDesc,
+                                    descFull, modeFull_.data(), CUTENSOR_OP_IDENTITY,
+                                    descReduced, modeReduced_.data(), CUTENSOR_OP_IDENTITY,
+                                    descReduced, modeReduced_.data(),
+                                    opMax, typeCompute ));
+    HANDLE_ERROR(cutensorEstimateWorkspaceSize( handle, maxDesc, options, CUTENSOR_WORKSPACE_DEFAULT, &sizeMax));
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
     HANDLE_ERROR(cutensorReductionGetWorkspaceSize(handle, dataFull, &descFull, modeFull_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  dataReduced, &descReduced, modeReduced_.data(),
@@ -133,17 +166,24 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
 				  dataReduced, &descReduced, modeReduced_.data(),
 				  opMax, typeCompute, &sizeMax));
 #endif
-    if (sizeMax > sizeMaxWork) {
-      sizeMaxWork = sizeMax;
+    if (sizeMax > sizeWork) {
+      sizeWork = sizeMax;
       if (Maxwork) cudaFree (Maxwork);
-      if (cudaSuccess != cudaMalloc(&Maxwork, sizeMaxWork)) {
-        Maxwork = nullptr;	sizeMaxWork = 0;
+      if (cudaSuccess != cudaMalloc(&Maxwork, sizeWork)) {
+        Maxwork = nullptr;
+        sizeWork = 0;
       }
     }
+
+#if (CUTENSOR_VERSION >= 20000)
+    HANDLE_ERROR( cutensorCreatePlan( handle, &maxPlan, maxDesc, options, sizeWork ) );
+#endif
     initialized_Max = true;
   }
   
-#if (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
+#if (CUTENSOR_VERSION >= 20000)
+  HANDLE_ERROR( cutensorReduce( handle, maxPlan, &alpha, dataFull, &beta, dataReduced, dataReduced, Maxwork, sizeWork, 0 ) );
+#elif (defined(__HIPCC__) | CUTENSOR_VERSION >= 10700)
   HANDLE_ERROR(cutensorReduction(handle,
 		    (const void*) &alpha, dataFull, &descFull, modeFull_.data(),
 		    (const void*) &beta,  dataReduced, &descReduced, modeReduced_.data(),
