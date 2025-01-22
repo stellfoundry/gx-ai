@@ -230,13 +230,20 @@ TEST_F(TestMomentsG, SyncG)
     delete G[is];
   }
   free(G);
+  free(init);
+  free(res);
+  free(check);
 }
 
 TEST_F(TestMomentsG, Restart) {
-  size_t size = grids->NxNycNz*grids->Nmoms*grids->Nspecies*sizeof(cuComplex);
+  MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
+
+  size_t size = grids->NxNycNz*grids->Nmoms*sizeof(cuComplex);
   cuComplex* init = (cuComplex*) malloc(size);
   for(int is=0; is<grids->Nspecies; is++) {
     int is_glob = is+grids->is_lo;
+    G[is] = new MomentsG (pars, grids, is_glob);
+
     for(int i=0; i<grids->NxNycNz; i++) {
       for(int l=0; l<grids->Nl; l++) {
         for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
@@ -249,22 +256,17 @@ TEST_F(TestMomentsG, Restart) {
         }
       }
     }
-  }
 
-  MomentsG  ** G_all = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
-  for(int is=0; is<grids->Nspecies; is++) {
-    int is_glob = is+grids->is_lo;
-    G_all[is] = new MomentsG (pars, grids, is_glob);
-    CP_TO_GPU(G_all[is]->G(), init, size);
+    CP_TO_GPU(G[is]->G(), init, size);
   }
 
   double t = 0.1;
-  diagnostics->restart_write(G_all, &t);
+  diagnostics->restart_write(G, &t);
 
   t = -10.0;
   for(int is=0; is<grids->Nspecies; is++) {
-    G_all[is]->set_zero();
-    G_all[is]->restart_read(&t);
+    G[is]->set_zero();
+    G[is]->restart_read(&t);
 
     int is_glob = is+grids->is_lo;
     for(int m_loc=0; m_loc<grids->Nm; m_loc++) {
@@ -276,8 +278,8 @@ TEST_F(TestMomentsG, Restart) {
               unsigned int index = j + grids->Nyc *(i  + grids->Nx  *(k + grids->Nz*(l + grids->Nl*m_loc)));
               int fac = is_glob + 1;
               if(masked(i, j, grids->Nx, grids->Ny)) fac = 0.;
-              EXPECT_FLOAT_EQ_D(&G_all[is]->G()[index].x, fac* ( j + grids->Nyc*(i+grids->Nx*k)+grids->NxNycNz*l+grids->NxNycNz*grids->Nl*m) );
-              EXPECT_FLOAT_EQ_D(&G_all[is]->G()[index].y, fac*m);
+              EXPECT_FLOAT_EQ_D(&G[is]->G()[index].x, fac* ( j + grids->Nyc*(i+grids->Nx*k)+grids->NxNycNz*l+grids->NxNycNz*grids->Nl*m) );
+              EXPECT_FLOAT_EQ_D(&G[is]->G()[index].y, fac*m);
             }
           }
         }
@@ -287,8 +289,9 @@ TEST_F(TestMomentsG, Restart) {
   }
 
   for(int is=0; is<grids->Nspecies; is++) {
-    delete G_all[is];
+    delete G[is];
   }
-  free(G_all);
+  free(G);
+  free(init);
 }
 
