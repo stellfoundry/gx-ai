@@ -2761,7 +2761,7 @@ __device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element
     kz = (float) -idzs * zpnLinv;
   }
   float kzmax = (nzL/2 *zpnLinv);
-  float hypkz = powf( kz/kzmax, p_hyper_z);
+  float hypkz = powf( fabsf(kz/kzmax), p_hyper_z);
 
   float normalization = (float) 1./nzL;
   ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
@@ -2936,7 +2936,7 @@ __global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked,
     unsigned int idp = idk % nLinks;
     float kz = kzLinked[idz + nz*idp];
     float kzmax = nz/zp/2.;
-    float hypkz = powf( kz/kzmax, p_hyper_z);
+    float hypkz = powf( fabsf(kz/kzmax), p_hyper_z);
     G_linked[idlink] = -G_linked[idlink]*hypkz*norm;
   }
 }
