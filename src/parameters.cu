@@ -1014,6 +1014,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (nc_diss, "D_HB",                  NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "p_HB",                  NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_diss, "HB_hyper",              NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "hyperz",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_diss, "nu_hyper_z",            NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
   
   if (retval = nc_def_var (nc_frc, "forcing_init",          NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_frc, "forcing_type_dum",      NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1267,6 +1269,8 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putint   (nc_diss, "p_HB",            p_HB            );
   putbool  (nc_diss, "HB_hyper",        HB_hyper        );
   put_real (nc_diss, "w_osc",           w_osc           );
+  putbool  (nc_diss, "hyperz", hyperz );
+  put_real   (nc_diss, "nu_hyper_z",        nu_hyper_z    );
   
   put_real (nc_frc, "forcing_amp",      forcing_amp     );
   putint   (nc_frc, "forcing_index",    forcing_index   );
