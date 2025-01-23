@@ -6,7 +6,7 @@
 # export GK_SYSTEM=stellar
 # module load nvhpc-nocompiler/24.5
 # module load cudatoolkit/12.4
-# module load openmpi/cuda-11.1/gcc/4.1.1 
+# module load openmpi/gcc/4.1.6
 # module load netcdf/gcc/hdf5-1.14.4/openmpi-4.1.6/4.9.2
 # module load hdf5/gcc/openmpi-4.1.6/1.14.4
 # module load gsl/2.6
