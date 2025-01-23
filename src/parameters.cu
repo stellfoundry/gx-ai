@@ -1513,7 +1513,8 @@ void Parameters::putspec (int  ncid, int nspec, specie* spec) {
 void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
 {
   float shat = *shat_in;
-  // note: twist_shift_geo_fac reduces to 2*pi*shat in the axisymmetric limit
+  // note: twist_shift_geo_fac reduces to 2*pi*shat*(2*nPeriod - 1) in the axisymmetric limit
+  // as gds21[0] is gds21 evaluated at the most negative value of theta in the flux tube.
   float twist_shift_geo_fac = 2.*shat*gds21[0]/gds22[0];
 
   if(iproc==0) {
