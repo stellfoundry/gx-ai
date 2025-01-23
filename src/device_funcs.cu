@@ -2993,24 +2993,25 @@ __global__ void __launch_bounds__(512) linkedCopyBackAll(cuComplex* G_linked[],
 
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
-  unsigned int idzlm = get_id3();
-  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
-    unsigned int idz = idzlm % nz;
-    unsigned int idlm = idzlm / nz;
-    unsigned int naky = (1 + ((ny-1)/3));
-    unsigned int nakx = (1 + 2*((nx-1)/3));
-    unsigned int nshift = nx - nakx;
-    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+  if (unmasked(idx, idy)) {
+    for (int idzlm = __umul24(blockIdx.z, blockDim.z) + threadIdx.z; idzlm < nz*nMoms; idzlm += __umul24(blockDim.z, gridDim.z)) {
+      unsigned int idz = idzlm % nz;
+      unsigned int idlm = idzlm / nz;
+      unsigned int naky = (1 + ((ny-1)/3));
+      unsigned int nakx = (1 + 2*((nx-1)/3));
+      unsigned int nshift = nx - nakx;
+      unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
 
-    unsigned int idakx = idx;
-    if (idx >= (nakx+1)/2) {
-      idakx = idx - nshift;
+      unsigned int idakx = idx;
+      if (idx >= (nakx+1)/2) {
+        idakx = idx - nshift;
+      }
+      unsigned int idxy = idy + naky*idakx;
+
+      int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+      unsigned int c = c_map[idxy];
+      G[globalIdx] = G_linked[c][idlink];
     }
-    unsigned int idxy = idy + naky*idakx;
-
-    int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
-    unsigned int c = c_map[idxy];
-    G[globalIdx] = G_linked[c][idlink];
   }
 }
 
@@ -3047,24 +3048,25 @@ __global__ void __launch_bounds__(512) linkedAccumulateBackAll(cuComplex* G_link
 
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
-  unsigned int idzlm = get_id3();
-  if (unmasked(idx, idy) && idzlm < nz*nMoms) {
-    unsigned int idz = idzlm % nz;
-    unsigned int idlm = idzlm / nz;
-    unsigned int naky = (1 + ((ny-1)/3));
-    unsigned int nakx = (1 + 2*((nx-1)/3));
-    unsigned int nshift = nx - nakx;
-    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+  if (unmasked(idx, idy)) {
+    for (int idzlm = __umul24(blockIdx.z, blockDim.z) + threadIdx.z; idzlm < nz*nMoms; idzlm += __umul24(blockDim.z, gridDim.z)) {
+      unsigned int idz = idzlm % nz;
+      unsigned int idlm = idzlm / nz;
+      unsigned int naky = (1 + ((ny-1)/3));
+      unsigned int nakx = (1 + 2*((nx-1)/3));
+      unsigned int nshift = nx - nakx;
+      unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
 
-    unsigned int idakx = idx;
-    if (idx >= (nakx+1)/2) {
-      idakx = idx - nshift;
+      unsigned int idakx = idx;
+      if (idx >= (nakx+1)/2) {
+        idakx = idx - nshift;
+      }
+      unsigned int idxy = idy + naky*idakx;
+
+      unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+      unsigned int c = c_map[idxy];
+      G[globalIdx] = G[globalIdx] + scale*G_linked[c][idlink];
     }
-    unsigned int idxy = idy + naky*idakx;
-
-    unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
-    unsigned int c = c_map[idxy];
-    G[globalIdx] = G[globalIdx] + scale*G_linked[c][idlink];
   }
 }
 
