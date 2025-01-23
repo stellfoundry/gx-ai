@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include "get_error.h"
 #define GCHAINS <<< dG[c], dB[c], 0, stream[c] >>>
-#define GCHAINS_back <<< dG_back[c], dB_back[c] >>>
 
 // For std::max_element
 #include <algorithm>
@@ -94,8 +93,6 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
   dG = (dim3*) malloc(sizeof(dim3)*nClasses);
   dB = (dim3*) malloc(sizeof(dim3)*nClasses);
-  dG_back = (dim3*) malloc(sizeof(dim3)*nClasses);
-  dB_back = (dim3*) malloc(sizeof(dim3)*nClasses);
 
   zft_plan_forward = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
   zft_plan_inverse = (cufftHandle*) malloc(sizeof(cufftHandle*)*nClasses);
@@ -165,19 +162,12 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
     dB[c] = dim3(nt1, nt2, nt3);
     dG[c] = dim3(nb1, nb2, nb3);
 
-    nn1 = grids_->Nz;                   nt1 = min( nn1, WARPSIZE );    nb1 = 1 + (nn1-1)/nt1;
-    nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  512/WARPSIZE );    nb2 = 1 + (nn2-1)/nt2; 
-    nn3 = grids_->Nmoms;                nt3 = min( nn3,  1 );    nb3 = 1 + (nn3-1)/nt3;
-
-    dB_back[c] = dim3(nt1, nt2, nt3);
-    dG_back[c] = dim3(nb1, nb2, nb3);
-
     nn1 = grids_->Nyc;             nt1 = min(nn1, WARPSIZE);    nb1 = (nn1-1)/nt1 + 1;
     nn2 = grids_->Nx;              nt2 = min(nn2, 512/WARPSIZE);    nb2 = (nn2-1)/nt2 + 1;
     nn3 = grids_->Nz*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
 
     dB_all = dim3(nt1, nt2, nt3);
-    dG_all = dim3(nb1, nb2, nb3);	 
+    dG_all = dim3(nb1, nb2, min(65535, nb3));	 
     
     //    dB[c] = dim3(32,4,4);
     //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
