@@ -858,11 +858,12 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (ncid, "debug",       NC_INT,   0, NULL, &ivar)) ERR(retval);
   //if (retval = nc_def_var (ncid, "repeat",      NC_INT,   0, NULL, &ivar)) ERR(retval);
 
-  if (retval = nc_def_var (nc_time, "dt",       NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_time, "nstep",    NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_time, "nwrite",   NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_time, "navg",     NC_INT,   0, NULL, &ivar)) ERR(retval);
-  if (retval = nc_def_var (nc_time, "nsave",    NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "dt",           NC_FLOAT, 0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "nstep",        NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "nwrite",       NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "nwrite_big",   NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "navg",         NC_INT,   0, NULL, &ivar)) ERR(retval);
+  if (retval = nc_def_var (nc_time, "nsave",        NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   if (retval = nc_def_var (nc_ks, "ks",         NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_def_var (nc_ks, "write_ks",   NC_INT,   0, NULL, &ivar)) ERR(retval);
@@ -1151,11 +1152,12 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putbool  (nc_dom, "ExBshear_phase", "ExBshear_phase");
   putbool  (nc_dom, "long_wavelength_GK", long_wavelength_GK);
 
-  put_real (nc_time, "dt",      dt      );
-  putint   (nc_time, "nstep",   nstep   );
-  putint   (nc_time, "navg",    navg    );
-  putint   (nc_time, "nsave",   nsave   );
-  putint   (nc_time, "nwrite",  nwrite  );
+  put_real (nc_time, "dt",          dt          );
+  putint   (nc_time, "nstep",       nstep       );
+  putint   (nc_time, "navg",        navg        );
+  putint   (nc_time, "nsave",       nsave       );
+  putint   (nc_time, "nwrite",      nwrite      );
+  putint   (nc_time, "nwrite_big",  nwrite_big  );
   
   putbool  (nc_ks, "ks",       ks       );
   putbool  (nc_ks, "write_ks", write_ks );
