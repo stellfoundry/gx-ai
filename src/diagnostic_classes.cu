@@ -996,6 +996,7 @@ void MomentsDiagnostic::dealias_and_reorder(cuComplex *f, float *fk)
   int Nz   = grids_->Nz;
  
   int NK = grids_->Nakx/2;
+  int nshift = Nx-Nakx;
 
   for (int is = 0; is<Nsp; is++) {
     for (int iky=0; iky<Naky; iky++) {
