@@ -121,7 +121,23 @@ void Parameters::get_nml_vars(char* filename)
   random_init     = toml::find_or <bool> (tnml, "random_init",     false);
   gaussian_init = toml::find_or <bool> (tnml, "gaussian_init", false);
   
-  odd_parity = toml::find_or <bool> (tnml, "odd_parity", false);
+
+  if( tnml.contains("gaussian_envelope_constant_coefficient") && !gaussian_init )
+  {
+      std::cerr << "WARNING: gaussian_envelope_constant_coefficient was specified, but gaussian_init was not, so this will be ignored." << std::endl;
+  }
+  gauss_env_const_coeff = toml::find_or <float> (tnml, "gaussian_envelope_constant_coefficient", 1.0);
+
+  if( tnml.contains("gaussian_envelope_sine_coefficient") && !gaussian_init )
+  {
+      std::cerr << "WARNING: gaussian_envelope_sine_coefficient was specified, but gaussian_init was not, so this will be ignored." << std::endl;
+  }
+  gauss_env_sin_coeff = toml::find_or <float> (tnml, "gaussian_envelope_sine_coefficient", 0.0);
+
+  if( tnml.contains("gaussian_width") && !gaussian_init )
+  {
+      std::cerr << "WARNING: gaussian_width was specified, but gaussian_init was not, so this will be ignored." << std::endl;
+  }
   gaussian_width  = toml::find_or <float>  (tnml, "gaussian_width",     0.5   );
   
   init_electrons_only     = toml::find_or <bool> (tnml, "init_electrons_only",     false);

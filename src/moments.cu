@@ -229,10 +229,7 @@ void MomentsG::initialConditions(double* time) {
 
             float theta0 = grids_->kx_h[ikx]/(pars_->shat*grids_->ky_h[jky]);
             for (int k=0; k<grids_->Nz; k++) {
-              float envelope = 1.0;
-
-              if( pars_->odd_parity )
-                envelope = sin( z_h[k] - theta0 );
+              float envelope = gauss_env_const_coeff + gauss_env_sin_coeff * sin( z_h[k] - theta0 );
 
               int index = jky + grids_->Nyc*(idx + grids_->Nx*k);
 
