@@ -1017,7 +1017,9 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   unsigned int J = nx*nyc;
 
   if (idxy < J) {
-    int IG = (int) nz/2 ;
+    int IG;
+    if (nz > 1) IG = ((int) nz/2) + 1;
+    else IG = 0;
     int id = idxy + J*IG;
     
     int idy = idxy % nyc;
