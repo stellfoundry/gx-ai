@@ -155,19 +155,22 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
     int nn1, nn2, nn3, nt1, nt2, nt3, nb1, nb2, nb3;
 
+    // kernel launch dims for linkedCopy kernel
+    // max thread block is 512 threads (WARPSIZE x 512/WARPSIZE x 1)
     nn1 = grids_->Nz;                   nt1 = min( nn1, WARPSIZE );    nb1 = 1 + (nn1-1)/nt1;
     nn2 = nLinks[c]*nChains[c];         nt2 = min( nn2,  512/WARPSIZE );    nb2 = 1 + (nn2-1)/nt2; 
     nn3 = grids_->Nmoms;                nt3 = min( nn3,  1 );    nb3 = 1 + (nn3-1)/nt3;
-    
     dB[c] = dim3(nt1, nt2, nt3);
     dG[c] = dim3(nb1, nb2, nb3);
 
+    // kernel launch dims for linkedCopyBackAll and linkedAccumulateBackAll kernels
+    // max thread block is 512 threads (WARPSIZE x 512/WARPSIZE x 1)
+    // z block dim = min(Nz*Nl*Nm, MAX_BLOCK_DIM_YZ). kernels have grid-stride loop in z to handle case when z dim = MAX_BLOCK_DIM_YZ.
     nn1 = grids_->Nyc;             nt1 = min(nn1, WARPSIZE);    nb1 = (nn1-1)/nt1 + 1;
     nn2 = grids_->Nx;              nt2 = min(nn2, 512/WARPSIZE);    nb2 = (nn2-1)/nt2 + 1;
     nn3 = grids_->Nz*grids_->Nm*grids_->Nl;   nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
-
     dB_all = dim3(nt1, nt2, nt3);
-    dG_all = dim3(nb1, nb2, min(65535, nb3));	 
+    dG_all = dim3(nb1, nb2, min(MAX_BLOCK_DIM_YZ, nb3));	 
     
     //    dB[c] = dim3(32,4,4);
     //    dG[c] = dim3(1 + (grids_->Nz-1)/dB[c].x,
