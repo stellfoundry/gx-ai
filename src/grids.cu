@@ -1,5 +1,4 @@
 #include "grids.h"
-#include "hermite_transform.h"
 #include "laguerre_transform.h"
 
 Grids::Grids(Parameters* pars) :
@@ -28,8 +27,13 @@ Grids::Grids(Parameters* pars) :
   ky_h            = nullptr;  kx_h            = nullptr;  kz_h            = nullptr;
   kx_outh         = nullptr;
   kz_outh         = nullptr;  kpar_outh       = nullptr;  kzp             = nullptr;
-  y_h             = nullptr;  kxs             = nullptr;  x_h             = nullptr;
+  y_h             = nullptr;  x_h             = nullptr;
   theta0_h        = nullptr;  th0             = nullptr;  z_h             = nullptr;
+  m0_h            = nullptr;  phasefac_ntft   = nullptr;  phasefacminus_ntft = nullptr;
+  iKx             = nullptr;  x               = nullptr;
+  kxstar          = nullptr;  kxbar_ikx_new   = nullptr;  kxbar_ikx_old   = nullptr;
+  phasefac_exb    = nullptr;  phasefacminus_exb = nullptr; 
+
 
   Nspecies = pars->nspec_in;
   Nspecies_glob = Nspecies;
@@ -116,13 +120,31 @@ Grids::Grids(Parameters* pars) :
   ky_h      = (float*) malloc(sizeof(float) * Nyc      );
   kz_h      = (float*) malloc(sizeof(float) * Nz       );
   cudaMalloc     ( (void**) &kx,        sizeof(float) * Nx       );
+  checkCuda(cudaMemset(kx, 0., sizeof(float)*Nx));
   cudaMalloc     ( (void**) &th0,       sizeof(float) * Nx       );
   cudaMalloc     ( (void**) &ky,        sizeof(float) * Nyc      );
+  checkCuda(cudaMemset(ky, 0., sizeof(float)*Nyc));
   cudaMalloc     ( (void**) &kz,        sizeof(float) * Nz       );
   x_h      = (float*) malloc(sizeof(float) * Nx       ); 
   y_h      = (float*) malloc(sizeof(float) * Ny       );
   z_h      = (float*) malloc(sizeof(float) * Nz       );
-  cudaMalloc     ( (void**) &kxs,       sizeof(float) * Nx * Nyc );
+  cudaMalloc     ( (void**) &x,        sizeof(float) * Nx       );
+  if (pars->nonTwist) {
+    m0_h   = (int*)   malloc(sizeof(int) * Nyc * Nz );
+    if (!pars->linear) {      
+      cudaMalloc     ( (void**) &phasefac_ntft,       sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &phasefacminus_ntft,  sizeof(cuComplex) * Nx * Nyc * Nz);
+      cudaMalloc     ( (void**) &iKx,                 sizeof(cuComplex) * Nx * Nyc * Nz);
+    }
+  }
+  if (pars_->ExBshear) {
+    cudaMalloc     ( (void**) &phasefac_exb,   sizeof(cuComplex) * Nx * Nyc);
+    cudaMalloc     ( (void**) &phasefacminus_exb,   sizeof(cuComplex) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxstar,         sizeof(double) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxbar_ikx_new,  sizeof(int) * Nx * Nyc);
+    cudaMalloc     ( (void**) &kxbar_ikx_old,  sizeof(int) * Nx * Nyc);
+  }
+
   checkCuda(cudaGetLastError());
 
   //  printf("In grids constructor. Nyc = %i \n",Nyc);
@@ -131,15 +153,16 @@ Grids::Grids(Parameters* pars) :
 
   checkCuda(cudaDeviceSynchronize());
 
+  DEBUGPRINT("Initializing NCCL comms...\n");
   //cudaStreamCreate(&ncclStream);
   if(iproc == 0) ncclGetUniqueId(&ncclId);
   if(nprocs > 1) {
     MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
   }
   // set up some additional ncclIds
-  if(iproc == 0) ncclGetUniqueId(&ncclId_m);
+  if(iproc == 0) ncclGetUniqueId(&ncclId_m0);
   if(nprocs > 1) {
-    MPI_Bcast((void *)&ncclId_m, sizeof(ncclId_m), MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Bcast((void *)&ncclId_m0, sizeof(ncclId_m0), MPI_BYTE, 0, MPI_COMM_WORLD);
   }
   ncclId_s.resize(nprocs_s);
   for(int i=0; i<nprocs_s; i++) {
@@ -148,27 +171,47 @@ Grids::Grids(Parameters* pars) :
       MPI_Bcast((void *)&ncclId_s[i], sizeof(ncclId_s[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
     }
   }
+  ncclId_m.resize(nprocs_m);
+  for(int i=0; i<nprocs_m; i++) {
+    if(iproc == 0) ncclGetUniqueId(&ncclId_m[i]);
+    if(nprocs > 1) {
+      MPI_Bcast((void *)&ncclId_m[i], sizeof(ncclId_m[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+  }
+
+  DEBUGPRINT("Got NCCL IDs\n");
 
   checkCuda(ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc));
   // set up NCCL communicator that is per-species
   checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s], iproc_m));
+  // set up NCCL communicator that is per-m block
+  checkCuda(ncclCommInitRank(&ncclComm_m, nprocs_s, ncclId_m[iproc_m], iproc_s));
   // set up NCCL communicator that involves only GPUs containing m=0, i.e. grids_->proc(0, iproc_s)
   if(iproc_m == 0) {
     if(nprocs_m > 1)
-      checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m, iproc_s));
+      checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m0, iproc_s));
     else
       ncclComm_m0 = ncclComm;
   }
+  DEBUGPRINT("Finished initializaing NCCL comms.\n");
 }
 
 Grids::~Grids() {
-  if (kxs)             cudaFree(kxs);
   if (kx)              cudaFree(kx);
   if (ky)              cudaFree(ky);
   if (kz)              cudaFree(kz);
   if (kzm)             cudaFree(kzm);
   if (kzp)             cudaFree(kzp);
   if (th0)             cudaFree(th0);
+  if (phasefac_ntft)        cudaFree(phasefac_ntft);
+  if (phasefacminus_ntft)   cudaFree(phasefacminus_ntft);
+  if (phasefac_exb)         cudaFree(phasefac_exb);
+  if (phasefacminus_exb)         cudaFree(phasefacminus_exb);
+  if (iKx)	       cudaFree(iKx);
+  if (x)               cudaFree(x);
+  if (kxstar)          cudaFree(kxstar);
+  if (kxbar_ikx_new)   cudaFree(kxbar_ikx_new);
+  if (kxbar_ikx_old)   cudaFree(kxbar_ikx_old);
   
   if (kpar_outh)       free(kpar_outh);
   if (kz_outh)         free(kz_outh);
@@ -179,10 +222,12 @@ Grids::~Grids() {
   if (x_h)             free(x_h);
   if (y_h)             free(y_h);
   if (z_h)             free(z_h);
+  if (m0_h)            free(m0_h);
   if (theta0_h)        free(theta0_h); 
  
   ncclCommDestroy(ncclComm);
   ncclCommDestroy(ncclComm_s);
+  ncclCommDestroy(ncclComm_m);
   if(nprocs_m > 1 && iproc_m == 0) ncclCommDestroy(ncclComm_m0);
 }
 
@@ -199,17 +244,17 @@ void Grids::init_ks_and_coords()
   CP_TO_CPU (ky_h, ky, sizeof(float)*Nyc);
   CP_TO_CPU (kz_h, kz, sizeof(float)*Nz);
 
-  // If this is a restarted run, should get kxs from the restart file
+  // If this is a restarted run, should get kxstar from the restart file
   // otherwise:
   if (pars_->ExBshear) {
-    int nn1, nt1, nb1, nn2, nt2, nb2, nn3, nt3, nb3;
+    int nn1, nt1, nb1, nn2, nt2, nb2, nt3, nb3;
     nn1 = Nyc;       nt1 = min(32, nn1);     nb1 = 1 + (nn1-1)/nt1;
-    nn2 = Nx;        nt2 = min(32, nn2);     nb2 = 1 + (nn2-1)/nt2;
-    nn3 = 1;         nt3 = 1;                nb3 = 1;
-    dim3 dB = (nt1, nt2, nt3);
-    dim3 dG = (nb1, nb2, nb3);
-    init_kxs <<< dG, dB >>> (kxs, kx, th0);
-    CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);    
+    nn2 = Nx;        nt2 = min(16, nn2);     nb2 = 1 + (nn2-1)/nt2;
+                     nt3 = 1;                nb3 = 1;
+    dB = dim3(nt1, nt2, nt3);
+    dG = dim3(nb1, nb2, nb3);
+    init_kxstar_kxbar_phasefac <<< dG, dB >>> (kxstar, kxbar_ikx_new, kxbar_ikx_old, phasefac_exb, phasefacminus_exb, kx); // Do we really need th0 here? // JFP
+    //CP_TO_CPU (theta0_h, th0, sizeof(float)*Nx);
   }
   
   if (Nx<4) {
@@ -255,13 +300,13 @@ void Grids::init_ks_and_coords()
     z_h[k] = 2.*M_PI *pars_->Zp *(k-Nz/2)/Nz;
   }
 
-  HermiteTransform * hermite = new HermiteTransform(this);
   LaguerreTransform * laguerre = new LaguerreTransform(this, 1);
-  vpar_max = hermite->get_vmax();
+  // Estimate v_parallel_max conservatively
+  vpar_max = 2.0 * sqrtf( Nm_glob );
   muB_max = laguerre->get_vmax();
   kx_max = kx_h[(Nx-1)/3];
   ky_max = ky_h[(Ny-1)/3];
   kz_max = kz_h[Nz/2];
-  delete hermite;
+  kperp_min = min(kx_h[1], ky_h[1]);
   delete laguerre;
 }

@@ -1,6 +1,6 @@
 #include "run_gx.h"
 
-void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnostics)
+void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 {
   double time = 0;
 
@@ -8,6 +8,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   Solver    * solver    = nullptr;
   Linear    * linear    = nullptr;
   Nonlinear * nonlinear = nullptr;
+  ExB       * exb       = nullptr;
+  Diagnostics * diagnostics = nullptr;
   MomentsG  ** G = (MomentsG**) malloc(sizeof(void*)*grids->Nspecies);
   for(int is=0; is<grids->Nspecies; is++) {
     G[is] = nullptr;
@@ -20,26 +22,33 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     G[is] = new MomentsG (pars, grids, is_glob);
   }
   fields = new Fields(pars, grids);               
-  checkCudaErrors(cudaGetLastError());
   
   /////////////////////////////////
   //                             //
   // Initialize eqs              // 
   //                             //
   /////////////////////////////////
+  // GX is set up to solve a handful of different equation sets.
+  // Some have a geometry associated with them, some do not.
+  // Presently the options are "gx", "krehm", "vp", "ks", and "cetg"
+  // Most equation sets are undocumented, as they are exploratory or pedagogical in nature
+  // 
   if (pars->gx) {
     linear = new Linear_GK(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_GK(pars, grids, geo); 
-    checkCudaErrors(cudaGetLastError());
+    if (pars->ExBshear)   exb       = new ExB_GK(pars, grids, geo);
+    checkCuda(cudaGetLastError());
 
     solver = new Solver_GK(pars, grids, geo);    
-    checkCudaErrors(cudaGetLastError());
+    checkCuda(cudaGetLastError());
 
     if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
       if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);        
       if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars); 
       if (pars->forcing_type == "general")   forcing = new genForcing(pars);       
-    }
+      if (pars->forcing_type == "HeliInj")   forcing = new HeliInjForcing(pars, grids); 
+   }
 
     // set up initial conditions
     for(int is=0; is<grids->Nspecies; is++) {
@@ -47,10 +56,15 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
       G[is] -> set_zero();
       if(!pars->restart && pars->init_electrons_only && pars->species_h[is_glob].type!=1) continue;
       G[is] -> initialConditions(&time);   
-      G[is] -> sync();
+      G[is] -> sync(true);
     }
-    solver -> fieldSolve(G, fields);
-    checkCudaErrors(cudaGetLastError());    
+    solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    if(grids->iproc==0) DEBUGPRINT("Initializing diagnostics...\n");
+    diagnostics = new Diagnostics_GK(pars, grids, geo, linear, nonlinear);
+    if(grids->iproc==0) CUDA_DEBUG("Initializing diagnostics: %s \n");    
+    checkCuda(cudaGetLastError());    
   }
 
   //////////////////////////////
@@ -59,19 +73,28 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   //                          //
   //////////////////////////////  
   if (pars->krehm) {
-    linear = new Linear_KREHM(pars, grids);          
+    linear = new Linear_KREHM(pars, grids, geo);          
     if (!pars->linear) nonlinear = new Nonlinear_KREHM(pars, grids);    
-
+    if (pars->forcing_init) {
+      std::cout << "Forcing being ran: " << pars->forcing_type << std::endl;
+      if (pars->forcing_type == "Kz")        forcing = new KzForcing(pars);
+      if (pars->forcing_type == "KzImpulse") forcing = new KzForcingImpulse(pars);
+      if (pars->forcing_type == "general")   forcing = new genForcing(pars);
+      if (pars->forcing_type == "HeliInj")   forcing = new HeliInjForcing(pars, grids);
+   }
     solver = new Solver_KREHM(pars, grids);
 
     // set up initial conditions
     G[0] -> set_zero();
     G[0] -> initialConditions(&time);   
-    if(pars->harris_sheet) solver -> set_equilibrium_current(G[0], fields);
-    G[0] -> sync();
+    if(pars->harris_sheet or pars->periodic_equilibrium or pars->island_coalesce or pars->gaussian_tube or pars-> random_gaussian) solver -> set_equilibrium_current(G[0], fields);
+    G[0] -> sync(true);
     solver -> fieldSolve(G, fields);                
+
+    // set up diagnostics
+    diagnostics = new Diagnostics_KREHM(pars, grids, geo, linear, nonlinear);
   }
-  checkCudaErrors(cudaGetLastError());
+  checkCuda(cudaGetLastError());
   
   //////////////////////////////
   //                          //
@@ -114,53 +137,19 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     // and choose slab = true to get his slab equations.
     //
   }
-  checkCudaErrors(cudaGetLastError());
+  checkCuda(cudaGetLastError());
 
-  //////////////////////////////
-  //                          //
-  // Kuramoto-Sivashinsky eq  // 
-  //                          //
-  //////////////////////////////  
-  if (pars->ks) {
-    linear    = new Linear_KS(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_KS(pars, grids);
-
-    // no field solve for K-S
-
-    // set up initial conditions
-    G[0] -> initialConditions(&time);
-    //    G -> qvar(grids->Naky);
-  }    
-  checkCudaErrors(cudaGetLastError());
-
-  //////////////////////////////
-  //                          //
-  // Vlasov-Poisson           // 
-  //                          //
-  //////////////////////////////  
-  if (pars->vp) {
-    linear    = new Linear_VP(pars, grids);    
-    if (!pars->linear) nonlinear = new Nonlinear_VP(pars, grids);
-
-    solver = new Solver_VP(pars, grids);    
-
-    // set up initial conditions
-    G[0] -> initVP(&time);
-    solver -> fieldSolve(G, fields);
-  }    
-  checkCudaErrors(cudaGetLastError());
-
-  Timestepper * timestep;
+  Timestepper * timestep = nullptr;
   switch (pars->scheme_opt)
     {
-    case Tmethod::k10   : timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::k2    : timestep = new K2          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::g3    : timestep = new G3          (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::rk2   : timestep = new RungeKutta2 (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
-    case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, pars->dt); break;
+    case Tmethod::k10   : timestep = new Ketcheson10 (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    case Tmethod::rk4   : timestep = new RungeKutta4 (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    case Tmethod::rk3   : timestep = new RungeKutta3 (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    case Tmethod::sspx2 : timestep = new SSPx2       (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    case Tmethod::sspx3 : timestep = new SSPx3       (linear, nonlinear, solver, pars, grids, forcing, exb, pars->dt); break;
+    default:
+      printf("Unknown timestepper id (%u). Aborting.",static_cast<unsigned int>(pars->scheme_opt) );
+      exit(1);
     }
 
   fflush(stdout);
@@ -168,39 +157,41 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
   printDeviceMemoryUsage(pars->iproc);
   MPI_Barrier(pars->mpcom);
   fflush(stdout);
-  
+
   //  if (pars->write_moms) diagnostics -> write_init(G, fields);
-	 
+
   // TIMESTEP LOOP
   int counter = 0;           float timer = 0;          cudaEvent_t start, stop;    bool checkstop = false;
   cudaEventCreate(&start);   cudaEventCreate(&stop);   cudaEventRecord(start,0);
-  bool bvar; 
 
   cudaDeviceSynchronize();
-  checkCudaErrors(cudaGetLastError());
-  
+  checkCuda(cudaGetLastError());
+
   while(counter<pars->nstep && time<pars->t_max) {
 
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+
+    checkCuda(cudaGetLastError());
+
     timestep -> advance(&time, G, fields);
+
+    checkCuda(cudaGetLastError());
+
     if (checkstop) break;
 
     if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
-    checkCudaErrors(cudaGetLastError());
+    checkCuda(cudaGetLastError());
     counter++;
     if (counter==pars->nstep || time>=pars->t_max) {
-      bvar = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
+      [[maybe_unused]] auto unused = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
     }
   }
 
   if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
-  if (pars->eqfix && (
-		      (pars->scheme_opt == Tmethod::k10) ||
-		      (pars->scheme_opt == Tmethod::g3) ||
-		      (pars->scheme_opt == Tmethod::k2))) {
+  if (pars->eqfix && (pars->scheme_opt == Tmethod::k10) ) {
     printf("\n");
     printf("\n");
     printf(ANSI_COLOR_MAGENTA);
@@ -211,13 +202,13 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
     printf(ANSI_COLOR_BLUE);
     printf("The eqfix option is not compatible with this time-stepping algorithm. \n");
-    printf(ANSI_COLOR_RESET);    
+    printf(ANSI_COLOR_RESET);
     printf("\n");
     printf("\n");
-  }  
+  }
   
   cudaEventRecord(stop,0);    cudaEventSynchronize(stop);    cudaEventElapsedTime(&timer,start,stop);
-  printf("Total runtime = %f s (%f s / timestep)\n", timer/1000., timer/1000./counter);
+  printf("Total runtime = %f min (%f s / timestep)\n", timer/1000./60., timer/1000./counter);
 
   diagnostics->finish(G, fields, time);
 
@@ -225,9 +216,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo, Diagnostics *diagnost
     if (G[is])         delete G[is];
   }
   free(G);
+  if (diagnostics) delete diagnostics;
   if (linear)    delete linear;
   if (nonlinear) delete nonlinear;
   if (timestep)  delete timestep;
+  if (exb)       delete exb;
 
   if (solver)    delete solver;
   if (fields)    delete fields;

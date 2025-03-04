@@ -1,4 +1,3 @@
-#include "helper_cuda.h"
 #include "trinity_interface.h"
 #include "run_gx.h"
 
@@ -27,19 +26,14 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
 	     grids->Nx, grids->Ny, grids->Nz, grids->Nl, grids->Nm, grids->Nspecies);
 
   Geometry    * geo         = nullptr;
-  Diagnostics_GK * diagnostics = nullptr;
 
   geo = init_geo(pars, grids);
 
-  DEBUGPRINT("Initializing diagnostics...\n");
-  diagnostics = new Diagnostics_GK(pars, grids, geo);
-  CUDA_DEBUG("Initializing diagnostics: %s \n");    
-  
   cudaDeviceSynchronize();
-  checkCudaErrors(cudaGetLastError());
+  checkCuda(cudaGetLastError());
 
   // run gx calculation using (updated) parameters
-  run_gx(pars, grids, geo, diagnostics);
+  run_gx(pars, grids, geo);
 
   // copy time-averaged fluxes to trinity
   copy_fluxes_to_trinity(pars, geo, tfluxes);
@@ -47,7 +41,6 @@ void gx_get_fluxes_(trin_parameters_struct* tpars, trin_fluxes_struct* tfluxes, 
   delete pars;
   delete grids;
   delete geo;
-  delete diagnostics;
 }
 
 void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
@@ -135,7 +128,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   pars->init_species(pars->species_h);
 
   // write a toml input file with the parameters that trinity changed
-  char fname[300];
+  char fname[1500]; // Size needs to be big enough to handle whatever sprintf produces
   sprintf(fname, "%s.trinpars_t%d_i%d", pars->run_name, pars->trinity_timestep, pars->trinity_iteration);
   strcpy(pars->run_name, fname); 
 
@@ -195,7 +188,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
   fclose(fptr);
 
   if(pars->igeo==1) {
-    char command[300];
+    char command[3750]; // Again, need a long buffer so we never overflow (but this is getting silly, we should restrict run_name to a smaller value)
     // call python geometry module using toml we just created to write the eik.out geo file
     // GX_PATH is defined at compile time via a -D flag
     sprintf(command, "python %s/geometry_modules/miller/gx_geo.py %s %s.eik.out", GX_PATH, fname, fname);
@@ -207,7 +200,7 @@ void set_from_trinity(Parameters *pars, trin_parameters_struct *tpars)
 
 void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struct *tfluxes)
 {
-  int id_ns, id_time, id_fluxes, id_Q, id_P;
+  int id_time, id_fluxes, id_Q, id_P;
   int ncres, retval;
   char strb[263];
   strcpy(strb, pars_->run_name); 
@@ -251,7 +244,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struc
 
   
   int is = 1; // counter for trinity ion species
-  for(int s=0; s<pars_->nspec_in; s++) {
+  for(size_t s = 0; s < static_cast<size_t>(pars_->nspec_in); s++) {
     size_t qstart[] = {0, s};
     size_t qcount[] = {tlen, 1};
     if (retval = nc_get_vara(id_fluxes, id_Q, qstart, qcount, qflux)) ERR(retval);
@@ -262,7 +255,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struc
     float pflux_sum = 0.; 
     float t_sum = 0.;
     float dt = 0.;
-    for(int i=tlen - pars_->navg/pars_->nwrite; i<tlen; i++) {
+    for(size_t i = tlen - pars_->navg/pars_->nwrite; i < tlen; i++) {
       dt = time[i] - time[i-1];
       qflux_sum += qflux[i]*dt;
       pflux_sum += pflux[i]*dt;
@@ -297,7 +290,7 @@ void copy_fluxes_to_trinity(Parameters *pars_, Geometry *geo_, trin_fluxes_struc
   }
 
   // these are placeholders for gx-computed quantities
-  float heat = 0.;
+  // float heat = 0.;
 
   for(int s=0; s<pars_->nspec_in; s++) {
     if(pars_->add_Boltzmann_species && pars_->Boltzmann_opt == BOLTZMANN_ELECTRONS) {

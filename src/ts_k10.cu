@@ -11,9 +11,9 @@
 
 // ============= K10,4 ============
 Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
-			 Parameters *pars, Grids *grids, Forcing *forcing, double dt_in) :
+			 Parameters *pars, Grids *grids, Forcing *forcing, ExB *exb, double dt_in) :
   linear_(linear), nonlinear_(nonlinear), solver_(solver), pars_(pars), grids_(grids), 
-  forcing_(forcing), dt_max(dt_in), dt_(dt_in), G_q1(nullptr), G_q2(nullptr), Gtmp(nullptr)
+  forcing_(forcing), exb_(exb), dt_max(pars->dt_max), dt_(dt_in), G_q1(nullptr), G_q2(nullptr), Gtmp(nullptr)
 {
   // new objects for temporaries
   Gtmp = new MomentsG (pars_, grids_);
@@ -28,7 +28,8 @@ Ketcheson10::Ketcheson10(Linear *linear, Nonlinear *nonlinear, Solver *solver,
   if(pars_->dealias_kz) {
     if (pars_->local_limit)                     { grad_par = new GradParallelLocal(grids_);
     } else if (pars_->boundary_option_periodic) { grad_par = new GradParallelPeriodic(grids_);
-    } else {                                      grad_par = new GradParallelLinked(grids_, pars_->jtwist);
+    } else if (pars_->nonTwist)                 { grad_par = new GradParallelNTFT(pars_, grids_);
+    } else {                                      grad_par = new GradParallelLinked(pars_, grids_);
     }
   }
 }
@@ -53,8 +54,12 @@ void Ketcheson10::EulerStep(MomentsG** G_q1, MomentsG** GRhs, MomentsG* Gtmp, Fi
     G_q1[is]->sync();
 
     // compute timestep (if necessary)
-    if (setdt && is==0 && nonlinear_ != nullptr) { // dt will be computed same for all species, so just do first time through species loop
-      dt_ = nonlinear_->cfl(f, dt_);
+    if (setdt && is==0) { // dt will be computed same for all species, so just do first time through species loop
+      linear_->get_max_frequency(omega_max);
+      if (nonlinear_ != nullptr) nonlinear_->get_max_frequency(f, omega_max);
+      double wmax = 0.;
+      for(int i=0; i<3; i++) wmax += omega_max[i];
+      dt_ = min(pars_->cfl/wmax, dt_max);
     }
 
     // compute and increment nonlinear term
@@ -66,7 +71,9 @@ void Ketcheson10::EulerStep(MomentsG** G_q1, MomentsG** GRhs, MomentsG* Gtmp, Fi
 
     // compute and increment linear term
     GRhs[is]->set_zero();
-    linear_->rhs(G_q1[is], f, GRhs[is]);  if (pars_->dealias_kz) grad_par->dealias(GRhs[is]);
+    // finish Hermite ghost exchange before starting linear rhs
+    cudaStreamSynchronize(G_q1[is]->syncStream);
+    linear_->rhs(G_q1[is], f, GRhs[is], dt_);  if (pars_->dealias_kz) grad_par->dealias(GRhs[is]);
 
     G_q1[is]->add_scaled(1., Gtmp, dt_/6., GRhs[is]);
   }
@@ -81,6 +88,15 @@ void Ketcheson10::advance(double *t, MomentsG** G, Fields* f)
   // update the gradients if they are evolving
   for(int is=0; is<grids_->Nspecies; is++) {
     G_q1[is]-> update_tprim(*t);
+  }
+  
+  // update flow shear terms if using ExB
+  if (pars_->ExBshear) {
+    exb_->flow_shear_shift(f, dt_);
+    for(int is=0; is<grids_->Nspecies; is++) {
+      //exb_->flow_shear_g_shift(G[is]); // only G_q1? //JMH
+      exb_->flow_shear_g_shift(G_q1[is]);
+    }
   }
   // end updates
 
@@ -112,7 +128,9 @@ void Ketcheson10::advance(double *t, MomentsG** G, Fields* f)
 
     // compute and increment linear term
     G[is]->set_zero();
-    linear_->rhs(G_q1[is], f, G[is]);
+    // finish Hermite ghost exchange before starting linear rhs
+    cudaStreamSynchronize(G_q1[is]->syncStream);
+    linear_->rhs(G_q1[is], f, G[is], dt_);
     if (pars_->dealias_kz) grad_par->dealias(G[is]);
     G[is]->add_scaled(1., Gtmp, 0.1*dt_, G[is]);
     

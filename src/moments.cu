@@ -17,7 +17,7 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   
   DEBUGPRINT("Allocated a G_lm array of size %.2f MB\n", lhsize/1024./1024.);
 
-  int Nm = grids_->Nm;
+  // int Nm = grids_->Nm;
   int Nl = grids_->Nl;
 
   // set up pointers for named moments that point to parts of G_lm
@@ -81,14 +81,15 @@ MomentsG::MomentsG(Parameters* pars, Grids* grids, int is_glob) :
   //    dimBlock = dim3(32, min(4, Nl), min(4, Nm));
   //    dimGrid  = dim3((grids_->NxNycNz-1)/dimBlock.x+1, 1, 1);
   
-  nn1 = grids_->Nyc*grids_->Nx;    nt1 = min(nn1, 32);    nb1 = (nn1-1)/nt1 + 1;
-  nn2 = grids_->Nz;                nt2 = min(nn2, 32);    nb2 = (nn2-1)/nt2 + 1;
+  nn1 = grids_->Nyc*grids_->Nx;    nt1 = min(nn1, WARPSIZE);    nb1 = (nn1-1)/nt1 + 1;
+  nn2 = grids_->Nz;                nt2 = min(nn2, (int) 512/WARPSIZE);    nb2 = (nn2-1)/nt2 + 1;
   nn3 = grids_->Nm*grids_->Nl;     nt3 = min(nn3,  1);    nb3 = (nn3-1)/nt3 + 1;
   
   dB_all = dim3(nt1, nt2, nt3);
   dG_all = dim3(nb1, nb2, nb3);	 
 
   cudaStreamCreateWithFlags(&syncStream, cudaStreamNonBlocking);
+  cudaEventCreateWithFlags(&finished_sync, cudaEventDisableTiming);
   checkCuda(cudaGetLastError());
 }
 
@@ -191,45 +192,55 @@ void MomentsG::initialConditions(double* time) {
       //initialize single mode
       int iky = pars_->iky_single;
       int ikx = pars_->ikx_single;
+		int ikz = pars_->ikpar_init;
       int NKX = 1;
       if (iky == 0 && ikx<1+(grids_->Nx-1)/3) NKX = 2; // reality condition for tertiary tests
-      for (int j = 0; j<NKX; j++) {
-	if (j==1) ikx = grids_->Nx-ikx;
-	DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
-	//    float fac;
-	//    if(pars_->nlpm_test && iky==0) fac = .5;
-	//    else fac = 1.;
-	//    DEBUG_PRINT("fac = %f \n",fac);
-	for(int iz=0; iz<grids_->Nz; iz++) {
-	  int index = iky + grids_->Nyc*ikx + grids_->NxNyc*iz;
-	  init_h[index].x = pars_->init_amp; //*fac;
-	  init_h[index].y = 0.;
-	  //init_h[index].y = 0.; //init_amp;
-	      	    //printf("init_h[%d] = (%e, %e) \n",index,init_h[index].x,init_h[index].y);
-	}
-      }
+		for (int j = 0; j<NKX; j++) {
+			if (j==1) ikx = grids_->Nx-ikx;
+			DEBUG_PRINT("ikx, iky: %d \t %d \n",ikx, iky);
+			for(int k=0; k<grids_->Nz; k++) {
+				int index = iky + grids_->Nyc*ikx + grids_->NxNyc*k;
+
+				init_h[index].x = pars_->init_amp;
+				init_h[index].y = 0.0;
+
+				// Negative ikpar init means k_|| & k_|| + 1, where k_|| = |kpar_init|
+				if (ikz < 0) {		
+					int ikpar = -ikz;
+					init_h[index].x *= ( cos(ikpar*z_h[k]/pars_->Zp) + cos((ikpar + 1)*z_h[k]/pars_->Zp) );
+					init_h[index].y *= ( cos(ikpar*z_h[k]/pars_->Zp) + cos((ikpar + 1)*z_h[k]/pars_->Zp) );
+				} else {
+					init_h[index].x *= cos(ikz*z_h[k]/pars_->Zp);
+					init_h[index].y *= cos(ikz*z_h[k]/pars_->Zp);
+				}	
+			}
+		}
     } else if(pars_->gaussian_init) {
       for(int ikx=0; ikx < 1 + (grids_->Nx - 1)/3; ikx++) {
-	// No perturbation inserted for ky=0 mode because loop starts with j=1
-	for(int jky=1; jky < 1 + (grids_->Ny - 1)/3; jky++) {
-	  for (int js=0; js < 2; js++) {
+        // No perturbation inserted for ky=0 mode because loop starts with j=1
+        for(int jky=1; jky < 1 + (grids_->Ny - 1)/3; jky++) {
+          for (int js=0; js < 2; js++) {
             int idx;
-	    if (ikx==0) {
-	      idx = ikx;
-	    } else {
-	      idx = (js==0) ? ikx : grids_->Nx-ikx;
-	    }
+            if (ikx==0) {
+              idx = ikx;
+            } else {
+              idx = (js==0) ? ikx : grids_->Nx-ikx;
+            }
+
             float theta0 = grids_->kx_h[ikx]/(pars_->shat*grids_->ky_h[jky]);
             for (int k=0; k<grids_->Nz; k++) {
+              float envelope = pars_->gauss_env_const_coeff + pars_->gauss_env_sin_coeff * sin( z_h[k] - theta0 );
+
               int index = jky + grids_->Nyc*(idx + grids_->Nx*k);
-              init_h[index].x = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
-              init_h[index].y = pars_->init_amp*exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+
+              init_h[index].x = envelope * pars_->init_amp * exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
+              init_h[index].y = envelope * pars_->init_amp * exp(-pow((z_h[k] - theta0)/pars_->gaussian_width,2));
             }
           }
         }
       }
     } else {
-      srand(22);
+      srand( pars_->random_seed );
       float samp;
       int idx;
       //
@@ -338,13 +349,15 @@ void MomentsG::initialConditions(double* time) {
   checkCuda(cudaGetLastError());    
   free(init_h);     
   // restart_read goes here, if restart == T
-  // as in gs2, if restart_read is true, we want to *add* the restart values to anything
-  // that has happened above and also move the value of time up to the end of the previous run
   if(pars_->restart) {
-    //    set_zero(); // As noted in the comment above, setting G = 0 here is not correct. Doing so breaks the kh01a regression test
+    // if restart_with_perturb == T then the restart values will be *added* to the initial conditions above. 
+    // this is required for kh01a test, and also mimicks what gs2 does, but it is not the default behavior in GX.
+    // otherwise (default), only use restart data, regardless of init conditions specified in input file.
+    if(!pars_->restart_with_perturb) set_zero();
     DEBUG_PRINT("reading restart file \n");
     restart_read(time);
     if(pars_->t_add > 0.0) pars_->t_max = *time + pars_->t_add;
+    if(pars_->nstep_restart > 0) pars_->nstep = pars_->nstep_restart;
   }
   cudaDeviceSynchronize();  checkCuda(cudaGetLastError());
   DEBUG_PRINT("initial conditions set \n");  
@@ -389,7 +402,7 @@ void MomentsG::add_scaled(double c1, MomentsG* G1,
   add_scaled_kernel GALL (G(), c1, G1->G(), c2, G2->G(), c3, G3->G(), c4, G4->G(), c5, G5->G(), neqfix);
 }
 
-void MomentsG::reality(int ngz) 
+void MomentsG::reality()
 {
   dim3 dB;
   dim3 dG;
@@ -404,72 +417,170 @@ void MomentsG::reality(int ngz)
   dB.y = 8;
   dG.y = (ngy-1)/dB.y + 1;
   
+  int ngz = grids_->Nmoms;
+
   dB.z = 4;
   dG.z = (ngz-1)/dB.z + 1;
 
   reality_kernel <<< dG, dB >>> (G(), ngz);
 }
 
-void MomentsG::sync()
+void MomentsG::sync(bool blocking, int m_ghost)
 {
-  if(pars_->use_NCCL) syncNCCL();
-  else syncMPI();
+  if (m_ghost < 0) m_ghost = grids_->m_ghost; // default
+  if(pars_->use_NCCL) syncNCCL(blocking, m_ghost);
+  else syncMPI(m_ghost);
 }
 
-void MomentsG::syncMPI()
+void MomentsG::syncMPI(int m_ghost)
 {
   if(grids_->nprocs_m==1) return;
 
-  size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
-  MPI_Status stat;
+  // handle special case of nprocs_m == Nm_glob && m_ghost == 2
+  if(grids_->Nm_glob == grids_->nprocs_m && m_ghost == 2) {
+    size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl;
+    MPI_Status stat;
 
-  // send to right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    MPI_Send(Gm(grids_->Nm-grids_->m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
-  }
-  // receive from left
-  if(grids_->iproc_m-1 >= 0) {
-    MPI_Recv(Gm(-grids_->m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
-  }
+    // send one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Send(Gm(grids_->Nm-m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    }
+    // receive from one to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Recv(Gm(-1),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+    }
 
-  // send to left
-  if(grids_->iproc_m-1 >= 0) {
-    MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
-  }
-  // receive from right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    // send one to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+    }
+    // receive from one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Recv(Gm(1), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    }
+
+    // send two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      MPI_Send(Gm(0), size, MPI_BYTE, grids_->procRight2(), 1, MPI_COMM_WORLD);
+    }
+    // receive from two to left
+    if(grids_->iproc_m-2 >= 0) {
+      MPI_Recv(Gm(-2),           size, MPI_BYTE, grids_->procLeft2(), 1, MPI_COMM_WORLD, &stat);
+    }
+
+    // send two to left
+    if(grids_->iproc_m-2 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft2(), 2, MPI_COMM_WORLD);
+    }
+    // receive from two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      MPI_Recv(Gm(2), size, MPI_BYTE, grids_->procRight2(), 2, MPI_COMM_WORLD, &stat);
+    }
+  } else {
+    size_t size = sizeof(cuComplex)*grids_->NxNycNz*grids_->Nl*m_ghost;
+    MPI_Status stat;
+
+    // send to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Send(Gm(grids_->Nm-m_ghost), size, MPI_BYTE, grids_->procRight(), 1, MPI_COMM_WORLD);
+    }
+    // receive from left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Recv(Gm(-m_ghost),           size, MPI_BYTE, grids_->procLeft(), 1, MPI_COMM_WORLD, &stat);
+    }
+
+    // send to left
+    if(grids_->iproc_m-1 >= 0) {
+      MPI_Send(Gm(0),          size, MPI_BYTE, grids_->procLeft(), 2, MPI_COMM_WORLD);
+    }
+    // receive from right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      MPI_Recv(Gm(grids_->Nm), size, MPI_BYTE, grids_->procRight(), 2, MPI_COMM_WORLD, &stat);
+    }
   }
   cudaDeviceSynchronize();
 }
 
-void MomentsG::syncNCCL()
+void MomentsG::syncNCCL(bool blocking, int m_ghost)
 {
   if(grids_->nprocs_m==1) return;
 
-  // since nccl does not support cuComplex directly, we will use float type
-  // factor of 2 here is for real and imag part of cuComplex
-  size_t count = 2*grids_->NxNycNz*grids_->Nl*grids_->m_ghost;
+  // handle special case of nprocs_m == Nm_glob && m_ghost == 2
+  if(grids_->Nm_glob == grids_->nprocs_m && m_ghost == 2) {
+    // since nccl does not support cuComplex directly, we will use float type
+    // factor of 2 here is for real and imag part of cuComplex
+    size_t count = 2*grids_->NxNycNz*grids_->Nl;
 
-  ncclGroupStart();
-  // send to right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    ncclSend(Gm(grids_->Nm-grids_->m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
-  }
-  // receive from left
-  if(grids_->iproc_m-1 >= 0) {
-    ncclRecv(Gm(-grids_->m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
-  }
+    ncclGroupStart();
+    // send one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclSend(Gm(0), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    // receive from one to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclRecv(Gm(-1),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
 
-  // send to left
-  if(grids_->iproc_m-1 >= 0) {
-    ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    // send one to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+    // receive from one to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclRecv(Gm(1), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
+
+    ncclGroupStart();
+    // send two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      ncclSend(Gm(0), count, ncclFloat, grids_->procRight2(), grids_->ncclComm, syncStream);
+    }
+    // receive from two to left
+    if(grids_->iproc_m-2 >= 0) {
+      ncclRecv(Gm(-2),           count, ncclFloat, grids_->procLeft2(), grids_->ncclComm, syncStream);
+    }
+
+    // send two to left
+    if(grids_->iproc_m-2 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft2(), grids_->ncclComm, syncStream);
+    }
+    // receive from two to right
+    if(grids_->iproc_m+2 < grids_->nprocs_m) {
+      ncclRecv(Gm(2), count, ncclFloat, grids_->procRight2(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
+    
+  } else {
+    // since nccl does not support cuComplex directly, we will use float type
+    // factor of 2 here is for real and imag part of cuComplex
+    size_t count = 2*grids_->NxNycNz*grids_->Nl*m_ghost;
+
+    ncclGroupStart();
+    // send to right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclSend(Gm(grids_->Nm-m_ghost), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    // receive from left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclRecv(Gm(-m_ghost),           count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+
+    // send to left
+    if(grids_->iproc_m-1 >= 0) {
+      ncclSend(Gm(0),          count, ncclFloat, grids_->procLeft(), grids_->ncclComm, syncStream);
+    }
+    // receive from right
+    if(grids_->iproc_m+1 < grids_->nprocs_m) {
+      ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+    }
+    ncclGroupEnd();
   }
-  // receive from right
-  if(grids_->iproc_m+1 < grids_->nprocs_m) {
-    ncclRecv(Gm(grids_->Nm), count, ncclFloat, grids_->procRight(), grids_->ncclComm, syncStream);
+  cudaEventRecord(finished_sync, syncStream);
+
+  if(blocking) {
+    cudaStreamSynchronize(syncStream);
   }
-  ncclGroupEnd();
 }
 
 void MomentsG::restart_write(int ncres, int id_G)
@@ -574,11 +685,11 @@ void MomentsG::restart_read(double* time)
   
   // handles
   int id_nz, id_Nkx, id_Nky;
-  int id_nh, id_nl, id_ns;
+  int id_nh, id_nl;
   int id_G, id_time;
 
   char stra[NC_MAX_NAME+1];
-  char strb[512];
+  char strb[1512];
   strcpy(strb, pars_->restart_from_file.c_str());
 
   if (retval = nc_open(strb, NC_NOWRITE, &ncres)) { printf("file: %s \n",strb); ERR(retval);}
@@ -694,7 +805,7 @@ void MomentsG::restart_read(double* time)
     int old_Naky = 1 +    (Ny/pars_->ny_mult - 1)/3;    int jj; 
     int old_Nakx = 1 + 2*((Nx/pars_->nx_mult - 1)/3);   int ii; 
     int old_Nx = Nx/pars_->nx_mult;
-    int old_Nz = Nz/pars_->ntheta_mult; // not yet implemented
+    // int old_Nz = Nz/pars_->ntheta_mult; // not yet implemented
     int old_Nm = Nm - pars_->nm_add;
     int old_Nl = Nl - pars_->nl_add;
     

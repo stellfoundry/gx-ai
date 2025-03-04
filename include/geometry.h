@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cufft.h"
+#include "gpu_defs.h"
 #include "parameters.h"
 #include "grids.h"
 #include "grad_parallel.h" // MFM
@@ -27,6 +27,8 @@ class Geometry {
   float * cvdrift0_h ;
   float * gbdrift0_h ;
   float * jacobian_h ;
+  float * vol_fac_h;
+  float * flux_fac_h;
 
   float * z ;
   float * gbdrift ;
@@ -41,6 +43,8 @@ class Geometry {
   float * cvdrift0 ;
   float * gbdrift0 ;
   float * jacobian ;
+  float * vol_fac;
+  float * flux_fac;
 
   float * gradpar_arr ;
   float * Rplot ;
@@ -58,7 +62,18 @@ class Geometry {
   float bi;
   float aminor;
   float shat;
+  float qsf;
+  float kxfac;
+  float shift;
+  float rmaj;
+  float theta_scale = 1.0;
+  float alpha;
+  float zeta_center;
+  int nperiod;
   bool zero_shat_; 
+  int nfp = 1;
+
+  float RBzeta; // = I(psi) ; needed for flow shear
   
   cuComplex * bmag_complex ;
   float * bgrad_temp ;
@@ -69,7 +84,11 @@ class Geometry {
   float * cv_d ;
   float * gb_d ; 
   float * kperp2_h ;
+  int * m0;
+  float * deltaKx;
+  float * ftwist;
   float gbdrift_max, cvdrift_max, gbdrift0_max, cvdrift0_max;
+  float bmag_max;
   
   void initializeOperatorArrays(Parameters* pars, Grids* grids);
   void calculate_bgrad(Grids* grids); // MFM

@@ -1,8 +1,8 @@
 #pragma once
+#include "gpu_defs.h"
 #include "parameters.h"
 #include "device_funcs.h"
 #include "get_error.h"
-#include "nccl.h"
 
 class Grids {
 
@@ -37,15 +37,27 @@ class Grids {
   float * kx_outh;  float * kz_outh;
   float * kpar_outh;
   float *y_h, *x_h, *z_h;
+  int * m0_h;
+  cuComplex * phasefac_ntft;
+  cuComplex * phasefacminus_ntft;
+  cuComplex * iKx;
+  float * x;
+  cuComplex * phasefac_exb;
+  cuComplex * phasefacminus_exb;
+  double * kxstar;
+  int * kxbar_ikx_new, * kxbar_ikx_old;
+
   
   float * theta0_h ;
   float * th0; 
   float Zp;
   float kx_max, ky_max, kz_max, vpar_max, muB_max;
+  int m0_max;
+  float kperp_min;
 
-  ncclComm_t ncclComm, ncclComm_s, ncclComm_m0;
-  ncclUniqueId ncclId, ncclId_m;
-  std::vector<ncclUniqueId> ncclId_s;
+  ncclComm_t ncclComm, ncclComm_s, ncclComm_m, ncclComm_m0;
+  ncclUniqueId ncclId, ncclId_m0;
+  std::vector<ncclUniqueId> ncclId_s, ncclId_m;
   cudaStream_t ncclStream;
 
   int iproc, nprocs;
@@ -58,6 +70,10 @@ class Grids {
   int proc(int iproc_m_in, int iproc_s_in) { return iproc_m_in + nprocs_m*iproc_s_in; };
   int procLeft() {return proc(iproc_m-1, iproc_s);}
   int procRight() {return proc(iproc_m+1, iproc_s);}
+  int procLeft2() {return proc(iproc_m-2, iproc_s);}
+  int procRight2() {return proc(iproc_m+2, iproc_s);}
+
+  dim3 dB, dG;
 
   /* Flow shear arrays*/
   //  float * kx_shift ;

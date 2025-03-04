@@ -55,21 +55,23 @@ VPATH=.:src:geometry_modules/vmec/src
 HEADERS=$(wildcard include/*.h) 
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
 
+WARNING_FLAGS = -Wall -Wno-unused-local-typedefs -Wno-deprecated-declarations -Wno-parentheses -Wno-unused-result
+
 ifdef GS2_PATH
-obj/%.o: %.cu $(HEADERS) 
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
-else                                        
-obj/%.o: %.cu $(HEADERS)                    
-	$(NVCC) -w -dc -o $@ $< $(NVCCFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include -DGX_PATH=\"${PWD}\"
+obj/%.o: %.cu $(HEADERS)
+	$(NVCC) $(WARNING_FLAGS) -c -o $@ $< $(NVCCFLAGS) -I. -I include -I geometry_modules/vmec/include $(INCS) -DGX_PATH=\"${PWD}\" -DGS2_PATH=\"${GS2_PATH}\"
+else
+obj/%.o: %.cu $(HEADERS)
+	$(NVCC) $(WARNING_FLAGS) -c -o $@ $< $(NVCCFLAGS) -I. -I include -I geometry_modules/vmec/include $(INCS) -DGX_PATH=\"${PWD}\"
 endif
 
 obj/%.o: %.cpp $(HEADERS)
-	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include 
+	$(CXX) $(WARNING_FLAGS) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include -I geometry_modules/vmec/include
 
 .SILENT: src/version.c obj/version.o
 
 obj/version.o: src/version.c
-	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
+	$(CXX) -Wall -c -o $@ $< $(CFLAGS) $(INCS) -I. -I include
 
 src/version.c: 
 	git describe --always --dirty --tags | awk ' BEGIN {print "#include \"version.h\""} {print "const char * build_git_sha = \"" $$0"\";"} END {}' > src/version.c
@@ -80,7 +82,7 @@ src/version.c:
 #######################################
 # Rules for building gx
 ####################################
-OBJS = device_funcs.o parameters.o grids.o reductions.o reservoir.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o hermite_transform.o laguerre_transform.o nca.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o ts_sspx2.o ts_sspx3.o ts_rk2.o ts_rk3.o ts_rk4.o ts_k10.o ts_k2.o ts_g3.o diagnostics.o run_gx.o version.o trinity_interface.o
+OBJS = device_funcs.o parameters.o grids.o reductions.o grad_perp.o fields.o moments.o forcing.o grad_parallel.o grad_parallel_linked.o geometry.o laguerre_transform.o nca.o ncdf.o solver.o smith_par_closure.o closures.o linear.o nonlinear.o ts_sspx2.o ts_sspx3.o ts_rk3.o ts_rk4.o ts_k10.o diagnostics.o run_gx.o version.o trinity_interface.o diagnostic_classes.o spectra_calc.o grad_parallel_NTFT.o exb.o
 
 VMEC_GEO_OBJS = solver.o vmec_variables.o geometric_coefficients.o
 VMEC_GEO_HEADERS = $(wildcard geometry_modules/vmec/include*.h)
@@ -89,10 +91,16 @@ obj/geo/%.o: %.cpp $(VMEC_GEO_HEADERS)
 	$(CXX) -c -o $@ $< $(CFLAGS) $(INCS) -I. -I geometry_modules/vmec/include
 
 # main program
-gx: obj/main.o libgx.a
+ifeq ($(NVCC), hipcc)
+gx: libgx.a obj/main.o 
+	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) 
+	@rm src/version.c
+else
+gx: obj/main.o libgx.a 
 	$(NVCC) -dlink $(NVCCFLAGS) -o obj/gx.o $< -L. -lgx $(LIBS) 
 	$(CXX) -o $@ obj/gx.o obj/main.o -L. -lgx $(LIBS) 
 	@rm src/version.c
+endif
 
 libgx.a: $(addprefix obj/, $(OBJS)) $(HEADERS) $(addprefix obj/geo/, $(VMEC_GEO_OBJS)) $(VMEC_GEO_HEADERS)
 	ar -crs libgx.a $(addprefix obj/, $(OBJS)) $(addprefix obj/geo/, $(VMEC_GEO_OBJS))

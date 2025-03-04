@@ -271,6 +271,22 @@ The ``[Initialization]`` group controls the initial conditions.
      - ``random_init``
      - Use completely random initial conditions (e.g. no mode structure in :math:`z`)
      - **false**
+   * - ``[Initialization]``
+     - ``gaussian_init``
+     - Use a gaussian initial condition in :math:`z` with an envelope of :math:`a + b*sin(z-z0)`
+     - **false**
+   * - ``[Initialization]``
+     - ``gaussian_envelope_constant_coefficient``
+     - Coefficient :math:`a` in the above expression for gaussian initial condition
+     - **1.0**
+   * - ``[Initialization]``
+     - ``gaussian_envelope_sine_coefficient``
+     - Coefficient :math:`b` in the above expression for gaussian initial condition
+     - **0.0**
+   * - ``[Initialization]``
+     - ``gaussian_width``
+     - Width (in z) of the gaussian initial condition
+     - **0.5**
 
 Geometry
 ++++++++
@@ -630,10 +646,6 @@ If ``nspecies=1``, only the first values of each table will be used (to set up t
      - ``fprim``
      - Density gradient, :math:`L_\mathrm{ref}/L_n`
      - 
-   * - ``[species]``
-     - ``uprim``
-     - Velocity gradient, :math:`L_\mathrm{ref}/L_u`. **Not yet implemented**.
-     - **0.0**
    * - ``[species]``
      - ``vnewk``
      - The collision frequency
