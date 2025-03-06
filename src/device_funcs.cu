@@ -89,23 +89,57 @@ __device__ unsigned int get_id3(void) {return __umul24(blockIdx.z,blockDim.z)+th
 __device__ unsigned int get_idxyz(unsigned int i, unsigned int j, unsigned int k) {return j + nyc*(i + nx*k);}
 
 
-// use Stirling's approximation
-__host__ __device__ float factorial(int m) {
-  if (m <2) return 1.;
-  if (m==2) return 2.;
-  if (m==3) return 6.;
-  if (m==4) return 24.;
-  if (m==5) return 120.;
-  if (m==6) return 720.;
-  else return sqrtf(2.*M_PI*m)*powf(m,m)*expf(-m)*(1.+1./(12.*m)+1./(288.*m*m));
+__host__ __device__ double inv_factorial(int m) {
+  static const double inv_factorials[] = {
+      1.0,                    // 1/0!
+      1.0,                    // 1/1!
+      0.5,                    // 1/2!
+      0.166666666666666667,   // 1/3!
+      0.041666666666666667,   // 1/4!
+      0.008333333333333333,   // 1/5!
+      0.001388888888888889,   // 1/6!
+      1.984126984126984e-4,   // 1/7!
+      2.480158730158730e-5,   // 1/8!
+      2.755731922398589e-6,   // 1/9!
+      2.755731922398589e-7,   // 1/10!
+      2.505210838544172e-8,   // 1/11!
+      2.087675698786810e-9,   // 1/12!
+      1.605904383682931e-10,  // 1/13!
+      1.147074559773522e-11,  // 1/14!
+      7.647163731823481e-13,  // 1/15!
+      4.779477332389676e-14,  // 1/16!
+      2.811457254347456e-15,  // 1/17!
+      1.561920696859698e-16,  // 1/18!
+      8.220635246629989e-18,  // 1/19!
+      4.110317623314995e-19,  // 1/20!
+      1.957294106340474e-20,  // 1/21!
+      8.896791392456700e-22,  // 1/22!
+      3.868170170633348e-23,  // 1/23!
+      1.611737571097228e-24,  // 1/24!
+      6.446950284388913e-26,  // 1/25!
+      2.479596263226505e-27,  // 1/26!
+      9.183689863801870e-29,  // 1/27!
+      3.279889237072096e-30,  // 1/28!
+      1.130996288645550e-31,  // 1/29!
+      3.769987628818500e-33   // 1/30!
+  };
+  if(m<=30) return inv_factorials[m];
+  else return 0.0;
 }
 
-// enforce_JL_0 is an optional argument, true by default.
+// enforce_JL_0 is an optional argument, false by default.
 __device__ float Jflr(const int l, const float b, bool enforce_JL_0) {
   if (l>30) return 0.; // protect against underflow for single precision evaluation
   else if (l<0) return 0.;
   else if (l>=nl && enforce_JL_0) return 0;
-  else return 1./factorial(l)*pow(-0.5*b, l)*expf(-b/2.); // Assumes <J_0> = exp(-b/2)
+  else {
+    // Assumes <J_0> = exp(-b/2)
+    // compute in double precision
+    double tmp = pow(-0.5*b, 1.0*l)*inv_factorial(l);
+    double res = tmp*exp(-0.5*b);
+    
+    return (float) res;
+  }
 }
 
 __device__ float JflrA(const int l, const float b)
@@ -2763,7 +2797,7 @@ __device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element
     kz = (float) -idzs * zpnLinv;
   }
   float kzmax = (nzL/2 *zpnLinv);
-  float hypkz = powf( fabsf(kz/kzmax), p_hyper_z);
+  float hypkz = pow( fabsf(kz/kzmax), p_hyper_z);
 
   float normalization = (float) 1./nzL;
   ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
@@ -3792,9 +3826,9 @@ __global__ void hypercollisions(const cuComplex* g,
         int globalIdx = idxyz + nx*nyc*nz*(l + nl*m_local);                                    
         if (m>2 || l>1) { 
           rhs[globalIdx] = rhs[globalIdx] -
-	    nu_hyper_lm*powf((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
-             - vt*(scaled_nu_hyp_l*powf((float) l/nl, (float) p_hyper_l)                              
-             + scaled_nu_hyp_m*powf((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
+	    nu_hyper_lm*pow((float) (2*l + m)/(2*nl + nm_glob), p_hyper_lm)*g[globalIdx]
+             - vt*(scaled_nu_hyp_l*pow((float) l/nl, (float) p_hyper_l)                              
+             + scaled_nu_hyp_m*pow((float) m/nm_glob, (float) p_hyper_m))*g[globalIdx];                 
         }   
       }      
     }   
