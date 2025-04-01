@@ -342,6 +342,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
   float beta_e = pars->beta;
   rmaj = pars->rmaj;
   specie* species = pars->species_h;
+
+  RBzeta = rmaj; // I = R_0 B_axis = R_0 B_ref => I_N = R_0/a = rmaj
   
   gradpar = (float) abs(1./(qsf*rmaj));
   zero_shat_ = pars->zero_shat;
@@ -673,10 +675,12 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // initialize omegad and kperp2
   initializeOperatorArrays(pars, grids);
-  
+
   // calculate bgrad
   calculate_bgrad(grids);
   if(grids->iproc==0) DEBUGPRINT("bgrad calculated\n");
+
+  RBzeta = 0.0; // TODO: FIX
 }
 
 // MFM - 07/09/17
@@ -881,6 +885,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   // calculate bgrad
   calculate_bgrad(grids);
   if(grids->iproc==0) CUDA_DEBUG("calc bgrad: %s \n");
+
+  RBzeta = 0.0; // TODO: FIX
 }
 
 void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
@@ -968,11 +974,11 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   cvdrift_max = 0.;
   cvdrift0_max = 0.;
   for(int i=0; i<grids->Nz; i++) {
-    gbdrift_max = max(gbdrift_max, abs(gbdrift_h[i]));
-    gbdrift0_max = max(gbdrift0_max, abs(gbdrift0_h[i]));
-    cvdrift_max = max(cvdrift_max, abs(cvdrift_h[i]));
-    cvdrift0_max = max(cvdrift0_max, abs(cvdrift0_h[i]));
-    bmag_max = max(bmag_max, abs(bmag_h[i]));
+    gbdrift_max = fmax(gbdrift_max, abs(gbdrift_h[i]));
+    gbdrift0_max = fmax(gbdrift0_max, abs(gbdrift0_h[i]));
+    cvdrift_max = fmax(cvdrift_max, abs(cvdrift_h[i]));
+    cvdrift0_max = fmax(cvdrift0_max, abs(cvdrift0_h[i]));
+    bmag_max = fmax(bmag_max, abs(bmag_h[i]));
   }
 
   if (pars->nonTwist) {

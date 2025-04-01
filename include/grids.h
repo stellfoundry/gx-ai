@@ -1,8 +1,8 @@
 #pragma once
+#include "gpu_defs.h"
 #include "parameters.h"
 #include "device_funcs.h"
 #include "get_error.h"
-#include "nccl.h"
 
 class Grids {
 
@@ -44,7 +44,7 @@ class Grids {
   float * x;
   cuComplex * phasefac_exb;
   cuComplex * phasefacminus_exb;
-  float * kxstar;
+  double * kxstar;
   int * kxbar_ikx_new, * kxbar_ikx_old;
 
   

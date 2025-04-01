@@ -1,7 +1,7 @@
 #pragma once
-#include "cufft.h"
-#include "cufftXt.h"
-#include "precision_types.h"
+#include <stdio.h>
+#include <cmath>
+#include "gpu_defs.h"
 #include "species.h"
 
 #define idXYZ unsigned int idy = get_id1(); unsigned int idx = get_id2(); unsigned int idz = get_id3();
@@ -143,6 +143,7 @@ __global__ void add_scaled_singlemom_kernel(cuComplex* res,
 __global__ void reality_kernel(cuComplex* g, int N);
 
 __device__ int get_ikx(int idx);
+__device__ int get_idx(int ikx);
 __device__ bool unmasked(int idx, int idy);
 __device__ bool   masked(int idx, int idy);
 
@@ -169,6 +170,8 @@ __global__ void bracket(float* __restrict__ g_res,
 __global__ void bracket_cetg(float* __restrict__ g_res,
 			const float* __restrict__ dg_dx, const float* __restrict__ dphi_dy,
 			const float* __restrict__ dg_dy, const float* __restrict__ dPhi_dx, float kxfac);
+
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_);
 
 __global__ void  d2x (cuComplex *res, cuComplex *f, float *kx);
 __global__ void  ddx (cuComplex *res, cuComplex *f, float *kx);
@@ -221,6 +224,14 @@ __global__ void heat_flux_Bpar_summand(float* qflux, const cuComplex* bpar, cons
 				  const float* flxJac, const float *kperp2, float rho2_s, float pres, float tzs);
 
 __global__ void particle_flux_summand(float* pflux, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, const cuComplex* g, const float* ky, 
+
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs);
+
+__global__ void particle_flux_ES_summand(float* pflux, const cuComplex* phi, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs);
+__global__ void particle_flux_Apar_summand(float* pflux, const cuComplex* apar, const cuComplex* g, const float* ky, 
+				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs);
+__global__ void particle_flux_Bpar_summand(float* pflux, const cuComplex* bpar, const cuComplex* g, const float* ky, 
 				  const float* flxJac, const float *kperp2, float rho2_s, float n_s, float vts, float tzs);
 
 __global__ void init_ftwist(float* ftwist, const float* gds21, const float* gds22, float shat);
@@ -258,6 +269,10 @@ __device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, voi
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr);
 __device__ cuComplex i_ky(void *dataIn, size_t offset, void *kyData, void *sharedPtr);
 __device__ void mask_and_scale(void *dataOut, size_t offset, cufftComplex element, void *data, void * sharedPtr);
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize);
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize);
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize);
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate);
 
 extern __device__ cufftCallbackLoadC i_kxstar_callbackPtr;
 extern __device__ cufftCallbackLoadC i_kx_callbackPtr;
@@ -328,7 +343,7 @@ __global__ void add_source(cuComplex* f, const float source);
 __global__ void qneutAdiab(cuComplex* Phi, const cuComplex* nbar, const float* qneutDenom, float tau_fac, float fphi);
 
 __global__ void dampEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
-			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms,
+			       int* p, int* nLinks, int nMoms,
 			       cuComplex* GRhs, float widthfrac, float amp);
 
 __global__ void dampEnds_linkedNTFT(cuComplex* G, cuComplex* phi, cuComplex* apar, cuComplex* bpar, float* kperp2, specie sp,
@@ -341,14 +356,48 @@ __global__ void zeroEnds_linked(cuComplex* G, cuComplex* phi, cuComplex* apar, f
 __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
 			       int nLinks, int nChains, const int* ikx, const int* iky, int nMoms);
 
+__global__ void ikzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void abskzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void mkz2Linked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm);
+
+__global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm, const int p_hyper_z);
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked, int nLinks, int nChains,
-			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
+			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scalar=1.0);
 
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
-			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
+                               const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
 
 __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked, cuComplex* __restrict__ G, int nLinks, int nChains,
-			       const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
+                               const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms, float scale);
+
+__global__ void linkedCopyBackAll(cuComplex* G_linked[],
+			       cuComplex* __restrict__ G,
+			       const int* __restrict__ p_map,
+			       const int* __restrict__ n_map,
+			       const int* __restrict__ c_map,
+			       const int* __restrict__ nLinks_map,
+			       const int* __restrict__ nChains_map,
+			       int nMoms);
+
+__global__ void linkedAccumulateBackAll(cuComplex* G_linked[],
+			       cuComplex* __restrict__ G,
+			       const int* __restrict__ p_map,
+			       const int* __restrict__ n_map,
+			       const int* __restrict__ c_map,
+			       const int* __restrict__ nLinks_map,
+			       const int* __restrict__ nChains_map,
+			       int nMoms, float scale);
 
 __global__ void linkedCopyNTFT(const cuComplex* __restrict__ G, cuComplex* __restrict__ G_linked, int nLinks, int nChains,
 			   const int* __restrict__ ikx, const int* __restrict__ iky, int nMoms);
@@ -443,16 +492,16 @@ __global__ void hypercollisions(const cuComplex* g, const float nu_hyper_l, cons
 				const int p_hyper_l, const int p_hyper_m, const int p_hyper_lm, cuComplex* rhs, const float vt);
 __global__ void hypercollisions_kz(const cuComplex* g, const float nu, const int p, cuComplex* res);
 
-__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx);
-__global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void init_kxstar_kxbar_phasefac(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx);
+__global__ void geo_shift(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat);
-__global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void geo_shift_ntft(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                                const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                                const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
 			       const float* ftwist, float* deltaKx, const int* m0, const float x0);
 __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double dt, const float* ky);
 
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase);
+__global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase);
 __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);
 __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxbar_ikx_new, const int* kxbar_ikx_old, const float g_exb);

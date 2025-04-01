@@ -1,10 +1,12 @@
 #pragma once
+#include "gpu_defs.h"
 #include "get_error.h"
 
 #define DEBUGPRINT(_fmt, ...)  if (pars->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 #define DEBUG_PRINT(_fmt, ...)  if (pars_->debug) fprintf(stderr, "[file %s, line %d]: " _fmt, __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define CP_ON_GPU(to, from, isize) checkCuda(cudaMemcpy(to, from, isize, cudaMemcpyDeviceToDevice))
+#define CP_ON_GPU_ASYNC(to, from, isize, stream) checkCuda(cudaMemcpyAsync(to, from, isize, cudaMemcpyDeviceToDevice, stream))
 #define CP_TO_GPU(gpu, cpu, isize) checkCuda(cudaMemcpy(gpu, cpu, isize, cudaMemcpyHostToDevice))
 #define CP_TO_CPU(cpu, gpu, isize) checkCuda(cudaMemcpy(cpu, gpu, isize, cudaMemcpyDeviceToHost))
 
@@ -113,7 +115,7 @@ class Parameters {
   const int ngam_spectra = 7;  // should match # of elements in PSpectra
   const int nphi2_spectra = 7;  // should match # of elements in PSpectra
   void get_nml_vars(char* file);
-  void store_ncdf(int ncid, NcDims* nc_dims);
+  void store_ncdf(int ncid, NcDims *nc_dims);
 
   void init_species(specie* species);
   void set_jtwist_x0(float* shat, float *gds21, float *gds22);
@@ -145,7 +147,7 @@ class Parameters {
   Tmethod scheme_opt;
   Closure closure_model_opt;
   
-  float RBzeta, rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri;
+  float rhoc, eps, shat, qsf, rmaj, r_geo, shift, akappa, akappri, RBzeta_override;
   float tri, tripri, drhodpsi, epsl, kxfac, cfl, phi_ext, scale, tau_fac;
   float ti_ov_te, beta, g_exb, s_hat_input, beta_prime_input, init_amp;
   float x0, y0, z0, dt, dt_max, dt_min, fixed_dt;
@@ -192,6 +194,7 @@ class Parameters {
   bool adiabatic_electrons, snyder_electrons, stationary_ions, dorland_qneut;
   bool all_kinetic, ks, gx, add_Boltzmann_species, write_ks, random_init;
   bool gaussian_init;
+  float gauss_env_const_coeff, gauss_env_sin_coeff;
   float gaussian_width;
   bool vp, vp_closure;
   bool cetg;  
@@ -238,10 +241,11 @@ class Parameters {
   //  bool tpar_omegad_corrections, tperp_omegad_corrections, qpar_gradpar_corrections ;
   //  bool qpar_bgrad_corrections, qperp_gradpar_corrections, qperp_bgrad_corrections ;
   bool use_NCCL;
+  bool use_fft_callbacks;
   bool long_wavelength_GK;
   bool ExBshear_phase;
   float damp_ends_widthfrac, damp_ends_amp;
-    
+
   char *scan_type;
   char *equilibrium_option, *nlpm_option;
   char run_name[1255];

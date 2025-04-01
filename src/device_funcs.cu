@@ -22,23 +22,23 @@ void setdev_constants(int Nx,
 		      int m_ghost_in,
 		      int Nm_glob)
 {
-  cudaMemcpyToSymbol ( nx,        &Nx,         sizeof(int));
-  cudaMemcpyToSymbol ( ny,        &Ny,         sizeof(int));
-  cudaMemcpyToSymbol ( nyc,       &Nyc,        sizeof(int));
-  cudaMemcpyToSymbol ( nz,        &Nz,         sizeof(int));
-  cudaMemcpyToSymbol ( nspecies,  &Nspecies,   sizeof(int));
-  cudaMemcpyToSymbol ( nm,        &Nm,         sizeof(int));
-  cudaMemcpyToSymbol ( nm_glob,   &Nm_glob,    sizeof(int));
-  cudaMemcpyToSymbol ( nl,        &Nl,         sizeof(int));
-  cudaMemcpyToSymbol ( nj,        &Nj,         sizeof(int));
-  cudaMemcpyToSymbol ( zp,        &Zp,         sizeof(int));
-  cudaMemcpyToSymbol ( ikx_fixed, &ikxf,       sizeof(int));
-  cudaMemcpyToSymbol ( iky_fixed, &ikyf,       sizeof(int));
-  cudaMemcpyToSymbol ( is_lo,     &is_lo_in,   sizeof(int));
-  cudaMemcpyToSymbol ( is_up,     &is_up_in,   sizeof(int));
-  cudaMemcpyToSymbol ( m_lo,      &m_lo_in,    sizeof(int));
-  cudaMemcpyToSymbol ( m_up,      &m_up_in,    sizeof(int));
-  cudaMemcpyToSymbol ( m_ghost,   &m_ghost_in, sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nx),        &Nx,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( ny),        &Ny,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nyc),       &Nyc,        sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nz),        &Nz,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nspecies),  &Nspecies,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nm),        &Nm,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nm_glob),   &Nm_glob,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nl),        &Nl,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( nj),        &Nj,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( zp),        &Zp,         sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( ikx_fixed), &ikxf,       sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( iky_fixed), &ikyf,       sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( is_lo),     &is_lo_in,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( is_up),     &is_up_in,   sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_lo),      &m_lo_in,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_up),      &m_up_in,    sizeof(int));
+  cudaMemcpyToSymbol(GPU_SYMBOL( m_ghost),   &m_ghost_in, sizeof(int));
   
 }
 
@@ -247,6 +247,20 @@ __device__ int get_ikx(int idx) {
   else
     return idx-nx;
 }
+
+// JFP Jul 14 2024 Assumes that nx is always even and maximum absolute wavenumber is nx/2, not -nx/2, which doesn't exist
+// printing out kx, seems like we actually keep nx/2 but throw away -nx/2. So this is the correct function.
+__device__ int get_idx(int ikx) {
+  if (ikx < 0)
+    return ikx + nx;
+  else
+    return ikx;
+}
+// notes about idx and ikx
+// both idx and ikx arrays have length nx, which if even, satisfies,
+// ikx is the grid ordered as [-nx/2 +1, ..., -1, 0, 1, ..., nx/2]
+// idx is the grid ordered as [0,1,.. nx/2, -nx/2 +1, ..., -1], FFT order
+
 
 __device__ bool not_fixed_eq(int idxyz) {
   int idxy_fixed = iky_fixed + ikx_fixed*nyc;
@@ -1003,7 +1017,9 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   unsigned int J = nx*nyc;
 
   if (idxy < J) {
-    int IG = (int) nz/2 ;
+    int IG;
+    if (nz > 1) IG = ((int) nz/2) + 1;
+    else IG = 0;
     int id = idxy + J*IG;
     
     int idy = idxy % nyc;
@@ -1025,7 +1041,7 @@ __global__ void growthRates(const cuComplex *phi, const cuComplex *phiOld, doubl
   }
 }
 
-__global__ void J0fToGrid(cuComplex* J0f,
+__global__ void __launch_bounds__(256) J0fToGrid(cuComplex* J0f,
 			  const cuComplex* f,
 			  const float* kperp2,
 			  const float* muB,
@@ -1042,7 +1058,7 @@ __global__ void J0fToGrid(cuComplex* J0f,
   }
 }
 
-__global__ void J0phiAndBparToGrid(cuComplex* J0phiB,
+__global__ void __launch_bounds__(256) J0phiAndBparToGrid(cuComplex* J0phiB,
 				   const cuComplex* phi,
 				   const cuComplex* bpar,
 				   const float* kperp2,
@@ -1072,10 +1088,10 @@ __global__ void iKxJ0ftoGrid(cuComplex * iKxf, const cuComplex* f, const cuCompl
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idj;
     if (exb_flag) {
-      iKxf[ig] = f[ig] * iKx[idxy];
+      iKxf[ig] = f[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxf[ig] = f[ig] * iKx[idxyz];
+      iKxf[ig] = f[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1090,10 +1106,10 @@ __global__ void iKxgtoGrid(cuComplex * iKxg, const cuComplex* g, const cuComplex
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*(idl + nl*idm);
     if (exb_flag) {
-      iKxg[ig] = g[ig] * iKx[idxy];
+      iKxg[ig] = g[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg[ig] = g[ig] * iKx[idxyz];
+      iKxg[ig] = g[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1107,10 +1123,10 @@ __global__ void iKxgsingletoGrid(cuComplex * iKxg_single, const cuComplex* g_sin
     unsigned int idxy = idxyz % (nx * nyc);
     unsigned int ig = idxyz + nx*nyc*nz*idl;
     if (exb_flag) {
-      iKxg_single[ig] = g_single[ig] * iKx[idxy];
+      iKxg_single[ig] = g_single[ig] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-      iKxg_single[ig] = g_single[ig] * iKx[idxyz];
+      iKxg_single[ig] = g_single[ig] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1122,10 +1138,10 @@ __global__ void iKxphitoGrid(cuComplex * iKxphi, const cuComplex* phi, const cuC
   if (idxyz < nx*nyc*nz) {
     unsigned int idxy = idxyz % (nx * nyc);
     if (exb_flag) {
-      iKxphi[idxyz] = phi[idxyz] * iKx[idxy];
+      iKxphi[idxyz] = phi[idxyz] * iKx[idxy] / ny; // ny factor for fft normalization
     }
     else {
-     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz];
+     iKxphi[idxyz] = phi[idxyz] * iKx[idxyz] / ny; // ny factor for fft normalization
     }
   }
 }
@@ -1186,6 +1202,68 @@ __global__ void d2x (cuComplex *res, cuComplex *f, float *kx)
   }
 }
 
+__global__ void iky_kernel(cuComplex *res, const cuComplex *f, const float *ky, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Iky = make_cuComplex(0., ky[idy]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Iky * f[idxyz];
+  }
+}
+
+__global__ void ikx_kernel(cuComplex *res, const cuComplex *f, const float *kx, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikx = make_cuComplex(0., kx[idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikx * f[idxyz];
+  }
+}
+
+__global__ void ikxstar_kernel(cuComplex *res, const cuComplex *f, const double *kxstar, const int batchsize)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    cuComplex Ikxstar = make_cuComplex(0., kxstar[idy+nyc*idx]);
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+
+    res[idxyz] = Ikxstar * f[idxyz];
+  }
+}
+
+__global__ void mask_and_scale_kernel(cuComplex *res, const cuComplex *f, const int batchsize, bool accumulate)
+{
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  unsigned int idz = get_id3();
+
+  if (idx < nx && idy < nyc && idz < batchsize) {
+    unsigned idxyz = idy + nyc*idx + nx*nyc*idz;
+    float scale = 0.;
+    if (unmasked(idx, idy)) {
+      scale = 1./(nx*ny);
+    }
+    if (accumulate) {
+      res[idxyz] = res[idxyz] + scale*f[idxyz];
+    } else {
+      res[idxyz] = scale*f[idxyz];
+    }
+  }
+}
+
 __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *sharedPtr)
 {
   unsigned int idx = offset / nyc % nx;
@@ -1199,7 +1277,7 @@ __device__ cuComplex i_kx(void *dataIn, size_t offset, void *kxData, void *share
 
 __device__ cuComplex i_kxstar(void *dataIn, size_t offset, void *kxstarData, void *sharedPtr)
 {
-  float *kxstar = (float*) kxstarData;
+  double *kxstar = (double*) kxstarData;
   unsigned int idx = offset / nyc % nx;
   unsigned int idy = offset % nyc;
   unsigned int idxy = idy+nyc*idx;
@@ -1398,14 +1476,13 @@ __global__ void bracket(      float* __restrict__ g_res,
 			const float* __restrict__ dJ0phi_dx,
 			float kxfac)
 {
-  unsigned int idxyz = get_id1();
-  unsigned int idj   = get_id2();
-  unsigned int idm   = get_id3();
-
-  if (idxyz < nx*ny*nz && idj < nj && idm < nm) {
-    unsigned int iphi = idxyz + nx*ny*nz*idj;
-    unsigned int ig   = idxyz + nx*ny*nz*(idj + nj*idm);
-    g_res[ig] = ( dg_dx[ig] * dJ0phi_dy[iphi] - dg_dy[ig] * dJ0phi_dx[iphi] ) * kxfac;
+  for (int idxyzj = __umul24(blockIdx.x, blockDim.x) + threadIdx.x; idxyzj < nx*ny*nz*nj; idxyzj += __umul24(blockDim.x, gridDim.x)) {
+    float dJ0phi_dx_ = dJ0phi_dx[idxyzj];
+    float dJ0phi_dy_ = dJ0phi_dy[idxyzj];
+    for (int idm = 0; idm < nm; idm ++) {
+      unsigned int ig = idxyzj + nx*ny*nz*nj*idm;
+      g_res[ig] = ( dg_dx[ig] * dJ0phi_dy_ - dg_dy[ig] * dJ0phi_dx_ ) * kxfac;
+    }
   }
 }
 
@@ -1423,6 +1500,28 @@ __global__ void bracket_cetg(      float* __restrict__ g_res,
     unsigned int ig = idxyz + nx*ny*nz;
     g_res[ig] = ( dg_dx[ig] * dphi_dy[iphi] - dg_dy[ig] * dphi_dx[iphi] ) * kxfac;
     
+  }
+}
+
+__global__ void nl_flutter(cuComplex* __restrict__ rhs, const cuComplex* __restrict__ NL, const float vt_)
+{
+  unsigned int idxyz = get_id1();
+  unsigned int idy = idxyz % nyc;
+  unsigned int idx = (idxyz / nyc) % nx;
+  unsigned int idl = get_id2();
+  if (unmasked(idx, idy) && (idxyz < nx*nyc*nz) && idl<nl) {
+    for (int m = m_lo; m < m_up; m++) {
+      int m_local = m - m_lo;
+      int globalIdx = idxyz + nx*nyc*nz*(idl + nl*(m_local));
+      int mp1 = idxyz + nx*nyc*nz*(idl + nl*(m_local+1));
+      int mm1 = idxyz + nx*nyc*nz*(idl + nl*(m_local-1));
+      cuComplex NLmp1 = make_cuComplex(0.,0.);
+      cuComplex NLmm1 = make_cuComplex(0.,0.);
+      if(m>0) NLmm1 = NL[mm1];
+      if(m<nm_glob-1) NLmp1 = NL[mp1];
+      
+      rhs[globalIdx] = rhs[globalIdx] -vt_ * (sqrtf(m+1)*NLmp1 + sqrtf(m)*NLmm1);
+    }
   }
 }
 
@@ -1980,6 +2079,117 @@ __global__ void particle_flux_summand(float* pflux,
   }
 }
 
+__global__ void particle_flux_ES_summand(float* pflux,
+                                      const cuComplex* phi,
+                                      const cuComplex* g,
+                                      const float* ky,
+				      const float* flxJac,
+                                      const float *kperp2,
+                                      float rho2_s,
+                                      float n_s,
+                                      float vts,
+                                      float tzs)
+{
+  idXYZ; 
+  
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vPhi_r = make_cuComplex(0., ky[idy]) * phi[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex n_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	n_bar = n_bar + Jflr(il, b_s)*Gh_(idxyz, il, 0);
+      }
+    
+      cuComplex fg = (cuConjf(vPhi_r) * n_bar) * 2. * flxJac[idz];
+      pflux[idxyz] = fg.x * n_s;
+
+    } else {
+      pflux[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void particle_flux_Apar_summand(float* pflux,
+                                      const cuComplex* apar,
+                                      const cuComplex* g,
+                                      const float* ky,
+				      const float* flxJac,
+                                      const float *kperp2,
+                                      float rho2_s,
+                                      float n_s,
+                                      float vts,
+                                      float tzs)
+{
+  idXYZ; 
+  
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vA_r = make_cuComplex(0., ky[idy]) * apar[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex u_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	u_bar = u_bar + Jflr(il, b_s)*Gh_(idxyz, il, 1);
+      }
+    
+      cuComplex fg = (- vts*cuConjf(vA_r)*u_bar) * 2. * flxJac[idz];
+      pflux[idxyz] = fg.x * n_s;
+
+    } else {
+      pflux[idxyz] = 0.;
+    }
+  }
+}
+
+__global__ void particle_flux_Bpar_summand(float* pflux,
+                                      const cuComplex* bpar,
+                                      const cuComplex* g,
+                                      const float* ky,
+				      const float* flxJac,
+                                      const float *kperp2,
+                                      float rho2_s,
+                                      float n_s,
+                                      float vts,
+                                      float tzs)
+{
+  idXYZ; 
+  
+  if (idy < nyc && idx < nx && idz < nz && m_lo==0) { 
+    unsigned int idxyz = get_idxyz(idx, idy, idz);
+    if (unmasked(idx, idy) && idy > 0) {    
+      
+      cuComplex vB_r = make_cuComplex(0., ky[idy]) * bpar[idxyz];
+    
+      float b_s = kperp2[idxyz]*rho2_s;
+    
+      // sum over l
+      cuComplex uB_bar = make_cuComplex(0.,0.);
+
+      for (int il=0; il < nl; il++) {
+	uB_bar = uB_bar + JflrB(il, b_s)*Gh_(idxyz, il, 0);
+      }
+    
+      cuComplex fg = (tzs*cuConjf(vB_r)*uB_bar) * 2. * flxJac[idz];
+      pflux[idxyz] = fg.x * n_s;
+
+    } else {
+      pflux[idxyz] = 0.;
+    }
+  }
+}
+
 __global__ void turbulent_heating_summand(float* heat, const cuComplex* phi, const cuComplex* apar, const cuComplex* bpar, 
                                           const cuComplex* phi_old, const cuComplex* apar_old, const cuComplex* bpar_old, 
                                           const cuComplex* g, const cuComplex* g_old, const float* volJac, const float* kperp2, const specie sp, float dt)
@@ -2175,9 +2385,9 @@ __global__ void kInit(float* kx,
   }
   
   if (false) {
-    printf("ky[%d] = %f \t ",id, ky[id]);
-    printf("kx[%d] = %f \t ",id, kx[id]);
-    printf("kz[%d] = %f \n ",id, kz[id]);
+    if (id < nyc) printf("ky[%d] = %f \n ",id, ky[id]);
+    if (id < nx) printf("kx[%d] = %f \n ",id, kx[id]);
+    if (id < nz) printf("kz[%d] = %f \n ",id, kz[id]);
     printf("\n");
   }
 }
@@ -2447,7 +2657,7 @@ __device__ void i_kzLinked(void *dataOut, size_t offset, cufftComplex element, v
   // Passed: nLinks; we know nz
   unsigned int nzL = nz*nLinks;
   unsigned int idz = offset % (nzL);
-  float zpnLinv = (float) 1./zp*nLinks;
+  float zpnLinv = (float) 1./(zp*nLinks);
   float kz;
   int j = idz % (nzL/2+1)     
   if (idz < nzL/2+1) {
@@ -2489,7 +2699,7 @@ __device__ void mkz2_Linked(void *dataOut, size_t offset, cufftComplex element, 
   // Passed: nLinks; we know nz
   unsigned int nzL = nz*nLinks;
   unsigned int idz = offset % (nzL);
-  float zpnLinv = (float) 1./zp*nLinks;
+  float zpnLinv = (float) 1./(zp*nLinks);
   float kz;
   int j = idz % (nzL/2+1)     
   if (idz < nzL/2+1) {
@@ -2541,16 +2751,20 @@ __device__ void hyperkzLinked(void *dataOut, size_t offset, cufftComplex element
   int *data = (int*) hyperData;
   int nLinks = data[0];
   int p_hyper_z = data[1];
-  unsigned int nzL = nz*nLinks;
+  int nzL = nz*nLinks;
   unsigned int idz = offset % (nzL);
-  float zpnLinv = (float) 1./zp*nLinks;
-  float hypkz;
+  float zpnLinv = (float) 1./(zp*nLinks);
+
+  float kz;
   if (idz < nzL/2+1) {
-    hypkz = powf((float) idz * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+    kz = (float) idz * zpnLinv;
   } else {
     int idzs = idz-nzL;
-    hypkz = powf((float) idzs * zpnLinv / (nzL/2 * zpnLinv), p_hyper_z);
+    kz = (float) -idzs * zpnLinv;
   }
+  float kzmax = (nzL/2 *zpnLinv);
+  float hypkz = powf( fabsf(kz/kzmax), p_hyper_z);
+
   float normalization = (float) 1./nzL;
   ((cuComplex*)dataOut)[offset] = -hypkz*element*normalization;
 }
@@ -2602,6 +2816,7 @@ __global__ void init_kzLinked(float* kz, int nLinks, bool dealias_kz)
     } else {
       kz[i] = (float) (i-nzL)/(zp*nLinks);
     }
+    //printf("%d %f\n", nLinks, kz[i]);
     if (dealias_kz) {
       if (i > (nzL-1)/3 && i < nzL - (nzL-1)/3) {kz[i] = 0.0;}
     }
@@ -2665,42 +2880,140 @@ __device__ cufftCallbackStoreC  mkz2_LinkedNTFT_callbackPtr = mkz2_LinkedNTFT;
 __device__ cufftCallbackStoreC abs_kzLinked_callbackPtr = abs_kzLinked;
 __device__ cufftCallbackStoreC abs_kzLinkedNTFT_callbackPtr = abs_kzLinkedNTFT;
 
+__global__ void ikzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    cuComplex ikz = make_cuComplex(0, kz);
+    G_linked[idlink] = G_linked[idlink]*ikz*norm;
+  }
+}
+
+__global__ void abskzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = abs(kzLinked[idz + nz*idp]);
+    G_linked[idlink] = G_linked[idlink]*kz*norm;
+  }
+}
+
+__global__ void mkz2Linked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    G_linked[idlink] = -G_linked[idlink]*kz*kz*norm;
+  }
+}
+
+__global__ void hyperkzLinked_kernel(cuComplex* __restrict__ G_linked, 
+		          const float* __restrict__ kzLinked,
+			  const int nLinks, const int nChains, const int nMoms, const float norm, const int p_hyper_z)
+{
+  unsigned int idz  = get_id1();
+  unsigned int idk  = get_id2();
+  unsigned int idlm = get_id3();
+  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
+    unsigned int idp = idk % nLinks;
+    float kz = kzLinked[idz + nz*idp];
+    float kzmax = nz/zp/2.;
+    float hypkz = powf( fabsf(kz/kzmax), p_hyper_z);
+    G_linked[idlink] = -G_linked[idlink]*hypkz*norm;
+  }
+}
+
 __global__ void linkedCopy(const cuComplex* __restrict__ G,
 			   cuComplex* __restrict__ G_linked,
 			   int nLinks,
 			   int nChains,
 			   const int* __restrict__ ikx,
 			   const int* __restrict__ iky,
-			   int nMoms)
+			   int nMoms, float scalar)
 {
   unsigned int idz  = get_id1();
   unsigned int idk  = get_id2();
   unsigned int idlm = get_id3();
 
+  // idk = p + nLinks*n
   if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     // NRM: seems hopeless to make these accesses coalesced. how bad is it?
-    G_linked[idlink] = G[globalIdx];
+    G_linked[idlink] = G[globalIdx]*scalar;
   }
 }
 
 __global__ void linkedCopyBack(const cuComplex* __restrict__ G_linked,
-			       cuComplex* __restrict__ G,
-			       int nLinks,
-			       int nChains,
-			       const int* __restrict__ ikx,
-			       const int* __restrict__ iky,
-			       int nMoms)
+                               cuComplex* __restrict__ G,
+                               int nLinks,
+                               int nChains,
+                               const int* __restrict__ ikx,
+                               const int* __restrict__ iky,
+                               int nMoms)
 {
   unsigned int idz  = get_id1();
-  unsigned int idk  = get_id2();
+  unsigned int idpn = get_id2();
   unsigned int idlm = get_id3();
 
-  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
-    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+  if (idz < nz && idpn < nLinks*nChains && idlm < nMoms) {
+    unsigned int idlink = idz + nz*(idpn + nLinks*nChains*idlm);
+    unsigned int globalIdx = iky[idpn] + nyc*(ikx[idpn] + nx*(idz + nz*idlm));
     G[globalIdx] = G_linked[idlink];
+  }
+}
+
+__global__ void __launch_bounds__(512) linkedCopyBackAll(cuComplex* G_linked[],
+			       cuComplex* __restrict__ G,
+			       const int* __restrict__ p_map,
+			       const int* __restrict__ n_map,
+			       const int* __restrict__ c_map,
+			       const int* __restrict__ nLinks_map,
+			       const int* __restrict__ nChains_map,
+			       int nMoms)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  if (unmasked(idx, idy)) {
+    for (int idzlm = __umul24(blockIdx.z, blockDim.z) + threadIdx.z; idzlm < nz*nMoms; idzlm += __umul24(blockDim.z, gridDim.z)) {
+      unsigned int idz = idzlm % nz;
+      unsigned int idlm = idzlm / nz;
+      unsigned int naky = (1 + ((ny-1)/3));
+      unsigned int nakx = (1 + 2*((nx-1)/3));
+      unsigned int nshift = nx - nakx;
+      unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+      unsigned int idakx = idx;
+      if (idx >= (nakx+1)/2) {
+        idakx = idx - nshift;
+      }
+      unsigned int idxy = idy + naky*idakx;
+
+      int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+      unsigned int c = c_map[idxy];
+      G[globalIdx] = G_linked[c][idlink];
+    }
   }
 }
 
@@ -2721,6 +3034,41 @@ __global__ void linkedAccumulateBack(const cuComplex* __restrict__ G_linked,
     unsigned int idlink = idz + nz*(idk + nLinks*nChains*idlm);
     unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
     G[globalIdx] = G[globalIdx] + scale*G_linked[idlink];
+  }
+}
+
+__global__ void __launch_bounds__(512) linkedAccumulateBackAll(cuComplex* G_linked[],
+                                     cuComplex* __restrict__ G,
+                                     const int* __restrict__ p_map,
+                                     const int* __restrict__ n_map,
+                                     const int* __restrict__ c_map,
+                                     const int* __restrict__ nLinks_map,
+                                     const int* __restrict__ nChains_map,
+                                     int nMoms,
+                                     float scale)
+{
+
+  unsigned int idy = get_id1();
+  unsigned int idx = get_id2();
+  if (unmasked(idx, idy)) {
+    for (int idzlm = __umul24(blockIdx.z, blockDim.z) + threadIdx.z; idzlm < nz*nMoms; idzlm += __umul24(blockDim.z, gridDim.z)) {
+      unsigned int idz = idzlm % nz;
+      unsigned int idlm = idzlm / nz;
+      unsigned int naky = (1 + ((ny-1)/3));
+      unsigned int nakx = (1 + 2*((nx-1)/3));
+      unsigned int nshift = nx - nakx;
+      unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+      unsigned int idakx = idx;
+      if (idx >= (nakx+1)/2) {
+        idakx = idx - nshift;
+      }
+      unsigned int idxy = idy + naky*idakx;
+
+      unsigned int idlink = idz + nz*(p_map[idxy] + nLinks_map[idxy]*(n_map[idxy] + nChains_map[idxy]*idlm));
+      unsigned int c = c_map[idxy];
+      G[globalIdx] = G[globalIdx] + scale*G_linked[c][idlink];
+    }
   }
 }
 
@@ -2798,64 +3146,114 @@ __global__ void linkedAccumulateBackNTFT(const cuComplex* __restrict__ G_linked,
   }
 }
 
-__global__ void dampEnds_linked(cuComplex* G,
+__global__ void __launch_bounds__(512) dampEnds_linked(cuComplex* G,
                                 cuComplex* phi,
                                 cuComplex* apar,
                                 cuComplex* bpar,
                                 float* kperp2,
                                 specie sp,
-                                int nLinks,
-                                int nChains,
-                                const int* ikx,
-                                const int* iky,
+				int* p_map,
+                                int* nLinks_map,
                                 int nMoms,
                                 cuComplex* GRhs,
                                 float widthfrac,
                                 float amp)
 {
-  unsigned int idz = get_id1();
-  unsigned int idk = get_id2();
-  unsigned int idlm = get_id3();
+  unsigned int idy = get_id1(); 
+  unsigned int idx = get_id2();
+  unsigned int idzlm = get_id3();
 
-  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
-    unsigned int idzl = idz + nz*(idk % nLinks);
-    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
-    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
-    // unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
-    // Question: why are we using ikx and iky in the definition of idxyz? Surely this should be idx and idy?
-    // Answer: in grad_parallel_linked, we use ky and kx to hold index values rather than k values. Confusing.
-    
+  // note: only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+  if (unmasked(idx,idy) && idy > 0 && idzlm < nz*nMoms) {
+    unsigned int idz = idzlm % nz;
+    unsigned int naky = (1 + ((ny-1)/3));
+    unsigned int nakx = (1 + 2*((nx-1)/3));
+    unsigned int nshift = nx - nakx;
+    unsigned int globalIdx = idy + nyc*(idx + nx*idzlm);
+
+    unsigned int idakx = idx;
+    if (idx >= (nakx+1)/2) {
+      idakx = idx - nshift;
+    }
+
     float nu = 0.;
     // width = width of damping region in number of grid points 
     // set damping region width to 1/8 of extended domain (on either side)
     // widthfac = 1./8.;
+    unsigned int idzp = idz + nz*p_map[idy + naky*idakx];
+    unsigned int nLinks = nLinks_map[idy + naky*idakx];
+
     int width = (int) nz*nLinks*widthfrac;  
     // float L = (float) 2*M_PI*zp*nLinks*widthfrac;
     float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
-    if (idzl <= width ) {
-      float x = ((float) idzl)/width;
+    if (idzp <= width ) {
+      float x = ((float) idzp)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
-    } else if (idzl >= nz*nLinks-width) {
-      float x = ((float) nz*nLinks-idzl)/width;
+    } else if (idzp >= nz*nLinks-width) {
+      float x = ((float) nz*nLinks-idzp)/width;
       nu = 1 - 2*x*x/(1+x*x*x*x);
     }
-    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
-    if(iky[idk]>0) {
-      unsigned int idl = idlm % nl;
-      unsigned int idm = idlm / nl;
-      const float kperp2_ = kperp2[idxyz];
-      const float zt_ = sp.zt;
-      const float vt_ = sp.vt;
-      const float rho2_ = sp.rho2;
-      const float b_ = kperp2_ * rho2_;
-      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
-      cuComplex H_ = G[globalIdx];
-      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
-      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
-      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
-      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
-    }
+
+    unsigned int idl = (idzlm / nz) % nl;
+    unsigned int idm = (idzlm / nz) / nl;
+    unsigned int idxyz = idy + nyc*idx + nx*nyc*idz;
+    const float kperp2_ = kperp2[idxyz];
+    const float zt_ = sp.zt;
+    const float vt_ = sp.vt;
+    const float rho2_ = sp.rho2;
+    const float b_ = kperp2_ * rho2_;
+    // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+    cuComplex H_ = G[globalIdx];
+    if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
+    if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+    GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
   }
+
+////////////////
+
+//  unsigned int idz = get_id1();
+//  unsigned int idk = get_id2();
+//  unsigned int idlm = get_id3();
+//
+//  if (idz < nz && idk < nLinks*nChains && idlm < nMoms) {
+//    unsigned int idzp = idz + nz*(idk % nLinks);
+//    unsigned int globalIdx = iky[idk] + nyc*(ikx[idk] + nx*(idz + nz*idlm));
+//    unsigned int idxyz = iky[idk] + nyc*(ikx[idk] + nx*idz);
+//    // unsigned int idxyz = get_idxyz(ikx[idk], iky[idk], idz);
+//    // Question: why are we using ikx and iky in the definition of idxyz? Surely this should be idx and idy?
+//    // Answer: in grad_parallel_linked, we use ky and kx to hold index values rather than k values. Confusing.
+//    
+//    float nu = 0.;
+//    // width = width of damping region in number of grid points 
+//    // set damping region width to 1/8 of extended domain (on either side)
+//    // widthfac = 1./8.;
+//    int width = (int) nz*nLinks*widthfrac;  
+//    // float L = (float) 2*M_PI*zp*nLinks*widthfrac;
+//    float vmax = sqrtf(2*nm_glob); // estimate of max vpar on grid
+//    if (idzp <= width ) {
+//      float x = ((float) idzp)/width;
+//      nu = 1 - 2*x*x/(1+x*x*x*x);
+//    } else if (idzp >= nz*nLinks-width) {
+//      float x = ((float) nz*nLinks-idzp)/width;
+//      nu = 1 - 2*x*x/(1+x*x*x*x);
+//    }
+//    // only damp ends of non-zonal (ky>0) modes, since ky=0 modes should be periodic
+//    if(iky[idk]>0) {
+//      unsigned int idl = idlm % nl;
+//      unsigned int idm = idlm / nl;
+//      const float kperp2_ = kperp2[idxyz];
+//      const float zt_ = sp.zt;
+//      const float vt_ = sp.vt;
+//      const float rho2_ = sp.rho2;
+//      const float b_ = kperp2_ * rho2_;
+//      // the quantity we want to damp is h = g' + phi*FM - vpar*Apar*FM, so we need to adjust m=0 and m=1 with fields
+//      cuComplex H_ = G[globalIdx];
+//      if(idm+m_lo==0) H_ = H_ + zt_*Jflr(idl, b_)*phi[idxyz] + JflrB(idl, b_)*bpar[idxyz];
+//      if(idm+m_lo==1) H_ = H_ - zt_*vt_*Jflr(idl, b_)*apar[idxyz]; 
+//      GRhs[globalIdx] = GRhs[globalIdx] - nu*amp*H_;
+//      //GRhs[globalIdx] = GRhs[globalIdx] - 5.0*nu*vmax/L*H_;
+//    }
+//  }
 }
 
 __global__ void dampEnds_linkedNTFT(cuComplex* G, 
@@ -2977,7 +3375,7 @@ __global__ void linkedFilterEnds(cuComplex* G, int ifilter,
   }
 }
 
-__global__ void streaming_rhs(const cuComplex* __restrict__ g,
+__global__ void __launch_bounds__(512) streaming_rhs(const cuComplex* __restrict__ g,
 			      const cuComplex* __restrict__ phi,
 			      const cuComplex* __restrict__ apar,
 			      const cuComplex* __restrict bpar,
@@ -2988,62 +3386,63 @@ __global__ void streaming_rhs(const cuComplex* __restrict__ g,
 {
   unsigned int idy  = get_id1();
   unsigned int idx  = get_id2();
-  unsigned int idzl = get_id3();
-  if (unmasked(idx, idy) && (idzl < nz*nl)) {
-    unsigned int idz = idzl % nz;     
-    unsigned int l   = idzl / nz;
-    unsigned int idxyz = get_idxyz(idx, idy, idz);
+  if (unmasked(idx, idy)) {
+    for (int idzl = __umul24(blockIdx.z, blockDim.z) + threadIdx.z; idzl < nz*nl; idzl += __umul24(blockDim.z, gridDim.z)) {
+      unsigned int idz = idzl % nz;     
+      unsigned int l   = idzl / nz;
+      unsigned int idxyz = get_idxyz(idx, idy, idz);
 
-    const cuComplex phi_  = phi[idxyz];
-    const cuComplex apar_ = apar[idxyz];
-    const cuComplex bpar_ = bpar[idxyz];
+      const cuComplex phi_  = phi[idxyz];
+      const cuComplex apar_ = apar[idxyz];
+      const cuComplex bpar_ = bpar[idxyz];
 
-    const float b_s = sp.rho2 * kperp2[idxyz];
-    const float zt_ = sp.zt;
-    const float vt_ = sp.vt;
-    int globalIdx;
+      const float b_s = sp.rho2 * kperp2[idxyz];
+      const float zt_ = sp.zt;
+      const float vt_ = sp.vt;
+      int globalIdx;
 
-    for (int m = m_lo; m < m_up; m++) {
-      int m_local = m - m_lo;
-      globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local)));	
-      int mp1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local+1)));
-      int mm1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local-1)));
-      cuComplex gmp1 = make_cuComplex(0.,0.);
-      cuComplex gmm1 = make_cuComplex(0.,0.);
-      if(m>0) gmm1 = g[mm1];
-      if(m<nm_glob-1) gmp1 = g[mp1];
-      
-      rhs_par[globalIdx] = rhs_par[globalIdx] -vt_ * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1) * gradpar;
-      
-      // field terms
-      if(m == 1) rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar
-		   - JflrB(l, b_s) * bpar_ * vt_ * gradpar; // m = 1 has Phi & Bpar terms
-      // the following Apar terms are only needed in the formulation without dA/dt
-      if(m == 0) rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 0 has Apar term
-      if(m == 2) rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 2 has Apar term
+      for (int m = m_lo; m < m_up; m++) {
+        int m_local = m - m_lo;
+        globalIdx = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local)));	
+        int mp1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local+1)));
+        int mm1 = idy + nyc*( idx + nx*(idzl + nz*nl*(m_local-1)));
+        cuComplex gmp1 = make_cuComplex(0.,0.);
+        cuComplex gmm1 = make_cuComplex(0.,0.);
+        if(m>0) gmm1 = g[mm1];
+        if(m<nm_glob-1) gmp1 = g[mp1];
+        
+        rhs_par[globalIdx] = rhs_par[globalIdx] -vt_ * (sqrtf(m+1)*gmp1 + sqrtf(m)*gmm1) * gradpar;
+        
+        // field terms
+        if(m == 1) rhs_par[globalIdx] = rhs_par[globalIdx] - Jflr(l, b_s) * phi_ * zt_ * vt_ * gradpar
+          	   - JflrB(l, b_s) * bpar_ * vt_ * gradpar; // m = 1 has Phi & Bpar terms
+        // the following Apar terms are only needed in the formulation without dA/dt
+        if(m == 0) rhs_par[globalIdx] = rhs_par[globalIdx] + Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 0 has Apar term
+        if(m == 2) rhs_par[globalIdx] = rhs_par[globalIdx] + sqrtf(2.) * Jflr(l, b_s) * apar_ * zt_ * vt_ * vt_ * gradpar; // m = 2 has Apar term
+      }
     }
   }
 }
 
 // main kernel function for calculating RHS
 # define S_H(L, M) s_h[sidxyz + (sDimx)*(L) + (sDimx)*(sDimy)*(M)]
-__global__ void rhs_linear(const cuComplex* __restrict__ g,
-			   const cuComplex* __restrict__ phi,
-			   const cuComplex* __restrict__ apar,
-			   const cuComplex* __restrict__ bpar,
-			   const cuComplex* __restrict__ upar_bar,
-			   const cuComplex* __restrict__ uperp_bar,
-			   const cuComplex* __restrict__ t_bar,
-			   const float* __restrict__ kperp2,
-			   const float* __restrict__ cv_d,
-			   const float* __restrict__ gb_d,
-			   const float* __restrict__ bmag,
-			   const float* __restrict__ bgrad,
-			   const float* __restrict__ ky,
-			   const specie sp,
-			   const specie sp_i,
-			   cuComplex* __restrict__ rhs,
-			   bool ei_colls,
+__global__ void __launch_bounds__(256) rhs_linear(const cuComplex* __restrict__ g,
+                           const cuComplex* __restrict__ phi,
+                           const cuComplex* __restrict__ apar,
+                           const cuComplex* __restrict__ bpar,
+                           const cuComplex* __restrict__ upar_bar,
+                           const cuComplex* __restrict__ uperp_bar,
+                           const cuComplex* __restrict__ t_bar,
+                           const float* __restrict__ kperp2,
+                           const float* __restrict__ cv_d,
+                           const float* __restrict__ gb_d,
+                           const float* __restrict__ bmag,
+                           const float* __restrict__ bgrad,
+                           const float* __restrict__ ky,
+                           const specie sp,
+                           const specie sp_i,
+                           cuComplex* __restrict__ rhs,
+                           bool ei_colls,
                            float rhoc,
                            float g_exb,
                            float RBzeta,
@@ -3184,7 +3583,7 @@ __global__ void rhs_linear(const cuComplex* __restrict__ g,
 	    + Jflr(l+1,b_s)*(l+1)*tprim_ 
 	   )
       	   + Jflr(l,b_s) * (nu_*upar_bar_ + nuei_*vt_i/vt_*upar_bar_i);
-	   //- 2 * iky_ * phi_ * Jflr(l, b_s)*( RBzeta*qsf*g_exb/(vt_*rhoc*bmag_)  ); // JFP: m=1 electrostatic flow shear term.
+	   - 2.0 * iky_ * phi_ * Jflr(l, b_s)*( RBzeta*qsf*g_exb/(vt_*rhoc*bmag_)  ); // JFP: m=1 electrostatic flow shear term.
 
 	}
 	if (m==2) {
@@ -3356,8 +3755,7 @@ __global__ void hyperdiff(const cuComplex* g,
     if (unmasked(idx, idy)) {	
       float kxmax = kx[(nx-1)/3];
       float kymax = ky[(ny-1)/3];
-      float k2s = 1./powf((kxmax*kxmax + kymax*kymax), nu_hyper);      
-      double Dfac = D_hyper*pow((double) (kx[idx]*kx[idx] + ky[idy]*ky[idy])/(kxmax*kxmax + kymax*kymax), nu_hyper);
+      float Dfac = D_hyper*powf((kx[idx]*kx[idx] + ky[idy]*ky[idy])/(kxmax*kxmax + kymax*kymax), nu_hyper);
       
       unsigned int ig = idxyz + nx*nyc*nz*(l + nl*m_local);
       rhs[ig] = rhs[ig] - Dfac * g[ig];
@@ -3605,15 +4003,10 @@ __global__ void heat_flux_summand_cetg(float* qflux,
   }
 }
 
-// JFP flow shear addition.
-// Updates kx star and phasefac for flow shear.
-// kx star = kx - ky shat gammaE time
-// kx bar = roundf(kx star / Delta kx), nearest neighbour.
-// dealiased kx grid \in [-Kx, Kx]
-// When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
-// We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
-// This is kx at t = 0. Throughout simulation, this will update for g_exb != 0.
-__global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
+
+// kxbar_ikx_new and kxbar_ikx_old are arrays of ikx in idx ordering.
+
+__global__ void init_kxstar_kxbar_phasefac(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, cuComplex* phasefac, cuComplex* phasefac_minus, const float* kx)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
@@ -3629,7 +4022,7 @@ __global__ void init_kxstar_kxbar_phasefac(float* kxstar, int* kxbar_ikx_new, in
   // JFP: note: to normalize kxstar, theta0, and ky*g_exb*dt correctly for stellarators with different connection lengths.
   // JFP: note: add read-in kxstar option.
 }
-__global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void geo_shift(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat)
 {
@@ -3661,7 +4054,7 @@ __global__ void geo_shift(const float* kxstar, const float* ky, float* cv_d, flo
   }
 }
 
-__global__ void geo_shift_ntft(const float* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
+__global__ void geo_shift_ntft(const double* kxstar, const float* ky, float* cv_d, float* gb_d, float* kperp2,
                            const float* cv, const float* cv0, const float* gb, const float* gb0, float* omegad,
                            const float* gds2, const float* gds21, const float* gds22, const float* bmagInv, const float shat,
 			   const float * ftwist, float* deltaKx, const int* m0, const float x0)
@@ -3701,19 +4094,62 @@ __global__ void iKx_shift_ntft(cuComplex* iKx, const float g_exb, const double d
   }
 }
 
-__global__ void kxstar_phase_shift(float* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
+
+/*
+
+JFP: flow shear algorithm description.
+
+Continuous in time flow shear algorithm with continuoue exact geometric coefficients and nonlinear phase factor in the FFT.
+
+Implementation is described in Halpern et al, 2024, in prep. Code implementation philosophy is to mirror the symmetry between flow shear and non twisting flux tube (NTFT), making both implementations similar.
+
+At each code timestep, the geometric coefficents are exact. Shifting in kx occurs when 1) the nearest neighbour kx moves to a different grid point and 2) the kx is beyond the unmasked grid.
+
+The three most important quantities are kxstar, kxbar_ikx_new, and kxbar_ikx_old.
+
+a) kx_star = kx(t=0) - ky gamma_E time
+b) kxbar_ikx_new is the nearest kx on grid at the new timestep
+c) kxbar_ikx_old is the nearest kx on grid at the previous timestep
+
+All of these arrays have idx ordering (FFT ordering).
+
+kxbar = roundf(kx star / Delta kx), nearest neighbour.
+dealiased kx grid \in [-Kx, Kx] BUT with idx ordering (FFT ordering).
+When |kx star| > Kx, we shift by nx to take index back to dealiased grid.
+We only shift kx star values onto dealiased grids. We leave the kx grids that are aliased away.
+
+Geometric coefficients update: in geo_shift, kxstar is used to calculate the geometric coefficients at each timestep. They are updated in init_kxstar_kxbar_phasefac.
+
+Nonlinear phase shift: we track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. This is done in kxstar_phase_shift.
+
+Field and distribution function shift: when kx_star rounds to a new kx gridpoint, we shift the fields and g. This is done in field_shift and g_shift.
+
+---------------------
+
+*/
+
+__global__ void kxstar_phase_shift(double* kxstar, int* kxbar_ikx_new, int* kxbar_ikx_old, const float* ky, const float* x, cuComplex* phasefac, cuComplex* phasefac_minus, const float g_exb, const double dt, const float x0, const bool ExBshear_phase)
 {
   unsigned int idy = get_id1();
   unsigned int idx = get_id2();
-  float dkx = (float) 1./x0;
-  if(idx < nx && idy < nyc) {
+  double dkx = 1./static_cast<double>(x0);
+  // In the following 'round', as specified by C99 (and subsequent standards), rounds to the nearest integer, rounding halfway cases away from zero always.
+  if(idx < nx && idy < nyc && idy > 0) {
     unsigned int idxy = idy + nyc * idx;
-    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function shiftField.
-    kxbar_ikx_old[idxy] = roundf(kxstar[idxy]/dkx);
-    kxstar[idxy]        = kxstar[idxy] - ky[idy]*g_exb*dt;
-    kxbar_ikx_new[idxy] = roundf(kxstar[idxy]/dkx);      //roundf() is C equivalent of f90 nint(). kxbar_ikx*dkx gives the closest kx on the grid, which is kxbar.
 
-    if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) kxstar[idxy] = kxstar[idxy] + g_exb / abs(g_exb) * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
+    // We track the difference between kx_star = kx(t=0) - ky gamma_E time and kx_bar = the nearest kx on grid. We need this for the phase factor in the FFT. Additionally, kxbar_ikx tells us how to shift ikx in the function field_shift, g_shift.
+
+    // IGA: To keep precision, we do the division as a double, then round, then cast back to float
+    kxbar_ikx_old[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) );
+
+    // IGA Added explicit casts in case ( ky * g_exb ) is done in single precision before type promotion ( a_float * b_double or a_double * b_float will promote both to double, a * b * c will parse as ( a * b ) * c
+    kxstar[idxy]        = kxstar[idxy] - static_cast<double>( ky[idy] ) * static_cast<double>( g_exb ) * dt;
+    kxbar_ikx_new[idxy] = static_cast<float>( round(kxstar[idxy]/dkx) ); 
+
+    if (kxbar_ikx_new[idxy] != kxbar_ikx_old[idxy]) { // if the nearest neighbour kx changes.
+      int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+      kxstar[idxy] = kxstar[idxy] + sign_of_exb * dkx; // this functions the same as field/g_shift mechanism of copying from the above/below to new nearest grid point
+    }
  
     if (ExBshear_phase) { // only update if including factor
       float phase = (kxstar[idxy] - kxbar_ikx_new[idxy]*dkx)*x[idx]; // kx_star - kx_bar, which multiplied by x, is the phase.
@@ -3736,23 +4172,28 @@ __global__ void field_shift(cuComplex* field_new, const cuComplex* field_old, co
 
   int nakx = 1 + 2*((nx-1)/3);
 
-  if(unmasked(idx, idy) && idz < nz) {
+  if(unmasked(idx, idy) && idz < nz && idy > 0) {
     int idxy  = idy + nyc * idx;
     //if field is sheared beyond resolution or mask, set incoming field to 0
+    //if (idx == 0) {
+    //  printf("field_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+    //  }
     if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-      int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
-      if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
-      int idxyz_remap = idy + nyc * (kxbar_ikx_remap + nx * idz);
+      int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+      int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
+      int idx_remap = get_idx(kxbar_ikx_remap); // this shifts from ikx to idx
+      int idxyz_remap = get_idxyz(idx_remap, idy, idz);
       field_new[idxyz_remap].x = 0.;
       field_new[idxyz_remap].y = 0.;
     } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
-      int idx_old = kxbar_ikx_old[idxy];
-      int idx_new = kxbar_ikx_new[idxy];
-      if(idx_old < 0) idx_old = kxbar_ikx_old[idxy] + nx;
-      if(idx_new < 0) idx_new = kxbar_ikx_new[idxy] + nx;
-      int idxyz_old = idy + nyc * (idx_old + nx * idz);
-      int idxyz_new = idy + nyc * (idx_new + nx * idz);
+      int idx_old = get_idx(kxbar_ikx_old[idxy]); // this shifts from ikx to idx
+      int idx_new = get_idx(kxbar_ikx_new[idxy]); // this shifts from ikx to idx
+      int idxyz_old = get_idxyz(idx_old, idy, idz);
+      int idxyz_new = get_idxyz(idx_new, idy, idz);
       field_new[idxyz_new] = field_old[idxyz_old];
+      //if (idx == 0) {
+      //  printf("field shifting for the kx = 0 mode \n");
+      //}
     }
   }
 }
@@ -3765,28 +4206,32 @@ __global__ void g_shift(cuComplex* g_new, const cuComplex* g_old, const int* kxb
 
   int nakx = 1 + 2*((nx-1)/3);
 
-  if(idy < nyc && idxz < nx*nz && idlm < nl*nm) {
+  if(idy < nyc && idxz < nx*nz && idlm < nl*nm && idy > 0) {
     unsigned int idx = idxz % nx;
     if (unmasked(idx, idy)) {
       unsigned int idz = idxz / nx;
       unsigned int idxy = idy + nyc*idx;
-
+      //if (idx == 0) {
+      //  printf("g_shift kxbar_ikx_new[idxy] is %d and kxbar_ikx_old[idxy] is %d idy is %d idx is %d \n", kxbar_ikx_new[idxy], kxbar_ikx_old[idxy], idy, idx);
+      //}
       //if g is sheared beyond resolution or mask, set incoming field to 0
-      //if( kxbar_ikx_new[idxy] > nakx/2 || kxbar_ikx_new[idxy] < -nakx/2 ) {
       if(abs(kxbar_ikx_new[idxy]) > nakx/2) {
-        int kxbar_ikx_remap = kxbar_ikx_new[idxy] + g_exb / abs(g_exb) * nakx;
-        if (kxbar_ikx_remap < 0) kxbar_ikx_remap = kxbar_ikx_remap + nx; // this shifts from ikx to idx
-        int ig_remap = idy + nyc * (kxbar_ikx_remap + nx * (idz + nz * idlm));
+        int sign_of_exb = ( g_exb > 0 ) ? 1 : -1;
+        int kxbar_ikx_remap = kxbar_ikx_new[idxy] + sign_of_exb * nakx;
+        int idx_remap = get_idx(kxbar_ikx_remap);
+        int ig_remap = idy + nyc * (idx_remap + nx * (idz + nz * idlm));
         g_new[ig_remap].x = 0.;
         g_new[ig_remap].y = 0.;
-      } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift the fields to the new value
-        int idx_old = kxbar_ikx_old[idxy];
-        int idx_new = kxbar_ikx_new[idxy];
-        if(idx_old < 0) idx_old = kxbar_ikx_old[idxy] + nx;
-        if(idx_new < 0) idx_new = kxbar_ikx_new[idxy] + nx;
+      } else if (kxbar_ikx_old[idxy] != kxbar_ikx_new[idxy]) { // if kxbar_ikx has changed, shift g to the new value
+        int idx_old = get_idx(kxbar_ikx_old[idxy]);
+        int idx_new = get_idx(kxbar_ikx_new[idxy]);
         int ig_old = idy + nyc * (idx_old + nx * (idz + nz * idlm));
         int ig_new = idy + nyc * (idx_new + nx * (idz + nz * idlm));
         g_new[ig_new] = g_old[ig_old];
+	// We seem to have an issue with the kx = 0 mode shifting one timestep too late?
+	//if (idx == 0) {
+	//  printf("g shifting for the kx = 0 mode \n");
+	//}
       }
     }
   }
