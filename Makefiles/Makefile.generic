@@ -60,8 +60,9 @@ C_LIB = -lm -lpthread -ldl
 # compilers and flags
 CXX = g++
 NVCC = ${NVHPC_ROOT}/compilers/bin/nvcc
-CFLAGS = -fPIC
-NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
+CFLAGS = -fPIC --std=c++17
+NVCCFLAGS = --std=c++17 --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
+LDFLAGS = -dlink
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 
