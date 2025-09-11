@@ -27,7 +27,7 @@
  dt = 0.1             # maximum timestep (units of L_ref/vt_ref), will be adapted dynamically
  cfl = 1.0            # safety cushion factor on timestep size
  scheme = "rk3"       # use RK3 timestepping scheme
- nstep = 1000    # only run 1000 timesteps for timing benchmark
+ nstep = 3000    # only run 1000 timesteps for timing benchmark
 
 [Initialization]
  gaussian_init = true            # initial condition is a gaussian in z
@@ -74,7 +74,7 @@
  save_for_restart = true
 
 [Diagnostics]
- nwrite = 100                   # write diagnostics every nwrite timesteps
+ nwrite = 1000                   # write diagnostics every nwrite timesteps
  free_energy = true             # compute and write free energy spectra (Wg, Wphi, Phi**2)
  fluxes = true                  # compute and write flux spectra (Q, Gamma)
  fields = true                  # write fields on the grid
