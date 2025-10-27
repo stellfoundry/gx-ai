@@ -32,7 +32,7 @@
 # NETCDF_ROOT = 
 # HDF5_ROOT = 
 NETCDF_INC = -I ${NETCDF_ROOT}/include
-NETCDF_LIB = -L ${NETCDF_ROOT}/lib -lnetcdf -lnetcdff -L${HDF5_ROOT}/lib -lhdf5 
+NETCDF_LIB = -L ${NETCDF_ROOT}/lib -lnetcdf 
 
 # paths to mpi
 # make sure MPI_ROOT environment variable is set, or define it here
@@ -46,7 +46,7 @@ MPI_LIB = -L ${MPI_ROOT}/lib -lmpi
 # on some systems, there will be an alternative NCCL installation (see e.g. Makefile.perlmutter)
 NCCL_ROOT = ${NVHPC_ROOT}/comm_libs/nccl
 CUDA_INC = -I ${NVHPC_ROOT}/math_libs/include -I ${NCCL_ROOT}/include
-CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos -lnvToolsExt
+CUDA_LIB = -L ${NVHPC_ROOT}/math_libs/lib64 -lcufft_static -lcublas -lcusolver -lgomp -lcutensor -L ${NCCL_ROOT}/lib -lnccl -L ${NVHPC_ROOT}/cuda/lib64 -lcudart -lculibos
 
 # paths to gsl
 # make sure GSL_ROOT environment variable is set, or define it here
@@ -60,8 +60,9 @@ C_LIB = -lm -lpthread -ldl
 # compilers and flags
 CXX = g++
 NVCC = ${NVHPC_ROOT}/compilers/bin/nvcc
-CFLAGS = -fPIC
-NVCCFLAGS = --forward-unknown-to-host-compiler -arch=compute_$(CUDAARCH) -code=sm_$(CUDAARCH) -use_fast_math -fPIC -rdc=true
+CFLAGS = -fPIC --std=c++17
+NVCCFLAGS = --std=c++17 --forward-unknown-to-host-compiler -use_fast_math -fPIC -rdc=true -arch=native
+LDFLAGS = -dlink
 
 ifeq ($(debug),on)
   NVCCFLAGS += -g -G 

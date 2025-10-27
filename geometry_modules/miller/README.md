@@ -20,14 +20,6 @@ tripri = 0.0
 betaprim = 0.0
 ```
 
-Next, use the `gx_geo.py` script via:
-
-```sh
-python gx_geo.py gx.in
-```
-
-This will generate a file `gx.eik.out` with the geometry coefficients.
-
 Now you can run `gx` via:
 
 ```sh

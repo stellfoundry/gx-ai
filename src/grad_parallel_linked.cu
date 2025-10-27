@@ -67,17 +67,18 @@ GradParallelLinked::GradParallelLinked(Parameters* pars, Grids* grids)
 
   get_nLinks_nChains(nLinks, nChains, n_k, nClasses, naky, nakx);
 
-  for( int c=0; c < nClasses; c++ ) {
-    std::vector<int> factors = factorize<int>( nLinks[ c ] );
-    int max_prime_factor = *( std::max_element( factors.begin(), factors.end() ) );
-    if( max_prime_factor >= 127 ) {
-      if( pars_->iproc == 0 ) {
-        std::cerr << std::endl;
-        std::cerr << "ERROR: In constructing the extended flux tubes, nLinks[" << c << "] = " << nLinks[c] << " which has prime factors larger than 127." << std::endl;
-        std::cerr << "ERROR: cuFFT callbacks do not support fourier transforms with large prime factors. Aborting." << std::endl << std::endl;
-        std::cerr << "We suggest adjusting nx to a nearby value." << std::endl << std::endl;
+  if (pars_->use_fft_callbacks) {
+    for( int c=0; c < nClasses; c++ ) {
+      std::vector<int> factors = factorize<int>( nLinks[ c ] );
+      int max_prime_factor = *( std::max_element( factors.begin(), factors.end() ) );
+      if( max_prime_factor >= 127 ) {
+        if( pars_->iproc == 0 ) {
+          std::cerr << std::endl;
+          std::cerr << "WARNING: In constructing the extended flux tubes, nLinks[" << c << "] = " << nLinks[c] << " which has prime factors larger than 127." << std::endl;
+          std::cerr << "WARNING: cuFFT callbacks do not support fourier transforms with large prime factors. Setting use_fft_callbacks = false." << std::endl << std::endl;
+          pars_->use_fft_callbacks = false;
+        }
       }
-      exit(-2);
     }
   }
 

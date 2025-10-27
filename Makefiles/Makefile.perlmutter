@@ -12,6 +12,9 @@
 # module load cray-hdf5-parallel
 # module load cray-netcdf-hdf5parallel
 # module load python
+# export MPICH_GPU_SUPPORT_ENABLED=0
+# export FI_CXI_RDZV_GET_MIN=0
+# export FI_CXI_SAFE_DEVMEM_COPY_THRESHOLD=16777216
 #
 
 version_tuple := $(subst _, ,$(CRAY_CUDATOOLKIT_VERSION:v%=%))
