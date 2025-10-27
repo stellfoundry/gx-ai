@@ -634,6 +634,7 @@ try:
 	Rmaj_nc     = ds.createVariable('Rmaj', 'f8', )
 	q           = ds.createVariable('q', 'f8', )
 	shat        = ds.createVariable('shat', 'f8', )  
+	R_geo       = ds.createVariable('R_geo', 'f8', )  
 
 	theta_nc[:]    = theta_ball[:-1]
 	bmag_nc[:]     = B_ball[:-1]
@@ -658,7 +659,8 @@ try:
 
 	drhodpsi_nc[0] = abs(1/dpsidrho)
 	kxfac_nc[0]    = abs(qfac/rhoc*dpsidrho)
-	Rmaj_nc[0]     = (np.max(Rplot_nc) + np.min(Rplot_nc))/2
+	Rmaj_nc[0]     = Rmaj
+	R_geo_nc[0]    = R_geo
 	q[0]           = qfac
 	shat[0]        = s_hat_input
 
