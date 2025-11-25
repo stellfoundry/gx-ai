@@ -634,7 +634,7 @@ try:
 	Rmaj_nc     = ds.createVariable('Rmaj', 'f8', )
 	q           = ds.createVariable('q', 'f8', )
 	shat        = ds.createVariable('shat', 'f8', )  
-	R_geo       = ds.createVariable('R_geo', 'f8', )  
+	R_geo_nc    = ds.createVariable('R_geo', 'f8', )  
 
 	theta_nc[:]    = theta_ball[:-1]
 	bmag_nc[:]     = B_ball[:-1]
