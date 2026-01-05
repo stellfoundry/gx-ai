@@ -1,4 +1,6 @@
 #include "run_gx.h"
+#include <algorithm>
+#include <numeric>
 
 void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 {
@@ -167,19 +169,47 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 
+  // Check progress at every 1000 timesteps
+  // FIXME: this should be made into a parameter
+  std::vector<double> dt_list;
+  dt_list.reserve(1000);
+
   while(counter<pars->nstep && time<pars->t_max) {
 
     checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), counter, time);
 
+    dt_list.push_back(timestep->get_dt());
+    if (dt_list.size() == 1000) {
+      auto [min_it, max_it] = std::minmax_element(dt_list.begin(), dt_list.end());
+      double avg = std::accumulate(dt_list.begin(), dt_list.end(), 0.0) / dt_list.size();
+      if(grids->iproc == 0)
+        printf("Time delta at step %d: time %.5f, min %e, max %e, avg %e\n", counter+1, time, *min_it, *max_it, avg);
+        // printf("Time delta (step, timestep, min, max, avg): %d %10.5f %.3e %.3e %.3e\n", counter+1, time, *min_it, *max_it, avg);
+      dt_list.clear();
+    }
+
     checkCuda(cudaGetLastError());
 
+    // We save at every 0.5 sec interval
+    // double target_time = floor(time*10 + 1)/10; // every 0.1 sec interval
+    double target_time = floor(time*2 + 1)/2; // every 0.5 sec interval
+
     timestep -> advance(&time, G, fields);
+
+    // We save at every 0.5 sec interval
+    if (time >= target_time) {
+      if(grids->iproc == 0) printf("Target reached: Step %7d\n", counter);
+      checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite, time);
+      diagnostics -> restart_write(G, &time);
+      checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite+1, time);
+      if (pars->nwrite != pars->nwrite_big) checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite_big+1, time);
+    }
 
     checkCuda(cudaGetLastError());
 
     if (checkstop) break;
 
-    if (pars->save_for_restart && counter % pars->nsave == 0) diagnostics -> restart_write(G, &time);
+    if (pars->save_for_restart && counter % pars->nsave == 0 && counter/pars->nsave > 0) diagnostics -> restart_write(G, &time);
 
     // this will catch any error in the timestep loop, but it won't be able to identify where the error occurred.
     checkCuda(cudaGetLastError());
@@ -189,7 +219,8 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     }
   }
 
-  if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
+  // FIXME: temporarily disable writing restart file at the end of the run
+  // if (pars->save_for_restart) diagnostics -> restart_write(G, &time);
 
   if (pars->eqfix && (pars->scheme_opt == Tmethod::k10) ) {
     printf("\n");
