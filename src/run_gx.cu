@@ -1,9 +1,14 @@
 #include "run_gx.h"
 #include <algorithm>
 #include <numeric>
+#include <unistd.h>
 
 void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 {
+  char hostname[256];
+  gethostname(hostname, sizeof(hostname));
+  std::cout << "Hostname: " << hostname << std::endl;
+
   double time = 0;
 
   Fields    * fields    = nullptr;
@@ -190,13 +195,14 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
 
     checkCuda(cudaGetLastError());
 
-    // We save at every 0.5 sec interval
-    // double target_time = floor(time*10 + 1)/10; // every 0.1 sec interval
-    double target_time = floor(time*2 + 1)/2; // every 0.5 sec interval
+    // We save at every N sec interval
+    // double target_time = ceil(time/0.5)*0.5; // every 0.5 sec interval
+    // double target_time = ceil(time/1.0)*1.0; // every 1.0 sec interval
+    double target_time = ceil(time/2.0)*2.0; // every 2.0 sec interval
 
     timestep -> advance(&time, G, fields);
 
-    // We save at every 0.5 sec interval
+    // We save at every 2.0 sec interval
     if (time >= target_time) {
       if(grids->iproc == 0) printf("Target reached: Step %7d\n", counter);
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite, time);
