@@ -691,6 +691,7 @@ FieldsDiagnostic::FieldsDiagnostic(Parameters* pars, Grids* grids, NetCDF* ncdf)
   count[2] = grids->Nakx;
   count[3] = grids->Nz;
   count[4] = 2;
+  start[3] = grids->z_lo;
 
   N = grids->NxNycNz;
   Nwrite = grids->Nakx*grids->Naky*grids->Nz*2;
@@ -792,6 +793,7 @@ FieldsXYDiagnostic::FieldsXYDiagnostic(Parameters* pars, Grids* grids, Nonlinear
   count[1] = grids->Ny;
   count[2] = grids->Nx;
   count[3] = grids->Nz;
+  start[3] = grids->z_lo;
    
   int retval;
   for(int i=0; i<3; i++) {
@@ -886,6 +888,7 @@ MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* g
   count[5] = 2;
 
   start[1] = grids->is_lo;
+  start[4] = grids->z_lo;
 
   N = grids->NxNycNz*grids->Nspecies;
   Nwrite = grids->Nakx*grids->Naky*grids->Nz*grids->Nspecies*2;
@@ -932,6 +935,7 @@ MomentsDiagnostic::MomentsDiagnostic(Parameters* pars, Grids* grids, Geometry* g
     countXY[4] = grids->Nz;
 
     startXY[1] = grids->is_lo;
+    startXY[4] = grids->z_lo;
      
     NXY = grids->NxNyNz*grids->Nspecies;
     if (pars_->restart && pars_->append_on_restart) {

@@ -235,6 +235,33 @@ void write_eiktest_in(Parameters *pars, Grids *grids) {
   fclose(fptr);
 }
 
+static void calculate_bgrad_from_global_bmag(Geometry* geo, Parameters* pars, Grids* grids,
+                                             double* bmag_src, double* z_src, int nz_src)
+{
+  size_t local_size = sizeof(float)*grids->Nz;
+  float* z_global = (float*) malloc(sizeof(float)*grids->Nz_glob);
+  float* bmag_global = (float*) malloc(sizeof(float)*grids->Nz_glob);
+  geo->bgrad_h = (float*) malloc(local_size);
+  cudaMalloc((void**) &geo->bgrad, local_size);
+
+  for(int k=0; k<grids->Nz_glob; k++) {
+    z_global[k] = 2.*M_PI*pars->Zp*(k-grids->Nz_glob/2)/grids->Nz_glob;
+  }
+  interp_to_new_grid(bmag_src, bmag_global, z_src, z_global, nz_src, grids->Nz_glob);
+
+  float dz = 2.*M_PI*pars->Zp/grids->Nz_glob;
+  for(int k=0; k<grids->Nz; k++) {
+    int kg = grids->z_lo + k;
+    int km = (kg - 1 + grids->Nz_glob) % grids->Nz_glob;
+    int kp = (kg + 1) % grids->Nz_glob;
+    geo->bgrad_h[k] = geo->gradpar*(bmag_global[kp] - bmag_global[km])/(2.*dz*bmag_global[kg]);
+  }
+
+  CP_TO_GPU(geo->bgrad, geo->bgrad_h, local_size);
+  free(z_global);
+  free(bmag_global);
+}
+
 Geometry::Geometry() {
 
   operator_arrays_allocated_=false;
@@ -363,7 +390,8 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
  
   if(grids->iproc==0) DEBUGPRINT("\n\n Using s-alpha geometry: \n\n");
   for(int k=0; k<Nz; k++) {
-    z_h[k] = 2.*M_PI *pars->Zp *(k-Nz/2)/Nz;
+    int kg = grids->z_lo + k;
+    z_h[k] = 2.*M_PI *pars->Zp *(kg-grids->Nz_glob/2)/grids->Nz_glob;
     if(grids->iproc==0) DEBUGPRINT("theta[%d] = %f \n",k,z_h[k]);
     if(pars->local_limit) {z_h[k] = 0.;} // outboard-midplane
     theta = z_h[k];
@@ -405,7 +433,7 @@ S_alpha_geo::S_alpha_geo(Parameters *pars, Grids *grids)
 	shat = pars->shat = 0.0;	
       }
     }
-    if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (k-Nz/2) / Nz; gradpar = 1.; }
+    if(pars->local_limit) { z_h[k] = 2 * M_PI * pars->Zp * (kg-grids->Nz_glob/2) / grids->Nz_glob; gradpar = 1.; }
 
     // calculate these derived coefficients after slab overrides
     bmagInv_h[k] = 1./bmag_h[k];
@@ -441,7 +469,6 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if(grids->iproc==0) printf("READING NC GEO\n");
   operator_arrays_allocated_=false;
   size_t size = sizeof(float)*grids->Nz;
-  size_t dsize = sizeof(double)*(grids->Nz+1);
 
   char stra[NC_MAX_NAME+1];
   char strb[1513];
@@ -460,10 +487,12 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_inq_dim  (ncgeo, id_z, stra, &N))    ERR(retval);
 
   // do basic sanity check
-  if (grids->Nz != (int) N-1) {
-    if(grids->iproc==0) printf("Number of points along the field line in geometry file %lu does not match input %d \n", N-1, grids->Nz);
+  if (grids->Nz_glob != (int) N-1) {
+    if(grids->iproc==0) printf("Number of points along the field line in geometry file %lu does not match input %d \n", N-1, grids->Nz_glob);
     exit (1);
   }
+
+  size_t dsize = sizeof(double)*N;
 
   // allocate space for variables on the CPU
   double* dtmp = (double*) malloc(dsize);
@@ -552,20 +581,21 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
 
   // interpolate to equally-spaced theta grid
   for(int k=0; k<grids->Nz; k++) {
-    z_h[k] = 2.*M_PI *pars->Zp *(k-grids->Nz/2)/grids->Nz;
+    int kg = grids->z_lo + k;
+    z_h[k] = 2.*M_PI *pars->Zp *(kg-grids->Nz_glob/2)/grids->Nz_glob;
   }
 
-  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
-  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, grids->Nz+1, grids->Nz);
+  interp_to_new_grid(nc_bmag_h, bmag_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_bmagInv_h, bmagInv_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_gds2_h, gds2_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_gds21_h, gds21_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_gds22_h, gds22_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_gbdrift_h, gbdrift_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_gbdrift0_h, gbdrift0_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_cvdrift_h, cvdrift_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_cvdrift0_h, cvdrift0_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_grho_h, grho_h, nc_z_h, z_h, N, grids->Nz);
+  interp_to_new_grid(nc_jacobian_h, jacobian_h, nc_z_h, z_h, N, grids->Nz);
 
   double stmp;
 
@@ -573,7 +603,7 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
   drhodpsi = pars->drhodpsi = (float) stmp;
 
-  for (size_t n = 0; n < N; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
+  for (int n = 0; n < grids->Nz; n++) jacobian_h[n] = 1./abs(drhodpsi*gradpar*bmag_h[n]);
 
   if (retval = nc_inq_varid(ncgeo, "kxfac", &id))        ERR(retval);
   if (retval = nc_get_var  (ncgeo, id, &stmp))           ERR(retval);
@@ -677,7 +707,8 @@ geo_nc::geo_nc(Parameters *pars, Grids *grids)
   initializeOperatorArrays(pars, grids);
 
   // calculate bgrad
-  calculate_bgrad(grids);
+  if(grids->nprocs_z > 1) calculate_bgrad_from_global_bmag(this, pars, grids, nc_bmag_h, nc_z_h, (int) N);
+  else calculate_bgrad(grids);
   if(grids->iproc==0) DEBUGPRINT("bgrad calculated\n");
 
   RBzeta = 0.0; // TODO: FIX
@@ -690,7 +721,7 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   if(grids->iproc==0) printf("READING FILE GEO: %s\n", pars->geofilename.c_str());
   operator_arrays_allocated_=false;
 
-  size_t eiksize = sizeof(double)*(grids->Nz+1); 
+  size_t eiksize = sizeof(double)*(grids->Nz_glob+1);
   double* eik_z_h = (double*) malloc (eiksize);
   double* eik_bmag_h = (double*) malloc (eiksize);
   double* eik_bmagInv_h = (double*) malloc (eiksize);
@@ -746,7 +777,7 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   using namespace std;
   string datline;
   ifstream myfile (pars->geofilename.c_str());
-  oldNz = grids->Nz;
+  oldNz = grids->Nz_glob;
   int newNz = oldNz;
 
   if (myfile.is_open())
@@ -805,8 +836,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
         gradpar = eik_gradpar_h[0];
       }
      
-      if(grids->iproc==0) DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",2.*gbdrift_h[0],2.*gbdrift_h[Nz-1]);
-      if(grids->iproc==0) DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",z_h[0],z_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gbdrift[0]: %.7e    gbdrift[end]: %.7e\n",2.*eik_gbdrift_h[0],2.*eik_gbdrift_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("z[0]: %.7e    z[end]: %.7e\n",eik_z_h[0],eik_z_h[Nz-1]);
       
       getline (myfile, datline);  // text
       for (int idz=0; idz < newNz+1; idz++) {
@@ -819,9 +850,9 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
         eik_jacobian_h[idz] = 1./abs(drhodpsi*gradpar*eik_bmag_h[idz]);
       }
 
-      if(grids->iproc==0) DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",2.*cvdrift_h[0],2.*cvdrift_h[Nz-1]);
-      if(grids->iproc==0) DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",bmag_h[0],bmag_h[Nz-1]);
-      if(grids->iproc==0) DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",gds2_h[0],gds2_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("cvdrift[0]: %.7e    cvdrift[end]: %.7e\n",2.*eik_cvdrift_h[0],2.*eik_cvdrift_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("bmag[0]: %.7e    bmag[end]: %.7e\n",eik_bmag_h[0],eik_bmag_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gds2[0]: %.7e    gds2[end]: %.7e\n",eik_gds2_h[0],eik_gds2_h[Nz-1]);
 
       getline(myfile, datline); // text
       for (int idz=0; idz < newNz+1; idz++) {
@@ -830,8 +861,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
         ss >> element; eik_gds22_h[idz] = stod(element);
       }
 
-      if(grids->iproc==0) DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
-      if(grids->iproc==0) DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",eik_gds21_h[0],eik_gds21_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",eik_gds22_h[0],eik_gds22_h[Nz-1]);
 
             getline(myfile, datline); // text
       for (int idz=0; idz < newNz+1; idz++) {
@@ -840,28 +871,29 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
         ss >> element; eik_gbdrift0_h[idz] = stod(element); eik_gbdrift0_h[idz] *= 0.5;
       }
 
-      if(grids->iproc==0) DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",gds21_h[0],gds21_h[Nz-1]);
-      if(grids->iproc==0) DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",gds22_h[0],gds22_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gds21[0]: %.7e    gds21[end]: %.7e\n",eik_gds21_h[0],eik_gds21_h[Nz-1]);
+      if(grids->iproc==0) DEBUGPRINT("gds22[0]: %.7e    gds22[end]: %.7e\n",eik_gds22_h[0],eik_gds22_h[Nz-1]);
       
       myfile.close();      
     }
   else if(grids->iproc==0)  cout << "Failed to open";    
 
   // interpolate to equally-spaced theta grid
-  for(int k=0; k<newNz; k++) {
-    z_h[k] = 2.*M_PI *pars->Zp *(k-newNz/2)/newNz;
+  for(int k=0; k<grids->Nz; k++) {
+    int kg = grids->z_lo + k;
+    z_h[k] = 2.*M_PI *pars->Zp *(kg-newNz/2)/newNz;
   }
-  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, newNz+1, newNz);
-  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, newNz+1, newNz);
+  interp_to_new_grid(eik_bmag_h, bmag_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_bmagInv_h, bmagInv_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_gds2_h, gds2_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_gds21_h, gds21_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_gds22_h, gds22_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_gbdrift_h, gbdrift_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_gbdrift0_h, gbdrift0_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_cvdrift_h, cvdrift_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_cvdrift0_h, cvdrift0_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_grho_h, grho_h, eik_z_h, z_h, newNz+1, grids->Nz);
+  interp_to_new_grid(eik_jacobian_h, jacobian_h, eik_z_h, z_h, newNz+1, grids->Nz);
   
   //copy host variables to device variables
   CP_TO_GPU (z,        z_h,        size);
@@ -883,7 +915,8 @@ Eik_geo::Eik_geo(Parameters *pars, Grids *grids)
   initializeOperatorArrays(pars, grids);
 
   // calculate bgrad
-  calculate_bgrad(grids);
+  if(grids->nprocs_z > 1) calculate_bgrad_from_global_bmag(this, pars, grids, eik_bmag_h, eik_z_h, newNz+1);
+  else calculate_bgrad(grids);
   if(grids->iproc==0) CUDA_DEBUG("calc bgrad: %s \n");
 
   RBzeta = 0.0; // TODO: FIX
@@ -956,6 +989,10 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   vol_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
   cudaMalloc (&vol_fac, sizeof(float) * grids->Nz);
   for (int i=0; i < grids->Nz; i++) volDenom   += jacobian_h[i]; 
+  if(grids->nprocs_z > 1) {
+    float localVolDenom = volDenom;
+    MPI_Allreduce(&localVolDenom, &volDenom, 1, MPI_FLOAT, MPI_SUM, grids->mpcom_z);
+  }
   for (int i=0; i < grids->Nz; i++) vol_fac_h[i]  = jacobian_h[i] / volDenom;
   CP_TO_GPU(vol_fac, vol_fac_h, sizeof(float)*grids->Nz);
 
@@ -964,6 +1001,10 @@ void Geometry::initializeOperatorArrays(Parameters* pars, Grids* grids) {
   flux_fac_h = (float*) malloc (sizeof(float) * grids->Nz);
   cudaMalloc(&flux_fac, sizeof(float)*grids->Nz);
   for (int i=0; i<grids->Nz; i++) fluxDenom   += jacobian_h[i]*grho_h[i];
+  if(grids->nprocs_z > 1) {
+    float localFluxDenom = fluxDenom;
+    MPI_Allreduce(&localFluxDenom, &fluxDenom, 1, MPI_FLOAT, MPI_SUM, grids->mpcom_z);
+  }
   for (int i=0; i<grids->Nz; i++) flux_fac_h[i]  = jacobian_h[i] / fluxDenom;
   CP_TO_GPU(flux_fac, flux_fac_h, sizeof(float)*grids->Nz);
 
@@ -1040,4 +1081,3 @@ void Geometry::calculate_bgrad(Grids* grids)
 //  }
   cudaDeviceSynchronize();
 }
-

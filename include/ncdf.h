@@ -219,10 +219,10 @@ class NcDims {
       if (retval = nc_def_dim (fileid, "ri",      2,                &ri)) ERR(retval);
       if (retval = nc_def_dim (fileid, "x",       pars->nx_in,     &x)) ERR(retval);
       if (retval = nc_def_dim (fileid, "y",       pars->ny_in,     &y)) ERR(retval);
-      if (retval = nc_def_dim (fileid, "theta",   grids->Nz,       &z)) ERR(retval);  
+      if (retval = nc_def_dim (fileid, "theta",   grids->Nz_glob,  &z)) ERR(retval);
       if (retval = nc_def_dim (fileid, "kx",      grids->Nakx,     &kx)) ERR(retval);
       if (retval = nc_def_dim (fileid, "ky",      grids->Naky,     &ky)) ERR(retval);
-      if (retval = nc_def_dim (fileid, "kz",      grids->Nz,       &kz)) ERR(retval);  
+      if (retval = nc_def_dim (fileid, "kz",      grids->Nz_glob,  &kz)) ERR(retval);
       if (retval = nc_def_dim (fileid, "m",       pars->nm_in,     &m)) ERR(retval);
       if (retval = nc_def_dim (fileid, "l",       pars->nl_in,     &l)) ERR(retval);
       if (retval = nc_def_dim (fileid, "s",       pars->nspec_in,  &species)) ERR(retval);
@@ -267,10 +267,12 @@ class NcGrids {
  
       if (retval = nc_put_var(grid_id, kx, grids->kx_outh)) ERR(retval);
       if (retval = nc_put_var(grid_id, ky, grids->ky_h)) ERR(retval);
-      if (retval = nc_put_var(grid_id, kz, grids->kz_outh)) ERR(retval);
+      size_t z_start = grids->z_lo;
+      size_t z_count = grids->Nz;
+      if (retval = nc_put_vara(grid_id, kz, &z_start, &z_count, grids->kz_outh)) ERR(retval);
       if (retval = nc_put_var(grid_id, x, grids->x_h)) ERR(retval);
       if (retval = nc_put_var(grid_id, y, grids->y_h)) ERR(retval);
-      if (retval = nc_put_var(grid_id, z, grids->z_h)) ERR(retval);
+      if (retval = nc_put_vara(grid_id, z, &z_start, &z_count, grids->z_h)) ERR(retval);
 
       if (retval = nc_var_par_access(grid_id, time, NC_COLLECTIVE)) ERR(retval);
     }
@@ -324,17 +326,19 @@ class NcGeo {
     if (retval = nc_def_var (geo_id, "zeta_center",  NC_FLOAT, 0, NULL, &zeta_center))     ERR(retval);
 
     // write variables
-    if (retval = nc_put_var(geo_id, bmag,     geo->bmag_h))     ERR(retval);
-    if (retval = nc_put_var(geo_id, bgrad,    geo->bgrad_h))    ERR(retval);
-    if (retval = nc_put_var(geo_id, gbdrift,  geo->gbdrift_h))  ERR(retval);
-    if (retval = nc_put_var(geo_id, gbdrift0, geo->gbdrift0_h)) ERR(retval);
-    if (retval = nc_put_var(geo_id, cvdrift,  geo->cvdrift_h))  ERR(retval);
-    if (retval = nc_put_var(geo_id, cvdrift0, geo->cvdrift0_h)) ERR(retval);
-    if (retval = nc_put_var(geo_id, gds2,     geo->gds2_h))     ERR(retval);
-    if (retval = nc_put_var(geo_id, gds21,    geo->gds21_h))    ERR(retval);  
-    if (retval = nc_put_var(geo_id, gds22,    geo->gds22_h))    ERR(retval);
-    if (retval = nc_put_var(geo_id, grho,     geo->grho_h))     ERR(retval);
-    if (retval = nc_put_var(geo_id, jacobian, geo->jacobian_h)) ERR(retval);
+    size_t z_start = grids->z_lo;
+    size_t z_count = grids->Nz;
+    if (retval = nc_put_vara(geo_id, bmag,     &z_start, &z_count, geo->bmag_h))     ERR(retval);
+    if (retval = nc_put_vara(geo_id, bgrad,    &z_start, &z_count, geo->bgrad_h))    ERR(retval);
+    if (retval = nc_put_vara(geo_id, gbdrift,  &z_start, &z_count, geo->gbdrift_h))  ERR(retval);
+    if (retval = nc_put_vara(geo_id, gbdrift0, &z_start, &z_count, geo->gbdrift0_h)) ERR(retval);
+    if (retval = nc_put_vara(geo_id, cvdrift,  &z_start, &z_count, geo->cvdrift_h))  ERR(retval);
+    if (retval = nc_put_vara(geo_id, cvdrift0, &z_start, &z_count, geo->cvdrift0_h)) ERR(retval);
+    if (retval = nc_put_vara(geo_id, gds2,     &z_start, &z_count, geo->gds2_h))     ERR(retval);
+    if (retval = nc_put_vara(geo_id, gds21,    &z_start, &z_count, geo->gds21_h))    ERR(retval);
+    if (retval = nc_put_vara(geo_id, gds22,    &z_start, &z_count, geo->gds22_h))    ERR(retval);
+    if (retval = nc_put_vara(geo_id, grho,     &z_start, &z_count, geo->grho_h))     ERR(retval);
+    if (retval = nc_put_vara(geo_id, jacobian, &z_start, &z_count, geo->jacobian_h)) ERR(retval);
     if (retval = nc_put_var(geo_id, nperiod, &geo->nperiod))   ERR(retval);
     if (retval = nc_put_var(geo_id, gradpar, &geo->gradpar))   ERR(retval);
     if (retval = nc_put_var(geo_id, q, &geo->qsf))   ERR(retval);

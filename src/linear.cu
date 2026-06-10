@@ -20,7 +20,19 @@ Linear_GK::Linear_GK(Parameters* pars, Grids* grids, Geometry* geo) :
   tmpG = nullptr;
   
   // set up parallel ffts
-  if(pars_->local_limit) {
+  if(grids_->nprocs_z > 1) {
+    if(pars_->hyperz || pars_->hypercollisions_kz || pars_->dealias_kz) {
+      printf("hyperz, hypercollisions_kz, and dealias_kz are not yet implemented with theta decomposition.\n");
+      exit(1);
+    }
+    if(pars_->closure_model_opt == Closure::beer42 || pars_->closure_model_opt == Closure::smithpar) {
+      printf("beer4+2 and smith_par closures are not yet implemented with theta decomposition because they require abs_dz.\n");
+      exit(1);
+    }
+    DEBUGPRINT("Using theta-decomposed finite-difference grad parallel.\n");
+    grad_par = new GradParallelThetaFD(pars_, grids_);
+  }
+  else if(pars_->local_limit) {
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }
@@ -283,7 +295,15 @@ Linear_KREHM::Linear_KREHM(Parameters* pars, Grids* grids, Geometry* geo) :
   closures(nullptr), grad_par(nullptr)
 {
   // set up parallel ffts
-  if(pars_->local_limit) {
+  if(grids_->nprocs_z > 1) {
+    if(pars_->hyperz || pars_->hypercollisions_kz || pars_->dealias_kz) {
+      printf("hyperz, hypercollisions_kz, and dealias_kz are not yet implemented with theta decomposition.\n");
+      exit(1);
+    }
+    DEBUGPRINT("Using theta-decomposed finite-difference grad parallel.\n");
+    grad_par = new GradParallelThetaFD(pars_, grids_);
+  }
+  else if(pars_->local_limit) {
     DEBUGPRINT("Using local limit for grad parallel.\n");
     grad_par = new GradParallelLocal(grids_);
   }

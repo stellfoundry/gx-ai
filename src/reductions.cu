@@ -21,6 +21,8 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
   reduce_m = false;
   // whether a reduction over s index is required (which may be parallelized)
   reduce_s = false;
+  // whether a reduction over z index is required (which may be parallelized)
+  reduce_z = false;
 
   // create a vector of extents for the full tensor
   for (auto mode : modeFull_) {
@@ -30,6 +32,9 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
     }
     if(mode == 's') {
       reduce_s = true;
+    }
+    if(mode == 'z') {
+      reduce_z = true;
     }
   }
 
@@ -43,6 +48,9 @@ template<class T> Reduction<T>::Reduction(Grids *grids, std::vector<int32_t> mod
     }
     if(mode == 's') {
       reduce_s = false;
+    }
+    if(mode == 'z') {
+      reduce_z = false;
     }
   }
 
@@ -128,9 +136,6 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
 		    opAdd, typeCompute, Addwork, sizeWork, 0));
 #endif
 
-  if(reduce_m && reduce_s && grids_->nprocs > 1) {
-    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm, 0);
-  }
   // reduce across parallelized m blocks
   if(reduce_m && grids_->nprocs_m > 1 && grids_->nprocs > 1) {
     // ncclComm_s is the per-species communicator
@@ -140,6 +145,10 @@ template<class T> void Reduction<T>::Sum(T* dataFull, T* dataReduced)
   if(reduce_s && grids_->nprocs_s > 1 && grids_->nprocs > 1) {
     // ncclComm_m is the per-m-block communicator
     ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm_m, 0);
+  }
+  // reduce across parallelized theta blocks
+  if(reduce_z && grids_->nprocs_z > 1 && grids_->nprocs > 1) {
+    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclSum, grids_->ncclComm_z, 0);
   }
 
 }		     
@@ -200,9 +209,6 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
   cudaDeviceSynchronize();
   checkCuda(cudaGetLastError());
 
-  if(reduce_m && reduce_s && grids_->nprocs > 1) {
-    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclMax, grids_->ncclComm, 0);
-  }
   // reduce across parallelized m blocks
   if(reduce_m && grids_->nprocs_m > 1) {
     // ncclComm_s is the per-species communicator
@@ -213,8 +219,11 @@ template<class T> void Reduction<T>::Max(T* dataFull, T* dataReduced)
     // ncclComm_m is the per-m-block communicator
     ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclMax, grids_->ncclComm_m, 0);
   }
+  // reduce across parallelized theta blocks
+  if(reduce_z && grids_->nprocs_z > 1) {
+    ncclAllReduce((void*) dataReduced, (void*) dataReduced, nelementsReduced, ncclFloat, ncclMax, grids_->ncclComm_z, 0);
+  }
 }
 
 template class Reduction<float>;
 template class Reduction<double>;
-

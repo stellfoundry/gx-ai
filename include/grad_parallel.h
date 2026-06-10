@@ -209,6 +209,32 @@ class GradParallelLocal : public GradParallel {
   float mkpar2;
 };
 
+class GradParallelThetaFD : public GradParallel {
+ public:
+  GradParallelThetaFD(Parameters* pars, Grids* grids);
+  ~GradParallelThetaFD();
+
+  void dz(MomentsG* G, MomentsG* res, bool accumulate=false);
+  void dz(cuComplex* m, cuComplex* res, bool accumulate=false);
+  void dz2(MomentsG* G);
+  void dz2(cuComplex* m, cuComplex* res);
+  void zft(MomentsG* G) {};
+  void zft(cuComplex* m, cuComplex* res);
+  void zft_inverse(MomentsG* G) {};
+  void abs_dz(MomentsG* G, MomentsG* res, bool accumulate=false) {printf("abs_dz not yet implemented for theta decomposition\n"); exit(1);};
+  void abs_dz(cuComplex* m, cuComplex* res, bool accumulate=false) {printf("abs_dz not yet implemented for theta decomposition\n"); exit(1);};
+
+ private:
+  void exchange(cuComplex* f, int nmoms);
+
+  Parameters * pars_;
+  Grids * grids_;
+  cuComplex *send_left_, *send_right_, *recv_left_, *recv_right_, *tmp_;
+  int nxy_;
+  int max_moms_;
+  float inv_2dz_, inv_dz2_;
+};
+
 class GradParallel1D {
  public:
   GradParallel1D(Grids* grids);

@@ -144,7 +144,7 @@ void Solver_GK::fieldSolve(MomentsG** G, Fields* fields)
       checkCuda(ncclBroadcast((void*) nbar_tmp, (void*) nbar, count*2, ncclFloat, 0, grids_->ncclComm_s, 0));
       cudaStreamSynchronize(0);
     } else {
-      MPI_Allreduce((void*) nbar_tmp, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+      MPI_Allreduce((void*) nbar_tmp, (void*) nbar, count*2, MPI_FLOAT, MPI_SUM, grids_->mpcom_sm);
       CP_ON_GPU(nbar, nbar_tmp, sizeof(cuComplex)*count);
     }
   }
@@ -238,7 +238,7 @@ void Solver_KREHM::fieldSolve(MomentsG** G, Fields* fields)
     // broadcast moments to all procs
     // factor of 2 in count*2 is from cuComplex -> float conversion
     // moms includes both density and current
-    checkCuda(ncclBroadcast((void*) moms, (void*) moms, count*2, ncclFloat, 0, grids_->ncclComm, 0));
+    checkCuda(ncclBroadcast((void*) moms, (void*) moms, count*2, ncclFloat, 0, grids_->ncclComm_s, 0));
     cudaStreamSynchronize(0);
   } 
   phiSolve_krehm<<<dG, dB>>>(fields->phi, density, grids_->kx, grids_->ky, pars_->rho_i);
@@ -352,4 +352,3 @@ void Solver_VP::zero (cuComplex* f)
 {
   cudaMemset(f, 0., sizeof(cuComplex)*grids_->Nyc);
 }
-

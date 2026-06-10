@@ -14,6 +14,7 @@ class Grids {
   int Nx;
   int Ny;
   int Nz;
+  int Nz_glob;
   int Nspecies; 
   int Nspecies_glob;
   int Nm;
@@ -55,19 +56,25 @@ class Grids {
   int m0_max;
   float kperp_min;
 
-  ncclComm_t ncclComm, ncclComm_s, ncclComm_m, ncclComm_m0;
-  ncclUniqueId ncclId, ncclId_m0;
-  std::vector<ncclUniqueId> ncclId_s, ncclId_m;
+  ncclComm_t ncclComm, ncclComm_s, ncclComm_m, ncclComm_m0, ncclComm_z;
+  ncclUniqueId ncclId;
+  std::vector<ncclUniqueId> ncclId_s, ncclId_m, ncclId_m0, ncclId_z;
   cudaStream_t ncclStream;
+  MPI_Comm mpcom_sm, mpcom_z;
 
   int iproc, nprocs;
   int iproc_m, nprocs_m;
   int iproc_s, nprocs_s;
+  int iproc_z, nprocs_z;
   int is_lo, is_up;
   int m_lo, m_up;
+  int z_lo, z_up;
   int m_ghost;
 
-  int proc(int iproc_m_in, int iproc_s_in) { return iproc_m_in + nprocs_m*iproc_s_in; };
+  int proc(int iproc_m_in, int iproc_s_in, int iproc_z_in) {
+    return iproc_m_in + nprocs_m*(iproc_s_in + nprocs_s*iproc_z_in);
+  };
+  int proc(int iproc_m_in, int iproc_s_in) { return proc(iproc_m_in, iproc_s_in, iproc_z); };
   int procLeft() {return proc(iproc_m-1, iproc_s);}
   int procRight() {return proc(iproc_m+1, iproc_s);}
   int procLeft2() {return proc(iproc_m-2, iproc_s);}
@@ -82,4 +89,3 @@ class Grids {
  private:
   Parameters * pars_ ; 
 };
-

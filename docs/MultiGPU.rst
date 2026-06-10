@@ -10,12 +10,24 @@ GX now has the capability to parallelize a calculation over multiple GPUs.
 Constraints
 -----------
 
-Parallelization is currently only implemented over the species and Hermite indices. The computational grid must divide evenly into the number of GPUs requested, and decomposition of species index is prioritized. If :math:`N_\mathrm{sp}` is the number of species, :math:`N_m` is the number of Hermite modes, and :math:`N_\mathrm{GPU}` is the number of GPUs to be used for the calculation, this means:
+Parallelization is implemented over the species and Hermite indices, with an experimental decomposition over theta available through the expert input ``nproc_theta`` (or ``ptheta``). The computational grid must divide evenly into the number of GPUs requested, and decomposition of species index is prioritized within each theta slab. If :math:`N_\mathrm{sp}` is the number of species, :math:`N_m` is the number of Hermite modes, :math:`N_\theta` is the number of theta grid points, :math:`P_\theta` is ``nproc_theta``, and :math:`N_\mathrm{GPU}` is the number of GPUs to be used for the calculation, this means:
 
-- if :math:`N_\mathrm{GPU} \leq N_\mathrm{sp}`, :math:`N_\mathrm{sp}` must be an integer multiple of :math:`N_\mathrm{GPU}`
-- if :math:`N_\mathrm{GPU} > N_\mathrm{sp}`, :math:`N_\mathrm{GPU}` must be an integer multiple of :math:`N_\mathrm{sp}` AND :math:`N_m` must be an integer multiple of :math:`N_\mathrm{GPU}/N_\mathrm{sp}`.
+- :math:`N_\mathrm{GPU}` must be an integer multiple of :math:`P_\theta`
+- :math:`N_\theta` must be an integer multiple of :math:`P_\theta`
+- if :math:`N_\mathrm{GPU}/P_\theta \leq N_\mathrm{sp}`, :math:`N_\mathrm{sp}` must be an integer multiple of :math:`N_\mathrm{GPU}/P_\theta`
+- if :math:`N_\mathrm{GPU}/P_\theta > N_\mathrm{sp}`, :math:`N_\mathrm{GPU}/P_\theta` must be an integer multiple of :math:`N_\mathrm{sp}` AND :math:`N_m` must be an integer multiple of :math:`(N_\mathrm{GPU}/P_\theta)/N_\mathrm{sp}`.
 
-For example, if :math:`N_\mathrm{sp} = 2` and :math:`N_m = 16`, the number of GPUs can be any of :math:`N_\mathrm{GPU} = \{1,2,4,8,16,32\}`. 
+For example, if :math:`N_\mathrm{sp} = 2`, :math:`N_m = 16`, and ``nproc_theta = 1``, the number of GPUs can be any of :math:`N_\mathrm{GPU} = \{1,2,4,8,16,32\}`. With ``nproc_theta = 2``, each theta slab uses the same species/Hermite decomposition rules over :math:`N_\mathrm{GPU}/2` GPUs.
+
+Theta decomposition currently has additional prototype restrictions:
+
+- only periodic parallel boundary conditions are supported
+- restart reads are not supported, and ``save_for_restart`` is disabled automatically
+- ``use_NCCL`` must be true
+- ``hyperz``, ``hypercollisions_kz``, and ``dealias_kz`` are not supported
+- ``beer4+2`` and ``smith_par`` closures are not supported
+- forcing with nonzero ``forcing_kz`` is not supported
+- the theta derivative uses a second-order finite-difference halo exchange rather than the local spectral derivative.
 
 Requesting a multi-GPU job (SLURM)
 ----------------------------------
@@ -52,4 +64,3 @@ Performance considerations
 --------------------------
 
 Performance will often be limited by the speed of the connection between GPUs. Typically GPUs within a single node are connected with a faster interconnect (e.g. NVLINK) than across nodes, so scaling efficiency may degrade somewhat when parallelizing across multiple nodes. For details about the scaling of the code, see Section 7 of the GX paper (Mandell et al., 2022). 
-

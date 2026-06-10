@@ -282,6 +282,9 @@ void Parameters::get_nml_vars(char* filename)
   hegna       = toml::find_or <bool>   (tnml, "hegna",       false );
   use_NCCL    = toml::find_or <bool>   (tnml, "use_NCCL",    true );
   use_fft_callbacks    = toml::find_or <bool>   (tnml, "use_fft_callbacks",    false );
+  nproc_theta = toml::find_or <int>    (tnml, "nproc_theta", 1 );
+  nproc_theta = toml::find_or <int>    (tnml, "ptheta", nproc_theta );
+  assert((nproc_theta > 0) && "nproc_theta must be a positive integer");
   damp_ends_widthfrac = toml::find_or <float> (tnml, "damp_ends_widthfrac", 1./8.);
   damp_ends_amp = toml::find_or <float> (tnml, "damp_ends_amp", 0.1);
 
@@ -1065,6 +1068,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   if (retval = nc_def_var (nc_expert, "source_dum",            NC_INT,   0, NULL, &ivar)) ERR(retval);
   if (retval = nc_put_att_text (nc_expert, ivar, "value", source.size(), source.c_str())) ERR(retval);
   if (retval = nc_def_var (nc_expert, "hegna",                 NC_INT,   0, NULL, &ivar)) ERR(retval);  // bb6126 - hegna test
+  if (retval = nc_def_var (nc_expert, "nproc_theta",           NC_INT,   0, NULL, &ivar)) ERR(retval);
 
   // for boltzmann opts need attribute BD bug
 
@@ -1254,6 +1258,7 @@ void Parameters::store_ncdf(int ncid, NcDims *nc_dims) {
   putbool  (nc_expert, "init_single", init_single  );
   putbool  (nc_expert, "secondary",   secondary    );
   putbool  (nc_expert, "hegna",       hegna        );
+  putint   (nc_expert, "nproc_theta", nproc_theta  );
   put_real (nc_expert, "phi_ext",     phi_ext      );
   putint   (nc_expert, "ikx_single",  ikx_single   );
   putint   (nc_expert, "iky_single",  iky_single   );
@@ -1662,4 +1667,3 @@ void Parameters::set_jtwist_x0(float *shat_in, float *gds21, float *gds22)
   }
 
 }
-

@@ -6,6 +6,7 @@ Grids::Grids(Parameters* pars) :
   Nx       ( pars->nx_in       ),
   Ny       ( pars->ny_in       ),
   Nz       ( pars->nz_in       ),
+  Nz_glob  ( pars->nz_in       ),
   Nl       ( pars->nl_in       ),
   Nj       ( max(1, 3*pars->nl_in/2-1) ),
 
@@ -43,36 +44,57 @@ Grids::Grids(Parameters* pars) :
   is_up = Nspecies;
   m_lo = 0;
   m_up = Nm;
+  z_lo = 0;
+  z_up = Nz;
   m_ghost = 0;
   nprocs_s = 1;
   nprocs_m = 1;
+  nprocs_z = 1;
   iproc_m = 0;
   iproc_s = 0;
+  iproc_z = 0;
+  mpcom_sm = MPI_COMM_WORLD;
+  mpcom_z = MPI_COMM_WORLD;
 
   // compute parallel decomposition
   if(nprocs>1) {
+    nprocs_z = pars->nproc_theta;
+    assert((nprocs_z > 0) && "nproc_theta must be positive");
+    assert((nprocs%nprocs_z == 0) && "nprocs must be an integer multiple of nproc_theta");
+    assert((Nz_glob%nprocs_z == 0) && "ntheta must be an integer multiple of nproc_theta");
+    int nprocs_sm = nprocs/nprocs_z;
+
+    iproc_z = iproc/nprocs_sm;
+    z_lo = iproc_z*(Nz_glob/nprocs_z);
+    z_up = (iproc_z+1)*(Nz_glob/nprocs_z);
+    Nz = Nz_glob/nprocs_z;
+    NxNycNz = Nx * Nyc * Nz;
+    NxNyNz = Nx * Ny * Nz;
+    NxNz = Nx * Nz;
+    NycNz = Nyc * Nz;
+
     // prioritize species decomp
-    if(nprocs<=Nspecies) {
-      assert((Nspecies%nprocs == 0) && "nprocs <= nspecies, so nspecies must be an integer multiple of nprocs\n");
+    if(nprocs_sm<=Nspecies) {
+      assert((Nspecies%nprocs_sm == 0) && "nprocs/nproc_theta <= nspecies, so nspecies must be an integer multiple of nprocs/nproc_theta\n");
       // this is now the local Nspecies on this proc
-      Nspecies = Nspecies/nprocs;
-      nprocs_s = nprocs;
+      Nspecies = Nspecies/nprocs_sm;
+      nprocs_s = nprocs_sm;
       nprocs_m = 1;
-      iproc_s = iproc;
+      iproc_s = iproc%nprocs_sm;
       iproc_m = 0;
-      is_lo = iproc*Nspecies;
-      is_up = (iproc+1)*Nspecies;
+      is_lo = iproc_s*Nspecies;
+      is_up = (iproc_s+1)*Nspecies;
 
       m_lo = 0;
       m_up = Nm;
 
       //printf("GPU %d: is_lo = %d, is_up = %d, m_lo = %d, m_up = %d\n", iproc, is_lo, is_up, m_lo, m_up);
     } else { // decomp in species and hermite
-      assert((nprocs%Nspecies == 0) && "nprocs > nspecies, so nprocs must be an integer multiple of nspecies\n");
+      assert((nprocs_sm%Nspecies == 0) && "nprocs/nproc_theta > nspecies, so nprocs/nproc_theta must be an integer multiple of nspecies\n");
       nprocs_s = Nspecies;
-      nprocs_m = nprocs/Nspecies;
-      iproc_s = iproc/nprocs_m;
-      iproc_m = iproc%nprocs_m;
+      nprocs_m = nprocs_sm/Nspecies;
+      iproc_s = (iproc%nprocs_sm)/nprocs_m;
+      iproc_m = (iproc%nprocs_sm)%nprocs_m;
 
       // this is now the local Nspecies on this proc
       Nspecies = 1;
@@ -93,6 +115,26 @@ Grids::Grids(Parameters* pars) :
         m_ghost = 2;
       }
     }
+  }
+
+  if(nprocs == 1) {
+    nprocs_z = pars->nproc_theta;
+    assert((nprocs_z == 1) && "nproc_theta must be 1 when running with one MPI process");
+  }
+
+  if(nprocs_z > 1) {
+    assert(!pars->restart && "restart reads are not yet implemented with theta decomposition");
+    if(pars->save_for_restart) {
+      if(iproc == 0) printf("Warning: restart writes are not yet implemented with theta decomposition; disabling save_for_restart.\n");
+      pars->save_for_restart = false;
+    }
+    assert(pars->use_NCCL && "theta decomposition currently requires use_NCCL = true");
+    assert(!(pars->forcing_init && pars->forcing_kz != 0) && "forcing_init with nonzero forcing_kz is not yet implemented with theta decomposition");
+  }
+
+  if(nprocs > 1) {
+    MPI_Comm_split(MPI_COMM_WORLD, iproc_z, iproc_m + nprocs_m*iproc_s, &mpcom_sm);
+    MPI_Comm_split(MPI_COMM_WORLD, iproc_m + nprocs_m*iproc_s, iproc_z, &mpcom_z);
   }
 
   //
@@ -160,38 +202,50 @@ Grids::Grids(Parameters* pars) :
     MPI_Bcast((void *)&ncclId, sizeof(ncclId), MPI_BYTE, 0, MPI_COMM_WORLD);
   }
   // set up some additional ncclIds
-  if(iproc == 0) ncclGetUniqueId(&ncclId_m0);
-  if(nprocs > 1) {
-    MPI_Bcast((void *)&ncclId_m0, sizeof(ncclId_m0), MPI_BYTE, 0, MPI_COMM_WORLD);
+  ncclId_m0.resize(nprocs_z);
+  for(int i=0; i<nprocs_z; i++) {
+    if(iproc == 0) ncclGetUniqueId(&ncclId_m0[i]);
+    if(nprocs > 1) {
+      MPI_Bcast((void *)&ncclId_m0[i], sizeof(ncclId_m0[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
   }
-  ncclId_s.resize(nprocs_s);
-  for(int i=0; i<nprocs_s; i++) {
+  ncclId_s.resize(nprocs_s*nprocs_z);
+  for(int i=0; i<nprocs_s*nprocs_z; i++) {
     if(iproc == 0) ncclGetUniqueId(&ncclId_s[i]);
     if(nprocs > 1) {
       MPI_Bcast((void *)&ncclId_s[i], sizeof(ncclId_s[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
     }
   }
-  ncclId_m.resize(nprocs_m);
-  for(int i=0; i<nprocs_m; i++) {
+  ncclId_m.resize(nprocs_m*nprocs_z);
+  for(int i=0; i<nprocs_m*nprocs_z; i++) {
     if(iproc == 0) ncclGetUniqueId(&ncclId_m[i]);
     if(nprocs > 1) {
       MPI_Bcast((void *)&ncclId_m[i], sizeof(ncclId_m[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
+    }
+  }
+  ncclId_z.resize(nprocs_m*nprocs_s);
+  for(int i=0; i<nprocs_m*nprocs_s; i++) {
+    if(iproc == 0) ncclGetUniqueId(&ncclId_z[i]);
+    if(nprocs > 1) {
+      MPI_Bcast((void *)&ncclId_z[i], sizeof(ncclId_z[i]), MPI_BYTE, 0, MPI_COMM_WORLD);
     }
   }
 
   DEBUGPRINT("Got NCCL IDs\n");
 
   checkCuda(ncclCommInitRank(&ncclComm, nprocs, ncclId, iproc));
-  // set up NCCL communicator that is per-species
-  checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s], iproc_m));
-  // set up NCCL communicator that is per-m block
-  checkCuda(ncclCommInitRank(&ncclComm_m, nprocs_s, ncclId_m[iproc_m], iproc_s));
-  // set up NCCL communicator that involves only GPUs containing m=0, i.e. grids_->proc(0, iproc_s)
+  // same species and theta slab; ranks differ only in Hermite block
+  checkCuda(ncclCommInitRank(&ncclComm_s, nprocs_m, ncclId_s[iproc_s + nprocs_s*iproc_z], iproc_m));
+  // same Hermite block and theta slab; ranks differ only in species
+  checkCuda(ncclCommInitRank(&ncclComm_m, nprocs_s, ncclId_m[iproc_m + nprocs_m*iproc_z], iproc_s));
+  // same Hermite/species block; ranks differ only in theta slab
+  checkCuda(ncclCommInitRank(&ncclComm_z, nprocs_z, ncclId_z[iproc_m + nprocs_m*iproc_s], iproc_z));
+  // set up NCCL communicator that involves only GPUs containing m=0 in this theta slab
   if(iproc_m == 0) {
     if(nprocs_m > 1)
-      checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m0, iproc_s));
+      checkCuda(ncclCommInitRank(&ncclComm_m0, nprocs_s, ncclId_m0[iproc_z], iproc_s));
     else
-      ncclComm_m0 = ncclComm;
+      ncclComm_m0 = ncclComm_m;
   }
   DEBUGPRINT("Finished initializaing NCCL comms.\n");
 }
@@ -228,7 +282,12 @@ Grids::~Grids() {
   ncclCommDestroy(ncclComm);
   ncclCommDestroy(ncclComm_s);
   ncclCommDestroy(ncclComm_m);
+  ncclCommDestroy(ncclComm_z);
   if(nprocs_m > 1 && iproc_m == 0) ncclCommDestroy(ncclComm_m0);
+  if(nprocs > 1) {
+    MPI_Comm_free(&mpcom_sm);
+    MPI_Comm_free(&mpcom_z);
+  }
 }
 
 void Grids::init_ks_and_coords()
@@ -279,7 +338,14 @@ void Grids::init_ks_and_coords()
   }
 
   if (Nz>1) {
-    for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
+    if(nprocs_z > 1) {
+      for (int i = 0; i < Nz ; i++) {
+        int kg_out = (z_lo + i + Nz_glob/2 + 1) % Nz_glob;
+        kz_outh[i] = (kg_out < Nz_glob/2+1) ? (float) kg_out/pars_->Zp : (float) (kg_out - Nz_glob)/pars_->Zp;
+      }
+    } else {
+      for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ (i + Nz/2 + 1) % Nz ];
+    }
   } else {
     for (int i = 0; i < Nz ; i++) kz_outh[i] = kz_h[ i ];
   }
@@ -297,7 +363,8 @@ void Grids::init_ks_and_coords()
 
   // define the z coordinate
   for(int k=0; k<Nz; k++) {
-    z_h[k] = 2.*M_PI *pars_->Zp *(k-Nz/2)/Nz;
+    int kg = z_lo + k;
+    z_h[k] = 2.*M_PI *pars_->Zp *(kg-Nz_glob/2)/Nz_glob;
   }
 
   LaguerreTransform * laguerre = new LaguerreTransform(this, 1);
@@ -306,7 +373,7 @@ void Grids::init_ks_and_coords()
   muB_max = laguerre->get_vmax();
   kx_max = kx_h[(Nx-1)/3];
   ky_max = ky_h[(Ny-1)/3];
-  kz_max = kz_h[Nz/2];
+  kz_max = (nprocs_z > 1) ? (float) (Nz_glob/2)/pars_->Zp : kz_h[Nz/2];
   kperp_min = min(kx_h[1], ky_h[1]);
   delete laguerre;
 }

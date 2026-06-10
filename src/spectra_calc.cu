@@ -232,6 +232,7 @@ SpectraCalc_kxkyzst::SpectraCalc_kxkyzst(Grids* grids, NcDims *nc_dims)
   count[4] = grids->Nakx;
 
   start[1] = grids->is_lo;
+  start[2] = grids->z_lo;
 
   field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
   moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
@@ -292,6 +293,7 @@ SpectraCalc_zst::SpectraCalc_zst(Grids* grids, NcDims *nc_dims)
   count[2] = grids->Nz;
 
   start[1] = grids->is_lo;
+  start[2] = grids->z_lo;
 
   field_reduce = new Reduction<float>(grids, field_species_modes, reduced_modes);
   moments_reduce = new Reduction<float>(grids, moment_species_modes, reduced_modes);
@@ -539,6 +541,8 @@ SpectraCalc_zt::SpectraCalc_zt(Grids* grids, NcDims *nc_dims)
   count[0] = 1; // each write is a single time slice
   count[1] = grids->Nz;
 
+  start[1] = grids->z_lo;
+
   field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
   moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);
 
@@ -564,6 +568,8 @@ SpectraCalc_kxkyzt::SpectraCalc_kxkyzt(Grids* grids, NcDims *nc_dims)
   count[1] = grids->Nz;
   count[2] = grids->Naky;
   count[3] = grids->Nakx;
+
+  start[1] = grids->z_lo;
 
   field_reduce = new Reduction<float>(grids, field_modes, reduced_modes);
   moments_reduce = new Reduction<float>(grids, moment_modes, reduced_modes);

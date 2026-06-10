@@ -107,8 +107,7 @@ template <class T> class Reduction {
   std::vector<int32_t> modeFull_;
   std::vector<int32_t> modeReduced_;
 
-  bool reduce_m, reduce_s;
+  bool reduce_m, reduce_s, reduce_z;
   int nelementsReduced;
   int N_;
 };
-
