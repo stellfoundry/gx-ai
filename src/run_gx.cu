@@ -205,6 +205,12 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     // We save at every 2.0 sec interval
     if (time >= target_time) {
       if(grids->iproc == 0) printf("Target reached: Step %7d\n", counter);
+      if (fields->has_nan()) {
+        printf("ERROR: NaN in phi at rank %d, step %d, time=%.6f. Aborting.\n",
+               grids->iproc, counter, time);
+        fflush(stdout);
+        MPI_Abort(pars->mpcom, 1);
+      }
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite, time);
       diagnostics -> restart_write(G, &time);
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite+1, time);

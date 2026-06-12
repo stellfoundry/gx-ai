@@ -31,6 +31,7 @@ class Fields {
   void print_apar(void);
   void print_bpar(void);
   void rescale(float * phi_max);
+  bool has_nan();
 
   inline void copyPhiFrom(Fields* source) {
     cudaMemcpy(phi, source->phi, size_, cudaMemcpyDeviceToDevice);

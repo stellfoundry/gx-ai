@@ -325,3 +325,12 @@ void Fields::rescale(float * phi_max) {
   rescale_kernel <<< dG, dB >>> (phi, phi_max, 1);
   if(pars_->fapar > 0.) rescale_kernel <<< dG, dB >>> (apar,  phi_max, 1);
 }
+
+bool Fields::has_nan()
+{
+  CP_TO_CPU(phi_h, phi, size_);
+  for (int j = 0; j < N; j++) {
+    if (std::isnan(phi_h[j].x) || std::isnan(phi_h[j].y)) return true;
+  }
+  return false;
+}
