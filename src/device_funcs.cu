@@ -172,16 +172,19 @@ __host__ __device__ float g0(float b) {
 
   x = 1.;
   err = 1.;
-  
-  while (err > tol) {
+  // Use a bounded for loop: on AMD CDNA2 (MI250X), an unbounded while loop
+  // with float x (saturates at 2^24) can stall a wavefront permanently when
+  // lanes diverge. 300 iterations covers all physical b values (series peaks
+  // near n = b/2; for b > ~88, expf(-b) underflows and the loop exits in 1).
+  for (int n = 0; n < 300 && err > tol; n++) {
     xi = 1./x;
     tk  = tk * b2sq * xi * xi;
     g += tk;
     x  += 1.;
     err = fabsf(tk/g);
   }
-  
-  if (g<tol) g=tol; 
+
+  if (g<tol) g=tol;
   return g;
 
 }
@@ -201,8 +204,7 @@ __host__ __device__ float g1(float b) {
 
   x = 1.;
   err = 1.;
-  
-  while (err > tol) {
+  for (int n = 0; n < 300 && err > tol; n++) {
     xi = 1./x;
     xp1i=1./(1.+x);
     tk  = tk * b2sq * xi * xp1i;
@@ -210,8 +212,8 @@ __host__ __device__ float g1(float b) {
     x += 1.;
     err = fabsf(tk/g);
   }
-  
-  if (g<tol) g=tol; 
+
+  if (g<tol) g=tol;
   return g;
 
 }
