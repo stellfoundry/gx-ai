@@ -1,3 +1,6 @@
+#include <cmath>
+#include <cstdint>
+#include <cstring>
 #include "diagnostic_classes.h"
 
 // base class methods
@@ -275,6 +278,18 @@ void HeatFluxDiagnostic::calculate_and_write(MomentsG** G, Fields* f, float* tmp
       int is_glob = is + grids_->is_lo;
       const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
       printf ("Q_%s = %.3e   ", spec_string, fluxes[is]);
+
+      // NaN check: isnan() is broken under -ffast-math; use IEEE 754 bit-pattern.
+      // Write stop file so checkstop() halts all ranks cleanly on the next loop.
+      uint32_t bits;
+      memcpy(&bits, &fluxes[is], sizeof(bits));
+      if ((bits & 0x7F800000u) == 0x7F800000u && (bits & 0x007FFFFFu) != 0u) {
+        char stopname[256];
+        snprintf(stopname, sizeof(stopname), "%s.stop", pars_->run_name);
+        FILE *fp = fopen(stopname, "w");
+        if (fp) fclose(fp);
+        // printf("\nERROR: Q_%s is NaN at rank %d — stop file created.\n", spec_string, grids_->iproc);
+      }
     }
   }
 }
@@ -533,6 +548,18 @@ void TurbulentHeatingDiagnostic::calculate_and_write(MomentsG** G, Fields* f, fl
       int is_glob = is + grids_->is_lo;
       const char *spec_string = pars_->species_h[is_glob].type == 1 ? "e" : "i";
       printf ("Heat_%s = %.3e   ", spec_string, heat[is]);
+
+      // NaN check: isnan() is broken under -ffast-math; use IEEE 754 bit-pattern.
+      // Write stop file so checkstop() halts all ranks cleanly on the next loop.
+      uint32_t bits;
+      memcpy(&bits, &heat[is], sizeof(bits));
+      if ((bits & 0x7F800000u) == 0x7F800000u && (bits & 0x007FFFFFu) != 0u) {
+        char stopname[256];
+        snprintf(stopname, sizeof(stopname), "%s.stop", pars_->run_name);
+        FILE *fp = fopen(stopname, "w");
+        if (fp) fclose(fp);
+        // printf("\nERROR: Heat_%s is NaN at rank %d — stop file created.\n", spec_string, grids_->iproc);
+      }
     }
   }
 }

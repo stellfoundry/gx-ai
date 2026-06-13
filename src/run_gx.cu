@@ -205,19 +205,7 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     // We save at every 2.0 sec interval
     if (time >= target_time) {
       if(grids->iproc == 0) printf("Target reached: Step %7d\n", counter);
-      if (fields->has_bad_values()) {
-        printf("ERROR: bad phi (NaN/Inf/overflow) at rank %d, step %d, time=%.6f. Aborting.\n",
-               grids->iproc, counter, time);
-        fflush(stdout);
-        MPI_Abort(pars->mpcom, 1);
-      }
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite, time);
-      if (fields->has_bad_values()) {
-        printf("ERROR: bad phi after diagnostics at rank %d, step %d, time=%.6f. Aborting.\n",
-               grids->iproc, counter, time);
-        fflush(stdout);
-        MPI_Abort(pars->mpcom, 1);
-      }
       diagnostics -> restart_write(G, &time);
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite+1, time);
       if (pars->nwrite != pars->nwrite_big) checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite_big+1, time);

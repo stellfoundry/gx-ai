@@ -326,14 +326,3 @@ void Fields::rescale(float * phi_max) {
   if(pars_->fapar > 0.) rescale_kernel <<< dG, dB >>> (apar,  phi_max, 1);
 }
 
-bool Fields::has_bad_values()
-{
-  CP_TO_CPU(phi_h, phi, size_);
-  for (int j = 0; j < N; j++) {
-    // !isfinite catches NaN and Inf; magnitude check catches pre-overflow blow-up
-    // (float32 |phi|^2 overflows at |phi| > ~1.8e19; 1e15 is already unphysical)
-    if (!std::isfinite(phi_h[j].x) || !std::isfinite(phi_h[j].y) ||
-        std::fabs(phi_h[j].x) > 1e15f || std::fabs(phi_h[j].y) > 1e15f) return true;
-  }
-  return false;
-}
