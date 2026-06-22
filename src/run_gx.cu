@@ -205,10 +205,11 @@ void run_gx(Parameters *pars, Grids *grids, Geometry *geo)
     // We save at every 2.0 sec interval
     if (time >= target_time) {
       if(grids->iproc == 0) printf("Target reached: Step %7d\n", counter);
+      // Run spectra diagnostics (NaN check) before restart_write so we never checkpoint corrupted fields.
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite, time);
-      diagnostics -> restart_write(G, &time);
       checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite+1, time);
       if (pars->nwrite != pars->nwrite_big) checkstop = diagnostics -> loop(G, fields, timestep->get_dt(), pars->nwrite_big+1, time);
+      if (!checkstop) diagnostics -> restart_write(G, &time);
     }
 
     checkCuda(cudaGetLastError());
